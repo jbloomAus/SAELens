@@ -1,0 +1,7 @@
+transformer-lens==1.10.0
+transformers==4.35.2
+jupyter==1.0.0
+plotly==5.18.0
+plotly-express==0.4.1
+nbformat==5.9.2
+ipykernel==6.27.1
