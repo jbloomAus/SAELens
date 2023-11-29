@@ -3,15 +3,15 @@ import torch
 from torch.utils.data import DataLoader
 import einops
 import wandb
-from src.SAE import SAE
-from src.activation_store import ActivationStore
+from sae_training.SAE import SAE
+from sae_training.activation_store import ActivationStore
 
 #%%
 def train_sae(sae: SAE,
               activation_store: ActivationStore,
               n_epochs: int = 10,
               batch_size: int = 32,
-              l1_coeff: float = 0.0001,
+              l1_coeff: float = 0.001,
               use_wandb: bool = False):
     """
         Takes an SAE and a bunch of activations and does a bunch of training steps
@@ -21,6 +21,7 @@ def train_sae(sae: SAE,
     
     optimizer = torch.optim.Adam(sae.parameters())
     
+    sae.train()
     for _ in range(n_epochs):
         for batch in dataloader:
             optimizer.zero_grad()
@@ -40,7 +41,7 @@ def train_sae(sae: SAE,
                         "mse_loss": mse_loss.item(),
                         "l1_loss": l1_loss.item(),
                         "loss": loss.item(),
-                        "l0": ((hidden_post != 0) / batch_size).sum().item(),
+                        "l0":  ((hidden_post != 0) / batch_size).sum().item(),
                         "l2": torch.norm(hidden_post, dim=1).mean().item(),
                         "hist": wandb.Histogram(feature_mean_activation.tolist()),
                         "n_dead_features": n_dead_features,
@@ -70,3 +71,5 @@ def train_sae(sae: SAE,
             with torch.no_grad():
                 sae.W_dec.data /= (torch.norm(sae.W_dec.data, dim=1, keepdim=True) + 1e-8)
 
+
+    return sae

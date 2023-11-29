@@ -10,8 +10,8 @@ Lots of this code also copies from [Arthur's repo](https://github.com/ArthurConm
 
 ```
 
-conda create --name mats_sae_training python=3.11
+conda create --name mats_sae_training python=3.11 -y
 conda activate mats_sae_training
-pip install requirements.txt
+pip install -r requirements.txt
 
 ```
