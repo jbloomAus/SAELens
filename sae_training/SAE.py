@@ -4,10 +4,12 @@
 https://github.com/ArthurConmy/sae/blob/main/sae/model.py
 """
 from typing import Literal
+
+import einops
 import torch
 from torch import nn
-import einops
 from transformer_lens.hook_points import HookedRootModule, HookPoint
+
 
 #%%
 # TODO make sure that W_dec stays unit norm during training
@@ -18,14 +20,14 @@ class SAE(HookedRootModule):
     ):
         super().__init__()
         self.cfg = cfg
-        self.d_in = cfg["d_in"]
+        self.d_in = cfg.d_in
         if not isinstance(self.d_in, int):
             raise ValueError(
                 f"d_in must be an int but was {self.d_in=}; {type(self.d_in)=}"
             )
-        self.d_sae = cfg["d_sae"]
-        self.dtype = cfg["dtype"]
-        self.device = cfg["device"]
+        self.d_sae = cfg.d_sae
+        self.dtype = cfg.dtype
+        self.device = cfg.device
 
         # NOTE: if using resampling neurons method, you must ensure that we initialise the weights in the order W_enc, b_enc, W_dec, b_dec
         self.W_enc = nn.Parameter(

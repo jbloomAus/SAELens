@@ -3,5 +3,18 @@
         "tests"
     ],
     "python.testing.unittestEnabled": false,
-    "python.testing.pytestEnabled": true
+    "python.testing.pytestEnabled": true,
+    
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter",
+        "editor.formatOnSave": false,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": true
+        },
+      },
+    "isort.args": [
+        "--profile",
+        "black"
+    ],
+    "editor.defaultFormatter": "mikoz.black-py",
 }
