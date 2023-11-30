@@ -15,10 +15,11 @@ def test_language_model_sae_runner():
         model_name = "gelu-2l",
         hook_point = "blocks.0.hook_mlp_out",
         hook_point_layer = 0,
+        d_in = 512,
         dataset_path = "NeelNanda/c4-tokenized-2b",
         
         # SAE Parameters
-        expansion_factor = 4, # determines the dimension of the SAE.
+        expansion_factor = 8, # determines the dimension of the SAE.
         
         # Training Parameters
         lr = 1e-4,
@@ -27,12 +28,9 @@ def test_language_model_sae_runner():
         context_size = 128,
         
         # Activation Store Parameters
-        shuffle_buffer_size = 10_000,
-        # max_store_size: int = 384 * 4096 * 2
-        # max_activations: int = 2_000_000_000
-        # resample_frequency: int = 122_880_000
-        # checkpoint_frequency: int = 100_000_000
-        # validation_frequency: int = 384 * 4096 * 2 * 100
+        n_batches_in_buffer = 2,
+        total_training_tokens = 20_000_000,
+        store_batch_size = 32,
         
         # WANDB
         log_to_wandb = True,
@@ -40,7 +38,7 @@ def test_language_model_sae_runner():
         wandb_entity = None,
         
         # Misc
-        device = "cpu",
+        device = "cuda",
         seed = 42,
         checkpoint_path = "checkpoints",
         dtype = torch.float32,

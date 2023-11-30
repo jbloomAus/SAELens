@@ -18,8 +18,11 @@ def test_toy_model_sae_runner():
         model_training_steps=10_000,
         n_sae_training_tokens=1024*10_000,
         train_epochs=1,
+        
+        # Other parameters
         log_to_wandb=True,
         wandb_log_frequency=5,
+        device="cuda",
     )
 
     trained_sae = toy_model_sae_runner(cfg)

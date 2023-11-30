@@ -5,6 +5,8 @@ from datasets import load_dataset
 from torch.utils.data import DataLoader
 from transformer_lens import HookedTransformer
 
+import wandb
+from sae_training.activations_buffer import DataLoaderBuffer
 from sae_training.lm_datasets import preprocess_tokenized_dataset
 
 # from sae_training.activation_store import ActivationStore
@@ -22,7 +24,7 @@ class LanguageModelSAERunnerConfig:
     dataset_path: str = "NeelNanda/c4-tokenized-2b"
     
     # SAE Parameters
-    d_in: int = 768
+    d_in: int = 512
     expansion_factor: int = 4
     
     # Training Parameters
@@ -38,18 +40,15 @@ class LanguageModelSAERunnerConfig:
     
     
     # Activation Store Parameters
-    shuffle_buffer_size: int = 10_000
-    # max_store_size: int = 384 * 4096 * 2
-    # max_activations: int = 2_000_000_000
-    # resample_frequency: int = 122_880_000
-    # checkpoint_frequency: int = 100_000_000
-    # validation_frequency: int = 384 * 4096 * 2 * 100
+    n_batches_in_buffer: int = 20
+    total_training_tokens: int = 2_000_000
+    store_batch_size: int = 4096
     
     # WANDB
     log_to_wandb: bool = True
     wandb_project: str = "mats_sae_training_language_model"
     wandb_entity: str = None
-    wandb_log_frequency: int = 50
+    wandb_log_frequency: int = 5
     
     # Misc
     device: str = "cpu"
@@ -59,6 +58,7 @@ class LanguageModelSAERunnerConfig:
     
     def __post_init__(self):
         self.d_sae = self.d_in * self.expansion_factor
+        self.tokens_per_buffer = self.train_batch_size * self.context_size * self.n_batches_in_buffer
 
 def language_model_sae_runner(cfg):
 
@@ -68,23 +68,19 @@ def language_model_sae_runner(cfg):
     
     # initialize dataset
     dataset = load_dataset(cfg.dataset_path, streaming=True, split="train")
-    existing_columns = list(next(iter(dataset)).keys())
-    mapped_dataset = dataset.map(
-        preprocess_tokenized_dataset, # preprocess is what differentiates different datasets
-        batched=True,
-        batch_size=cfg.train_batch_size,
-        fn_kwargs={"context_size": cfg.context_size},
-        remove_columns=existing_columns,
+    activations_buffer = DataLoaderBuffer(
+        cfg, model, data_path=cfg.dataset_path
     )
-    dataset = mapped_dataset.shuffle(buffer_size=cfg.shuffle_buffer_size)
-    dataloader = DataLoader(dataset, batch_size=cfg.train_batch_size)
 
     # initialize the SAE
     sparse_autoencoder = SAE(cfg)
     
+    if cfg.log_to_wandb:
+        wandb.init(project=cfg.wandb_project, config=cfg)
+    
     # train SAE
     sparse_autoencoder = train_sae_on_language_model(
-        model, sparse_autoencoder, dataloader,
+        model, sparse_autoencoder, activations_buffer,
         batch_size = cfg.train_batch_size,
         feature_sampling_window = cfg.feature_sampling_window,
         feature_reinit_scale = cfg.feature_reinit_scale,
@@ -92,5 +88,8 @@ def language_model_sae_runner(cfg):
         use_wandb = cfg.log_to_wandb,
         wandb_log_frequency = cfg.wandb_log_frequency
     )
-    
+
+    if cfg.log_to_wandb:
+        wandb.finish()
+        
     return sparse_autoencoder

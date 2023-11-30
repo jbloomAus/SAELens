@@ -64,7 +64,7 @@ def toy_model_sae_runner(cfg):
     # Initialize Toy Model
     model = ToyModel(
         cfg=toy_model_cfg,
-        device="cpu",
+        device=cfg.device,
         feature_probability=cfg.feature_probability,
     )
 
