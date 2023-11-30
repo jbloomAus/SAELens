@@ -8,7 +8,7 @@ import wandb
 from sae_training.SAE import SAE
 from sae_training.toy_models import Config as ToyConfig
 from sae_training.toy_models import Model as ToyModel
-from sae_training.train_sae import train_sae
+from sae_training.train_sae_on_toy_model import train_toy_sae
 
 
 @dataclass
@@ -84,12 +84,11 @@ def toy_model_sae_runner(cfg):
     if cfg.log_to_wandb:
         wandb.init(project="sae-training-test", config=cfg)
 
-    sae = train_sae(
+    sae = train_toy_sae(
         model, # need model so we can do evals for neuron resampling
         sae,
         hidden.detach().squeeze(),
         use_wandb=cfg.log_to_wandb,
-        l1_coeff=cfg.l1_coefficient,
         batch_size=cfg.train_batch_size,
         n_epochs=cfg.train_epochs,
         feature_sampling_window=cfg.feature_sampling_window,

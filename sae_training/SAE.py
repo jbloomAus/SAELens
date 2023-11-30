@@ -1,5 +1,4 @@
 
-#%%
 """Most of this is just copied over from Arthur's code and slightly simplified:
 https://github.com/ArthurConmy/sae/blob/main/sae/model.py
 """
@@ -13,7 +12,6 @@ from torch.distributions.categorical import Categorical
 from transformer_lens.hook_points import HookedRootModule, HookPoint
 
 
-#%%
 # TODO make sure that W_dec stays unit norm during training
 class SAE(HookedRootModule):
     def __init__(
@@ -28,6 +26,7 @@ class SAE(HookedRootModule):
                 f"d_in must be an int but was {self.d_in=}; {type(self.d_in)=}"
             )
         self.d_sae = cfg.d_sae
+        self.l1_coefficient = cfg.l1_coefficient
         self.dtype = cfg.dtype
         self.device = cfg.device
 
@@ -62,7 +61,7 @@ class SAE(HookedRootModule):
 
         self.setup()  # Required for `HookedRootModule`s
 
-    def forward(self, x, return_mode: Literal["sae_out", "hidden_post", "both"]="both"):
+    def forward(self, x):
         sae_in = self.hook_sae_in(
             x - self.b_dec
         )  # Remove encoder bias as per Anthropic
@@ -75,25 +74,23 @@ class SAE(HookedRootModule):
             )
             + self.b_enc
         )
-        hidden_post = self.hook_hidden_post(torch.nn.functional.relu(hidden_pre))
+        feature_acts = self.hook_hidden_post(torch.nn.functional.relu(hidden_pre))
 
         sae_out = self.hook_sae_out(
             einops.einsum(
-                hidden_post,
+                feature_acts,
                 self.W_dec,
                 "... d_sae, d_sae d_in -> ... d_in",
             )
             + self.b_dec
         )
+        
+        mse_loss = ((sae_out - x)**2).mean()
+        l1_loss = torch.abs(feature_acts).sum()
+        loss = mse_loss + self.l1_coefficient * l1_loss
 
-        if return_mode == "sae_out":
-            return sae_out
-        elif return_mode == "hidden_post":
-            return hidden_post
-        elif return_mode == "both":
-            return sae_out, hidden_post
-        else:
-            raise ValueError(f"Unexpected {return_mode=}")
+        return sae_out, feature_acts, loss, mse_loss, l1_loss
+
 
     @torch.no_grad()
     def resample_neurons(
@@ -105,7 +102,7 @@ class SAE(HookedRootModule):
         '''
         Resamples neurons that have been dead for `dead_neuron_window` steps, according to `frac_active`.
         '''
-        sae_out = self.forward(x, return_mode="sae_out")
+        sae_out, _, _, _, _ = self.forward(x)
         per_token_l2_loss = (sae_out - x).pow(2).sum(dim=-1).squeeze()
 
         # Find the dead neurons in this instance. If all neurons are alive, continue
@@ -138,3 +135,26 @@ class SAE(HookedRootModule):
         # Lastly, set the new weights & biases
         self.W_enc.data[:, dead_neurons] = replacement_values.T.squeeze(1)
         self.b_enc.data[dead_neurons] = 0.0
+
+    @torch.no_grad()
+    def set_decoder_norm_to_unit_norm(self):
+        self.W_dec.data /= torch.norm(self.W_dec.data, dim=1, keepdim=True)
+        
+    @torch.no_grad()
+    def remove_gradient_parallel_to_decoder_directions(self):
+        '''
+        Update grads so that they remove the parallel component
+            (d_sae, d_in) shape
+        '''
+        
+        parallel_component = einops.einsum(
+            self.W_dec.grad,
+            self.W_dec.data,
+            "d_sae d_in, d_sae d_in -> d_sae",
+        )
+        
+        self.W_dec.grad -= einops.einsum(
+            parallel_component,
+            self.W_dec.data,
+            "d_sae, d_sae d_in -> d_sae d_in",
+        )

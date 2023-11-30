@@ -1,29 +1,25 @@
-#%%
 import einops
 import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 import wandb
-from sae_training.activation_store import ActivationStore
 from sae_training.SAE import SAE
 from sae_training.toy_models import Model as ToyModel
 
 
-#%%
-def train_sae(model: ToyModel, 
+def train_toy_sae(model: ToyModel, 
               sae: SAE,
-              activation_store: ActivationStore,
+              activation_store,
               n_epochs: int = 10,
               batch_size: int = 1024,
-              l1_coeff: float = 0.001,
               feature_sampling_window: int = 100, # how many training steps between resampling the features / considiring neurons dead
               feature_reinit_scale: float = 0.2, # how much to scale the resampled features by
               dead_feature_threshold: float = 1e-8, # how infrequently a feature has to be active to be considered dead
               use_wandb: bool = False,
               wandb_log_frequency: int = 50,):
     """
-        Takes an SAE and a bunch of activations and does a bunch of training steps
+    Takes an SAE and a bunch of activations and does a bunch of training steps
     """
     
     dataloader = DataLoader(activation_store, batch_size=batch_size, shuffle=True)
@@ -36,9 +32,8 @@ def train_sae(model: ToyModel,
         pbar = tqdm(dataloader)
         for step, batch in enumerate(pbar):
             
-            
             # Make sure the W_dec is still zero-norm
-            sae.W_dec.data /= (torch.norm(sae.W_dec.data, dim=1, keepdim=True) + 1e-8)  
+            sae.set_decoder_norm_to_unit_norm()
             
             # Resample dead neurons 
             if (feature_sampling_window is not None) and ((step + 1) % feature_sampling_window == 0):
@@ -64,12 +59,9 @@ def train_sae(model: ToyModel,
 
             # Forward and Backward Passes
             optimizer.zero_grad()
-            sae_out, feature_acts = sae(batch)
+            _, feature_acts, loss, mse_loss, l1_loss = sae(batch)
             # loss = reconstruction MSE + L1 regularization
-            mse_loss = ((sae_out - batch)**2).mean()
-            l1_loss = torch.abs(feature_acts).sum()
-            loss = mse_loss + l1_coeff * l1_loss
-
+           
             with torch.no_grad():
                 
                 # Calculate the sparsities, and add it to a list
@@ -106,21 +98,8 @@ def train_sae(model: ToyModel,
             # TODO do we actually need this?
             # Update grads so that they remove the parallel component
             # (d_sae, d_in) shape
-            with torch.no_grad():
-                parallel_component = einops.einsum(
-                    sae.W_dec.grad,
-                    sae.W_dec.data,
-                    "d_sae d_in, d_sae d_in -> d_sae",
-                )
-                sae.W_dec.grad -= einops.einsum(
-                    parallel_component,
-                    sae.W_dec.data,
-                    "d_sae, d_sae d_in -> d_sae d_in",
-                )
-            
+            sae.remove_gradient_parallel_to_decoder_directions()
             optimizer.step()
-            
-
             
             n_training_steps += 1
 
