@@ -22,17 +22,21 @@ class SAEToyModelRunnerConfig:
     # Relu Model Training Parameters
     model_training_steps: int = 10_000
     # SAE Parameters
-    expansion_factor: int = 4
+    d_sae: int = 5
     # Training Parameters
     n_sae_training_tokens: int = 25_000
     l1_coefficient: float = 1e-3
     lr: float = 3e-4
-    train_batch_size: int = 32 # Shouldn't be as big as the batch size for language models
+    train_batch_size: int = 1024 # Shouldn't be as big as the batch size for language models
     train_epochs: int = 10
+    feature_sampling_window: int = 100
+    feature_reinit_scale: float = 0.2
+    dead_feature_threshold: float = 1e-8
     # WANDB
     log_to_wandb: bool = True
     wandb_project: str = "mats_sae_training_toy_model"
     wandb_entity: str = None
+    wandb_log_frequency: int = 50
     # Misc
     device: str = "cpu"
     seed: int = 42
@@ -43,8 +47,6 @@ class SAEToyModelRunnerConfig:
 
     def __post_init__(self):
         self.d_in = self.n_hidden  # hidden for the ReLu model is the input for the SAE
-        self.d_sae = self.n_hidden * self.expansion_factor
-
 
 def toy_model_sae_runner(cfg):
     '''
@@ -83,12 +85,17 @@ def toy_model_sae_runner(cfg):
         wandb.init(project="sae-training-test", config=cfg)
 
     sae = train_sae(
+        model, # need model so we can do evals for neuron resampling
         sae,
         hidden.detach().squeeze(),
         use_wandb=cfg.log_to_wandb,
         l1_coeff=cfg.l1_coefficient,
         batch_size=cfg.train_batch_size,
         n_epochs=cfg.train_epochs,
+        feature_sampling_window=cfg.feature_sampling_window,
+        feature_reinit_scale=cfg.feature_reinit_scale,
+        dead_feature_threshold=cfg.dead_feature_threshold,
+        wandb_log_frequency=cfg.wandb_log_frequency,
     )
 
     if cfg.log_to_wandb:

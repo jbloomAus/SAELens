@@ -7,7 +7,9 @@ from typing import Literal
 
 import einops
 import torch
-from torch import nn
+from jaxtyping import Float, Int
+from torch import Tensor, nn
+from torch.distributions.categorical import Categorical
 from transformer_lens.hook_points import HookedRootModule, HookPoint
 
 
@@ -93,22 +95,46 @@ class SAE(HookedRootModule):
         else:
             raise ValueError(f"Unexpected {return_mode=}")
 
-    def reinit_neurons(self, indices):
-        new_W_enc = torch.nn.init.kaiming_uniform_(
-            torch.empty(
-                self.d_in, indices.shape[0], dtype=self.dtype, device=self.device
-            )
-        ) * self.cfg["resample_factor"]
-        new_b_enc = torch.zeros(
-            indices.shape[0], dtype=self.dtype, device=self.device
-        )
-        new_W_dec = torch.nn.init.kaiming_uniform_(
-            torch.empty(
-                indices.shape[0], self.d_in, dtype=self.dtype, device=self.get_test_lossevice
-            )
-        )
-        self.W_enc.data[:, indices] = new_W_enc
-        self.b_enc.data[indices] = new_b_enc
-        self.W_dec.data[indices, :] = new_W_dec
-        self.W_dec /= torch.norm(self.W_dec, dim=1, keepdim=True)
+    @torch.no_grad()
+    def resample_neurons(
+        self,
+        x: Float[Tensor, "batch_size n_hidden"],
+        frac_active_in_window: Float[Tensor, "window n_hidden_ae"],
+        neuron_resample_scale: float,
+    ) -> None:
+        '''
+        Resamples neurons that have been dead for `dead_neuron_window` steps, according to `frac_active`.
+        '''
+        sae_out = self.forward(x, return_mode="sae_out")
+        per_token_l2_loss = (sae_out - x).pow(2).sum(dim=-1).squeeze()
 
+        # Find the dead neurons in this instance. If all neurons are alive, continue
+        is_dead = (frac_active_in_window.sum(0) < 1e-8)
+        dead_neurons = torch.nonzero(is_dead).squeeze(-1)
+        alive_neurons = torch.nonzero(~is_dead).squeeze(-1)
+        n_dead = dead_neurons.numel()
+        
+        if n_dead == 0:
+            return # If there are no dead neurons, we don't need to resample neurons
+        
+        # Compute L2 loss for each element in the batch
+        # TODO: Check whether we need to go through more batches as features get sparse to find high l2 loss examples. 
+        if per_token_l2_loss.max() < 1e-6:
+            return  # If we have zero reconstruction loss, we don't need to resample neurons
+        
+        # Draw `n_hidden_ae` samples from [0, 1, ..., batch_size-1], with probabilities proportional to l2_loss
+        distn = Categorical(probs = per_token_l2_loss / per_token_l2_loss.sum())
+        replacement_indices = distn.sample((n_dead,)) # shape [n_dead]
+
+        # Index into the batch of hidden activations to get our replacement values
+        replacement_values = (x - self.b_dec)[replacement_indices] # shape [n_dead n_input_ae]
+
+        # Get the norm of alive neurons (or 1.0 if there are no alive neurons)
+        W_enc_norm_alive_mean = 1.0 if len(alive_neurons) == 0 else self.W_enc[:, alive_neurons].norm(dim=0).mean().item()
+        
+        # Use this to renormalize the replacement values
+        replacement_values = (replacement_values / (replacement_values.norm(dim=1, keepdim=True) + 1e-8)) * W_enc_norm_alive_mean * neuron_resample_scale
+
+        # Lastly, set the new weights & biases
+        self.W_enc.data[:, dead_neurons] = replacement_values.T.squeeze(1)
+        self.b_enc.data[dead_neurons] = 0.0
