@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass
 
 import torch
@@ -67,7 +68,6 @@ def language_model_sae_runner(cfg):
     model = HookedTransformer.from_pretrained(cfg.model_name) # any other cfg we should pass in here?
     
     # initialize dataset
-    dataset = load_dataset(cfg.dataset_path, streaming=True, split="train")
     activations_buffer = DataLoaderBuffer(
         cfg, model, data_path=cfg.dataset_path
     )
@@ -88,6 +88,23 @@ def language_model_sae_runner(cfg):
         use_wandb = cfg.log_to_wandb,
         wandb_log_frequency = cfg.wandb_log_frequency
     )
+
+
+        
+    # save sae to checkpoints folder
+    unique_id = wandb.util.generate_id()
+    #make sure directory exists
+
+    os.makedirs(f"{cfg.checkpoint_path}/{unique_id}", exist_ok=True)
+    torch.save(sparse_autoencoder.state_dict(), f"{cfg.checkpoint_path}/{unique_id}/sae.pt")
+    # upload to wandb
+    if cfg.log_to_wandb:
+        model_artifact = wandb.Artifact(
+            "sae", type="model", metadata=dict(cfg.__dict__)
+        )
+        model_artifact.add_file(f"{cfg.checkpoint_path}/{unique_id}/sae.pt")
+        wandb.log_artifact(model_artifact)
+        
 
     if cfg.log_to_wandb:
         wandb.finish()

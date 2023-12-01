@@ -96,7 +96,7 @@ class SAE(HookedRootModule):
     def resample_neurons(
         self,
         x: Float[Tensor, "batch_size n_hidden"],
-        frac_active_in_window: Float[Tensor, "window n_hidden_ae"],
+        feature_sparsity: Float[Tensor, "n_hidden_ae"],
         neuron_resample_scale: float,
     ) -> None:
         '''
@@ -106,7 +106,7 @@ class SAE(HookedRootModule):
         per_token_l2_loss = (sae_out - x).pow(2).sum(dim=-1).squeeze()
 
         # Find the dead neurons in this instance. If all neurons are alive, continue
-        is_dead = (frac_active_in_window.sum(0) < 1e-8)
+        is_dead = (feature_sparsity < 1e-8)
         dead_neurons = torch.nonzero(is_dead).squeeze(-1)
         alive_neurons = torch.nonzero(~is_dead).squeeze(-1)
         n_dead = dead_neurons.numel()
@@ -135,6 +135,8 @@ class SAE(HookedRootModule):
         # Lastly, set the new weights & biases
         self.W_enc.data[:, dead_neurons] = replacement_values.T.squeeze(1)
         self.b_enc.data[dead_neurons] = 0.0
+        
+        return len(dead_neurons)
 
     @torch.no_grad()
     def set_decoder_norm_to_unit_norm(self):

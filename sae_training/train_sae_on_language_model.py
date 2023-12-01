@@ -41,22 +41,25 @@ def train_sae_on_language_model(
         # Make sure the W_dec is still zero-norm
         sae.set_decoder_norm_to_unit_norm()
 
-        # # Resample dead neurons
-        # if (feature_sampling_window is not None) and ((step + 1) % feature_sampling_window == 0):
+        # Resample dead neurons
+        if (feature_sampling_window is not None) and ((n_training_steps + 1) % feature_sampling_window == 0):
 
-        #     # Get the fraction of neurons active in the previous window
-        #     frac_active_in_window = torch.stack(frac_active_list[-feature_sampling_window:], dim=0)
+            # Get the fraction of neurons active in the previous window
+            frac_active_in_window = torch.stack(frac_active_list[-feature_sampling_window:], dim=0)
+            feature_sparsity = frac_active_in_window.sum(0) / (
+                                feature_sampling_window * batch_size
+                            )
+            # if standard resampling <- do this
+            n_resampled_neurons = sae.resample_neurons(next(dataloader), feature_sparsity, feature_reinit_scale)
+            n_remaining_batches_in_buffer -= 1
 
-        #     # run model with cach on inputs and get out hidden
-        #     # _, cache = model(batch, return_cache=True)
-        #     # hidden = cache[hook_point,0]
-
-        #     # if standard resampling <- do this
-        #     # Resample
-        #     sae.resample_neurons(hidden, frac_active_in_window, feature_reinit_scale)
-
-        #     # elif anthropic resampling <- do this
-        #     # sae.resample_neurons(hidden, frac_active_in_window, feature_reinit_scale)
+            # elif anthropic resampling <- do this
+            # run the model and reinit where recons loss is high. 
+            if n_remaining_batches_in_buffer == 0:
+                dataloader, n_remaining_batches_in_buffer = get_new_dataloader(
+                    data_loader_buffer, n_remaining_batches_in_buffer, batch_size)
+        else:
+            n_resampled_neurons = 0
 
         # # Update learning rate here if using scheduler.
 
@@ -68,10 +71,10 @@ def train_sae_on_language_model(
         n_training_tokens += batch_size
         n_remaining_batches_in_buffer -= 1
 
+        # Update the buffer if we've run out of batches
         if n_remaining_batches_in_buffer == 0:
-            buffer = data_loader_buffer.get_buffer()
-            dataloader = iter(DataLoader(buffer, batch_size=batch_size, shuffle=True))
-            n_remaining_batches_in_buffer = len(dataloader)
+            dataloader, n_remaining_batches_in_buffer = get_new_dataloader(
+                data_loader_buffer, n_remaining_batches_in_buffer, batch_size)
 
         with torch.no_grad():
             # Calculate the sparsities, and add it to a list, calculate sparsity metrics
@@ -118,6 +121,7 @@ def train_sae_on_language_model(
                         .float()
                         .mean()
                         .item(),
+                        "metrics/n_resampled_neurons": n_resampled_neurons,
                         "details/n_training_tokens": n_training_tokens,
                     },
                     step=n_training_steps,
@@ -158,6 +162,14 @@ def train_sae_on_language_model(
         n_training_steps += 1
 
     return sae
+
+
+def get_new_dataloader(data_loader_buffer, n_remaining_batches_in_buffer, batch_size):
+    buffer = data_loader_buffer.get_buffer()
+    dataloader = iter(DataLoader(buffer, batch_size=batch_size, shuffle=True))
+    n_remaining_batches_in_buffer = len(dataloader)
+    return dataloader, n_remaining_batches_in_buffer
+
 
 
 @torch.no_grad()
