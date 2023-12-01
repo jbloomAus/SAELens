@@ -19,17 +19,17 @@ def test_language_model_sae_runner():
         dataset_path = "NeelNanda/c4-tokenized-2b",
         
         # SAE Parameters
-        expansion_factor = 8, # determines the dimension of the SAE.
+        expansion_factor = 16, # determines the dimension of the SAE.
         
         # Training Parameters
         lr = 1e-4,
-        l1_coefficient = 3e-3,
+        l1_coefficient = 3e-4,
         train_batch_size = 4096,
         context_size = 128,
         
         # Activation Store Parameters
-        n_batches_in_buffer = 2,
-        total_training_tokens = 20_000_000,
+        n_batches_in_buffer = 6,
+        total_training_tokens = 5_000_000,
         store_batch_size = 32,
         
         # WANDB

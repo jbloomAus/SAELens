@@ -85,9 +85,9 @@ class SAE(HookedRootModule):
             + self.b_dec
         )
         
-        mse_loss = ((sae_out - x)**2).mean()
-        l1_loss = torch.abs(feature_acts).sum()
-        loss = mse_loss + self.l1_coefficient * l1_loss
+        mse_loss = (sae_out.float() - x.float()).pow(2).sum(-1).mean(0)
+        l1_loss = self.l1_coefficient * torch.abs(feature_acts).sum()
+        loss = mse_loss + l1_loss
 
         return sae_out, feature_acts, loss, mse_loss, l1_loss
 

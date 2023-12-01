@@ -1,14 +1,13 @@
-from datasets import load_dataset
-from transformer_lens import HookedTransformer
-from sae_training.lm_datasets import preprocess_tokenized_dataset
-
-import torch
-from torch.utils.data import Dataset
-from datasets import load_dataset
-import einops
 import os
-from transformer_lens import HookedTransformer
+
+import einops
+import torch
+from datasets import load_dataset
+from torch.utils.data import Dataset
 from tqdm import tqdm
+from transformer_lens import HookedTransformer
+
+from sae_training.lm_datasets import preprocess_tokenized_dataset
 
 
 class DataLoaderBuffer:
@@ -112,8 +111,6 @@ class DataLoaderBuffer:
         d_in = self.cfg.d_in
         n_batches_in_buffer = self.cfg.n_batches_in_buffer
         total_size = batch_size * n_batches_in_buffer
-
-        refill_batch_tokens = self.get_batch_tokens()
 
         refill_iterator = range(0, batch_size * n_batches_in_buffer, batch_size)
         # refill_iterator = tqdm(refill_iterator, desc="generate activations")

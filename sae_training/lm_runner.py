@@ -84,7 +84,7 @@ def language_model_sae_runner(cfg):
         batch_size = cfg.train_batch_size,
         feature_sampling_window = cfg.feature_sampling_window,
         feature_reinit_scale = cfg.feature_reinit_scale,
-        dead_feature_threshold = cfg.feature_reinit_scale,
+        dead_feature_threshold = cfg.dead_feature_threshold,
         use_wandb = cfg.log_to_wandb,
         wandb_log_frequency = cfg.wandb_log_frequency
     )

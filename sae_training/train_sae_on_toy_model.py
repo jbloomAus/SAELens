@@ -65,9 +65,7 @@ def train_toy_sae(model: ToyModel,
             with torch.no_grad():
                 
                 # Calculate the sparsities, and add it to a list
-                frac_active = einops.reduce(
-                    (feature_acts.abs() > dead_feature_threshold).float(), 
-                    "batch_size hidden_ae -> hidden_ae", "mean")
+                frac_active = einops.reduce((feature_acts.abs() > dead_feature_threshold).float(), "batch_size hidden_ae -> hidden_ae", "mean")
                 frac_active_list.append(frac_active)
                 
                 batch_size = batch.shape[0]
@@ -93,11 +91,6 @@ def train_toy_sae(model: ToyModel,
                 pbar.set_description(f"{epoch}/{step}| MSE Loss {mse_loss.item():.3f} | L0 {l0.item():.3f} | n_dead_features {n_dead_features}")
             
             loss.backward()
-            
-            # Taken from Artur's code https://github.com/ArthurConmy/sae/blob/3f8c314d9c008ec40de57828762ec5c9159e4092/sae/utils.py#L91
-            # TODO do we actually need this?
-            # Update grads so that they remove the parallel component
-            # (d_sae, d_in) shape
             sae.remove_gradient_parallel_to_decoder_directions()
             optimizer.step()
             
