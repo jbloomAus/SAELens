@@ -12,11 +12,14 @@ from sae_training.lm_datasets import preprocess_tokenized_dataset
 
 class DataLoaderBuffer:
     def __init__(
-        self, cfg, model: HookedTransformer, data_path="NeelNanda/c4-code-tokenized-2b"
+        self, cfg, model: HookedTransformer,
+        data_path="NeelNanda/c4-code-tokenized-2b",
+        is_dataset_tokenized=True,
     ):
         self.cfg = cfg
         self.model = model
         self.data_path = data_path
+        self.is_dataset_tokenized = is_dataset_tokenized
         self.dataset = load_dataset(data_path, split="train", streaming=True)
         self.iterable_dataset = iter(self.dataset)
         self.buffer = torch.zeros(0, self.cfg.d_in, device=self.cfg.device)
@@ -37,16 +40,16 @@ class DataLoaderBuffer:
 
         # pbar = tqdm(total=batch_size, desc="Filling batches")
         while batch_tokens.shape[0] < batch_size:
-            # if not pretokenized:
-            #     s = next(dataset)["text"]
-            #     tokens = model.to_tokens(s, truncate=False, move_to_device=True).squeeze(0)
-            #     assert len(tokens.shape) == 1, f"tokens.shape should be 1D but was {tokens.shape}"
-            # else:
-            tokens = torch.tensor(
-                next(self.iterable_dataset)["tokens"],
-                dtype=torch.long,
-                device=device,
-            )
+            if not self.is_dataset_tokenized:
+                s = next(self.iterable_dataset)["text"]
+                tokens = self.model.to_tokens(s, truncate=False, move_to_device=True).squeeze(0)
+                assert len(tokens.shape) == 1, f"tokens.shape should be 1D but was {tokens.shape}"
+            else:
+                tokens = torch.tensor(
+                    next(self.iterable_dataset)["tokens"],
+                    dtype=torch.long,
+                    device=device,
+                )
             token_len = tokens.shape[0]
 
             while token_len > 0:

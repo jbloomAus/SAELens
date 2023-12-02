@@ -23,6 +23,7 @@ class LanguageModelSAERunnerConfig:
     hook_point: str = "blocks.0.hook_mlp_out"
     hook_point_layer: int = 0
     dataset_path: str = "NeelNanda/c4-tokenized-2b"
+    is_dataset_tokenized: bool = True
     
     # SAE Parameters
     d_in: int = 512
@@ -69,7 +70,7 @@ def language_model_sae_runner(cfg):
     
     # initialize dataset
     activations_buffer = DataLoaderBuffer(
-        cfg, model, data_path=cfg.dataset_path
+        cfg, model, data_path=cfg.dataset_path, is_dataset_tokenized=cfg.is_dataset_tokenized,
     )
 
     # initialize the SAE
