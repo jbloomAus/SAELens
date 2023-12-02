@@ -133,7 +133,7 @@ class SAE(HookedRootModule):
         replacement_values = (replacement_values / (replacement_values.norm(dim=1, keepdim=True) + 1e-8)) * W_enc_norm_alive_mean * neuron_resample_scale
 
         # Lastly, set the new weights & biases
-        self.W_enc.data[:, dead_neurons] = replacement_values.T.squeeze(1)
+        self.W_enc.data[:, dead_neurons] = replacement_values.T
         self.b_enc.data[dead_neurons] = 0.0
         
         return len(dead_neurons)
