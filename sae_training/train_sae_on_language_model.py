@@ -15,6 +15,7 @@ def train_sae_on_language_model(
     sae: SAE,
     data_loader_buffer,
     batch_size: int = 1024,
+    feature_sampling_method: str = "l2",  # None, l2, or anthropic
     feature_sampling_window: int = 100,  # how many training steps between resampling the features / considiring neurons dead
     feature_reinit_scale: float = 0.2,  # how much to scale the resampled features by
     dead_feature_threshold: float = 1e-8,  # how infrequently a feature has to be active to be considered dead
@@ -42,7 +43,7 @@ def train_sae_on_language_model(
         sae.set_decoder_norm_to_unit_norm()
 
         # Resample dead neurons
-        if (feature_sampling_window is not None) and ((n_training_steps + 1) % feature_sampling_window == 0):
+        if (feature_sampling_method is not None) and ((n_training_steps + 1) % feature_sampling_window == 0):
 
             # Get the fraction of neurons active in the previous window
             frac_active_in_window = torch.stack(frac_active_list[-feature_sampling_window:], dim=0)
@@ -167,7 +168,7 @@ def train_sae_on_language_model(
 def get_new_dataloader(data_loader_buffer, n_remaining_batches_in_buffer, batch_size):
     buffer = data_loader_buffer.get_buffer()
     dataloader = iter(DataLoader(buffer, batch_size=batch_size, shuffle=True))
-    n_remaining_batches_in_buffer = len(dataloader)
+    n_remaining_batches_in_buffer = len(dataloader) // 2 # only ever use half the buffer .
     return dataloader, n_remaining_batches_in_buffer
 
 

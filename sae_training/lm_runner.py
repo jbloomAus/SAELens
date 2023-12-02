@@ -36,6 +36,7 @@ class LanguageModelSAERunnerConfig:
     context_size: int = 128
     
     # Resampling protocol args
+    feature_sampling_method: str = "l2" # None, l2, or anthropic
     feature_sampling_window: int = 100
     feature_reinit_scale: float = 0.2
     dead_feature_threshold: float = 1e-8
@@ -61,6 +62,9 @@ class LanguageModelSAERunnerConfig:
     def __post_init__(self):
         self.d_sae = self.d_in * self.expansion_factor
         self.tokens_per_buffer = self.train_batch_size * self.context_size * self.n_batches_in_buffer
+        
+        if self.feature_sampling_method not in [None, "l2", "anthropic"]:
+            raise ValueError(f"feature_sampling_method must be None, l2, or anthropic. Got {self.feature_sampling_method}")
 
 def language_model_sae_runner(cfg):
 
@@ -83,6 +87,7 @@ def language_model_sae_runner(cfg):
     sparse_autoencoder = train_sae_on_language_model(
         model, sparse_autoencoder, activations_buffer,
         batch_size = cfg.train_batch_size,
+        feature_sampling_method = cfg.feature_sampling_method,
         feature_sampling_window = cfg.feature_sampling_window,
         feature_reinit_scale = cfg.feature_reinit_scale,
         dead_feature_threshold = cfg.dead_feature_threshold,
