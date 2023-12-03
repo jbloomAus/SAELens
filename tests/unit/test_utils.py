@@ -5,7 +5,7 @@ import pytest
 import torch
 from transformer_lens import HookedTransformer
 
-from sae_training.activations_buffer import DataLoaderBuffer
+from sae_training.activations_store import ActivationsStore
 from sae_training.sparse_autoencoder import SparseAutoencoder
 from sae_training.utils import LMSparseAutoencoderSessionloader
 
@@ -63,7 +63,7 @@ def test_LMSparseAutoencoderSessionloader_load_session(cfg):
     
     assert isinstance(model, HookedTransformer)
     assert isinstance(sparse_autoencoder, SparseAutoencoder)
-    assert isinstance(activations_loader, DataLoaderBuffer)
+    assert isinstance(activations_loader, ActivationsStore)
 
 
 def test_LMSparseAutoencoderSessionloader_load_session_from_trained(cfg):

@@ -11,29 +11,29 @@ def test_language_model_sae_runner_mlp_out():
 
         # Data Generating Function (Model + Training Distibuion)
         model_name = "gelu-2l",
-        hook_point = "blocks.1.hook_mlp_out",
-        hook_point_layer = 1,
+        hook_point = "blocks.0.hook_mlp_out",
+        hook_point_layer = 0,
         d_in = 512,
         dataset_path = "NeelNanda/c4-tokenized-2b",
         is_dataset_tokenized=True,
         
         # SAE Parameters
-        expansion_factor = 32, # determines the dimension of the SAE.
+        expansion_factor = 64, # determines the dimension of the SAE.
         
         # Training Parameters
         lr = 1e-4,
-        l1_coefficient = 1e-4,
+        l1_coefficient = 3e-4,
         train_batch_size = 4096,
         context_size = 128,
         
         # Activation Store Parameters
-        n_batches_in_buffer = 16,
-        total_training_tokens = 5_000_00 * 1,
+        n_batches_in_buffer = 24,
+        total_training_tokens = 5_000_00 * 100, # 15 minutes on an A100
         store_batch_size = 32,
         
         # Resampling protocol
-        feature_sampling_method = None,
-        feature_sampling_window = 500,
+        feature_sampling_method = 'l2',
+        feature_sampling_window = 1000, # would fire ~5 times on 500 million tokens
         feature_reinit_scale = 0.2,
         dead_feature_threshold = 1e-8,
         

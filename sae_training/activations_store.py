@@ -1,16 +1,15 @@
-import os
-
-import einops
 import torch
 from datasets import load_dataset
-from torch.utils.data import Dataset
+from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformer_lens import HookedTransformer
 
-from sae_training.lm_datasets import preprocess_tokenized_dataset
 
-
-class DataLoaderBuffer:
+class ActivationsStore:
+    """
+    Class for streaming tokens and generating and storing activations
+    while training SAEs. 
+    """
     def __init__(
         self, cfg, model: HookedTransformer,
         data_path="NeelNanda/c4-code-tokenized-2b",
@@ -22,7 +21,10 @@ class DataLoaderBuffer:
         self.is_dataset_tokenized = is_dataset_tokenized
         self.dataset = load_dataset(data_path, split="train", streaming=True)
         self.iterable_dataset = iter(self.dataset)
-        self.buffer = torch.zeros(0, self.cfg.d_in, device=self.cfg.device)
+        
+        # fill buffer half a buffer, so we can mix it with a new buffer
+        self.storage_buffer = self.get_buffer(self.cfg.n_batches_in_buffer // 2)
+        self.dataloader = self.get_data_loader()
 
     def get_batch_tokens(self):
         """
@@ -108,11 +110,10 @@ class DataLoaderBuffer:
 
         return activations
 
-    def get_buffer(self):
+    def get_buffer(self, n_batches_in_buffer):
         context_size = self.cfg.context_size
         batch_size = self.cfg.store_batch_size
         d_in = self.cfg.d_in
-        n_batches_in_buffer = self.cfg.n_batches_in_buffer
         total_size = batch_size * n_batches_in_buffer
 
         refill_iterator = range(0, batch_size * n_batches_in_buffer, batch_size)
@@ -137,3 +138,44 @@ class DataLoaderBuffer:
         new_buffer = new_buffer[torch.randperm(new_buffer.shape[0])]
 
         return new_buffer
+
+    def get_data_loader(self,) -> DataLoader:
+        '''
+        Return a torch.utils.dataloader which you can get batches from.
+        
+        Should automatically refill the buffer when it gets to n % full. 
+        (better mixing if you refill and shuffle regularly).
+        
+        '''
+        
+        batch_size = self.cfg.train_batch_size
+        
+        # 1. # create new buffer by mixing stored and new buffer
+        mixing_buffer = torch.cat(
+            [self.get_buffer(self.cfg.n_batches_in_buffer //2),
+             self.storage_buffer]
+        )
+        
+        mixing_buffer = mixing_buffer[torch.randperm(mixing_buffer.shape[0])]
+        
+        # 2.  put 50 % in storage
+        self.storage_buffer = mixing_buffer[:mixing_buffer.shape[0]//2] 
+        
+        # 3. put other 50 % in a dataloader
+        dataloader = iter(DataLoader(mixing_buffer[:mixing_buffer.shape[0]//2:], batch_size=batch_size, shuffle=True))
+        
+        return dataloader
+    
+    
+    def next_batch(self):
+        """
+        Get the next batch from the current DataLoader. 
+        If the DataLoader is exhausted, refill the buffer and create a new DataLoader.
+        """
+        try:
+            # Try to get the next batch
+            return next(self.dataloader)
+        except StopIteration:
+            # If the DataLoader is exhausted, create a new one
+            self.dataloader = self.get_data_loader()
+            return next(self.dataloader)

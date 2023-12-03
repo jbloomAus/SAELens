@@ -39,7 +39,7 @@ class LanguageModelSAERunnerConfig:
     # Activation Store Parameters
     n_batches_in_buffer: int = 20
     total_training_tokens: int = 2_000_000
-    store_batch_size: int = 4096
+    store_batch_size: int = 1024
     
     # WANDB
     log_to_wandb: bool = True

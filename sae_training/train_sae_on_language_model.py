@@ -7,13 +7,14 @@ from tqdm import tqdm
 from transformer_lens import HookedTransformer
 
 import wandb
+from sae_training.activations_store import ActivationsStore
 from sae_training.sparse_autoencoder import SparseAutoencoder
 
 
 def train_sae_on_language_model(
     model: HookedTransformer,
     sparse_autoencoder: SparseAutoencoder,
-    data_loader_buffer,
+    activation_store: ActivationsStore,
     batch_size: int = 1024,
     n_checkpoints: int = 0,
     feature_sampling_method: str = "l2",  # None, l2, or anthropic
@@ -35,11 +36,6 @@ def train_sae_on_language_model(
     
     if n_checkpoints > 0:
         checkpoint_thresholds = list(range(0, total_training_tokens, total_training_tokens // n_checkpoints))[1:]
-    
-    # start the buffer
-    buffer = data_loader_buffer.get_buffer()
-    dataloader = iter(DataLoader(buffer, batch_size=batch_size, shuffle=True))
-    n_remaining_batches_in_buffer = len(dataloader)
 
     pbar = tqdm(total=total_training_tokens, desc="Training SAE")
     while n_training_tokens < total_training_tokens:
@@ -57,14 +53,14 @@ def train_sae_on_language_model(
                                 feature_sampling_window * batch_size
                             )
             # if standard resampling <- do this
-            n_resampled_neurons = sparse_autoencoder.resample_neurons(next(dataloader), feature_sparsity, feature_reinit_scale)
-            n_remaining_batches_in_buffer -= 1
+            n_resampled_neurons = sparse_autoencoder.resample_neurons(
+                activation_store.next_batch(), 
+                feature_sparsity, 
+                feature_reinit_scale)
 
             # elif anthropic resampling <- do this
             # run the model and reinit where recons loss is high. 
-            if n_remaining_batches_in_buffer == 0:
-                dataloader, n_remaining_batches_in_buffer = get_new_dataloader(
-                    data_loader_buffer, n_remaining_batches_in_buffer, batch_size)
+
         else:
             n_resampled_neurons = 0
 
@@ -74,14 +70,8 @@ def train_sae_on_language_model(
 
         # Forward and Backward Passes
         optimizer.zero_grad()
-        _, feature_acts, loss, mse_loss, l1_loss = sparse_autoencoder(next(dataloader))
+        _, feature_acts, loss, mse_loss, l1_loss = sparse_autoencoder(activation_store.next_batch())
         n_training_tokens += batch_size
-        n_remaining_batches_in_buffer -= 1
-
-        # Update the buffer if we've run out of batches
-        if n_remaining_batches_in_buffer == 0:
-            dataloader, n_remaining_batches_in_buffer = get_new_dataloader(
-                data_loader_buffer, n_remaining_batches_in_buffer, batch_size)
 
         with torch.no_grad():
             # Calculate the sparsities, and add it to a list, calculate sparsity metrics
@@ -103,7 +93,7 @@ def train_sae_on_language_model(
                 )
 
             # metrics for currents acts
-            l0 = (feature_acts > 0).float().sum(0).mean()
+            l0 = (feature_acts > 0).float().sum(1).mean()
             l2_norm = torch.norm(feature_acts, dim=1).mean()
 
             if use_wandb and ((n_training_steps + 1) % wandb_log_frequency == 0):
@@ -146,8 +136,7 @@ def train_sae_on_language_model(
                     )
 
                     # Now we want the reconstruction loss.
-                    recons_score, _, _, _ = get_recons_loss(
-                        sparse_autoencoder, model, data_loader_buffer=data_loader_buffer, num_batches=5)
+                    recons_score, _, _, _ = get_recons_loss(sparse_autoencoder, model, activation_store, num_batches=5)
                     
                     wandb.log(
                         {
@@ -186,21 +175,12 @@ def train_sae_on_language_model(
 
     return sparse_autoencoder
 
-
-def get_new_dataloader(data_loader_buffer, n_remaining_batches_in_buffer, batch_size):
-    buffer = data_loader_buffer.get_buffer()
-    dataloader = iter(DataLoader(buffer, batch_size=batch_size, shuffle=True))
-    n_remaining_batches_in_buffer = len(dataloader) // 2 # only ever use half the buffer .
-    return dataloader, n_remaining_batches_in_buffer
-
-
-
 @torch.no_grad()
-def get_recons_loss(sparse_autoencder, model, data_loader_buffer, num_batches=5):
-    hook_point = data_loader_buffer.cfg.hook_point
+def get_recons_loss(sparse_autoencder, model, activation_store, num_batches=5):
+    hook_point = activation_store.cfg.hook_point
     loss_list = []
     for _ in range(num_batches):
-        batch_tokens = data_loader_buffer.get_batch_tokens()
+        batch_tokens = activation_store.get_batch_tokens()
         loss = model(batch_tokens, return_type="loss")
 
         # mean_abl_loss = model.run_with_hooks(tokens, return_type="loss",

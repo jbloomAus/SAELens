@@ -3,7 +3,7 @@ from typing import Optional, Tuple
 import torch
 from transformer_lens import HookedTransformer
 
-from sae_training.activations_buffer import DataLoaderBuffer
+from sae_training.activations_store import ActivationsStore
 from sae_training.config import LanguageModelSAERunnerConfig
 from sae_training.sparse_autoencoder import SparseAutoencoder
 
@@ -20,7 +20,7 @@ class LMSparseAutoencoderSessionloader():
         self.cfg = cfg
         
         
-    def load_session(self) -> Tuple[HookedTransformer, SparseAutoencoder, DataLoaderBuffer]:
+    def load_session(self) -> Tuple[HookedTransformer, SparseAutoencoder, ActivationsStore]:
         '''
         Loads a session for training a sparse autoencoder on a language model.
         '''
@@ -32,7 +32,7 @@ class LMSparseAutoencoderSessionloader():
         return model, sparse_autoencoder, activations_loader
     
     @classmethod
-    def load_session_from_pretrained(cls, path: str) -> Tuple[HookedTransformer, SparseAutoencoder, DataLoaderBuffer]:
+    def load_session_from_pretrained(cls, path: str) -> Tuple[HookedTransformer, SparseAutoencoder, ActivationsStore]:
         '''
         Loads a session for analysing a pretrained sparse autoencoder.
         '''
@@ -67,7 +67,7 @@ class LMSparseAutoencoderSessionloader():
         Loads a DataLoaderBuffer for the activations of a language model.
         '''
         
-        activations_loader = DataLoaderBuffer(
+        activations_loader = ActivationsStore(
             cfg, model, 
             data_path=cfg.dataset_path, 
             is_dataset_tokenized=cfg.is_dataset_tokenized,
