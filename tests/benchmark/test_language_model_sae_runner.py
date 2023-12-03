@@ -45,6 +45,7 @@ def test_language_model_sae_runner_mlp_out():
         # Misc
         device = "cuda",
         seed = 42,
+        n_checkpoints = 5,
         checkpoint_path = "checkpoints",
         dtype = torch.float32,
         )

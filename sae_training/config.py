@@ -3,6 +3,8 @@ from dataclasses import dataclass
 
 import torch
 
+import wandb
+
 
 @dataclass
 class LanguageModelSAERunnerConfig:
@@ -48,6 +50,7 @@ class LanguageModelSAERunnerConfig:
     # Misc
     device: str = "cpu"
     seed: int = 42
+    n_checkpoints: int = 0
     checkpoint_path: str = "checkpoints"
     dtype: torch.dtype = torch.float32
     
@@ -57,3 +60,6 @@ class LanguageModelSAERunnerConfig:
         
         if self.feature_sampling_method not in [None, "l2", "anthropic"]:
             raise ValueError(f"feature_sampling_method must be None, l2, or anthropic. Got {self.feature_sampling_method}")
+        
+        unique_id = wandb.util.generate_id()   
+        self.checkpoint_path = f"{self.checkpoint_path}/{unique_id}"

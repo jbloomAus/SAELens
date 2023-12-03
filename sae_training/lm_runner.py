@@ -13,11 +13,8 @@ def language_model_sae_runner(cfg):
     """
     
     """
-    
-    
     loader = LMSparseAutoencoderSessionloader(cfg)
     model, sparse_autoencoder, activations_loader = loader.load_session()
-
     
     if cfg.log_to_wandb:
         wandb.init(project=cfg.wandb_project, config=cfg)
@@ -25,6 +22,7 @@ def language_model_sae_runner(cfg):
     # train SAE
     sparse_autoencoder = train_sae_on_language_model(
         model, sparse_autoencoder, activations_loader,
+        n_checkpoints=cfg.n_checkpoints,
         batch_size = cfg.train_batch_size,
         feature_sampling_method = cfg.feature_sampling_method,
         feature_sampling_window = cfg.feature_sampling_window,
@@ -35,8 +33,7 @@ def language_model_sae_runner(cfg):
     )
 
     # save sae to checkpoints folder
-    unique_id = wandb.util.generate_id()
-    path = f"{cfg.checkpoint_path}/{unique_id}/final_{sparse_autoencoder.get_name()}.pt"
+    path = f"{cfg.checkpoint_path}/final_{sparse_autoencoder.get_name()}.pt"
     sparse_autoencoder.save_model(path)
     
     # upload to wandb

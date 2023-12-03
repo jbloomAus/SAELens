@@ -183,7 +183,7 @@ class SparseAutoencoder(HookedRootModule):
         print(f"Saved model to {path}")
         
     def get_name(self):
-        sae_name = f"sparse_autoencder_{self.cfg.model_name}_{self.cfg.hook_point}_{self.cfg.d_sae}"
+        sae_name = f"sparse_autoencoder_{self.cfg.model_name}_{self.cfg.hook_point}_{self.cfg.d_sae}"
         return sae_name
     
     @classmethod

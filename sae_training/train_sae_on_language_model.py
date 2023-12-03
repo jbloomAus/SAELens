@@ -12,9 +12,10 @@ from sae_training.sparse_autoencoder import SparseAutoencoder
 
 def train_sae_on_language_model(
     model: HookedTransformer,
-    sparse_autoencder: SparseAutoencoder,
+    sparse_autoencoder: SparseAutoencoder,
     data_loader_buffer,
     batch_size: int = 1024,
+    n_checkpoints: int = 0,
     feature_sampling_method: str = "l2",  # None, l2, or anthropic
     feature_sampling_window: int = 100,  # how many training steps between resampling the features / considiring neurons dead
     feature_reinit_scale: float = 0.2,  # how much to scale the resampled features by
@@ -22,25 +23,30 @@ def train_sae_on_language_model(
     use_wandb: bool = False,
     wandb_log_frequency: int = 50,
 ):
-    optimizer = torch.optim.Adam(sparse_autoencder.parameters())
+    optimizer = torch.optim.Adam(sparse_autoencoder.parameters())
+    sparse_autoencoder.train()
+
     frac_active_list = []  # track active features
 
-    sparse_autoencder.train()
+
+    total_training_tokens = sparse_autoencoder.cfg.total_training_tokens
     n_training_steps = 0
     n_training_tokens = 0
-
+    
+    if n_checkpoints > 0:
+        checkpoint_thresholds = list(range(0, total_training_tokens, total_training_tokens // n_checkpoints))[1:]
+    
     # start the buffer
     buffer = data_loader_buffer.get_buffer()
     dataloader = iter(DataLoader(buffer, batch_size=batch_size, shuffle=True))
     n_remaining_batches_in_buffer = len(dataloader)
 
-    total_training_tokens = sparse_autoencder.cfg.total_training_tokens
     pbar = tqdm(total=total_training_tokens, desc="Training SAE")
     while n_training_tokens < total_training_tokens:
         # Do a training step.
 
         # Make sure the W_dec is still zero-norm
-        sparse_autoencder.set_decoder_norm_to_unit_norm()
+        sparse_autoencoder.set_decoder_norm_to_unit_norm()
 
         # Resample dead neurons
         if (feature_sampling_method is not None) and ((n_training_steps + 1) % feature_sampling_window == 0):
@@ -51,7 +57,7 @@ def train_sae_on_language_model(
                                 feature_sampling_window * batch_size
                             )
             # if standard resampling <- do this
-            n_resampled_neurons = sparse_autoencder.resample_neurons(next(dataloader), feature_sparsity, feature_reinit_scale)
+            n_resampled_neurons = sparse_autoencoder.resample_neurons(next(dataloader), feature_sparsity, feature_reinit_scale)
             n_remaining_batches_in_buffer -= 1
 
             # elif anthropic resampling <- do this
@@ -68,7 +74,7 @@ def train_sae_on_language_model(
 
         # Forward and Backward Passes
         optimizer.zero_grad()
-        _, feature_acts, loss, mse_loss, l1_loss = sparse_autoencder(next(dataloader))
+        _, feature_acts, loss, mse_loss, l1_loss = sparse_autoencoder(next(dataloader))
         n_training_tokens += batch_size
         n_remaining_batches_in_buffer -= 1
 
@@ -141,7 +147,7 @@ def train_sae_on_language_model(
 
                     # Now we want the reconstruction loss.
                     recons_score, _, _, _ = get_recons_loss(
-                        sparse_autoencder, model, data_loader_buffer=data_loader_buffer, num_batches=5)
+                        sparse_autoencoder, model, data_loader_buffer=data_loader_buffer, num_batches=5)
                     
                     wandb.log(
                         {
@@ -157,12 +163,28 @@ def train_sae_on_language_model(
             )
 
         loss.backward()
-        sparse_autoencder.remove_gradient_parallel_to_decoder_directions()
+        sparse_autoencoder.remove_gradient_parallel_to_decoder_directions()
         optimizer.step()
-
+        
+        
+        # checkpoint if at checkpoint frequency
+        if n_checkpoints > 0 and n_training_tokens > checkpoint_thresholds[0]:
+            cfg = sparse_autoencoder.cfg
+            path = f"{sparse_autoencoder.cfg.checkpoint_path}/{n_training_tokens}_{sparse_autoencoder.get_name()}.pt"
+            sparse_autoencoder.save_model(path)
+            checkpoint_thresholds.pop(0)
+            if len(checkpoint_thresholds) == 0:
+                n_checkpoints = 0
+            if cfg.log_to_wandb:
+                model_artifact = wandb.Artifact(
+                    f"{sparse_autoencoder.get_name()}", type="model", metadata=dict(cfg.__dict__)
+                )
+                model_artifact.add_file(path)
+                wandb.log_artifact(model_artifact)
+            
         n_training_steps += 1
 
-    return sparse_autoencder
+    return sparse_autoencoder
 
 
 def get_new_dataloader(data_loader_buffer, n_remaining_batches_in_buffer, batch_size):
