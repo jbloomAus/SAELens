@@ -3,7 +3,7 @@ import pytest
 import torch
 
 import wandb
-from sae_training.SAE import SAE
+from sae_training.sparse_autoencoder import SparseAutoencoder
 from sae_training.toy_models import Config as ToyConfig
 from sae_training.toy_models import Model as ToyModel
 from sae_training.train_sae_on_toy_model import train_toy_sae
@@ -39,9 +39,10 @@ def test_train_sae_toy_models(model):
         "device": "cpu",
     }
 
-    sae = SAE(toy_config)
+    sae = SparseAutoencoder(toy_config)
     # wandb.init(project="sae-training-test", config=toy_config)
-    sae = train_toy_sae(model, sae, hidden.detach().squeeze(), use_wandb=False, l1_coeff=0.001, batch_size=32, n_epochs=10)
+    sae = train_toy_sae(
+        model, sae, hidden.detach().squeeze(), use_wandb=False, batch_size=32, n_epochs=10)
     # wandb.finish()
 
 

@@ -2,18 +2,21 @@
 """Most of this is just copied over from Arthur's code and slightly simplified:
 https://github.com/ArthurConmy/sae/blob/main/sae/model.py
 """
-from typing import Literal
+
+import os
 
 import einops
 import torch
-from jaxtyping import Float, Int
+from jaxtyping import Float
 from torch import Tensor, nn
 from torch.distributions.categorical import Categorical
 from transformer_lens.hook_points import HookedRootModule, HookPoint
 
 
-# TODO make sure that W_dec stays unit norm during training
-class SAE(HookedRootModule):
+class SparseAutoencoder(HookedRootModule):
+    """
+    
+    """
     def __init__(
         self,
         cfg,
@@ -160,3 +163,52 @@ class SAE(HookedRootModule):
             self.W_dec.data,
             "d_sae, d_sae d_in -> d_sae d_in",
         )
+    
+    def save_model(self, path: str):
+        '''
+        Basic save function for the model. Saves the model's state_dict and the config used to train it.
+        '''
+        
+        # check if path exists
+        folder = os.path.dirname(path)
+        os.makedirs(folder, exist_ok=True)
+        
+        state_dict = {
+            "cfg": self.cfg,
+            "state_dict": self.state_dict()
+        }
+        
+        torch.save(state_dict, path)
+        
+        print(f"Saved model to {path}")
+        
+    def get_name(self):
+        sae_name = f"sparse_autoencder_{self.cfg.model_name}_{self.cfg.hook_point}_{self.cfg.d_sae}"
+        return sae_name
+    
+    @classmethod
+    def load_from_pretrained(cls, path: str):
+        '''
+        Load function for the model. Loads the model's state_dict and the config used to train it.
+        This method can be called directly on the class, without needing an instance.
+        '''
+
+        # Ensure the file exists
+        if not os.path.isfile(path):
+            raise FileNotFoundError(f"No file found at specified path: {path}")
+
+        # Load the state dictionary
+        try:
+            state_dict = torch.load(path)
+        except Exception as e:
+            raise IOError(f"Error loading the state dictionary: {e}")
+
+        # Ensure the loaded state contains both 'cfg' and 'state_dict'
+        if 'cfg' not in state_dict or 'state_dict' not in state_dict:
+            raise ValueError("The loaded state dictionary must contain 'cfg' and 'state_dict' keys")
+
+        # Create an instance of the class using the loaded configuration
+        instance = cls(cfg=state_dict["cfg"])
+        instance.load_state_dict(state_dict["state_dict"])
+
+        return instance

@@ -4,12 +4,12 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 import wandb
-from sae_training.SAE import SAE
+from sae_training.sparse_autoencoder import SparseAutoencoder
 from sae_training.toy_models import Model as ToyModel
 
 
 def train_toy_sae(model: ToyModel, 
-              sae: SAE,
+              sparse_autoencoder: SparseAutoencoder,
               activation_store,
               n_epochs: int = 10,
               batch_size: int = 1024,
@@ -23,17 +23,17 @@ def train_toy_sae(model: ToyModel,
     """
     
     dataloader = DataLoader(activation_store, batch_size=batch_size, shuffle=True)
-    optimizer = torch.optim.Adam(sae.parameters())
+    optimizer = torch.optim.Adam(sparse_autoencoder.parameters())
     frac_active_list = [] # track active features
     
-    sae.train()
+    sparse_autoencoder.train()
     n_training_steps = 0
     for epoch in range(n_epochs):
         pbar = tqdm(dataloader)
         for step, batch in enumerate(pbar):
             
             # Make sure the W_dec is still zero-norm
-            sae.set_decoder_norm_to_unit_norm()
+            sparse_autoencoder.set_decoder_norm_to_unit_norm()
             
             # Resample dead neurons 
             if (feature_sampling_window is not None) and ((step + 1) % feature_sampling_window == 0):
@@ -52,14 +52,14 @@ def train_toy_sae(model: ToyModel,
                 )
             
                 # Resample
-                sae.resample_neurons(hidden, frac_active_in_window, feature_reinit_scale)
+                sparse_autoencoder.resample_neurons(hidden, frac_active_in_window, feature_reinit_scale)
                 
             
             # Update learning rate here if using scheduler.
 
             # Forward and Backward Passes
             optimizer.zero_grad()
-            _, feature_acts, loss, mse_loss, l1_loss = sae(batch)
+            _, feature_acts, loss, mse_loss, l1_loss = sparse_autoencoder(batch)
             # loss = reconstruction MSE + L1 regularization
            
             with torch.no_grad():
@@ -85,16 +85,16 @@ def train_toy_sae(model: ToyModel,
                         "metrics/l2": l2_norm.item(),
                         # "metrics/feature_density_histogram": wandb.Histogram(log_frac_feature_activation.tolist()),
                         "metrics/n_dead_features": n_dead_features,
-                        "metrics/n_alive_features": sae.d_sae - n_dead_features,
+                        "metrics/n_alive_features": sparse_autoencoder.d_sae - n_dead_features,
                     }, step=n_training_steps)
                     
                 pbar.set_description(f"{epoch}/{step}| MSE Loss {mse_loss.item():.3f} | L0 {l0.item():.3f} | n_dead_features {n_dead_features}")
             
             loss.backward()
-            sae.remove_gradient_parallel_to_decoder_directions()
+            sparse_autoencoder.remove_gradient_parallel_to_decoder_directions()
             optimizer.step()
             
             n_training_steps += 1
 
 
-    return sae
+    return sparse_autoencoder

@@ -161,3 +161,6 @@ cython_debug/
 
 
 wandb/
+checkpoints/
+data/
+artifacts/

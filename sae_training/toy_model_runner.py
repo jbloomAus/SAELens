@@ -5,7 +5,7 @@ import torch
 from transformer_lens import HookedTransformer
 
 import wandb
-from sae_training.SAE import SAE
+from sae_training.sparse_autoencoder import SparseAutoencoder
 from sae_training.toy_models import Config as ToyConfig
 from sae_training.toy_models import Model as ToyModel
 from sae_training.train_sae_on_toy_model import train_toy_sae
@@ -79,14 +79,14 @@ def toy_model_sae_runner(cfg):
         "batch_size instances features, instances hidden features -> batch_size instances hidden",
     )
 
-    sae = SAE(cfg)  # config has the hyperparameters for the SAE
+    sparse_autoencoder = SparseAutoencoder(cfg)  # config has the hyperparameters for the SAE
 
     if cfg.log_to_wandb:
         wandb.init(project="sae-training-test", config=cfg)
 
-    sae = train_toy_sae(
+    sparse_autoencoder = train_toy_sae(
         model, # need model so we can do evals for neuron resampling
-        sae,
+        sparse_autoencoder,
         hidden.detach().squeeze(),
         use_wandb=cfg.log_to_wandb,
         batch_size=cfg.train_batch_size,
@@ -100,4 +100,4 @@ def toy_model_sae_runner(cfg):
     if cfg.log_to_wandb:
         wandb.finish()
 
-    return sae
+    return sparse_autoencoder

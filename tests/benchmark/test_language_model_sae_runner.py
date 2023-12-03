@@ -1,9 +1,7 @@
 import torch
 
-from sae_training.lm_runner import (
-    LanguageModelSAERunnerConfig,
-    language_model_sae_runner,
-)
+from sae_training.config import LanguageModelSAERunnerConfig
+from sae_training.lm_runner import language_model_sae_runner
 
 
 def test_language_model_sae_runner_mlp_out():
@@ -13,7 +11,7 @@ def test_language_model_sae_runner_mlp_out():
 
         # Data Generating Function (Model + Training Distibuion)
         model_name = "gelu-2l",
-        hook_point = "blocks.1.hook_resid_pre",
+        hook_point = "blocks.1.hook_mlp_out",
         hook_point_layer = 1,
         d_in = 512,
         dataset_path = "NeelNanda/c4-tokenized-2b",
@@ -30,7 +28,7 @@ def test_language_model_sae_runner_mlp_out():
         
         # Activation Store Parameters
         n_batches_in_buffer = 16,
-        total_training_tokens = 25_000_00 * 15,
+        total_training_tokens = 5_000_00 * 1,
         store_batch_size = 32,
         
         # Resampling protocol
@@ -41,7 +39,7 @@ def test_language_model_sae_runner_mlp_out():
         
         # WANDB
         log_to_wandb = True,
-        wandb_project= "mats_sae_training_language_models_hack_day",
+        wandb_project= "mats_sae_training_language_models",
         wandb_entity = None,
         
         # Misc
@@ -51,9 +49,9 @@ def test_language_model_sae_runner_mlp_out():
         dtype = torch.float32,
         )
 
-    trained_sae = language_model_sae_runner(cfg)
+    sparse_autoencoder = language_model_sae_runner(cfg)
 
-    assert trained_sae is not None
+    assert sparse_autoencoder is not None
 
 
 

@@ -7,12 +7,12 @@ from tqdm import tqdm
 from transformer_lens import HookedTransformer
 
 import wandb
-from sae_training.SAE import SAE
+from sae_training.sparse_autoencoder import SparseAutoencoder
 
 
 def train_sae_on_language_model(
     model: HookedTransformer,
-    sae: SAE,
+    sparse_autoencder: SparseAutoencoder,
     data_loader_buffer,
     batch_size: int = 1024,
     feature_sampling_method: str = "l2",  # None, l2, or anthropic
@@ -22,10 +22,10 @@ def train_sae_on_language_model(
     use_wandb: bool = False,
     wandb_log_frequency: int = 50,
 ):
-    optimizer = torch.optim.Adam(sae.parameters())
+    optimizer = torch.optim.Adam(sparse_autoencder.parameters())
     frac_active_list = []  # track active features
 
-    sae.train()
+    sparse_autoencder.train()
     n_training_steps = 0
     n_training_tokens = 0
 
@@ -34,13 +34,13 @@ def train_sae_on_language_model(
     dataloader = iter(DataLoader(buffer, batch_size=batch_size, shuffle=True))
     n_remaining_batches_in_buffer = len(dataloader)
 
-    total_training_tokens = sae.cfg.total_training_tokens
+    total_training_tokens = sparse_autoencder.cfg.total_training_tokens
     pbar = tqdm(total=total_training_tokens, desc="Training SAE")
     while n_training_tokens < total_training_tokens:
         # Do a training step.
 
         # Make sure the W_dec is still zero-norm
-        sae.set_decoder_norm_to_unit_norm()
+        sparse_autoencder.set_decoder_norm_to_unit_norm()
 
         # Resample dead neurons
         if (feature_sampling_method is not None) and ((n_training_steps + 1) % feature_sampling_window == 0):
@@ -51,7 +51,7 @@ def train_sae_on_language_model(
                                 feature_sampling_window * batch_size
                             )
             # if standard resampling <- do this
-            n_resampled_neurons = sae.resample_neurons(next(dataloader), feature_sparsity, feature_reinit_scale)
+            n_resampled_neurons = sparse_autoencder.resample_neurons(next(dataloader), feature_sparsity, feature_reinit_scale)
             n_remaining_batches_in_buffer -= 1
 
             # elif anthropic resampling <- do this
@@ -68,7 +68,7 @@ def train_sae_on_language_model(
 
         # Forward and Backward Passes
         optimizer.zero_grad()
-        _, feature_acts, loss, mse_loss, l1_loss = sae(next(dataloader))
+        _, feature_acts, loss, mse_loss, l1_loss = sparse_autoencder(next(dataloader))
         n_training_tokens += batch_size
         n_remaining_batches_in_buffer -= 1
 
@@ -141,7 +141,7 @@ def train_sae_on_language_model(
 
                     # Now we want the reconstruction loss.
                     recons_score, _, _, _ = get_recons_loss(
-                        sae, model, data_loader_buffer=data_loader_buffer, num_batches=5)
+                        sparse_autoencder, model, data_loader_buffer=data_loader_buffer, num_batches=5)
                     
                     wandb.log(
                         {
@@ -157,12 +157,12 @@ def train_sae_on_language_model(
             )
 
         loss.backward()
-        sae.remove_gradient_parallel_to_decoder_directions()
+        sparse_autoencder.remove_gradient_parallel_to_decoder_directions()
         optimizer.step()
 
         n_training_steps += 1
 
-    return sae
+    return sparse_autoencder
 
 
 def get_new_dataloader(data_loader_buffer, n_remaining_batches_in_buffer, batch_size):
@@ -174,7 +174,7 @@ def get_new_dataloader(data_loader_buffer, n_remaining_batches_in_buffer, batch_
 
 
 @torch.no_grad()
-def get_recons_loss(sae, model, data_loader_buffer, num_batches=5):
+def get_recons_loss(sparse_autoencder, model, data_loader_buffer, num_batches=5):
     hook_point = data_loader_buffer.cfg.hook_point
     loss_list = []
     for _ in range(num_batches):
@@ -187,7 +187,7 @@ def get_recons_loss(sae, model, data_loader_buffer, num_batches=5):
         recons_loss = model.run_with_hooks(
             batch_tokens,
             return_type="loss",
-            fwd_hooks=[(hook_point, partial(replacement_hook, encoder=sae))],
+            fwd_hooks=[(hook_point, partial(replacement_hook, encoder=sparse_autoencder))],
         )
 
         zero_abl_loss = model.run_with_hooks(
