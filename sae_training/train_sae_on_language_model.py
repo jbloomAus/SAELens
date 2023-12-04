@@ -18,9 +18,10 @@ def train_sae_on_language_model(
     batch_size: int = 1024,
     n_checkpoints: int = 0,
     feature_sampling_method: str = "l2",  # None, l2, or anthropic
-    feature_sampling_window: int = 100,  # how many training steps between resampling the features / considiring neurons dead
+    feature_sampling_window: int = 1000,  # how many training steps between resampling the features / considiring neurons dead
     feature_reinit_scale: float = 0.2,  # how much to scale the resampled features by
     dead_feature_threshold: float = 1e-8,  # how infrequently a feature has to be active to be considered dead
+    dead_feature_window: int = 2000,  # how many training steps before a feature is considered dead
     use_wandb: bool = False,
     wandb_log_frequency: int = 50,
 ):
@@ -33,6 +34,7 @@ def train_sae_on_language_model(
     total_training_tokens = sparse_autoencoder.cfg.total_training_tokens
     n_training_steps = 0
     n_training_tokens = 0
+    n_resampled_neurons = 0
     
     if n_checkpoints > 0:
         checkpoint_thresholds = list(range(0, total_training_tokens, total_training_tokens // n_checkpoints))[1:]
@@ -45,12 +47,12 @@ def train_sae_on_language_model(
         sparse_autoencoder.set_decoder_norm_to_unit_norm()
 
         # Resample dead neurons
-        if (feature_sampling_method is not None) and ((n_training_steps + 1) % feature_sampling_window == 0):
+        if (feature_sampling_method is not None) and ((n_training_steps + 1) % dead_feature_window == 0):
 
             # Get the fraction of neurons active in the previous window
-            frac_active_in_window = torch.stack(frac_active_list[-feature_sampling_window:], dim=0)
+            frac_active_in_window = torch.stack(frac_active_list[-dead_feature_window:], dim=0)
             feature_sparsity = frac_active_in_window.sum(0) / (
-                                feature_sampling_window * batch_size
+                                dead_feature_window * batch_size
                             )
             # if standard resampling <- do this
             n_resampled_neurons = sparse_autoencoder.resample_neurons(
@@ -58,15 +60,10 @@ def train_sae_on_language_model(
                 feature_sparsity, 
                 feature_reinit_scale)
 
-            # elif anthropic resampling <- do this
-            # run the model and reinit where recons loss is high. 
-
         else:
             n_resampled_neurons = 0
 
-        # # Update learning rate here if using scheduler.
-
-        # Generate Activations
+        # Update learning rate here if using scheduler.
 
         # Forward and Backward Passes
         optimizer.zero_grad()
@@ -87,14 +84,19 @@ def train_sae_on_language_model(
                 )
             else:
                 # use the whole list
-                frac_active_in_window = torch.stack(frac_active_list, dim=0)
-                feature_sparsity = act_freq_scores.sum(0) / (
+                frac_active_in_window = torch.stack(
+                    frac_active_list, dim=0)
+                feature_sparsity = frac_active_in_window.sum(0) / (
                     len(frac_active_list) * batch_size
                 )
 
             # metrics for currents acts
             l0 = (feature_acts > 0).float().sum(1).mean()
             l2_norm = torch.norm(feature_acts, dim=1).mean()
+
+            # don't want to risk not see these.
+            if use_wandb:
+                 wandb.log({"metrics/n_resampled_neurons": n_resampled_neurons}, n_training_steps)
 
             if use_wandb and ((n_training_steps + 1) % wandb_log_frequency == 0):
                 wandb.log(
@@ -118,7 +120,6 @@ def train_sae_on_language_model(
                         .float()
                         .mean()
                         .item(),
-                        "metrics/n_resampled_neurons": n_resampled_neurons,
                         "details/n_training_tokens": n_training_tokens,
                     },
                     step=n_training_steps,
@@ -150,12 +151,12 @@ def train_sae_on_language_model(
             pbar.set_description(
                 f"{n_training_steps}| MSE Loss {mse_loss.item():.3f} | L0 {l0.item():.3f}"
             )
+            pbar.update(batch_size)
 
         loss.backward()
         sparse_autoencoder.remove_gradient_parallel_to_decoder_directions()
         optimizer.step()
-        
-        
+
         # checkpoint if at checkpoint frequency
         if n_checkpoints > 0 and n_training_tokens > checkpoint_thresholds[0]:
             cfg = sparse_autoencoder.cfg

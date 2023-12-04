@@ -28,6 +28,7 @@ def language_model_sae_runner(cfg):
         feature_sampling_window = cfg.feature_sampling_window,
         feature_reinit_scale = cfg.feature_reinit_scale,
         dead_feature_threshold = cfg.dead_feature_threshold,
+        dead_feature_window=cfg.dead_feature_window,
         use_wandb = cfg.log_to_wandb,
         wandb_log_frequency = cfg.wandb_log_frequency
     )

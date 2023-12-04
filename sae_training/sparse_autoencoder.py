@@ -115,16 +115,17 @@ class SparseAutoencoder(HookedRootModule):
         n_dead = dead_neurons.numel()
         
         if n_dead == 0:
-            return # If there are no dead neurons, we don't need to resample neurons
+            return 0 # If there are no dead neurons, we don't need to resample neurons
         
         # Compute L2 loss for each element in the batch
         # TODO: Check whether we need to go through more batches as features get sparse to find high l2 loss examples. 
         if per_token_l2_loss.max() < 1e-6:
-            return  # If we have zero reconstruction loss, we don't need to resample neurons
+            return 0 # If we have zero reconstruction loss, we don't need to resample neurons
         
         # Draw `n_hidden_ae` samples from [0, 1, ..., batch_size-1], with probabilities proportional to l2_loss
-        distn = Categorical(probs = per_token_l2_loss / per_token_l2_loss.sum())
-        replacement_indices = distn.sample((n_dead,)) # shape [n_dead]
+        distn = Categorical(probs = per_token_l2_loss.pow(2) / (per_token_l2_loss.pow(2).sum()))
+        n_samples = min(n_dead, feature_sparsity.shape[-1] // self.cfg.expansion_factor) # don't reinit more than 10% of neurons at a time
+        replacement_indices = distn.sample((n_samples,)) # shape [n_dead]
 
         # Index into the batch of hidden activations to get our replacement values
         replacement_values = (x - self.b_dec)[replacement_indices] # shape [n_dead n_input_ae]
@@ -136,10 +137,11 @@ class SparseAutoencoder(HookedRootModule):
         replacement_values = (replacement_values / (replacement_values.norm(dim=1, keepdim=True) + 1e-8)) * W_enc_norm_alive_mean * neuron_resample_scale
 
         # Lastly, set the new weights & biases
-        self.W_enc.data[:, dead_neurons] = replacement_values.T
-        self.b_enc.data[dead_neurons] = 0.0
+        d_neurons_to_be_replaced = dead_neurons[:n_samples] # not restarting all!
+        self.W_enc.data[:, d_neurons_to_be_replaced] = replacement_values.T
+        self.b_enc.data[d_neurons_to_be_replaced] = 0.0
         
-        return len(dead_neurons)
+        return n_samples
 
     @torch.no_grad()
     def set_decoder_norm_to_unit_norm(self):

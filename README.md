@@ -13,6 +13,13 @@ pip install -r requirements.txt
 
 ```
 
+## Learning
+
+This codebase isn't currently prioritising docs, but you can work throught the 
+copy of Callum McDougall's [tutorial](https://www.lesswrong.com/posts/LnHowHgmrMbWtpkxx/intro-to-superposition-and-sparse-autoencoders-colab) 
+if you want to get more familiar with the subject
+matter before engaging.
+
 ## Training a Sparse Autoencoder on a Language Model
 
 (warning, config may go out of data!)

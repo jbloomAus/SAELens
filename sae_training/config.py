@@ -31,8 +31,9 @@ class LanguageModelSAERunnerConfig:
     
     # Resampling protocol args
     feature_sampling_method: str = "l2" # None, l2, or anthropic
-    feature_sampling_window: int = 100
+    feature_sampling_window: int = 200
     feature_reinit_scale: float = 0.2
+    dead_feature_window: int = 100 # unless this window is larger feature sampling,
     dead_feature_threshold: float = 1e-8
     
     
@@ -45,7 +46,7 @@ class LanguageModelSAERunnerConfig:
     log_to_wandb: bool = True
     wandb_project: str = "mats_sae_training_language_model"
     wandb_entity: str = None
-    wandb_log_frequency: int = 5
+    wandb_log_frequency: int = 10
     
     # Misc
     device: str = "cpu"
@@ -58,8 +59,10 @@ class LanguageModelSAERunnerConfig:
         self.d_sae = self.d_in * self.expansion_factor
         self.tokens_per_buffer = self.train_batch_size * self.context_size * self.n_batches_in_buffer
         
-        if self.feature_sampling_method not in [None, "l2", "anthropic"]:
+        if self.feature_sampling_method not in [None, "l2"]:
             raise ValueError(f"feature_sampling_method must be None, l2, or anthropic. Got {self.feature_sampling_method}")
         
         unique_id = wandb.util.generate_id()   
         self.checkpoint_path = f"{self.checkpoint_path}/{unique_id}"
+        
+        assert self.dead_feature_window < self.feature_sampling_window, "dead_feature_window must be < feature_sampling_window"
