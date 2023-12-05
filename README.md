@@ -81,6 +81,7 @@ sparse_autoencoder = language_model_sae_runner(cfg)
 ## Loading a Pretrained Language Model 
 
 ```python
+from sae_training.utils import LMSparseAutoencoderSessionloader
 
 path ="path/to/sparse_autoencoder.pt"
 model, sparse_autoencoder, activations_loader = LMSparseAutoencoderSessionloader.load_session_from_pretrained(
