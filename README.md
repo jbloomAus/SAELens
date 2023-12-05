@@ -22,7 +22,7 @@ matter before engaging.
 
 ## Training a Sparse Autoencoder on a Language Model
 
-(warning, config may go out of data!)
+(warning, config may go out of date!)
 
 ```python
 import torch
