@@ -124,7 +124,7 @@ class SparseAutoencoder(HookedRootModule):
         
         # Draw `n_hidden_ae` samples from [0, 1, ..., batch_size-1], with probabilities proportional to l2_loss
         distn = Categorical(probs = per_token_l2_loss.pow(2) / (per_token_l2_loss.pow(2).sum()))
-        n_samples = min(n_dead, feature_sparsity.shape[-1] // self.cfg.expansion_factor) # don't reinit more than 10% of neurons at a time
+        n_samples = n_dead#min(n_dead, feature_sparsity.shape[-1] // self.cfg.expansion_factor) # don't reinit more than 10% of neurons at a time
         replacement_indices = distn.sample((n_samples,)) # shape [n_dead]
 
         # Index into the batch of hidden activations to get our replacement values

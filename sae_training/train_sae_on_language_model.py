@@ -125,7 +125,7 @@ def train_sae_on_language_model(
                     step=n_training_steps,
                 )
 
-                if (n_training_steps + 1) % (wandb_log_frequency * 10) == 0:
+                if (n_training_steps + 1) % (wandb_log_frequency * 100) == 0:
                     log_feature_sparsity = torch.log(feature_sparsity + 1e-8)
                     wandb.log(
                         {
@@ -137,7 +137,7 @@ def train_sae_on_language_model(
                     )
 
                     # Now we want the reconstruction loss.
-                    recons_score, _, _, _ = get_recons_loss(sparse_autoencoder, model, activation_store, num_batches=5)
+                    recons_score, _, _, _ = get_recons_loss(sparse_autoencoder, model, activation_store, num_batches=3)
                     
                     wandb.log(
                         {
