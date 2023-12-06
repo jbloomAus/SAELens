@@ -201,7 +201,11 @@ class SparseAutoencoder(HookedRootModule):
 
         # Load the state dictionary
         try:
-            state_dict = torch.load(path)
+            if torch.backends.mps.is_available():
+                state_dict = torch.load(path, map_location="mps")
+                state_dict["cfg"].device = "mps"
+            else:
+                state_dict = torch.load(path)
         except Exception as e:
             raise IOError(f"Error loading the state dictionary: {e}")
 

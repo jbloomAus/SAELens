@@ -36,7 +36,10 @@ class LMSparseAutoencoderSessionloader():
         '''
         Loads a session for analysing a pretrained sparse autoencoder.
         '''
-        cfg = torch.load(path)["cfg"]
+        if torch.backends.mps.is_available():
+            cfg = torch.load(path, map_location="mps")["cfg"]
+            cfg.device = "mps"
+
         model, _, activations_loader = cls(cfg).load_session()
         sparse_autoencoder = SparseAutoencoder.load_from_pretrained(path)
         
