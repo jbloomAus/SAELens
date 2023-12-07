@@ -1,0 +1,28 @@
+.grid-container {
+    font-family: 'system-ui';
+    border: 1px solid #e6e6e6;
+    margin: 30px 10px;
+    box-shadow: 0 5px 5px rgba(0, 0, 0, 0.25);
+}
+.grid-container::-webkit-scrollbar {
+    height: 12px; /* Height of the scrollbar */
+}
+.grid-container::-webkit-scrollbar-track {
+    background: #f1f1f1; /* Color of the track */
+}
+.grid-container::-webkit-scrollbar-thumb {
+    background: #888; /* Color of the scrollbar thumb */
+}
+.grid-container::-webkit-scrollbar-thumb:hover {
+    background: #555; /* Color when hovered */
+}
+.grid-item {
+    margin-left: 30px;
+    width: max-content;
+}
+table {
+    border: unset;
+}
+code {
+    all: unset;
+}

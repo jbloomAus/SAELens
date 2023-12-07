@@ -1,0 +1,113 @@
+<div id="histogram-logits" class="plotly-hist" style="height: 150px; margin-top: 0px;"></div>
+
+<script>
+
+// document.addEventListener("DOMContentLoaded", function(event) {
+
+var barHeightsLogits = BAR_HEIGHTS_LOGITS;
+var binValuesLogits = BAR_VALUES_LOGITS;
+
+// Create an array of tracesLogits, one for positive and one for negative bars
+var tracesLogits = [
+    {
+        x: binValuesLogits.filter(value => value >= 0),
+        y: barHeightsLogits.filter((_, i) => binValuesLogits[i] >= 0),
+        type: 'bar',
+        marker: {
+        color: 'rgba(0, 0, 255, 0.5)'
+        }
+    },
+    {
+        x: binValuesLogits.filter(value => value < 0),
+        y: barHeightsLogits.filter((_, i) => binValuesLogits[i] < 0),
+        type: 'bar',
+        marker: {
+        color: 'rgba(255, 0, 0, 0.5)'
+        }
+    }
+];
+
+// Layout Configuration
+var layoutLogits = {
+    paper_bgcolor: 'white',
+    plot_bgcolor: 'white',
+    xaxis: {
+        gridcolor: 'lightgrey',
+        zerolinecolor: 'lightgrey',
+        tickvals: TICK_VALS_LOGITS,
+    },
+    yaxis: {
+        gridcolor: 'lightgrey',
+        zerolinecolor: 'lightgrey'
+    },
+    barmode: 'relative',
+    bargap: 0.05,
+    showlegend: false,
+    margin: {
+        l: 50,
+        r: 25,
+        b: 25,
+        t: 25,
+        pad: 4
+    },
+    paper_bgcolor: 'rgba(0,0,0,0)',
+    plot_bgcolor: 'rgba(0,0,0,0)',
+    responsive: true,
+};
+
+// Plot the histogram
+Plotly.newPlot('histogram-logits', tracesLogits, layoutLogits, {responsive: true, displayModeBar: false});
+
+// });
+
+// document.addEventListener("DOMContentLoaded", function(event) {
+
+var barHeightsFreq = BAR_HEIGHTS_FREQ;
+var binValuesFreq = BAR_VALUES_FREQ;
+var binColorsFreq = BAR_COLORS_FREQ;
+
+var tracesFreq = [
+    {
+        x: binValuesFreq,
+        y: barHeightsFreq,
+        type: 'bar',
+        marker: {
+            color: binColorsFreq
+        }
+    },
+];
+
+// Layout Configuration
+var layoutFreq = {
+    paper_bgcolor: 'white',
+    plot_bgcolor: 'white',
+    xaxis: {
+        gridcolor: 'lightgrey',
+        zerolinecolor: 'lightgrey',
+        tickvals: TICK_VALS_FREQ,
+    },
+    yaxis: {
+        gridcolor: 'lightgrey',
+        zerolinecolor: 'lightgrey'
+    },
+    barmode: 'relative',
+    bargap: 0.05,
+    showlegend: false,
+    margin: {
+        l: 50,
+        r: 25,
+        b: 25,
+        t: 25,
+        pad: 4
+    },
+    paper_bgcolor: 'rgba(0,0,0,0)',
+    plot_bgcolor: 'rgba(0,0,0,0)',
+    responsive: true,
+};
+
+// Plot the histogram
+Plotly.newPlot('histogram-acts', tracesFreq, layoutFreq, {responsive: true, displayModeBar: false});
+
+// });
+
+</script>

@@ -1,0 +1,26 @@
+<script>
+
+document.querySelectorAll('.grid-container .hover-text').forEach(function(hoverElement) {
+    hoverElement.addEventListener('mouseenter', function(e) {
+        var tooltip = e.target.querySelector('.tooltip');
+        var gridContainerRect = e.target.closest('.grid-container').getBoundingClientRect();
+        var hoverElementRect = e.target.getBoundingClientRect();
+        
+        // Check if the hover element is close to the top of the grid container
+        if (hoverElementRect.top - gridContainerRect.top < 225) {
+            // Not enough space above, show tooltip below
+            tooltip.classList.add('tooltip-below');
+        } else {
+            // Enough space above, show tooltip above
+            tooltip.classList.remove('tooltip-below');
+        }
+    });
+
+    hoverElement.addEventListener('mouseleave', function(e) {
+        var tooltip = e.target.querySelector('.tooltip');
+        // Reset the tooltip position
+        tooltip.classList.remove('tooltip-below');
+    });
+});
+
+</script>

@@ -1,0 +1,17 @@
+table.table-left tr {
+    border-bottom: 1px solid #eee;
+    padding: 15px;
+}
+table.table-left td {
+    padding: 3px 4px;
+}
+table.table-left {
+    width: 100%;
+}
+h4 {
+    margin-top: 30px;
+    margin-bottom: 10px;
+}
+.code-bold code {
+    font-weight: bold;
+}

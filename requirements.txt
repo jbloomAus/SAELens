@@ -10,3 +10,4 @@ matplotlib-inline==0.1.6
 pylint==3.0.2
 black==23.11.0
 pytest==7.4.3
+git+https://github.com/callummcdougall/eindex.git

@@ -1,0 +1,134 @@
+
+/* The container for multiple groups */
+
+.grid-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(auto, 1fr));
+    overflow-x: auto;
+    overflow-y: visible;
+    grid-auto-flow: column;
+    white-space: nowrap;
+    padding-bottom: 12px;
+}
+
+/* Default font & appearance for the words in the sequence, before being hovered over */
+
+code {
+    font-family: Consolas, Menlo, Monaco;
+}
+
+.token {
+    font-family: Consolas, Menlo, Monaco;
+    font-size: 0.9em;
+    border-top-left-radius: 3px;
+    border-top-right-radius: 3px;
+    padding: 1px;
+    color: black;
+    display: inline;
+    white-space: pre-wrap;
+}
+.seq {
+    margin-bottom: 3px;
+}
+
+/* All the messy hovering stuff! */
+
+.hover-text {
+    position: relative;
+    cursor: pointer;
+    display: inline-block; /* Needed to contain the tooltip */
+    box-sizing: border-box;
+
+}
+
+.tooltip {
+    visibility: hidden;
+    width: 325px;
+    height: 275px;
+    background-color: #fff;
+    color: #333;
+    text-align: center;
+    border-radius: 10px;
+    padding: 5px;
+    position: absolute;
+    z-index: 10;
+    bottom: 100%;
+    left: 50%;
+    margin-left: -150px;
+    margin-bottom: 5px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    pointer-events: none;
+    font-family:'system-ui';
+    font-size:1.1em;
+}
+/* New class to position the tooltip below if necessary */
+.tooltip-below {
+    top: 100%;
+    bottom: auto;
+    margin-bottom: 0;
+    margin-top: 5px;
+}
+
+.token:hover {
+    border-top: 3px solid black;
+}
+
+.hover-text:hover .tooltip {
+    visibility: visible;
+    opacity: 1;
+}
+
+table {
+    border-collapse: collapse;
+    width: -moz-fit-content;
+    width: -webkit-fit-content;
+    width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
+    font-size: 0.8em;
+}
+
+td {
+    border: none;
+    padding: 2px 4px;
+    white-space: nowrap;
+}
+
+.right-aligned {
+    text-align: right;
+}
+
+.left-aligned {
+    text-align: left;
+}
+
+.center-aligned {
+    text-align: center;
+    padding-bottom: 8px;
+}
+
+table code {
+    background-color: #ddd;
+    padding: 2px;
+    border-radius: 3px;
+}
+
+.table-container {
+    width: 100%;
+}
+
+.half-width-container {
+    display: flex;
+}
+
+.half-width {
+    width: 50%;
+    margin-right: -4px;
+}
+
+
+
