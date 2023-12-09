@@ -13,37 +13,44 @@ from sae_training.train_sae_on_toy_model import train_toy_sae
 
 @dataclass
 class SAEToyModelRunnerConfig:
+    
     # ReLu Model Parameters
     n_features: int = 5
     n_hidden: int = 2
     n_correlated_pairs: int = 0
     n_anticorrelated_pairs: int = 0
     feature_probability: float = 0.025
-    # Relu Model Training Parameters
     model_training_steps: int = 10_000
+    
     # SAE Parameters
     d_sae: int = 5
+    
     # Training Parameters
-    n_sae_training_tokens: int = 25_000
     l1_coefficient: float = 1e-3
     lr: float = 3e-4
-    train_batch_size: int = 1024 # Shouldn't be as big as the batch size for language models
-    train_epochs: int = 10
+    train_batch_size: int = 1024 
+    
+    # Resampling protocol args
+    feature_sampling_method: str = "l2" # None or l2
     feature_sampling_window: int = 100
     feature_reinit_scale: float = 0.2
+    dead_feature_window: int = 100 # unless this window is larger feature sampling,
     dead_feature_threshold: float = 1e-8
+    
+    # Activation Store Parameters
+    total_training_tokens: int = 25_000    
+    
     # WANDB
     log_to_wandb: bool = True
     wandb_project: str = "mats_sae_training_toy_model"
     wandb_entity: str = None
     wandb_log_frequency: int = 50
+    
     # Misc
     device: str = "cpu"
     seed: int = 42
     checkpoint_path: str = "checkpoints"
-    dtype: torch.dtype = (
-        torch.float32
-    )  # TODO: Make this a string (have a dictionary to map)
+    dtype: torch.dtype = torch.float32
 
     def __post_init__(self):
         self.d_in = self.n_hidden  # hidden for the ReLu model is the input for the SAE
@@ -72,7 +79,7 @@ def toy_model_sae_runner(cfg):
     model.optimize(steps=cfg.model_training_steps)
 
     # Generate Training Data
-    batch = model.generate_batch(cfg.n_sae_training_tokens)
+    batch = model.generate_batch(cfg.total_training_tokens)
     hidden = einops.einsum(
         batch,
         model.W,
@@ -82,18 +89,17 @@ def toy_model_sae_runner(cfg):
     sparse_autoencoder = SparseAutoencoder(cfg)  # config has the hyperparameters for the SAE
 
     if cfg.log_to_wandb:
-        wandb.init(project="sae-training-test", config=cfg)
+        wandb.init(project=cfg.wandb_project, config=cfg)
 
     sparse_autoencoder = train_toy_sae(
         model, # need model so we can do evals for neuron resampling
         sparse_autoencoder,
         hidden.detach().squeeze(),
-        use_wandb=cfg.log_to_wandb,
         batch_size=cfg.train_batch_size,
-        n_epochs=cfg.train_epochs,
         feature_sampling_window=cfg.feature_sampling_window,
         feature_reinit_scale=cfg.feature_reinit_scale,
         dead_feature_threshold=cfg.dead_feature_threshold,
+        use_wandb=cfg.log_to_wandb,
         wandb_log_frequency=cfg.wandb_log_frequency,
     )
 

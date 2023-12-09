@@ -101,6 +101,7 @@ class SparseAutoencoder(HookedRootModule):
         x: Float[Tensor, "batch_size n_hidden"],
         feature_sparsity: Float[Tensor, "n_hidden_ae"],
         neuron_resample_scale: float,
+        optimizer: torch.optim.Optimizer,
     ) -> None:
         '''
         Resamples neurons that have been dead for `dead_neuron_window` steps, according to `frac_active`.
@@ -109,7 +110,7 @@ class SparseAutoencoder(HookedRootModule):
         per_token_l2_loss = (sae_out - x).pow(2).sum(dim=-1).squeeze()
 
         # Find the dead neurons in this instance. If all neurons are alive, continue
-        is_dead = (feature_sparsity < 1e-8)
+        is_dead = (feature_sparsity < self.cfg.dead_feature_threshold)
         dead_neurons = torch.nonzero(is_dead).squeeze(-1)
         alive_neurons = torch.nonzero(~is_dead).squeeze(-1)
         n_dead = dead_neurons.numel()
@@ -122,26 +123,60 @@ class SparseAutoencoder(HookedRootModule):
         if per_token_l2_loss.max() < 1e-6:
             return 0 # If we have zero reconstruction loss, we don't need to resample neurons
         
-        # Draw `n_hidden_ae` samples from [0, 1, ..., batch_size-1], with probabilities proportional to l2_loss
+        # Draw `n_hidden_ae` samples from [0, 1, ..., batch_size-1], with probabilities proportional to l2_loss squared
         distn = Categorical(probs = per_token_l2_loss.pow(2) / (per_token_l2_loss.pow(2).sum()))
-        n_samples = n_dead#min(n_dead, feature_sparsity.shape[-1] // self.cfg.expansion_factor) # don't reinit more than 10% of neurons at a time
-        replacement_indices = distn.sample((n_samples,)) # shape [n_dead]
+        n_resampled_neurons = n_dead 
+        replacement_indices = distn.sample((n_resampled_neurons,)) # shape [n_dead]
 
         # Index into the batch of hidden activations to get our replacement values
         replacement_values = (x - self.b_dec)[replacement_indices] # shape [n_dead n_input_ae]
 
+        # unit norm
+        replacement_values = (replacement_values / (replacement_values.norm(dim=1, keepdim=True) + 1e-8))
+
+        # St new decoder weights
+        self.W_dec.data[is_dead, :] = replacement_values
+
         # Get the norm of alive neurons (or 1.0 if there are no alive neurons)
         W_enc_norm_alive_mean = 1.0 if len(alive_neurons) == 0 else self.W_enc[:, alive_neurons].norm(dim=0).mean().item()
         
-        # Use this to renormalize the replacement values
-        replacement_values = (replacement_values / (replacement_values.norm(dim=1, keepdim=True) + 1e-8)) * W_enc_norm_alive_mean * neuron_resample_scale
-
         # Lastly, set the new weights & biases
-        d_neurons_to_be_replaced = dead_neurons[:n_samples] # not restarting all!
-        self.W_enc.data[:, d_neurons_to_be_replaced] = replacement_values.T
-        self.b_enc.data[d_neurons_to_be_replaced] = 0.0
+        self.W_enc.data[:, is_dead] = (replacement_values * W_enc_norm_alive_mean * neuron_resample_scale).T
+        self.b_enc.data[is_dead] = 0.0
         
-        return n_samples
+        
+        # reset the Adam Optimiser for every modified weight and bias term
+        # Reset all the Adam parameters
+        for dict_idx, (k, v) in enumerate(optimizer.state.items()):
+            for v_key in ["exp_avg", "exp_avg_sq"]:
+                if dict_idx == 0:
+                    assert k.data.shape == (self.d_in, self.d_sae)
+                    v[v_key][:, is_dead] = 0.0
+                elif dict_idx == 1:
+                    assert k.data.shape == (self.d_sae,)
+                    v[v_key][is_dead] = 0.0
+                elif dict_idx == 2:
+                    assert k.data.shape == (self.d_sae, self.d_in)
+                    v[v_key][is_dead, :] = 0.0
+                elif dict_idx == 3:
+                    assert k.data.shape == (self.d_in,)
+                else:
+                    raise ValueError(f"Unexpected dict_idx {dict_idx}")
+                
+        # Check that the opt is really updated
+        for dict_idx, (k, v) in enumerate(optimizer.state.items()):
+            for v_key in ["exp_avg", "exp_avg_sq"]:
+                if dict_idx == 0:
+                    if k.data.shape != (self.d_in, self.d_sae):
+                        print(
+                            "Warning: it does not seem as if resetting the Adam parameters worked, there are shapes mismatches"
+                        )
+                    if v[v_key][:, replacement_indices].abs().max().item() > 1e-6:
+                        print(
+                            "Warning: it does not seem as if resetting the Adam parameters worked"
+                        )
+        
+        return n_resampled_neurons
 
     @torch.no_grad()
     def set_decoder_norm_to_unit_norm(self):

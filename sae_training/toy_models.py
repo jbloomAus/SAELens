@@ -5,27 +5,22 @@ https://github.com/callummcdougall/sae-exercises-mats?fbclid=IwAR3qYAELbyD_x5IAY
 
 '''
 from dataclasses import dataclass
-from jaxtyping import Float, Int
-from typing import Optional, Callable, Union, List, Tuple
-from torch import nn, Tensor
-import torch as t 
-from tqdm import tqdm
+from typing import Callable, List, Optional, Tuple, Union
+
 import einops
-from torch.nn import functional as F
-import torch as t
-from torch import Tensor
-from IPython.display import clear_output
-from typing import List, Union, Optional
+import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-import numpy as np
-from typing import Tuple, List
-from jaxtyping import Float
-import einops
+import torch as t
+from IPython.display import clear_output
+from jaxtyping import Float, Int
 from matplotlib import pyplot as plt
-from matplotlib.widgets import Slider # , Button
 from matplotlib.animation import FuncAnimation
+from matplotlib.widgets import Slider  # , Button
+from plotly.subplots import make_subplots
+from torch import Tensor, nn
+from torch.nn import functional as F
+from tqdm import tqdm
 
 device = "cpu"
 
@@ -187,7 +182,7 @@ class Model(nn.Module):
         '''
         optimizer = t.optim.Adam(list(self.parameters()), lr=lr)
 
-        progress_bar = tqdm(range(steps))
+        progress_bar = tqdm(range(steps), desc="Training Toy Model")
         
         for step in progress_bar:
 

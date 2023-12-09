@@ -26,6 +26,7 @@ class LMSparseAutoencoderSessionloader():
         '''
         
         model = self.get_model(self.cfg.model_name)
+        model.to(self.cfg.device)
         activations_loader = self.get_activations_loader(self.cfg, model)
         sparse_autoencoder = self.initialize_sparse_autoencoder(self.cfg)
             

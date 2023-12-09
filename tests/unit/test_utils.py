@@ -20,30 +20,29 @@ def cfg():
     # Create a mock object with the necessary attributes
     mock_config = SimpleNamespace()
     mock_config.model_name = TEST_MODEL
-    mock_config.model_name = TEST_MODEL
     mock_config.hook_point = "blocks.0.hook_mlp_out"
-    mock_config.hook_point_layer = 1
+    mock_config.hook_point_layer = 0
     mock_config.dataset_path = TEST_DATASET
     mock_config.is_dataset_tokenized = False
-    mock_config.d_in = 256
+    mock_config.d_in = 64
     mock_config.expansion_factor = 2
     mock_config.d_sae = mock_config.d_in * mock_config.expansion_factor
     mock_config.l1_coefficient = 2e-3
     mock_config.lr = 2e-4
-    mock_config.train_batch_size = 2048
+    mock_config.train_batch_size = 512
     mock_config.context_size = 64
     mock_config.feature_sampling_method = None
     mock_config.feature_sampling_window = 50
-    mock_config.feature_reinit_scale = 0.1
+    mock_config.feature_reinit_scale = 0.2
     mock_config.dead_feature_threshold = 1e-7
-    mock_config.n_batches_in_buffer = 10
+    mock_config.n_batches_in_buffer = 2
     mock_config.total_training_tokens = 1_000_000
-    mock_config.store_batch_size = 2048
+    mock_config.store_batch_size = 128
     mock_config.log_to_wandb = False
     mock_config.wandb_project = "test_project"
     mock_config.wandb_entity = "test_entity"
     mock_config.wandb_log_frequency = 10
-    mock_config.device = "cuda"
+    mock_config.device = "cpu"
     mock_config.seed = 24
     mock_config.checkpoint_path = "test/checkpoints"
     mock_config.dtype = torch.float32 
@@ -78,8 +77,8 @@ def test_LMSparseAutoencoderSessionloader_load_session_from_trained(cfg):
         _, new_sparse_autoencoder, _  = LMSparseAutoencoderSessionloader.load_session_from_pretrained(
             tempfile_path
         )
-
-        
+    new_sparse_autoencoder.cfg.device = "cpu"
+    new_sparse_autoencoder.to("cpu")
     assert new_sparse_autoencoder.cfg == sparse_autoencoder.cfg
     # assert weights are the same
     new_parameters = dict(new_sparse_autoencoder.named_parameters())

@@ -30,12 +30,11 @@ class LanguageModelSAERunnerConfig:
     context_size: int = 128
     
     # Resampling protocol args
-    feature_sampling_method: str = "l2" # None, l2, or anthropic
+    feature_sampling_method: str = "l2" # None or l2
     feature_sampling_window: int = 200
     feature_reinit_scale: float = 0.2
     dead_feature_window: int = 100 # unless this window is larger feature sampling,
     dead_feature_threshold: float = 1e-8
-    
     
     # Activation Store Parameters
     n_batches_in_buffer: int = 20

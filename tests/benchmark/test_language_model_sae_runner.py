@@ -44,7 +44,7 @@ def test_language_model_sae_runner_mlp_out():
         wandb_entity = None,
         
         # Misc
-        device = "cuda",
+        device = "mps",
         seed = 42,
         n_checkpoints = 5,
         checkpoint_path = "checkpoints",

@@ -28,9 +28,10 @@ def train_sae_on_language_model(
     optimizer = torch.optim.Adam(sparse_autoencoder.parameters())
     sparse_autoencoder.train()
 
-    frac_active_list = []  # track active features
-
-
+    # track active features
+    act_freq_scores = torch.zeros(sparse_autoencoder.cfg.d_sae, device=sparse_autoencoder.cfg.device)
+    n_frac_active_tokens = 0
+    
     total_training_tokens = sparse_autoencoder.cfg.total_training_tokens
     n_training_steps = 0
     n_training_tokens = 0
@@ -50,15 +51,16 @@ def train_sae_on_language_model(
         if (feature_sampling_method is not None) and ((n_training_steps + 1) % dead_feature_window == 0):
 
             # Get the fraction of neurons active in the previous window
-            frac_active_in_window = torch.stack(frac_active_list[-dead_feature_window:], dim=0)
-            feature_sparsity = frac_active_in_window.sum(0) / (
-                                dead_feature_window * batch_size
-                            )
+            feature_sparsity = act_freq_scores / n_frac_active_tokens
+            # is_dead = (feature_sparsity < sparse_autoencoder.cfg.dead_feature_threshold)
+            
             # if standard resampling <- do this
             n_resampled_neurons = sparse_autoencoder.resample_neurons(
                 activation_store.next_batch(), 
                 feature_sparsity, 
-                feature_reinit_scale)
+                feature_reinit_scale,
+                optimizer
+            )
 
         else:
             n_resampled_neurons = 0
@@ -72,31 +74,13 @@ def train_sae_on_language_model(
 
         with torch.no_grad():
             # Calculate the sparsities, and add it to a list, calculate sparsity metrics
-            act_freq_scores = (feature_acts.abs() > 0).float().sum(0)
-            frac_active_list.append(act_freq_scores)
-
-            if len(frac_active_list) > feature_sampling_window:
-                frac_active_in_window = torch.stack(
-                    frac_active_list[-feature_sampling_window:], dim=0
-                )
-                feature_sparsity = frac_active_in_window.sum(0) / (
-                    feature_sampling_window * batch_size
-                )
-            else:
-                # use the whole list
-                frac_active_in_window = torch.stack(
-                    frac_active_list, dim=0)
-                feature_sparsity = frac_active_in_window.sum(0) / (
-                    len(frac_active_list) * batch_size
-                )
+            act_freq_scores += (feature_acts.abs() > 0).float().sum(0)
+            n_frac_active_tokens += batch_size
+            feature_sparsity = act_freq_scores / n_frac_active_tokens
 
             # metrics for currents acts
             l0 = (feature_acts > 0).float().sum(1).mean()
             l2_norm = torch.norm(feature_acts, dim=1).mean()
-
-            # don't want to risk not see these.
-            if use_wandb:
-                 wandb.log({"metrics/n_resampled_neurons": n_resampled_neurons}, n_training_steps)
 
             if use_wandb and ((n_training_steps + 1) % wandb_log_frequency == 0):
                 wandb.log(
@@ -121,12 +105,13 @@ def train_sae_on_language_model(
                         .mean()
                         .item(),
                         "details/n_training_tokens": n_training_tokens,
+                        "metrics/n_resampled_neurons": n_resampled_neurons,
                     },
                     step=n_training_steps,
                 )
 
                 if (n_training_steps + 1) % (wandb_log_frequency * 100) == 0:
-                    log_feature_sparsity = torch.log(feature_sparsity + 1e-8)
+                    log_feature_sparsity = torch.log10(feature_sparsity + 1e-10)
                     wandb.log(
                         {
                             "plots/feature_density_histogram": wandb.Histogram(

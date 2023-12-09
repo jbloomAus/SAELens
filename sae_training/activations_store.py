@@ -127,12 +127,15 @@ class ActivationsStore:
         )
 
         # Insert activations directly into pre-allocated buffer
+        pbar = tqdm(total=n_batches_in_buffer, desc="Filling buffer")
         for refill_batch_idx_start in refill_iterator:
             refill_batch_tokens = self.get_batch_tokens()
             refill_activations = self.get_activations(refill_batch_tokens).to(self.cfg.device)
             new_buffer[
                 refill_batch_idx_start : refill_batch_idx_start + batch_size
             ] = refill_activations
+            
+            pbar.update(1)
 
         new_buffer = new_buffer.reshape(-1, d_in)
         new_buffer = new_buffer[torch.randperm(new_buffer.shape[0])]
