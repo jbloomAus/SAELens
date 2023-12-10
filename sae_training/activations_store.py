@@ -12,15 +12,19 @@ class ActivationsStore:
     """
     def __init__(
         self, cfg, model: HookedTransformer,
-        data_path="NeelNanda/c4-code-tokenized-2b",
-        is_dataset_tokenized=True,
     ):
         self.cfg = cfg
         self.model = model
-        self.data_path = data_path
-        self.is_dataset_tokenized = is_dataset_tokenized
-        self.dataset = load_dataset(data_path, split="train", streaming=True)
+        self.dataset = load_dataset(cfg.dataset_path, split="train", streaming=True)
         self.iterable_dataset = iter(self.dataset)
+        
+        # check if it's tokenized
+        if "tokens" in next(self.iterable_dataset).keys():
+            self.cfg.is_dataset_tokenized = True
+            print("Dataset is tokenized! Updating config.")
+        elif "text" in next(self.iterable_dataset).keys():
+            self.cfg.is_dataset_tokenized = False
+            print("Dataset is not tokenized! Updating config.")
         
         # fill buffer half a buffer, so we can mix it with a new buffer
         self.storage_buffer = self.get_buffer(self.cfg.n_batches_in_buffer // 2)
@@ -42,9 +46,13 @@ class ActivationsStore:
 
         # pbar = tqdm(total=batch_size, desc="Filling batches")
         while batch_tokens.shape[0] < batch_size:
-            if not self.is_dataset_tokenized:
+            if not self.cfg.is_dataset_tokenized:
                 s = next(self.iterable_dataset)["text"]
-                tokens = self.model.to_tokens(s, truncate=False, move_to_device=True).squeeze(0)
+                tokens = self.model.to_tokens(
+                    s, 
+                    truncate=True, 
+                    move_to_device=True,
+                    ).squeeze(0)
                 assert len(tokens.shape) == 1, f"tokens.shape should be 1D but was {tokens.shape}"
             else:
                 tokens = torch.tensor(
@@ -54,7 +62,8 @@ class ActivationsStore:
                 )
             token_len = tokens.shape[0]
 
-            while token_len > 0:
+            # TODO: Fix this so that we are limiting how many tokens we get from the same context.
+            while token_len > 0 and batch_tokens.shape[0] < batch_size:
                 # Space left in the current batch
                 space_left = context_size - current_length
 
@@ -127,7 +136,7 @@ class ActivationsStore:
         )
 
         # Insert activations directly into pre-allocated buffer
-        pbar = tqdm(total=n_batches_in_buffer, desc="Filling buffer")
+        # pbar = tqdm(total=n_batches_in_buffer, desc="Filling buffer")
         for refill_batch_idx_start in refill_iterator:
             refill_batch_tokens = self.get_batch_tokens()
             refill_activations = self.get_activations(refill_batch_tokens).to(self.cfg.device)
@@ -135,7 +144,7 @@ class ActivationsStore:
                 refill_batch_idx_start : refill_batch_idx_start + batch_size
             ] = refill_activations
             
-            pbar.update(1)
+            # pbar.update(1)
 
         new_buffer = new_buffer.reshape(-1, d_in)
         new_buffer = new_buffer[torch.randperm(new_buffer.shape[0])]
@@ -155,7 +164,7 @@ class ActivationsStore:
         
         # 1. # create new buffer by mixing stored and new buffer
         mixing_buffer = torch.cat(
-            [self.get_buffer(self.cfg.n_batches_in_buffer //2),
+            [self.get_buffer(self.cfg.n_batches_in_buffer // 2),
              self.storage_buffer]
         )
         

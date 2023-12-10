@@ -89,7 +89,26 @@ model, sparse_autoencoder, activations_loader = LMSparseAutoencoderSessionloader
 )
 
 ```
+## Tutorials
 
+See the `tutorials` folder for the following tutorials:
+- `exercises_and_solutions.ipynb`: A copy of Callum McDougall's SAE exercises which provide background knowledge on this codebase.
+- `evaluating_your_sae.ipynb`: A quick/dirty notebook showing how to check L0 and Prediction loss with your SAE, as well as showing how to generate interactive dashboards using Callum's reporduction of [Anthropics interface](https://transformer-circuits.pub/2023/monosemantic-features#setup-interface). 
+
+## Example Dashboard
+
+WandB Dashboards provide lots of useful insights while training SAE's. Here's a screenshot from one training run. 
+
+![screenshot](dashboard_screenshot.png)
+
+
+## Example Output
+
+Here's one feature we found in the residual stream of Layer 10 of GPT-2 Small:
+
+![alt text](readme_screenshot_predict_pronoun_feature.png). Open `gpt2_resid_pre10_predict_pronoun_feature.html` in your browser to interact with the dashboard (WIP).
+
+Note, probably this feature could split into more mono-semantic features in a larger SAE that had been trained for longer. (this was was only about 49152 features trained on 10M tokens from OpenWebText).
 
 
 ## Citations and References:

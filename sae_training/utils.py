@@ -72,9 +72,7 @@ class LMSparseAutoencoderSessionloader():
         '''
         
         activations_loader = ActivationsStore(
-            cfg, model, 
-            data_path=cfg.dataset_path, 
-            is_dataset_tokenized=cfg.is_dataset_tokenized,
+            cfg, model,
         )
         
         return activations_loader

@@ -26,6 +26,8 @@ class LanguageModelSAERunnerConfig:
     # Training Parameters
     l1_coefficient: float = 1e-3
     lr: float = 3e-4
+    lr_scheduler_name: str = "constant" # constant, constantwithwarmup, linearwarmupdecay, cosineannealing, cosineannealingwarmup
+    lr_warm_up_steps: int = 500
     train_batch_size: int = 4096
     context_size: int = 128
     
@@ -65,3 +67,17 @@ class LanguageModelSAERunnerConfig:
         self.checkpoint_path = f"{self.checkpoint_path}/{unique_id}"
         
         assert self.dead_feature_window < self.feature_sampling_window, "dead_feature_window must be < feature_sampling_window"
+        
+        
+        # Print out some useful info:
+        n_tokens_per_buffer = self.store_batch_size * self.context_size * self.n_batches_in_buffer
+        print(f"n_tokens_per_buffer (millions): {n_tokens_per_buffer / 10 **6}")
+        n_contexts_per_buffer = self.store_batch_size * self.n_batches_in_buffer
+        print(f"Lower bound: n_contexts_per_buffer (millions): {n_contexts_per_buffer / 10 **6}")
+        
+        total_training_steps = self.total_training_tokens // self.train_batch_size
+        print(f"Total training steps: {total_training_steps}")
+        
+        # how many times will we sample dead neurons?
+        n_dead_feature_samples = total_training_steps // self.dead_feature_window - 1 
+        print(f"n_dead_feature_samples: {n_dead_feature_samples}")
