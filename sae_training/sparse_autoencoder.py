@@ -3,7 +3,9 @@
 https://github.com/ArthurConmy/sae/blob/main/sae/model.py
 """
 
+import gzip
 import os
+import pickle
 
 import einops
 import torch
@@ -215,13 +217,16 @@ class SparseAutoencoder(HookedRootModule):
             "state_dict": self.state_dict()
         }
         
-        torch.save(state_dict, path)
+        if path.endswith(".pt"):
+            torch.save(state_dict, path)
+        elif path.endswith("pkl.gz"):
+            with gzip.open(path, "wb") as f:
+                pickle.dump(state_dict, f)
+        else:
+            raise ValueError(f"Unexpected file extension: {path}, supported extensions are .pt and .pkl.gz")
+        
         
         print(f"Saved model to {path}")
-        
-    def get_name(self):
-        sae_name = f"sparse_autoencoder_{self.cfg.model_name}_{self.cfg.hook_point}_{self.cfg.d_sae}"
-        return sae_name
     
     @classmethod
     def load_from_pretrained(cls, path: str):
@@ -235,14 +240,24 @@ class SparseAutoencoder(HookedRootModule):
             raise FileNotFoundError(f"No file found at specified path: {path}")
 
         # Load the state dictionary
-        try:
-            if torch.backends.mps.is_available():
-                state_dict = torch.load(path, map_location="mps")
-                state_dict["cfg"].device = "mps"
-            else:
-                state_dict = torch.load(path)
-        except Exception as e:
-            raise IOError(f"Error loading the state dictionary: {e}")
+        if path.endswith(".pt"):
+            try:
+                if torch.backends.mps.is_available():
+                    state_dict = torch.load(path, map_location="mps")
+                    state_dict["cfg"].device = "mps"
+                else:
+                    state_dict = torch.load(path)
+            except Exception as e:
+                raise IOError(f"Error loading the state dictionary from .pt file: {e}")
+            
+        elif path.endswith(".pkl.gz"):
+            try:
+                with gzip.open(path, 'rb') as f:
+                    state_dict = pickle.load(f)
+            except Exception as e:
+                raise IOError(f"Error loading the state dictionary from .pkl.gz file: {e}")
+        else:
+            raise ValueError(f"Unexpected file extension: {path}, supported extensions are .pt and .pkl.gz")
 
         # Ensure the loaded state contains both 'cfg' and 'state_dict'
         if 'cfg' not in state_dict or 'state_dict' not in state_dict:
@@ -253,3 +268,7 @@ class SparseAutoencoder(HookedRootModule):
         instance.load_state_dict(state_dict["state_dict"])
 
         return instance
+
+    def get_name(self):
+        sae_name = f"sparse_autoencoder_{self.cfg.model_name}_{self.cfg.hook_point}_{self.cfg.d_sae}"
+        return sae_name

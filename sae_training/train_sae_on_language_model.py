@@ -172,7 +172,7 @@ def train_sae_on_language_model(
         # checkpoint if at checkpoint frequency
         if n_checkpoints > 0 and n_training_tokens > checkpoint_thresholds[0]:
             cfg = sparse_autoencoder.cfg
-            path = f"{sparse_autoencoder.cfg.checkpoint_path}/{n_training_tokens}_{sparse_autoencoder.get_name()}.pt"
+            path = f"{sparse_autoencoder.cfg.checkpoint_path}/{n_training_tokens}_{sparse_autoencoder.get_name()}.pkl.gz"
             sparse_autoencoder.save_model(path)
             checkpoint_thresholds.pop(0)
             if len(checkpoint_thresholds) == 0:

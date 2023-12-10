@@ -100,7 +100,7 @@ def test_save_model(cfg):
                 state_dict_loaded["state_dict"][key]
             )
 
-def test_load_from_pretrained(cfg):
+def test_load_from_pretrained_pt(cfg):
     
     with tempfile.TemporaryDirectory() as tmpdirname:
         
@@ -114,6 +114,33 @@ def test_load_from_pretrained(cfg):
         assert os.path.exists(tmpdirname + "/test.pt")
         
         sparse_autoencoder_loaded = SparseAutoencoder.load_from_pretrained(tmpdirname + "/test.pt")
+        sparse_autoencoder_loaded.cfg.device = "cpu" # might autoload onto mps
+        sparse_autoencoder_loaded = sparse_autoencoder_loaded.to("cpu")
+        sparse_autoencoder_loaded_state_dict = sparse_autoencoder_loaded.state_dict()
+        # check cfg matches the original
+        assert sparse_autoencoder_loaded.cfg == cfg
+        
+        # check state_dict matches the original
+        for key in sparse_autoencoder.state_dict().keys():
+            assert torch.allclose(
+                sparse_autoencoder_state_dict[key],  # pylint: disable=unsubscriptable-object
+                sparse_autoencoder_loaded_state_dict[key] # pylint: disable=unsubscriptable-object
+            )
+            
+def test_load_from_pretrained_pkl_gz(cfg):
+    
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        
+        # assert file does not exist
+        assert os.path.exists(tmpdirname + "/test.pkl.gz") == False
+        
+        sparse_autoencoder = SparseAutoencoder(cfg)
+        sparse_autoencoder_state_dict = sparse_autoencoder.state_dict()
+        sparse_autoencoder.save_model(tmpdirname + "/test.pkl.gz")
+        
+        assert os.path.exists(tmpdirname + "/test.pkl.gz")
+        
+        sparse_autoencoder_loaded = SparseAutoencoder.load_from_pretrained(tmpdirname + "/test.pkl.gz")
         sparse_autoencoder_loaded.cfg.device = "cpu" # might autoload onto mps
         sparse_autoencoder_loaded = sparse_autoencoder_loaded.to("cpu")
         sparse_autoencoder_loaded_state_dict = sparse_autoencoder_loaded.state_dict()
