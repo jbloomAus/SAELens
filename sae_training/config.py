@@ -65,6 +65,8 @@ class LanguageModelSAERunnerConfig:
         if self.feature_sampling_method not in [None, "l2"]:
             raise ValueError(f"feature_sampling_method must be None, l2, or anthropic. Got {self.feature_sampling_method}")
         
+        self.device = torch.device(self.device)
+        
         unique_id = wandb.util.generate_id()   
         self.checkpoint_path = f"{self.checkpoint_path}/{unique_id}"
         
@@ -80,3 +82,4 @@ class LanguageModelSAERunnerConfig:
         # how many times will we sample dead neurons?
         n_dead_feature_samples = total_training_steps // self.dead_feature_window - 1 
         print(f"n_dead_feature_samples: {n_dead_feature_samples}")
+        
