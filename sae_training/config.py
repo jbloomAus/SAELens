@@ -1,5 +1,6 @@
 
 from dataclasses import dataclass
+from typing import Optional
 
 import torch
 
@@ -16,6 +17,7 @@ class LanguageModelSAERunnerConfig:
     model_name: str = "gelu-2l"
     hook_point: str = "blocks.0.hook_mlp_out"
     hook_point_layer: int = 0
+    hook_point_head_index: Optional[int] = None
     dataset_path: str = "NeelNanda/c4-tokenized-2b"
     is_dataset_tokenized: bool = True
     
@@ -65,9 +67,6 @@ class LanguageModelSAERunnerConfig:
         
         unique_id = wandb.util.generate_id()   
         self.checkpoint_path = f"{self.checkpoint_path}/{unique_id}"
-        
-        assert self.dead_feature_window < self.feature_sampling_window, "dead_feature_window must be < feature_sampling_window"
-        
         
         # Print out some useful info:
         n_tokens_per_buffer = self.store_batch_size * self.context_size * self.n_batches_in_buffer

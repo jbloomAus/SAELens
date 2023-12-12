@@ -75,8 +75,17 @@ def train_sae_on_language_model(
                 feature_reinit_scale,
                 optimizer
             )
-
-        else:
+            # for all the dead neurons, set the feature sparsity to the dead feature threshold
+            act_freq_scores[is_dead] = sparse_autoencoder.cfg.dead_feature_threshold * n_frac_active_tokens
+            if n_resampled_neurons > 0:
+                print(f"Resampled {n_resampled_neurons} neurons")
+            if use_wandb:
+                wandb.log(
+                    {
+                        "metrics/n_resampled_neurons": n_resampled_neurons,
+                    },
+                    step=n_training_steps,
+                )
             n_resampled_neurons = 0
 
         # Update learning rate here if using scheduler.
@@ -124,39 +133,38 @@ def train_sae_on_language_model(
                         .mean()
                         .item(),
                         "details/n_training_tokens": n_training_tokens,
-                        "metrics/n_resampled_neurons": n_resampled_neurons,
                         "metrics/current_learning_rate": current_learning_rate,
                     },
                     step=n_training_steps,
                 )
 
-                # record loss frequently, but not all the time.
-                if (n_training_steps + 1) % (wandb_log_frequency * 10) == 0:
-                    # Now we want the reconstruction loss.
-                    recons_score, ntp_loss, recons_loss, zero_abl_loss = get_recons_loss(sparse_autoencoder, model, activation_store, num_batches=3)
+            # record loss frequently, but not all the time.
+            if use_wandb and ((n_training_steps + 1) % (wandb_log_frequency * 10) == 0):
+                # Now we want the reconstruction loss.
+                recons_score, ntp_loss, recons_loss, zero_abl_loss = get_recons_loss(sparse_autoencoder, model, activation_store, num_batches=3)
+                
+                wandb.log(
+                    {
+                        "metrics/reconstruction_score": recons_score,
+                        "metrics/ce_loss_without_sae": ntp_loss,
+                        "metrics/ce_loss_with_sae": recons_loss,
+                        "metrics/ce_loss_with_ablation": zero_abl_loss,
+                        
+                    },
+                    step=n_training_steps,
+                )
                     
-                    wandb.log(
-                        {
-                            "metrics/reconstruction_score": recons_score,
-                            "metrics/ce_loss_without_sae": ntp_loss,
-                            "metrics/ce_loss_with_sae": recons_loss,
-                            "metrics/ce_loss_with_ablation": zero_abl_loss,
-                            
-                        },
-                        step=n_training_steps,
-                    )
-                    
-                # use feature window to log feature sparsity
-                if ((n_training_steps + 1) % feature_sampling_window == 0):
-                    log_feature_sparsity = torch.log10(feature_sparsity + 1e-10)
-                    wandb.log(
-                        {
-                            "plots/feature_density_histogram": wandb.Histogram(
-                                log_feature_sparsity.tolist()
-                            ),
-                        },
-                        step=n_training_steps,
-                    )
+            # use feature window to log feature sparsity
+            if use_wandb and ((n_training_steps + 1) % feature_sampling_window == 0):
+                log_feature_sparsity = torch.log10(feature_sparsity + 1e-10)
+                wandb.log(
+                    {
+                        "plots/feature_density_histogram": wandb.Histogram(
+                            log_feature_sparsity.tolist()
+                        ),
+                    },
+                    step=n_training_steps,
+                )
 
 
             pbar.set_description(

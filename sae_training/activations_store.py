@@ -110,12 +110,23 @@ class ActivationsStore:
     def get_activations(self, batch_tokens):
         
         act_name = self.cfg.hook_point
-        activations = self.model.run_with_cache(
-            batch_tokens,
-            names_filter=act_name,
-        )[
-            1
-        ][act_name]
+        hook_point_layer = self.cfg.hook_point_layer
+        if self.cfg.hook_point_head_index is not None:
+            activations = self.model.run_with_cache(
+                batch_tokens,
+                names_filter=act_name,
+                stop_at_layer=hook_point_layer
+            )[
+                1
+            ][act_name][:,:,self.cfg.hook_point_head_index]
+        else:
+            activations = self.model.run_with_cache(
+                batch_tokens,
+                names_filter=act_name,
+                stop_at_layer=hook_point_layer+1
+            )[
+                1
+            ][act_name]
 
         return activations
 
