@@ -164,3 +164,4 @@ wandb/
 checkpoints/
 data/
 artifacts/
+activations/
