@@ -93,7 +93,7 @@ def train_sae_on_language_model(
         # Forward and Backward Passes
         optimizer.zero_grad()
         x = activation_store.next_batch()
-        sae_out, feature_acts, loss, mse_loss, l1_loss = sparse_autoencoder(activation_store.next_batch())
+        sae_out, feature_acts, loss, mse_loss, l1_loss = sparse_autoencoder(x)
         n_training_tokens += batch_size
 
         with torch.no_grad():
