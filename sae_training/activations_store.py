@@ -1,9 +1,9 @@
+import os
 import torch
 from datasets import load_dataset
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformer_lens import HookedTransformer
-
 
 class ActivationsStore:
     """
@@ -11,7 +11,7 @@ class ActivationsStore:
     while training SAEs. 
     """
     def __init__(
-        self, cfg, model: HookedTransformer,
+        self, cfg, model: HookedTransformer, create_dataloader: bool = True,
     ):
         self.cfg = cfg
         self.model = model
@@ -26,9 +26,30 @@ class ActivationsStore:
             self.cfg.is_dataset_tokenized = False
             print("Dataset is not tokenized! Updating config.")
         
-        # fill buffer half a buffer, so we can mix it with a new buffer
-        self.storage_buffer = self.get_buffer(self.cfg.n_batches_in_buffer // 2)
-        self.dataloader = self.get_data_loader()
+        if self.cfg.use_cached_activations:
+            # Sanity check: does the cache directory exist?
+            assert os.path.exists(self.cfg.cached_activations_path), \
+                f"Cache directory {self.cfg.cached_activations_path} does not exist. Consider double-checking your dataset, model, and hook names."
+            
+            self.next_cache_idx = 0 # which file to open next
+            self.next_idx_within_buffer = 0 # where to start reading from in that file
+            
+            # Check that we have enough data on disk
+            first_buffer = torch.load(f"{self.cfg.cached_activations_path}/0.pt")
+            buffer_size_on_disk = first_buffer.shape[0]
+            n_buffers_on_disk = len(os.listdir(self.cfg.cached_activations_path))
+            # Note: we're assuming all files have the same number of tokens
+            # (which seems reasonable imo since that's what our script does)
+            n_activations_on_disk = buffer_size_on_disk * n_buffers_on_disk
+            assert n_activations_on_disk > self.cfg.total_training_tokens, \
+                f"Only {n_activations_on_disk/1e6:.1f}M activations on disk, but cfg.total_training_tokens is {self.cfg.total_training_tokens/1e6:.1f}M."
+                
+            # TODO add support for "mixed loading" (ie use cache until you run out, then switch over to streaming from HF)
+        
+        if create_dataloader:
+            # fill buffer half a buffer, so we can mix it with a new buffer
+            self.storage_buffer = self.get_buffer(self.cfg.n_batches_in_buffer // 2)
+            self.dataloader = self.get_data_loader()
 
     def get_batch_tokens(self):
         """
@@ -136,6 +157,49 @@ class ActivationsStore:
         batch_size = self.cfg.store_batch_size
         d_in = self.cfg.d_in
         total_size = batch_size * n_batches_in_buffer
+
+        if self.cfg.use_cached_activations:
+            # Load the activations from disk
+            buffer_size = total_size * context_size
+            # Initialize an empty tensor (flattened along all dims except d_in)
+            new_buffer = torch.zeros((buffer_size, d_in), dtype=self.cfg.dtype,
+                                     device=self.cfg.device)
+            n_tokens_filled = 0
+            
+            # The activations may be split across multiple files,
+            # Or we might only want a subset of one file (depending on the sizes)
+            while n_tokens_filled < buffer_size:
+                # Load the next file
+                # Make sure it exists
+                if not os.path.exists(f"{self.cfg.cached_activations_path}/{self.next_cache_idx}.pt"):
+                    print("\n\nWarning: Ran out of cached activation files earlier than expected.")
+                    print(f"Expected to have {buffer_size} activations, but only found {n_tokens_filled}.")
+                    if buffer_size % self.cfg.total_training_tokens != 0:
+                        print("This might just be a rounding error — your batch_size * n_batches_in_buffer * context_size is not divisible by your total_training_tokens")
+                    print(f"Returning a buffer of size {n_tokens_filled} instead.")
+                    print("\n\n")
+                    new_buffer = new_buffer[:n_tokens_filled]
+                    break
+                activations = torch.load(f"{self.cfg.cached_activations_path}/{self.next_cache_idx}.pt")
+                
+                # If we only want a subset of the file, take it
+                taking_subset_of_file = False
+                if n_tokens_filled + activations.shape[0] > buffer_size:
+                    activations = activations[:buffer_size - n_tokens_filled]
+                    taking_subset_of_file = True
+                
+                # Add it to the buffer
+                new_buffer[n_tokens_filled : n_tokens_filled + activations.shape[0]] = activations
+                
+                # Update counters
+                n_tokens_filled += activations.shape[0]
+                if taking_subset_of_file:
+                    self.next_idx_within_buffer = activations.shape[0]
+                else:
+                    self.next_cache_idx += 1
+                    self.next_idx_within_buffer = 0
+                
+            return new_buffer
 
         refill_iterator = range(0, batch_size * n_batches_in_buffer, batch_size)
         # refill_iterator = tqdm(refill_iterator, desc="generate activations")
