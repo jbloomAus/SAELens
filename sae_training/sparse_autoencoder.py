@@ -173,7 +173,7 @@ class SparseAutoencoder(HookedRootModule):
                         print(
                             "Warning: it does not seem as if resetting the Adam parameters worked, there are shapes mismatches"
                         )
-                    if v[v_key][:, replacement_indices].abs().max().item() > 1e-6:
+                    if v[v_key][:, is_dead].abs().max().item() > 1e-6:
                         print(
                             "Warning: it does not seem as if resetting the Adam parameters worked"
                         )
