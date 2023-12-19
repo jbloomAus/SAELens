@@ -6,6 +6,7 @@ import torch
 
 import wandb
 
+
 @dataclass
 class RunnerConfig(ABC):
     """
@@ -97,6 +98,9 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
         
         total_training_steps = self.total_training_tokens // self.train_batch_size
         print(f"Total training steps: {total_training_steps}")
+        
+        total_wandb_updates = total_training_steps // self.wandb_log_frequency
+        print(f"Total wandb updates: {total_wandb_updates}")
         
         # how many times will we sample dead neurons?
         n_dead_feature_samples = total_training_steps // self.dead_feature_window - 1 

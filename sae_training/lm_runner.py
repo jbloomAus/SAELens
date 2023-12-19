@@ -34,7 +34,7 @@ def language_model_sae_runner(cfg):
     )
 
     # save sae to checkpoints folder
-    path = f"{cfg.checkpoint_path}/final_{sparse_autoencoder.get_name()}.pkl.gz"
+    path = f"{cfg.checkpoint_path}/final_{sparse_autoencoder.get_name()}.pt"
     sparse_autoencoder.save_model(path)
     
     # upload to wandb

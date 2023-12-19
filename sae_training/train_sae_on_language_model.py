@@ -1,12 +1,12 @@
 from functools import partial
 
-import einops
+import numpy as np
+import plotly_express as px
 import torch
 from torch.optim import Adam
-from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
-from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformer_lens import HookedTransformer
+from transformer_lens.utils import get_act_name
 
 import wandb
 from sae_training.activations_store import ActivationsStore
@@ -92,8 +92,8 @@ def train_sae_on_language_model(
 
         # Forward and Backward Passes
         optimizer.zero_grad()
-        x = activation_store.next_batch()
-        sae_out, feature_acts, loss, mse_loss, l1_loss = sparse_autoencoder(x)
+        sae_in = activation_store.next_batch()
+        sae_out, feature_acts, loss, mse_loss, l1_loss = sparse_autoencoder(sae_in)
         n_training_tokens += batch_size
 
         with torch.no_grad():
@@ -102,73 +102,69 @@ def train_sae_on_language_model(
             n_frac_active_tokens += batch_size
             feature_sparsity = act_freq_scores / n_frac_active_tokens
 
-            # metrics for currents acts
-            l0 = (feature_acts > 0).float().sum(1).mean()
-            l2_norm_in = torch.norm(x, dim=-1).mean()
-            l2_norm_out = torch.norm(sae_out, dim=-1).mean()
-            l2_norm_ratio = l2_norm_out / l2_norm_in
-            current_learning_rate = optimizer.param_groups[0]["lr"]
-
             if use_wandb and ((n_training_steps + 1) % wandb_log_frequency == 0):
+                # metrics for currents acts
+                l0 = (feature_acts > 0).float().sum(-1).mean()
+                current_learning_rate = optimizer.param_groups[0]["lr"]
+                
+                per_token_l2_loss = (sae_out - sae_in).pow(2).sum(dim=-1).squeeze()
+                total_variance = sae_in.pow(2).sum(-1)
+                explained_variance = 1 - per_token_l2_loss/total_variance
+                
                 wandb.log(
                     {
+                        # losses
                         "losses/mse_loss": mse_loss.item(),
                         "losses/l1_loss": l1_loss.item(),
                         "losses/overall_loss": loss.item(),
+                        # variance explained
+                        "metrics/explained_variance": explained_variance.mean().item(),
+                        "metrics/explained_variance_std": explained_variance.std().item(),
                         "metrics/l0": l0.item(),
-                        "metrics/l2": l2_norm_out.item(),
-                        "metrics/l2_ratio": l2_norm_ratio.item(),
-                        "metrics/below_1e-5": (feature_sparsity < 1e-5)
+                        # sparsity
+                        "sparsity/below_1e-5": (feature_sparsity < 1e-5)
                         .float()
                         .mean()
                         .item(),
-                        "metrics/below_1e-6": (feature_sparsity < 1e-6)
+                        "sparsity/below_1e-6": (feature_sparsity < 1e-6)
                         .float()
                         .mean()
                         .item(),
-                        "metrics/dead_features": (
+                        "sparsity/dead_features": (
                             feature_sparsity < dead_feature_threshold
                         )
                         .float()
                         .mean()
                         .item(),
                         "details/n_training_tokens": n_training_tokens,
-                        "metrics/current_learning_rate": current_learning_rate,
+                        "details/current_learning_rate": current_learning_rate,
                     },
                     step=n_training_steps,
                 )
 
             # record loss frequently, but not all the time.
             if use_wandb and ((n_training_steps + 1) % (wandb_log_frequency * 10) == 0):
-                # Now we want the reconstruction loss.
-                recons_score, ntp_loss, recons_loss, zero_abl_loss = get_recons_loss(sparse_autoencoder, model, activation_store, num_batches=3)
+                run_evals(sparse_autoencoder, activation_store, model, n_training_steps)
                 
+                log_feature_sparsity = torch.log10(feature_sparsity + 1e-10).detach().cpu()
+                sparsity_line_chart = px.scatter(
+                    y = log_feature_sparsity,
+                    title="Feature Sparsity",
+                    labels={"y": "log10(sparsity)", "x": "FeatureID"},
+                    range_y=[-8, 0],
+                    marginal_y="histogram",
+                )
                 wandb.log(
                     {
-                        "metrics/reconstruction_score": recons_score,
-                        "metrics/ce_loss_without_sae": ntp_loss,
-                        "metrics/ce_loss_with_sae": recons_loss,
-                        "metrics/ce_loss_with_ablation": zero_abl_loss,
-                        
+                        "plots/feature_density_line_chart": wandb.Plotly(sparsity_line_chart),
                     },
                     step=n_training_steps,
                 )
-                    
-            # use feature window to log feature sparsity
-            if use_wandb and ((n_training_steps + 1) % feature_sampling_window == 0):
-                log_feature_sparsity = torch.log10(feature_sparsity + 1e-10)
-                wandb.log(
-                    {
-                        "plots/feature_density_histogram": wandb.Histogram(
-                            log_feature_sparsity.tolist()
-                        ),
-                    },
-                    step=n_training_steps,
-                )
+                
 
 
             pbar.set_description(
-                f"{n_training_steps}| MSE Loss {mse_loss.item():.3f} | L0 {l0.item():.3f}"
+                f"{n_training_steps}| MSE Loss {mse_loss.item():.3f} | L1 {l1_loss.item():.3f}"
             )
             pbar.update(batch_size)
 
@@ -180,7 +176,7 @@ def train_sae_on_language_model(
         # checkpoint if at checkpoint frequency
         if n_checkpoints > 0 and n_training_tokens > checkpoint_thresholds[0]:
             cfg = sparse_autoencoder.cfg
-            path = f"{sparse_autoencoder.cfg.checkpoint_path}/{n_training_tokens}_{sparse_autoencoder.get_name()}.pkl.gz"
+            path = f"{sparse_autoencoder.cfg.checkpoint_path}/{n_training_tokens}_{sparse_autoencoder.get_name()}.pt"
             sparse_autoencoder.save_model(path)
             checkpoint_thresholds.pop(0)
             if len(checkpoint_thresholds) == 0:
@@ -196,36 +192,149 @@ def train_sae_on_language_model(
 
     return sparse_autoencoder
 
+
 @torch.no_grad()
-def get_recons_loss(sparse_autoencder, model, activation_store, num_batches=5):
+def run_evals(sparse_autoencoder: SparseAutoencoder, activation_store: ActivationsStore, model: HookedTransformer, n_training_steps: int):
+     ### Evals
+    eval_tokens = activation_store.get_batch_tokens()
+    
+    # get cache
+    _, cache = model.run_with_cache(eval_tokens, prepend_bos=False)
+    
+    # get act
+    if sparse_autoencoder.cfg.hook_point_head_index is not None:
+        original_act = cache[sparse_autoencoder.cfg.hook_point][:,:,sparse_autoencoder.cfg.hook_point_head_index]
+    else:
+        original_act = cache[sparse_autoencoder.cfg.hook_point]
+        
+    sae_out, feature_acts, loss, mse_loss, l1_loss = sparse_autoencoder(
+        original_act
+    )
+    
+    l2_norm_in = torch.norm(original_act, dim=-1)
+    l2_norm_out = torch.norm(sae_out, dim=-1)
+    l2_norm_ratio = l2_norm_out / l2_norm_in
+
+    # Get Reconstruction Score
+    recons_score, ntp_loss, recons_loss, zero_abl_loss = get_recons_loss(sparse_autoencoder, model, activation_store, eval_tokens)
+    
+    wandb.log(
+        {
+
+            # l2 norms
+            "metrics/l2_norm": l2_norm_out.mean().item(),
+            "metrics/l2_ratio": l2_norm_ratio.mean().item(),
+            
+            # CE Loss
+            "metrics/CE_loss_score": recons_score,
+            "metrics/ce_loss_without_sae": ntp_loss,
+            "metrics/ce_loss_with_sae": recons_loss,
+            "metrics/ce_loss_with_ablation": zero_abl_loss,
+            
+        },
+        step=n_training_steps,
+    )
+
+    hook_point = sparse_autoencoder.cfg.hook_point
+    hook_point_layer = sparse_autoencoder.cfg.hook_point_layer
+    hook_point_head_index = sparse_autoencoder.cfg.hook_point_head_index
+    
+    # get attn when using reconstructed activations
+    with model.hooks(fwd_hooks=[(hook_point, partial(replacement_hook, encoder=sparse_autoencoder))]):
+        _, new_cache = model.run_with_cache(eval_tokens)
+        
+    # get attn when using reconstructed activations
+    with model.hooks(fwd_hooks=[(hook_point, partial(zero_ablate_hook))]):
+        _, zero_ablation_cache = model.run_with_cache(eval_tokens)
+        
+        
+    # Visualizations to show L0 / MSE distributions
+    l0 = (feature_acts > 0).float().sum(-1)
+    per_token_l2_loss = (sae_out - original_act).pow(2).sum(dim=-1).squeeze()
+    
+    fig = px.scatter(
+        x = per_token_l2_loss.flatten().cpu().numpy(),
+        y = l0.flatten().cpu().numpy(),
+        color = np.arange(per_token_l2_loss.shape[1]).repeat(per_token_l2_loss.shape[0]),
+        opacity=0.5,
+        labels = {"color": "position", "x": "MSE Loss", "y": "L0"},
+        title = "L0 vs MSE Loss",
+        marginal_x="histogram",
+        marginal_y="histogram",
+    )
+    wandb.log({"plots/l0_vs_mse_loss": wandb.Plotly(fig)}, step = n_training_steps)
+    
+    fig = px.scatter(
+        x =  per_token_l2_loss.flatten().cpu().numpy(),
+        y = l2_norm_in.flatten().cpu().numpy(),
+        color = np.arange(per_token_l2_loss.shape[1]).repeat(per_token_l2_loss.shape[0]),
+        opacity=0.5,
+        labels={"color": "position", "x": "MSE Loss", "y": "L2 Norm"},
+        title = "L2 Norm vs MSE Loss",
+        marginal_x="histogram",
+        marginal_y="histogram",
+    )
+    wandb.log({"plots/l2_norm_vs_mse_loss": wandb.Plotly(fig)}, step = n_training_steps)
+
+    # if dealing with a head SAE, do the head metrics.
+    if sparse_autoencoder.cfg.hook_point_head_index:
+        # get the attention scores
+        patterns_original = cache[get_act_name("pattern", hook_point_layer)][:,hook_point_head_index].detach().cpu()
+        patterns_reconstructed = new_cache[get_act_name("pattern", hook_point_layer)][:,hook_point_head_index].detach().cpu()
+        patterns_ablation = zero_ablation_cache[get_act_name("pattern", hook_point_layer)][:,hook_point_head_index].detach().cpu()
+        
+        # show patterns before/after
+        fig_patterns_original = px.imshow(patterns_original[0].numpy(), title="original attn scores",
+            color_continuous_midpoint=0, color_continuous_scale="RdBu")
+        fig_patterns_original.update_layout(coloraxis_showscale=False)         # hide colorbar 
+        wandb.log({"attention/patterns_original": wandb.Plotly(fig_patterns_original)}, step = n_training_steps)
+        fig_patterns_reconstructed = px.imshow(patterns_reconstructed[0].numpy(), title="reconstructed attn scores",
+                color_continuous_midpoint=0, color_continuous_scale="RdBu")
+        fig_patterns_reconstructed.update_layout(coloraxis_showscale=False)         # hide colorbar
+        wandb.log({"attention/patterns_reconstructed": wandb.Plotly(fig_patterns_reconstructed)}, step = n_training_steps)
+        
+        kl_result_reconstructed = kl_divergence_attention(patterns_original, patterns_reconstructed)
+        kl_result_reconstructed = kl_result_reconstructed.sum(dim=-1).numpy()
+        # print(kl_result.mean().item())
+        # px.imshow(kl_result, title="KL Divergence", width=800, height=800,
+        #       color_continuous_midpoint=0, color_continuous_scale="RdBu").show()
+        # px.histogram(kl_result.flatten()).show()
+        # px.line(kl_result.mean(0), title="KL Divergence by Position").show()
+        
+        kl_result_ablation = kl_divergence_attention(patterns_original, patterns_ablation)
+        kl_result_ablation = kl_result_ablation.sum(dim=-1).numpy()
+        # print(kl_result.mean().item())
+        # # px.imshow(kl_result, title="KL Divergence", width=800, height=800,
+        # #       color_continuous_midpoint=0, color_continuous_scale="RdBu").show()
+        # px.histogram(kl_result.flatten()).show()
+        # px.line(kl_result.mean(0), title="KL Divergence by Position").show()
+    
+        wandb.log(
+            {
+
+              "metrics/kldiv_reconstructed": kl_result_reconstructed.mean().item(),
+              "metrics/kldiv_ablation": kl_result_ablation.mean().item(),
+                
+            },
+            step=n_training_steps,
+        )
+
+@torch.no_grad()
+def get_recons_loss(sparse_autoencder, model, activation_store, batch_tokens):
     hook_point = activation_store.cfg.hook_point
-    loss_list = []
-    for _ in range(num_batches):
-        batch_tokens = activation_store.get_batch_tokens()
-        loss = model(batch_tokens, return_type="loss")
+    loss = model(batch_tokens, return_type="loss")
 
-        # mean_abl_loss = model.run_with_hooks(tokens, return_type="loss",
-        # fwd_hooks=[(utils.get_act_name("post", 0), mean_ablate_hook)])
+    recons_loss = model.run_with_hooks(
+        batch_tokens,
+        return_type="loss",
+        fwd_hooks=[(hook_point, partial(replacement_hook, encoder=sparse_autoencder))],
+    )
 
-        recons_loss = model.run_with_hooks(
-            batch_tokens,
-            return_type="loss",
-            fwd_hooks=[(hook_point, partial(replacement_hook, encoder=sparse_autoencder))],
-        )
-
-        zero_abl_loss = model.run_with_hooks(
-            batch_tokens, return_type="loss", fwd_hooks=[(hook_point, zero_ablate_hook)]
-        )
-        loss_list.append((loss, recons_loss, zero_abl_loss))
-
-    losses = torch.tensor(loss_list)
-    loss, recons_loss, zero_abl_loss = losses.mean(0).tolist()
+    zero_abl_loss = model.run_with_hooks(
+        batch_tokens, return_type="loss", fwd_hooks=[(hook_point, zero_ablate_hook)]
+    )
 
     score = (zero_abl_loss - recons_loss) / (zero_abl_loss - loss)
-
-    # print(loss, recons_loss, zero_abl_loss)
-    # print(f"{score:.2%}")
-    # print(f"{((zero_abl_loss - mean_abl_loss)/(zero_abl_loss - loss)).item():.2%}")
 
     return score, loss, recons_loss, zero_abl_loss
 
@@ -243,3 +352,12 @@ def mean_ablate_hook(mlp_post, hook):
 def zero_ablate_hook(mlp_post, hook):
     mlp_post[:] = 0.0
     return mlp_post
+
+
+def kl_divergence_attention(y_true, y_pred):
+
+    # Compute log probabilities for KL divergence
+    log_y_true = torch.log2(y_true + 1e-10)
+    log_y_pred = torch.log2(y_pred + 1e-10)
+
+    return y_true * (log_y_true - log_y_pred)

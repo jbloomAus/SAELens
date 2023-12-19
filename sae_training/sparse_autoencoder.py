@@ -256,8 +256,14 @@ class SparseAutoencoder(HookedRootModule):
                     state_dict = pickle.load(f)
             except Exception as e:
                 raise IOError(f"Error loading the state dictionary from .pkl.gz file: {e}")
+        elif path.endswith(".pkl"):
+            try:
+                with open(path, 'rb') as f:
+                    state_dict = pickle.load(f)
+            except Exception as e:
+                raise IOError(f"Error loading the state dictionary from .pkl file: {e}")
         else:
-            raise ValueError(f"Unexpected file extension: {path}, supported extensions are .pt and .pkl.gz")
+            raise ValueError(f"Unexpected file extension: {path}, supported extensions are .pt, .pkl, and .pkl.gz")
 
         # Ensure the loaded state contains both 'cfg' and 'state_dict'
         if 'cfg' not in state_dict or 'state_dict' not in state_dict:
