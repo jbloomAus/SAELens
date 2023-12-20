@@ -147,6 +147,7 @@ def train_sae_on_language_model(
                 run_evals(sparse_autoencoder, activation_store, model, n_training_steps)
                 
                 log_feature_sparsity = torch.log10(feature_sparsity + 1e-10).detach().cpu()
+                
                 sparsity_line_chart = px.scatter(
                     y = log_feature_sparsity,
                     title="Feature Sparsity",
@@ -155,7 +156,8 @@ def train_sae_on_language_model(
                     marginal_y="histogram",
                 )
                 wandb.log(
-                    {
+                    {   
+                        "metrics/mean_log10_feature_sparsity": log_feature_sparsity.mean().item(),
                         "plots/feature_density_line_chart": wandb.Plotly(sparsity_line_chart),
                     },
                     step=n_training_steps,
