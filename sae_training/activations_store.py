@@ -1,9 +1,11 @@
 import os
+
 import torch
 from datasets import load_dataset
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformer_lens import HookedTransformer
+
 
 class ActivationsStore:
     """
@@ -137,7 +139,7 @@ class ActivationsStore:
             activations = self.model.run_with_cache(
                 batch_tokens,
                 names_filter=act_name,
-                stop_at_layer=hook_point_layer
+                stop_at_layer=hook_point_layer+1
             )[
                 1
             ][act_name][:,:,self.cfg.hook_point_head_index]
