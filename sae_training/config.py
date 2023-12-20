@@ -82,6 +82,7 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
         self.d_sae = self.d_in * self.expansion_factor
         self.tokens_per_buffer = self.train_batch_size * self.context_size * self.n_batches_in_buffer
         
+        self.run_name = f"{self.d_sae}-L1-{self.l1_coefficient}-LR-{self.lr}-Tokens-{self.total_training_tokens:3.3e}"
         if self.feature_sampling_method not in [None, "l2"]:
             raise ValueError(f"feature_sampling_method must be None, l2, or anthropic. Got {self.feature_sampling_method}")
         
@@ -90,6 +91,7 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
         unique_id = wandb.util.generate_id()   
         self.checkpoint_path = f"{self.checkpoint_path}/{unique_id}"
 
+        print(f"Run name: {self.d_sae}-L1-{self.l1_coefficient}-LR-{self.lr}-Tokens-{self.total_training_tokens:3.3e}")
         # Print out some useful info:
         n_tokens_per_buffer = self.store_batch_size * self.context_size * self.n_batches_in_buffer
         print(f"n_tokens_per_buffer (millions): {n_tokens_per_buffer / 10 **6}")

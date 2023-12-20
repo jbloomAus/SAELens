@@ -195,11 +195,19 @@ def train_sae_on_language_model(
 
 @torch.no_grad()
 def run_evals(sparse_autoencoder: SparseAutoencoder, activation_store: ActivationsStore, model: HookedTransformer, n_training_steps: int):
+    
+    hook_point = sparse_autoencoder.cfg.hook_point
+    hook_point_layer = sparse_autoencoder.cfg.hook_point_layer
+    hook_point_head_index = sparse_autoencoder.cfg.hook_point_head_index
+    
      ### Evals
     eval_tokens = activation_store.get_batch_tokens()
     
+    # Get Reconstruction Score
+    recons_score, ntp_loss, recons_loss, zero_abl_loss = get_recons_loss(sparse_autoencoder, model, activation_store, eval_tokens)
+    
     # get cache
-    _, cache = model.run_with_cache(eval_tokens, prepend_bos=False)
+    _, cache = model.run_with_cache(eval_tokens, prepend_bos=False, names_filter=[get_act_name("pattern", hook_point_layer), hook_point])
     
     # get act
     if sparse_autoencoder.cfg.hook_point_head_index is not None:
@@ -207,16 +215,18 @@ def run_evals(sparse_autoencoder: SparseAutoencoder, activation_store: Activatio
     else:
         original_act = cache[sparse_autoencoder.cfg.hook_point]
         
-    sae_out, feature_acts, loss, mse_loss, l1_loss = sparse_autoencoder(
+    sae_out, feature_acts, _, _, _ = sparse_autoencoder(
         original_act
     )
+    patterns_original = cache[get_act_name("pattern", hook_point_layer)][:,hook_point_head_index].detach().cpu()
+    del cache
+    
+    if "cuda" in str(model.cfg.device):
+        torch.cuda.empty_cache()
     
     l2_norm_in = torch.norm(original_act, dim=-1)
     l2_norm_out = torch.norm(sae_out, dim=-1)
     l2_norm_ratio = l2_norm_out / l2_norm_in
-
-    # Get Reconstruction Score
-    recons_score, ntp_loss, recons_loss, zero_abl_loss = get_recons_loss(sparse_autoencoder, model, activation_store, eval_tokens)
     
     wandb.log(
         {
@@ -235,17 +245,17 @@ def run_evals(sparse_autoencoder: SparseAutoencoder, activation_store: Activatio
         step=n_training_steps,
     )
 
-    hook_point = sparse_autoencoder.cfg.hook_point
-    hook_point_layer = sparse_autoencoder.cfg.hook_point_layer
-    hook_point_head_index = sparse_autoencoder.cfg.hook_point_head_index
-    
     # get attn when using reconstructed activations
     with model.hooks(fwd_hooks=[(hook_point, partial(replacement_hook, encoder=sparse_autoencoder))]):
-        _, new_cache = model.run_with_cache(eval_tokens)
+        _, new_cache = model.run_with_cache(eval_tokens, names_filter=[get_act_name("pattern", hook_point_layer)])
+        patterns_reconstructed = new_cache[get_act_name("pattern", hook_point_layer)][:,hook_point_head_index].detach().cpu()
+        del new_cache
         
     # get attn when using reconstructed activations
     with model.hooks(fwd_hooks=[(hook_point, partial(zero_ablate_hook))]):
-        _, zero_ablation_cache = model.run_with_cache(eval_tokens)
+        _, zero_ablation_cache = model.run_with_cache(eval_tokens, names_filter=[get_act_name("pattern", hook_point_layer)])
+        patterns_ablation = zero_ablation_cache[get_act_name("pattern", hook_point_layer)][:,hook_point_head_index].detach().cpu()
+        del zero_ablation_cache
         
         
     # Visualizations to show L0 / MSE distributions
@@ -278,10 +288,6 @@ def run_evals(sparse_autoencoder: SparseAutoencoder, activation_store: Activatio
 
     # if dealing with a head SAE, do the head metrics.
     if sparse_autoencoder.cfg.hook_point_head_index:
-        # get the attention scores
-        patterns_original = cache[get_act_name("pattern", hook_point_layer)][:,hook_point_head_index].detach().cpu()
-        patterns_reconstructed = new_cache[get_act_name("pattern", hook_point_layer)][:,hook_point_head_index].detach().cpu()
-        patterns_ablation = zero_ablation_cache[get_act_name("pattern", hook_point_layer)][:,hook_point_head_index].detach().cpu()
         
         # show patterns before/after
         fig_patterns_original = px.imshow(patterns_original[0].numpy(), title="original attn scores",
