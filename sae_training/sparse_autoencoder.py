@@ -90,8 +90,11 @@ class SparseAutoencoder(HookedRootModule):
             + self.b_dec
         )
         
-        mse_loss = (sae_out.float() - x.float()).pow(2).sum(-1).mean(0)
-        l1_loss = self.l1_coefficient * torch.abs(feature_acts).sum()
+        # add config for whether l2 is normalized:
+        mse_loss = (torch.pow((sae_out-x.float()), 2) / (x**2).sum(dim=-1, keepdim=True).sqrt()).mean()
+        # mse_loss = (sae_out.float() - x.float()).pow(2).sum(-1).mean(0)
+        sparsity = torch.abs(feature_acts).sum(dim=1).mean(dim=(0,)) 
+        l1_loss = self.l1_coefficient * sparsity
         loss = mse_loss + l1_loss
 
         return sae_out, feature_acts, loss, mse_loss, l1_loss

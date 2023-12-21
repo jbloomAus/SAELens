@@ -148,17 +148,18 @@ def train_sae_on_language_model(
                 
                 log_feature_sparsity = torch.log10(feature_sparsity + 1e-10).detach().cpu()
                 
-                sparsity_line_chart = px.scatter(
-                    y = log_feature_sparsity,
-                    title="Feature Sparsity",
-                    labels={"y": "log10(sparsity)", "x": "FeatureID"},
-                    range_y=[-8, 0],
-                    marginal_y="histogram",
-                )
+                # sparsity_line_chart = px.scatter(
+                #     y = log_feature_sparsity,
+                #     title="Feature Sparsity",
+                #     labels={"y": "log10(sparsity)", "x": "FeatureID"},
+                #     range_y=[-8, 0],
+                #     marginal_y="histogram",
+                # )
+                wandb_histogram = wandb.Histogram(log_feature_sparsity.numpy())
                 wandb.log(
                     {   
                         "metrics/mean_log10_feature_sparsity": log_feature_sparsity.mean().item(),
-                        "plots/feature_density_line_chart": wandb.Plotly(sparsity_line_chart),
+                        "plots/feature_density_line_chart": wandb_histogram,
                     },
                     step=n_training_steps,
                 )
