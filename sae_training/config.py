@@ -52,7 +52,7 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
 
     # SAE Parameters
     expansion_factor: int = 4
-    from_pretrained_path: Optional[str] = None,
+    from_pretrained_path: Optional[str] = None
     
     # Training Parameters
     l1_coefficient: float = 1e-3
@@ -62,8 +62,9 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
     train_batch_size: int = 4096
     
     # Resampling protocol args
-    feature_sampling_method: str = "l2" # None or l2
     feature_sampling_window: int = 200
+    feature_sampling_method: str = "Anthropic" # None or Anthropic
+    resample_batches: int = 32
     feature_reinit_scale: float = 0.2
     dead_feature_window: int = 100 # unless this window is larger feature sampling,
     dead_feature_threshold: float = 1e-8
@@ -84,7 +85,7 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
         self.tokens_per_buffer = self.train_batch_size * self.context_size * self.n_batches_in_buffer
         
         self.run_name = f"{self.d_sae}-L1-{self.l1_coefficient}-LR-{self.lr}-Tokens-{self.total_training_tokens:3.3e}"
-        if self.feature_sampling_method not in [None, "l2"]:
+        if self.feature_sampling_method not in [None, "l2", "anthropic"]:
             raise ValueError(f"feature_sampling_method must be None, l2, or anthropic. Got {self.feature_sampling_method}")
         
         self.device = torch.device(self.device)

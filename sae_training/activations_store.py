@@ -128,15 +128,14 @@ class ActivationsStore:
 
             # pbar.n = batch_tokens.shape[0]
             # pbar.refresh()
-
         return batch_tokens[:batch_size]
 
-    def get_activations(self, batch_tokens):
+    def get_activations(self, batch_tokens, get_loss=False):
         
         act_name = self.cfg.hook_point
         hook_point_layer = self.cfg.hook_point_layer
         if self.cfg.hook_point_head_index is not None:
-            activations = self.model.run_with_cache(
+            loss, activations = self.model.run_with_cache(
                 batch_tokens,
                 names_filter=act_name,
                 stop_at_layer=hook_point_layer+1
@@ -151,6 +150,7 @@ class ActivationsStore:
             )[
                 1
             ][act_name]
+        
 
         return activations
 

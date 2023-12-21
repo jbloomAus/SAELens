@@ -35,6 +35,7 @@ def train_sae_on_language_model(
     n_training_steps = 0
     n_training_tokens = 0
     n_resampled_neurons = 0
+    steps_before_reset = 0
     if n_checkpoints > 0:
         checkpoint_thresholds = list(range(0, total_training_tokens, total_training_tokens // n_checkpoints))[1:]
     
@@ -61,37 +62,73 @@ def train_sae_on_language_model(
         # Make sure the W_dec is still zero-norm
         sparse_autoencoder.set_decoder_norm_to_unit_norm()
 
-        # Resample dead neurons
-        if (feature_sampling_method is not None) and ((n_training_steps + 1) % dead_feature_window == 0):
 
-            # Get the fraction of neurons active in the previous window
-            feature_sparsity = act_freq_scores / n_frac_active_tokens
-            is_dead = (feature_sparsity < sparse_autoencoder.cfg.dead_feature_threshold)
+        if (feature_sampling_method.lower()=="anthropic") and ((n_training_steps + 1) % dead_feature_window == 0):
             
-            # if standard resampling <- do this
-            n_resampled_neurons = sparse_autoencoder.resample_neurons(
-                activation_store.next_batch(), 
-                feature_sparsity, 
-                feature_reinit_scale,
-                optimizer
+            feature_sparsity = act_freq_scores / n_frac_active_tokens
+            dead_neuron_indices = (feature_sparsity < sparse_autoencoder.cfg.dead_feature_threshold).nonzero(as_tuple=False)[:, 0]
+            sparse_autoencoder.resample_neurons_anthropic(
+                dead_neuron_indices, 
+                model,
+                optimizer, 
+                activation_store
             )
-            # for all the dead neurons, set the feature sparsity to the dead feature threshold
-            act_freq_scores[is_dead] = sparse_autoencoder.cfg.dead_feature_threshold * n_frac_active_tokens
-            if n_resampled_neurons > 0:
-                print(f"Resampled {n_resampled_neurons} neurons")
+
             if use_wandb:
                 wandb.log(
                     {
-                        "metrics/n_resampled_neurons": n_resampled_neurons,
+                        "metrics/n_resampled_neurons": len(dead_neuron_indices),
                     },
                     step=n_training_steps,
                 )
-            n_resampled_neurons = 0
+            
+            # for now, we'll hardcode this.
+            current_lr = scheduler.get_last_lr()[0]
+            reduced_lr = current_lr * 0.1
+            increment = (current_lr - reduced_lr) / 1000
+            optimizer.param_groups[0]['lr'] = reduced_lr
+            steps_before_reset = 1000
+            
 
-        # Update learning rate here if using scheduler.
+        # Resample dead neurons
+        if (feature_sampling_method == "l2") and ((n_training_steps + 1) % dead_feature_window == 0):
+            print("no l2 resampling currently. Please use anthropic resampling")
+            # # Get the fraction of neurons active in the previous window
+            # feature_sparsity = act_freq_scores / n_frac_active_tokens
+            # is_dead = (feature_sparsity < sparse_autoencoder.cfg.dead_feature_threshold)
+            
+            # # if standard resampling <- do this
+            # n_resampled_neurons = sparse_autoencoder.resample_neurons(
+            #     activation_store.next_batch(), 
+            #     feature_sparsity, 
+            #     feature_reinit_scale,
+            #     optimizer
+            # )
+            # # for all the dead neurons, set the feature sparsity to the dead feature threshold
+            # act_freq_scores[is_dead] = sparse_autoencoder.cfg.dead_feature_threshold * n_frac_active_tokens
+            # if n_resampled_neurons > 0:
+            #     print(f"Resampled {n_resampled_neurons} neurons")
+            # if use_wandb:
+            #     wandb.log(
+            #         {
+            #             "metrics/n_resampled_neurons": n_resampled_neurons,
+            #         },
+            #         step=n_training_steps,
+            #     )
+            # n_resampled_neurons = 0
 
-        # Forward and Backward Passes
+
+        if (steps_before_reset > 0) and n_training_steps > 0:
+            steps_before_reset -= 1
+            optimizer.param_groups[0]['lr'] += increment
+            if steps_before_reset == 0:
+                optimizer.param_groups[0]['lr'] = current_lr
+        else:
+            scheduler.step()
+    
         optimizer.zero_grad()
+        
+        # Forward and Backward Passes
         sae_in = activation_store.next_batch()
         sae_out, feature_acts, loss, mse_loss, l1_loss = sparse_autoencoder(sae_in)
         n_training_tokens += batch_size
@@ -174,7 +211,7 @@ def train_sae_on_language_model(
         loss.backward()
         sparse_autoencoder.remove_gradient_parallel_to_decoder_directions()
         optimizer.step()
-        scheduler.step()
+
 
         # checkpoint if at checkpoint frequency
         if n_checkpoints > 0 and n_training_tokens > checkpoint_thresholds[0]:
@@ -262,45 +299,45 @@ def run_evals(sparse_autoencoder: SparseAutoencoder, activation_store: Activatio
         
         
     # Visualizations to show L0 / MSE distributions
-    l0 = (feature_acts > 0).float().sum(-1)
-    per_token_l2_loss = (sae_out - original_act).pow(2).sum(dim=-1).squeeze()
+    # l0 = (feature_acts > 0).float().sum(-1)
+    # per_token_l2_loss = (sae_out - original_act).pow(2).sum(dim=-1).squeeze()
     
-    fig = px.scatter(
-        x = per_token_l2_loss.flatten().cpu().numpy(),
-        y = l0.flatten().cpu().numpy(),
-        color = np.arange(per_token_l2_loss.shape[1]).repeat(per_token_l2_loss.shape[0]),
-        opacity=0.5,
-        labels = {"color": "position", "x": "MSE Loss", "y": "L0"},
-        title = "L0 vs MSE Loss",
-        marginal_x="histogram",
-        marginal_y="histogram",
-    )
-    wandb.log({"plots/l0_vs_mse_loss": wandb.Plotly(fig)}, step = n_training_steps)
+    # fig = px.scatter(
+    #     x = per_token_l2_loss.flatten().cpu().numpy(),
+    #     y = l0.flatten().cpu().numpy(),
+    #     color = np.arange(per_token_l2_loss.shape[1]).repeat(per_token_l2_loss.shape[0]),
+    #     opacity=0.5,
+    #     labels = {"color": "position", "x": "MSE Loss", "y": "L0"},
+    #     title = "L0 vs MSE Loss",
+    #     marginal_x="histogram",
+    #     marginal_y="histogram",
+    # )
+    # wandb.log({"plots/l0_vs_mse_loss": wandb.Plotly(fig)}, step = n_training_steps)
     
-    fig = px.scatter(
-        x =  per_token_l2_loss.flatten().cpu().numpy(),
-        y = l2_norm_in.flatten().cpu().numpy(),
-        color = np.arange(per_token_l2_loss.shape[1]).repeat(per_token_l2_loss.shape[0]),
-        opacity=0.5,
-        labels={"color": "position", "x": "MSE Loss", "y": "L2 Norm"},
-        title = "L2 Norm vs MSE Loss",
-        marginal_x="histogram",
-        marginal_y="histogram",
-    )
-    wandb.log({"plots/l2_norm_vs_mse_loss": wandb.Plotly(fig)}, step = n_training_steps)
+    # fig = px.scatter(
+    #     x =  per_token_l2_loss.flatten().cpu().numpy(),
+    #     y = l2_norm_in.flatten().cpu().numpy(),
+    #     color = np.arange(per_token_l2_loss.shape[1]).repeat(per_token_l2_loss.shape[0]),
+    #     opacity=0.5,
+    #     labels={"color": "position", "x": "MSE Loss", "y": "L2 Norm"},
+    #     title = "L2 Norm vs MSE Loss",
+    #     marginal_x="histogram",
+    #     marginal_y="histogram",
+    # )
+    # wandb.log({"plots/l2_norm_vs_mse_loss": wandb.Plotly(fig)}, step = n_training_steps)
 
     # if dealing with a head SAE, do the head metrics.
     if sparse_autoencoder.cfg.hook_point_head_index:
         
         # show patterns before/after
-        fig_patterns_original = px.imshow(patterns_original[0].numpy(), title="original attn scores",
-            color_continuous_midpoint=0, color_continuous_scale="RdBu")
-        fig_patterns_original.update_layout(coloraxis_showscale=False)         # hide colorbar 
-        wandb.log({"attention/patterns_original": wandb.Plotly(fig_patterns_original)}, step = n_training_steps)
-        fig_patterns_reconstructed = px.imshow(patterns_reconstructed[0].numpy(), title="reconstructed attn scores",
-                color_continuous_midpoint=0, color_continuous_scale="RdBu")
-        fig_patterns_reconstructed.update_layout(coloraxis_showscale=False)         # hide colorbar
-        wandb.log({"attention/patterns_reconstructed": wandb.Plotly(fig_patterns_reconstructed)}, step = n_training_steps)
+        # fig_patterns_original = px.imshow(patterns_original[0].numpy(), title="original attn scores",
+        #     color_continuous_midpoint=0, color_continuous_scale="RdBu")
+        # fig_patterns_original.update_layout(coloraxis_showscale=False)         # hide colorbar 
+        # wandb.log({"attention/patterns_original": wandb.Plotly(fig_patterns_original)}, step = n_training_steps)
+        # fig_patterns_reconstructed = px.imshow(patterns_reconstructed[0].numpy(), title="reconstructed attn scores",
+        #         color_continuous_midpoint=0, color_continuous_scale="RdBu")
+        # fig_patterns_reconstructed.update_layout(coloraxis_showscale=False)         # hide colorbar
+        # wandb.log({"attention/patterns_reconstructed": wandb.Plotly(fig_patterns_reconstructed)}, step = n_training_steps)
         
         kl_result_reconstructed = kl_divergence_attention(patterns_original, patterns_reconstructed)
         kl_result_reconstructed = kl_result_reconstructed.sum(dim=-1).numpy()
@@ -349,12 +386,12 @@ def get_recons_loss(sparse_autoencder, model, activation_store, batch_tokens):
 
 
 def replacement_hook(mlp_post, hook, encoder):
-    mlp_post_reconstr = encoder(mlp_post)[0]
-    return mlp_post_reconstr
+    activations =  encoder(mlp_post)[0].to(mlp_post.dtype)
+    return activations
 
 
 def mean_ablate_hook(mlp_post, hook):
-    mlp_post[:] = mlp_post.mean([0, 1])
+    mlp_post[:] = mlp_post.mean([0, 1]).to(mlp_post.dtype)
     return mlp_post
 
 
