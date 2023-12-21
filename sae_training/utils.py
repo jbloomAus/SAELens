@@ -39,6 +39,10 @@ class LMSparseAutoencoderSessionloader():
         if torch.backends.mps.is_available():
             cfg = torch.load(path, map_location="mps")["cfg"]
             cfg.device = "mps"
+        elif torch.cuda.is_available():
+            cfg = torch.load(path, map_location="cuda")["cfg"]
+        else:
+            cfg = torch.load(path, map_location="cpu")["cfg"]
 
         model, _, activations_loader = cls(cfg).load_session()
         sparse_autoencoder = SparseAutoencoder.load_from_pretrained(path)

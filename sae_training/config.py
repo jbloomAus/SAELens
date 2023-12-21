@@ -52,6 +52,7 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
 
     # SAE Parameters
     expansion_factor: int = 4
+    from_pretrained_path: Optional[str] = None,
     
     # Training Parameters
     l1_coefficient: float = 1e-3

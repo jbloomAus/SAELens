@@ -13,8 +13,14 @@ def language_model_sae_runner(cfg):
     """
     
     """
-    loader = LMSparseAutoencoderSessionloader(cfg)
-    model, sparse_autoencoder, activations_loader = loader.load_session()
+    
+    if cfg.from_pretrained_path is not None:
+        model, sparse_autoencoder, activations_loader = LMSparseAutoencoderSessionloader.load_session_from_pretrained(
+            cfg.from_pretrained_path)
+        cfg = sparse_autoencoder.cfg
+    else:
+        loader = LMSparseAutoencoderSessionloader(cfg)
+        model, sparse_autoencoder, activations_loader = loader.load_session()
 
     if cfg.log_to_wandb:
         wandb.init(project=cfg.wandb_project, config=cfg, name=cfg.run_name)
