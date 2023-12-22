@@ -311,6 +311,8 @@ class SparseAutoencoder(HookedRootModule):
             # del normal_logits
             
             normal_activations = normal_activations_cache[self.cfg.hook_point]
+            if self.cfg.hook_point_head_index is not None:
+                normal_activations = normal_activations[:,:,self.cfg.hook_point_head_index]
 
             # calculate the difference in loss
             changes_in_loss = ce_loss_with_recons - ce_loss_without_recons
