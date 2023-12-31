@@ -66,7 +66,13 @@ def train_sae_on_language_model(
         if (feature_sampling_method.lower()=="anthropic") and ((n_training_steps + 1) % dead_feature_window == 0):
             
             feature_sparsity = act_freq_scores / n_frac_active_tokens
+            
+            # if reset criterion is frequency in window, then then use that to generate indices.
             dead_neuron_indices = (feature_sparsity < sparse_autoencoder.cfg.dead_feature_threshold).nonzero(as_tuple=False)[:, 0]
+            
+            # if reset criterion is has_fired, then use that to generate indices.
+            # dead_neuron_indices = (act_freq_scores == 0).nonzero(as_tuple=False)[:, 0]
+            
             if len(dead_neuron_indices) > 0:
                 sparse_autoencoder.resample_neurons_anthropic(
                     dead_neuron_indices, 
@@ -76,9 +82,10 @@ def train_sae_on_language_model(
                 )
 
                 if use_wandb:
+                    n_resampled_neurons = min(len(dead_neuron_indices), sparse_autoencoder.cfg.store_batch_size * sparse_autoencoder.cfg.resample_batches)
                     wandb.log(
                         {
-                            "metrics/n_resampled_neurons": len(dead_neuron_indices),
+                            "metrics/n_resampled_neurons": n_resampled_neurons,
                         },
                         step=n_training_steps,
                     )
@@ -90,7 +97,6 @@ def train_sae_on_language_model(
                 optimizer.param_groups[0]['lr'] = reduced_lr
                 steps_before_reset = 1000
             
-
         # Resample dead neurons
         if (feature_sampling_method == "l2") and ((n_training_steps + 1) % dead_feature_window == 0):
             print("no l2 resampling currently. Please use anthropic resampling")
@@ -117,6 +123,26 @@ def train_sae_on_language_model(
             #         step=n_training_steps,
             #     )
             # n_resampled_neurons = 0
+            
+        # after resampling, reset the sparsity:
+        if (n_training_steps + 1) % feature_sampling_window == 0:
+            
+            feature_sparsity = act_freq_scores / n_frac_active_tokens
+            log_feature_sparsity = torch.log10(feature_sparsity + 1e-10).detach().cpu()
+
+            if use_wandb:
+                wandb_histogram = wandb.Histogram(log_feature_sparsity.numpy())
+                wandb.log(
+                    {   
+                        "metrics/mean_log10_feature_sparsity": log_feature_sparsity.mean().item(),
+                        "plots/feature_density_line_chart": wandb_histogram,
+                    },
+                    step=n_training_steps,
+                )
+            
+            act_freq_scores = torch.zeros(sparse_autoencoder.cfg.d_sae, device=sparse_autoencoder.cfg.device)
+            n_frac_active_tokens = 0
+
 
 
         if (steps_before_reset > 0) and n_training_steps > 0:
@@ -410,8 +436,6 @@ def get_recons_loss(sparse_autoencoder, model, activation_store, batch_tokens):
     score = (zero_abl_loss - recons_loss) / (zero_abl_loss - loss)
 
     return score, loss, recons_loss, zero_abl_loss
-
-
 
 
 def mean_ablate_hook(mlp_post, hook):

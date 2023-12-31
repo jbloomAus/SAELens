@@ -208,11 +208,15 @@ class SparseAutoencoder(HookedRootModule):
         )
 
         # sample according to losses
+        probs = global_loss_increases / global_loss_increases.sum()
         sample_indices = torch.multinomial(
-            global_loss_increases / global_loss_increases.sum(),
-            len(dead_neuron_indices), 
+            probs,
+            min(len(dead_neuron_indices), probs.shape[0]),
             replacement=False,
         )
+        # if we don't have enough samples for for all the dead neurons, take the first n
+        if sample_indices.shape[0] < len(dead_neuron_indices):
+            dead_neuron_indices = dead_neuron_indices[:sample_indices.shape[0]]
 
         # Replace W_dec with normalized differences in activations
         self.W_dec.data[dead_neuron_indices, :] = (

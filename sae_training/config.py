@@ -62,11 +62,11 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
     train_batch_size: int = 4096
     
     # Resampling protocol args
-    feature_sampling_window: int = 200
+    feature_sampling_window: int = 2000
     feature_sampling_method: str = "Anthropic" # None or Anthropic
     resample_batches: int = 32
     feature_reinit_scale: float = 0.2
-    dead_feature_window: int = 100 # unless this window is larger feature sampling,
+    dead_feature_window: int = 1000 # unless this window is larger feature sampling,
     dead_feature_threshold: float = 1e-8
     
     # WANDB
@@ -107,8 +107,13 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
         print(f"Total wandb updates: {total_wandb_updates}")
         
         # how many times will we sample dead neurons?
+        # assert self.dead_feature_window <= self.feature_sampling_window, "dead_feature_window must be smaller than feature_sampling_window"
         n_dead_feature_samples = total_training_steps // self.dead_feature_window - 1 
-        print(f"n_dead_feature_samples: {n_dead_feature_samples}")
+        n_feature_window_samples = total_training_steps // self.feature_sampling_window - 1
+        print(f"We will reset neurons {n_dead_feature_samples} times.")
+        print(f"We will reset the sparsity calculation {n_feature_window_samples} times.")
+        # print("Number tokens in dead feature calculation window: ", self.dead_feature_window * self.train_batch_size)
+        print(f"Number tokens in sparsity calculation window: {self.feature_sampling_window * self.train_batch_size:.2e}")
 
 @dataclass
 class CacheActivationsRunnerConfig(RunnerConfig):

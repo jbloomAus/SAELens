@@ -135,7 +135,7 @@ class ActivationsStore:
         act_name = self.cfg.hook_point
         hook_point_layer = self.cfg.hook_point_layer
         if self.cfg.hook_point_head_index is not None:
-            loss, activations = self.model.run_with_cache(
+            activations = self.model.run_with_cache(
                 batch_tokens,
                 names_filter=act_name,
                 stop_at_layer=hook_point_layer+1
