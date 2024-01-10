@@ -11,6 +11,7 @@ from functools import partial
 import einops
 import torch
 import torch.nn.functional as F
+from geom_median.torch import compute_geometric_median
 from jaxtyping import Float
 from torch import Tensor, nn
 from torch.distributions.categorical import Categorical
@@ -103,6 +104,32 @@ class SparseAutoencoder(HookedRootModule):
         loss = mse_loss + l1_loss
 
         return sae_out, feature_acts, loss, mse_loss, l1_loss
+
+    @torch.no_grad()
+    def initialize_b_dec_with_geometric_median(self, activation_store):
+        
+        previous_b_dec = self.b_dec.clone()
+        
+        activations_list = []
+        for _ in range(50): #
+            activations = activation_store.next_batch()
+            activations_list.append(activations)
+            
+        all_activations = torch.concat(activations_list, dim=0)
+        out = compute_geometric_median(
+                all_activations.detach().cpu(), 
+                skip_typechecks=True, 
+                maxiter=100_000, per_component=True).median
+        out = torch.tensor(out, dtype=self.dtype, device=self.device)
+        
+        previous_distances = torch.norm(all_activations - previous_b_dec.to("mps"), dim=-1)
+        distances = torch.norm(all_activations - out.to("mps"), dim=-1)
+        
+        print("Reinitializing b_dec eometric median of activations")
+        print(f"Previous distances: {previous_distances.median().item()}")
+        print(f"New distances: {distances.mean().item()}")
+        
+        self.b_dec.data = out
 
     @torch.no_grad()
     def resample_neurons_l2(

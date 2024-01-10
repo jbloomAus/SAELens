@@ -52,6 +52,7 @@ def train_sae_on_language_model(
         training_steps=total_training_steps,
         lr_end=sparse_autoencoder.cfg.lr / 10, # heuristic for now. 
     )
+    sparse_autoencoder.initialize_b_dec_with_geometric_median(activation_store)
     sparse_autoencoder.train()
     
 
@@ -68,10 +69,10 @@ def train_sae_on_language_model(
             feature_sparsity = act_freq_scores / n_frac_active_tokens
             
             # if reset criterion is frequency in window, then then use that to generate indices.
-            dead_neuron_indices = (feature_sparsity < sparse_autoencoder.cfg.dead_feature_threshold).nonzero(as_tuple=False)[:, 0]
+            # dead_neuron_indices = (feature_sparsity < sparse_autoencoder.cfg.dead_feature_threshold).nonzero(as_tuple=False)[:, 0]
             
             # if reset criterion is has_fired, then use that to generate indices.
-            # dead_neuron_indices = (act_freq_scores == 0).nonzero(as_tuple=False)[:, 0]
+            dead_neuron_indices = (act_freq_scores == 0).nonzero(as_tuple=False)[:, 0]
             
             if len(dead_neuron_indices) > 0:
                 sparse_autoencoder.resample_neurons_anthropic(
@@ -92,10 +93,10 @@ def train_sae_on_language_model(
                 
                 # for now, we'll hardcode this.
                 current_lr = scheduler.get_last_lr()[0]
-                reduced_lr = current_lr * 0.1
-                increment = (current_lr - reduced_lr) / 1000
+                reduced_lr = current_lr / 10_000
+                increment = (current_lr - reduced_lr) / 10_000
                 optimizer.param_groups[0]['lr'] = reduced_lr
-                steps_before_reset = 1000
+                steps_before_reset = 10_000
             
         # Resample dead neurons
         if (feature_sampling_method == "l2") and ((n_training_steps + 1) % dead_feature_window == 0):
@@ -106,7 +107,7 @@ def train_sae_on_language_model(
             
             # # if standard resampling <- do this
             # n_resampled_neurons = sparse_autoencoder.resample_neurons(
-            #     activation_store.next_batch(), 
+            #     activationcuda_store.next_batch(), 
             #     feature_sparsity, 
             #     feature_reinit_scale,
             #     optimizer
@@ -210,23 +211,23 @@ def train_sae_on_language_model(
             if use_wandb and ((n_training_steps + 1) % (wandb_log_frequency * 10) == 0):
                 run_evals(sparse_autoencoder, activation_store, model, n_training_steps)
                 
-                log_feature_sparsity = torch.log10(feature_sparsity + 1e-10).detach().cpu()
+                # log_feature_sparsity = torch.log10(feature_sparsity + 1e-10).detach().cpu()
                 
-                # sparsity_line_chart = px.scatter(
-                #     y = log_feature_sparsity,
-                #     title="Feature Sparsity",
-                #     labels={"y": "log10(sparsity)", "x": "FeatureID"},
-                #     range_y=[-8, 0],
-                #     marginal_y="histogram",
+                # # sparsity_line_chart = px.scatter(
+                # #     y = log_feature_sparsity,
+                # #     title="Feature Sparsity",
+                # #     labels={"y": "log10(sparsity)", "x": "FeatureID"},
+                # #     range_y=[-8, 0],
+                # #     marginal_y="histogram",
+                # # )
+                # wandb_histogram = wandb.Histogram(log_feature_sparsity.numpy())
+                # wandb.log(
+                #     {   
+                #         "metrics/mean_log10_feature_sparsity": log_feature_sparsity.mean().item(),
+                #         "plots/feature_density_line_chart": wandb_histogram,
+                #     },
+                #     step=n_training_steps,
                 # )
-                wandb_histogram = wandb.Histogram(log_feature_sparsity.numpy())
-                wandb.log(
-                    {   
-                        "metrics/mean_log10_feature_sparsity": log_feature_sparsity.mean().item(),
-                        "plots/feature_density_line_chart": wandb_histogram,
-                    },
-                    step=n_training_steps,
-                )
                 
 
 
