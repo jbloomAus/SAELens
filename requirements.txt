@@ -11,3 +11,4 @@ pylint==3.0.2
 black==23.11.0
 pytest==7.4.3
 git+https://github.com/callummcdougall/eindex.git
+geom_median==0.1.0
