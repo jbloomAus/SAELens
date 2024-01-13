@@ -25,6 +25,7 @@ class RunnerConfig(ABC):
     
     # SAE Parameters
     d_in: int = 512
+
     
     # Activation Store Parameters
     n_batches_in_buffer: int = 20
@@ -51,6 +52,7 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
     """
 
     # SAE Parameters
+    b_dec_init_method: str = "geometric_median"
     expansion_factor: int = 4
     from_pretrained_path: Optional[str] = None
     
@@ -85,8 +87,14 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
         self.tokens_per_buffer = self.train_batch_size * self.context_size * self.n_batches_in_buffer
         
         self.run_name = f"{self.d_sae}-L1-{self.l1_coefficient}-LR-{self.lr}-Tokens-{self.total_training_tokens:3.3e}"
+        
         if self.feature_sampling_method not in [None, "l2", "anthropic"]:
             raise ValueError(f"feature_sampling_method must be None, l2, or anthropic. Got {self.feature_sampling_method}")
+        
+        if self.b_dec_init_method not in ["geometric_median", "mean", "zeros"]:
+            raise ValueError(f"b_dec_init_method must be geometric_median, mean, or zeros. Got {self.b_dec_init_method}")
+        if self.b_dec_init_method == "zeros":
+            print("Warning: We are initializing b_dec to zeros. This is probably not what you want.")
         
         self.device = torch.device(self.device)
         
@@ -108,8 +116,8 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
         
         # how many times will we sample dead neurons?
         # assert self.dead_feature_window <= self.feature_sampling_window, "dead_feature_window must be smaller than feature_sampling_window"
-        n_dead_feature_samples = total_training_steps // self.dead_feature_window - 1 
-        n_feature_window_samples = total_training_steps // self.feature_sampling_window - 1
+        n_dead_feature_samples = total_training_steps // self.dead_feature_window 
+        n_feature_window_samples = total_training_steps // self.feature_sampling_window 
         print(f"We will reset neurons {n_dead_feature_samples} times.")
         print(f"We will reset the sparsity calculation {n_feature_window_samples} times.")
         # print("Number tokens in dead feature calculation window: ", self.dead_feature_window * self.train_batch_size)

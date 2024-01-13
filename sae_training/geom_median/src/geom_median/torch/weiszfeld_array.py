@@ -1,7 +1,9 @@
+from types import SimpleNamespace
+
 import numpy as np
 import torch
-from types import SimpleNamespace
-    
+import tqdm
+
 
 def geometric_median_array(points, weights, eps=1e-6, maxiter=100, ftol=1e-20):
     """
@@ -25,7 +27,8 @@ def geometric_median_array(points, weights, eps=1e-6, maxiter=100, ftol=1e-20):
 
         # Weiszfeld iterations
         early_termination = False
-        for _ in range(maxiter):
+        pbar = tqdm.tqdm(range(maxiter))
+        for _ in pbar:
             prev_obj_value = objective_value
             norms = torch.stack([torch.linalg.norm((p - median).view(-1)) for p in points])
             new_weights = weights / torch.clamp(norms, min=eps)
@@ -36,6 +39,8 @@ def geometric_median_array(points, weights, eps=1e-6, maxiter=100, ftol=1e-20):
             if abs(prev_obj_value - objective_value) <= ftol * objective_value:
                 early_termination = True
                 break
+            
+            pbar.set_description(f"Objective value: {objective_value:.4f}")
 
     median = weighted_average(points, new_weights)  # allow autodiff to track it
     return SimpleNamespace(
@@ -64,7 +69,8 @@ def geometric_median_per_component(points, weights, eps=1e-6, maxiter=100, ftol=
     termination = []
     logs = []
     new_weights = []
-    for component in components:
+    pbar = tqdm.tqdm(components)
+    for component in pbar:
         ret = geometric_median_array(component, weights, eps, maxiter, ftol)
         median.append(ret.median)
         new_weights.append(ret.new_weights)

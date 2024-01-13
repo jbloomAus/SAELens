@@ -52,7 +52,7 @@ def train_sae_on_language_model(
         training_steps=total_training_steps,
         lr_end=sparse_autoencoder.cfg.lr / 10, # heuristic for now. 
     )
-    sparse_autoencoder.initialize_b_dec_with_geometric_median(activation_store)
+    sparse_autoencoder.initialize_b_dec(activation_store)
     sparse_autoencoder.train()
     
 
@@ -180,7 +180,7 @@ def train_sae_on_language_model(
                     {
                         # losses
                         "losses/mse_loss": mse_loss.item(),
-                        "losses/l1_loss": l1_loss.item(),
+                        "losses/l1_loss": l1_loss.item() / sparse_autoencoder.l1_coefficient, # normalize by l1 coefficient
                         "losses/overall_loss": loss.item(),
                         # variance explained
                         "metrics/explained_variance": explained_variance.mean().item(),

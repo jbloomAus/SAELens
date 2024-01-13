@@ -11,12 +11,13 @@ from functools import partial
 import einops
 import torch
 import torch.nn.functional as F
-from geom_median.torch import compute_geometric_median
 from jaxtyping import Float
 from torch import Tensor, nn
 from torch.distributions.categorical import Categorical
 from tqdm import tqdm
 from transformer_lens.hook_points import HookedRootModule, HookPoint
+
+from sae_training.geom_median.src.geom_median.torch import compute_geometric_median
 
 
 class SparseAutoencoder(HookedRootModule):
@@ -106,30 +107,54 @@ class SparseAutoencoder(HookedRootModule):
         return sae_out, feature_acts, loss, mse_loss, l1_loss
 
     @torch.no_grad()
+    def initialize_b_dec(self, activation_store):
+        
+        if self.cfg.b_dec_init_method == "geometric_median":
+            self.initialize_b_dec_with_geometric_median(activation_store)
+        elif self.cfg.b_dec_init_method == "mean":
+            self.initialize_b_dec_with_mean(activation_store)
+        elif self.cfg.b_dec_init_method == "zeros":
+            pass
+        else:
+            raise ValueError(f"Unexpected b_dec_init_method: {self.cfg.b_dec_init_method}")
+
+    @torch.no_grad()
     def initialize_b_dec_with_geometric_median(self, activation_store):
         
-        previous_b_dec = self.b_dec.clone()
-        
-        activations_list = []
-        for _ in range(50): #
-            activations = activation_store.next_batch()
-            activations_list.append(activations)
-            
-        all_activations = torch.concat(activations_list, dim=0)
+        previous_b_dec = self.b_dec.clone().cpu()
+        all_activations = activation_store.storage_buffer.detach().cpu()
         out = compute_geometric_median(
-                all_activations.detach().cpu(), 
+                all_activations,
                 skip_typechecks=True, 
-                maxiter=100_000, per_component=True).median
+                maxiter=100, per_component=False).median
+        
+        
+        previous_distances = torch.norm(all_activations - previous_b_dec, dim=-1)
+        distances = torch.norm(all_activations - out, dim=-1)
+        
+        print("Reinitializing b_dec with geometric median of activations")
+        print(f"Previous distances: {previous_distances.median(0).values.mean().item()}")
+        print(f"New distances: {distances.median(0).values.mean().item()}")
+        
         out = torch.tensor(out, dtype=self.dtype, device=self.device)
-        
-        previous_distances = torch.norm(all_activations - previous_b_dec.to("mps"), dim=-1)
-        distances = torch.norm(all_activations - out.to("mps"), dim=-1)
-        
-        print("Reinitializing b_dec eometric median of activations")
-        print(f"Previous distances: {previous_distances.median().item()}")
-        print(f"New distances: {distances.mean().item()}")
-        
         self.b_dec.data = out
+        
+    @torch.no_grad()
+    def initialize_b_dec_with_mean(self, activation_store):
+        
+        previous_b_dec = self.b_dec.clone().cpu()
+        all_activations = activation_store.storage_buffer.detach().cpu()
+        out = all_activations.mean(dim=0)
+        
+        previous_distances = torch.norm(all_activations - previous_b_dec, dim=-1)
+        distances = torch.norm(all_activations - out, dim=-1)
+        
+        print("Reinitializing b_dec with mean of activations")
+        print(f"Previous distances: {previous_distances.median(0).values.mean().item()}")
+        print(f"New distances: {distances.median(0).values.mean().item()}")
+        
+        self.b_dec.data = out.to(self.dtype).to(self.device)
+        
 
     @torch.no_grad()
     def resample_neurons_l2(
