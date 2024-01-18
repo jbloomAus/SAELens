@@ -69,12 +69,16 @@ def train_sae_on_language_model(
             feature_sparsity = act_freq_scores / n_frac_active_tokens
             
             # if reset criterion is frequency in window, then then use that to generate indices.
-            # dead_neuron_indices = (feature_sparsity < sparse_autoencoder.cfg.dead_feature_threshold).nonzero(as_tuple=False)[:, 0]
-            
-            # if reset criterion is has_fired, then use that to generate indices.
-            dead_neuron_indices = (act_freq_scores == 0).nonzero(as_tuple=False)[:, 0]
+            if sparse_autoencoder.cfg.dead_feature_estimation_method == "no_fire":
+                dead_neuron_indices = (act_freq_scores == 0).nonzero(as_tuple=False)[:, 0]
+            elif sparse_autoencoder.cfg.dead_feature_estimation_method == "frequency":
+                dead_neuron_indices = (feature_sparsity < sparse_autoencoder.cfg.dead_feature_threshold).nonzero(as_tuple=False)[:, 0]
             
             if len(dead_neuron_indices) > 0:
+                
+                if len(dead_neuron_indices) > sparse_autoencoder.cfg.resample_batches * sparse_autoencoder.cfg.store_batch_size:
+                    print("Warning: more dead neurons than number of tokens. Consider sampling more tokens when resampling.")
+                
                 sparse_autoencoder.resample_neurons_anthropic(
                     dead_neuron_indices, 
                     model,
@@ -97,6 +101,8 @@ def train_sae_on_language_model(
                 increment = (current_lr - reduced_lr) / 10_000
                 optimizer.param_groups[0]['lr'] = reduced_lr
                 steps_before_reset = 10_000
+            else:
+                print("No dead neurons, skipping resampling")
             
         # Resample dead neurons
         if (feature_sampling_method == "l2") and ((n_training_steps + 1) % dead_feature_window == 0):
