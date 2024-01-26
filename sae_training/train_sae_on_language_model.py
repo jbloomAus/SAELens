@@ -3,12 +3,12 @@ from functools import partial
 import numpy as np
 import plotly_express as px
 import torch
+import wandb
 from torch.optim import Adam
 from tqdm import tqdm
 from transformer_lens import HookedTransformer
 from transformer_lens.utils import get_act_name
 
-import wandb
 from sae_training.activations_store import ActivationsStore
 from sae_training.optim import get_scheduler
 from sae_training.sparse_autoencoder import SparseAutoencoder
@@ -29,6 +29,8 @@ def train_sae_on_language_model(
     wandb_log_frequency: int = 50,
 ):
 
+    if feature_sampling_method is not None:
+        feature_sampling_method = feature_sampling_method.lower()
 
     total_training_tokens = sparse_autoencoder.cfg.total_training_tokens
     total_training_steps = total_training_tokens // batch_size
@@ -64,7 +66,7 @@ def train_sae_on_language_model(
         sparse_autoencoder.set_decoder_norm_to_unit_norm()
 
 
-        if (feature_sampling_method.lower()=="anthropic") and ((n_training_steps + 1) % dead_feature_window == 0):
+        if (feature_sampling_method=="anthropic") and ((n_training_steps + 1) % dead_feature_window == 0):
             
             feature_sparsity = act_freq_scores / n_frac_active_tokens
             
