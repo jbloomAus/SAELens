@@ -1,0 +1,38 @@
+{"sentence1": "The animal is a mammal.", "sentence2": "The animal is a bird.", "gold_label": "false", "depth": -1, "sentence1_lex": "mammal", "sentence2_lex": "bird"}
+{"sentence1": "The vehicle is electric.", "sentence2": "The vehicle is a gasoline car.", "gold_label": "false", "depth": -1, "sentence1_lex": "electric", "sentence2_lex": "gasoline car"}
+{"sentence1": "The computer is running Windows.", "sentence2": "The computer is running macOS.", "gold_label": "false", "depth": -1, "sentence1_lex": "Windows", "sentence2_lex": "macOS"}
+{"sentence1": "The tree is an oak.", "sentence2": "The tree is a pine.", "gold_label": "false", "depth": -1, "sentence1_lex": "oak", "sentence2_lex": "pine"}
+{"sentence1": "The book is a novel.", "sentence2": "The book is a biography.", "gold_label": "false", "depth": -1, "sentence1_lex": "novel", "sentence2_lex": "biography"}
+{"sentence1": "The musician plays jazz.", "sentence2": "The musician plays rock.", "gold_label": "false", "depth": -1, "sentence1_lex": "jazz", "sentence2_lex": "rock"}
+{"sentence1": "The phone is an Android device.", "sentence2": "The phone is an iPhone.", "gold_label": "false", "depth": -1, "sentence1_lex": "Android", "sentence2_lex": "iPhone"}
+{"sentence1": "The dessert is ice cream.", "sentence2": "The dessert is cake.", "gold_label": "false", "depth": -1, "sentence1_lex": "ice cream", "sentence2_lex": "cake"}
+{"sentence1": "The season is summer.", "sentence2": "The season is winter.", "gold_label": "false", "depth": -1, "sentence1_lex": "summer", "sentence2_lex": "winter"}
+{"sentence1": "The drink is coffee.", "sentence2": "The drink is tea.", "gold_label": "false", "depth": -1, "sentence1_lex": "coffee", "sentence2_lex": "tea"}
+{"sentence1": "The artist uses watercolors.", "sentence2": "The artist uses acrylics.", "gold_label": "false", "depth": -1, "sentence1_lex": "watercolors", "sentence2_lex": "acrylics"}
+{"sentence1": "The sport is soccer.", "sentence2": "The sport is basketball.", "gold_label": "false", "depth": -1, "sentence1_lex": "soccer", "sentence2_lex": "basketball"}
+{"sentence1": "The jacket is made of leather.", "sentence2": "The jacket is made of wool.", "gold_label": "false", "depth": -1, "sentence1_lex": "leather", "sentence2_lex": "wool"}
+{"sentence1": "The city is in Europe.", "sentence2": "The city is in Asia.", "gold_label": "false", "depth": -1, "sentence1_lex": "Europe", "sentence2_lex": "Asia"}
+{"sentence1": "The food is Italian cuisine.", "sentence2": "The food is Mexican cuisine.", "gold_label": "false", "depth": -1, "sentence1_lex": "Italian", "sentence2_lex": "Mexican"}
+{"sentence1": "The instrument is a piano.", "sentence2": "The instrument is a guitar.", "gold_label": "false", "depth": -1, "sentence1_lex": "piano", "sentence2_lex": "guitar"}
+{"sentence1": "The movie genre is comedy.", "sentence2": "The movie genre is horror.", "gold_label": "false", "depth": -1, "sentence1_lex": "comedy", "sentence2_lex": "horror"}
+{"sentence1": "The weather is rainy.", "sentence2": "The weather is sunny.", "gold_label": "false", "depth": -1, "sentence1_lex": "rainy", "sentence2_lex": "sunny"}
+{"sentence1": "The pet is a dog.", "sentence2": "The pet is a cat.", "gold_label": "false", "depth": -1, "sentence1_lex": "dog", "sentence2_lex": "cat"}
+{"sentence1": "The plant is a cactus.", "sentence2": "The plant is a fern.", "gold_label": "false", "depth": -1, "sentence1_lex": "cactus", "sentence2_lex": "fern"}
+{"sentence1": "The appliance is a refrigerator.", "sentence2": "The appliance is a microwave.", "gold_label": "false", "depth": -1, "sentence1_lex": "refrigerator", "sentence2_lex": "microwave"}
+{"sentence1": "The fabric is silk.", "sentence2": "The fabric is cotton.", "gold_label": "false", "depth": -1, "sentence1_lex": "silk", "sentence2_lex": "cotton"}
+{"sentence1": "The bird is a parrot.", "sentence2": "The bird is an eagle.", "gold_label": "false", "depth": -1, "sentence1_lex": "parrot", "sentence2_lex": "eagle"}
+{"sentence1": "The fish is a salmon.", "sentence2": "The fish is a tuna.", "gold_label": "false", "depth": -1, "sentence1_lex": "salmon", "sentence2_lex": "tuna"}
+{"sentence1": "The gemstone is a diamond.", "sentence2": "The gemstone is a ruby.", "gold_label": "false", "depth": -1, "sentence1_lex": "diamond", "sentence2_lex": "ruby"}
+{"sentence1": "The beverage is a soda.", "sentence2": "The beverage is a smoothie.", "gold_label": "false", "depth": -1, "sentence1_lex": "soda", "sentence2_lex": "smoothie"}
+{"sentence1": "The vegetable is a carrot.", "sentence2": "The vegetable is a potato.", "gold_label": "false", "depth": -1, "sentence1_lex": "carrot", "sentence2_lex": "potato"}
+{"sentence1": "The fruit is a banana.", "sentence2": "The fruit is a strawberry.", "gold_label": "false", "depth": -1, "sentence1_lex": "banana", "sentence2_lex": "strawberry"}
+{"sentence1": "The computer component is a CPU.", "sentence2": "The computer component is a GPU.", "gold_label": "false", "depth": -1, "sentence1_lex": "CPU", "sentence2_lex": "GPU"}
+{"sentence1": "The natural phenomenon is a volcano.", "sentence2": "The natural phenomenon is an earthquake.", "gold_label": "false", "depth": -1, "sentence1_lex": "volcano", "sentence2_lex": "earthquake"}
+{"sentence1": "The clothing item is a dress.", "sentence2": "The clothing item is a suit.", "gold_label": "false", "depth": -1, "sentence1_lex": "dress", "sentence2_lex": "suit"}
+{"sentence1": "The furniture piece is a chair.", "sentence2": "The furniture piece is a table.", "gold_label": "false", "depth": -1, "sentence1_lex": "chair", "sentence2_lex": "table"}
+{"sentence1": "The painting is abstract.", "sentence2": "The painting is realistic.", "gold_label": "false", "depth": -1, "sentence1_lex": "abstract", "sentence2_lex": "realistic"}
+{"sentence1": "The academic subject is mathematics.", "sentence2": "The academic subject is history.", "gold_label": "false", "depth": -1, "sentence1_lex": "mathematics", "sentence2_lex": "history"}
+{"sentence1": "The musical instrument is a violin.", "sentence2": "The musical instrument is a drum.", "gold_label": "false", "depth": -1, "sentence1_lex": "violin", "sentence2_lex": "drum"}
+{"sentence1": "The season is spring.", "sentence2": "The season is autumn.", "gold_label": "false", "depth": -1, "sentence1_lex": "spring", "sentence2_lex": "autumn"}
+{"sentence1": "The beverage is alcoholic.", "sentence2": "The beverage is non-alcoholic.", "gold_label": "false", "depth": -1, "sentence1_lex": "alcoholic", "sentence2_lex": "non-alcoholic"}
+{"sentence1": "The electronic device is a laptop.", "sentence2": "The electronic device is a tablet.", "gold_label": "false", "depth": -1, "sentence1_lex": "laptop", "sentence2_lex": "tablet"}

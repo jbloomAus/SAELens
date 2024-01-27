@@ -165,3 +165,7 @@ checkpoints/
 data/
 artifacts/
 activations/
+
+*.html
+*.DS_Store
+
