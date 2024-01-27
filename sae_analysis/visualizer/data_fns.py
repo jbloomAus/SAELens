@@ -820,7 +820,8 @@ def get_feature_data(
         _logits = logits[feat]
 
         # Get data for logits histogram
-        logits_histogram_data.append(HistogramData(_logits, n_bins=40, tickmode="5 ticks"))
+        # logits_histogram_data.append(HistogramData(_logits, n_bins=40, tickmode="5 ticks"))
+        logits_histogram_data.append(HistogramData(_logits, n_bins=40, tickmode="ints"))
 
         # Get data for logits table
         top10_logits.append((TopK(_logits.topk(k=10, largest=False)), TopK(_logits.topk(k=10))))
