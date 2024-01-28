@@ -246,6 +246,17 @@ def train_sae_on_language_model(
                 
             
         n_training_steps += 1
+        
+    log_feature_sparsity_path = f"{sparse_autoencoder.cfg.checkpoint_path}/final_{sparse_autoencoder.get_name()}_log_feature_sparsity.pt"
+    sparse_autoencoder.save_model(path)
+    torch.save(log_feature_sparsity, log_feature_sparsity_path)
+    if cfg.log_to_wandb:
+        sparsity_artifact = wandb.Artifact(
+                f"{sparse_autoencoder.get_name()}_log_feature_sparsity", type="log_feature_sparsity", metadata=dict(cfg.__dict__)
+            )
+        sparsity_artifact.add_file(log_feature_sparsity_path)
+        wandb.log_artifact(sparsity_artifact)
+        
 
     return sparse_autoencoder
 
