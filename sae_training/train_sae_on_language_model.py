@@ -43,6 +43,7 @@ def train_sae_on_language_model(
     
     # track active features
     act_freq_scores = torch.zeros(sparse_autoencoder.cfg.d_sae, device=sparse_autoencoder.cfg.device)
+    n_forward_passes_since_fired = torch.zeros(sparse_autoencoder.cfg.d_sae, device=sparse_autoencoder.cfg.device)
     n_frac_active_tokens = 0
     
     optimizer = Adam(sparse_autoencoder.parameters(),
@@ -109,29 +110,6 @@ def train_sae_on_language_model(
         # Resample dead neurons
         if (feature_sampling_method == "l2") and ((n_training_steps + 1) % dead_feature_window == 0):
             print("no l2 resampling currently. Please use anthropic resampling")
-            # # Get the fraction of neurons active in the previous window
-            # feature_sparsity = act_freq_scores / n_frac_active_tokens
-            # is_dead = (feature_sparsity < sparse_autoencoder.cfg.dead_feature_threshold)
-            
-            # # if standard resampling <- do this
-            # n_resampled_neurons = sparse_autoencoder.resample_neurons(
-            #     activationcuda_store.next_batch(), 
-            #     feature_sparsity, 
-            #     feature_reinit_scale,
-            #     optimizer
-            # )
-            # # for all the dead neurons, set the feature sparsity to the dead feature threshold
-            # act_freq_scores[is_dead] = sparse_autoencoder.cfg.dead_feature_threshold * n_frac_active_tokens
-            # if n_resampled_neurons > 0:
-            #     print(f"Resampled {n_resampled_neurons} neurons")
-            # if use_wandb:
-            #     wandb.log(
-            #         {
-            #             "metrics/n_resampled_neurons": n_resampled_neurons,
-            #         },
-            #         step=n_training_steps,
-            #     )
-            # n_resampled_neurons = 0
             
         # after resampling, reset the sparsity:
         if (n_training_steps + 1) % feature_sampling_window == 0:
@@ -164,9 +142,18 @@ def train_sae_on_language_model(
     
         optimizer.zero_grad()
         
-        # Forward and Backward Passes
+        ghost_grad_neuron_mask = (n_forward_passes_since_fired > sparse_autoencoder.cfg.dead_feature_window).bool()
         sae_in = activation_store.next_batch()
-        sae_out, feature_acts, loss, mse_loss, l1_loss, ghost_grad_loss = sparse_autoencoder(sae_in)
+        
+        # Forward and Backward Passes
+        sae_out, feature_acts, loss, mse_loss, l1_loss, ghost_grad_loss = sparse_autoencoder(
+            sae_in,
+            ghost_grad_neuron_mask,
+        )
+        did_fire = ((feature_acts > 0).float().sum(-2) > 0)
+        n_forward_passes_since_fired += 1
+        n_forward_passes_since_fired[did_fire] = 0
+        
         n_training_tokens += batch_size
 
         with torch.no_grad():
@@ -189,12 +176,15 @@ def train_sae_on_language_model(
                         # losses
                         "losses/mse_loss": mse_loss.item(),
                         "losses/l1_loss": l1_loss.item() / sparse_autoencoder.l1_coefficient, # normalize by l1 coefficient
+                        "losses/ghost_grad_loss": ghost_grad_loss.item(),
                         "losses/overall_loss": loss.item(),
                         # variance explained
                         "metrics/explained_variance": explained_variance.mean().item(),
                         "metrics/explained_variance_std": explained_variance.std().item(),
                         "metrics/l0": l0.item(),
                         # sparsity
+                        "sparsity/mean_passes_since_fired": n_forward_passes_since_fired.mean().item(),
+                        "sparsity/n_passes_since_fired_over_threshold": ghost_grad_neuron_mask.sum().item(),
                         "sparsity/below_1e-5": (feature_sparsity < 1e-5)
                         .float()
                         .mean()
@@ -273,7 +263,7 @@ def run_evals(sparse_autoencoder: SparseAutoencoder, activation_store: Activatio
     else:
         original_act = cache[sparse_autoencoder.cfg.hook_point]
         
-    sae_out, feature_acts, _, _, _ = sparse_autoencoder(
+    sae_out, feature_acts, _, _, _, _ = sparse_autoencoder(
         original_act
     )
     patterns_original = cache[get_act_name("pattern", hook_point_layer)][:,hook_point_head_index].detach().cpu()

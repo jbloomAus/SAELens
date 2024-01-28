@@ -100,9 +100,9 @@ class SparseAutoencoder(HookedRootModule):
         # add config for whether l2 is normalized:
         mse_loss = (torch.pow((sae_out-x.float()), 2) / (x**2).sum(dim=-1, keepdim=True).sqrt()).mean()
 
-        mse_loss_ghost_resid = 0
+        mse_loss_ghost_resid = torch.tensor(0.0, dtype=self.dtype, device=self.device)
         # gate on config and training so evals is not slowed down.
-        if self.cfg.use_ghost_grads and self.training:
+        if self.cfg.use_ghost_grads and self.training and dead_neuron_mask.sum() > 0:
             assert dead_neuron_mask is not None 
             
             # ghost protocol
