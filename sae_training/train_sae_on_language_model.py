@@ -3,12 +3,12 @@ from functools import partial
 import numpy as np
 import plotly_express as px
 import torch
-import wandb
 from torch.optim import Adam
 from tqdm import tqdm
 from transformer_lens import HookedTransformer
 from transformer_lens.utils import get_act_name
 
+import wandb
 from sae_training.activations_store import ActivationsStore
 from sae_training.optim import get_scheduler
 from sae_training.sparse_autoencoder import SparseAutoencoder
@@ -61,7 +61,7 @@ def train_sae_on_language_model(
     pbar = tqdm(total=total_training_tokens, desc="Training SAE")
     while n_training_tokens < total_training_tokens:
         # Do a training step.
-
+        sparse_autoencoder.train()
         # Make sure the W_dec is still zero-norm
         sparse_autoencoder.set_decoder_norm_to_unit_norm()
 
@@ -166,7 +166,7 @@ def train_sae_on_language_model(
         
         # Forward and Backward Passes
         sae_in = activation_store.next_batch()
-        sae_out, feature_acts, loss, mse_loss, l1_loss = sparse_autoencoder(sae_in)
+        sae_out, feature_acts, loss, mse_loss, l1_loss, ghost_grad_loss = sparse_autoencoder(sae_in)
         n_training_tokens += batch_size
 
         with torch.no_grad():
@@ -217,28 +217,10 @@ def train_sae_on_language_model(
 
             # record loss frequently, but not all the time.
             if use_wandb and ((n_training_steps + 1) % (wandb_log_frequency * 10) == 0):
+                sparse_autoencoder.eval()
                 run_evals(sparse_autoencoder, activation_store, model, n_training_steps)
+                sparse_autoencoder.train()
                 
-                # log_feature_sparsity = torch.log10(feature_sparsity + 1e-10).detach().cpu()
-                
-                # # sparsity_line_chart = px.scatter(
-                # #     y = log_feature_sparsity,
-                # #     title="Feature Sparsity",
-                # #     labels={"y": "log10(sparsity)", "x": "FeatureID"},
-                # #     range_y=[-8, 0],
-                # #     marginal_y="histogram",
-                # # )
-                # wandb_histogram = wandb.Histogram(log_feature_sparsity.numpy())
-                # wandb.log(
-                #     {   
-                #         "metrics/mean_log10_feature_sparsity": log_feature_sparsity.mean().item(),
-                #         "plots/feature_density_line_chart": wandb_histogram,
-                #     },
-                #     step=n_training_steps,
-                # )
-                
-
-
             pbar.set_description(
                 f"{n_training_steps}| MSE Loss {mse_loss.item():.3f} | L1 {l1_loss.item():.3f}"
             )

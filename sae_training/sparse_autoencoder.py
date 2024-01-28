@@ -71,7 +71,7 @@ class SparseAutoencoder(HookedRootModule):
 
         self.setup()  # Required for `HookedRootModule`s
 
-    def forward(self, x):
+    def forward(self, x, dead_neuron_mask = None):
         # move x to correct dtype
         x = x.to(self.dtype)
         sae_in = self.hook_sae_in(
@@ -99,12 +99,37 @@ class SparseAutoencoder(HookedRootModule):
         
         # add config for whether l2 is normalized:
         mse_loss = (torch.pow((sae_out-x.float()), 2) / (x**2).sum(dim=-1, keepdim=True).sqrt()).mean()
-        # mse_loss = (sae_out.float() - x.float()).pow(2).sum(-1).mean(0)
+
+        mse_loss_ghost_resid = 0
+        # gate on config and training so evals is not slowed down.
+        if self.cfg.use_ghost_grads and self.training:
+            assert dead_neuron_mask is not None 
+            
+            # ghost protocol
+            
+            # 1.
+            residual = x - sae_out
+            l2_norm_residual = torch.norm(residual, dim=-1)
+            
+            # 2.
+            feature_acts_dead_neurons_only = torch.exp(feature_acts[:, dead_neuron_mask])
+            ghost_out =  feature_acts_dead_neurons_only @ self.W_dec[dead_neuron_mask,:]
+            l2_norm_ghost_out = torch.norm(ghost_out, dim = -1)
+            norm_scaling_factor = l2_norm_residual / (l2_norm_ghost_out* 2)
+            ghost_out = ghost_out*norm_scaling_factor[:, None].detach()
+            
+            # 3. 
+            mse_loss_ghost_resid = (
+                torch.pow((ghost_out - residual.float()), 2) / (residual**2).sum(dim=-1, keepdim=True).sqrt()
+            ).mean()
+            mse_rescaling_factor = (mse_loss / mse_loss_ghost_resid).detach()
+            mse_loss_ghost_resid = mse_rescaling_factor * mse_loss_ghost_resid
+
         sparsity = torch.abs(feature_acts).sum(dim=1).mean(dim=(0,)) 
         l1_loss = self.l1_coefficient * sparsity
-        loss = mse_loss + l1_loss
+        loss = mse_loss + l1_loss + mse_loss_ghost_resid
 
-        return sae_out, feature_acts, loss, mse_loss, l1_loss
+        return sae_out, feature_acts, loss, mse_loss, l1_loss, mse_loss_ghost_resid
 
     @torch.no_grad()
     def initialize_b_dec(self, activation_store):
@@ -332,7 +357,6 @@ class SparseAutoencoder(HookedRootModule):
                         )
         
         return 
-
 
     @torch.no_grad()
     def collect_anthropic_resampling_losses(self, model, activation_store):
