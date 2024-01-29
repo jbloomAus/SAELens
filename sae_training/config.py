@@ -66,6 +66,7 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
     train_batch_size: int = 4096
 
     # Resampling protocol args
+    use_ghost_grads: bool = False, # want to change this to true on some timeline.
     feature_sampling_window: int = 2000
     feature_sampling_method: str = "Anthropic"  # None or Anthropic
     resample_batches: int = 32
@@ -141,7 +142,12 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
         print(
             f"n_tokens_per_dead_feature_window (millions): {(self.dead_feature_window * self.context_size * self.train_batch_size) / 10 **6}"
         )
-        print(f"We will reset neurons {n_dead_feature_samples} times.")
+        if self.feature_sampling_method != None:
+            print(f"We will reset neurons {n_dead_feature_samples} times.")
+        
+        if self.use_ghost_grads:
+            print("Using Ghost Grads.")
+        
         print(
             f"We will reset the sparsity calculation {n_feature_window_samples} times."
         )
