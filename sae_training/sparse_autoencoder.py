@@ -98,7 +98,7 @@ class SparseAutoencoder(HookedRootModule):
         )
         
         # add config for whether l2 is normalized:
-        mse_loss = (torch.pow((sae_out-x.float()), 2) / (x**2).sum(dim=-1, keepdim=True).sqrt()).mean()
+        mse_loss = (torch.pow((sae_out-x.float()), 2) / (x**2).sum(dim=-1, keepdim=True).sqrt())
 
         mse_loss_ghost_resid = torch.tensor(0.0, dtype=self.dtype, device=self.device)
         # gate on config and training so evals is not slowed down.
@@ -121,13 +121,13 @@ class SparseAutoencoder(HookedRootModule):
             # 3. 
             mse_loss_ghost_resid = (
                 torch.pow((ghost_out - residual.float()), 2) / (residual**2).sum(dim=-1, keepdim=True).sqrt()
-            ).mean()
+            )
             mse_rescaling_factor = (mse_loss / mse_loss_ghost_resid).detach()
             mse_loss_ghost_resid = mse_rescaling_factor * mse_loss_ghost_resid
 
         sparsity = torch.abs(feature_acts).sum(dim=1).mean(dim=(0,)) 
         l1_loss = self.l1_coefficient * sparsity
-        loss = mse_loss + l1_loss + mse_loss_ghost_resid
+        loss = mse_loss.mean() + l1_loss + mse_loss_ghost_resid.mean()
 
         return sae_out, feature_acts, loss, mse_loss, l1_loss, mse_loss_ghost_resid
 

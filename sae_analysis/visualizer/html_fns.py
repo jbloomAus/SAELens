@@ -1,3 +1,4 @@
+import math
 import re
 from pathlib import Path
 from typing import List, Optional, Tuple
@@ -138,10 +139,12 @@ def generate_seq_html(
 
         # Get underline color, which is {-1: blue, 0: transparent, +1: red}
         underline_val = underline_values[i]
-        if underline_val < 0:
+        if math.isnan(underline_val):
+            underline_color = "transparent"
+        elif underline_val < 0:
             v = int(255 * (underline_val + 1))
             underline_color = f"rgb({v}, {v}, 255)"
-        else:
+        elif underline_val >= 0:
             v = int(255 * (1 - underline_val))
             underline_color = f"rgb(255, {v}, {v})"
 
