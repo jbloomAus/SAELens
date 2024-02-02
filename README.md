@@ -73,9 +73,9 @@ cfg = LanguageModelSAERunnerConfig(
     b_dec_init_method = "geometric_median",
     
     # Training Parameters
-    lr = 0.0012,
+    lr = 0.0004,
     l1_coefficient = 0.00008,
-    lr_scheduler_name=None,
+    lr_scheduler_name="constantwithwarmup",
     train_batch_size = 4096,
     context_size = 128,
     lr_warm_up_steps=5000,
@@ -94,12 +94,12 @@ cfg = LanguageModelSAERunnerConfig(
     
     # WANDB
     log_to_wandb = True,
-    wandb_project= "mats_sae_training_gpt2_small_resid_pre",
+    wandb_project= "mats_sae_training_gpt2",
     wandb_entity = None,
     wandb_log_frequency=100,
     
     # Misc
-    device = "mps",
+    device = "cuda",
     seed = 42,
     n_checkpoints = 10,
     checkpoint_path = "checkpoints",
