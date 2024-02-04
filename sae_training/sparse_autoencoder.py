@@ -112,17 +112,17 @@ class SparseAutoencoder(HookedRootModule):
             l2_norm_residual = torch.norm(residual, dim=-1)
             
             # 2.
-            feature_acts_dead_neurons_only = torch.exp(feature_acts[:, dead_neuron_mask])
+            feature_acts_dead_neurons_only = torch.exp(hidden_pre[:, dead_neuron_mask])
             ghost_out =  feature_acts_dead_neurons_only @ self.W_dec[dead_neuron_mask,:]
             l2_norm_ghost_out = torch.norm(ghost_out, dim = -1)
-            norm_scaling_factor = l2_norm_residual / (l2_norm_ghost_out* 2)
+            norm_scaling_factor = l2_norm_residual / (1e-6+ l2_norm_ghost_out* 2)
             ghost_out = ghost_out*norm_scaling_factor[:, None].detach()
             
             # 3. 
             mse_loss_ghost_resid = (
-                torch.pow((ghost_out - residual.float()), 2) / (residual**2).sum(dim=-1, keepdim=True).sqrt()
+                torch.pow((ghost_out - residual.detach().float()), 2) / (residual.detach()**2).sum(dim=-1, keepdim=True).sqrt()
             )
-            mse_rescaling_factor = (mse_loss / mse_loss_ghost_resid).detach()
+            mse_rescaling_factor = (mse_loss / (mse_loss_ghost_resid + 1e-6)).detach()
             mse_loss_ghost_resid = mse_rescaling_factor * mse_loss_ghost_resid
 
         mse_loss_ghost_resid = mse_loss_ghost_resid.mean()
