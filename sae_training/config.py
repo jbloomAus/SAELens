@@ -32,7 +32,7 @@ class RunnerConfig(ABC):
     # Activation Store Parameters
     n_batches_in_buffer: int = 20
     total_training_tokens: int = 2_000_000
-    store_batch_size: int = 1024
+    store_batch_size: int = 32,
 
     # Misc
     device: str = "cpu"
@@ -66,7 +66,7 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
     train_batch_size: int = 4096
 
     # Resampling protocol args
-    use_ghost_grads: bool = False, # want to change this to true on some timeline.
+    use_ghost_grads: bool = False  # want to change this to true on some timeline.
     feature_sampling_window: int = 2000
     feature_sampling_method: str = "Anthropic"  # None or Anthropic
     resample_batches: int = 32
