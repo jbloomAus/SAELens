@@ -50,7 +50,12 @@ class ActivationsStore:
         
         if create_dataloader:
             # fill buffer half a buffer, so we can mix it with a new buffer
-            self.storage_buffer = self.get_buffer(self.cfg.n_batches_in_buffer // 2)
+            self.storage_buffer_out = None
+            if self.cfg.is_transcoder:
+                # if we're a transcoder, then we want to keep a buffer for our input activations and our output activations
+                self.storage_buffer, self.storage_buffer_out = self.get_buffer(self.cfg.n_batches_in_buffer // 2)
+            else:
+                self.storage_buffer = self.get_buffer(self.cfg.n_batches_in_buffer // 2)
             self.dataloader = self.get_data_loader()
 
     def get_batch_tokens(self):
@@ -131,6 +136,8 @@ class ActivationsStore:
         return batch_tokens[:batch_size]
 
     def get_activations(self, batch_tokens, get_loss=False):
+        # TODO: get transcoders working with head indices
+        assert(not (self.cfg.is_transcoder and (self.cfg.hook_point_head_index is not None)))
         
         act_name = self.cfg.hook_point
         hook_point_layer = self.cfg.hook_point_layer
@@ -143,23 +150,33 @@ class ActivationsStore:
                 1
             ][act_name][:,:,self.cfg.hook_point_head_index]
         else:
-            activations = self.model.run_with_cache(
-                batch_tokens,
-                names_filter=act_name,
-                stop_at_layer=hook_point_layer+1
-            )[
-                1
-            ][act_name]
-        
+            if not self.cfg.is_transcoder:
+                activations = self.model.run_with_cache(
+                    batch_tokens,
+                    names_filter=act_name,
+                    stop_at_layer=hook_point_layer+1
+                )[
+                    1
+                ][act_name]
+            else:
+                cache = self.model.run_with_cache(
+                    batch_tokens,
+                    names_filter=[self.cfg.hook_point, self.cfg.out_hook_point],
+                    stop_at_layer=self.cfg.out_hook_point_layer+1
+                )[1]
+                activations = (cache[act_name], cache[self.cfg.out_hook_point])
 
         return activations
 
     def get_buffer(self, n_batches_in_buffer):
+
         context_size = self.cfg.context_size
         batch_size = self.cfg.store_batch_size
         d_in = self.cfg.d_in
         total_size = batch_size * n_batches_in_buffer
 
+        # TODO: get transcoders working with cached activations
+        assert(not (self.cfg.is_transcoder and self.cfg.use_cached_activations))
         if self.cfg.use_cached_activations:
             # Load the activations from disk
             buffer_size = total_size * context_size
@@ -213,21 +230,46 @@ class ActivationsStore:
             device=self.cfg.device,
         )
 
+        new_buffer_out = None
+        if self.cfg.is_transcoder:
+            new_buffer_out = torch.zeros(
+                (total_size, context_size, self.cfg.d_out),
+                dtype=self.cfg.dtype,
+                device=self.cfg.device,
+            )
+
         # Insert activations directly into pre-allocated buffer
         # pbar = tqdm(total=n_batches_in_buffer, desc="Filling buffer")
         for refill_batch_idx_start in refill_iterator:
             refill_batch_tokens = self.get_batch_tokens()
-            refill_activations = self.get_activations(refill_batch_tokens)
-            new_buffer[
-                refill_batch_idx_start : refill_batch_idx_start + batch_size
-            ] = refill_activations
+            if not self.cfg.is_transcoder:
+                refill_activations = self.get_activations(refill_batch_tokens)
+                new_buffer[
+                    refill_batch_idx_start : refill_batch_idx_start + batch_size
+                ] = refill_activations
+            else:
+                refill_activations_in, refill_activations_out = self.get_activations(refill_batch_tokens)
+                new_buffer[
+                    refill_batch_idx_start : refill_batch_idx_start + batch_size
+                ] = refill_activations_in
+
+                new_buffer_out[
+                    refill_batch_idx_start : refill_batch_idx_start + batch_size
+                ] = refill_activations_out
             
             # pbar.update(1)
 
         new_buffer = new_buffer.reshape(-1, d_in)
         new_buffer = new_buffer[torch.randperm(new_buffer.shape[0])]
 
-        return new_buffer
+        if self.cfg.is_transcoder:
+            new_buffer_out = new_buffer_out.reshape(-1, self.cfg.d_out)
+            new_buffer_out = new_buffer_out[torch.randperm(new_buffer_out.shape[0])]
+
+        if self.cfg.is_transcoder:
+            return new_buffer, new_buffer_out
+        else:
+            return new_buffer
 
     def get_data_loader(self,) -> DataLoader:
         '''
@@ -240,19 +282,45 @@ class ActivationsStore:
         
         batch_size = self.cfg.train_batch_size
         
-        # 1. # create new buffer by mixing stored and new buffer
-        mixing_buffer = torch.cat(
-            [self.get_buffer(self.cfg.n_batches_in_buffer // 2),
-             self.storage_buffer]
-        )
+        if self.cfg.is_transcoder:
+            # ugly code duplication if we're a transcoder
+            new_buffer, new_buffer_out = self.get_buffer(self.cfg.n_batches_in_buffer // 2)
+            mixing_buffer = torch.cat(
+                [new_buffer,
+                 self.storage_buffer]
+            )
+            mixing_buffer_out = torch.cat(
+                [new_buffer_out,
+                 self.storage_buffer_out]
+            )
+            
+            mixing_buffer = mixing_buffer[torch.randperm(mixing_buffer.shape[0])]
+            mixing_buffer_out = mixing_buffer_out[torch.randperm(mixing_buffer_out.shape[0])]
+
+            self.storage_buffer = mixing_buffer[:mixing_buffer.shape[0]//2]
+            self.storage_buffer_out = mixing_buffer_out[:mixing_buffer_out.shape[0]//2]
+
+            # have to properly stack both of our new buffers into the dataloader
+            stacked_buffers = torch.stack([
+                mixing_buffer[mixing_buffer.shape[0]//2:],
+                mixing_buffer_out[mixing_buffer.shape[0]//2:]
+            ], dim=1)
+
+            dataloader = iter(DataLoader(stacked_buffers, batch_size=batch_size, shuffle=True))
+        else:
+            # 1. # create new buffer by mixing stored and new buffer
+            mixing_buffer = torch.cat(
+                [self.get_buffer(self.cfg.n_batches_in_buffer // 2),
+                 self.storage_buffer]
+            )
+            
+            mixing_buffer = mixing_buffer[torch.randperm(mixing_buffer.shape[0])]
+            
+            # 2.  put 50 % in storage
+            self.storage_buffer = mixing_buffer[:mixing_buffer.shape[0]//2]
         
-        mixing_buffer = mixing_buffer[torch.randperm(mixing_buffer.shape[0])]
-        
-        # 2.  put 50 % in storage
-        self.storage_buffer = mixing_buffer[:mixing_buffer.shape[0]//2] 
-        
-        # 3. put other 50 % in a dataloader
-        dataloader = iter(DataLoader(mixing_buffer[:mixing_buffer.shape[0]//2:], batch_size=batch_size, shuffle=True))
+            # 3. put other 50 % in a dataloader
+            dataloader = iter(DataLoader(mixing_buffer[mixing_buffer.shape[0]//2:], batch_size=batch_size, shuffle=True))
         
         return dataloader
     
