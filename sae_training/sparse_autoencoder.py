@@ -40,6 +40,11 @@ class SparseAutoencoder(HookedRootModule):
         self.dtype = cfg.dtype
         self.device = cfg.device
 
+        # transcoder stuff
+        self.d_out = self.d_in
+        if cfg.is_transcoder and cfg.d_out is not None:
+            self.d_out = cfg.d_out
+
         # NOTE: if using resampling neurons method, you must ensure that we initialise the weights in the order W_enc, b_enc, W_dec, b_dec
         self.W_enc = nn.Parameter(
             torch.nn.init.kaiming_uniform_(
@@ -52,7 +57,7 @@ class SparseAutoencoder(HookedRootModule):
 
         self.W_dec = nn.Parameter(
             torch.nn.init.kaiming_uniform_(
-                torch.empty(self.d_sae, self.d_in, dtype=self.dtype, device=self.device)
+                torch.empty(self.d_sae, self.d_out, dtype=self.dtype, device=self.device)
             )
         )
 
