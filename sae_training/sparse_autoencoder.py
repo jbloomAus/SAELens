@@ -71,7 +71,7 @@ class SparseAutoencoder(HookedRootModule):
 
         self.setup()  # Required for `HookedRootModule`s
 
-    def forward(self, x, dead_neuron_mask = None):
+    def forward(self, x, dead_neuron_mask = None, mse_target=None):
         # move x to correct dtype
         x = x.to(self.dtype)
         sae_in = self.hook_sae_in(
@@ -98,8 +98,10 @@ class SparseAutoencoder(HookedRootModule):
         )
         
         # add config for whether l2 is normalized:
-        mse_loss = (torch.pow((sae_out-x.float()), 2) / (x**2).sum(dim=-1, keepdim=True).sqrt())
-
+        if mse_target is None:
+            mse_loss = (torch.pow((sae_out-x.float()), 2) / (x**2).sum(dim=-1, keepdim=True).sqrt())
+        else:
+            mse_loss = (torch.pow((sae_out-mse_target.float()), 2) / (mse_target**2).sum(dim=-1, keepdim=True).sqrt())
         mse_loss_ghost_resid = torch.tensor(0.0, dtype=self.dtype, device=self.device)
         # gate on config and training so evals is not slowed down.
         if self.cfg.use_ghost_grads and self.training and dead_neuron_mask.sum() > 0:

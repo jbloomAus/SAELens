@@ -143,13 +143,24 @@ def train_sae_on_language_model(
         optimizer.zero_grad()
         
         ghost_grad_neuron_mask = (n_forward_passes_since_fired > sparse_autoencoder.cfg.dead_feature_window).bool()
-        sae_in = activation_store.next_batch()
-        
-        # Forward and Backward Passes
-        sae_out, feature_acts, loss, mse_loss, l1_loss, ghost_grad_loss = sparse_autoencoder(
-            sae_in,
-            ghost_grad_neuron_mask,
-        )
+        next_batch = activation_store.next_batch()
+
+        if not self.cfg.is_transcoder:
+            sae_in = next_batch
+            # Forward and Backward Passes
+            sae_out, feature_acts, loss, mse_loss, l1_loss, ghost_grad_loss = sparse_autoencoder(
+                sae_in,
+                ghost_grad_neuron_mask,
+            )
+        else:
+            sae_in = next_batch[:, 0]
+            mlp_out = next_batch[:, 1]
+            sae_out, feature_acts, loss, mse_loss, l1_loss, ghost_grad_loss = sparse_autoencoder(
+                sae_in,
+                ghost_grad_neuron_mask,
+                mse_target=mlp_out
+            )
+
         did_fire = ((feature_acts > 0).float().sum(-2) > 0)
         n_forward_passes_since_fired += 1
         n_forward_passes_since_fired[did_fire] = 0
