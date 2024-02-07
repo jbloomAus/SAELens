@@ -46,6 +46,8 @@ def cfg():
     mock_config.seed = 24
     mock_config.checkpoint_path = "test/checkpoints"
     mock_config.dtype = torch.float32 
+    mock_config.use_cached_activations = False
+    mock_config.hook_point_head_index = None
 
     return mock_config
 

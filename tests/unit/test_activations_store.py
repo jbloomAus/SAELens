@@ -31,6 +31,8 @@ def cfg():
     mock_config.lr = 2e-4
     mock_config.train_batch_size = 32
     mock_config.context_size = 16
+    mock_config.use_cached_activations = False
+    mock_config.hook_point_head_index = None
     
     mock_config.feature_sampling_method = None
     mock_config.feature_sampling_window = 50
@@ -74,6 +76,9 @@ def cfg_head_hook():
     mock_config.lr = 2e-4
     mock_config.train_batch_size = 32
     mock_config.context_size = 128
+    mock_config.use_cached_activations = False
+    mock_config.hook_point_head_index = 0
+    
     
     mock_config.feature_sampling_method = None
     mock_config.feature_sampling_window = 50
