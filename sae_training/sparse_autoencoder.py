@@ -1,4 +1,3 @@
-
 """Most of this is just copied over from Arthur's code and slightly simplified:
 https://github.com/ArthurConmy/sae/blob/main/sae/model.py
 """
@@ -21,9 +20,8 @@ from sae_training.geom_median.src.geom_median.torch import compute_geometric_med
 
 
 class SparseAutoencoder(HookedRootModule):
-    """
-    
-    """
+    """ """
+
     def __init__(
         self,
         cfg,
@@ -44,7 +42,7 @@ class SparseAutoencoder(HookedRootModule):
         self.W_enc = nn.Parameter(
             torch.nn.init.kaiming_uniform_(
                 torch.empty(self.d_in, self.d_sae, dtype=self.dtype, device=self.device)
-            )   
+            )
         )
         self.b_enc = nn.Parameter(
             torch.zeros(self.d_sae, dtype=self.dtype, device=self.device)
@@ -71,7 +69,7 @@ class SparseAutoencoder(HookedRootModule):
 
         self.setup()  # Required for `HookedRootModule`s
 
-    def forward(self, x, dead_neuron_mask = None):
+    def forward(self, x, dead_neuron_mask=None):
         # move x to correct dtype
         x = x.to(self.dtype)
         sae_in = self.hook_sae_in(
@@ -96,43 +94,44 @@ class SparseAutoencoder(HookedRootModule):
             )
             + self.b_dec
         )
-        
+
         # add config for whether l2 is normalized:
         x_centred = x - x.mean(dim=0, keepdim=True)
-        mse_loss = (torch.pow((sae_out-x.float()), 2) / (x_centred**2).sum(dim=-1, keepdim=True).sqrt())
-
-
+        mse_loss = (
+            torch.pow((sae_out - x.float()), 2)
+            / (x_centred**2).sum(dim=-1, keepdim=True).sqrt()
+        )
 
         mse_loss_ghost_resid = torch.tensor(0.0, dtype=self.dtype, device=self.device)
         # gate on config and training so evals is not slowed down.
         if self.cfg.use_ghost_grads and self.training and dead_neuron_mask.sum() > 0:
-            assert dead_neuron_mask is not None 
-            
+            assert dead_neuron_mask is not None
+
             # ghost protocol
-            
+
             # 1.
             residual = x - sae_out
             l2_norm_residual = torch.norm(residual, dim=-1)
-            
+
             # 2.
             feature_acts_dead_neurons_only = torch.exp(hidden_pre[:, dead_neuron_mask])
-            ghost_out =  feature_acts_dead_neurons_only @ self.W_dec[dead_neuron_mask,:]
-            l2_norm_ghost_out = torch.norm(ghost_out, dim = -1)
-            norm_scaling_factor = l2_norm_residual / (1e-6+ l2_norm_ghost_out* 2)
-            ghost_out = ghost_out*norm_scaling_factor[:, None].detach()
-            
-            # 3. 
+            ghost_out = feature_acts_dead_neurons_only @ self.W_dec[dead_neuron_mask, :]
+            l2_norm_ghost_out = torch.norm(ghost_out, dim=-1)
+            norm_scaling_factor = l2_norm_residual / (1e-6 + l2_norm_ghost_out * 2)
+            ghost_out = ghost_out * norm_scaling_factor[:, None].detach()
+
+            # 3.
             mse_loss_ghost_resid = (
-                torch.pow((ghost_out - residual.detach().float()), 2) / (residual.detach()**2).sum(dim=-1, keepdim=True).sqrt()
+                torch.pow((ghost_out - residual.detach().float()), 2)
+                / (residual.detach() ** 2).sum(dim=-1, keepdim=True).sqrt()
             )
             mse_rescaling_factor = (mse_loss / (mse_loss_ghost_resid + 1e-6)).detach()
             mse_loss_ghost_resid = mse_rescaling_factor * mse_loss_ghost_resid
 
             mse_loss_ghost_resid = mse_loss_ghost_resid.mean()
 
-            
         mse_loss = mse_loss.mean()
-        sparsity = torch.abs(feature_acts).sum(dim=1).mean(dim=(0,)) 
+        sparsity = torch.abs(feature_acts).sum(dim=1).mean(dim=(0,))
         l1_loss = self.l1_coefficient * sparsity
         loss = mse_loss + l1_loss + mse_loss_ghost_resid
 
@@ -140,7 +139,6 @@ class SparseAutoencoder(HookedRootModule):
 
     @torch.no_grad()
     def initialize_b_dec(self, activation_store):
-        
         if self.cfg.b_dec_init_method == "geometric_median":
             self.initialize_b_dec_with_geometric_median(activation_store)
         elif self.cfg.b_dec_init_method == "mean":
@@ -148,42 +146,45 @@ class SparseAutoencoder(HookedRootModule):
         elif self.cfg.b_dec_init_method == "zeros":
             pass
         else:
-            raise ValueError(f"Unexpected b_dec_init_method: {self.cfg.b_dec_init_method}")
+            raise ValueError(
+                f"Unexpected b_dec_init_method: {self.cfg.b_dec_init_method}"
+            )
 
     @torch.no_grad()
     def initialize_b_dec_with_geometric_median(self, activation_store):
-        
         previous_b_dec = self.b_dec.clone().cpu()
         all_activations = activation_store.storage_buffer.detach().cpu()
         out = compute_geometric_median(
-                all_activations,
-                skip_typechecks=True, 
-                maxiter=100, per_component=False).median
-        
+            all_activations, skip_typechecks=True, maxiter=100, per_component=False
+        ).median
+
         previous_distances = torch.norm(all_activations - previous_b_dec, dim=-1)
         distances = torch.norm(all_activations - out, dim=-1)
-        
+
         print("Reinitializing b_dec with geometric median of activations")
-        print(f"Previous distances: {previous_distances.median(0).values.mean().item()}")
+        print(
+            f"Previous distances: {previous_distances.median(0).values.mean().item()}"
+        )
         print(f"New distances: {distances.median(0).values.mean().item()}")
-        
+
         out = torch.tensor(out, dtype=self.dtype, device=self.device)
         self.b_dec.data = out
-        
+
     @torch.no_grad()
     def initialize_b_dec_with_mean(self, activation_store):
-        
         previous_b_dec = self.b_dec.clone().cpu()
         all_activations = activation_store.storage_buffer.detach().cpu()
         out = all_activations.mean(dim=0)
-        
+
         previous_distances = torch.norm(all_activations - previous_b_dec, dim=-1)
         distances = torch.norm(all_activations - out, dim=-1)
-        
+
         print("Reinitializing b_dec with mean of activations")
-        print(f"Previous distances: {previous_distances.median(0).values.mean().item()}")
+        print(
+            f"Previous distances: {previous_distances.median(0).values.mean().item()}"
+        )
         print(f"New distances: {distances.median(0).values.mean().item()}")
-        
+
         self.b_dec.data = out.to(self.dtype).to(self.device)
 
     @torch.no_grad()
@@ -193,80 +194,82 @@ class SparseAutoencoder(HookedRootModule):
         returns per token loss when activations are substituted in.
         """
         head_index = self.cfg.hook_point_head_index
-        
+
         def standard_replacement_hook(activations, hook):
             activations = self.forward(activations)[0].to(activations.dtype)
             return activations
-        
+
         def head_replacement_hook(activations, hook):
-            new_actions = self.forward(activations[:,:,head_index])[0].to(activations.dtype)
-            activations[:,:,head_index] = new_actions
+            new_actions = self.forward(activations[:, :, head_index])[0].to(
+                activations.dtype
+            )
+            activations[:, :, head_index] = new_actions
             return activations
 
-        replacement_hook = standard_replacement_hook if head_index is None else head_replacement_hook
-        
+        replacement_hook = (
+            standard_replacement_hook if head_index is None else head_replacement_hook
+        )
+
         ce_loss_with_recons = model.run_with_hooks(
             batch_tokens,
             return_type="loss",
             fwd_hooks=[(self.cfg.hook_point, replacement_hook)],
         )
-        
+
         return ce_loss_with_recons
 
     @torch.no_grad()
     def set_decoder_norm_to_unit_norm(self):
         self.W_dec.data /= torch.norm(self.W_dec.data, dim=1, keepdim=True)
-        
+
     @torch.no_grad()
     def remove_gradient_parallel_to_decoder_directions(self):
-        '''
+        """
         Update grads so that they remove the parallel component
             (d_sae, d_in) shape
-        '''
-        
+        """
+
         parallel_component = einops.einsum(
             self.W_dec.grad,
             self.W_dec.data,
             "d_sae d_in, d_sae d_in -> d_sae",
         )
-        
+
         self.W_dec.grad -= einops.einsum(
             parallel_component,
             self.W_dec.data,
             "d_sae, d_sae d_in -> d_sae d_in",
         )
-    
+
     def save_model(self, path: str):
-        '''
+        """
         Basic save function for the model. Saves the model's state_dict and the config used to train it.
-        '''
-        
+        """
+
         # check if path exists
         folder = os.path.dirname(path)
         os.makedirs(folder, exist_ok=True)
-        
-        state_dict = {
-            "cfg": self.cfg,
-            "state_dict": self.state_dict()
-        }
-        
+
+        state_dict = {"cfg": self.cfg, "state_dict": self.state_dict()}
+
         if path.endswith(".pt"):
             torch.save(state_dict, path)
         elif path.endswith("pkl.gz"):
             with gzip.open(path, "wb") as f:
                 pickle.dump(state_dict, f)
         else:
-            raise ValueError(f"Unexpected file extension: {path}, supported extensions are .pt and .pkl.gz")
-        
-        
+            raise ValueError(
+                f"Unexpected file extension: {path}, supported extensions are .pt and .pkl.gz"
+            )
+
         print(f"Saved model to {path}")
-    
+
     @classmethod
     def load_from_pretrained(cls, path: str):
-        '''
+        """
         Load function for the model. Loads the model's state_dict and the config used to train it.
         This method can be called directly on the class, without needing an instance.
-        '''
+        """
 
         # Ensure the file exists
         if not os.path.isfile(path):
@@ -282,25 +285,31 @@ class SparseAutoencoder(HookedRootModule):
                     state_dict = torch.load(path)
             except Exception as e:
                 raise IOError(f"Error loading the state dictionary from .pt file: {e}")
-            
+
         elif path.endswith(".pkl.gz"):
             try:
-                with gzip.open(path, 'rb') as f:
+                with gzip.open(path, "rb") as f:
                     state_dict = pickle.load(f)
             except Exception as e:
-                raise IOError(f"Error loading the state dictionary from .pkl.gz file: {e}")
+                raise IOError(
+                    f"Error loading the state dictionary from .pkl.gz file: {e}"
+                )
         elif path.endswith(".pkl"):
             try:
-                with open(path, 'rb') as f:
+                with open(path, "rb") as f:
                     state_dict = pickle.load(f)
             except Exception as e:
                 raise IOError(f"Error loading the state dictionary from .pkl file: {e}")
         else:
-            raise ValueError(f"Unexpected file extension: {path}, supported extensions are .pt, .pkl, and .pkl.gz")
+            raise ValueError(
+                f"Unexpected file extension: {path}, supported extensions are .pt, .pkl, and .pkl.gz"
+            )
 
         # Ensure the loaded state contains both 'cfg' and 'state_dict'
-        if 'cfg' not in state_dict or 'state_dict' not in state_dict:
-            raise ValueError("The loaded state dictionary must contain 'cfg' and 'state_dict' keys")
+        if "cfg" not in state_dict or "state_dict" not in state_dict:
+            raise ValueError(
+                "The loaded state dictionary must contain 'cfg' and 'state_dict' keys"
+            )
 
         # Create an instance of the class using the loaded configuration
         instance = cls(cfg=state_dict["cfg"])

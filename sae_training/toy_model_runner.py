@@ -13,7 +13,6 @@ from sae_training.train_sae_on_toy_model import train_toy_sae
 
 @dataclass
 class SAEToyModelRunnerConfig:
-    
     # ReLu Model Parameters
     n_features: int = 5
     n_hidden: int = 2
@@ -21,31 +20,33 @@ class SAEToyModelRunnerConfig:
     n_anticorrelated_pairs: int = 0
     feature_probability: float = 0.025
     model_training_steps: int = 10_000
-    
+
     # SAE Parameters
     d_sae: int = 5
-    
+
     # Training Parameters
     l1_coefficient: float = 1e-3
     lr: float = 3e-4
-    train_batch_size: int = 1024 
+    train_batch_size: int = 1024
     b_dec_init_method: str = "geometric_median"
-    
+
     # Sparsity / Dead Feature Handling
-    use_ghost_grads: bool = False # not currently implemented, but SAE class expects it.
+    use_ghost_grads: bool = (
+        False  # not currently implemented, but SAE class expects it.
+    )
     feature_sampling_window: int = 100
-    dead_feature_window: int = 100 # unless this window is larger feature sampling,
+    dead_feature_window: int = 100  # unless this window is larger feature sampling,
     dead_feature_threshold: float = 1e-8
-    
+
     # Activation Store Parameters
-    total_training_tokens: int = 25_000    
-    
+    total_training_tokens: int = 25_000
+
     # WANDB
     log_to_wandb: bool = True
     wandb_project: str = "mats_sae_training_toy_model"
     wandb_entity: str = None
     wandb_log_frequency: int = 50
-    
+
     # Misc
     device: str = "cpu"
     seed: int = 42
@@ -55,10 +56,11 @@ class SAEToyModelRunnerConfig:
     def __post_init__(self):
         self.d_in = self.n_hidden  # hidden for the ReLu model is the input for the SAE
 
+
 def toy_model_sae_runner(cfg):
-    '''
+    """
     A runner for training an SAE on a toy model.
-    '''
+    """
     # Toy Model Config
     toy_model_cfg = ToyConfig(
         n_instances=1,  # Not set up to train > 1 SAE so shouldn't do > 1 model.
@@ -86,7 +88,9 @@ def toy_model_sae_runner(cfg):
         "batch_size instances features, instances hidden features -> batch_size instances hidden",
     )
 
-    sparse_autoencoder = SparseAutoencoder(cfg)  # config has the hyperparameters for the SAE
+    sparse_autoencoder = SparseAutoencoder(
+        cfg
+    )  # config has the hyperparameters for the SAE
 
     if cfg.log_to_wandb:
         wandb.init(project=cfg.wandb_project, config=cfg)

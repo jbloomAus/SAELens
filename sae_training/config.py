@@ -32,7 +32,7 @@ class RunnerConfig(ABC):
     # Activation Store Parameters
     n_batches_in_buffer: int = 20
     total_training_tokens: int = 2_000_000
-    store_batch_size: int = 32,
+    store_batch_size: int = (32,)
 
     # Misc
     device: str = "cpu"
@@ -134,10 +134,9 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
             f"n_tokens_per_dead_feature_window (millions): {(self.dead_feature_window * self.context_size * self.train_batch_size) / 10 **6}"
         )
 
-        
         if self.use_ghost_grads:
             print("Using Ghost Grads.")
-        
+
         print(
             f"We will reset the sparsity calculation {n_feature_window_samples} times."
         )

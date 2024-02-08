@@ -12,6 +12,7 @@ from sae_training.sparse_autoencoder import SparseAutoencoder
 TEST_MODEL = "tiny-stories-1M"
 TEST_DATASET = "roneneldan/TinyStories"
 
+
 @pytest.fixture
 def cfg():
     """
@@ -48,10 +49,11 @@ def cfg():
     mock_config.device = "cpu"
     mock_config.seed = 24
     mock_config.checkpoint_path = "test/checkpoints"
-    # mock_config.dtype = torch.bfloat16 
+    # mock_config.dtype = torch.bfloat16
     mock_config.dtype = torch.float32
 
     return mock_config
+
 
 @pytest.fixture
 def sparse_autoencoder(cfg):
@@ -60,142 +62,161 @@ def sparse_autoencoder(cfg):
     """
     return SparseAutoencoder(cfg)
 
+
 @pytest.fixture
 def model():
     return HookedTransformer.from_pretrained(TEST_MODEL)
+
 
 @pytest.fixture
 def activation_store(cfg, model):
     return ActivationsStore(cfg, model)
 
+
 def test_sparse_autoencoder_init(cfg):
-    
     sparse_autoencoder = SparseAutoencoder(cfg)
-    
+
     assert isinstance(sparse_autoencoder, SparseAutoencoder)
-    
-    assert sparse_autoencoder.W_enc.shape == (cfg.d_in, cfg.d_sae) 
+
+    assert sparse_autoencoder.W_enc.shape == (cfg.d_in, cfg.d_sae)
     assert sparse_autoencoder.W_dec.shape == (cfg.d_sae, cfg.d_in)
     assert sparse_autoencoder.b_enc.shape == (cfg.d_sae,)
     assert sparse_autoencoder.b_dec.shape == (cfg.d_in,)
-    
+
     # assert decoder columns have unit norm
     assert torch.allclose(
-        torch.norm(sparse_autoencoder.W_dec, dim=1), 
-        torch.ones(cfg.d_sae)
+        torch.norm(sparse_autoencoder.W_dec, dim=1), torch.ones(cfg.d_sae)
     )
 
+
 def test_save_model(cfg):
-    
     with tempfile.TemporaryDirectory() as tmpdirname:
-        
         # assert file does not exist
         assert os.path.exists(tmpdirname + "/test.pt") == False
-        
+
         sparse_autoencoder = SparseAutoencoder(cfg)
         sparse_autoencoder.save_model(tmpdirname + "/test.pt")
-        
+
         assert os.path.exists(tmpdirname + "/test.pt")
-        
+
         state_dict_original = sparse_autoencoder.state_dict()
         state_dict_loaded = torch.load(tmpdirname + "/test.pt")
-        
+
         # check for cfg and state_dict keys
         assert "cfg" in state_dict_loaded
         assert "state_dict" in state_dict_loaded
-        
+
         # check cfg matches the original
         assert state_dict_loaded["cfg"] == cfg
-        
+
         # check state_dict matches the original
         for key in sparse_autoencoder.state_dict().keys():
             assert torch.allclose(
                 state_dict_original[key],  # pylint: disable=unsubscriptable-object
-                state_dict_loaded["state_dict"][key]
+                state_dict_loaded["state_dict"][key],
             )
 
+
 def test_load_from_pretrained_pt(cfg):
-    
     with tempfile.TemporaryDirectory() as tmpdirname:
-        
         # assert file does not exist
         assert os.path.exists(tmpdirname + "/test.pt") == False
-        
+
         sparse_autoencoder = SparseAutoencoder(cfg)
         sparse_autoencoder_state_dict = sparse_autoencoder.state_dict()
         sparse_autoencoder.save_model(tmpdirname + "/test.pt")
-        
+
         assert os.path.exists(tmpdirname + "/test.pt")
-        
-        sparse_autoencoder_loaded = SparseAutoencoder.load_from_pretrained(tmpdirname + "/test.pt")
-        sparse_autoencoder_loaded.cfg.device = "cpu" # might autoload onto mps
+
+        sparse_autoencoder_loaded = SparseAutoencoder.load_from_pretrained(
+            tmpdirname + "/test.pt"
+        )
+        sparse_autoencoder_loaded.cfg.device = "cpu"  # might autoload onto mps
         sparse_autoencoder_loaded = sparse_autoencoder_loaded.to("cpu")
         sparse_autoencoder_loaded_state_dict = sparse_autoencoder_loaded.state_dict()
         # check cfg matches the original
         assert sparse_autoencoder_loaded.cfg == cfg
-        
+
         # check state_dict matches the original
         for key in sparse_autoencoder.state_dict().keys():
             assert torch.allclose(
-                sparse_autoencoder_state_dict[key],  # pylint: disable=unsubscriptable-object
-                sparse_autoencoder_loaded_state_dict[key] # pylint: disable=unsubscriptable-object
+                sparse_autoencoder_state_dict[
+                    key
+                ],  # pylint: disable=unsubscriptable-object
+                sparse_autoencoder_loaded_state_dict[
+                    key
+                ],  # pylint: disable=unsubscriptable-object
             )
-            
+
+
 def test_load_from_pretrained_pkl_gz(cfg):
-    
     with tempfile.TemporaryDirectory() as tmpdirname:
-        
         # assert file does not exist
         assert os.path.exists(tmpdirname + "/test.pkl.gz") == False
-        
+
         sparse_autoencoder = SparseAutoencoder(cfg)
         sparse_autoencoder_state_dict = sparse_autoencoder.state_dict()
         sparse_autoencoder.save_model(tmpdirname + "/test.pkl.gz")
-        
+
         assert os.path.exists(tmpdirname + "/test.pkl.gz")
-        
-        sparse_autoencoder_loaded = SparseAutoencoder.load_from_pretrained(tmpdirname + "/test.pkl.gz")
-        sparse_autoencoder_loaded.cfg.device = "cpu" # might autoload onto mps
+
+        sparse_autoencoder_loaded = SparseAutoencoder.load_from_pretrained(
+            tmpdirname + "/test.pkl.gz"
+        )
+        sparse_autoencoder_loaded.cfg.device = "cpu"  # might autoload onto mps
         sparse_autoencoder_loaded = sparse_autoencoder_loaded.to("cpu")
         sparse_autoencoder_loaded_state_dict = sparse_autoencoder_loaded.state_dict()
         # check cfg matches the original
         assert sparse_autoencoder_loaded.cfg == cfg
-        
+
         # check state_dict matches the original
         for key in sparse_autoencoder.state_dict().keys():
             assert torch.allclose(
-                sparse_autoencoder_state_dict[key],  # pylint: disable=unsubscriptable-object
-                sparse_autoencoder_loaded_state_dict[key] # pylint: disable=unsubscriptable-object
+                sparse_autoencoder_state_dict[
+                    key
+                ],  # pylint: disable=unsubscriptable-object
+                sparse_autoencoder_loaded_state_dict[
+                    key
+                ],  # pylint: disable=unsubscriptable-object
             )
-        
+
+
 def test_sparse_autoencoder_forward(sparse_autoencoder):
-    
     batch_size = 32
-    d_in =sparse_autoencoder.d_in
+    d_in = sparse_autoencoder.d_in
     d_sae = sparse_autoencoder.d_sae
-    
+
     x = torch.randn(batch_size, d_in)
-    sae_out, feature_acts, loss, mse_loss, l1_loss, ghost_grad_loss = sparse_autoencoder.forward(
+    (
+        sae_out,
+        feature_acts,
+        loss,
+        mse_loss,
+        l1_loss,
+        ghost_grad_loss,
+    ) = sparse_autoencoder.forward(
         x,
     )
-    
+
     assert sae_out.shape == (batch_size, d_in)
     assert feature_acts.shape == (batch_size, d_sae)
     assert loss.shape == ()
     assert mse_loss.shape == ()
     assert l1_loss.shape == ()
     assert torch.allclose(loss, mse_loss + l1_loss)
-    
+
     x_centred = x - x.mean(dim=0, keepdim=True)
-    expected_mse_loss = (torch.pow((sae_out-x.float()), 2) / (x_centred**2).sum(dim=-1, keepdim=True).sqrt()).mean()
+    expected_mse_loss = (
+        torch.pow((sae_out - x.float()), 2)
+        / (x_centred**2).sum(dim=-1, keepdim=True).sqrt()
+    ).mean()
     assert torch.allclose(mse_loss, expected_mse_loss)
-    expected_l1_loss = torch.abs(feature_acts).sum(dim=1).mean(dim=(0,)) 
+    expected_l1_loss = torch.abs(feature_acts).sum(dim=1).mean(dim=(0,))
     assert torch.allclose(l1_loss, sparse_autoencoder.l1_coefficient * expected_l1_loss)
-    
+
     # check everything has the right dtype
     assert sae_out.dtype == sparse_autoencoder.dtype
     assert feature_acts.dtype == sparse_autoencoder.dtype
     assert loss.dtype == sparse_autoencoder.dtype
     assert mse_loss.dtype == sparse_autoencoder.dtype
     assert l1_loss.dtype == sparse_autoencoder.dtype
-

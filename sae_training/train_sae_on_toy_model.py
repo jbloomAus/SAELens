@@ -32,7 +32,6 @@ def train_toy_sae(
 
     pbar = tqdm(dataloader, desc="Training SAE")
     for _, batch in enumerate(pbar):
-        
         batch = next(dataloader)
         # Make sure the W_dec is still zero-norm
         sparse_autoencoder.set_decoder_norm_to_unit_norm()
@@ -43,12 +42,10 @@ def train_toy_sae(
         loss.backward()
         sparse_autoencoder.remove_gradient_parallel_to_decoder_directions()
         optimizer.step()
-        
+
         n_training_tokens += batch_size
 
         with torch.no_grad():
-            
-            
             # Calculate the sparsities, and add it to a list
             act_freq_scores = (feature_acts.abs() > 0).float().sum(0)
             frac_active_list.append(act_freq_scores)
@@ -67,15 +64,13 @@ def train_toy_sae(
                     len(frac_active_list) * batch_size
                 )
 
-
             l0 = (feature_acts > 0).float().sum(-1).mean()
             current_learning_rate = optimizer.param_groups[0]["lr"]
             l2_norm = torch.norm(feature_acts, dim=1).mean()
-            
+
             l2_norm_in = torch.norm(batch, dim=-1)
             l2_norm_out = torch.norm(sae_out, dim=-1)
-            l2_norm_ratio = l2_norm_out / (1e-6+l2_norm_in)
-            
+            l2_norm_ratio = l2_norm_out / (1e-6 + l2_norm_in)
 
             if use_wandb and ((n_training_steps + 1) % wandb_log_frequency == 0):
                 wandb.log(
@@ -104,7 +99,7 @@ def train_toy_sae(
                     },
                     step=n_training_steps,
                 )
-            
+
                 if (n_training_steps + 1) % (wandb_log_frequency * 100) == 0:
                     log_feature_sparsity = torch.log10(feature_sparsity + 1e-8)
                     wandb.log(
@@ -120,7 +115,6 @@ def train_toy_sae(
                 f"{n_training_steps}| MSE Loss {mse_loss.item():.3f} | L0 {l0.item():.3f}"
             )
             pbar.update(batch_size)
-
 
         # If we did checkpointing we'd do it here.
 
