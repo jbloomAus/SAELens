@@ -58,7 +58,7 @@ def train_sae_on_language_model(
         # Make sure the W_dec is still zero-norm
         sparse_autoencoder.set_decoder_norm_to_unit_norm()
 
-        # after resampling, reset the sparsity:
+        # log and then reset the feature sparsity every feature_sampling_window steps
         if (n_training_steps + 1) % feature_sampling_window == 0:
             feature_sparsity = act_freq_scores / n_frac_active_tokens
             log_feature_sparsity = torch.log10(feature_sparsity + 1e-10).detach().cpu()
@@ -69,6 +69,8 @@ def train_sae_on_language_model(
                     {
                         "metrics/mean_log10_feature_sparsity": log_feature_sparsity.mean().item(),
                         "plots/feature_density_line_chart": wandb_histogram,
+                        "sparsity/below_1e-5": (feature_sparsity < 1e-5).sum().item(),
+                        "sparsity/below_1e-6": (feature_sparsity < 1e-6).sum().item(),
                     },
                     step=n_training_steps,
                 )
@@ -78,11 +80,7 @@ def train_sae_on_language_model(
             )
             n_frac_active_tokens = 0
 
-            scheduler.step()
-            scheduler.step()
-
         scheduler.step()
-
         optimizer.zero_grad()
 
         ghost_grad_neuron_mask = (
@@ -137,21 +135,7 @@ def train_sae_on_language_model(
                         "metrics/l0": l0.item(),
                         # sparsity
                         "sparsity/mean_passes_since_fired": n_forward_passes_since_fired.mean().item(),
-                        "sparsity/n_passes_since_fired_over_threshold": ghost_grad_neuron_mask.sum().item(),
-                        "sparsity/below_1e-5": (feature_sparsity < 1e-5)
-                        .float()
-                        .mean()
-                        .item(),
-                        "sparsity/below_1e-6": (feature_sparsity < 1e-6)
-                        .float()
-                        .mean()
-                        .item(),
-                        "sparsity/dead_features": (
-                            feature_sparsity < dead_feature_threshold
-                        )
-                        .float()
-                        .mean()
-                        .item(),
+                        "sparsity/dead_features": ghost_grad_neuron_mask.sum().item(),
                         "details/n_training_tokens": n_training_tokens,
                         "details/current_learning_rate": current_learning_rate,
                     },
@@ -175,7 +159,7 @@ def train_sae_on_language_model(
 
         # checkpoint if at checkpoint frequency
         if n_checkpoints > 0 and n_training_tokens > checkpoint_thresholds[0]:
-            cfg = sparse_autoencoder.cfg
+            sparse_autoencoder.set_decoder_norm_to_unit_norm()
             path = f"{sparse_autoencoder.cfg.checkpoint_path}/{n_training_tokens}_{sparse_autoencoder.get_name()}.pt"
             log_feature_sparsity_path = f"{sparse_autoencoder.cfg.checkpoint_path}/{n_training_tokens}_{sparse_autoencoder.get_name()}_log_feature_sparsity.pt"
             sparse_autoencoder.save_model(path)
@@ -184,11 +168,11 @@ def train_sae_on_language_model(
             checkpoint_thresholds.pop(0)
             if len(checkpoint_thresholds) == 0:
                 n_checkpoints = 0
-            if cfg.log_to_wandb:
+            if sparse_autoencoder.cfg.log_to_wandb:
                 model_artifact = wandb.Artifact(
                     f"{sparse_autoencoder.get_name()}",
                     type="model",
-                    metadata=dict(cfg.__dict__),
+                    metadata=dict(sparse_autoencoder.cfg.__dict__),
                 )
                 model_artifact.add_file(path)
                 wandb.log_artifact(model_artifact)
@@ -196,21 +180,34 @@ def train_sae_on_language_model(
                 sparsity_artifact = wandb.Artifact(
                     f"{sparse_autoencoder.get_name()}_log_feature_sparsity",
                     type="log_feature_sparsity",
-                    metadata=dict(cfg.__dict__),
+                    metadata=dict(sparse_autoencoder.cfg.__dict__),
                 )
                 sparsity_artifact.add_file(log_feature_sparsity_path)
                 wandb.log_artifact(sparsity_artifact)
 
         n_training_steps += 1
 
-    log_feature_sparsity_path = f"{sparse_autoencoder.cfg.checkpoint_path}/final_{sparse_autoencoder.get_name()}_log_feature_sparsity.pt"
+    # save sae to checkpoints folder
+    path = f"{sparse_autoencoder.cfg.checkpoint_path}/final_{sparse_autoencoder.get_name()}.pt"
+    sparse_autoencoder.set_decoder_norm_to_unit_norm()
     sparse_autoencoder.save_model(path)
+
+    if sparse_autoencoder.cfg.log_to_wandb:
+        model_artifact = wandb.Artifact(
+            f"{sparse_autoencoder.get_name()}",
+            type="model",
+            metadata=dict(sparse_autoencoder.cfg.__dict__),
+        )
+        model_artifact.add_file(path)
+        wandb.log_artifact(model_artifact, aliases=["final_model"])
+
+    log_feature_sparsity_path = f"{sparse_autoencoder.cfg.checkpoint_path}/final_{sparse_autoencoder.get_name()}_log_feature_sparsity.pt"
     torch.save(log_feature_sparsity, log_feature_sparsity_path)
-    if cfg.log_to_wandb:
+    if sparse_autoencoder.cfg.log_to_wandb:
         sparsity_artifact = wandb.Artifact(
             f"{sparse_autoencoder.get_name()}_log_feature_sparsity",
             type="log_feature_sparsity",
-            metadata=dict(cfg.__dict__),
+            metadata=dict(sparse_autoencoder.cfg.__dict__),
         )
         sparsity_artifact.add_file(log_feature_sparsity_path)
         wandb.log_artifact(sparsity_artifact)

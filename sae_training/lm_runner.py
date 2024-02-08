@@ -41,20 +41,6 @@ def language_model_sae_runner(cfg):
         wandb_log_frequency=cfg.wandb_log_frequency,
     )
 
-    # save sae to checkpoints folder
-    path = f"{cfg.checkpoint_path}/final_{sparse_autoencoder.get_name()}.pt"
-    sparse_autoencoder.save_model(path)
-
-    # upload to wandb
-    if cfg.log_to_wandb:
-        model_artifact = wandb.Artifact(
-            f"{sparse_autoencoder.get_name()}",
-            type="model",
-            metadata=dict(cfg.__dict__),
-        )
-        model_artifact.add_file(path)
-        wandb.log_artifact(model_artifact, aliases=["final_model"])
-
     if cfg.log_to_wandb:
         wandb.finish()
 
