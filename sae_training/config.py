@@ -32,7 +32,7 @@ class RunnerConfig(ABC):
     # Activation Store Parameters
     n_batches_in_buffer: int = 20
     total_training_tokens: int = 2_000_000
-    store_batch_size: int = 32,
+    store_batch_size: int = (32,)
 
     # Misc
     device: str = "cpu"
@@ -61,18 +61,15 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
     # Training Parameters
     l1_coefficient: float = 1e-3
     lr: float = 3e-4
-    lr_scheduler_name: str = "constant"  # constant, constantwithwarmup, linearwarmupdecay, cosineannealing, cosineannealingwarmup
+    lr_scheduler_name: str = "constantwithwarmup"  # constant, constantwithwarmup, linearwarmupdecay, cosineannealing, cosineannealingwarmup
     lr_warm_up_steps: int = 500
     train_batch_size: int = 4096
 
     # Resampling protocol args
     use_ghost_grads: bool = False  # want to change this to true on some timeline.
     feature_sampling_window: int = 2000
-    feature_sampling_method: str = "Anthropic"  # None or Anthropic
-    resample_batches: int = 32
-    feature_reinit_scale: float = 0.2
     dead_feature_window: int = 1000  # unless this window is larger feature sampling,
-    dead_feature_estimation_method: str = "no_fire"
+
     dead_feature_threshold: float = 1e-8
 
     # WANDB
@@ -93,11 +90,6 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
         )
 
         self.run_name = f"{self.d_sae}-L1-{self.l1_coefficient}-LR-{self.lr}-Tokens-{self.total_training_tokens:3.3e}"
-
-        if self.feature_sampling_method not in [None, "l2", "anthropic"]:
-            raise ValueError(
-                f"feature_sampling_method must be None, l2, or anthropic. Got {self.feature_sampling_method}"
-            )
 
         if self.b_dec_init_method not in ["geometric_median", "mean", "zeros"]:
             raise ValueError(
@@ -134,7 +126,6 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
 
         # how many times will we sample dead neurons?
         # assert self.dead_feature_window <= self.feature_sampling_window, "dead_feature_window must be smaller than feature_sampling_window"
-        n_dead_feature_samples = total_training_steps // self.dead_feature_window
         n_feature_window_samples = total_training_steps // self.feature_sampling_window
         print(
             f"n_tokens_per_feature_sampling_window (millions): {(self.feature_sampling_window * self.context_size * self.train_batch_size) / 10 **6}"
@@ -142,16 +133,13 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
         print(
             f"n_tokens_per_dead_feature_window (millions): {(self.dead_feature_window * self.context_size * self.train_batch_size) / 10 **6}"
         )
-        if self.feature_sampling_method != None:
-            print(f"We will reset neurons {n_dead_feature_samples} times.")
-        
+
         if self.use_ghost_grads:
             print("Using Ghost Grads.")
-        
+
         print(
             f"We will reset the sparsity calculation {n_feature_window_samples} times."
         )
-        print(f"Number of tokens when resampling: {self.resample_batches * self.store_batch_size}")
         # print("Number tokens in dead feature calculation window: ", self.dead_feature_window * self.train_batch_size)
         print(
             f"Number tokens in sparsity calculation window: {self.feature_sampling_window * self.train_batch_size:.2e}"

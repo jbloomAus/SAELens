@@ -9,8 +9,8 @@ def geometric_median_array(points, weights, eps=1e-6, maxiter=100, ftol=1e-20):
     """
     :param points: list of length :math:`n`, whose elements are each a ``torch.Tensor`` of shape ``(d,)``
     :param weights: ``torch.Tensor`` of shape :math:``(n,)``.
-    :param eps: Smallest allowed value of denominator, to avoid divide by zero. 
-    	Equivalently, this is a smoothing parameter. Default 1e-6. 
+    :param eps: Smallest allowed value of denominator, to avoid divide by zero.
+        Equivalently, this is a smoothing parameter. Default 1e-6.
     :param maxiter: Maximum number of Weiszfeld iterations. Default 100
     :param ftol: If objective value does not improve by at least this `ftol` fraction, terminate the algorithm. Default 1e-20.
     :return: SimpleNamespace object with fields
@@ -30,7 +30,9 @@ def geometric_median_array(points, weights, eps=1e-6, maxiter=100, ftol=1e-20):
         pbar = tqdm.tqdm(range(maxiter))
         for _ in pbar:
             prev_obj_value = objective_value
-            norms = torch.stack([torch.linalg.norm((p - median).view(-1)) for p in points])
+            norms = torch.stack(
+                [torch.linalg.norm((p - median).view(-1)) for p in points]
+            )
             new_weights = weights / torch.clamp(norms, min=eps)
             median = weighted_average(points, new_weights)
 
@@ -39,29 +41,32 @@ def geometric_median_array(points, weights, eps=1e-6, maxiter=100, ftol=1e-20):
             if abs(prev_obj_value - objective_value) <= ftol * objective_value:
                 early_termination = True
                 break
-            
+
             pbar.set_description(f"Objective value: {objective_value:.4f}")
 
     median = weighted_average(points, new_weights)  # allow autodiff to track it
     return SimpleNamespace(
         median=median,
         new_weights=new_weights,
-        termination="function value converged within tolerance" if early_termination else "maximum iterations reached",
+        termination="function value converged within tolerance"
+        if early_termination
+        else "maximum iterations reached",
         logs=logs,
     )
+
 
 def geometric_median_per_component(points, weights, eps=1e-6, maxiter=100, ftol=1e-20):
     """
     :param points: list of length :math:``n``, where each element is itself a list of ``numpy.ndarray``.
         Each inner list has the same "shape".
     :param weights: ``numpy.ndarray`` of shape :math:``(n,)``.
-    :param eps: Smallest allowed value of denominator, to avoid divide by zero. 
-    	Equivalently, this is a smoothing parameter. Default 1e-6. 
+    :param eps: Smallest allowed value of denominator, to avoid divide by zero.
+        Equivalently, this is a smoothing parameter. Default 1e-6.
     :param maxiter: Maximum number of Weiszfeld iterations. Default 100
     :param ftol: If objective value does not improve by at least this `ftol` fraction, terminate the algorithm. Default 1e-20.
     :return: SimpleNamespace object with fields
         - `median`: estimate of the geometric median, which is a list of ``numpy.ndarray`` of the same "shape" as the input.
-        - `termination`: string explaining how the algorithm terminated, one for each component. 
+        - `termination`: string explaining how the algorithm terminated, one for each component.
         - `logs`: function values encountered through the course of the algorithm.
     """
     components = list(zip(*points))
@@ -78,6 +83,7 @@ def geometric_median_per_component(points, weights, eps=1e-6, maxiter=100, ftol=
         logs.append(ret.logs)
     return SimpleNamespace(median=median, termination=termination, logs=logs)
 
+
 def weighted_average(points, weights):
     weights = weights / weights.sum()
     ret = points[0] * weights[0]
@@ -85,6 +91,10 @@ def weighted_average(points, weights):
         ret += points[i] * weights[i]
     return ret
 
+
 @torch.no_grad()
 def geometric_median_objective(median, points, weights):
-    return np.average([torch.linalg.norm((p - median).reshape(-1)).item() for p in points], weights=weights.cpu())
+    return np.average(
+        [torch.linalg.norm((p - median).reshape(-1)).item() for p in points],
+        weights=weights.cpu(),
+    )

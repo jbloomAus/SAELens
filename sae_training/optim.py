@@ -1,6 +1,6 @@
-'''
+"""
 Took the LR scheduler from my previous work: https://github.com/jbloomAus/DecisionTransformerInterpretability/blob/ee55df35cdb92e81d689c72fb9dd5a7252893363/src/decision_transformer/utils.py#L425
-'''
+"""
 import math
 from typing import Optional
 
@@ -12,9 +12,7 @@ import torch.optim.lr_scheduler as lr_scheduler
 #  Linear Warmup and decay
 #  Cosine Annealing with Warmup
 #  Cosine Annealing with Warmup / Restarts
-def get_scheduler(
-    scheduler_name: Optional[str], optimizer: optim.Optimizer, **kwargs
-):
+def get_scheduler(scheduler_name: Optional[str], optimizer: optim.Optimizer, **kwargs):
     """
     Loosely based on this, seemed simpler write this than import
     transformers: https://huggingface.co/docs/transformers/main_classes/optimizer_schedules
@@ -31,9 +29,7 @@ def get_scheduler(
             if steps < warm_up_steps:
                 return (steps + 1) / warm_up_steps
             else:
-                return (training_steps - steps) / (
-                    training_steps - warm_up_steps
-                )
+                return (training_steps - steps) / (training_steps - warm_up_steps)
 
         return lr_lambda
 
@@ -43,15 +39,11 @@ def get_scheduler(
             if steps < warm_up_steps:
                 return (steps + 1) / warm_up_steps
             else:
-                progress = (steps - warm_up_steps) / (
-                    training_steps - warm_up_steps
-                )
-                return lr_end + 0.5 * (1 - lr_end) * (
-                    1 + math.cos(math.pi * progress)
-                )
+                progress = (steps - warm_up_steps) / (training_steps - warm_up_steps)
+                return lr_end + 0.5 * (1 - lr_end) * (1 + math.cos(math.pi * progress))
 
         return lr_lambda
-    
+
     if scheduler_name is None or scheduler_name.lower() == "constant":
         return lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda steps: 1.0)
     elif scheduler_name.lower() == "constantwithwarmup":
@@ -75,9 +67,7 @@ def get_scheduler(
         warm_up_steps = kwargs.get("warm_up_steps", 0)
         training_steps = kwargs.get("training_steps")
         eta_min = kwargs.get("lr_end", 0)
-        lr_lambda = get_warmup_cosine_lambda(
-            warm_up_steps, training_steps, eta_min
-        )
+        lr_lambda = get_warmup_cosine_lambda(warm_up_steps, training_steps, eta_min)
         return lr_scheduler.LambdaLR(optimizer, lr_lambda)
     elif scheduler_name.lower() == "cosineannealingwarmrestarts":
         training_steps = kwargs.get("training_steps")
