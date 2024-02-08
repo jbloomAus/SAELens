@@ -272,7 +272,7 @@ class ActivationsStore:
         # 3. put other 50 % in a dataloader
         dataloader = iter(
             DataLoader(
-                mixing_buffer[: mixing_buffer.shape[0] // 2 :],
+                mixing_buffer[mixing_buffer.shape[0] // 2 :],
                 batch_size=batch_size,
                 shuffle=True,
             )
