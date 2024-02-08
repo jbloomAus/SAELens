@@ -101,6 +101,8 @@ class SparseAutoencoder(HookedRootModule):
         x_centred = x - x.mean(dim=0, keepdim=True)
         mse_loss = (torch.pow((sae_out-x.float()), 2) / (x_centred**2).sum(dim=-1, keepdim=True).sqrt())
 
+
+
         mse_loss_ghost_resid = torch.tensor(0.0, dtype=self.dtype, device=self.device)
         # gate on config and training so evals is not slowed down.
         if self.cfg.use_ghost_grads and self.training and dead_neuron_mask.sum() > 0:
