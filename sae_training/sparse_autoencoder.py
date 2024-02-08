@@ -76,7 +76,7 @@ class SparseAutoencoder(HookedRootModule):
         x = x.to(self.dtype)
         sae_in = self.hook_sae_in(
             x - self.b_dec
-        )  # Remove encoder bias as per Anthropic
+        )  # Remove decoder bias as per Anthropic
 
         hidden_pre = self.hook_hidden_pre(
             einops.einsum(
@@ -98,7 +98,8 @@ class SparseAutoencoder(HookedRootModule):
         )
         
         # add config for whether l2 is normalized:
-        mse_loss = (torch.pow((sae_out-x.float()), 2) / (x**2).sum(dim=-1, keepdim=True).sqrt())
+        x_centred = x - x.mean(dim=0, keepdim=True)
+        mse_loss = (torch.pow((sae_out-x.float()), 2) / (x_centred**2).sum(dim=-1, keepdim=True).sqrt())
 
         mse_loss_ghost_resid = torch.tensor(0.0, dtype=self.dtype, device=self.device)
         # gate on config and training so evals is not slowed down.
@@ -125,7 +126,9 @@ class SparseAutoencoder(HookedRootModule):
             mse_rescaling_factor = (mse_loss / (mse_loss_ghost_resid + 1e-6)).detach()
             mse_loss_ghost_resid = mse_rescaling_factor * mse_loss_ghost_resid
 
-        mse_loss_ghost_resid = mse_loss_ghost_resid.mean()
+            mse_loss_ghost_resid = mse_loss_ghost_resid.mean()
+
+            
         mse_loss = mse_loss.mean()
         sparsity = torch.abs(feature_acts).sum(dim=1).mean(dim=(0,)) 
         l1_loss = self.l1_coefficient * sparsity
@@ -155,7 +158,6 @@ class SparseAutoencoder(HookedRootModule):
                 skip_typechecks=True, 
                 maxiter=100, per_component=False).median
         
-        
         previous_distances = torch.norm(all_activations - previous_b_dec, dim=-1)
         distances = torch.norm(all_activations - out, dim=-1)
         
@@ -181,238 +183,7 @@ class SparseAutoencoder(HookedRootModule):
         print(f"New distances: {distances.median(0).values.mean().item()}")
         
         self.b_dec.data = out.to(self.dtype).to(self.device)
-        
 
-    @torch.no_grad()
-    def resample_neurons_l2(
-        self,
-        x: Float[Tensor, "batch_size n_hidden"],
-        feature_sparsity: Float[Tensor, "n_hidden_ae"],
-        optimizer: torch.optim.Optimizer,
-    ) -> None:
-        '''
-        Resamples neurons that have been dead for `dead_neuron_window` steps, according to `frac_active`.
-        
-        I'll probably break this now and fix it later!
-        '''
-        
-        feature_reinit_scale = self.cfg.feature_reinit_scale
-        
-        sae_out, _, _, _, _ = self.forward(x)
-        per_token_l2_loss = (sae_out - x).pow(2).sum(dim=-1).squeeze()
-
-        # Find the dead neurons in this instance. If all neurons are alive, continue
-        is_dead = (feature_sparsity < self.cfg.dead_feature_threshold)
-        dead_neurons = torch.nonzero(is_dead).squeeze(-1)
-        alive_neurons = torch.nonzero(~is_dead).squeeze(-1)
-        n_dead = dead_neurons.numel()
-        
-        if n_dead == 0:
-            return 0 # If there are no dead neurons, we don't need to resample neurons
-        
-        # Compute L2 loss for each element in the batch
-        # TODO: Check whether we need to go through more batches as features get sparse to find high l2 loss examples. 
-        if per_token_l2_loss.max() < 1e-6:
-            return 0 # If we have zero reconstruction loss, we don't need to resample neurons
-        
-        # Draw `n_hidden_ae` samples from [0, 1, ..., batch_size-1], with probabilities proportional to l2_loss squared
-        per_token_l2_loss = per_token_l2_loss.to(torch.float32) # wont' work with bfloat16
-        distn = Categorical(probs = per_token_l2_loss.pow(2) / (per_token_l2_loss.pow(2).sum()))
-        replacement_indices = distn.sample((n_dead,)) # shape [n_dead]
-
-        # Index into the batch of hidden activations to get our replacement values
-        replacement_values = (x - self.b_dec)[replacement_indices] # shape [n_dead n_input_ae]
-
-        # unit norm
-        replacement_values = (replacement_values / (replacement_values.norm(dim=1, keepdim=True) + 1e-8))
-
-        # St new decoder weights
-        self.W_dec.data[is_dead, :] = replacement_values
-
-        # Get the norm of alive neurons (or 1.0 if there are no alive neurons)
-        W_enc_norm_alive_mean = 1.0 if len(alive_neurons) == 0 else self.W_enc[:, alive_neurons].norm(dim=0).mean().item()
-        
-        # Lastly, set the new weights & biases
-        self.W_enc.data[:, is_dead] = (replacement_values * W_enc_norm_alive_mean * feature_reinit_scale).T
-        self.b_enc.data[is_dead] = 0.0
-        
-        
-        # reset the Adam Optimiser for every modified weight and bias term
-        # Reset all the Adam parameters
-        for dict_idx, (k, v) in enumerate(optimizer.state.items()):
-            for v_key in ["exp_avg", "exp_avg_sq"]:
-                if dict_idx == 0:
-                    assert k.data.shape == (self.d_in, self.d_sae)
-                    v[v_key][:, is_dead] = 0.0
-                elif dict_idx == 1:
-                    assert k.data.shape == (self.d_sae,)
-                    v[v_key][is_dead] = 0.0
-                elif dict_idx == 2:
-                    assert k.data.shape == (self.d_sae, self.d_in)
-                    v[v_key][is_dead, :] = 0.0
-                elif dict_idx == 3:
-                    assert k.data.shape == (self.d_in,)
-                else:
-                    raise ValueError(f"Unexpected dict_idx {dict_idx}")
-                
-        # Check that the opt is really updated
-        for dict_idx, (k, v) in enumerate(optimizer.state.items()):
-            for v_key in ["exp_avg", "exp_avg_sq"]:
-                if dict_idx == 0:
-                    if k.data.shape != (self.d_in, self.d_sae):
-                        print(
-                            "Warning: it does not seem as if resetting the Adam parameters worked, there are shapes mismatches"
-                        )
-                    if v[v_key][:, is_dead].abs().max().item() > 1e-6:
-                        print(
-                            "Warning: it does not seem as if resetting the Adam parameters worked"
-                        )
-        
-        return n_dead
-
-    @torch.no_grad()
-    def resample_neurons_anthropic(
-        self, 
-        dead_neuron_indices, 
-        model,
-        optimizer, 
-        activation_store):
-        """
-        Arthur's version of Anthropic's feature resampling
-        procedure.
-        """
-        # collect global loss increases, and input activations
-        global_loss_increases, global_input_activations = self.collect_anthropic_resampling_losses(
-            model, activation_store
-        )
-
-        # sample according to losses
-        probs = global_loss_increases / global_loss_increases.sum()
-        sample_indices = torch.multinomial(
-            probs,
-            min(len(dead_neuron_indices), probs.shape[0]),
-            replacement=False,
-        )
-        # if we don't have enough samples for for all the dead neurons, take the first n
-        if sample_indices.shape[0] < len(dead_neuron_indices):
-            dead_neuron_indices = dead_neuron_indices[:sample_indices.shape[0]]
-
-        # Replace W_dec with normalized differences in activations
-        self.W_dec.data[dead_neuron_indices, :] = (
-            (
-                global_input_activations[sample_indices]
-                / torch.norm(global_input_activations[sample_indices], dim=1, keepdim=True)
-            )
-            .to(self.dtype)
-            .to(self.device)
-        )
-        
-        # Lastly, set the new weights & biases
-        self.W_enc.data[:, dead_neuron_indices] = self.W_dec.data[dead_neuron_indices, :].T
-        self.b_enc.data[dead_neuron_indices] = 0.0
-        
-        # Reset the Encoder Weights
-        if dead_neuron_indices.shape[0] < self.d_sae:
-            sum_of_all_norms = torch.norm(self.W_enc.data, dim=0).sum()
-            sum_of_all_norms -= len(dead_neuron_indices)
-            average_norm = sum_of_all_norms / (self.d_sae - len(dead_neuron_indices))
-            self.W_enc.data[:, dead_neuron_indices] *= self.cfg.feature_reinit_scale * average_norm
-
-            # Set biases to resampled value
-            relevant_biases = self.b_enc.data[dead_neuron_indices].mean()
-            self.b_enc.data[dead_neuron_indices] = relevant_biases * 0 # bias resample factor (put in config?)
-
-        else:
-            self.W_enc.data[:, dead_neuron_indices] *= self.cfg.feature_reinit_scale
-            self.b_enc.data[dead_neuron_indices] = -5.0
-        
-        # TODO: Refactor this resetting to be outside of resampling.
-        # reset the Adam Optimiser for every modified weight and bias term
-        # Reset all the Adam parameters
-        for dict_idx, (k, v) in enumerate(optimizer.state.items()):
-            for v_key in ["exp_avg", "exp_avg_sq"]:
-                if dict_idx == 0:
-                    assert k.data.shape == (self.d_in, self.d_sae)
-                    v[v_key][:, dead_neuron_indices] = 0.0
-                elif dict_idx == 1:
-                    assert k.data.shape == (self.d_sae,)
-                    v[v_key][dead_neuron_indices] = 0.0
-                elif dict_idx == 2:
-                    assert k.data.shape == (self.d_sae, self.d_in)
-                    v[v_key][dead_neuron_indices, :] = 0.0
-                elif dict_idx == 3:
-                    assert k.data.shape == (self.d_in,)
-                else:
-                    raise ValueError(f"Unexpected dict_idx {dict_idx}")
-                
-        # Check that the opt is really updated
-        for dict_idx, (k, v) in enumerate(optimizer.state.items()):
-            for v_key in ["exp_avg", "exp_avg_sq"]:
-                if dict_idx == 0:
-                    if k.data.shape != (self.d_in, self.d_sae):
-                        print(
-                            "Warning: it does not seem as if resetting the Adam parameters worked, there are shapes mismatches"
-                        )
-                    if v[v_key][:, dead_neuron_indices].abs().max().item() > 1e-6:
-                        print(
-                            "Warning: it does not seem as if resetting the Adam parameters worked"
-                        )
-        
-        return 
-
-    @torch.no_grad()
-    def collect_anthropic_resampling_losses(self, model, activation_store):
-        """
-        Collects the losses for resampling neurons (anthropic)
-        """
-        
-        batch_size = self.cfg.store_batch_size
-        
-        # we're going to collect this many forward passes
-        number_final_activations = self.cfg.resample_batches * batch_size
-        # but have seq len number of tokens in each
-        number_activations_total = number_final_activations * self.cfg.context_size
-        anthropic_iterator = range(0, number_final_activations, batch_size)
-        anthropic_iterator = tqdm(anthropic_iterator, desc="Collecting losses for resampling...")
-        
-        global_loss_increases = torch.zeros((number_final_activations,), dtype=self.dtype, device=self.device)
-        global_input_activations = torch.zeros((number_final_activations, self.d_in), dtype=self.dtype, device=self.device)
-
-        for refill_idx in anthropic_iterator:
-            
-            # get a batch, calculate loss with/without using SAE reconstruction.
-            batch_tokens = activation_store.get_batch_tokens()
-            ce_loss_with_recons = self.get_test_loss(batch_tokens, model)
-            ce_loss_without_recons, normal_activations_cache = model.run_with_cache(
-                batch_tokens,
-                names_filter=self.cfg.hook_point,
-                return_type = "loss",
-                loss_per_token = True,
-            )
-            # ce_loss_without_recons = model.loss_fn(normal_logits, batch_tokens, True)
-            # del normal_logits
-            
-            normal_activations = normal_activations_cache[self.cfg.hook_point]
-            if self.cfg.hook_point_head_index is not None:
-                normal_activations = normal_activations[:,:,self.cfg.hook_point_head_index]
-
-            # calculate the difference in loss
-            changes_in_loss = ce_loss_with_recons - ce_loss_without_recons
-            changes_in_loss = changes_in_loss.cpu()
-            
-            # sample from the loss differences
-            probs = F.relu(changes_in_loss) / F.relu(changes_in_loss).sum(dim=1, keepdim=True)
-            changes_in_loss_dist = Categorical(probs)
-            samples = changes_in_loss_dist.sample()
-            
-            assert samples.shape == (batch_size,), f"{samples.shape=}; {self.cfg.store_batch_size=}"
-            
-            end_idx = refill_idx + batch_size
-            global_loss_increases[refill_idx:end_idx] = changes_in_loss[torch.arange(batch_size), samples]
-            global_input_activations[refill_idx:end_idx] = normal_activations[torch.arange(batch_size), samples]
-        
-        return global_loss_increases, global_input_activations
-    
     @torch.no_grad()
     def get_test_loss(self, batch_tokens, model):
         """
@@ -439,7 +210,6 @@ class SparseAutoencoder(HookedRootModule):
         )
         
         return ce_loss_with_recons
-        
 
     @torch.no_grad()
     def set_decoder_norm_to_unit_norm(self):

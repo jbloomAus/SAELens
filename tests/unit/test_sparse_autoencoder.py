@@ -36,7 +36,6 @@ def cfg():
     mock_config.context_size = 64
     mock_config.feature_sampling_method = None
     mock_config.feature_sampling_window = 50
-    mock_config.resample_batches = 4
     mock_config.feature_reinit_scale = 0.1
     mock_config.dead_feature_threshold = 1e-7
     mock_config.n_batches_in_buffer = 10
@@ -187,8 +186,8 @@ def test_sparse_autoencoder_forward(sparse_autoencoder):
     assert l1_loss.shape == ()
     assert torch.allclose(loss, mse_loss + l1_loss)
     
-
-    expected_mse_loss = (torch.pow((sae_out-x.float()), 2) / (x**2).sum(dim=-1, keepdim=True).sqrt()).mean()
+    x_centred = x - x.mean(dim=0, keepdim=True)
+    expected_mse_loss = (torch.pow((sae_out-x.float()), 2) / (x_centred**2).sum(dim=-1, keepdim=True).sqrt()).mean()
     assert torch.allclose(mse_loss, expected_mse_loss)
     expected_l1_loss = torch.abs(feature_acts).sum(dim=1).mean(dim=(0,)) 
     assert torch.allclose(l1_loss, sparse_autoencoder.l1_coefficient * expected_l1_loss)

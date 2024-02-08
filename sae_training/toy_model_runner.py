@@ -29,11 +29,11 @@ class SAEToyModelRunnerConfig:
     l1_coefficient: float = 1e-3
     lr: float = 3e-4
     train_batch_size: int = 1024 
+    b_dec_init_method: str = "geometric_median"
     
-    # Resampling protocol args
-    feature_sampling_method: str = "l2" # None or l2
+    # Sparsity / Dead Feature Handling
+    use_ghost_grads: bool = False # not currently implemented, but SAE class expects it.
     feature_sampling_window: int = 100
-    feature_reinit_scale: float = 0.2
     dead_feature_window: int = 100 # unless this window is larger feature sampling,
     dead_feature_threshold: float = 1e-8
     
@@ -92,12 +92,10 @@ def toy_model_sae_runner(cfg):
         wandb.init(project=cfg.wandb_project, config=cfg)
 
     sparse_autoencoder = train_toy_sae(
-        model, # need model so we can do evals for neuron resampling
         sparse_autoencoder,
-        hidden.detach().squeeze(),
+        activation_store=hidden.detach().squeeze(),
         batch_size=cfg.train_batch_size,
         feature_sampling_window=cfg.feature_sampling_window,
-        feature_reinit_scale=cfg.feature_reinit_scale,
         dead_feature_threshold=cfg.dead_feature_threshold,
         use_wandb=cfg.log_to_wandb,
         wandb_log_frequency=cfg.wandb_log_frequency,

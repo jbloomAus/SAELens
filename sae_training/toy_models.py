@@ -149,9 +149,6 @@ class Model(nn.Module):
         batch = t.cat(data, dim=-1)
         return batch
 
-
-
-
     def calculate_loss(
         self,
         out: Float[Tensor, "batch instances features"],
@@ -344,15 +341,15 @@ def parse_colors_for_superposition_plot(
     This function unifies them all by turning colors into a list of lists of strings, i.e. one color for each instance & feature.
     '''
     # If colors is a tensor, we assume it's the importances tensor, and we color according to a viridis color scheme
-    if isinstance(colors, Tensor):
-        colors = t.broadcast_to(colors, (n_instances, n_feats))
-        colors = [
-            [helper_get_viridis(v.item()) for v in colors_for_this_instance]
-            for colors_for_this_instance in colors
-        ]
+    # if isinstance(colors, Tensor):
+    #     colors = t.broadcast_to(colors, (n_instances, n_feats))
+    #     colors = [
+    #         [helper_get_viridis(v.item()) for v in colors_for_this_instance]
+    #         for colors_for_this_instance in colors
+    #     ]
     
     # If colors is a tuple of ints, it's interpreted as number of correlated / anticorrelated pairs
-    elif isinstance(colors, tuple):
+    if isinstance(colors, tuple):
         n_corr, n_anti = colors
         n_indep = n_feats - 2 * (n_corr - n_anti)
         colors = [
