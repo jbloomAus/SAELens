@@ -66,7 +66,7 @@ class SparseAutoencoder(HookedRootModule):
             self.W_dec.data /= torch.norm(self.W_dec.data, dim=1, keepdim=True)
 
         self.b_dec = nn.Parameter(
-            torch.zeros(self.d_out, dtype=self.dtype, device=self.device)
+            torch.zeros(self.d_in, dtype=self.dtype, device=self.device)
         )
 
         self.b_dec_out = None
@@ -194,10 +194,10 @@ class SparseAutoencoder(HookedRootModule):
         out = torch.tensor(out, dtype=self.dtype, device=self.device)
         self.b_dec.data = out
 
-        if self.cfg.is_transcoder:
+        if self.b_dec_out is not None:
             # stupid code duplication
             previous_b_dec_out = self.b_dec_out.clone().cpu()
-            all_activations_out = activation_store.storage_buffer.detach().cpu()
+            all_activations_out = activation_store.storage_buffer_out.detach().cpu()
             out_out = compute_geometric_median(
                 all_activations_out,
                 skip_typechecks=True, 
@@ -231,14 +231,14 @@ class SparseAutoencoder(HookedRootModule):
         
         self.b_dec.data = out.to(self.dtype).to(self.device)
 
-        if self.cfg.is_transcoder:
-            # stupid code duplication
+        if self.b_dec_out is not None:
+            # stupid code duplication        
             previous_b_dec_out = self.b_dec_out.clone().cpu()
             all_activations_out = activation_store.storage_buffer_out.detach().cpu()
-            out_out = all_activations.mean(dim=0)
+            out_out = all_activations_out.mean(dim=0)
             
-            previous_distances_out = torch.norm(all_activations - previous_b_dec_out, dim=-1)
-            distances_out = torch.norm(all_activations - out_out, dim=-1)
+            previous_distances_out = torch.norm(all_activations_out - previous_b_dec_out, dim=-1)
+            distances_out = torch.norm(all_activations_out - out_out, dim=-1)
             
             print("Reinitializing b_dec with mean of activations")
             print(f"Previous distances: {previous_distances_out.median(0).values.mean().item()}")

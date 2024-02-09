@@ -6,6 +6,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformer_lens import HookedTransformer
 
+#import gc
 
 class ActivationsStore:
     """
@@ -161,7 +162,7 @@ class ActivationsStore:
             else:
                 cache = self.model.run_with_cache(
                     batch_tokens,
-                    names_filter=[self.cfg.hook_point, self.cfg.out_hook_point],
+                    names_filter=[act_name, self.cfg.out_hook_point],
                     stop_at_layer=self.cfg.out_hook_point_layer+1
                 )[1]
                 activations = (cache[act_name], cache[self.cfg.out_hook_point])
@@ -169,7 +170,9 @@ class ActivationsStore:
         return activations
 
     def get_buffer(self, n_batches_in_buffer):
-
+        #gc.collect()
+        #torch.cuda.empty_cache()
+        
         context_size = self.cfg.context_size
         batch_size = self.cfg.store_batch_size
         d_in = self.cfg.d_in
@@ -260,11 +263,12 @@ class ActivationsStore:
             # pbar.update(1)
 
         new_buffer = new_buffer.reshape(-1, d_in)
-        new_buffer = new_buffer[torch.randperm(new_buffer.shape[0])]
+        randperm = torch.randperm(new_buffer.shape[0])
+        new_buffer = new_buffer[randperm]
 
         if self.cfg.is_transcoder:
             new_buffer_out = new_buffer_out.reshape(-1, self.cfg.d_out)
-            new_buffer_out = new_buffer_out[torch.randperm(new_buffer_out.shape[0])]
+            new_buffer_out = new_buffer_out[randperm]
 
         if self.cfg.is_transcoder:
             return new_buffer, new_buffer_out
@@ -293,20 +297,27 @@ class ActivationsStore:
                 [new_buffer_out,
                  self.storage_buffer_out]
             )
-            
-            mixing_buffer = mixing_buffer[torch.randperm(mixing_buffer.shape[0])]
-            mixing_buffer_out = mixing_buffer_out[torch.randperm(mixing_buffer_out.shape[0])]
+
+            assert(mixing_buffer.shape[0] == mixing_buffer_out.shape[0])
+            randperm = torch.randperm(mixing_buffer.shape[0])
+            mixing_buffer = mixing_buffer[randperm]
+            mixing_buffer_out = mixing_buffer_out[randperm]
 
             self.storage_buffer = mixing_buffer[:mixing_buffer.shape[0]//2]
             self.storage_buffer_out = mixing_buffer_out[:mixing_buffer_out.shape[0]//2]
 
             # have to properly stack both of our new buffers into the dataloader
-            stacked_buffers = torch.stack([
+            """stacked_buffers = torch.stack([
+                mixing_buffer[mixing_buffer.shape[0]//2:],
+                mixing_buffer_out[mixing_buffer.shape[0]//2:]
+            ], dim=1)"""
+            catted_buffers = torch.cat([
                 mixing_buffer[mixing_buffer.shape[0]//2:],
                 mixing_buffer_out[mixing_buffer.shape[0]//2:]
             ], dim=1)
 
-            dataloader = iter(DataLoader(stacked_buffers, batch_size=batch_size, shuffle=True))
+            #dataloader = iter(DataLoader(stacked_buffers, batch_size=batch_size, shuffle=True))
+            dataloader = iter(DataLoader(catted_buffers, batch_size=batch_size, shuffle=True))
         else:
             # 1. # create new buffer by mixing stored and new buffer
             mixing_buffer = torch.cat(

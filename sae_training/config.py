@@ -40,9 +40,10 @@ class RunnerConfig(ABC):
     dtype: torch.dtype = torch.float32
 
     # transcoder stuff
-    is_transcoder: bool
-    out_hook_point: Optional[str]
-    out_hook_point_layer: Optional[int]
+    is_transcoder: bool = False
+    out_hook_point: Optional[str] = None
+    out_hook_point_layer: Optional[int] = None
+    d_out: Optional[int] = None
 
     def __post_init__(self):
         # Autofill cached_activations_path unless the user overrode it
@@ -69,6 +70,12 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
     lr_scheduler_name: str = "constant"  # constant, constantwithwarmup, linearwarmupdecay, cosineannealing, cosineannealingwarmup
     lr_warm_up_steps: int = 500
     train_batch_size: int = 4096
+
+    # transcoder stuff
+    is_transcoder: bool = False
+    out_hook_point: Optional[str] = None
+    out_hook_point_layer: Optional[int] = None
+    d_out: Optional[int] = None
 
     # Resampling protocol args
     use_ghost_grads: bool = False, # want to change this to true on some timeline.

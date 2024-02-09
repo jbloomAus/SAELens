@@ -1,7 +1,7 @@
 from functools import partial
 
 import numpy as np
-import plotly_express as px
+#import plotly_express as px # seems like everything that uses plotly has been commented out
 import torch
 from torch.optim import Adam
 from tqdm import tqdm
@@ -145,16 +145,18 @@ def train_sae_on_language_model(
         ghost_grad_neuron_mask = (n_forward_passes_since_fired > sparse_autoencoder.cfg.dead_feature_window).bool()
         next_batch = activation_store.next_batch()
 
-        if not self.cfg.is_transcoder:
+        assert(sparse_autoencoder.cfg.is_transcoder == activation_store.cfg.is_transcoder)
+        if not sparse_autoencoder.cfg.is_transcoder:
             sae_in = next_batch
             # Forward and Backward Passes
             sae_out, feature_acts, loss, mse_loss, l1_loss, ghost_grad_loss = sparse_autoencoder(
                 sae_in,
                 ghost_grad_neuron_mask,
+                mse_target=sae_in
             )
         else:
-            sae_in = next_batch[:, 0]
-            mlp_out = next_batch[:, 1]
+            sae_in = next_batch[:, :sparse_autoencoder.cfg.d_in]
+            mlp_out = next_batch[:, sparse_autoencoder.cfg.d_in:]
             sae_out, feature_acts, loss, mse_loss, l1_loss, ghost_grad_loss = sparse_autoencoder(
                 sae_in,
                 ghost_grad_neuron_mask,
