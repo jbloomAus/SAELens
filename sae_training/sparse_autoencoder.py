@@ -111,6 +111,7 @@ class SparseAutoencoder(HookedRootModule):
 
             # 1.
             residual = x - sae_out
+            residual_centred = residual - residual.mean(dim=0, keepdim=True)
             l2_norm_residual = torch.norm(residual, dim=-1)
 
             # 2.
@@ -123,7 +124,7 @@ class SparseAutoencoder(HookedRootModule):
             # 3.
             mse_loss_ghost_resid = (
                 torch.pow((ghost_out - residual.detach().float()), 2)
-                / (residual.detach() ** 2).sum(dim=-1, keepdim=True).sqrt()
+                / (residual_centred.detach() ** 2).sum(dim=-1, keepdim=True).sqrt()
             )
             mse_rescaling_factor = (mse_loss / (mse_loss_ghost_resid + 1e-6)).detach()
             mse_loss_ghost_resid = mse_rescaling_factor * mse_loss_ghost_resid
