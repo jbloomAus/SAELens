@@ -2,13 +2,14 @@ import numpy as np
 import torch
 from types import SimpleNamespace
 
+
 def geometric_median_list_of_array(points, weights, eps=1e-6, maxiter=100, ftol=1e-20):
     """
     :param points: list of length :math:``n``, where each element is itself a list of ``torch.Tensor``.
         Each inner list has the same "shape".
     :param weights: ``torch.Tensor`` of shape :math:``(n,)``.
-    :param eps: Smallest allowed value of denominator, to avoid divide by zero. 
-    	Equivalently, this is a smoothing parameter. Default 1e-6. 
+    :param eps: Smallest allowed value of denominator, to avoid divide by zero.
+        Equivalently, this is a smoothing parameter. Default 1e-6.
     :param maxiter: Maximum number of Weiszfeld iterations. Default 100
     :param ftol: If objective value does not improve by at least this `ftol` fraction, terminate the algorithm. Default 1e-20.
     :return: SimpleNamespace object with fields
@@ -28,7 +29,7 @@ def geometric_median_list_of_array(points, weights, eps=1e-6, maxiter=100, ftol=
         for _ in range(maxiter):
             prev_obj_value = objective_value
             denom = torch.stack([l2distance(p, median) for p in points])
-            new_weights = weights / torch.clamp(denom, min=eps) 
+            new_weights = weights / torch.clamp(denom, min=eps)
             median = weighted_average(points, new_weights)
 
             objective_value = geometric_median_objective(median, points, weights)
@@ -36,15 +37,18 @@ def geometric_median_list_of_array(points, weights, eps=1e-6, maxiter=100, ftol=
             if abs(prev_obj_value - objective_value) <= ftol * objective_value:
                 early_termination = True
                 break
-        
+
     median = weighted_average(points, new_weights)  # for autodiff
 
     return SimpleNamespace(
         median=median,
         new_weights=new_weights,
-        termination="function value converged within tolerance" if early_termination else "maximum iterations reached",
+        termination="function value converged within tolerance"
+        if early_termination
+        else "maximum iterations reached",
         logs=logs,
     )
+
 
 def weighted_average_component(points, weights):
     ret = points[0] * weights[0]
@@ -52,14 +56,24 @@ def weighted_average_component(points, weights):
         ret += points[i] * weights[i]
     return ret
 
+
 def weighted_average(points, weights):
     weights = weights / weights.sum()
-    return [weighted_average_component(component, weights=weights) for component in zip(*points)]
+    return [
+        weighted_average_component(component, weights=weights)
+        for component in zip(*points)
+    ]
+
 
 @torch.no_grad()
 def geometric_median_objective(median, points, weights):
-    return np.average([l2distance(p, median).item() for p in points], weights=weights.cpu())
+    return np.average(
+        [l2distance(p, median).item() for p in points], weights=weights.cpu()
+    )
+
 
 @torch.no_grad()
 def l2distance(p1, p2):
-    return torch.linalg.norm(torch.stack([torch.linalg.norm(x1 - x2) for (x1, x2) in zip(p1, p2)]))
+    return torch.linalg.norm(
+        torch.stack([torch.linalg.norm(x1 - x2) for (x1, x2) in zip(p1, p2)])
+    )

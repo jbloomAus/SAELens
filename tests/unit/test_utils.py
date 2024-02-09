@@ -12,6 +12,7 @@ from sae_training.utils import LMSparseAutoencoderSessionloader
 TEST_MODEL = "tiny-stories-1M"
 TEST_DATASET = "roneneldan/TinyStories"
 
+
 @pytest.fixture
 def cfg():
     """
@@ -45,38 +46,40 @@ def cfg():
     mock_config.device = "cpu"
     mock_config.seed = 24
     mock_config.checkpoint_path = "test/checkpoints"
-    mock_config.dtype = torch.float32 
+    mock_config.dtype = torch.float32
+    mock_config.use_cached_activations = False
+    mock_config.hook_point_head_index = None
 
     return mock_config
 
 
 def test_LMSparseAutoencoderSessionloader_init(cfg):
-    
     loader = LMSparseAutoencoderSessionloader(cfg)
     assert loader.cfg == cfg
-    
+
+
 def test_LMSparseAutoencoderSessionloader_load_session(cfg):
-    
     loader = LMSparseAutoencoderSessionloader(cfg)
     model, sparse_autoencoder, activations_loader = loader.load_session()
-    
+
     assert isinstance(model, HookedTransformer)
     assert isinstance(sparse_autoencoder, SparseAutoencoder)
     assert isinstance(activations_loader, ActivationsStore)
 
 
 def test_LMSparseAutoencoderSessionloader_load_session_from_trained(cfg):
-    
     loader = LMSparseAutoencoderSessionloader(cfg)
     _, sparse_autoencoder, _ = loader.load_session()
-    
+
     with tempfile.TemporaryDirectory() as tmpdirname:
         tempfile_path = f"{tmpdirname}/test.pt"
         sparse_autoencoder.save_model(tempfile_path)
-        
-        _, new_sparse_autoencoder, _  = LMSparseAutoencoderSessionloader.load_session_from_pretrained(
-            tempfile_path
-        )
+
+        (
+            _,
+            new_sparse_autoencoder,
+            _,
+        ) = LMSparseAutoencoderSessionloader.load_session_from_pretrained(tempfile_path)
     new_sparse_autoencoder.cfg.device = "cpu"
     new_sparse_autoencoder.to("cpu")
     assert new_sparse_autoencoder.cfg == sparse_autoencoder.cfg

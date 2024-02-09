@@ -9,9 +9,11 @@ from dataclasses import dataclass
 
 DTYPES = {"fp32": torch.float32, "fp16": torch.float16, "bf16": torch.bfloat16}
 
+
 @dataclass
 class AutoEncoderConfig:
-    '''Class for storing configuration parameters for the autoencoder'''
+    """Class for storing configuration parameters for the autoencoder"""
+
     seed: int = 42
     batch_size: int = 32
     buffer_mult: int = 384
@@ -29,13 +31,12 @@ class AutoEncoderConfig:
     model_batch_size: int = 64
 
     def __post_init__(self):
-        '''Using kwargs, so that we can pass in a dict of parameters which might be
-        a superset of the above, without error.'''
+        """Using kwargs, so that we can pass in a dict of parameters which might be
+        a superset of the above, without error."""
         self.buffer_size = self.batch_size * self.buffer_mult
         self.buffer_batches = self.buffer_size // self.seq_len
         self.dtype = DTYPES[self.enc_dtype]
         self.d_hidden = self.d_mlp * self.dict_mult
-
 
 
 class AutoEncoder(nn.Module):
@@ -46,8 +47,16 @@ class AutoEncoder(nn.Module):
         torch.manual_seed(cfg.seed)
 
         # W_enc has shape (d_mlp, d_encoder), where d_encoder is a multiple of d_mlp (cause dictionary learning; overcomplete basis)
-        self.W_enc = nn.Parameter(torch.nn.init.kaiming_uniform_(torch.empty(cfg.d_mlp, cfg.d_hidden, dtype=cfg.dtype)))
-        self.W_dec = nn.Parameter(torch.nn.init.kaiming_uniform_(torch.empty(cfg.d_hidden, cfg.d_mlp, dtype=cfg.dtype)))
+        self.W_enc = nn.Parameter(
+            torch.nn.init.kaiming_uniform_(
+                torch.empty(cfg.d_mlp, cfg.d_hidden, dtype=cfg.dtype)
+            )
+        )
+        self.W_dec = nn.Parameter(
+            torch.nn.init.kaiming_uniform_(
+                torch.empty(cfg.d_hidden, cfg.d_mlp, dtype=cfg.dtype)
+            )
+        )
         self.b_enc = nn.Parameter(torch.zeros(cfg.d_hidden, dtype=cfg.dtype))
         self.b_dec = nn.Parameter(torch.zeros(cfg.d_mlp, dtype=cfg.dtype))
         self.W_dec.data[:] = self.W_dec / self.W_dec.norm(dim=-1, keepdim=True)
@@ -69,13 +78,15 @@ class AutoEncoder(nn.Module):
     @torch.no_grad()
     def remove_parallel_component_of_grads(self):
         W_dec_normed = self.W_dec / self.W_dec.norm(dim=-1, keepdim=True)
-        W_dec_grad_proj = (self.W_dec.grad * W_dec_normed).sum(-1, keepdim=True) * W_dec_normed
+        W_dec_grad_proj = (self.W_dec.grad * W_dec_normed).sum(
+            -1, keepdim=True
+        ) * W_dec_normed
         self.W_dec.grad -= W_dec_grad_proj
 
     @classmethod
     def load_from_hf(cls, version, verbose=False):
         """
-        Loads the saved autoencoder from HuggingFace. 
+        Loads the saved autoencoder from HuggingFace.
 
         Note, this is a classmethod, because we'll be using it as `auto_encoder = AutoEncoder.load_from_hf("run1")`
 
@@ -86,17 +97,24 @@ class AutoEncoder(nn.Module):
         """
 
         assert version in ["run1", "run2"]
-        version = 25 if version=="run1" else 47
+        version = 25 if version == "run1" else 47
 
-        cfg: dict = utils.download_file_from_hf("NeelNanda/sparse_autoencoder", f"{version}_cfg.json")
+        cfg: dict = utils.download_file_from_hf(
+            "NeelNanda/sparse_autoencoder", f"{version}_cfg.json"
+        )
         # There are some unnecessary params in cfg cause they're defined in post_init for config dataclass; we remove them
         cfg.pop("buffer_batches", None)
         cfg.pop("buffer_size", None)
 
-        if verbose: pprint.pprint(cfg)
+        if verbose:
+            pprint.pprint(cfg)
         cfg = AutoEncoderConfig(**cfg)
         self = cls(cfg=cfg)
-        self.load_state_dict(utils.download_file_from_hf("NeelNanda/sparse_autoencoder", f"{version}.pt", force_is_torch=True))
+        self.load_state_dict(
+            utils.download_file_from_hf(
+                "NeelNanda/sparse_autoencoder", f"{version}.pt", force_is_torch=True
+            )
+        )
         return self
 
     def __repr__(self):

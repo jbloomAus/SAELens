@@ -24,6 +24,6 @@ setuptools.setup(
     packages=setuptools.find_packages(where="src"),
     python_requires=">=3.6",
     install_requires=[
-        'numpy>=1.18.1',
-        ]
+        "numpy>=1.18.1",
+    ],
 )
