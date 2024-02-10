@@ -61,88 +61,111 @@ class ActivationsStore:
 
     def get_batch_tokens(self):
         """
-        Streams a batch of tokens from a dataset.
+        Overriding this method to not care about NLP specific stuff.
         """
-
         batch_size = self.cfg.store_batch_size
-        context_size = self.cfg.context_size
-        device = self.cfg.device
 
         batch_tokens = torch.zeros(
-            size=(0, context_size), device=device, dtype=torch.long, requires_grad=False
+            (batch_size, self.cfg.context_size),
+            dtype=torch.long,
+            device=self.cfg.device,
         )
 
-        current_batch = []
-        current_length = 0
-
-        # pbar = tqdm(total=batch_size, desc="Filling batches")
-        while batch_tokens.shape[0] < batch_size:
-            if not self.cfg.is_dataset_tokenized:
-                s = next(self.iterable_dataset)["text"]
-                tokens = self.model.to_tokens(
-                    s,
-                    truncate=True,
-                    move_to_device=True,
-                ).squeeze(0)
-                assert (
-                    len(tokens.shape) == 1
-                ), f"tokens.shape should be 1D but was {tokens.shape}"
-            else:
-                tokens = torch.tensor(
-                    next(self.iterable_dataset)["tokens"],
-                    dtype=torch.long,
-                    device=device,
-                    requires_grad=False,
-                )
-            token_len = tokens.shape[0]
-
-            # TODO: Fix this so that we are limiting how many tokens we get from the same context.
-
-            bos_token_id_tensor = torch.tensor(
-                [self.model.tokenizer.bos_token_id],
-                device=tokens.device,
+        for i in range(batch_size):
+            # truncate the tokens if they are longer than the model's context size
+            # TODO: investigate why n_ctx of OthelloGPT is 59 and not 60
+            batch_tokens[i] = torch.tensor(
+                next(self.iterable_dataset)["tokens"],
                 dtype=torch.long,
-            )
-            while token_len > 0 and batch_tokens.shape[0] < batch_size:
-                # Space left in the current batch
-                space_left = context_size - current_length
+                device=self.cfg.device,
+            )[:self.cfg.context_size]
 
-                # If the current tokens fit entirely into the remaining space
-                if token_len <= space_left:
-                    current_batch.append(tokens[:token_len])
-                    current_length += token_len
-                    break
+        return batch_tokens
 
-                else:
-                    # Take as much as will fit
-                    current_batch.append(tokens[:space_left])
+    # def get_batch_tokens(self):
+    #     """
+    #     Streams a batch of tokens from a dataset.
+    #     """
 
-                    # Remove used part, add BOS
-                    tokens = tokens[space_left:]
-                    tokens = torch.cat(
-                        (
-                            bos_token_id_tensor,
-                            tokens,
-                        ),
-                        dim=0,
-                    )
+    #     batch_size = self.cfg.store_batch_size
+    #     context_size = self.cfg.context_size
+    #     device = self.cfg.device
 
-                    token_len -= space_left
-                    token_len += 1
-                    current_length = context_size
+    #     batch_tokens = torch.zeros(
+    #         size=(0, context_size), device=device, dtype=torch.long, requires_grad=False
+    #     )
 
-                # If a batch is full, concatenate and move to next batch
-                if current_length == context_size:
-                    full_batch = torch.cat(current_batch, dim=0)
-                    batch_tokens = torch.cat(
-                        (batch_tokens, full_batch.unsqueeze(0)), dim=0
-                    )
-                    current_batch = []
-                    current_length = 0
+    #     current_batch = []
+    #     current_length = 0
 
-            # pbar.n = batch_tokens.shape[0]
-            # pbar.refresh()
-        return batch_tokens[:batch_size]
+    #     # pbar = tqdm(total=batch_size, desc="Filling batches")
+    #     while batch_tokens.shape[0] < batch_size:
+    #         if not self.cfg.is_dataset_tokenized:
+    #             s = next(self.iterable_dataset)["text"]
+    #             tokens = self.model.to_tokens(
+    #                 s,
+    #                 truncate=True,
+    #                 move_to_device=True,
+    #             ).squeeze(0)
+    #             assert (
+    #                 len(tokens.shape) == 1
+    #             ), f"tokens.shape should be 1D but was {tokens.shape}"
+    #         else:
+    #             tokens = torch.tensor(
+    #                 next(self.iterable_dataset)["tokens"],
+    #                 dtype=torch.long,
+    #                 device=device,
+    #                 requires_grad=False,
+    #             )
+    #         token_len = tokens.shape[0]
+
+    #         # TODO: Fix this so that we are limiting how many tokens we get from the same context.
+
+    #         bos_token_id_tensor = torch.tensor(
+    #             [self.model.tokenizer.bos_token_id],
+    #             device=tokens.device,
+    #             dtype=torch.long,
+    #         )
+    #         while token_len > 0 and batch_tokens.shape[0] < batch_size:
+    #             # Space left in the current batch
+    #             space_left = context_size - current_length
+
+    #             # If the current tokens fit entirely into the remaining space
+    #             if token_len <= space_left:
+    #                 current_batch.append(tokens[:token_len])
+    #                 current_length += token_len
+    #                 break
+
+    #             else:
+    #                 # Take as much as will fit
+    #                 current_batch.append(tokens[:space_left])
+
+    #                 # Remove used part, add BOS
+    #                 tokens = tokens[space_left:]
+    #                 tokens = torch.cat(
+    #                     (
+    #                         bos_token_id_tensor,
+    #                         tokens,
+    #                     ),
+    #                     dim=0,
+    #                 )
+
+    #                 token_len -= space_left
+    #                 token_len += 1
+    #                 current_length = context_size
+
+    #             # If a batch is full, concatenate and move to next batch
+    #             if current_length == context_size:
+    #                 full_batch = torch.cat(current_batch, dim=0)
+    #                 batch_tokens = torch.cat(
+    #                     (batch_tokens, full_batch.unsqueeze(0)), dim=0
+    #                 )
+    #                 current_batch = []
+    #                 current_length = 0
+
+    #         # pbar.n = batch_tokens.shape[0]
+    #         # pbar.refresh()
+    #     return batch_tokens[:batch_size]
 
     def get_activations(self, batch_tokens, get_loss=False):
         act_name = self.cfg.hook_point
@@ -206,9 +229,9 @@ class ActivationsStore:
                     taking_subset_of_file = True
 
                 # Add it to the buffer
-                new_buffer[
-                    n_tokens_filled : n_tokens_filled + activations.shape[0]
-                ] = activations
+                new_buffer[n_tokens_filled : n_tokens_filled + activations.shape[0]] = (
+                    activations
+                )
 
                 # Update counters
                 n_tokens_filled += activations.shape[0]
@@ -235,9 +258,9 @@ class ActivationsStore:
         for refill_batch_idx_start in refill_iterator:
             refill_batch_tokens = self.get_batch_tokens()
             refill_activations = self.get_activations(refill_batch_tokens)
-            new_buffer[
-                refill_batch_idx_start : refill_batch_idx_start + batch_size
-            ] = refill_activations
+            new_buffer[refill_batch_idx_start : refill_batch_idx_start + batch_size] = (
+                refill_activations
+            )
 
             # pbar.update(1)
 
