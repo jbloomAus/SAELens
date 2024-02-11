@@ -59,11 +59,13 @@ class ActivationsStore:
             self.storage_buffer = self.get_buffer(self.cfg.n_batches_in_buffer // 2)
             self.dataloader = self.get_data_loader()
 
-    def get_batch_tokens(self):
+    def get_batch_tokens(self, batch_size=None):
         """
         Overriding this method to not care about NLP specific stuff.
         """
-        batch_size = self.cfg.store_batch_size
+
+        if batch_size is None:
+            batch_size = self.cfg.store_batch_size
 
         batch_tokens = torch.zeros(
             (batch_size, self.cfg.context_size),
