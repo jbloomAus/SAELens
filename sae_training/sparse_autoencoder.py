@@ -69,7 +69,7 @@ class SparseAutoencoder(HookedRootModule):
 
         self.setup()  # Required for `HookedRootModule`s
 
-    def forward(self, x, dead_neuron_mask=None):
+    def forward(self, x, dead_neuron_mask=None, return_pre=False):
         # move x to correct dtype
         x = x.to(self.dtype)
         sae_in = self.hook_sae_in(
@@ -134,6 +134,9 @@ class SparseAutoencoder(HookedRootModule):
         sparsity = torch.abs(feature_acts).sum(dim=1).mean(dim=(0,))
         l1_loss = self.l1_coefficient * sparsity
         loss = mse_loss + l1_loss + mse_loss_ghost_resid
+
+        if return_pre:
+            return sae_out, feature_acts, loss, mse_loss, l1_loss, mse_loss_ghost_resid, hidden_pre
 
         return sae_out, feature_acts, loss, mse_loss, l1_loss, mse_loss_ghost_resid
 

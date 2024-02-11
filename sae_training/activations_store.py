@@ -169,17 +169,17 @@ class ActivationsStore:
     #         # pbar.refresh()
     #     return batch_tokens[:batch_size]
 
-    def get_activations(self, batch_tokens, get_loss=False):
+    def get_activations(self, batch_tokens, get_loss=False, start_pos_offset=0):
         act_name = self.cfg.hook_point
         hook_point_layer = self.cfg.hook_point_layer
         if self.cfg.hook_point_head_index is not None:
             activations = self.model.run_with_cache(
                 batch_tokens, names_filter=act_name, stop_at_layer=hook_point_layer + 1
-            )[1][act_name][:, :, self.cfg.hook_point_head_index]
+            )[1][act_name][:, start_pos_offset:, self.cfg.hook_point_head_index]
         else:
             activations = self.model.run_with_cache(
                 batch_tokens, names_filter=act_name, stop_at_layer=hook_point_layer + 1
-            )[1][act_name]
+            )[1][act_name][:, start_pos_offset:]
 
         return activations
 
@@ -188,6 +188,8 @@ class ActivationsStore:
         batch_size = self.cfg.store_batch_size
         d_in = self.cfg.d_in
         total_size = batch_size * n_batches_in_buffer
+
+        start_pos_offset = self.cfg.start_pos_offset
 
         if self.cfg.use_cached_activations:
             # Load the activations from disk
@@ -250,7 +252,7 @@ class ActivationsStore:
 
         # Initialize empty tensor buffer of the maximum required size
         new_buffer = torch.zeros(
-            (total_size, context_size, d_in),
+            (total_size, context_size-start_pos_offset, d_in),
             dtype=self.cfg.dtype,
             device=self.cfg.device,
         )
@@ -259,7 +261,7 @@ class ActivationsStore:
         # pbar = tqdm(total=n_batches_in_buffer, desc="Filling buffer")
         for refill_batch_idx_start in refill_iterator:
             refill_batch_tokens = self.get_batch_tokens()
-            refill_activations = self.get_activations(refill_batch_tokens)
+            refill_activations = self.get_activations(refill_batch_tokens, start_pos_offset=start_pos_offset)
             new_buffer[refill_batch_idx_start : refill_batch_idx_start + batch_size] = (
                 refill_activations
             )

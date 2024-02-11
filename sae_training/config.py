@@ -82,6 +82,8 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
     n_checkpoints: int = 0
     checkpoint_path: str = "checkpoints"
 
+    start_pos_offset: int = 0 # set to n if you want to exclude first n seq positions from sae training
+
     def __post_init__(self):
         super().__post_init__()
         self.d_sae = self.d_in * self.expansion_factor
