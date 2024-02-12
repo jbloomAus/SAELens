@@ -1,6 +1,8 @@
 from functools import partial
 
+import pandas as pd
 import torch
+from tqdm import tqdm
 from transformer_lens import HookedTransformer
 from transformer_lens.utils import get_act_name
 
@@ -25,7 +27,7 @@ def run_evals(
 
     # Get Reconstruction Score
     recons_score, ntp_loss, recons_loss, zero_abl_loss = get_recons_loss(
-        sparse_autoencoder, model, activation_store, eval_tokens
+        sparse_autoencoder, model, activation_store
     )
 
     # get cache
@@ -129,20 +131,42 @@ def run_evals(
         )
         kl_result_ablation = kl_result_ablation.sum(dim=-1).numpy()
 
-        wandb.log(
-            {
-                "metrics/kldiv_reconstructed": kl_result_reconstructed.mean().item(),
-                "metrics/kldiv_ablation": kl_result_ablation.mean().item(),
-            },
-            step=n_training_steps,
+        if wandb.run is not None:
+            wandb.log(
+                {
+                    "metrics/kldiv_reconstructed": kl_result_reconstructed.mean().item(),
+                    "metrics/kldiv_ablation": kl_result_ablation.mean().item(),
+                },
+                step=n_training_steps,
+            )
+
+
+def recons_loss_batched(sparse_autoencoder, model, activation_store, n_batches=100):
+    losses = []
+    for _ in tqdm(range(n_batches)):
+        score, loss, recons_loss, zero_abl_loss = get_recons_loss(
+            sparse_autoencoder, model, activation_store
         )
+        losses.append(
+            (
+                score.mean().item(),
+                loss.mean().item(),
+                recons_loss.mean().item(),
+                zero_abl_loss.mean().item(),
+            )
+        )
+
+    losses = pd.DataFrame(
+        losses, columns=["score", "loss", "recons_loss", "zero_abl_loss"]
+    )
+
+    return losses
 
 
 @torch.no_grad()
-def get_recons_loss(sparse_autoencoder, model, activation_store, batch_tokens):
-    hook_point = activation_store.cfg.hook_point
+def get_recons_loss(sparse_autoencoder, model, batch_tokens):
+    hook_point = sparse_autoencoder.cfg.hook_point
     loss = model(batch_tokens, return_type="loss")
-
     head_index = sparse_autoencoder.cfg.hook_point_head_index
 
     def standard_replacement_hook(activations, hook):
@@ -150,10 +174,10 @@ def get_recons_loss(sparse_autoencoder, model, activation_store, batch_tokens):
         return activations
 
     def head_replacement_hook(activations, hook):
-        new_actions = sparse_autoencoder.forward(activations[:, :, head_index])[0].to(
-            activations.dtype
-        )
-        activations[:, :, head_index] = new_actions
+        new_activations = sparse_autoencoder.forward(activations[:, :, head_index])[
+            0
+        ].to(activations.dtype)
+        activations[:, :, head_index] = new_activations
         return activations
 
     replacement_hook = (
@@ -174,14 +198,9 @@ def get_recons_loss(sparse_autoencoder, model, activation_store, batch_tokens):
     return score, loss, recons_loss, zero_abl_loss
 
 
-def mean_ablate_hook(mlp_post, hook):
-    mlp_post[:] = mlp_post.mean([0, 1]).to(mlp_post.dtype)
-    return mlp_post
-
-
-def zero_ablate_hook(mlp_post, hook):
-    mlp_post[:] = 0.0
-    return mlp_post
+def zero_ablate_hook(activations, hook):
+    activations = torch.zeros_like(activations)
+    return activations
 
 
 def kl_divergence_attention(y_true, y_pred):
