@@ -140,8 +140,14 @@ def run_evals(
 
 @torch.no_grad()
 def get_recons_loss(sparse_autoencoder, model, activation_store, batch_tokens):
+    def logits_to_interval_loss(logits):
+        clps = model.loss_fn(logits, batch_tokens, per_token=True)
+        loss = clps[:, sparse_autoencoder.cfg.start_pos_offset:sparse_autoencoder.cfg.end_pos_offset]
+        return loss.mean()
+
     hook_point = activation_store.cfg.hook_point
-    loss = model(batch_tokens, return_type="loss")
+    loss = logits_to_interval_loss(model(batch_tokens, return_type="logits"))
+    
 
     head_index = sparse_autoencoder.cfg.hook_point_head_index
 
@@ -159,15 +165,15 @@ def get_recons_loss(sparse_autoencoder, model, activation_store, batch_tokens):
     replacement_hook = (
         standard_replacement_hook if head_index is None else head_replacement_hook
     )
-    recons_loss = model.run_with_hooks(
+    recons_loss = logits_to_interval_loss(model.run_with_hooks(
         batch_tokens,
-        return_type="loss",
+        return_type="logits",
         fwd_hooks=[(hook_point, partial(replacement_hook))],
-    )
+    ))
 
-    zero_abl_loss = model.run_with_hooks(
-        batch_tokens, return_type="loss", fwd_hooks=[(hook_point, zero_ablate_hook)]
-    )
+    zero_abl_loss = logits_to_interval_loss(model.run_with_hooks(
+        batch_tokens, return_type="logits", fwd_hooks=[(hook_point, zero_ablate_hook)]
+    ))
 
     score = (zero_abl_loss - recons_loss) / (zero_abl_loss - loss)
 

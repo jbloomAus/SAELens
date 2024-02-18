@@ -21,7 +21,7 @@ class ActivationsStore:
     ):
         self.cfg = cfg
         self.model = model
-        self.dataset = load_dataset(cfg.dataset_path, split="train", streaming=True)
+        self.dataset = load_dataset(cfg.dataset_path, split="train", streaming=False)
         self.iterable_dataset = iter(self.dataset)
 
         # check if it's tokenized
@@ -169,17 +169,17 @@ class ActivationsStore:
     #         # pbar.refresh()
     #     return batch_tokens[:batch_size]
 
-    def get_activations(self, batch_tokens, get_loss=False, start_pos_offset=0):
+    def get_activations(self, batch_tokens, get_loss=False):
         act_name = self.cfg.hook_point
         hook_point_layer = self.cfg.hook_point_layer
         if self.cfg.hook_point_head_index is not None:
             activations = self.model.run_with_cache(
                 batch_tokens, names_filter=act_name, stop_at_layer=hook_point_layer + 1
-            )[1][act_name][:, start_pos_offset:, self.cfg.hook_point_head_index]
+            )[1][act_name][:, self.cfg.start_pos_offset:self.cfg.end_pos_offset, self.cfg.hook_point_head_index]
         else:
             activations = self.model.run_with_cache(
                 batch_tokens, names_filter=act_name, stop_at_layer=hook_point_layer + 1
-            )[1][act_name][:, start_pos_offset:]
+            )[1][act_name][:, self.cfg.start_pos_offset:self.cfg.end_pos_offset]
 
         return activations
 
@@ -190,10 +190,17 @@ class ActivationsStore:
         total_size = batch_size * n_batches_in_buffer
 
         start_pos_offset = self.cfg.start_pos_offset
+        end_pos_offset = self.cfg.end_pos_offset
+
+        effective_context_size = context_size
+        if start_pos_offset is not None:
+            effective_context_size-=start_pos_offset
+        if end_pos_offset is not None:
+            effective_context_size+=end_pos_offset
 
         if self.cfg.use_cached_activations:
             # Load the activations from disk
-            buffer_size = total_size * context_size
+            buffer_size = total_size * effective_context_size
             # Initialize an empty tensor (flattened along all dims except d_in)
             new_buffer = torch.zeros(
                 (buffer_size, d_in), dtype=self.cfg.dtype, device=self.cfg.device
@@ -251,8 +258,9 @@ class ActivationsStore:
         # refill_iterator = tqdm(refill_iterator, desc="generate activations")
 
         # Initialize empty tensor buffer of the maximum required size
+
         new_buffer = torch.zeros(
-            (total_size, context_size-start_pos_offset, d_in),
+            (total_size, effective_context_size, d_in),
             dtype=self.cfg.dtype,
             device=self.cfg.device,
         )
@@ -261,7 +269,7 @@ class ActivationsStore:
         # pbar = tqdm(total=n_batches_in_buffer, desc="Filling buffer")
         for refill_batch_idx_start in refill_iterator:
             refill_batch_tokens = self.get_batch_tokens()
-            refill_activations = self.get_activations(refill_batch_tokens, start_pos_offset=start_pos_offset)
+            refill_activations = self.get_activations(refill_batch_tokens)
             new_buffer[refill_batch_idx_start : refill_batch_idx_start + batch_size] = (
                 refill_activations
             )

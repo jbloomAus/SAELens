@@ -82,11 +82,12 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
     n_checkpoints: int = 0
     checkpoint_path: str = "checkpoints"
 
-    start_pos_offset: int = 0 # set to n if you want to exclude first n seq positions from sae training
+    start_pos_offset: int = None # set to n if you want to exclude first n seq positions from sae training
+    end_pos_offset: int = None # set to n if you want to exclude first n seq positions from sae training
 
     def __post_init__(self):
         super().__post_init__()
-        self.d_sae = self.d_in * self.expansion_factor
+        self.d_sae = round(self.d_in * self.expansion_factor)
         self.tokens_per_buffer = (
             self.train_batch_size * self.context_size * self.n_batches_in_buffer
         )

@@ -40,7 +40,7 @@ def train_sae_on_language_model(
     )
     n_frac_active_tokens = 0
 
-    optimizer = Adam(sparse_autoencoder.parameters(), lr=sparse_autoencoder.cfg.lr)
+    optimizer = Adam(sparse_autoencoder.parameters(), lr=sparse_autoencoder.cfg.lr, betas=(0.9, 0.99))
     scheduler = get_scheduler(
         sparse_autoencoder.cfg.lr_scheduler_name,
         optimizer=optimizer,
@@ -50,6 +50,9 @@ def train_sae_on_language_model(
     )
     sparse_autoencoder.initialize_b_dec(activation_store)
     sparse_autoencoder.train()
+
+    # Initialise this to None, in case we train on very few tokens
+    log_feature_sparsity = None
 
     pbar = tqdm(total=total_training_tokens, desc="Training SAE")
     while n_training_tokens < total_training_tokens:
