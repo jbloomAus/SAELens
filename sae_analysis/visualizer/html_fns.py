@@ -230,8 +230,8 @@ def generate_tables_html(
         ],
         [None, "+.2f", ".1%", None, "+.2f", "+.2f", None, "+.2f", "+.2f"],
     ):
-        fn = (
-            lambda m: str(mylist[int(m.group(1))])
+        fn = lambda m: (
+            str(mylist[int(m.group(1))])
             if myformat is None
             else format(mylist[int(m.group(1))], myformat)
         )

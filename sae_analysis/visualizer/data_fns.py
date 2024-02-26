@@ -1,13 +1,10 @@
 import gzip
-import json
 import os
 import pickle
 import time
-from collections import defaultdict
 from dataclasses import dataclass
-from functools import partial
 from pathlib import Path
-from typing import Callable, Dict, List, Literal, Optional, Tuple, Union
+from typing import Dict, List, Literal, Optional, Tuple, Union
 
 import einops
 import numpy as np

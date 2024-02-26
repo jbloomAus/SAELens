@@ -1,0 +1,36 @@
+[tool.poetry]
+name = "mats_sae_training"
+version = "0.1.0"
+description = "Training Sparse Autoencoders (SAEs)"
+authors = ["Joseph Bloom"]
+readme = "README.md"
+packages = [{include = "sae_analysis"}, {include = "sae_training"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+transformer-lens = "^1.14.0"
+transformers = "^4.38.1"
+jupyter = "^1.0.0"
+plotly = "^5.19.0"
+plotly-express = "^0.4.1"
+nbformat = "^5.9.2"
+ipykernel = "^6.29.2"
+matplotlib = "^3.8.3"
+matplotlib-inline = "^0.1.6"
+eindex = {git = "https://github.com/callummcdougall/eindex.git"}
+
+
+[tool.poetry.group.dev.dependencies]
+black = "^24.2.0"
+pytest = "^8.0.2"
+pytest-cov = "^4.1.0"
+pre-commit = "^3.6.2"
+flake8 = "^7.0.0"
+isort = "^5.13.2"
+
+[tool.isort]
+profile = "black"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

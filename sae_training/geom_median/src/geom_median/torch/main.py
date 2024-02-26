@@ -1,8 +1,8 @@
 import torch
 
+from . import utils
 from .weiszfeld_array import geometric_median_array, geometric_median_per_component
 from .weiszfeld_list_of_array import geometric_median_list_of_array
-from . import utils
 
 
 def compute_geometric_median(

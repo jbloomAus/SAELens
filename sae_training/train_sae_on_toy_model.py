@@ -1,9 +1,9 @@
 import einops
 import torch
+import wandb
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-import wandb
 from sae_training.sparse_autoencoder import SparseAutoencoder
 from sae_training.toy_models import Model as ToyModel
 

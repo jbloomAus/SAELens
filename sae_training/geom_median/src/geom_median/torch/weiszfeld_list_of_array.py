@@ -1,6 +1,7 @@
+from types import SimpleNamespace
+
 import numpy as np
 import torch
-from types import SimpleNamespace
 
 
 def geometric_median_list_of_array(points, weights, eps=1e-6, maxiter=100, ftol=1e-20):
@@ -43,9 +44,11 @@ def geometric_median_list_of_array(points, weights, eps=1e-6, maxiter=100, ftol=
     return SimpleNamespace(
         median=median,
         new_weights=new_weights,
-        termination="function value converged within tolerance"
-        if early_termination
-        else "maximum iterations reached",
+        termination=(
+            "function value converged within tolerance"
+            if early_termination
+            else "maximum iterations reached"
+        ),
         logs=logs,
     )
 

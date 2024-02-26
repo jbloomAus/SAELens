@@ -2,9 +2,9 @@ from dataclasses import dataclass
 
 import einops
 import torch
+import wandb
 from transformer_lens import HookedTransformer
 
-import wandb
 from sae_training.sparse_autoencoder import SparseAutoencoder
 from sae_training.toy_models import Config as ToyConfig
 from sae_training.toy_models import Model as ToyModel
