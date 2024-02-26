@@ -206,9 +206,9 @@ class ActivationsStore:
                     taking_subset_of_file = True
 
                 # Add it to the buffer
-                new_buffer[
-                    n_tokens_filled : n_tokens_filled + activations.shape[0]
-                ] = activations
+                new_buffer[n_tokens_filled : n_tokens_filled + activations.shape[0]] = (
+                    activations
+                )
 
                 # Update counters
                 n_tokens_filled += activations.shape[0]
@@ -235,9 +235,9 @@ class ActivationsStore:
         for refill_batch_idx_start in refill_iterator:
             refill_batch_tokens = self.get_batch_tokens()
             refill_activations = self.get_activations(refill_batch_tokens)
-            new_buffer[
-                refill_batch_idx_start : refill_batch_idx_start + batch_size
-            ] = refill_activations
+            new_buffer[refill_batch_idx_start : refill_batch_idx_start + batch_size] = (
+                refill_activations
+            )
 
             # pbar.update(1)
 

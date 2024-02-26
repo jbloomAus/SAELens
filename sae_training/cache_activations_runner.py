@@ -2,8 +2,8 @@ import math
 import os
 
 import torch
-from transformer_lens import HookedTransformer
 from tqdm import tqdm
+from transformer_lens import HookedTransformer
 
 from sae_training.activations_store import ActivationsStore
 from sae_training.config import CacheActivationsRunnerConfig

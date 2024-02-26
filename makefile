@@ -1,6 +1,11 @@
 format:
+	poetry run black .
+	poetry run isort .
 
 check-format:
+	poetry run flake8 .
+	poetry run black --check .
+	poetry run isort --check-only --diff .
 
 
 test:
@@ -8,7 +13,7 @@ test:
 	make acceptance-test
 
 unit-test:
-	pytest -v --cov=sae_training/ --cov-report=term-missing --cov-branch tests/unit
+	poetry run pytest -v --cov=sae_training/ --cov-report=term-missing --cov-branch tests/unit
 
 acceptance-test:
-	pytest -v --cov=sae_training/ --cov-report=term-missing --cov-branch tests/acceptance
+	poetry run pytest -v --cov=sae_training/ --cov-report=term-missing --cov-branch tests/acceptance
