@@ -93,8 +93,8 @@ def shuffle_activations_pairwise(datapath: str, buffer_idx_range: Tuple[int, int
     Shuffles two buffers on disk.
     """
     assert (
-        buffer_idx_range[0] < buffer_idx_range[1]
-    ), "buffer_idx_range[0] must be smaller than buffer_idx_range[1]"
+        buffer_idx_range[0] < buffer_idx_range[1] - 1
+    ), "buffer_idx_range[0] must be smaller than buffer_idx_range[1] by at least 1"
 
     buffer_idx1 = torch.randint(buffer_idx_range[0], buffer_idx_range[1], (1,)).item()
     buffer_idx2 = torch.randint(buffer_idx_range[0], buffer_idx_range[1], (1,)).item()

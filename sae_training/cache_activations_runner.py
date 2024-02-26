@@ -52,8 +52,9 @@ def cache_activations_runner(cfg: CacheActivationsRunnerConfig):
                 )
 
     # More final shuffling (mostly in case we didn't end on an i divisible by shuffle_every_n_buffers)
-    for _ in tqdm(range(cfg.n_shuffles_final), desc="Final shuffling"):
-        shuffle_activations_pairwise(
-            activations_store.cfg.cached_activations_path,
-            buffer_idx_range=(0, n_buffers),
-        )
+    if n_buffers > 1:
+        for _ in tqdm(range(cfg.n_shuffles_final), desc="Final shuffling"):
+            shuffle_activations_pairwise(
+                activations_store.cfg.cached_activations_path,
+                buffer_idx_range=(0, n_buffers),
+            )
