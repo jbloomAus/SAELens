@@ -15,7 +15,7 @@ class RunnerConfig(ABC):
 
     # Data Generating Function (Model + Training Distibuion)
     model_name: str = "gelu-2l"
-    hook_point: str = "blocks.0.hook_mlp_out"
+    hook_point: str = "blocks.{layer}.hook_mlp_out"
     hook_point_layer: int = 0
     hook_point_head_index: Optional[int] = None
     dataset_path: str = "NeelNanda/c4-tokenized-2b"
@@ -60,6 +60,7 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
 
     # Training Parameters
     l1_coefficient: float = 1e-3
+    lp_norm: float = 1
     lr: float = 3e-4
     lr_scheduler_name: str = "constantwithwarmup"  # constant, constantwithwarmup, linearwarmupdecay, cosineannealing, cosineannealingwarmup
     lr_warm_up_steps: int = 500
