@@ -1,23 +1,20 @@
 import re
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, Optional, Tuple, Union
 
-import einops
 import numpy as np
 import torch
-from eindex import eindex
 from jaxtyping import Float, Int
 from torch import Tensor
-from transformer_lens import HookedTransformer
 
 Arr = np.ndarray
 
 
 def k_largest_indices(
-    x: Float[Tensor, "rows cols"],  # noqa
+    x: Float[Tensor, "rows cols"],
     k: int,
     largest: bool = True,
     buffer: Tuple[int, int] = (5, 5),
-) -> Int[Tensor, "k 2"]:  # noqa
+) -> Int[Tensor, "k 2"]:
     """w
     Given a 2D array, returns the indices of the top or bottom `k` elements.
 
@@ -40,11 +37,11 @@ def sample_unique_indices(large_number, small_number):
 
 
 def random_range_indices(
-    x: Float[Tensor, "batch seq"],  # noqa
+    x: Float[Tensor, "batch seq"],
     bounds: Tuple[float, float],
     k: int,
     buffer: Tuple[int, int] = (5, 5),
-) -> Int[Tensor, "k 2"]:  # noqa
+) -> Int[Tensor, "k 2"]:
     """
     Given a 2D array, returns the indices of `k` elements whose values are in the range `bounds`.
     Will return fewer than `k` values if there aren't enough values in the range.

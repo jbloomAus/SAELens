@@ -10,15 +10,12 @@ from typing import Callable, List, Optional, Tuple, Union
 
 import einops
 import numpy as np
-import plotly.express as px
-import plotly.graph_objects as go
 import torch as t
 from IPython.display import clear_output
-from jaxtyping import Float, Int
+from jaxtyping import Float
 from matplotlib import pyplot as plt
 from matplotlib.animation import FuncAnimation
 from matplotlib.widgets import Slider  # , Button
-from plotly.subplots import make_subplots
 from torch import Tensor, nn
 from torch.nn import functional as F
 from tqdm import tqdm
@@ -51,8 +48,8 @@ class Config:
 
 
 class Model(nn.Module):
-    W: Float[Tensor, "n_instances n_hidden n_features"]  # noqa
-    b_final: Float[Tensor, "n_instances n_features"]  # noqa
+    W: Float[Tensor, "n_instances n_hidden n_features"]
+    b_final: Float[Tensor, "n_instances n_features"]
     # Our linear map is x -> ReLU(W.T @ W @ x + b_final)
 
     def __init__(
@@ -89,8 +86,8 @@ class Model(nn.Module):
         self.to(device)
 
     def forward(
-        self, features: Float[Tensor, "... instances features"]  # noqa
-    ) -> Float[Tensor, "... instances features"]:  # noqa
+        self, features: Float[Tensor, "... instances features"]
+    ) -> Float[Tensor, "... instances features"]:
         hidden = einops.einsum(
             features,
             self.W,
@@ -119,7 +116,7 @@ class Model(nn.Module):
 
     def generate_correlated_features(
         self, batch_size, n_correlated_pairs
-    ) -> Float[Tensor, "batch_size instances features"]:  # noqa
+    ) -> Float[Tensor, "batch_size instances features"]:
         """
         Generates a batch of correlated features.
         Each output[i, j, 2k] and output[i, j, 2k + 1] are correlated, i.e. one is present iff the other is present.
@@ -141,7 +138,7 @@ class Model(nn.Module):
 
     def generate_anticorrelated_features(
         self, batch_size, n_anticorrelated_pairs
-    ) -> Float[Tensor, "batch_size instances features"]:  # noqa
+    ) -> Float[Tensor, "batch_size instances features"]:
         """
         Generates a batch of anti-correlated features.
         Each output[i, j, 2k] and output[i, j, 2k + 1] are anti-correlated, i.e. one is present iff the other is absent.
@@ -178,7 +175,7 @@ class Model(nn.Module):
 
     def generate_uncorrelated_features(
         self, batch_size, n_uncorrelated
-    ) -> Float[Tensor, "batch_size instances features"]:  # noqa
+    ) -> Float[Tensor, "batch_size instances features"]:
         """
         Generates a batch of uncorrelated features.
         """
@@ -193,7 +190,7 @@ class Model(nn.Module):
 
     def generate_batch(
         self, batch_size
-    ) -> Float[Tensor, "batch_size instances features"]:  # noqa
+    ) -> Float[Tensor, "batch_size instances features"]:
         """
         Generates a batch of data, with optional correlated & anticorrelated features.
         """
@@ -222,9 +219,9 @@ class Model(nn.Module):
 
     def calculate_loss(
         self,
-        out: Float[Tensor, "batch instances features"],  # noqa
-        batch: Float[Tensor, "batch instances features"],  # noqa
-    ) -> Float[Tensor, ""]:  # noqa
+        out: Float[Tensor, "batch instances features"],
+        batch: Float[Tensor, "batch instances features"],
+    ) -> Float[Tensor, ""]:
         """
         Calculates the loss for a given batch, using this loss described in the Toy Models paper:
 
@@ -278,7 +275,7 @@ Arr = np.ndarray
 
 
 def plot_features_in_2d(
-    values: Float[Tensor, "timesteps instances d_hidden feats"],  # noqa
+    values: Float[Tensor, "timesteps instances d_hidden feats"],
     colors=None,  # shape [timesteps instances feats]
     title: Optional[str] = None,
     subplot_titles: Optional[List[str]] = None,
@@ -431,7 +428,7 @@ def plot_features_in_2d(
 
 
 def parse_colors_for_superposition_plot(
-    colors: Optional[Union[Tuple[int, int], Float[Tensor, "instances feats"]]],  # noqa
+    colors: Optional[Union[Tuple[int, int], Float[Tensor, "instances feats"]]],
     n_instances: int,
     n_feats: int,
 ) -> List[List[str]]:

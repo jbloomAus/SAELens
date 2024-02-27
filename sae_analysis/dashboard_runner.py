@@ -1,3 +1,6 @@
+# flake8: noqa: E402
+# TODO: are these sys.path.append calls really necessary?
+
 import sys
 
 sys.path.append("..")

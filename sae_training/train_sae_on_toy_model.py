@@ -1,11 +1,9 @@
-import einops
 import torch
 import wandb
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from sae_training.sparse_autoencoder import SparseAutoencoder
-from sae_training.toy_models import Model as ToyModel
 
 
 def train_toy_sae(
@@ -65,7 +63,6 @@ def train_toy_sae(
                 )
 
             l0 = (feature_acts > 0).float().sum(-1).mean()
-            current_learning_rate = optimizer.param_groups[0]["lr"]
             l2_norm = torch.norm(feature_acts, dim=1).mean()
 
             l2_norm_in = torch.norm(batch, dim=-1)
