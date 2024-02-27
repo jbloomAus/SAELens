@@ -16,22 +16,24 @@ class SAEGroup:
 
         # Extract all hyperparameter lists from cfg
         hyperparameters = {k: v for k, v in vars(cfg).items() if isinstance(v, list)}
-        keys, values = zip(*hyperparameters.items())
+        if len(hyperparameters) > 0:
+            keys, values = zip(*hyperparameters.items())
+        else:
+            keys, values = (), ([()],)  # Ensure product(*values) yields one combination
 
         # Create all combinations of hyperparameters
         for combination in product(*values):
-            cfg_copy = dataclasses.replace(cfg)
             params = dict(zip(keys, combination))
-            cfg_copy.update(params)
+            cfg_copy = dataclasses.replace(cfg, **params)
             # Insert the layer into the hookpoint
-            cfg_copy.hook_point = cfg_copy.hook_point.format(layer=cfg.copy.hook_point_layer)
+            cfg_copy.hook_point = cfg_copy.hook_point.format(layer=cfg_copy.hook_point_layer)
             # Create and store both the SparseAutoencoder instance and its parameters
-            self.autoencoders.append((SparseAutoencoder(cfg_copy), cfg_copy))
+            self.autoencoders.append(SparseAutoencoder(cfg_copy))
 
     def __iter__(self):
         # Make SAEGroup iterable over its SparseAutoencoder instances and their parameters
-        for ae, params in self.autoencoders:
-            yield ae, params  # Yielding as a tuple
+        for ae in self.autoencoders:
+            yield ae  # Yielding as a tuple
 
     def __len__(self):
         # Return the number of SparseAutoencoder instances

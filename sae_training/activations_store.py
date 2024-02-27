@@ -148,7 +148,7 @@ class ActivationsStore:
         """
         layers = self.cfg.hook_point_layer if isinstance(self.cfg.hook_point_layer, list) else [self.cfg.hook_point_layer]
         act_names = [self.cfg.hook_point.format(layer = layer) for layer in layers]
-        hook_point_max_layer = self.cfg.hook_point_layer
+        hook_point_max_layer = max(layers)
         if self.cfg.hook_point_head_index is not None:
             layerwise_activations = self.model.run_with_cache(
                 batch_tokens, names_filter=act_names, stop_at_layer=hook_point_max_layer + 1
@@ -176,7 +176,8 @@ class ActivationsStore:
         batch_size = self.cfg.store_batch_size
         d_in = self.cfg.d_in
         total_size = batch_size * n_batches_in_buffer
-        num_layers = len(self.cfg.hook_points)  # Number of hook points or layers
+        num_layers = len(self.cfg.hook_point_layer) if isinstance(self.cfg.hook_point_layer, list) \
+            else 1 # Number of hook points or layers
 
         if self.cfg.use_cached_activations:
             # Load the activations from disk
@@ -268,7 +269,7 @@ class ActivationsStore:
             dim=0,
         )
 
-        mixing_buffer = mixing_buffer[torch.randperm(mixing_buffer.shape[1])]
+        mixing_buffer = mixing_buffer[torch.randperm(mixing_buffer.shape[0])]
 
         # 2.  put 50 % in storage
         self.storage_buffer = mixing_buffer[: mixing_buffer.shape[0] // 2]

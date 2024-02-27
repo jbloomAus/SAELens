@@ -26,7 +26,7 @@ cfg = CacheActivationsRunnerConfig(
     
     # Activation Store Parameters
     n_batches_in_buffer = 16,
-    total_training_tokens = 300_000_000, 
+    total_training_tokens = 10_000_000, 
     store_batch_size = 64,
 
     # Activation caching shuffle parameters

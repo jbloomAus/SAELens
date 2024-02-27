@@ -6,6 +6,7 @@ from transformer_lens import HookedTransformer
 from sae_training.activations_store import ActivationsStore
 from sae_training.config import LanguageModelSAERunnerConfig
 from sae_training.sparse_autoencoder import SparseAutoencoder
+from sae_training.sae_group import SAEGroup
 
 
 class LMSparseAutoencoderSessionloader:
@@ -21,7 +22,7 @@ class LMSparseAutoencoderSessionloader:
 
     def load_session(
         self,
-    ) -> Tuple[HookedTransformer, SparseAutoencoder, ActivationsStore]:
+    ) -> Tuple[HookedTransformer, SAEGroup, ActivationsStore]:
         """
         Loads a session for training a sparse autoencoder on a language model.
         """
@@ -66,10 +67,10 @@ class LMSparseAutoencoderSessionloader:
 
     def initialize_sparse_autoencoder(self, cfg: LanguageModelSAERunnerConfig):
         """
-        Initializes a sparse autoencoder
+        Initializes a sparse autoencoder group, which contains multiple sparse autoencoders
         """
 
-        sparse_autoencoder = SparseAutoencoder(cfg)
+        sparse_autoencoder = SAEGroup(cfg)
 
         return sparse_autoencoder
 
