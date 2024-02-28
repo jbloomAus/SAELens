@@ -13,7 +13,7 @@ from sae_training.sae_group import SAEGroup
 
 def train_sae_on_language_model(
     model: HookedTransformer,
-    sparse_autoencoders: SAEGroup,
+    sae_group: SAEGroup,
     activation_store: ActivationsStore,
     batch_size: int = 1024,
     n_checkpoints: int = 0,
@@ -22,7 +22,7 @@ def train_sae_on_language_model(
     use_wandb: bool = False,
     wandb_log_frequency: int = 50,
 ):
-    total_training_tokens = sparse_autoencoders.cfg.total_training_tokens
+    total_training_tokens = sae_group.cfg.total_training_tokens
     total_training_steps = total_training_tokens // batch_size
     n_training_steps = 0
     n_training_tokens = 0
@@ -34,24 +34,20 @@ def train_sae_on_language_model(
 
     # things to store for each sae:
     # act_freq_scores, n_forward_passes_since_fired, n_frac_active_tokens, optimizer, scheduler,
-    num_saes = len(sparse_autoencoders)
+    num_saes = len(sae_group)
     # track active features
 
     act_freq_scores = [
-        torch.zeros(
-            sparse_autoencoders.cfg.d_sae, device=sparse_autoencoders.cfg.device
-        )
+        torch.zeros(sae_group.cfg.d_sae, device=sae_group.cfg.device)
         for _ in range(num_saes)
     ]
     n_forward_passes_since_fired = [
-        torch.zeros(
-            sparse_autoencoders.cfg.d_sae, device=sparse_autoencoders.cfg.device
-        )
+        torch.zeros(sae_group.cfg.d_sae, device=sae_group.cfg.device)
         for _ in range(num_saes)
     ]
     n_frac_active_tokens = [0 for _ in range(num_saes)]
 
-    optimizer = [Adam(sae.parameters(), lr=sae.cfg.lr) for sae in sparse_autoencoders]
+    optimizer = [Adam(sae.parameters(), lr=sae.cfg.lr) for sae in sae_group]
     scheduler = [
         get_scheduler(
             sae.cfg.lr_scheduler_name,
@@ -60,30 +56,31 @@ def train_sae_on_language_model(
             training_steps=total_training_steps,
             lr_end=sae.cfg.lr / 10,  # heuristic for now.
         )
-        for sae, opt in zip(sparse_autoencoders, optimizer)
+        for sae, opt in zip(sae_group, optimizer)
     ]
 
-    all_layers = sparse_autoencoders.cfg.hook_point_layer
+    all_layers = sae_group.cfg.hook_point_layer
     if not isinstance(all_layers, list):
         all_layers = [all_layers]
 
     # compute the geometric median of the activations of each layer
 
-    geometric_medians = []
-    for layer_id in range(len(all_layers)):
-        layer_acts = activation_store.storage_buffer.detach().cpu()[:, layer_id, :]
-
-        median = compute_geometric_median(
-            layer_acts, skip_typechecks=True, maxiter=100, per_component=False
-        ).median
-        geometric_medians.append(median)
-
-    for sae in sparse_autoencoders:
+    geometric_medians = {}
+    # extract all activations at a certain layer and use for sae initialization
+    for sae in sae_group:
         hyperparams = sae.cfg
         sae_layer_id = all_layers.index(hyperparams.hook_point_layer)
-
-        # extract all activations at a certain layer and use for sae initialization
-        sae.initialize_b_dec_with_precalculated(geometric_medians[sae_layer_id])
+        layer_acts = activation_store.storage_buffer.detach().cpu()[:, sae_layer_id, :]
+        if hyperparams.b_dec_init_method == "geometric_median":
+            # get geometric median of the activations if we're using those.
+            if sae_layer_id not in geometric_medians:
+                median = compute_geometric_median(
+                    layer_acts, skip_typechecks=True, maxiter=100, per_component=False
+                ).median
+                geometric_medians[sae_layer_id].append(median)
+            sae.initialize_b_dec_with_precalculated(geometric_medians[sae_layer_id])
+        elif hyperparams.b_dec_init_method == "mean":
+            sae.initialize_b_dec_with_mean(layer_acts)
         sae.train()
 
     pbar = tqdm(total=total_training_tokens, desc="Training SAE")
@@ -95,7 +92,7 @@ def train_sae_on_language_model(
         for (
             i,
             (sparse_autoencoder),
-        ) in enumerate(sparse_autoencoders):
+        ) in enumerate(sae_group):
             hyperparams = sparse_autoencoder.cfg
             layer_id = all_layers.index(hyperparams.hook_point_layer)
             sae_in = layer_acts[:, layer_id, :]
@@ -112,7 +109,7 @@ def train_sae_on_language_model(
                 )
 
                 if use_wandb:
-                    suffix = wandb_log_suffix(sparse_autoencoders.cfg, hyperparams)
+                    suffix = wandb_log_suffix(sae_group.cfg, hyperparams)
                     wandb_histogram = wandb.Histogram(log_feature_sparsity.numpy())
                     wandb.log(
                         {
@@ -172,7 +169,7 @@ def train_sae_on_language_model(
                     total_variance = (sae_in - sae_in.mean(0)).pow(2).sum(-1)
                     explained_variance = 1 - per_token_l2_loss / total_variance
 
-                    suffix = wandb_log_suffix(sparse_autoencoders.cfg, hyperparams)
+                    suffix = wandb_log_suffix(sae_group.cfg, hyperparams)
                     wandb.log(
                         {
                             # losses
@@ -192,8 +189,8 @@ def train_sae_on_language_model(
                             .mean()
                             .item(),
                             f"sparsity/dead_features{suffix}": ghost_grad_neuron_mask.sum().item(),
-                            f"details/n_training_tokens{suffix}": n_training_tokens,
                             f"details/current_learning_rate{suffix}": current_learning_rate,
+                            "details/n_training_tokens": n_training_tokens,
                         },
                         step=n_training_steps,
                     )
@@ -203,7 +200,7 @@ def train_sae_on_language_model(
                     (n_training_steps + 1) % (wandb_log_frequency * 10) == 0
                 ):
                     sparse_autoencoder.eval()
-                    suffix = wandb_log_suffix(sparse_autoencoder.cfg, hyperparams)
+                    suffix = wandb_log_suffix(sae_group.cfg, hyperparams)
                     run_evals(
                         sparse_autoencoder,
                         activation_store,
@@ -219,14 +216,14 @@ def train_sae_on_language_model(
 
         # checkpoint if at checkpoint frequency
         if n_checkpoints > 0 and n_training_tokens > checkpoint_thresholds[0]:
-            path = f"{sparse_autoencoders.cfg.checkpoint_path}/{n_training_tokens}_{sparse_autoencoders.get_name()}.pt"
-            for sae in sparse_autoencoders:
+            path = f"{sae_group.cfg.checkpoint_path}/{n_training_tokens}_{sae_group.get_name()}.pt"
+            for sae in sae_group:
                 sae.set_decoder_norm_to_unit_norm()
-            sparse_autoencoders.save_model(path)
+            sae_group.save_model(path)
 
-            log_feature_sparsity_path = f"{sparse_autoencoders.cfg.checkpoint_path}/{n_training_tokens}_{sparse_autoencoders.get_name()}_log_feature_sparsity.pt"
+            log_feature_sparsity_path = f"{sae_group.cfg.checkpoint_path}/{n_training_tokens}_{sae_group.get_name()}_log_feature_sparsity.pt"
             log_feature_sparsity = []
-            for sae_id in range(len(sparse_autoencoders)):
+            for sae_id in range(len(sae_group)):
                 feature_sparsity = (
                     act_freq_scores[sae_id] / n_frac_active_tokens[sae_id]
                 )
@@ -238,19 +235,19 @@ def train_sae_on_language_model(
             checkpoint_thresholds.pop(0)
             if len(checkpoint_thresholds) == 0:
                 n_checkpoints = 0
-            if sparse_autoencoders.cfg.log_to_wandb:
+            if sae_group.cfg.log_to_wandb:
                 model_artifact = wandb.Artifact(
-                    f"{sparse_autoencoders.get_name()}",
+                    f"{sae_group.get_name()}",
                     type="model",
-                    metadata=dict(sparse_autoencoders.cfg.__dict__),
+                    metadata=dict(sae_group.cfg.__dict__),
                 )
                 model_artifact.add_file(path)
                 wandb.log_artifact(model_artifact)
 
                 sparsity_artifact = wandb.Artifact(
-                    f"{sparse_autoencoders.get_name()}_log_feature_sparsity",
+                    f"{sae_group.get_name()}_log_feature_sparsity",
                     type="log_feature_sparsity",
-                    metadata=dict(sparse_autoencoders.cfg.__dict__),
+                    metadata=dict(sae_group.cfg.__dict__),
                 )
                 sparsity_artifact.add_file(log_feature_sparsity_path)
                 wandb.log_artifact(sparsity_artifact)
@@ -264,40 +261,40 @@ def train_sae_on_language_model(
         pbar.update(batch_size)
 
     # save sae group to checkpoints folder
-    path = f"{sparse_autoencoders.cfg.checkpoint_path}/final_{sparse_autoencoders.get_name()}.pt"
-    for sae in sparse_autoencoders:
+    path = f"{sae_group.cfg.checkpoint_path}/final_{sae_group.get_name()}.pt"
+    for sae in sae_group:
         sae.set_decoder_norm_to_unit_norm()
-    sparse_autoencoders.save_model(path)
+    sae_group.save_model(path)
 
-    if sparse_autoencoders.cfg.log_to_wandb:
+    if sae_group.cfg.log_to_wandb:
         model_artifact = wandb.Artifact(
-            f"{sparse_autoencoders.get_name()}",
+            f"{sae_group.get_name()}",
             type="model",
-            metadata=dict(sparse_autoencoders.cfg.__dict__),
+            metadata=dict(sae_group.cfg.__dict__),
         )
         model_artifact.add_file(path)
         wandb.log_artifact(model_artifact, aliases=["final_model"])
 
     # need to fix this
-    log_feature_sparsity_path = f"{sparse_autoencoders.cfg.checkpoint_path}/final_{sparse_autoencoders.get_name()}_log_feature_sparsity.pt"
+    log_feature_sparsity_path = f"{sae_group.cfg.checkpoint_path}/final_{sae_group.get_name()}_log_feature_sparsity.pt"
     log_feature_sparsity = []
-    for sae_id in range(len(sparse_autoencoders)):
+    for sae_id in range(len(sae_group)):
         feature_sparsity = act_freq_scores[sae_id] / n_frac_active_tokens[sae_id]
         log_feature_sparsity.append(
             torch.log10(feature_sparsity + 1e-10).detach().cpu()
         )
     torch.save(log_feature_sparsity, log_feature_sparsity_path)
 
-    if sparse_autoencoders.cfg.log_to_wandb:
+    if sae_group.cfg.log_to_wandb:
         sparsity_artifact = wandb.Artifact(
-            f"{sparse_autoencoders.get_name()}_log_feature_sparsity",
+            f"{sae_group.get_name()}_log_feature_sparsity",
             type="log_feature_sparsity",
-            metadata=dict(sparse_autoencoders.cfg.__dict__),
+            metadata=dict(sae_group.cfg.__dict__),
         )
         sparsity_artifact.add_file(log_feature_sparsity_path)
         wandb.log_artifact(sparsity_artifact)
 
-    return sparse_autoencoders
+    return sae_group
 
 
 def wandb_log_suffix(cfg, hyperparams):
