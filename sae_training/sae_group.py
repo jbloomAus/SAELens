@@ -1,4 +1,3 @@
-from functools import partial
 import gzip
 import os
 import pickle
@@ -29,7 +28,9 @@ class SAEGroup:
             params = dict(zip(keys, combination))
             cfg_copy = dataclasses.replace(cfg, **params)
             # Insert the layer into the hookpoint
-            cfg_copy.hook_point = cfg_copy.hook_point.format(layer=cfg_copy.hook_point_layer)
+            cfg_copy.hook_point = cfg_copy.hook_point.format(
+                layer=cfg_copy.hook_point_layer
+            )
             # Create and store both the SparseAutoencoder instance and its parameters
             self.autoencoders.append(SparseAutoencoder(cfg_copy))
 
@@ -41,7 +42,7 @@ class SAEGroup:
     def __len__(self):
         # Return the number of SparseAutoencoder instances
         return len(self.autoencoders)
-    
+
     @classmethod
     def load_from_pretrained(cls, path: str):
         """
@@ -95,7 +96,7 @@ class SAEGroup:
         # instance.load_state_dict(state_dict["state_dict"])
 
         # return instance
-    
+
     def save_model(self, path: str):
         """
         Basic save function for the model. Saves the model's state_dict and the config used to train it.
@@ -116,7 +117,7 @@ class SAEGroup:
             )
 
         print(f"Saved model to {path}")
-        
+
     def get_name(self):
         layers = self.cfg.hook_point_layer
         if not isinstance(layers, list):

@@ -133,7 +133,7 @@ class SparseAutoencoder(HookedRootModule):
         loss = mse_loss + l1_loss + mse_loss_ghost_resid
 
         return sae_out, feature_acts, loss, mse_loss, l1_loss, mse_loss_ghost_resid
-    
+
     @torch.no_grad()
     def initialize_b_dec_with_precalculated(self, origin):
         out = torch.tensor(origin, dtype=self.dtype, device=self.device)

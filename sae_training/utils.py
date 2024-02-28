@@ -5,7 +5,6 @@ from transformer_lens import HookedTransformer
 
 from sae_training.activations_store import ActivationsStore
 from sae_training.config import LanguageModelSAERunnerConfig
-from sae_training.sparse_autoencoder import SparseAutoencoder
 from sae_training.sae_group import SAEGroup
 
 
@@ -51,7 +50,7 @@ class LMSparseAutoencoderSessionloader:
 
         sparse_autoencoders = SAEGroup.load_from_pretrained(path)
         model, _, activations_loader = cls(sparse_autoencoders.cfg).load_session()
-        
+
         return model, sparse_autoencoders, activations_loader
 
     def get_model(self, model_name: str):

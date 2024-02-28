@@ -26,10 +26,12 @@ class ActivationsStore:
         # Check if dataset is tokenized
         dataset_sample = next(self.iterable_dataset)
         self.cfg.is_dataset_tokenized = "tokens" in dataset_sample.keys()
-        print(f"Dataset is {'tokenized' if self.cfg.is_dataset_tokenized else 'not tokenized'}! Updating config.")
+        print(
+            f"Dataset is {'tokenized' if self.cfg.is_dataset_tokenized else 'not tokenized'}! Updating config."
+        )
         self.iterable_dataset = iter(self.dataset)  # Reset iterator after checking
 
-        if self.cfg.use_cached_activations: #EDIT: load from multi-layer acts
+        if self.cfg.use_cached_activations:  # EDIT: load from multi-layer acts
             # Sanity check: does the cache directory exist?
             assert os.path.exists(
                 self.cfg.cached_activations_path
@@ -145,45 +147,57 @@ class ActivationsStore:
         """
         Returns activations of shape (batches, context, num_layers, d_in)
         """
-        layers = self.cfg.hook_point_layer if isinstance(self.cfg.hook_point_layer, list) else [self.cfg.hook_point_layer]
-        act_names = [self.cfg.hook_point.format(layer = layer) for layer in layers]
+        layers = (
+            self.cfg.hook_point_layer
+            if isinstance(self.cfg.hook_point_layer, list)
+            else [self.cfg.hook_point_layer]
+        )
+        act_names = [self.cfg.hook_point.format(layer=layer) for layer in layers]
         hook_point_max_layer = max(layers)
         if self.cfg.hook_point_head_index is not None:
             layerwise_activations = self.model.run_with_cache(
-                batch_tokens, names_filter=act_names, stop_at_layer=hook_point_max_layer + 1
+                batch_tokens,
+                names_filter=act_names,
+                stop_at_layer=hook_point_max_layer + 1,
             )[1]
             activations_list = [
-                layerwise_activations[act_name][:, :, self.cfg.hook_point_head_index] 
+                layerwise_activations[act_name][:, :, self.cfg.hook_point_head_index]
                 for act_name in act_names
             ]
         else:
             layerwise_activations = self.model.run_with_cache(
-                batch_tokens, names_filter=act_names, stop_at_layer=hook_point_max_layer + 1
+                batch_tokens,
+                names_filter=act_names,
+                stop_at_layer=hook_point_max_layer + 1,
             )[1]
             activations_list = [
-                layerwise_activations[act_name]
-                for act_name in act_names
+                layerwise_activations[act_name] for act_name in act_names
             ]
-            
+
         # Stack along a new dimension to keep separate layers distinct
         stacked_activations = torch.stack(activations_list, dim=2)
 
         return stacked_activations
-    
+
     def get_buffer(self, n_batches_in_buffer):
         context_size = self.cfg.context_size
         batch_size = self.cfg.store_batch_size
         d_in = self.cfg.d_in
         total_size = batch_size * n_batches_in_buffer
-        num_layers = len(self.cfg.hook_point_layer) if isinstance(self.cfg.hook_point_layer, list) \
-            else 1 # Number of hook points or layers
+        num_layers = (
+            len(self.cfg.hook_point_layer)
+            if isinstance(self.cfg.hook_point_layer, list)
+            else 1
+        )  # Number of hook points or layers
 
         if self.cfg.use_cached_activations:
             # Load the activations from disk
             buffer_size = total_size * context_size
             # Initialize an empty tensor with an additional dimension for layers
             new_buffer = torch.zeros(
-                (buffer_size, num_layers, d_in), dtype=self.cfg.dtype, device=self.cfg.device
+                (buffer_size, num_layers, d_in),
+                dtype=self.cfg.dtype,
+                device=self.cfg.device,
             )
             n_tokens_filled = 0
 
@@ -215,8 +229,9 @@ class ActivationsStore:
                     activations = activations[: buffer_size - n_tokens_filled, ...]
                     taking_subset_of_file = True
 
-                new_buffer[n_tokens_filled : n_tokens_filled + activations.shape[0], ...] = activations
-
+                new_buffer[
+                    n_tokens_filled : n_tokens_filled + activations.shape[0], ...
+                ] = activations
 
                 if taking_subset_of_file:
                     self.next_idx_within_buffer = activations.shape[0]
@@ -235,7 +250,7 @@ class ActivationsStore:
             dtype=self.cfg.dtype,
             device=self.cfg.device,
         )
-    
+
         for refill_batch_idx_start in refill_iterator:
             refill_batch_tokens = self.get_batch_tokens()
             refill_activations = self.get_activations(refill_batch_tokens)
