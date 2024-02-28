@@ -38,12 +38,12 @@ def train_sae_on_language_model(
     # track active features
 
     act_freq_scores = [
-        torch.zeros(sae_group.cfg.d_sae, device=sae_group.cfg.device)
-        for _ in range(num_saes)
+        torch.zeros(sparse_autoencoder.cfg.d_sae, device=sparse_autoencoder.cfg.device)
+        for sparse_autoencoder in sae_group
     ]
     n_forward_passes_since_fired = [
-        torch.zeros(sae_group.cfg.d_sae, device=sae_group.cfg.device)
-        for _ in range(num_saes)
+        torch.zeros(sparse_autoencoder.cfg.d_sae, device=sparse_autoencoder.cfg.device)
+        for sparse_autoencoder in sae_group
     ]
     n_frac_active_tokens = [0 for _ in range(num_saes)]
 

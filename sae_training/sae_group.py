@@ -29,6 +29,7 @@ class SAEGroup:
         for combination in product(*values):
             params = dict(zip(keys, combination))
             cfg_copy = dataclasses.replace(cfg, **params)
+            cfg_copy.__post_init__()
             # Insert the layer into the hookpoint
             cfg_copy.hook_point = cfg_copy.hook_point.format(
                 layer=cfg_copy.hook_point_layer

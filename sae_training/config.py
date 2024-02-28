@@ -22,9 +22,9 @@ class RunnerConfig(ABC):
     is_dataset_tokenized: bool = True
     context_size: int = 128
     use_cached_activations: bool = False
-    cached_activations_path: Optional[str] = (
-        None  # Defaults to "activations/{dataset}/{model}/{full_hook_name}_{hook_point_head_index}"
-    )
+    cached_activations_path: Optional[
+        str
+    ] = None  # Defaults to "activations/{dataset}/{model}/{full_hook_name}_{hook_point_head_index}"
 
     # SAE Parameters
     d_in: int = 512
@@ -57,14 +57,13 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
     b_dec_init_method: str = "geometric_median"
     expansion_factor: int = 4
     from_pretrained_path: Optional[str] = None
+    d_sae: Optional[int] = None
 
     # Training Parameters
     l1_coefficient: float = 1e-3
     lp_norm: float = 1
     lr: float = 3e-4
-    lr_scheduler_name: str = (
-        "constantwithwarmup"  # constant, constantwithwarmup, linearwarmupdecay, cosineannealing, cosineannealingwarmup
-    )
+    lr_scheduler_name: str = "constantwithwarmup"  # constant, constantwithwarmup, linearwarmupdecay, cosineannealing, cosineannealingwarmup
     lr_warm_up_steps: int = 500
     train_batch_size: int = 4096
 
@@ -88,7 +87,8 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
 
     def __post_init__(self):
         super().__post_init__()
-        self.d_sae = self.d_in * self.expansion_factor
+        if not isinstance(self.expansion_factor, list):
+            self.d_sae = self.d_in * self.expansion_factor
         self.tokens_per_buffer = (
             self.train_batch_size * self.context_size * self.n_batches_in_buffer
         )
