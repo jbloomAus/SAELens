@@ -29,7 +29,8 @@ def cache_activations_runner(cfg: CacheActivationsRunnerConfig):
         cfg.store_batch_size * cfg.context_size * cfg.n_batches_in_buffer
     )
     n_buffers = math.ceil(cfg.total_training_tokens / tokens_per_buffer)
-    for i in tqdm(range(n_buffers), desc="Caching activations"):
+    # for i in tqdm(range(n_buffers), desc="Caching activations"):
+    for i in range(n_buffers):
         buffer = activations_store.get_buffer(cfg.n_batches_in_buffer)
         torch.save(buffer, f"{activations_store.cfg.cached_activations_path}/{i}.pt")
         del buffer
