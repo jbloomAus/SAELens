@@ -134,7 +134,7 @@ def test_activations_store__init__(cfg, model):
     expected_size = (
         cfg.store_batch_size * cfg.context_size * cfg.n_batches_in_buffer // 2
     )
-    assert store.storage_buffer.shape == (expected_size, cfg.d_in)
+    assert store.storage_buffer.shape == (expected_size, 1, cfg.d_in)
 
 
 def test_activations_store__get_batch_tokens(activation_store):
@@ -154,7 +154,7 @@ def test_activations_store__get_activations(activation_store):
 
     cfg = activation_store.cfg
     assert isinstance(activations, torch.Tensor)
-    assert activations.shape == (cfg.store_batch_size, cfg.context_size, cfg.d_in)
+    assert activations.shape == (cfg.store_batch_size, cfg.context_size, 1, cfg.d_in)
     assert activations.device == cfg.device
 
 
@@ -164,7 +164,7 @@ def test_activations_store__get_activations_head_hook(activation_store_head_hook
 
     cfg = activation_store_head_hook.cfg
     assert isinstance(activations, torch.Tensor)
-    assert activations.shape == (cfg.store_batch_size, cfg.context_size, cfg.d_in)
+    assert activations.shape == (cfg.store_batch_size, cfg.context_size, 1, cfg.d_in)
     assert activations.device == cfg.device
 
 
@@ -176,5 +176,5 @@ def test_activations_store__get_buffer(activation_store):
     assert isinstance(buffer, torch.Tensor)
     buffer_size_expected = cfg.store_batch_size * cfg.context_size * n_batches_in_buffer
 
-    assert buffer.shape == (buffer_size_expected, cfg.d_in)
+    assert buffer.shape == (buffer_size_expected, 1, cfg.d_in)
     assert buffer.device == cfg.device
