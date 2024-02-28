@@ -3,7 +3,6 @@ import os
 import torch
 from datasets import load_dataset
 from torch.utils.data import DataLoader
-from tqdm import tqdm
 from transformer_lens import HookedTransformer
 
 

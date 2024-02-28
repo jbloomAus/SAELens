@@ -20,8 +20,6 @@ from tqdm import tqdm
 from transformer_lens import HookedTransformer, utils
 from transformer_lens.hook_points import HookPoint
 
-Arr = np.ndarray
-
 from sae_analysis.visualizer.html_fns import (
     CSS,
     HTML_HOVERTEXT_SCRIPT,
@@ -38,6 +36,8 @@ from sae_analysis.visualizer.utils_fns import (
     random_range_indices,
     to_str_tokens,
 )
+
+Arr = np.ndarray
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -497,7 +497,7 @@ class BatchedCorrCoef:
         self.x2_sum = 0
         self.y2_sum = 0
 
-    def update(self, x: Float[Tensor, "X N"], y: Float[Tensor, "Y N"]):  # noqa
+    def update(self, x: Float[Tensor, "X N"], y: Float[Tensor, "Y N"]):
         assert x.ndim == 2 and y.ndim == 2, "Both x and y should be 2D"
         assert (
             x.shape[-1] == y.shape[-1]
@@ -510,7 +510,7 @@ class BatchedCorrCoef:
         self.x2_sum += einops.reduce(x**2, "X N -> X", "sum")
         self.y2_sum += einops.reduce(y**2, "Y N -> Y", "sum")
 
-    def corrcoef(self) -> Tuple[Float[Tensor, "X Y"], Float[Tensor, "X Y"]]:  # noqa
+    def corrcoef(self) -> Tuple[Float[Tensor, "X Y"], Float[Tensor, "X Y"]]:
         cossim_numer = self.xy_sum
         cossim_denom = torch.sqrt(torch.outer(self.x2_sum, self.y2_sum)) + 1e-6
         cossim = cossim_numer / cossim_denom
@@ -549,7 +549,7 @@ def get_feature_data(
     hook_point: str,
     hook_point_layer: int,
     hook_point_head_index: Optional[int],
-    tokens: Int[Tensor, "batch seq"],  # noqa
+    tokens: Int[Tensor, "batch seq"],
     feature_idx: Union[int, List[int]],
     max_batch_size: Optional[int] = None,
     left_hand_k: int = 3,
@@ -624,10 +624,8 @@ def get_feature_data(
 
     # ! Define hook function to perform feature ablation
 
-    def hook_fn_act_post(
-        act_post: Float[Tensor, "batch seq d_mlp"], hook: HookPoint  # noqa
-    ):  # noqa
-        """
+    def hook_fn_act_post(act_post: Float[Tensor, "batch seq d_mlp"], hook: HookPoint):
+        r"""
         Encoder has learned x^j \approx b + \sum_i f_i(x^j)d_i where:
             - f_i are the feature activations
             - d_i are the feature output directions
@@ -663,10 +661,9 @@ def get_feature_data(
         # )
 
     def hook_fn_query(
-        hook_q: Float[Tensor, "batch seq n_head d_head"], hook: HookPoint  # noqa
+        hook_q: Float[Tensor, "batch seq n_head d_head"], hook: HookPoint
     ):
-        """
-
+        r"""
         Replace act_post with projection of query onto the resid by W_k^T.
         Encoder has learned x^j \approx b + \sum_i f_i(x^j)d_i where:
             - f_i are the feature activations
@@ -698,7 +695,7 @@ def get_feature_data(
         )
 
     def hook_fn_resid_post(
-        resid_post: Float[Tensor, "batch seq d_model"], hook: HookPoint  # noqa
+        resid_post: Float[Tensor, "batch seq d_model"], hook: HookPoint
     ):
         """
         This hook function stores the residual activations, which we'll need later on to calculate the effect of feature ablation.
@@ -1020,7 +1017,8 @@ def get_feature_data(
                     save_obj, filename=filename, save_type=save_type
                 )
                 t1 = time.time()
-                loaded_obj = FeatureData.load_batch(
+                # TODO: is this doing anything? the result isn't read
+                FeatureData.load_batch(
                     filename, save_type=save_type, vocab_dict=vocab_dict
                 )
                 t2 = time.time()

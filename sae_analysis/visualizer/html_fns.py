@@ -82,20 +82,20 @@ def generate_tok_html(
 
     # Make all the substitutions
     html_output = re.sub(
-        "pos_str_(\d)",
+        r"pos_str_(\d)",
         lambda m: pos_str[int(m.group(1))].replace(" ", "&nbsp;"),
         html_output,
     )
     html_output = re.sub(
-        "neg_str_(\d)",
+        r"neg_str_(\d)",
         lambda m: neg_str[int(m.group(1))].replace(" ", "&nbsp;"),
         html_output,
     )
     html_output = re.sub(
-        "pos_val_(\d)", lambda m: f"{pos_val[int(m.group(1))]:+.3f}", html_output
+        r"pos_val_(\d)", lambda m: f"{pos_val[int(m.group(1))]:+.3f}", html_output
     )
     html_output = re.sub(
-        "neg_val_(\d)", lambda m: f"{neg_val[int(m.group(1))]:+.3f}", html_output
+        r"neg_val_(\d)", lambda m: f"{neg_val[int(m.group(1))]:+.3f}", html_output
     )
 
     # If the effect on loss is nothing (because feature isn't active), replace the HTML output with smth saying this
@@ -235,7 +235,7 @@ def generate_tables_html(
             if myformat is None
             else format(mylist[int(m.group(1))], myformat)
         )
-        html_output = re.sub(letter + "(\d)", fn, html_output, count=3)
+        html_output = re.sub(letter + r"(\d)", fn, html_output, count=3)
 
     html_output_2 = HTML_LOGIT_TABLES
 
@@ -258,7 +258,7 @@ def generate_tables_html(
             fn = lambda m: format(mylist[int(m.group(1))], "+.2f")
         elif letter == "C":
             fn = lambda m: str(mylist[int(m.group(1))])
-        html_output_2 = re.sub(letter + "(\d)", fn, html_output_2, count=10)
+        html_output_2 = re.sub(letter + r"(\d)", fn, html_output_2, count=10)
 
     return (html_output, html_output_2)
 

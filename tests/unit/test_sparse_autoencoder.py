@@ -92,7 +92,7 @@ def test_sparse_autoencoder_init(cfg):
 def test_save_model(cfg):
     with tempfile.TemporaryDirectory() as tmpdirname:
         # assert file does not exist
-        assert os.path.exists(tmpdirname + "/test.pt") == False
+        assert not os.path.exists(tmpdirname + "/test.pt")
 
         sparse_autoencoder = SparseAutoencoder(cfg)
         sparse_autoencoder.save_model(tmpdirname + "/test.pt")
@@ -120,7 +120,7 @@ def test_save_model(cfg):
 def test_load_from_pretrained_pt(cfg):
     with tempfile.TemporaryDirectory() as tmpdirname:
         # assert file does not exist
-        assert os.path.exists(tmpdirname + "/test.pt") == False
+        assert not os.path.exists(tmpdirname + "/test.pt")
 
         sparse_autoencoder = SparseAutoencoder(cfg)
         sparse_autoencoder_state_dict = sparse_autoencoder.state_dict()
@@ -152,7 +152,7 @@ def test_load_from_pretrained_pt(cfg):
 def test_load_from_pretrained_pkl_gz(cfg):
     with tempfile.TemporaryDirectory() as tmpdirname:
         # assert file does not exist
-        assert os.path.exists(tmpdirname + "/test.pkl.gz") == False
+        assert not os.path.exists(tmpdirname + "/test.pkl.gz")
 
         sparse_autoencoder = SparseAutoencoder(cfg)
         sparse_autoencoder_state_dict = sparse_autoencoder.state_dict()
