@@ -2,8 +2,8 @@ import math
 import os
 
 import torch
-from transformer_lens import HookedTransformer
 from tqdm import tqdm
+from transformer_lens import HookedTransformer
 
 from sae_training.activations_store import ActivationsStore
 from sae_training.config import CacheActivationsRunnerConfig
@@ -52,8 +52,9 @@ def cache_activations_runner(cfg: CacheActivationsRunnerConfig):
                 )
 
     # More final shuffling (mostly in case we didn't end on an i divisible by shuffle_every_n_buffers)
-    for _ in tqdm(range(cfg.n_shuffles_final), desc="Final shuffling"):
-        shuffle_activations_pairwise(
-            activations_store.cfg.cached_activations_path,
-            buffer_idx_range=(0, n_buffers),
-        )
+    if n_buffers > 1:
+        for _ in tqdm(range(cfg.n_shuffles_final), desc="Final shuffling"):
+            shuffle_activations_pairwise(
+                activations_store.cfg.cached_activations_path,
+                buffer_idx_range=(0, n_buffers),
+            )

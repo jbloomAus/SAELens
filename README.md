@@ -5,12 +5,10 @@ This codebase contains training scripts and analysis code for Sparse AutoEncoder
 
 ## Set Up
 
+This project uses [Poetry](https://python-poetry.org/) for dependency management. Ensure Poetry is installed, then to install the dependencies, run:
+
 ```
-
-conda create --name mats_sae_training python=3.11 -y
-conda activate mats_sae_training
-pip install -r requirements.txt
-
+poetry install
 ```
 
 ## Background

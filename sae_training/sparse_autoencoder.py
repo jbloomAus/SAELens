@@ -5,15 +5,10 @@ https://github.com/ArthurConmy/sae/blob/main/sae/model.py
 import gzip
 import os
 import pickle
-from functools import partial
 
 import einops
 import torch
-import torch.nn.functional as F
-from jaxtyping import Float
-from torch import Tensor, nn
-from torch.distributions.categorical import Categorical
-from tqdm import tqdm
+from torch import nn
 from transformer_lens.hook_points import HookedRootModule, HookPoint
 
 from sae_training.geom_median.src.geom_median.torch import compute_geometric_median

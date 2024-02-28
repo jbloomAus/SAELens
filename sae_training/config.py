@@ -3,7 +3,6 @@ from dataclasses import dataclass
 from typing import Optional
 
 import torch
-
 import wandb
 
 
@@ -22,9 +21,9 @@ class RunnerConfig(ABC):
     is_dataset_tokenized: bool = True
     context_size: int = 128
     use_cached_activations: bool = False
-    cached_activations_path: Optional[
-        str
-    ] = None  # Defaults to "activations/{dataset}/{model}/{full_hook_name}_{hook_point_head_index}"
+    cached_activations_path: Optional[str] = (
+        None  # Defaults to "activations/{dataset}/{model}/{full_hook_name}_{hook_point_head_index}"
+    )
 
     # SAE Parameters
     d_in: int = 512
@@ -62,7 +61,9 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
     l1_coefficient: float = 1e-3
     lp_norm: float = 1
     lr: float = 3e-4
-    lr_scheduler_name: str = "constantwithwarmup"  # constant, constantwithwarmup, linearwarmupdecay, cosineannealing, cosineannealingwarmup
+    lr_scheduler_name: str = (
+        "constantwithwarmup"  # constant, constantwithwarmup, linearwarmupdecay, cosineannealing, cosineannealingwarmup
+    )
     lr_warm_up_steps: int = 500
     train_batch_size: int = 4096
 
@@ -76,6 +77,7 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
     # WANDB
     log_to_wandb: bool = True
     wandb_project: str = "mats_sae_training_language_model"
+    run_name: Optional[str] = None
     wandb_entity: str = None
     wandb_log_frequency: int = 10
 
@@ -90,7 +92,8 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
             self.train_batch_size * self.context_size * self.n_batches_in_buffer
         )
 
-        self.run_name = f"{self.d_sae}-L1-{self.l1_coefficient}-LR-{self.lr}-Tokens-{self.total_training_tokens:3.3e}"
+        if self.run_name is None:
+            self.run_name = f"{self.d_sae}-L1-{self.l1_coefficient}-LR-{self.lr}-Tokens-{self.total_training_tokens:3.3e}"
 
         if self.b_dec_init_method not in ["geometric_median", "mean", "zeros"]:
             raise ValueError(

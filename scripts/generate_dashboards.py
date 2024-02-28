@@ -1,3 +1,5 @@
+# flake8: noqa: E402
+# TODO: are these sys.path.append calls really necessary?
 import sys
 
 sys.path.append("..")
@@ -14,10 +16,10 @@ import pandas as pd
 import plotly
 import plotly.express as px
 import torch
+import wandb
 from torch.nn.functional import cosine_similarity
 from tqdm import tqdm
 
-import wandb
 from sae_analysis.visualizer.data_fns import get_feature_data
 from sae_training.utils import LMSparseAutoencoderSessionloader
 
@@ -128,9 +130,7 @@ class DashboardRunner:
             self.activation_store,
         ) = LMSparseAutoencoderSessionloader.load_session_from_pretrained(self.sae_path)
 
-    def get_tokens(
-        self, n_batches_to_sample_from=2**12, n_prompts_to_select=4096 * 6
-    ):
+    def get_tokens(self, n_batches_to_sample_from=2**12, n_prompts_to_select=4096 * 6):
         """
         Get the tokens needed for dashboard generation.
         """

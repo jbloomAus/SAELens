@@ -3,7 +3,6 @@ import os
 import torch
 from datasets import load_dataset
 from torch.utils.data import DataLoader
-from tqdm import tqdm
 from transformer_lens import HookedTransformer
 
 
@@ -217,6 +216,7 @@ class ActivationsStore:
                     taking_subset_of_file = True
 
                 new_buffer[n_tokens_filled : n_tokens_filled + activations.shape[0], ...] = activations
+
 
                 if taking_subset_of_file:
                     self.next_idx_within_buffer = activations.shape[0]
