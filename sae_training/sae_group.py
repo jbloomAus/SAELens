@@ -45,6 +45,10 @@ class SAEGroup:
         # Return the number of SparseAutoencoder instances
         return len(self.autoencoders)
 
+    def to(self, device):
+        for ae in self.autoencoders:
+            ae.to(device)
+
     @classmethod
     def load_from_pretrained(cls, path: str):
         """
