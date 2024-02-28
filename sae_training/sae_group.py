@@ -1,9 +1,11 @@
+import dataclasses
 import gzip
 import os
 import pickle
-import dataclasses
-from sae_training.sparse_autoencoder import SparseAutoencoder
+
 import torch
+
+from sae_training.sparse_autoencoder import SparseAutoencoder
 
 
 class SAEGroup:

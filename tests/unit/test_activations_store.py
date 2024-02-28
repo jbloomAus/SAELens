@@ -33,6 +33,7 @@ def cfg():
     mock_config.context_size = 16
     mock_config.use_cached_activations = False
     mock_config.hook_point_head_index = None
+    mock_config.lp_norm = 1
 
     mock_config.feature_sampling_method = None
     mock_config.feature_sampling_window = 50
