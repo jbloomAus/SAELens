@@ -1,6 +1,6 @@
 from abc import ABC
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Optional, cast
 
 import torch
 import wandb
@@ -31,10 +31,10 @@ class RunnerConfig(ABC):
     # Activation Store Parameters
     n_batches_in_buffer: int = 20
     total_training_tokens: int = 2_000_000
-    store_batch_size: int = (32,)
+    store_batch_size: int = 32
 
     # Misc
-    device: str = "cpu"
+    device: str | torch.device = "cpu"
     seed: int = 42
     dtype: torch.dtype = torch.float32
 
@@ -77,7 +77,7 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
     log_to_wandb: bool = True
     wandb_project: str = "mats_sae_training_language_model"
     run_name: Optional[str] = None
-    wandb_entity: str = None
+    wandb_entity: Optional[str] = None
     wandb_log_frequency: int = 10
 
     # Misc
@@ -105,7 +105,9 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
 
         self.device = torch.device(self.device)
 
-        unique_id = wandb.util.generate_id()
+        unique_id = cast(
+            Any, wandb
+        ).util.generate_id()  # not sure why this type is erroring
         self.checkpoint_path = f"{self.checkpoint_path}/{unique_id}"
 
         print(

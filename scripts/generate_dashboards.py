@@ -1,6 +1,7 @@
 # flake8: noqa: E402
 # TODO: are these sys.path.append calls really necessary?
 import sys
+from typing import Any, Optional, cast
 
 sys.path.append("..")
 sys.path.append("../..")
@@ -27,9 +28,9 @@ from sae_training.utils import LMSparseAutoencoderSessionloader
 class DashboardRunner:
     def __init__(
         self,
-        sae_path: str = None,
+        sae_path: Optional[str] = None,
         dashboard_parent_folder: str = "./feature_dashboards",
-        wandb_artifact_path: str = None,
+        wandb_artifact_path: Optional[str] = None,
         init_session: bool = True,
         # token pars
         n_batches_to_sample_from: int = 2**12,
@@ -41,7 +42,7 @@ class DashboardRunner:
         # util pars
         use_wandb: bool = False,
         continue_existing_dashboard: bool = True,
-        final_index: int = None,
+        final_index: Optional[int] = None,
     ):
         """ """
 
@@ -50,6 +51,7 @@ class DashboardRunner:
             if not os.path.exists(artifact_dir):
                 print("Downloading artifact")
                 run = wandb.init()
+                assert run is not None  # keep pyright happy
                 artifact = run.use_artifact(wandb_artifact_path)
                 artifact_dir = artifact.download()
                 path_to_artifact = f"{artifact_dir}/{os.listdir(artifact_dir)[0]}"
@@ -111,7 +113,7 @@ class DashboardRunner:
             if len(os.listdir(self.dashboard_folder)) > 0:
                 raise ValueError("Dashboard folder not empty. Aborting.")
 
-    def get_feature_sparsity_path(self, wandb_artifact_path):
+    def get_feature_sparsity_path(self, wandb_artifact_path: str):
         prefix = wandb_artifact_path.split(":")[0]
         return f"{prefix}_log_feature_sparsity:v9"
 
@@ -130,7 +132,9 @@ class DashboardRunner:
             self.activation_store,
         ) = LMSparseAutoencoderSessionloader.load_session_from_pretrained(self.sae_path)
 
-    def get_tokens(self, n_batches_to_sample_from=2**12, n_prompts_to_select=4096 * 6):
+    def get_tokens(
+        self, n_batches_to_sample_from: int = 2**12, n_prompts_to_select: int = 4096 * 6
+    ):
         """
         Get the tokens needed for dashboard generation.
         """
@@ -149,6 +153,7 @@ class DashboardRunner:
         return all_tokens[:n_prompts_to_select]
 
     def get_index_to_resume_from(self):
+        i = 0
         for i in range(self.n_features):
             if not os.path.exists(f"{self.dashboard_folder}/data_{i:04}.html"):
                 break
@@ -187,7 +192,6 @@ class DashboardRunner:
             / sparse_autoencoder.W_enc.cpu().norm(dim=-1, keepdim=True)
         )
         d_e_projection = cosine_similarity(W_dec_normalized, W_enc_normalized.T)
-        b_dec_projection = sparse_autoencoder.b_dec.cpu() @ W_dec_normalized.T
 
         temp_df = pd.DataFrame(
             {
@@ -210,13 +214,14 @@ class DashboardRunner:
         Generate the dashboard.
         """
 
+        run = None
         if self.use_wandb:
             # get name from wandb
             random_suffix = str(uuid.uuid4())[:8]
             name = f"{self.get_dashboard_folder_name()}_{random_suffix}"
             run = wandb.init(
                 project="feature_dashboards",
-                config=self.sparse_autoencoder.cfg,
+                config=cast(Any, self.sparse_autoencoder.cfg),
                 name=name,
                 tags=[
                     f"model_{self.sparse_autoencoder.cfg.model_name}",
@@ -330,6 +335,7 @@ class DashboardRunner:
                         artifact.add_file(
                             f"{self.dashboard_folder}/data_{test_idx:04}.html"
                         )
+                        assert run is not None  # keep pyright happy
                         run.log_artifact(artifact)
 
                         # also upload as html to dashboard
@@ -348,6 +354,7 @@ class DashboardRunner:
         # then upload the zip as an artifact
         artifact = wandb.Artifact("dashboard", type="zipped_feature_dashboards")
         artifact.add_file(f"{self.dashboard_folder}.zip")
+        assert run is not None  # keep pyright happy
         run.log_artifact(artifact)
 
         # terminate the run

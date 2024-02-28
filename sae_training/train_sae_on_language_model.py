@@ -25,7 +25,9 @@ def train_sae_on_language_model(
     total_training_steps = total_training_tokens // batch_size
     n_training_steps = 0
     n_training_tokens = 0
+    log_feature_sparsity = None
 
+    checkpoint_thresholds = []
     if n_checkpoints > 0:
         checkpoint_thresholds = list(
             range(0, total_training_tokens, total_training_tokens // n_checkpoints)

@@ -4,7 +4,7 @@ import pickle
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Literal, Optional, Tuple, Union
+from typing import Any, Dict, List, Literal, Optional, Tuple, Union, cast
 
 import einops
 import numpy as np
@@ -27,15 +27,14 @@ from sae_analysis.visualizer.html_fns import (
     generate_seq_html,
     generate_tables_html,
 )
-from sae_analysis.visualizer.model_fns import AutoEncoder
 from sae_analysis.visualizer.utils_fns import (
     TopK,
-    extract_and_remove_scripts,
     k_largest_indices,
     merge_lists,
     random_range_indices,
     to_str_tokens,
 )
+from sae_training.sparse_autoencoder import SparseAutoencoder
 
 Arr = np.ndarray
 
@@ -75,6 +74,7 @@ class HistogramData:
         # choose tickvalues (super hacky and terrible, should improve this)
         assert tickmode in ["ints", "5 ticks"]
 
+        tick_vals = []
         if tickmode == "ints":
             top_tickval = int(max_value)
             tick_vals = torch.arange(0, top_tickval + 1, 1).tolist()
@@ -121,20 +121,21 @@ class SequenceData:
         bottom5_logit_changes: list of the corresponding 5 changes in logits for those tokens
     """
 
-    token_ids: List[str]
+    token_ids: List[int]
     feat_acts: List[float]
     contribution_to_loss: List[float]
     repeat: bool
-    top5_token_ids: List[List[str]]
+    top5_token_ids: List[List[int]]
     top5_logit_contributions: List[List[float]]
-    bottom5_token_ids: List[List[str]]
+    bottom5_token_ids: List[List[int]]
     bottom5_logit_contributions: List[List[float]]
 
     def __len__(self):
         return len(self.token_ids)
 
     def __str__(self):
-        return f"SequenceData({''.join(self.token_ids)})"
+        toks = "".join(f"{self.token_ids}")
+        return f"SequenceData({toks})"
 
     def __post_init__(self):
         """Filters down the data, by deleting the "on hover" information if the activations are zero."""
@@ -145,10 +146,10 @@ class SequenceData:
             self.bottom5_logit_contributions, self.bottom5_token_ids
         )
 
-    def _filter(self, float_list: List[List[float]], int_list: List[List[str]]):
+    def _filter(self, float_list: List[List[float]], int_list: List[List[int]]):
         float_list = [[f for f in floats if f != 0] for floats in float_list]
         int_list = [
-            [i for i, f in zip(ints, floats)]
+            [i for i, _f in zip(ints, floats)]
             for ints, floats in zip(int_list, float_list)
         ]
         return float_list, int_list
@@ -164,7 +165,7 @@ class SequenceDataBatch:
 
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any):
         self.seqs = [
             SequenceData(
                 token_ids=kwargs["token_ids"][k],
@@ -263,7 +264,7 @@ class FeatureData:
 
     neuron_alignment: Tuple[TopK, Arr]
     neurons_correlated: Tuple[TopK, TopK]
-    b_features_correlated: Tuple[TopK, TopK]
+    b_features_correlated: Tuple[TopK, TopK] | None
 
     vocab_dict: Dict[int, str]
     buffer: Tuple[int, int] = (5, 5)
@@ -271,12 +272,12 @@ class FeatureData:
     first_group_size: int = 20
     other_groups_size: int = 5
 
-    def return_save_dict(self) -> dict:
+    def return_save_dict(self) -> dict[str, Any]:
         """Returns a dict we use for saving (pickling)."""
         return {k: v for k, v in self.__dict__.items() if k not in ["vocab_dict"]}
 
     @classmethod
-    def load_from_save_dict(self, save_dict, vocab_dict):
+    def load_from_save_dict(cls, save_dict: dict[Any, Any], vocab_dict: dict[Any, Any]):
         """Loads this object from a dict (e.g. from a pickle file)."""
         return FeatureData(**save_dict, vocab_dict=vocab_dict)
 
@@ -286,7 +287,7 @@ class FeatureData:
         batch: Dict[int, "FeatureData"],
         filename: str,
         save_type: Literal["pkl", "gzip"],
-    ) -> None:
+    ) -> str:
         """Saves a batch of FeatureData objects to a pickle file."""
         assert (
             "." not in filename
@@ -322,6 +323,8 @@ class FeatureData:
         elif save_type == "gzip":
             with gzip.open(filename, "rb") as f:
                 save_obj = pickle.load(f)
+        else:
+            raise ValueError("save_type should be one of 'pkl' or 'gzip'")
 
         if feature_idx is None:
             return {
@@ -331,7 +334,7 @@ class FeatureData:
         else:
             return FeatureData.load_from_save_dict(save_obj[feature_idx], vocab_dict)
 
-    def save(self, filename: str, save_type: Literal["pkl", "gzip"]) -> None:
+    def save(self, filename: str, save_type: Literal["pkl", "gzip"]) -> str:
         """Saves this object to a pickle file (we don't need to save the model and encoder too, just the data)."""
         assert (
             "." not in filename
@@ -432,7 +435,7 @@ class FeatureData:
             f"<div>{logits_histogram}</div>",
         )
 
-    def get_all_html(self, debug: bool = False, split_scripts: bool = False) -> str:
+    def get_all_html(self, debug: bool = False) -> str:
         # Get the individual HTML
         left_tables_html, logit_tables_html = self.get_tables_html()
         sequences_html = self.get_sequences_html()
@@ -462,11 +465,7 @@ class FeatureData:
         if debug:
             display(HTML(html_string))
 
-        if split_scripts:
-            scripts, html_string = extract_and_remove_scripts(html_string)
-            return scripts, html_string
-        else:
-            return html_string
+        return html_string
 
 
 class BatchedCorrCoef:
@@ -490,12 +489,12 @@ class BatchedCorrCoef:
     """
 
     def __init__(self):
-        self.n = 0
-        self.x_sum = 0
-        self.y_sum = 0
-        self.xy_sum = 0
-        self.x2_sum = 0
-        self.y2_sum = 0
+        self.n = torch.tensor(0)
+        self.x_sum = torch.tensor(0)
+        self.y_sum = torch.tensor(0)
+        self.xy_sum = torch.tensor(0)
+        self.x2_sum = torch.tensor(0)
+        self.y2_sum = torch.tensor(0)
 
     def update(self, x: Float[Tensor, "X N"], y: Float[Tensor, "Y N"]):
         assert x.ndim == 2 and y.ndim == 2, "Both x and y should be 2D"
@@ -532,18 +531,18 @@ class BatchedCorrCoef:
     def topk(self, k: int, largest: bool = True) -> Tuple[TopK, TopK]:
         """Returns the topk corrcoefs, using Pearson (and taking this over the y-tensor)"""
         pearson, cossim = self.corrcoef()
-        X, Y = cossim.shape
         # Get pearson topk by actually taking topk
         pearson_topk = TopK(pearson.topk(dim=-1, k=k, largest=largest))  # shape (X, k)
         # Get cossim topk by indexing into cossim with the indices of the pearson topk: cossim[X, pearson_indices[X, k]]
-        cossim_values = eindex(cossim, pearson_topk.indices, "X [X k]")
+        # TODO: this looks incorrect, typing is complaining, does this actually work?
+        cossim_values = eindex(cossim, pearson_topk.indices, "X [X k]")  # type: ignore
         cossim_topk = TopK((cossim_values, pearson_topk.indices))
         return pearson_topk, cossim_topk
 
 
 @torch.inference_mode()
 def get_feature_data(
-    encoder: AutoEncoder,
+    encoder: SparseAutoencoder,
     # encoder_B: AutoEncoder,
     model: HookedTransformer,
     hook_point: str,
@@ -603,6 +602,7 @@ def get_feature_data(
     feature_bias = encoder.b_enc[feature_idx]  # (feats,)
     feature_out_dir = encoder.W_dec[feature_idx]  # (feats, d_in)
 
+    feature_mlp_out_dir = None
     if "resid_pre" in hook_point:
         feature_mlp_out_dir = feature_out_dir  # (feats, d_model)
     elif "resid_post" in hook_point:
@@ -614,6 +614,7 @@ def get_feature_data(
         feature_mlp_out_dir = (
             feature_out_dir @ model.W_Q[hook_point_layer, hook_point_head_index].T
         )  # (feats, d_model)ß
+
     assert (
         feature_act_dir.T.shape
         == feature_out_dir.shape
@@ -764,6 +765,7 @@ def get_feature_data(
         model.W_U,
         "feats d_model, d_model d_vocab -> feats d_vocab",
     )
+    assert logits is not None  # keep pyright happy
     # Second, get the neurons most aligned with this feature (based on output weights)
     top3_neurons_aligned = TopK(
         feature_out_dir.topk(dim=-1, k=left_hand_k, largest=True)
@@ -850,6 +852,7 @@ def get_feature_data(
             resid_post, indices_full, "[g buf 0] [g buf 1] d_model"
         )
 
+        assert feature_mlp_out_dir is not None  # keep pyright happy
         # From these feature activations, get the actual contribution to the final value of the residual stream
         resid_post_feature_effect = einops.einsum(
             feat_acts_group,
@@ -945,7 +948,8 @@ def get_feature_data(
 
     # ! Return the output, as a dict of FeatureData items
 
-    vocab_dict = model.tokenizer.vocab
+    assert model.tokenizer is not None
+    vocab_dict = cast(Any, model.tokenizer).vocab
     vocab_dict = {
         v: k.replace("Ġ", " ").replace("\n", "\\n") for k, v in vocab_dict.items()
     }
@@ -1014,12 +1018,17 @@ def get_feature_data(
             for save_type in ["pkl", "gzip"]:
                 t0 = time.time()
                 full_filename = FeatureData.save_batch(
-                    save_obj, filename=filename, save_type=save_type
+                    save_obj,
+                    filename=filename,
+                    save_type=cast(Any, save_type),  # TODO: fix typing
                 )
                 t1 = time.time()
                 # TODO: is this doing anything? the result isn't read
                 FeatureData.load_batch(
-                    filename, save_type=save_type, vocab_dict=vocab_dict
+                    # TODO: fix typing
+                    filename,
+                    save_type=cast(Any, save_type),
+                    vocab_dict=vocab_dict,
                 )
                 t2 = time.time()
                 filesize = os.path.getsize(full_filename) / 1e6

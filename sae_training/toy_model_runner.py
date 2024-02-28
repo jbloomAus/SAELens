@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Any, cast
 
 import einops
 import torch
@@ -43,7 +44,7 @@ class SAEToyModelRunnerConfig:
     # WANDB
     log_to_wandb: bool = True
     wandb_project: str = "mats_sae_training_toy_model"
-    wandb_entity: str = None
+    wandb_entity: str | None = None
     wandb_log_frequency: int = 50
 
     # Misc
@@ -56,7 +57,7 @@ class SAEToyModelRunnerConfig:
         self.d_in = self.n_hidden  # hidden for the ReLu model is the input for the SAE
 
 
-def toy_model_sae_runner(cfg):
+def toy_model_sae_runner(cfg: SAEToyModelRunnerConfig):
     """
     A runner for training an SAE on a toy model.
     """
@@ -88,11 +89,11 @@ def toy_model_sae_runner(cfg):
     )
 
     sparse_autoencoder = SparseAutoencoder(
-        cfg
+        cast(Any, cfg)  # TODO: the types are broken here
     )  # config has the hyperparameters for the SAE
 
     if cfg.log_to_wandb:
-        wandb.init(project=cfg.wandb_project, config=cfg)
+        wandb.init(project=cfg.wandb_project, config=cast(Any, cfg))
 
     sparse_autoencoder = train_toy_sae(
         sparse_autoencoder,

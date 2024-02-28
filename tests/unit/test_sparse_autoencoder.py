@@ -1,6 +1,7 @@
 import os
 import tempfile
 from types import SimpleNamespace
+from typing import Any
 
 import pytest
 import torch
@@ -56,7 +57,7 @@ def cfg():
 
 
 @pytest.fixture
-def sparse_autoencoder(cfg):
+def sparse_autoencoder(cfg: Any):
     """
     Pytest fixture to create a mock instance of SparseAutoencoder.
     """
@@ -69,11 +70,11 @@ def model():
 
 
 @pytest.fixture
-def activation_store(cfg, model):
+def activation_store(cfg: Any, model: HookedTransformer):
     return ActivationsStore(cfg, model)
 
 
-def test_sparse_autoencoder_init(cfg):
+def test_sparse_autoencoder_init(cfg: Any):
     sparse_autoencoder = SparseAutoencoder(cfg)
 
     assert isinstance(sparse_autoencoder, SparseAutoencoder)
@@ -89,7 +90,7 @@ def test_sparse_autoencoder_init(cfg):
     )
 
 
-def test_save_model(cfg):
+def test_save_model(cfg: Any):
     with tempfile.TemporaryDirectory() as tmpdirname:
         # assert file does not exist
         assert not os.path.exists(tmpdirname + "/test.pt")
@@ -117,7 +118,7 @@ def test_save_model(cfg):
             )
 
 
-def test_load_from_pretrained_pt(cfg):
+def test_load_from_pretrained_pt(cfg: Any):
     with tempfile.TemporaryDirectory() as tmpdirname:
         # assert file does not exist
         assert not os.path.exists(tmpdirname + "/test.pt")
@@ -149,7 +150,7 @@ def test_load_from_pretrained_pt(cfg):
             )
 
 
-def test_load_from_pretrained_pkl_gz(cfg):
+def test_load_from_pretrained_pkl_gz(cfg: Any):
     with tempfile.TemporaryDirectory() as tmpdirname:
         # assert file does not exist
         assert not os.path.exists(tmpdirname + "/test.pkl.gz")
@@ -181,7 +182,7 @@ def test_load_from_pretrained_pkl_gz(cfg):
             )
 
 
-def test_sparse_autoencoder_forward(sparse_autoencoder):
+def test_sparse_autoencoder_forward(sparse_autoencoder: SparseAutoencoder):
     batch_size = 32
     d_in = sparse_autoencoder.d_in
     d_sae = sparse_autoencoder.d_sae
@@ -193,7 +194,7 @@ def test_sparse_autoencoder_forward(sparse_autoencoder):
         loss,
         mse_loss,
         l1_loss,
-        ghost_grad_loss,
+        _ghost_grad_loss,
     ) = sparse_autoencoder.forward(
         x,
     )

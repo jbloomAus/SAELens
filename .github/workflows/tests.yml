@@ -52,6 +52,7 @@ jobs:
         run: poetry run black . --check
       - name: isort linting
         run: poetry run isort . --check-only --diff
+      - name: type checking
+        run: poetry run pyright
       - name: Run Unit Tests
-        run: |
-          make unit-test
+        run: make unit-test

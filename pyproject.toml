@@ -27,9 +27,24 @@ pytest-cov = "^4.1.0"
 pre-commit = "^3.6.2"
 flake8 = "^7.0.0"
 isort = "^5.13.2"
+pyright = "^1.1.351"
 
 [tool.isort]
 profile = "black"
+
+[tool.pyright]
+exclude = ["./sae_training/geom_median/"]
+
+typeCheckingMode = "strict"
+reportMissingTypeStubs = "none"
+reportUnknownMemberType = "none"
+reportUnknownArgumentType = "none"
+reportUnknownVariableType = "none"
+reportUntypedFunctionDecorator = "none"
+reportUnnecessaryIsInstance = "none"
+reportUnnecessaryComparison = "none"
+reportConstantRedefinition = "none"
+reportUnknownLambdaType = "none"
 
 [build-system]
 requires = ["poetry-core"]

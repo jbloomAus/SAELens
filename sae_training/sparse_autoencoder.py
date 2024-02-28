@@ -5,12 +5,15 @@ https://github.com/ArthurConmy/sae/blob/main/sae/model.py
 import gzip
 import os
 import pickle
+from typing import Any
 
 import einops
 import torch
 from torch import nn
 from transformer_lens.hook_points import HookedRootModule, HookPoint
 
+from sae_training.activations_store import ActivationsStore
+from sae_training.config import LanguageModelSAERunnerConfig
 from sae_training.geom_median.src.geom_median.torch import compute_geometric_median
 
 
@@ -19,7 +22,7 @@ class SparseAutoencoder(HookedRootModule):
 
     def __init__(
         self,
-        cfg,
+        cfg: LanguageModelSAERunnerConfig,
     ):
         super().__init__()
         self.cfg = cfg
@@ -64,7 +67,7 @@ class SparseAutoencoder(HookedRootModule):
 
         self.setup()  # Required for `HookedRootModule`s
 
-    def forward(self, x, dead_neuron_mask=None):
+    def forward(self, x: torch.Tensor, dead_neuron_mask: torch.Tensor | None = None):
         # move x to correct dtype
         x = x.to(self.dtype)
         sae_in = self.hook_sae_in(
@@ -99,9 +102,12 @@ class SparseAutoencoder(HookedRootModule):
 
         mse_loss_ghost_resid = torch.tensor(0.0, dtype=self.dtype, device=self.device)
         # gate on config and training so evals is not slowed down.
-        if self.cfg.use_ghost_grads and self.training and dead_neuron_mask.sum() > 0:
-            assert dead_neuron_mask is not None
-
+        if (
+            self.cfg.use_ghost_grads
+            and self.training
+            and dead_neuron_mask is not None
+            and dead_neuron_mask.sum() > 0
+        ):
             # ghost protocol
 
             # 1.
@@ -134,7 +140,7 @@ class SparseAutoencoder(HookedRootModule):
         return sae_out, feature_acts, loss, mse_loss, l1_loss, mse_loss_ghost_resid
 
     @torch.no_grad()
-    def initialize_b_dec(self, activation_store):
+    def initialize_b_dec(self, activation_store: ActivationsStore):
         if self.cfg.b_dec_init_method == "geometric_median":
             self.initialize_b_dec_with_geometric_median(activation_store)
         elif self.cfg.b_dec_init_method == "mean":
@@ -147,7 +153,9 @@ class SparseAutoencoder(HookedRootModule):
             )
 
     @torch.no_grad()
-    def initialize_b_dec_with_geometric_median(self, activation_store):
+    def initialize_b_dec_with_geometric_median(
+        self, activation_store: ActivationsStore
+    ):
         previous_b_dec = self.b_dec.clone().cpu()
         all_activations = activation_store.storage_buffer.detach().cpu()
         out = compute_geometric_median(
@@ -167,7 +175,7 @@ class SparseAutoencoder(HookedRootModule):
         self.b_dec.data = out
 
     @torch.no_grad()
-    def initialize_b_dec_with_mean(self, activation_store):
+    def initialize_b_dec_with_mean(self, activation_store: ActivationsStore):
         previous_b_dec = self.b_dec.clone().cpu()
         all_activations = activation_store.storage_buffer.detach().cpu()
         out = all_activations.mean(dim=0)
@@ -184,18 +192,18 @@ class SparseAutoencoder(HookedRootModule):
         self.b_dec.data = out.to(self.dtype).to(self.device)
 
     @torch.no_grad()
-    def get_test_loss(self, batch_tokens, model):
+    def get_test_loss(self, batch_tokens: torch.Tensor, model: HookedRootModule):
         """
         A method for running the model with the SAE activations in order to return the loss.
         returns per token loss when activations are substituted in.
         """
         head_index = self.cfg.hook_point_head_index
 
-        def standard_replacement_hook(activations, hook):
+        def standard_replacement_hook(activations: torch.Tensor, hook: Any):
             activations = self.forward(activations)[0].to(activations.dtype)
             return activations
 
-        def head_replacement_hook(activations, hook):
+        def head_replacement_hook(activations: torch.Tensor, hook: Any):
             new_actions = self.forward(activations[:, :, head_index])[0].to(
                 activations.dtype
             )
@@ -230,6 +238,7 @@ class SparseAutoencoder(HookedRootModule):
             self.W_dec.data,
             "d_sae d_in, d_sae d_in -> d_sae",
         )
+        assert parallel_component is not None  # keep pyright happy
 
         self.W_dec.grad -= einops.einsum(
             parallel_component,

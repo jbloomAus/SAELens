@@ -1,5 +1,6 @@
 import pprint
 from dataclasses import dataclass
+from typing import Any, cast
 
 import torch
 import torch.nn as nn
@@ -83,7 +84,7 @@ class AutoEncoder(nn.Module):
         self.W_dec.grad -= W_dec_grad_proj
 
     @classmethod
-    def load_from_hf(cls, version, verbose=False):
+    def load_from_hf(cls, version: str | int, verbose: bool = False):
         """
         Loads the saved autoencoder from HuggingFace.
 
@@ -98,7 +99,7 @@ class AutoEncoder(nn.Module):
         assert version in ["run1", "run2"]
         version = 25 if version == "run1" else 47
 
-        cfg: dict = utils.download_file_from_hf(
+        cfg: Any = utils.download_file_from_hf(
             "NeelNanda/sparse_autoencoder", f"{version}_cfg.json"
         )
         # There are some unnecessary params in cfg cause they're defined in post_init for config dataclass; we remove them
@@ -110,8 +111,11 @@ class AutoEncoder(nn.Module):
         cfg = AutoEncoderConfig(**cfg)
         self = cls(cfg=cfg)
         self.load_state_dict(
-            utils.download_file_from_hf(
-                "NeelNanda/sparse_autoencoder", f"{version}.pt", force_is_torch=True
+            cast(
+                Any,
+                utils.download_file_from_hf(
+                    "NeelNanda/sparse_autoencoder", f"{version}.pt", force_is_torch=True
+                ),
             )
         )
         return self

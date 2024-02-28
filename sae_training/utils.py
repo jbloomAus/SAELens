@@ -1,10 +1,9 @@
-from typing import Tuple
+from typing import Any, Tuple
 
 import torch
 from transformer_lens import HookedTransformer
 
 from sae_training.activations_store import ActivationsStore
-from sae_training.config import LanguageModelSAERunnerConfig
 from sae_training.sparse_autoencoder import SparseAutoencoder
 
 
@@ -16,7 +15,7 @@ class LMSparseAutoencoderSessionloader:
     or analysing a pretraining autoencoder
     """
 
-    def __init__(self, cfg: LanguageModelSAERunnerConfig):
+    def __init__(self, cfg: Any):
         self.cfg = cfg
 
     def load_session(
@@ -64,7 +63,7 @@ class LMSparseAutoencoderSessionloader:
 
         return model
 
-    def initialize_sparse_autoencoder(self, cfg: LanguageModelSAERunnerConfig):
+    def initialize_sparse_autoencoder(self, cfg: Any):
         """
         Initializes a sparse autoencoder
         """
@@ -73,9 +72,7 @@ class LMSparseAutoencoderSessionloader:
 
         return sparse_autoencoder
 
-    def get_activations_loader(
-        self, cfg: LanguageModelSAERunnerConfig, model: HookedTransformer
-    ):
+    def get_activations_loader(self, cfg: Any, model: HookedTransformer):
         """
         Loads a DataLoaderBuffer for the activations of a language model.
         """
