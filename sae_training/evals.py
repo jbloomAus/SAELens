@@ -2,11 +2,11 @@ from functools import partial
 
 import pandas as pd
 import torch
+import wandb
 from tqdm import tqdm
 from transformer_lens import HookedTransformer
 from transformer_lens.utils import get_act_name
 
-import wandb
 from sae_training.activations_store import ActivationsStore
 from sae_training.sparse_autoencoder import SparseAutoencoder
 
