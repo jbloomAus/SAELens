@@ -17,6 +17,7 @@ def run_evals(
     activation_store: ActivationsStore,
     model: HookedTransformer,
     n_training_steps: int,
+    suffix: str = "",
 ):
     hook_point = sparse_autoencoder.cfg.hook_point
     hook_point_layer = sparse_autoencoder.cfg.hook_point_layer
@@ -71,13 +72,13 @@ def run_evals(
     wandb.log(
         {
             # l2 norms
-            "metrics/l2_norm": l2_norm_out.mean().item(),
-            "metrics/l2_ratio": l2_norm_ratio.mean().item(),
+            f"metrics/l2_norm{suffix}": l2_norm_out.mean().item(),
+            f"metrics/l2_ratio{suffix}": l2_norm_ratio.mean().item(),
             # CE Loss
-            "metrics/CE_loss_score": recons_score,
-            "metrics/ce_loss_without_sae": ntp_loss,
-            "metrics/ce_loss_with_sae": recons_loss,
-            "metrics/ce_loss_with_ablation": zero_abl_loss,
+            f"metrics/CE_loss_score{suffix}": recons_score,
+            f"metrics/ce_loss_without_sae{suffix}": ntp_loss,
+            f"metrics/ce_loss_with_sae{suffix}": recons_loss,
+            f"metrics/ce_loss_with_ablation{suffix}": zero_abl_loss,
         },
         step=n_training_steps,
     )
@@ -142,8 +143,8 @@ def run_evals(
         if wandb.run is not None:
             wandb.log(
                 {
-                    "metrics/kldiv_reconstructed": kl_result_reconstructed.mean().item(),
-                    "metrics/kldiv_ablation": kl_result_ablation.mean().item(),
+                    f"metrics/kldiv_reconstructed{suffix}": kl_result_reconstructed.mean().item(),
+                    f"metrics/kldiv_ablation{suffix}": kl_result_ablation.mean().item(),
                 },
                 step=n_training_steps,
             )

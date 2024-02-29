@@ -23,15 +23,15 @@ class ActivationsStore:
         self.dataset = load_dataset(cfg.dataset_path, split="train", streaming=True)
         self.iterable_dataset = iter(self.dataset)
 
-        # check if it's tokenized
-        if "tokens" in next(self.iterable_dataset).keys():
-            self.cfg.is_dataset_tokenized = True
-            print("Dataset is tokenized! Updating config.")
-        elif "text" in next(self.iterable_dataset).keys():
-            self.cfg.is_dataset_tokenized = False
-            print("Dataset is not tokenized! Updating config.")
+        # Check if dataset is tokenized
+        dataset_sample = next(self.iterable_dataset)
+        self.cfg.is_dataset_tokenized = "tokens" in dataset_sample.keys()
+        print(
+            f"Dataset is {'tokenized' if self.cfg.is_dataset_tokenized else 'not tokenized'}! Updating config."
+        )
+        self.iterable_dataset = iter(self.dataset)  # Reset iterator after checking
 
-        if self.cfg.use_cached_activations:
+        if self.cfg.use_cached_activations:  # EDIT: load from multi-layer acts
             # Sanity check: does the cache directory exist?
             assert os.path.exists(
                 self.cfg.cached_activations_path
@@ -144,39 +144,65 @@ class ActivationsStore:
         return batch_tokens[:batch_size]
 
     def get_activations(self, batch_tokens, get_loss=False):
-        act_name = self.cfg.hook_point
-        hook_point_layer = self.cfg.hook_point_layer
+        """
+        Returns activations of shape (batches, context, num_layers, d_in)
+        """
+        layers = (
+            self.cfg.hook_point_layer
+            if isinstance(self.cfg.hook_point_layer, list)
+            else [self.cfg.hook_point_layer]
+        )
+        act_names = [self.cfg.hook_point.format(layer=layer) for layer in layers]
+        hook_point_max_layer = max(layers)
         if self.cfg.hook_point_head_index is not None:
-            activations = self.model.run_with_cache(
-                batch_tokens, names_filter=act_name, stop_at_layer=hook_point_layer + 1
-            )[1][act_name][:, :, self.cfg.hook_point_head_index]
+            layerwise_activations = self.model.run_with_cache(
+                batch_tokens,
+                names_filter=act_names,
+                stop_at_layer=hook_point_max_layer + 1,
+            )[1]
+            activations_list = [
+                layerwise_activations[act_name][:, :, self.cfg.hook_point_head_index]
+                for act_name in act_names
+            ]
         else:
-            activations = self.model.run_with_cache(
-                batch_tokens, names_filter=act_name, stop_at_layer=hook_point_layer + 1
-            )[1][act_name]
+            layerwise_activations = self.model.run_with_cache(
+                batch_tokens,
+                names_filter=act_names,
+                stop_at_layer=hook_point_max_layer + 1,
+            )[1]
+            activations_list = [
+                layerwise_activations[act_name] for act_name in act_names
+            ]
 
-        return activations
+        # Stack along a new dimension to keep separate layers distinct
+        stacked_activations = torch.stack(activations_list, dim=2)
+
+        return stacked_activations
 
     def get_buffer(self, n_batches_in_buffer):
         context_size = self.cfg.context_size
         batch_size = self.cfg.store_batch_size
         d_in = self.cfg.d_in
         total_size = batch_size * n_batches_in_buffer
+        num_layers = (
+            len(self.cfg.hook_point_layer)
+            if isinstance(self.cfg.hook_point_layer, list)
+            else 1
+        )  # Number of hook points or layers
 
         if self.cfg.use_cached_activations:
             # Load the activations from disk
             buffer_size = total_size * context_size
-            # Initialize an empty tensor (flattened along all dims except d_in)
+            # Initialize an empty tensor with an additional dimension for layers
             new_buffer = torch.zeros(
-                (buffer_size, d_in), dtype=self.cfg.dtype, device=self.cfg.device
+                (buffer_size, num_layers, d_in),
+                dtype=self.cfg.dtype,
+                device=self.cfg.device,
             )
             n_tokens_filled = 0
 
-            # The activations may be split across multiple files,
-            # Or we might only want a subset of one file (depending on the sizes)
+            # Assume activations for different layers are stored separately and need to be combined
             while n_tokens_filled < buffer_size:
-                # Load the next file
-                # Make sure it exists
                 if not os.path.exists(
                     f"{self.cfg.cached_activations_path}/{self.next_cache_idx}.pt"
                 ):
@@ -192,55 +218,49 @@ class ActivationsStore:
                         )
                     print(f"Returning a buffer of size {n_tokens_filled} instead.")
                     print("\n\n")
-                    new_buffer = new_buffer[:n_tokens_filled]
-                    break
+                    new_buffer = new_buffer[:n_tokens_filled, ...]
+                    return new_buffer
+
                 activations = torch.load(
                     f"{self.cfg.cached_activations_path}/{self.next_cache_idx}.pt"
                 )
-
-                # If we only want a subset of the file, take it
                 taking_subset_of_file = False
                 if n_tokens_filled + activations.shape[0] > buffer_size:
-                    activations = activations[: buffer_size - n_tokens_filled]
+                    activations = activations[: buffer_size - n_tokens_filled, ...]
                     taking_subset_of_file = True
 
-                # Add it to the buffer
-                new_buffer[n_tokens_filled : n_tokens_filled + activations.shape[0]] = (
-                    activations
-                )
+                new_buffer[
+                    n_tokens_filled : n_tokens_filled + activations.shape[0], ...
+                ] = activations
 
-                # Update counters
-                n_tokens_filled += activations.shape[0]
                 if taking_subset_of_file:
                     self.next_idx_within_buffer = activations.shape[0]
                 else:
                     self.next_cache_idx += 1
                     self.next_idx_within_buffer = 0
 
+                n_tokens_filled += activations.shape[0]
+
             return new_buffer
 
         refill_iterator = range(0, batch_size * n_batches_in_buffer, batch_size)
-        # refill_iterator = tqdm(refill_iterator, desc="generate activations")
-
-        # Initialize empty tensor buffer of the maximum required size
+        # Initialize empty tensor buffer of the maximum required size with an additional dimension for layers
         new_buffer = torch.zeros(
-            (total_size, context_size, d_in),
+            (total_size, context_size, num_layers, d_in),
             dtype=self.cfg.dtype,
             device=self.cfg.device,
         )
 
-        # Insert activations directly into pre-allocated buffer
-        # pbar = tqdm(total=n_batches_in_buffer, desc="Filling buffer")
         for refill_batch_idx_start in refill_iterator:
             refill_batch_tokens = self.get_batch_tokens()
             refill_activations = self.get_activations(refill_batch_tokens)
-            new_buffer[refill_batch_idx_start : refill_batch_idx_start + batch_size] = (
-                refill_activations
-            )
+            new_buffer[
+                refill_batch_idx_start : refill_batch_idx_start + batch_size, ...
+            ] = refill_activations
 
             # pbar.update(1)
 
-        new_buffer = new_buffer.reshape(-1, d_in)
+        new_buffer = new_buffer.reshape(-1, num_layers, d_in)
         new_buffer = new_buffer[torch.randperm(new_buffer.shape[0])]
 
         return new_buffer
@@ -260,7 +280,8 @@ class ActivationsStore:
 
         # 1. # create new buffer by mixing stored and new buffer
         mixing_buffer = torch.cat(
-            [self.get_buffer(self.cfg.n_batches_in_buffer // 2), self.storage_buffer]
+            [self.get_buffer(self.cfg.n_batches_in_buffer // 2), self.storage_buffer],
+            dim=0,
         )
 
         mixing_buffer = mixing_buffer[torch.randperm(mixing_buffer.shape[0])]

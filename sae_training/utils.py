@@ -5,7 +5,7 @@ from transformer_lens import HookedTransformer
 
 from sae_training.activations_store import ActivationsStore
 from sae_training.config import LanguageModelSAERunnerConfig
-from sae_training.sparse_autoencoder import SparseAutoencoder
+from sae_training.sae_group import SAEGroup
 
 
 class LMSparseAutoencoderSessionloader:
@@ -21,7 +21,7 @@ class LMSparseAutoencoderSessionloader:
 
     def load_session(
         self,
-    ) -> Tuple[HookedTransformer, SparseAutoencoder, ActivationsStore]:
+    ) -> Tuple[HookedTransformer, SAEGroup, ActivationsStore]:
         """
         Loads a session for training a sparse autoencoder on a language model.
         """
@@ -36,22 +36,22 @@ class LMSparseAutoencoderSessionloader:
     @classmethod
     def load_session_from_pretrained(
         cls, path: str
-    ) -> Tuple[HookedTransformer, SparseAutoencoder, ActivationsStore]:
+    ) -> Tuple[HookedTransformer, SAEGroup, ActivationsStore]:
         """
-        Loads a session for analysing a pretrained sparse autoencoder.
+        Loads a session for analysing a pretrained sparse autoencoder group.
         """
-        if torch.backends.mps.is_available():
-            cfg = torch.load(path, map_location="mps")["cfg"]
-            cfg.device = "mps"
-        elif torch.cuda.is_available():
-            cfg = torch.load(path, map_location="cuda")["cfg"]
-        else:
-            cfg = torch.load(path, map_location="cpu")["cfg"]
+        # if torch.backends.mps.is_available():
+        #     cfg = torch.load(path, map_location="mps")["cfg"]
+        #     cfg.device = "mps"
+        # elif torch.cuda.is_available():
+        #     cfg = torch.load(path, map_location="cuda")["cfg"]
+        # else:
+        #     cfg = torch.load(path, map_location="cpu")["cfg"]
 
-        model, _, activations_loader = cls(cfg).load_session()
-        sparse_autoencoder = SparseAutoencoder.load_from_pretrained(path)
+        sparse_autoencoders = SAEGroup.load_from_pretrained(path)
+        model, _, activations_loader = cls(sparse_autoencoders.cfg).load_session()
 
-        return model, sparse_autoencoder, activations_loader
+        return model, sparse_autoencoders, activations_loader
 
     def get_model(self, model_name: str):
         """
@@ -66,10 +66,10 @@ class LMSparseAutoencoderSessionloader:
 
     def initialize_sparse_autoencoder(self, cfg: LanguageModelSAERunnerConfig):
         """
-        Initializes a sparse autoencoder
+        Initializes a sparse autoencoder group, which contains multiple sparse autoencoders
         """
 
-        sparse_autoencoder = SparseAutoencoder(cfg)
+        sparse_autoencoder = SAEGroup(cfg)
 
         return sparse_autoencoder
 
