@@ -33,6 +33,7 @@ def cfg():
     mock_config.expansion_factor = 2
     mock_config.d_sae = mock_config.d_in * mock_config.expansion_factor
     mock_config.l1_coefficient = 2e-3
+    mock_config.lp_norm = 1
     mock_config.lr = 2e-4
     mock_config.train_batch_size = 2048
     mock_config.context_size = 64

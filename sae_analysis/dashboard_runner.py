@@ -149,9 +149,10 @@ class DashboardRunner:
     def init_sae_session(self):
         (
             self.model,
-            self.sparse_autoencoder,
+            sae_group,
             self.activation_store,
         ) = LMSparseAutoencoderSessionloader.load_session_from_pretrained(self.sae_path)
+        self.sparse_autoencoder = sae_group.autoencoders[0]
 
     def get_tokens(
         self, n_batches_to_sample_from: int = 2**12, n_prompts_to_select: int = 4096 * 6
@@ -179,9 +180,11 @@ class DashboardRunner:
             if not os.path.exists(f"{self.dashboard_folder}/data_{i:04}.html"):
                 break
 
+        assert self.sparse_autoencoder.cfg.d_sae is not None  # keep pyright happy
         n_features = self.sparse_autoencoder.cfg.d_sae
         n_features_at_a_time = self.n_features_at_a_time
         id_of_last_feature_without_dashboard = i
+        assert self.final_index is not None  # keep pyright happy
         n_features_remaining = self.final_index - id_of_last_feature_without_dashboard
         n_batches_to_do = n_features_remaining // n_features_at_a_time
         if self.final_index == n_features:
@@ -214,6 +217,7 @@ class DashboardRunner:
         )
         d_e_projection = cosine_similarity(W_dec_normalized, W_enc_normalized.T)
 
+        assert sparse_autoencoder.cfg.d_sae is not None  # keep pyright happy
         temp_df = pd.DataFrame(
             {
                 "log_feature_sparsity": feature_sparsity + 1e-10,
@@ -299,6 +303,7 @@ class DashboardRunner:
             )
             wandb.log({"plots/scatter_matrix": wandb.Html(plotly.io.to_html(fig))})
 
+        assert self.sparse_autoencoder.cfg.d_sae is not None  # keep pyright happy
         self.n_features = self.sparse_autoencoder.cfg.d_sae
         id_to_start_from = self.get_index_to_resume_from()
         id_to_end_at = self.n_features if self.final_index is None else self.final_index

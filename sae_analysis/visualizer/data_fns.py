@@ -983,6 +983,7 @@ def get_feature_data(
     # ! If verbose, try to estimate time it will take to generate data for all features, plus storage space
 
     if verbose:
+        assert encoder.cfg.d_sae is not None  # keep pyright happy
         n_feats_total = encoder.cfg.d_sae
 
         # Get time

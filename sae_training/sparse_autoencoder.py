@@ -12,7 +12,6 @@ import torch
 from torch import nn
 from transformer_lens.hook_points import HookedRootModule, HookPoint
 
-from sae_training.activations_store import ActivationsStore
 from sae_training.config import LanguageModelSAERunnerConfig
 from sae_training.geom_median.src.geom_median.torch import compute_geometric_median
 
@@ -31,8 +30,10 @@ class SparseAutoencoder(HookedRootModule):
             raise ValueError(
                 f"d_in must be an int but was {self.d_in=}; {type(self.d_in)=}"
             )
+        assert cfg.d_sae is not None  # keep pyright happy
         self.d_sae = cfg.d_sae
         self.l1_coefficient = cfg.l1_coefficient
+        self.lp_norm = cfg.lp_norm
         self.dtype = cfg.dtype
         self.device = cfg.device
 
@@ -133,18 +134,23 @@ class SparseAutoencoder(HookedRootModule):
             mse_loss_ghost_resid = mse_loss_ghost_resid.mean()
 
         mse_loss = mse_loss.mean()
-        sparsity = torch.abs(feature_acts).sum(dim=1).mean(dim=(0,))
+        sparsity = feature_acts.norm(p=self.lp_norm, dim=1).mean(dim=(0,))
         l1_loss = self.l1_coefficient * sparsity
         loss = mse_loss + l1_loss + mse_loss_ghost_resid
 
         return sae_out, feature_acts, loss, mse_loss, l1_loss, mse_loss_ghost_resid
 
     @torch.no_grad()
-    def initialize_b_dec(self, activation_store: ActivationsStore):
+    def initialize_b_dec_with_precalculated(self, origin: torch.Tensor):
+        out = torch.tensor(origin, dtype=self.dtype, device=self.device)
+        self.b_dec.data = out
+
+    @torch.no_grad()
+    def initialize_b_dec(self, all_activations: torch.Tensor):
         if self.cfg.b_dec_init_method == "geometric_median":
-            self.initialize_b_dec_with_geometric_median(activation_store)
+            self.initialize_b_dec_with_geometric_median(all_activations)
         elif self.cfg.b_dec_init_method == "mean":
-            self.initialize_b_dec_with_mean(activation_store)
+            self.initialize_b_dec_with_mean(all_activations)
         elif self.cfg.b_dec_init_method == "zeros":
             pass
         else:
@@ -153,11 +159,8 @@ class SparseAutoencoder(HookedRootModule):
             )
 
     @torch.no_grad()
-    def initialize_b_dec_with_geometric_median(
-        self, activation_store: ActivationsStore
-    ):
+    def initialize_b_dec_with_geometric_median(self, all_activations: torch.Tensor):
         previous_b_dec = self.b_dec.clone().cpu()
-        all_activations = activation_store.storage_buffer.detach().cpu()
         out = compute_geometric_median(
             all_activations, skip_typechecks=True, maxiter=100, per_component=False
         ).median
@@ -175,9 +178,8 @@ class SparseAutoencoder(HookedRootModule):
         self.b_dec.data = out
 
     @torch.no_grad()
-    def initialize_b_dec_with_mean(self, activation_store: ActivationsStore):
+    def initialize_b_dec_with_mean(self, all_activations: torch.Tensor):
         previous_b_dec = self.b_dec.clone().cpu()
-        all_activations = activation_store.storage_buffer.detach().cpu()
         out = all_activations.mean(dim=0)
 
         previous_distances = torch.norm(all_activations - previous_b_dec, dim=-1)

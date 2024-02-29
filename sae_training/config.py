@@ -14,7 +14,7 @@ class RunnerConfig(ABC):
 
     # Data Generating Function (Model + Training Distibuion)
     model_name: str = "gelu-2l"
-    hook_point: str = "blocks.0.hook_mlp_out"
+    hook_point: str = "blocks.{layer}.hook_mlp_out"
     hook_point_layer: int = 0
     hook_point_head_index: Optional[int] = None
     dataset_path: str = "NeelNanda/c4-tokenized-2b"
@@ -56,9 +56,11 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
     b_dec_init_method: str = "geometric_median"
     expansion_factor: int = 4
     from_pretrained_path: Optional[str] = None
+    d_sae: Optional[int] = None
 
     # Training Parameters
     l1_coefficient: float = 1e-3
+    lp_norm: float = 1
     lr: float = 3e-4
     lr_scheduler_name: str = (
         "constantwithwarmup"  # constant, constantwithwarmup, linearwarmupdecay, cosineannealing, cosineannealingwarmup
@@ -86,7 +88,8 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
 
     def __post_init__(self):
         super().__post_init__()
-        self.d_sae = self.d_in * self.expansion_factor
+        if not isinstance(self.expansion_factor, list):
+            self.d_sae = self.d_in * self.expansion_factor
         self.tokens_per_buffer = (
             self.train_batch_size * self.context_size * self.n_batches_in_buffer
         )
