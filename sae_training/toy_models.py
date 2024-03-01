@@ -6,10 +6,11 @@ https://github.com/callummcdougall/sae-exercises-mats?fbclid=IwAR3qYAELbyD_x5IAY
 """
 
 from dataclasses import dataclass
-from typing import Callable, List, Optional, Tuple, Union
+from typing import Any, Callable, List, Optional, Tuple, Union, cast
 
 import einops
 import numpy as np
+import torch
 import torch as t
 from IPython.display import clear_output
 from jaxtyping import Float
@@ -23,7 +24,7 @@ from tqdm import tqdm
 device = "cpu"
 
 
-def linear_lr(step, steps):
+def linear_lr(step: int, steps: int):
     return 1 - (step / steps)
 
 
@@ -31,7 +32,7 @@ def constant_lr(*_):
     return 1.0
 
 
-def cosine_decay_lr(step, steps):
+def cosine_decay_lr(step: int, steps: int):
     return np.cos(0.5 * np.pi * step / (steps - 1))
 
 
@@ -57,7 +58,7 @@ class Model(nn.Module):
         cfg: Config,
         feature_probability: Optional[Union[float, Tensor]] = None,
         importance: Optional[Union[float, Tensor]] = None,
-        device=device,
+        device: str | torch.device = device,
     ):
         super().__init__()
         self.cfg = cfg
@@ -66,6 +67,9 @@ class Model(nn.Module):
             feature_probability = t.ones(())
         if isinstance(feature_probability, float):
             feature_probability = t.tensor(feature_probability)
+        assert isinstance(
+            feature_probability, Tensor
+        )  # pyright can't seem to infer this
         self.feature_probability = feature_probability.to(device).broadcast_to(
             (cfg.n_instances, cfg.n_features)
         )
@@ -73,6 +77,7 @@ class Model(nn.Module):
             importance = t.ones(())
         if isinstance(importance, float):
             importance = t.tensor(importance)
+        assert isinstance(importance, Tensor)  # pyright can't seem to infer this
         self.importance = importance.to(device).broadcast_to(
             (cfg.n_instances, cfg.n_features)
         )
@@ -115,7 +120,7 @@ class Model(nn.Module):
     #     return batch
 
     def generate_correlated_features(
-        self, batch_size, n_correlated_pairs
+        self, batch_size: int, n_correlated_pairs: int
     ) -> Float[Tensor, "batch_size instances features"]:
         """
         Generates a batch of correlated features.
@@ -137,7 +142,7 @@ class Model(nn.Module):
         return t.where(feat_is_present, feat, 0.0)
 
     def generate_anticorrelated_features(
-        self, batch_size, n_anticorrelated_pairs
+        self, batch_size: int, n_anticorrelated_pairs: int
     ) -> Float[Tensor, "batch_size instances features"]:
         """
         Generates a batch of anti-correlated features.
@@ -174,7 +179,7 @@ class Model(nn.Module):
         )
 
     def generate_uncorrelated_features(
-        self, batch_size, n_uncorrelated
+        self, batch_size: int, n_uncorrelated: int
     ) -> Float[Tensor, "batch_size instances features"]:
         """
         Generates a batch of uncorrelated features.
@@ -189,7 +194,7 @@ class Model(nn.Module):
         return t.where(feat_is_present, feat, 0.0)
 
     def generate_batch(
-        self, batch_size
+        self, batch_size: int
     ) -> Float[Tensor, "batch_size instances features"]:
         """
         Generates a batch of data, with optional correlated & anticorrelated features.
@@ -276,9 +281,9 @@ Arr = np.ndarray
 
 def plot_features_in_2d(
     values: Float[Tensor, "timesteps instances d_hidden feats"],
-    colors=None,  # shape [timesteps instances feats]
-    title: Optional[str] = None,
-    subplot_titles: Optional[List[str]] = None,
+    colors: Optional[list[Any]] = None,  # shape [timesteps instances feats]
+    title: Optional[str | list[str]] = None,
+    subplot_titles: Optional[list[str] | list[list[str]]] = None,
     save: Optional[str] = None,
     colab: bool = False,
 ):
@@ -314,6 +319,7 @@ def plot_features_in_2d(
     ):
         colors = [colors for _ in range(values.shape[0])]
     # Now that colors has length `timesteps` in some sense, we can convert it to lists of strings
+    assert colors is not None  # keep pyright happy
     colors = [
         parse_colors_for_superposition_plot(c, n_instances, n_features) for c in colors
     ]
@@ -321,7 +327,9 @@ def plot_features_in_2d(
     # Same for subplot titles & titles
     if subplot_titles is not None:
         if isinstance(subplot_titles, list) and isinstance(subplot_titles[0], str):
-            subplot_titles = [subplot_titles for _ in range(values.shape[0])]
+            subplot_titles = [
+                cast(list[str], subplot_titles) for _ in range(values.shape[0])
+            ]
     if title is not None:
         if isinstance(title, str):
             title = [title for _ in range(values.shape[0])]
@@ -360,7 +368,7 @@ def plot_features_in_2d(
         lines.append(instance_lines)
         markers.append(instance_markers)
 
-    def update(val):
+    def update(val: float):
         # I think this doesn't work unless I at least reference the nonlocal slider object
         # It works if I use t = int(val), so long as I put something like X = slider.val first. Idk why!
         if n_timesteps > 1:
@@ -385,7 +393,7 @@ def plot_features_in_2d(
                 )
         fig.canvas.draw_idle()
 
-    def play(event):
+    def play(event: Any):
         _ = slider.val
         for i in range(n_timesteps):
             update(i)
@@ -395,7 +403,7 @@ def plot_features_in_2d(
 
     if n_timesteps > 1:
         # Create the slider
-        ax_slider = plt.axes([0.15, 0.05, 0.7, 0.05], facecolor="lightgray")
+        ax_slider = plt.axes((0.15, 0.05, 0.7, 0.05), facecolor="lightgray")
         slider = Slider(
             ax_slider, "Time", 0, n_timesteps - 1, valinit=0, valfmt="%1.0f"
         )
@@ -416,19 +424,21 @@ def plot_features_in_2d(
     # Save
     if isinstance(save, str):
         ani = FuncAnimation(
-            fig, update, frames=n_timesteps, interval=0.04, repeat=False
+            fig, cast(Any, update), frames=n_timesteps, interval=0.04, repeat=False
         )
         ani.save(save, writer="pillow", fps=25)
     elif colab:
         ani = FuncAnimation(
-            fig, update, frames=n_timesteps, interval=0.04, repeat=False
+            fig, cast(Any, update), frames=n_timesteps, interval=0.04, repeat=False
         )
         clear_output()
         return ani
 
 
 def parse_colors_for_superposition_plot(
-    colors: Optional[Union[Tuple[int, int], Float[Tensor, "instances feats"]]],
+    colors: Optional[
+        Union[Tuple[int, int], List[List[str]], Float[Tensor, "instances feats"]]
+    ],
     n_instances: int,
     n_feats: int,
 ) -> List[List[str]]:
@@ -449,7 +459,7 @@ def parse_colors_for_superposition_plot(
     if isinstance(colors, tuple):
         n_corr, n_anti = colors
         n_indep = n_feats - 2 * (n_corr - n_anti)
-        colors = [
+        return [
             ["blue", "blue", "limegreen", "limegreen", "purple", "purple"][: n_corr * 2]
             + ["red", "red", "orange", "orange", "brown", "brown"][: n_anti * 2]
             + ["black"] * n_indep
@@ -458,10 +468,11 @@ def parse_colors_for_superposition_plot(
 
     # If colors is a string, make all datapoints that color
     elif isinstance(colors, str):
-        colors = [[colors] * n_feats] * n_instances
+        return [[colors] * n_feats] * n_instances
 
     # Lastly, if colors is None, make all datapoints black
     elif colors is None:
-        colors = [["black"] * n_feats] * n_instances
+        return [["black"] * n_feats] * n_instances
 
+    assert isinstance(colors, list)
     return colors

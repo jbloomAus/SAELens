@@ -1,4 +1,5 @@
 from functools import partial
+from typing import Any, cast
 
 import pandas as pd
 import torch
@@ -54,7 +55,7 @@ def run_evals(
     else:
         original_act = cache[sparse_autoencoder.cfg.hook_point]
 
-    sae_out, feature_acts, _, _, _, _ = sparse_autoencoder(original_act)
+    sae_out, _feature_acts, _, _, _, _ = sparse_autoencoder(original_act)
     patterns_original = (
         cache[get_act_name("pattern", hook_point_layer)][:, hook_point_head_index]
         .detach()
@@ -85,11 +86,11 @@ def run_evals(
 
     head_index = sparse_autoencoder.cfg.hook_point_head_index
 
-    def standard_replacement_hook(activations, hook):
+    def standard_replacement_hook(activations: torch.Tensor, hook: Any):
         activations = sparse_autoencoder.forward(activations)[0].to(activations.dtype)
         return activations
 
-    def head_replacement_hook(activations, hook):
+    def head_replacement_hook(activations: torch.Tensor, hook: Any):
         new_actions = sparse_autoencoder.forward(activations[:, :, head_index])[0].to(
             activations.dtype
         )
@@ -150,7 +151,12 @@ def run_evals(
             )
 
 
-def recons_loss_batched(sparse_autoencoder, model, activation_store, n_batches=100):
+def recons_loss_batched(
+    sparse_autoencoder: SparseAutoencoder,
+    model: HookedTransformer,
+    activation_store: ActivationsStore,
+    n_batches: int = 100,
+):
     losses = []
     for _ in tqdm(range(n_batches)):
         batch_tokens = activation_store.get_batch_tokens()
@@ -167,23 +173,27 @@ def recons_loss_batched(sparse_autoencoder, model, activation_store, n_batches=1
         )
 
     losses = pd.DataFrame(
-        losses, columns=["score", "loss", "recons_loss", "zero_abl_loss"]
+        losses, columns=cast(Any, ["score", "loss", "recons_loss", "zero_abl_loss"])
     )
 
     return losses
 
 
 @torch.no_grad()
-def get_recons_loss(sparse_autoencoder, model, batch_tokens):
+def get_recons_loss(
+    sparse_autoencoder: SparseAutoencoder,
+    model: HookedTransformer,
+    batch_tokens: torch.Tensor,
+):
     hook_point = sparse_autoencoder.cfg.hook_point
     loss = model(batch_tokens, return_type="loss")
     head_index = sparse_autoencoder.cfg.hook_point_head_index
 
-    def standard_replacement_hook(activations, hook):
+    def standard_replacement_hook(activations: torch.Tensor, hook: Any):
         activations = sparse_autoencoder.forward(activations)[0].to(activations.dtype)
         return activations
 
-    def head_replacement_hook(activations, hook):
+    def head_replacement_hook(activations: torch.Tensor, hook: Any):
         new_activations = sparse_autoencoder.forward(activations[:, :, head_index])[
             0
         ].to(activations.dtype)
@@ -208,12 +218,12 @@ def get_recons_loss(sparse_autoencoder, model, batch_tokens):
     return score, loss, recons_loss, zero_abl_loss
 
 
-def zero_ablate_hook(activations, hook):
+def zero_ablate_hook(activations: torch.Tensor, hook: Any):
     activations = torch.zeros_like(activations)
     return activations
 
 
-def kl_divergence_attention(y_true, y_pred):
+def kl_divergence_attention(y_true: torch.Tensor, y_pred: torch.Tensor):
     # Compute log probabilities for KL divergence
     log_y_true = torch.log2(y_true + 1e-10)
     log_y_pred = torch.log2(y_pred + 1e-10)

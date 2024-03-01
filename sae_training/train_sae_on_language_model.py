@@ -1,3 +1,5 @@
+from typing import Any, cast
+
 import torch
 import wandb
 from torch.optim import Adam
@@ -26,7 +28,9 @@ def train_sae_on_language_model(
     total_training_steps = total_training_tokens // batch_size
     n_training_steps = 0
     n_training_tokens = 0
+    log_feature_sparsity = None
 
+    checkpoint_thresholds = []
     if n_checkpoints > 0:
         checkpoint_thresholds = list(
             range(0, total_training_tokens, total_training_tokens // n_checkpoints)
@@ -38,11 +42,17 @@ def train_sae_on_language_model(
     # track active features
 
     act_freq_scores = [
-        torch.zeros(sparse_autoencoder.cfg.d_sae, device=sparse_autoencoder.cfg.device)
+        torch.zeros(
+            cast(int, sparse_autoencoder.cfg.d_sae),
+            device=sparse_autoencoder.cfg.device,
+        )
         for sparse_autoencoder in sae_group
     ]
     n_forward_passes_since_fired = [
-        torch.zeros(sparse_autoencoder.cfg.d_sae, device=sparse_autoencoder.cfg.device)
+        torch.zeros(
+            cast(int, sparse_autoencoder.cfg.d_sae),
+            device=sparse_autoencoder.cfg.device,
+        )
         for sparse_autoencoder in sae_group
     ]
     n_frac_active_tokens = [0 for _ in range(num_saes)]
@@ -89,10 +99,15 @@ def train_sae_on_language_model(
         layer_acts = activation_store.next_batch()
         n_training_tokens += batch_size
 
+        # init these here to avoid uninitialized vars
+        mse_loss = torch.tensor(0.0)
+        l1_loss = torch.tensor(0.0)
+
         for (
             i,
             (sparse_autoencoder),
         ) in enumerate(sae_group):
+            assert sparse_autoencoder.cfg.d_sae is not None  # keep pyright happy
             hyperparams = sparse_autoencoder.cfg
             layer_id = all_layers.index(hyperparams.hook_point_layer)
             sae_in = layer_acts[:, layer_id, :]
@@ -297,7 +312,7 @@ def train_sae_on_language_model(
     return sae_group
 
 
-def wandb_log_suffix(cfg, hyperparams):
+def wandb_log_suffix(cfg: Any, hyperparams: Any):
     # Create a mapping from cfg list keys to their corresponding hyperparams attributes
     key_mapping = {
         "hook_point_layer": "layer",

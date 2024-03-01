@@ -1,4 +1,5 @@
 import os
+from typing import Any, Iterator, cast
 
 import torch
 from datasets import load_dataset
@@ -14,7 +15,7 @@ class ActivationsStore:
 
     def __init__(
         self,
-        cfg,
+        cfg: Any,
         model: HookedTransformer,
         create_dataloader: bool = True,
     ):
@@ -32,6 +33,7 @@ class ActivationsStore:
         self.iterable_dataset = iter(self.dataset)  # Reset iterator after checking
 
         if self.cfg.use_cached_activations:  # EDIT: load from multi-layer acts
+            assert self.cfg.cached_activations_path is not None  # keep pyright happy
             # Sanity check: does the cache directory exist?
             assert os.path.exists(
                 self.cfg.cached_activations_path
@@ -96,7 +98,7 @@ class ActivationsStore:
             token_len = tokens.shape[0]
 
             # TODO: Fix this so that we are limiting how many tokens we get from the same context.
-
+            assert self.model.tokenizer is not None  # keep pyright happy
             bos_token_id_tensor = torch.tensor(
                 [self.model.tokenizer.bos_token_id],
                 device=tokens.device,
@@ -143,7 +145,7 @@ class ActivationsStore:
             # pbar.refresh()
         return batch_tokens[:batch_size]
 
-    def get_activations(self, batch_tokens, get_loss=False):
+    def get_activations(self, batch_tokens: torch.Tensor, get_loss: bool = False):
         """
         Returns activations of shape (batches, context, num_layers, d_in)
         """
@@ -179,7 +181,7 @@ class ActivationsStore:
 
         return stacked_activations
 
-    def get_buffer(self, n_batches_in_buffer):
+    def get_buffer(self, n_batches_in_buffer: int):
         context_size = self.cfg.context_size
         batch_size = self.cfg.store_batch_size
         d_in = self.cfg.d_in
@@ -267,7 +269,7 @@ class ActivationsStore:
 
     def get_data_loader(
         self,
-    ) -> DataLoader:
+    ) -> Iterator[Any]:
         """
         Return a torch.utils.dataloader which you can get batches from.
 
@@ -292,7 +294,8 @@ class ActivationsStore:
         # 3. put other 50 % in a dataloader
         dataloader = iter(
             DataLoader(
-                mixing_buffer[mixing_buffer.shape[0] // 2 :],
+                # TODO: seems like a typing bug?
+                cast(Any, mixing_buffer[mixing_buffer.shape[0] // 2 :]),
                 batch_size=batch_size,
                 shuffle=True,
             )

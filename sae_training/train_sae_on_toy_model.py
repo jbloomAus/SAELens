@@ -1,3 +1,5 @@
+from typing import Any, cast
+
 import torch
 import wandb
 from torch.utils.data import DataLoader
@@ -8,7 +10,7 @@ from sae_training.sparse_autoencoder import SparseAutoencoder
 
 def train_toy_sae(
     sparse_autoencoder: SparseAutoencoder,
-    activation_store,
+    activation_store: torch.Tensor,  # TODO: this type seems strange / wrong
     batch_size: int = 1024,
     feature_sampling_window: int = 100,  # how many training steps between resampling the features / considiring neurons dead
     dead_feature_window: int = 2000,  # how many training steps before a feature is considered dead
@@ -20,7 +22,10 @@ def train_toy_sae(
     Takes an SAE and a bunch of activations and does a bunch of training steps
     """
 
-    dataloader = iter(DataLoader(activation_store, batch_size=batch_size, shuffle=True))
+    # TODO: this type seems strange
+    dataloader = iter(
+        DataLoader(cast(Any, activation_store), batch_size=batch_size, shuffle=True)
+    )
     optimizer = torch.optim.Adam(sparse_autoencoder.parameters())
     sparse_autoencoder.train()
     frac_active_list = []  # track active features

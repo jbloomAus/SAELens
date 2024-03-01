@@ -1,11 +1,15 @@
+from typing import Any, cast
+
 import wandb
+
+from sae_training.config import LanguageModelSAERunnerConfig
 
 # from sae_training.activation_store import ActivationStore
 from sae_training.train_sae_on_language_model import train_sae_on_language_model
 from sae_training.utils import LMSparseAutoencoderSessionloader
 
 
-def language_model_sae_runner(cfg):
+def language_model_sae_runner(cfg: LanguageModelSAERunnerConfig):
     """ """
 
     if cfg.from_pretrained_path is not None:
@@ -22,7 +26,7 @@ def language_model_sae_runner(cfg):
         model, sparse_autoencoder, activations_loader = loader.load_session()
 
     if cfg.log_to_wandb:
-        wandb.init(project=cfg.wandb_project, config=cfg, name=cfg.run_name)
+        wandb.init(project=cfg.wandb_project, config=cast(Any, cfg), name=cfg.run_name)
 
     # train SAE
     sparse_autoencoder = train_sae_on_language_model(

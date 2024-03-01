@@ -1,7 +1,7 @@
 import math
 import re
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 
 import numpy as np
 from matplotlib import colors
@@ -40,8 +40,8 @@ BG_COLOR_MAP = colors.LinearSegmentedColormap.from_list(
 
 
 def generate_tok_html(
-    vocab_dict: dict,
-    this_token: str,
+    vocab_dict: dict[int, str],
+    this_token: int,
     underline_color: str,
     bg_color: str,
     is_bold: bool = False,
@@ -125,8 +125,8 @@ def generate_tok_html(
 
 
 def generate_seq_html(
-    vocab_dict: dict,
-    token_ids: List[str],
+    vocab_dict: dict[int, str],
+    token_ids: List[int],
     feat_acts: List[float],
     contribution_to_loss: List[float],
     pos_ids: List[List[int]],
@@ -151,6 +151,7 @@ def generate_seq_html(
 
     # Define the HTML object, which we'll iteratively add to
     html_output = '<div class="seq">'  # + repeat_obj
+    underline_color = "transparent"
 
     for i in range(len(token_ids)):
         # Get background color, which is {0: transparent, +1: darkorange}
@@ -195,9 +196,9 @@ def generate_tables_html(
     correlated_neurons_indices: List[int],
     correlated_neurons_pearson: List[float],
     correlated_neurons_l1: List[float],
-    correlated_features_indices: List[int],
-    correlated_features_pearson: List[float],
-    correlated_features_l1: List[float],
+    correlated_features_indices: List[int] | None,
+    correlated_features_pearson: List[float] | None,
+    correlated_features_l1: List[float] | None,
     # Second, all the arguments for the middle tables (neg/pos logits)
     neg_str: List[str],
     neg_values: List[float],
@@ -258,12 +259,15 @@ def generate_tables_html(
             fn = lambda m: format(mylist[int(m.group(1))], "+.2f")
         elif letter == "C":
             fn = lambda m: str(mylist[int(m.group(1))])
+        else:
+            raise ValueError("This should never happen.")
+
         html_output_2 = re.sub(letter + r"(\d)", fn, html_output_2, count=10)
 
     return (html_output, html_output_2)
 
 
-def generate_histograms(freq_hist_data, logits_hist_data) -> Tuple[str, str]:
+def generate_histograms(freq_hist_data: Any, logits_hist_data: Any) -> Tuple[str, str]:
     """This generates both histograms at once."""
 
     # Start off high, cause we want closer to orange than white for the left-most bars

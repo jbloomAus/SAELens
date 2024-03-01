@@ -1,5 +1,6 @@
 from collections.abc import Iterable
 from types import SimpleNamespace
+from typing import Any
 
 import pytest
 import torch
@@ -106,16 +107,16 @@ def model():
 
 
 @pytest.fixture
-def activation_store(cfg, model):
+def activation_store(cfg: Any, model: HookedTransformer):
     return ActivationsStore(cfg, model)
 
 
 @pytest.fixture
-def activation_store_head_hook(cfg_head_hook, model):
+def activation_store_head_hook(cfg_head_hook: Any, model: HookedTransformer):
     return ActivationsStore(cfg_head_hook, model)
 
 
-def test_activations_store__init__(cfg, model):
+def test_activations_store__init__(cfg: Any, model: HookedTransformer):
     store = ActivationsStore(cfg, model)
 
     assert store.cfg == cfg
@@ -137,7 +138,7 @@ def test_activations_store__init__(cfg, model):
     assert store.storage_buffer.shape == (expected_size, 1, cfg.d_in)
 
 
-def test_activations_store__get_batch_tokens(activation_store):
+def test_activations_store__get_batch_tokens(activation_store: ActivationsStore):
     batch = activation_store.get_batch_tokens()
 
     assert isinstance(batch, torch.Tensor)
@@ -148,7 +149,7 @@ def test_activations_store__get_batch_tokens(activation_store):
     assert batch.device == activation_store.cfg.device
 
 
-def test_activations_store__get_activations(activation_store):
+def test_activations_store__get_activations(activation_store: ActivationsStore):
     batch = activation_store.get_batch_tokens()
     activations = activation_store.get_activations(batch)
 
@@ -158,7 +159,9 @@ def test_activations_store__get_activations(activation_store):
     assert activations.device == cfg.device
 
 
-def test_activations_store__get_activations_head_hook(activation_store_head_hook):
+def test_activations_store__get_activations_head_hook(
+    activation_store_head_hook: ActivationsStore,
+):
     batch = activation_store_head_hook.get_batch_tokens()
     activations = activation_store_head_hook.get_activations(batch)
 
@@ -168,7 +171,7 @@ def test_activations_store__get_activations_head_hook(activation_store_head_hook
     assert activations.device == cfg.device
 
 
-def test_activations_store__get_buffer(activation_store):
+def test_activations_store__get_buffer(activation_store: ActivationsStore):
     n_batches_in_buffer = 3
     buffer = activation_store.get_buffer(n_batches_in_buffer)
 

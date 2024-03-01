@@ -1,4 +1,5 @@
 import tempfile
+from typing import Any
 
 import pytest
 import torch
@@ -82,12 +83,12 @@ def cfg():
     return cfg
 
 
-def test_LMSparseAutoencoderSessionloader_init(cfg):
+def test_LMSparseAutoencoderSessionloader_init(cfg: Any):
     loader = LMSparseAutoencoderSessionloader(cfg)
     assert loader.cfg == cfg
 
 
-def test_LMSparseAutoencoderSessionloader_load_session(cfg):
+def test_LMSparseAutoencoderSessionloader_load_session(cfg: Any):
     loader = LMSparseAutoencoderSessionloader(cfg)
     model, sae_group, activations_loader = loader.load_session()
 
@@ -96,7 +97,7 @@ def test_LMSparseAutoencoderSessionloader_load_session(cfg):
     assert isinstance(activations_loader, ActivationsStore)
 
 
-def test_LMSparseAutoencoderSessionloader_load_session_from_trained(cfg):
+def test_LMSparseAutoencoderSessionloader_load_session_from_trained(cfg: Any):
     loader = LMSparseAutoencoderSessionloader(cfg)
     _, sae_group, _ = loader.load_session()
 

@@ -2,6 +2,8 @@ import dataclasses
 import gzip
 import os
 import pickle
+from itertools import product
+from typing import Any, Iterator
 
 import torch
 
@@ -9,15 +11,16 @@ from sae_training.sparse_autoencoder import SparseAutoencoder
 
 
 class SAEGroup:
-    def __init__(self, cfg):
+
+    autoencoders: list[SparseAutoencoder]
+
+    def __init__(self, cfg: Any):
         self.cfg = cfg
         self.autoencoders = []  # This will store tuples of (instance, hyperparameters)
         self._init_autoencoders(cfg)
 
-    def _init_autoencoders(self, cfg):
+    def _init_autoencoders(self, cfg: Any):
         # Dynamically get all combinations of hyperparameters from cfg
-        from itertools import product
-
         # Extract all hyperparameter lists from cfg
         hyperparameters = {k: v for k, v in vars(cfg).items() if isinstance(v, list)}
         if len(hyperparameters) > 0:
@@ -37,7 +40,7 @@ class SAEGroup:
             # Create and store both the SparseAutoencoder instance and its parameters
             self.autoencoders.append(SparseAutoencoder(cfg_copy))
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[SparseAutoencoder]:
         # Make SAEGroup iterable over its SparseAutoencoder instances and their parameters
         for ae in self.autoencoders:
             yield ae  # Yielding as a tuple
@@ -46,7 +49,7 @@ class SAEGroup:
         # Return the number of SparseAutoencoder instances
         return len(self.autoencoders)
 
-    def to(self, device):
+    def to(self, device: torch.device | str):
         for ae in self.autoencoders:
             ae.to(device)
 

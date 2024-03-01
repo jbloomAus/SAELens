@@ -1,12 +1,12 @@
 import re
-from typing import Dict, Optional, Tuple, Union
+from typing import Any, Dict, Tuple
 
 import numpy as np
 import torch
 from jaxtyping import Float, Int
 from torch import Tensor
 
-Arr = np.ndarray
+Arr = np.ndarray[Any, Any]
 
 
 def k_largest_indices(
@@ -29,7 +29,7 @@ def k_largest_indices(
     return torch.stack((rows, cols), dim=1)
 
 
-def sample_unique_indices(large_number, small_number):
+def sample_unique_indices(large_number: int, small_number: int):
     """Samples a small number of unique indices from a large number of indices."""
     weights = torch.ones(large_number)  # Equal weights for all indices
     sampled_indices = torch.multinomial(weights, small_number, replacement=False)
@@ -38,7 +38,7 @@ def sample_unique_indices(large_number, small_number):
 
 def random_range_indices(
     x: Float[Tensor, "batch seq"],
-    bounds: Tuple[float, float],
+    bounds: Tuple[float | Tensor, float | Tensor],
     k: int,
     buffer: Tuple[int, int] = (5, 5),
 ) -> Int[Tensor, "k 2"]:
@@ -75,7 +75,9 @@ def random_range_indices(
 # print(random_range_indices(x, bounds, k))
 
 
-def to_str_tokens(vocab_dict: Dict[int, str], tokens: Union[int, torch.Tensor]):
+def to_str_tokens(
+    vocab_dict: Dict[int, str], tokens: int | torch.Tensor | np.ndarray[Any, Any]
+) -> Any:
     """
     If tokens is 1D, does the same thing as model.to_str_tokens.
     If tokens is 2D or 3D, it flattens, does this thing, then reshapes.
@@ -98,7 +100,7 @@ def to_str_tokens(vocab_dict: Dict[int, str], tokens: Union[int, torch.Tensor]):
     return reshape(str_tokens, tokens.shape)
 
 
-def reshape(my_list, shape):
+def reshape(my_list: list[Any], shape: tuple[int, ...]):
     assert np.prod(shape) == len(my_list), "Shape is not compatible with list size"
     assert len(shape) in [1, 2, 3], "Only shapes of length 1, 2, or 3 are supported"
 
@@ -127,15 +129,15 @@ class TopK:
     We initialise with a topk object, which is treated as a tuple of (values, indices).
     """
 
-    def __init__(self, obj: Optional[Tuple[Arr, Arr]] = None):
+    def __init__(self, obj: Tuple[Arr | Tensor, Arr | Tensor]):  # type: ignore
         self.values: Arr = (
-            obj[0] if isinstance(obj[0], Arr) else obj[0].detach().cpu().numpy()
+            obj[0] if isinstance(obj[0], np.ndarray) else obj[0].detach().cpu().numpy()
         )
         self.indices: Arr = (
-            obj[1] if isinstance(obj[1], Arr) else obj[1].detach().cpu().numpy()
+            obj[1] if isinstance(obj[1], np.ndarray) else obj[1].detach().cpu().numpy()
         )
 
-    def __getitem__(self, item):
+    def __getitem__(self, item: Any):
         return TopK((self.values[item], self.indices[item]))
 
     def concat(self, other: "TopK"):
@@ -160,7 +162,7 @@ class TopK:
 
     @property
     def size(self):
-        return self.values.size()
+        return self.values.size
 
     def numel(self):
         return self.values.size
@@ -173,11 +175,11 @@ class Output:
     logits: Tensor
 
 
-def merge_lists(*lists):
+def merge_lists(*lists: Any):
     return [item for sublist in lists for item in sublist]
 
 
-def extract_and_remove_scripts(html_content) -> Tuple[str, str]:
+def extract_and_remove_scripts(html_content: str) -> Tuple[str, str]:
     # Pattern to find <script>...</script> tags
     pattern = r"<script[^>]*>.*?</script>"
 
