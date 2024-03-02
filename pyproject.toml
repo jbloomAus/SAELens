@@ -46,6 +46,7 @@ reportUnnecessaryIsInstance = "none"
 reportUnnecessaryComparison = "none"
 reportConstantRedefinition = "none"
 reportUnknownLambdaType = "none"
+reportPrivateUsage = "none"
 
 [build-system]
 requires = ["poetry-core"]
