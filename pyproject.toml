@@ -19,6 +19,7 @@ matplotlib = "^3.8.3"
 matplotlib-inline = "^0.1.6"
 eindex = {git = "https://github.com/callummcdougall/eindex.git"}
 datasets = "^2.17.1"
+babe = "^0.0.7"
 
 
 [tool.poetry.group.dev.dependencies]
