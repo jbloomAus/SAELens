@@ -31,7 +31,7 @@ def get_feature_property_df(
             # "d_e_projection_normalized": d_e_projection_normalized,
             "b_enc": sparse_autoencoder.b_enc.detach().cpu(),
             "b_dec_projection": b_dec_projection,
-            "feature": list(range(sparse_autoencoder.cfg.d_sae)),
+            "feature": list(range(sparse_autoencoder.cfg.d_sae)),  # type: ignore
             "dead_neuron": (feature_sparsity < -9).cpu(),
         }
     )

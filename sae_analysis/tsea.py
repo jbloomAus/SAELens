@@ -185,7 +185,7 @@ def plot_top_k_feature_projections_by_token_and_category(
 
     print(features)
     feature_logit_scores = pd.DataFrame(
-        dec_projection_onto_W_U[features].numpy(), index=features
+        dec_projection_onto_W_U[features].numpy(), index=features  # type: ignore
     ).T
     feature_logit_scores["token"] = tokens_list
     feature_logit_scores[category] = [
@@ -194,7 +194,7 @@ def plot_top_k_feature_projections_by_token_and_category(
 
     # display(feature_)
     print(category)
-    for feature, score in zip(features, scores):
+    for feature, score in zip(features, scores):  # type: ignore
         print(feature)
         score = -1 * np.log(1 - score)  # convert to enrichment score
         fig = px.histogram(
@@ -290,7 +290,7 @@ def get_gene_set_from_regex(vocab: dict[str, int], pattern: str) -> set[int]:
     return gene_set
 
 
-def get_test_gene_sets(model: HookedTransformer):
+def get_test_gene_sets(model: HookedTransformer) -> dict[str, set[int]]:
 
     colors = [
         "red",
@@ -640,16 +640,18 @@ def get_test_gene_sets(model: HookedTransformer):
         "ologies": ologies,
     }
 
-    def convert_tokens_to_ids(list_of_strings: list[str], model: HookedTransformer):
+    def convert_tokens_to_ids(
+        list_of_strings: list[str], model: HookedTransformer
+    ) -> set[int]:
         token_ids = [
             model.tokenizer.encode(f" {word}", add_special_tokens=False)  # type: ignore
             for word in list_of_strings
         ]
         token_ids = [item for sublist in token_ids for item in sublist]
-        return token_ids
+        return set(token_ids)
 
     gene_sets_token_ids = {
         key: convert_tokens_to_ids(value, model) for key, value in gene_sets.items()
-    }
+    }  # type: ignore
 
     return gene_sets_token_ids
