@@ -24,7 +24,7 @@ def get_enrichment_df(
         projections[features], gene_sets_token_ids_tensor
     )
     df_enrichment_scores = pd.DataFrame(
-        enrichment_scores.numpy(), index=gene_sets_selected.keys(), columns=features
+        enrichment_scores.numpy(), index=gene_sets_selected.keys(), columns=features  # type: ignore
     )
 
     return df_enrichment_scores
@@ -220,14 +220,14 @@ def plot_top_k_feature_projections_by_token_and_category(
         )
 
 
-def pad_gene_sets(gene_sets_token_ids: dict[str, set[int]]):
+def pad_gene_sets(gene_sets_token_ids: dict[str, set[int]]) -> dict[str, list[int]]:
     for k, v in gene_sets_token_ids.items():
-        gene_sets_token_ids[k] = list(v)
+        gene_sets_token_ids[k] = list(v)  # type: ignore
     max_len = max([len(v) for v in gene_sets_token_ids.values()])
 
     # pad with -1's to max length
     gene_sets_token_ids_padded = {
-        key: value + [-1] * (max_len - len(value))
+        key: value + [-1] * (max_len - len(value))  # type: ignore
         for key, value in gene_sets_token_ids.items()
     }
     return gene_sets_token_ids_padded
@@ -613,17 +613,17 @@ def get_test_gene_sets(model: HookedTransformer):
     ]
 
     gene_sets = {
-        "1910's": list(range(1910, 1920)),
-        "1920's": list(range(1920, 1930)),
-        "1930's": list(range(1930, 1940)),
-        "1940's": list(range(1940, 1950)),
-        "1950's": list(range(1950, 1960)),
-        "1960's": list(range(1960, 1970)),
-        "1970's": list(range(1970, 1980)),
-        "1980's": list(range(1980, 1990)),
-        "1990's": list(range(1990, 2000)),
-        "2000's": list(range(2000, 2010)),
-        "2010's": list(range(2010, 2020)),
+        "1910's": [str(i) for i in range(1910, 1920)],
+        "1920's": [str(i) for i in range(1920, 1930)],
+        "1930's": [str(i) for i in range(1930, 1940)],
+        "1940's": [str(i) for i in range(1940, 1950)],
+        "1950's": [str(i) for i in range(1950, 1960)],
+        "1960's": [str(i) for i in range(1960, 1970)],
+        "1970's": [str(i) for i in range(1970, 1980)],
+        "1980's": [str(i) for i in range(1980, 1990)],
+        "1990's": [str(i) for i in range(1990, 2000)],
+        "2000's": [str(i) for i in range(2000, 2010)],
+        "2010's": [str(i) for i in range(2010, 2020)],
         "colors": colors,
         "positive_words": positive_words,
         "negative_words": negative_words,
@@ -640,16 +640,16 @@ def get_test_gene_sets(model: HookedTransformer):
         "ologies": ologies,
     }
 
-    def convert_tokens_to_ids(list_of_strings):
+    def convert_tokens_to_ids(list_of_strings: list[str], model: HookedTransformer):
         token_ids = [
-            model.tokenizer.encode(f" {word}", add_special_tokens=False)
+            model.tokenizer.encode(f" {word}", add_special_tokens=False)  # type: ignore
             for word in list_of_strings
         ]
         token_ids = [item for sublist in token_ids for item in sublist]
         return token_ids
 
     gene_sets_token_ids = {
-        key: convert_tokens_to_ids(value) for key, value in gene_sets.items()
+        key: convert_tokens_to_ids(value, model) for key, value in gene_sets.items()
     }
 
     return gene_sets_token_ids
