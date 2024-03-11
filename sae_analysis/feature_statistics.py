@@ -20,8 +20,9 @@ def get_feature_property_df(
     W_enc_normalized = (
         sparse_autoencoder.W_enc.cpu()
         / sparse_autoencoder.W_enc.cpu().norm(dim=-1, keepdim=True)
-    )
-    d_e_projection = W_dec_normalized @ W_enc_normalized.T
+    ).T
+
+    d_e_projection = (W_dec_normalized * W_enc_normalized).sum(-1)
     b_dec_projection = sparse_autoencoder.b_dec.cpu() @ W_dec_normalized.T
 
     temp_df = pd.DataFrame(
