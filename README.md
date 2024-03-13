@@ -164,7 +164,7 @@ I wrote a tutorial to show users how to do some basic exploration of their SAE.
 
 WandB Dashboards provide lots of useful insights while training SAE's. Here's a screenshot from one training run. 
 
-![screenshot](content/dashboard_screenshot.pngdashboard_screenshot.png)
+![screenshot](content/dashboard_screenshot.png)
 
 
 ## Example Output
