@@ -8,7 +8,7 @@ from transformer_lens import HookedTransformer
 import wandb
 from sae_training.activations_store import ActivationsStore
 from sae_training.evals import run_evals
-from sae_training.geom_median.src.geom_median.torch import compute_geometric_median
+from sae_training.geometric_median import compute_geometric_median
 from sae_training.optim import get_scheduler
 from sae_training.sae_group import SAEGroup
 
@@ -80,16 +80,17 @@ def train_sae_on_language_model(
     for sae in sae_group:
         hyperparams = sae.cfg
         sae_layer_id = all_layers.index(hyperparams.hook_point_layer)
-        layer_acts = activation_store.storage_buffer.detach().cpu()[:, sae_layer_id, :]
         if hyperparams.b_dec_init_method == "geometric_median":
+            layer_acts = activation_store.storage_buffer.detach()[:, sae_layer_id, :]
             # get geometric median of the activations if we're using those.
             if sae_layer_id not in geometric_medians:
                 median = compute_geometric_median(
-                    layer_acts, skip_typechecks=True, maxiter=100, per_component=False
+                    layer_acts, maxiter=100,
                 ).median
                 geometric_medians[sae_layer_id].append(median)
             sae.initialize_b_dec_with_precalculated(geometric_medians[sae_layer_id])
         elif hyperparams.b_dec_init_method == "mean":
+            layer_acts = activation_store.storage_buffer.detach().cpu()[:, sae_layer_id, :]
             sae.initialize_b_dec_with_mean(layer_acts)
         sae.train()
 
