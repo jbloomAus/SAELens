@@ -1,7 +1,7 @@
 import os
 import re
 import string
-from typing import List, Optional
+from typing import Optional
 
 import nltk
 import numpy as np
@@ -14,12 +14,12 @@ from transformer_lens import HookedTransformer
 
 def get_enrichment_df(
     projections: torch.Tensor,
-    features: List[int],
+    features: list[int],
     gene_sets_selected: dict[str, set[int]],
 ):
 
     gene_sets_token_ids_padded = pad_gene_sets(gene_sets_selected)
-    gene_sets_token_ids_tensor = torch.tensor(gene_sets_token_ids_padded.values())
+    gene_sets_token_ids_tensor = torch.tensor(list(gene_sets_token_ids_padded.values()))
     enrichment_scores = calculate_batch_enrichment_scores(
         projections[features], gene_sets_token_ids_tensor
     )
@@ -163,7 +163,7 @@ def plot_top_k_feature_projections_by_token_and_category(
     dec_projection_onto_W_U: torch.Tensor,
     k: int = 5,
     projection_onto: str = "W_U",
-    features: Optional[List[int]] = None,
+    features: Optional[list[int]] = None,
     log_y: bool = True,
     histnorm: Optional[str] = None,
 ):
