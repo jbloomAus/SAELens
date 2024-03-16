@@ -85,12 +85,15 @@ def train_sae_on_language_model(
             # get geometric median of the activations if we're using those.
             if sae_layer_id not in geometric_medians:
                 median = compute_geometric_median(
-                    layer_acts, maxiter=100,
+                    layer_acts,
+                    maxiter=100,
                 ).median
                 geometric_medians[sae_layer_id].append(median)
             sae.initialize_b_dec_with_precalculated(geometric_medians[sae_layer_id])
         elif hyperparams.b_dec_init_method == "mean":
-            layer_acts = activation_store.storage_buffer.detach().cpu()[:, sae_layer_id, :]
+            layer_acts = activation_store.storage_buffer.detach().cpu()[
+                :, sae_layer_id, :
+            ]
             sae.initialize_b_dec_with_mean(layer_acts)
         sae.train()
 
