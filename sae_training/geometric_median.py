@@ -94,14 +94,14 @@ if __name__ == "__main__":
 
     dim1 = 10000
     dim2 = 768
-    device = "cuda"
+    device = "cuda" if torch.cuda.is_available() else "cpu"
 
     sample = (
-        torch.randn((dim1, dim2), device="cuda") * 100
+        torch.randn((dim1, dim2), device=device) * 100
     )  # seems to be the order of magnitude of the actual use case
-    weights = torch.randn((dim1,), device="cuda")
+    weights = torch.randn((dim1,), device=device)
 
-    torch.tensor(weights, device="cuda")
+    torch.tensor(weights, device=device)
 
     tic = time.perf_counter()
     new = compute_geometric_median(sample, weights=weights, maxiter=100)
