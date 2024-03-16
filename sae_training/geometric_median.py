@@ -1,27 +1,30 @@
-import torch
 from types import SimpleNamespace
+
 import torch
 import tqdm
 
+
 def weighted_average(points, weights):
     weights = weights / weights.sum()
-    return (points*weights.view(-1, 1)).sum(dim=0)
+    return (points * weights.view(-1, 1)).sum(dim=0)
 
 
 @torch.no_grad()
 def geometric_median_objective(median, points, weights):
 
-    norms = torch.linalg.norm(points-median.view(1, -1), dim=1)
+    norms = torch.linalg.norm(points - median.view(1, -1), dim=1)
+
+    return (norms * weights).sum()
 
 
-    return (norms*weights).sum()
-
-def compute_geometric_median( points:torch.Tensor,
-    weights:torch.Tensor=None,
+def compute_geometric_median(
+    points: torch.Tensor,
+    weights: torch.Tensor = None,
     eps=1e-6,
     maxiter=100,
     ftol=1e-20,
-    do_log=False):
+    do_log=False,
+):
     """
     :param points: ``torch.Tensor`` of shape ``(n, d)``
     :param weights: Optional ``torch.Tensor`` of shape :math:``(n,)``.
@@ -29,7 +32,7 @@ def compute_geometric_median( points:torch.Tensor,
         Equivalently, this is a smoothing parameter. Default 1e-6.
     :param maxiter: Maximum number of Weiszfeld iterations. Default 100
     :param ftol: If objective value does not improve by at least this `ftol` fraction, terminate the algorithm. Default 1e-20.
-    :param do_log: If true will return a log of function values encountered through the course of the algorithm 
+    :param do_log: If true will return a log of function values encountered through the course of the algorithm
     :return: SimpleNamespace object with fields
         - `median`: estimate of the geometric median, which is a ``torch.Tensor`` object of shape :math:``(d,)``
         - `termination`: string explaining how the algorithm terminated.
@@ -46,7 +49,7 @@ def compute_geometric_median( points:torch.Tensor,
         if do_log:
             logs = [objective_value]
         else:
-            logs = None 
+            logs = None
 
         # Weiszfeld iterations
         early_termination = False
@@ -54,7 +57,7 @@ def compute_geometric_median( points:torch.Tensor,
         for _ in pbar:
             prev_obj_value = objective_value
 
-            norms = torch.linalg.norm(points-median.view(1, -1), dim=1)
+            norms = torch.linalg.norm(points - median.view(1, -1), dim=1)
             new_weights = weights / torch.clamp(norms, min=eps)
             median = weighted_average(points, new_weights)
             objective_value = geometric_median_objective(median, points, weights)
@@ -80,33 +83,41 @@ def compute_geometric_median( points:torch.Tensor,
     )
 
 
-
 if __name__ == "__main__":
-    from sae_training.geom_median.src.geom_median.torch import compute_geometric_median as original_compute_geometric_median
-    import time 
+    import time
+
+    from sae_training.geom_median.src.geom_median.torch import (
+        compute_geometric_median as original_compute_geometric_median,
+    )
 
     TOLERANCE = 1e-2
 
     dim1 = 10000
     dim2 = 768
     device = "cuda"
-    
-    sample = torch.randn((dim1 ,dim2), device="cuda")*100 # seems to be the order of magnitude of the actual use case
-    weights = torch.randn((dim1,),  device="cuda")
 
-    torch.tensor(weights,device="cuda")
-    
+    sample = (
+        torch.randn((dim1, dim2), device="cuda") * 100
+    )  # seems to be the order of magnitude of the actual use case
+    weights = torch.randn((dim1,), device="cuda")
+
+    torch.tensor(weights, device="cuda")
 
     tic = time.perf_counter()
-    new = compute_geometric_median(sample,weights=weights, maxiter=100)
+    new = compute_geometric_median(sample, weights=weights, maxiter=100)
     print(f"new code takes {time.perf_counter()-tic} seconds!")
     tic = time.perf_counter()
-    old = original_compute_geometric_median(sample, weights=weights, skip_typechecks=True, maxiter=100, per_component=False )
+    old = original_compute_geometric_median(
+        sample, weights=weights, skip_typechecks=True, maxiter=100, per_component=False
+    )
     print(f"old code takes {time.perf_counter()-tic} seconds!")
 
+    print(f"max diff in median {torch.max(torch.abs(new.median - old.median))}")
+    print(
+        f"max diff in weights  {torch.max(torch.abs(new.new_weights - old.new_weights))}"
+    )
 
-    print(f'max diff in median {torch.max(torch.abs(new.median - old.median))}')
-    print(f'max diff in weights  {torch.max(torch.abs(new.new_weights - old.new_weights))}')
-
-    assert torch.allclose(new.median, old.median, atol=TOLERANCE), f"Median diverges!"
-    assert torch.allclose(new.new_weights, old.new_weights, atol=TOLERANCE), f"Weights diverges!"
+    assert torch.allclose(new.median, old.median, atol=TOLERANCE), "Median diverges!"
+    assert torch.allclose(
+        new.new_weights, old.new_weights, atol=TOLERANCE
+    ), "Weights diverges!"
