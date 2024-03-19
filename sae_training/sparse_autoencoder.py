@@ -162,7 +162,8 @@ class SparseAutoencoder(HookedRootModule):
     def initialize_b_dec_with_geometric_median(self, all_activations: torch.Tensor):
         previous_b_dec = self.b_dec.clone().cpu()
         out = compute_geometric_median(
-            all_activations, skip_typechecks=True, maxiter=100, per_component=False
+            all_activations,
+            maxiter=100,
         ).median
 
         previous_distances = torch.norm(all_activations - previous_b_dec, dim=-1)
