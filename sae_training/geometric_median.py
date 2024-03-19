@@ -1,16 +1,19 @@
 from types import SimpleNamespace
+from typing import Optional
 
 import torch
 import tqdm
 
 
-def weighted_average(points, weights):
+def weighted_average(points: torch.Tensor, weights: torch.Tensor):
     weights = weights / weights.sum()
     return (points * weights.view(-1, 1)).sum(dim=0)
 
 
 @torch.no_grad()
-def geometric_median_objective(median, points, weights):
+def geometric_median_objective(
+    median: torch.Tensor, points: torch.Tensor, weights: torch.Tensor
+) -> torch.Tensor:
 
     norms = torch.linalg.norm(points - median.view(1, -1), dim=1)
 
@@ -19,11 +22,11 @@ def geometric_median_objective(median, points, weights):
 
 def compute_geometric_median(
     points: torch.Tensor,
-    weights: torch.Tensor = None,
-    eps=1e-6,
-    maxiter=100,
-    ftol=1e-20,
-    do_log=False,
+    weights: Optional[torch.Tensor] = None,
+    eps: float = 1e-6,
+    maxiter: int = 100,
+    ftol: float = 1e-20,
+    do_log: bool = False,
 ):
     """
     :param points: ``torch.Tensor`` of shape ``(n, d)``
