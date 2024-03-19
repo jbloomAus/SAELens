@@ -13,7 +13,7 @@ from torch import nn
 from transformer_lens.hook_points import HookedRootModule, HookPoint
 
 from sae_training.config import LanguageModelSAERunnerConfig
-from sae_training.geom_median.src.geom_median.torch import compute_geometric_median
+from sae_training.geometric_median import compute_geometric_median
 
 
 class SparseAutoencoder(HookedRootModule):

@@ -89,10 +89,6 @@ def compute_geometric_median(
 if __name__ == "__main__":
     import time
 
-    from sae_training.geom_median.src.geom_median.torch import (
-        compute_geometric_median as original_compute_geometric_median,
-    )
-
     TOLERANCE = 1e-2
 
     dim1 = 10000
@@ -109,18 +105,3 @@ if __name__ == "__main__":
     tic = time.perf_counter()
     new = compute_geometric_median(sample, weights=weights, maxiter=100)
     print(f"new code takes {time.perf_counter()-tic} seconds!")
-    tic = time.perf_counter()
-    old = original_compute_geometric_median(
-        sample, weights=weights, skip_typechecks=True, maxiter=100, per_component=False
-    )
-    print(f"old code takes {time.perf_counter()-tic} seconds!")
-
-    print(f"max diff in median {torch.max(torch.abs(new.median - old.median))}")
-    print(
-        f"max diff in weights  {torch.max(torch.abs(new.new_weights - old.new_weights))}"
-    )
-
-    assert torch.allclose(new.median, old.median, atol=TOLERANCE), "Median diverges!"
-    assert torch.allclose(
-        new.new_weights, old.new_weights, atol=TOLERANCE
-    ), "Weights diverges!"
