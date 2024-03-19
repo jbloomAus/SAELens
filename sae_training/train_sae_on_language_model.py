@@ -88,7 +88,7 @@ def train_sae_on_language_model(
                     layer_acts,
                     maxiter=100,
                 ).median
-                geometric_medians[sae_layer_id].append(median)
+                geometric_medians[sae_layer_id] = median
             sae.initialize_b_dec_with_precalculated(geometric_medians[sae_layer_id])
         elif hyperparams.b_dec_init_method == "mean":
             layer_acts = activation_store.storage_buffer.detach().cpu()[
