@@ -4,8 +4,8 @@ import torch
 
 from sae_training.config import LanguageModelSAERunnerConfig
 
-TEST_MODEL = "tiny-stories-1M"
-TEST_DATASET = "roneneldan/TinyStories"
+TINYSTORIES_MODEL = "tiny-stories-1M"
+TINYSTORIES_DATASET = "roneneldan/TinyStories"
 
 
 def build_sae_cfg(**kwargs: Any) -> LanguageModelSAERunnerConfig:
@@ -14,11 +14,11 @@ def build_sae_cfg(**kwargs: Any) -> LanguageModelSAERunnerConfig:
     """
     # Create a mock object with the necessary attributes
     mock_config = LanguageModelSAERunnerConfig(
-        model_name=TEST_MODEL,
+        model_name=TINYSTORIES_MODEL,
         hook_point="blocks.0.hook_mlp_out",
         hook_point_layer=0,
         hook_point_head_index=None,
-        dataset_path=TEST_DATASET,
+        dataset_path=TINYSTORIES_DATASET,
         is_dataset_tokenized=False,
         use_cached_activations=False,
         d_in=64,

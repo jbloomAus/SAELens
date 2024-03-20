@@ -7,6 +7,8 @@ check-format:
 	poetry run black --check .
 	poetry run isort --check-only --diff .
 
+check-type:
+	poetry run pyright .
 
 test:
 	make unit-test

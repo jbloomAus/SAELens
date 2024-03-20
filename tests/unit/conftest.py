@@ -1,9 +1,9 @@
 import pytest
 from transformer_lens import HookedTransformer
 
-from tests.unit.helpers import TEST_MODEL
+from tests.unit.helpers import TINYSTORIES_MODEL
 
 
 @pytest.fixture
-def model():
-    return HookedTransformer.from_pretrained(TEST_MODEL, device="cpu")
+def ts_model():
+    return HookedTransformer.from_pretrained(TINYSTORIES_MODEL, device="cpu")

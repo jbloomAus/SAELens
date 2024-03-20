@@ -18,10 +18,10 @@ import pandas as pd
 import plotly
 import plotly.express as px
 import torch
-import wandb
 from torch.nn.functional import cosine_similarity
 from tqdm import tqdm
 
+import wandb
 from sae_analysis.visualizer.data_fns import get_feature_data
 from sae_training.utils import LMSparseAutoencoderSessionloader
 
