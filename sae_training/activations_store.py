@@ -26,10 +26,21 @@ class ActivationsStore:
 
         # Check if dataset is tokenized
         dataset_sample = next(self.iterable_dataset)
-        self.cfg.is_dataset_tokenized = "tokens" in dataset_sample.keys()
-        print(
-            f"Dataset is {'tokenized' if self.cfg.is_dataset_tokenized else 'not tokenized'}! Updating config."
-        )
+
+        # check if it's tokenized
+        if "tokens" in dataset_sample.keys():
+            self.cfg.is_dataset_tokenized = True
+            self.tokens_column = "tokens"
+        elif "input_ids" in dataset_sample.keys():
+            self.cfg.is_dataset_tokenized = True
+            self.tokens_column = "input_ids"
+        elif "text" in dataset_sample.keys():
+            self.cfg.is_dataset_tokenized = False
+            self.tokens_column = "text"
+        else:
+            raise ValueError(
+                "Dataset must have a 'tokens', 'input_ids', or 'text' column."
+            )
         self.iterable_dataset = iter(self.dataset)  # Reset iterator after checking
 
         if self.cfg.use_cached_activations:  # EDIT: load from multi-layer acts
@@ -79,7 +90,7 @@ class ActivationsStore:
         # pbar = tqdm(total=batch_size, desc="Filling batches")
         while batch_tokens.shape[0] < batch_size:
             if not self.cfg.is_dataset_tokenized:
-                s = next(self.iterable_dataset)["text"]
+                s = next(self.iterable_dataset)[self.tokens_column]
                 tokens = self.model.to_tokens(
                     s,
                     truncate=True,
@@ -90,7 +101,7 @@ class ActivationsStore:
                 ), f"tokens.shape should be 1D but was {tokens.shape}"
             else:
                 tokens = torch.tensor(
-                    next(self.iterable_dataset)["tokens"],
+                    next(self.iterable_dataset)[self.tokens_column],
                     dtype=torch.long,
                     device=device,
                     requires_grad=False,
