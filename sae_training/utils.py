@@ -5,6 +5,7 @@ from transformer_lens import HookedTransformer
 
 from sae_training.activations_store import ActivationsStore
 from sae_training.sae_group import SAEGroup
+from sae_training.sparse_autoencoder import SparseAutoencoder
 
 
 class LMSparseAutoencoderSessionloader:
@@ -48,7 +49,21 @@ class LMSparseAutoencoderSessionloader:
         #     cfg = torch.load(path, map_location="cpu")["cfg"]
 
         sparse_autoencoders = SAEGroup.load_from_pretrained(path)
-        model, _, activations_loader = cls(sparse_autoencoders.cfg).load_session()
+
+        # hacky code to deal with old SAE saves
+        if type(sparse_autoencoders) is dict:
+            sparse_autoencoder = SparseAutoencoder(cfg=sparse_autoencoders["cfg"])
+            sparse_autoencoder.load_state_dict(sparse_autoencoders["state_dict"])
+            model, sparse_autoencoders, activations_loader = cls(
+                sparse_autoencoder.cfg
+            ).load_session()
+            sparse_autoencoders.autoencoders[0] = sparse_autoencoder
+        elif type(sparse_autoencoders) is SAEGroup:
+            model, _, activations_loader = cls(sparse_autoencoders.cfg).load_session()
+        else:
+            raise ValueError(
+                "The loaded sparse_autoencoders object is neither an SAE dict nor a SAEGroup"
+            )
 
         return model, sparse_autoencoders, activations_loader
 
