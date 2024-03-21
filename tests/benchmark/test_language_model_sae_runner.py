@@ -1,5 +1,4 @@
 import torch
-from transformer_lens import HookedTransformer
 
 from sae_training.config import LanguageModelSAERunnerConfig
 from sae_training.lm_runner import language_model_sae_runner

@@ -1,7 +1,6 @@
 from typing import Any, cast
 
 import wandb
-
 from sae_training.config import LanguageModelSAERunnerConfig
 
 # from sae_training.activation_store import ActivationStore
