@@ -138,3 +138,11 @@ class SAEGroup:
             layer_string = f"{layers[0]}"
         sae_name = f"sae_group_{self.cfg.model_name}_{self.cfg.hook_point.format(layer=layer_string)}_{self.cfg.d_sae}"
         return sae_name
+
+    def eval(self):
+        for ae in self.autoencoders:
+            ae.eval()
+
+    def train(self):
+        for ae in self.autoencoders:
+            ae.train()

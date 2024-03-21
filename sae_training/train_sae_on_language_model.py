@@ -4,10 +4,10 @@ from typing import Any, NamedTuple, cast
 import torch
 from torch.optim import Adam, Optimizer
 from torch.optim.lr_scheduler import LRScheduler
+import wandb
 from tqdm import tqdm
 from transformer_lens import HookedTransformer
 
-import wandb
 from sae_training.activations_store import ActivationsStore
 from sae_training.evals import run_evals
 from sae_training.geometric_median import compute_geometric_median

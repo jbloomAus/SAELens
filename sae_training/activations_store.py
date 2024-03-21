@@ -2,9 +2,17 @@ import os
 from typing import Any, Iterator, cast
 
 import torch
-from datasets import load_dataset
+from datasets import (
+    Dataset,
+    DatasetDict,
+    IterableDataset,
+    IterableDatasetDict,
+    load_dataset,
+)
 from torch.utils.data import DataLoader
 from transformer_lens import HookedTransformer
+
+HfDataset = DatasetDict | Dataset | IterableDatasetDict | IterableDataset
 
 
 class ActivationsStore:
@@ -17,19 +25,33 @@ class ActivationsStore:
         self,
         cfg: Any,
         model: HookedTransformer,
+        dataset: HfDataset | None = None,
         create_dataloader: bool = True,
     ):
         self.cfg = cfg
         self.model = model
-        self.dataset = load_dataset(cfg.dataset_path, split="train", streaming=True)
+        self.dataset = dataset or load_dataset(
+            cfg.dataset_path, split="train", streaming=True
+        )
         self.iterable_dataset = iter(self.dataset)
 
         # Check if dataset is tokenized
         dataset_sample = next(self.iterable_dataset)
-        self.cfg.is_dataset_tokenized = "tokens" in dataset_sample.keys()
-        print(
-            f"Dataset is {'tokenized' if self.cfg.is_dataset_tokenized else 'not tokenized'}! Updating config."
-        )
+
+        # check if it's tokenized
+        if "tokens" in dataset_sample.keys():
+            self.cfg.is_dataset_tokenized = True
+            self.tokens_column = "tokens"
+        elif "input_ids" in dataset_sample.keys():
+            self.cfg.is_dataset_tokenized = True
+            self.tokens_column = "input_ids"
+        elif "text" in dataset_sample.keys():
+            self.cfg.is_dataset_tokenized = False
+            self.tokens_column = "text"
+        else:
+            raise ValueError(
+                "Dataset must have a 'tokens', 'input_ids', or 'text' column."
+            )
         self.iterable_dataset = iter(self.dataset)  # Reset iterator after checking
 
         if self.cfg.use_cached_activations:  # EDIT: load from multi-layer acts
@@ -78,23 +100,7 @@ class ActivationsStore:
 
         # pbar = tqdm(total=batch_size, desc="Filling batches")
         while batch_tokens.shape[0] < batch_size:
-            if not self.cfg.is_dataset_tokenized:
-                s = next(self.iterable_dataset)["text"]
-                tokens = self.model.to_tokens(
-                    s,
-                    truncate=True,
-                    move_to_device=True,
-                ).squeeze(0)
-                assert (
-                    len(tokens.shape) == 1
-                ), f"tokens.shape should be 1D but was {tokens.shape}"
-            else:
-                tokens = torch.tensor(
-                    next(self.iterable_dataset)["tokens"],
-                    dtype=torch.long,
-                    device=device,
-                    requires_grad=False,
-                )
+            tokens = self._get_next_dataset_tokens()
             token_len = tokens.shape[0]
 
             # TODO: Fix this so that we are limiting how many tokens we get from the same context.
@@ -120,16 +126,18 @@ class ActivationsStore:
 
                     # Remove used part, add BOS
                     tokens = tokens[space_left:]
-                    tokens = torch.cat(
-                        (
-                            bos_token_id_tensor,
-                            tokens,
-                        ),
-                        dim=0,
-                    )
-
                     token_len -= space_left
-                    token_len += 1
+
+                    # only add BOS if it's not already the first token
+                    if tokens[0] != bos_token_id_tensor:
+                        tokens = torch.cat(
+                            (
+                                bos_token_id_tensor,
+                                tokens,
+                            ),
+                            dim=0,
+                        )
+                        token_len += 1
                     current_length = context_size
 
                 # If a batch is full, concatenate and move to next batch
@@ -145,7 +153,7 @@ class ActivationsStore:
             # pbar.refresh()
         return batch_tokens[:batch_size]
 
-    def get_activations(self, batch_tokens: torch.Tensor, get_loss: bool = False):
+    def get_activations(self, batch_tokens: torch.Tensor):
         """
         Returns activations of shape (batches, context, num_layers, d_in)
         """
@@ -156,24 +164,15 @@ class ActivationsStore:
         )
         act_names = [self.cfg.hook_point.format(layer=layer) for layer in layers]
         hook_point_max_layer = max(layers)
+        layerwise_activations = self.model.run_with_cache(
+            batch_tokens,
+            names_filter=act_names,
+            stop_at_layer=hook_point_max_layer + 1,
+        )[1]
+        activations_list = [layerwise_activations[act_name] for act_name in act_names]
         if self.cfg.hook_point_head_index is not None:
-            layerwise_activations = self.model.run_with_cache(
-                batch_tokens,
-                names_filter=act_names,
-                stop_at_layer=hook_point_max_layer + 1,
-            )[1]
             activations_list = [
-                layerwise_activations[act_name][:, :, self.cfg.hook_point_head_index]
-                for act_name in act_names
-            ]
-        else:
-            layerwise_activations = self.model.run_with_cache(
-                batch_tokens,
-                names_filter=act_names,
-                stop_at_layer=hook_point_max_layer + 1,
-            )[1]
-            activations_list = [
-                layerwise_activations[act_name] for act_name in act_names
+                act[:, :, self.cfg.hook_point_head_index] for act in activations_list
             ]
 
         # Stack along a new dimension to keep separate layers distinct
@@ -315,3 +314,24 @@ class ActivationsStore:
             # If the DataLoader is exhausted, create a new one
             self.dataloader = self.get_data_loader()
             return next(self.dataloader)
+
+    def _get_next_dataset_tokens(self) -> torch.Tensor:
+        device = self.cfg.device
+        if not self.cfg.is_dataset_tokenized:
+            s = next(self.iterable_dataset)[self.tokens_column]
+            tokens = self.model.to_tokens(
+                s,
+                truncate=True,
+                move_to_device=True,
+            ).squeeze(0)
+            assert (
+                len(tokens.shape) == 1
+            ), f"tokens.shape should be 1D but was {tokens.shape}"
+        else:
+            tokens = torch.tensor(
+                next(self.iterable_dataset)[self.tokens_column],
+                dtype=torch.long,
+                device=device,
+                requires_grad=False,
+            )
+        return tokens
