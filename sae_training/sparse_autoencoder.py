@@ -5,7 +5,7 @@ https://github.com/ArthurConmy/sae/blob/main/sae/model.py
 import gzip
 import os
 import pickle
-from typing import Any
+from typing import Any, NamedTuple
 
 import einops
 import torch
@@ -14,6 +14,15 @@ from transformer_lens.hook_points import HookedRootModule, HookPoint
 
 from sae_training.config import LanguageModelSAERunnerConfig
 from sae_training.geometric_median import compute_geometric_median
+
+
+class ForwardOutput(NamedTuple):
+    sae_out: torch.Tensor
+    feature_acts: torch.Tensor
+    loss: torch.Tensor
+    mse_loss: torch.Tensor
+    l1_loss: torch.Tensor
+    ghost_grad_loss: torch.Tensor
 
 
 class SparseAutoencoder(HookedRootModule):
@@ -138,7 +147,14 @@ class SparseAutoencoder(HookedRootModule):
         l1_loss = self.l1_coefficient * sparsity
         loss = mse_loss + l1_loss + mse_loss_ghost_resid
 
-        return sae_out, feature_acts, loss, mse_loss, l1_loss, mse_loss_ghost_resid
+        return ForwardOutput(
+            sae_out=sae_out,
+            feature_acts=feature_acts,
+            loss=loss,
+            mse_loss=mse_loss,
+            l1_loss=l1_loss,
+            ghost_grad_loss=mse_loss_ghost_resid,
+        )
 
     @torch.no_grad()
     def initialize_b_dec_with_precalculated(self, origin: torch.Tensor):
