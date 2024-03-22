@@ -3,8 +3,8 @@ from typing import Any, cast
 
 import einops
 import torch
-import wandb
 
+import wandb
 from sae_training.sparse_autoencoder import SparseAutoencoder
 from sae_training.toy_models import Config as ToyConfig
 from sae_training.toy_models import Model as ToyModel

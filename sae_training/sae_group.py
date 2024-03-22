@@ -69,7 +69,7 @@ class SAEGroup:
             try:
                 if torch.backends.mps.is_available():
                     group = torch.load(path, map_location="mps")
-                    group.cfg.device = "mps"
+                    group["cfg"].device = "mps"
                 else:
                     group = torch.load(path)
             except Exception as e:

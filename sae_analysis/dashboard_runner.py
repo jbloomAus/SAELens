@@ -1,12 +1,5 @@
-# flake8: noqa: E402
-# TODO: are these sys.path.append calls really necessary?
-
-import sys
-from typing import Any, cast
-
-sys.path.append("..")
-sys.path.append("../..")
 import os
+from typing import Any, Optional, cast
 
 # set TOKENIZERS_PARALLELISM to false to avoid warnings
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -18,20 +11,22 @@ import pandas as pd
 import plotly
 import plotly.express as px
 import torch
+from sae_vis.data_fetching_fns import get_feature_data
+from sae_vis.data_storing_fns import FeatureVisParams
 from torch.nn.functional import cosine_similarity
 from tqdm import tqdm
 
 import wandb
-from sae_analysis.visualizer.data_fns import get_feature_data
 from sae_training.utils import LMSparseAutoencoderSessionloader
 
 
 class DashboardRunner:
+
     def __init__(
         self,
-        sae_path: str | None = None,
+        sae_path: Optional[str] = None,
         dashboard_parent_folder: str = "./feature_dashboards",
-        wandb_artifact_path: str | None = None,
+        wandb_artifact_path: Optional[str] = None,
         init_session: bool = True,
         # token pars
         n_batches_to_sample_from: int = 2**12,
@@ -43,29 +38,9 @@ class DashboardRunner:
         # util pars
         use_wandb: bool = False,
         continue_existing_dashboard: bool = True,
-        final_index: int | None = None,
+        final_index: Optional[int] = None,
     ):
-        """
-        # # test it
-
-        # runner = DashboardRunner(
-        #     sae_path = None,
-        #     dashboard_parent_folder = "../feature_dashboards",
-        #     wandb_artifact_path = "jbloom/mats_sae_training_gpt2_small_resid_pre_5/sparse_autoencoder_gpt2-small_blocks.2.hook_resid_pre_24576:v19",
-        #     init_session = True,
-        #     n_batches_to_sample_from = 2**12,
-        #     n_prompts_to_select = 4096*6,
-        #     n_features_at_a_time = 128,
-        #     max_batch_size = 256,
-        #     buffer_tokens = 8,
-        #     use_wandb = True,
-        #     continue_existing_dashboard = True,
-        # )
-
-
-        # runner.run()
-
-        """
+        """ """
 
         if wandb_artifact_path is not None:
             artifact_dir = f"artifacts/{wandb_artifact_path.split('/')[2]}"
@@ -103,6 +78,7 @@ class DashboardRunner:
         else:
             assert sae_path is not None
             self.sae_path = sae_path
+            self.feature_sparsity = None
 
         if init_session:
             self.init_sae_session()
@@ -152,6 +128,7 @@ class DashboardRunner:
             sae_group,
             self.activation_store,
         ) = LMSparseAutoencoderSessionloader.load_session_from_pretrained(self.sae_path)
+        # TODO: handle multiple autoencoders
         self.sparse_autoencoder = sae_group.autoencoders[0]
 
     def get_tokens(
@@ -176,15 +153,16 @@ class DashboardRunner:
 
     def get_index_to_resume_from(self):
         i = 0
+        assert self.n_features is not None  # keep pyright happy
         for i in range(self.n_features):
             if not os.path.exists(f"{self.dashboard_folder}/data_{i:04}.html"):
                 break
 
         assert self.sparse_autoencoder.cfg.d_sae is not None  # keep pyright happy
+        assert self.final_index is not None  # keep pyright happy
         n_features = self.sparse_autoencoder.cfg.d_sae
         n_features_at_a_time = self.n_features_at_a_time
         id_of_last_feature_without_dashboard = i
-        assert self.final_index is not None  # keep pyright happy
         n_features_remaining = self.final_index - id_of_last_feature_without_dashboard
         n_batches_to_do = n_features_remaining // n_features_at_a_time
         if self.final_index == n_features:
@@ -206,7 +184,11 @@ class DashboardRunner:
     @torch.no_grad()
     def get_feature_property_df(self):
         sparse_autoencoder = self.sparse_autoencoder
-        feature_sparsity = self.feature_sparsity
+        feature_sparsity = (
+            self.feature_sparsity
+            if self.feature_sparsity is not None
+            else torch.tensor(0)
+        )
 
         W_dec_normalized = (
             sparse_autoencoder.W_dec.cpu()
@@ -258,11 +240,11 @@ class DashboardRunner:
             self.init_sae_session()
 
         # generate all the plots
-        if self.use_wandb:
+        if self.use_wandb and self.feature_sparsity is not None:
             feature_property_df = self.get_feature_property_df()
 
             fig = px.histogram(
-                feature_property_df.log_feature_sparsity,
+                self.feature_sparsity + 1e-10,
                 nbins=100,
                 log_x=False,
                 title="Feature sparsity",
@@ -303,10 +285,10 @@ class DashboardRunner:
             )
             wandb.log({"plots/scatter_matrix": wandb.Html(plotly.io.to_html(fig))})
 
-        assert self.sparse_autoencoder.cfg.d_sae is not None  # keep pyright happy
         self.n_features = self.sparse_autoencoder.cfg.d_sae
         id_to_start_from = self.get_index_to_resume_from()
         id_to_end_at = self.n_features if self.final_index is None else self.final_index
+        assert id_to_end_at is not None  # keep pyright happy
 
         # divide into batches
         feature_idx = torch.tensor(range(id_to_start_from, id_to_end_at))
@@ -327,29 +309,37 @@ class DashboardRunner:
         if self.use_wandb:
             wandb.log({"time/time_to_get_tokens": end - start})
 
+        vocab_dict = cast(Any, self.model.tokenizer).vocab
+        vocab_dict = {
+            v: k.replace("Ġ", " ").replace("\n", "\\n") for k, v in vocab_dict.items()
+        }
+
         with torch.no_grad():
             for interesting_features in tqdm(feature_idx):
                 print(interesting_features)
-                feature_data = get_feature_data(
-                    encoder=self.sparse_autoencoder,
-                    # encoder_B=sparse_autoencoder,
-                    model=self.model,
+
+                feature_vis_params = FeatureVisParams(
                     hook_point=self.sparse_autoencoder.cfg.hook_point,
-                    hook_point_layer=self.sparse_autoencoder.cfg.hook_point_layer,
-                    hook_point_head_index=None,
-                    tokens=tokens,
-                    feature_idx=interesting_features,
-                    max_batch_size=self.max_batch_size,
-                    left_hand_k=3,
-                    buffer=(self.buffer_tokens, self.buffer_tokens),
                     n_groups=10,
+                    minibatch_size_features=256,
+                    minibatch_size_tokens=64,
                     first_group_size=20,
                     other_groups_size=5,
+                    buffer=(self.buffer_tokens, self.buffer_tokens),
+                    features=interesting_features,
                     verbose=True,
+                    include_left_tables=False,
+                )
+
+                feature_data = get_feature_data(
+                    encoder=self.sparse_autoencoder,  # type: ignore
+                    model=self.model,
+                    tokens=tokens,
+                    fvp=feature_vis_params,
                 )
 
                 for i, test_idx in enumerate(feature_data.keys()):
-                    html_str = feature_data[test_idx].get_all_html()
+                    html_str = feature_data[test_idx].get_html(vocab_dict=vocab_dict)
                     with open(
                         f"{self.dashboard_folder}/data_{test_idx:04}.html", "w"
                     ) as f:
@@ -367,7 +357,7 @@ class DashboardRunner:
                         # also upload as html to dashboard
                         wandb.log(
                             {
-                                f"features/feature_dashboard": wandb.Html(
+                                "features/feature_dashboard": wandb.Html(
                                     f"{self.dashboard_folder}/data_{test_idx:04}.html"
                                 )
                             },
