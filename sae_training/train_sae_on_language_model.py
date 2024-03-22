@@ -318,9 +318,6 @@ def _train_step(
         )
         ctx.n_frac_active_tokens = 0
 
-    ctx.scheduler.step()
-    ctx.optimizer.zero_grad()
-
     ghost_grad_neuron_mask = (
         ctx.n_forward_passes_since_fired > sparse_autoencoder.cfg.dead_feature_window
     ).bool()
@@ -346,9 +343,11 @@ def _train_step(
         ctx.act_freq_scores += (feature_acts.abs() > 0).float().sum(0)
         ctx.n_frac_active_tokens += batch_size
 
+    ctx.optimizer.zero_grad()
     loss.backward()
     sparse_autoencoder.remove_gradient_parallel_to_decoder_directions()
     ctx.optimizer.step()
+    ctx.scheduler.step()
 
     return TrainStepOutput(
         sae_in=sae_in,
