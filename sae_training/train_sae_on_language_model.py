@@ -1,11 +1,11 @@
 from typing import Any, cast
 
 import torch
-import wandb
 from torch.optim import Adam
 from tqdm import tqdm
 from transformer_lens import HookedTransformer
 
+import wandb
 from sae_training.activations_store import ActivationsStore
 from sae_training.evals import run_evals
 from sae_training.geometric_median import compute_geometric_median

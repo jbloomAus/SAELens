@@ -11,12 +11,12 @@ import pandas as pd
 import plotly
 import plotly.express as px
 import torch
-import wandb
 from sae_vis.data_fetching_fns import get_feature_data
 from sae_vis.data_storing_fns import FeatureVisParams
 from torch.nn.functional import cosine_similarity
 from tqdm import tqdm
 
+import wandb
 from sae_training.utils import LMSparseAutoencoderSessionloader
 
 
@@ -184,7 +184,11 @@ class DashboardRunner:
     @torch.no_grad()
     def get_feature_property_df(self):
         sparse_autoencoder = self.sparse_autoencoder
-        feature_sparsity = self.feature_sparsity
+        feature_sparsity = (
+            self.feature_sparsity
+            if self.feature_sparsity is not None
+            else torch.tensor(0)
+        )
 
         W_dec_normalized = (
             sparse_autoencoder.W_dec.cpu()
@@ -305,6 +309,11 @@ class DashboardRunner:
         if self.use_wandb:
             wandb.log({"time/time_to_get_tokens": end - start})
 
+        vocab_dict = cast(Any, self.model.tokenizer).vocab
+        vocab_dict = {
+            v: k.replace("Ġ", " ").replace("\n", "\\n") for k, v in vocab_dict.items()
+        }
+
         with torch.no_grad():
             for interesting_features in tqdm(feature_idx):
                 print(interesting_features)
@@ -330,7 +339,7 @@ class DashboardRunner:
                 )
 
                 for i, test_idx in enumerate(feature_data.keys()):
-                    html_str = feature_data[test_idx].get_html()
+                    html_str = feature_data[test_idx].get_html(vocab_dict=vocab_dict)
                     with open(
                         f"{self.dashboard_folder}/data_{test_idx:04}.html", "w"
                     ) as f:
@@ -348,7 +357,7 @@ class DashboardRunner:
                         # also upload as html to dashboard
                         wandb.log(
                             {
-                                f"features/feature_dashboard": wandb.Html(
+                                "features/feature_dashboard": wandb.Html(
                                     f"{self.dashboard_folder}/data_{test_idx:04}.html"
                                 )
                             },
