@@ -1,11 +1,17 @@
+<img width="1308" alt="Screenshot 2024-03-21 at 3 08 28 pm" src="https://github.com/jbloomAus/mats_sae_training/assets/69127271/209012ec-a779-4036-b4be-7b7739ea87f6">
+
 # MATS SAE Training
 
 [![build](https://github.com/jbloomAus/mats_sae_training/actions/workflows/tests.yml/badge.svg)](https://github.com/jbloomAus/mats_sae_training/actions/workflows/tests.yml)
 
-This codebase contains training scripts and analysis code for Sparse AutoEncoders. I wasn't planning to share this codebase initially but I've recieved feedback that others have found it useful so I'm going to slowly transition it to be a more serious repo (formating/linting/testing etc.). In the mean time, please feel free to add Pull Requests or make issues if you have any trouble with it. 
+The MATS SAE training codebase (we'll rename it soon) exists to help researchers:
+- Train sparse autoencoders.
+- Analyse sparse autoencoders and neural network internals.
+- Generate insights which make it easier to create safe and aligned AI systems.
 
+## Quick Start
 
-## Set Up
+### Set Up
 
 This project uses [Poetry](https://python-poetry.org/) for dependency management. Ensure Poetry is installed, then to install the dependencies, run:
 
@@ -13,25 +19,7 @@ This project uses [Poetry](https://python-poetry.org/) for dependency management
 poetry install
 ```
 
-## Background
-
-We highly recommend this [tutorial](https://www.lesswrong.com/posts/LnHowHgmrMbWtpkxx/intro-to-superposition-and-sparse-autoencoders-colab).
-
-## Code Overview
-
-The codebase contains 2 folders worth caring about:
-
-- sae_training: The main body of the code is here. Everything required for training SAEs. 
-- sae_analysis: This code is mainly house the feature visualizer code we use to generate dashboards. It was written by Callum McDougal but I've ported it here with permission and edited it to work with a few different activation types. 
-
-Some other folders:
-
-- tutorials: These aren't well maintained but I'll aim to clean them up soon. 
-- tests: When first developing the codebase, I was writing more tests. I have no idea whether they are currently working!
-
-I've been commiting my research code to the `Research` folder but am not expecting other people use or look at that. 
-
-## Loading Sparse Autoencoders from Huggingface
+### Loading Sparse Autoencoders from Huggingface
 
 [Previously trained sparse autoencoders](https://huggingface.co/jbloom/GPT2-Small-SAEs) can be loaded from huggingface with close to single line of code. For more details and performance metrics for these sparse autoencoder, read my [blog post](https://www.alignmentforum.org/posts/f9EgfLSurAiqRJySD/open-source-sparse-autoencoders-for-all-residual-stream). 
 
@@ -58,9 +46,58 @@ path = hf_hub_download(repo_id=REPO_ID, filename=FILENAME)
 log_feature_sparsity = torch.load(path, map_location=sparse_autoencoder.cfg.device)
 
 ```
+### Background
+
+We highly recommend this [tutorial](https://www.lesswrong.com/posts/LnHowHgmrMbWtpkxx/intro-to-superposition-and-sparse-autoencoders-colab).
 
 
-## Training a Sparse Autoencoder on a Language Model
+## High Level
+
+### Motivation
+
+- **Accelerate SAE Research**: Support fast experimentation to understand SAEs and improve SAE training so we can train SAEs on larger and more diverse models.
+- **Make Research like Play**: Support research into language model internals via SAEs. Good tooling can make research tremendously exciting and enjoyable. Balancing modifiability and reliability with ease of understanding / access is the name of the game here.
+- **Build an awesome community**: Mechanistic Interpretability already has an awesome community but as that community grows, it makes sense that there will be niches. I'd love to build a great community around Sparse Autoencoders.
+
+### Goals
+
+#### **SAE Training**: SAE Training features will fit into a number of categories including:
+- **Making it easy to train SAEs**: Training SAEs is hard for a number of reasons and so making it easy for people to train SAEs with relatively little expertise seems like the main way this codebase will create value. 
+- **Training SAEs on more models**: Supporting training of SAEs on more models, architectures, different activations within those models.
+- **Being better at training SAEs**: Enabling methodological changes which may improve SAE performance as measured by reconstruction loss, Cross Entropy Loss when using reconstructed activation, L1 loss, L0 and interpretability of features as well as improving speed of training or reducing the compute resources required to train SAEs. 
+- **Being better at measuring SAE Performance**: How do we know when SAEs are doing what we want them to? Improving training metrics should allow better decisions about which methods to use and which hyperparameters choices we make.
+- **Training SAE variants**: People are already training “Transcoders” which map from one activation to another (such as before / after an MLP layer). These can be easily supported with a few changes. Other variants will come in time and 
+
+#### **Analysis with SAEs**: Using SAEs to understand neural network internals is an exciting, but complicated task.
+- **Feature-wise Interpretability**: This looks something like "for each feature, have as much knowledge about it as possible". Part of this will feature dashboard improvements, or supporting better integrations with Neuronpedia.
+- **Mechanistic Interpretability**: This comprises the more traditional kinds of Mechanistic Interpretability which TransformerLens supports and should be supported by this codebase. Making it easy to patch, ablate or otherwise intervene on features so as to find circuits will likely speed up lots of researchers.
+
+### Other Stuff
+
+I think there are lots of other types of analysis that could be done in the future with SAE features. I've already explored many different types of statistical tests which can reveal interesting properties of features. There are also things like saliency mapping and attribution techniques which it would be nice to support.
+- Accessibility and Code Quality: The codebase won’t be used if it doesn’t work and it also won’t get used if it’s too hard to understand, modify or read. 
+Making the code accessible: This involves tasks like turning the code base into a python package.
+- Knowing how the code is supposed to work: Is the code well-documented? This will require docstrings, tutorials and links to related work and publications. Getting aligned on what the code does is critical to sharing a resource like this. 
+- Knowing the code works as intended: All code should be tested. Unit tests and acceptance tests are both important.
+- Knowing the code is actually performant: This will ensure code works as intended. However deep learning introduces lots of complexity which makes actually running benchmarks essential to having confidence in the code. 
+
+
+## Code Overview
+
+The codebase contains 2 folders worth caring about:
+
+- sae_training: The main body of the code is here. Everything required for training SAEs. 
+- sae_analysis: This code is mainly house the feature visualizer code we use to generate dashboards. It was written by Callum McDougal but I've ported it here with permission and edited it to work with a few different activation types. 
+
+Some other folders:
+
+- tutorials: These aren't well maintained but I'll aim to clean them up soon. 
+- tests: When first developing the codebase, I was writing more tests. I have no idea whether they are currently working!
+
+I've been commiting my research code to the `Research` folder but am not expecting other people use or look at that. 
+
+
+### Training your own Sparse Autoencoder
 
 Sparse Autoencoders can be intimidating at first but it's fairly simple to train one once you know what each part of the config does. I've created a config class which you instantiate and pass to the runner which will complete your training run and log it's progress to wandb. 
 
@@ -158,7 +195,8 @@ model, sparse_autoencoder, activations_loader = LMSparseAutoencoderSessionloader
 ## Tutorials
 
 I wrote a tutorial to show users how to do some basic exploration of their SAE. 
-- `evaluating_your_sae.ipynb`: A quick/dirty notebook showing how to check L0 and Prediction loss with your SAE, as well as showing how to generate interactive dashboards using Callum's reporduction of [Anthropics interface](https://transformer-circuits.pub/2023/monosemantic-features#setup-interface). 
+- `evaluating_your_sae.ipynb`: A quick/dirty notebook showing how to check L0 and Prediction loss with your SAE, as well as showing how to generate interactive dashboards using Callum's reporduction of [Anthropics interface](https://transformer-circuits.pub/2023/monosemantic-features#setup-interface).
+- `logits_lens_with_features.ipynb`: A notebook showing how to reproduce the analysis from this [LessWrong post](https://www.lesswrong.com/posts/qykrYY6rXXM7EEs8Q/understanding-sae-features-with-the-logit-lens).
 
 ## Example Dashboard
 
