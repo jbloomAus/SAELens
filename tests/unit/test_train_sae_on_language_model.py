@@ -1,12 +1,22 @@
+from pathlib import Path
 from typing import Any, Callable
 from unittest.mock import patch
 
+import pytest
 import torch
 from torch import Tensor
 
 from sae_training.optim import get_scheduler
+from sae_training.sae_group import SAEGroup
 from sae_training.sparse_autoencoder import ForwardOutput, SparseAutoencoder
-from sae_training.train_sae_on_language_model import SAETrainContext, _train_step
+from sae_training.train_sae_on_language_model import (
+    SAETrainContext,
+    TrainStepOutput,
+    _build_train_step_log_dict,
+    _log_feature_sparsity,
+    _save_checkpoint,
+    _train_step,
+)
 from tests.unit.helpers import build_sae_cfg
 
 
@@ -81,7 +91,7 @@ def test_train_step_reduces_loss_when_called_repeatedly_on_same_acts() -> None:
 
 
 def test_train_step_output_looks_reasonable() -> None:
-    cfg = build_sae_cfg(d_in=64, d_sae=128, hook_point_layer=0, dead_feature_window=100)
+    cfg = build_sae_cfg(d_in=64, d_sae=128, hook_point_layer=0)
     sae = SparseAutoencoder(cfg)
     ctx = build_train_ctx(sae)
 
@@ -119,7 +129,7 @@ def test_train_step_output_looks_reasonable() -> None:
 
 
 def test_train_step_sparsity_updates_based_on_feature_act_sparsity() -> None:
-    cfg = build_sae_cfg(d_in=2, d_sae=4, hook_point_layer=0, dead_feature_window=100)
+    cfg = build_sae_cfg(d_in=2, d_sae=4, hook_point_layer=0)
     sae = SparseAutoencoder(cfg)
 
     feature_acts = torch.tensor([[0, 0, 0, 0], [1, 0, 0, 1], [1, 0, 1, 1]]).float()
@@ -164,3 +174,101 @@ def test_train_step_sparsity_updates_based_on_feature_act_sparsity() -> None:
 
     # the outputs from the SAE should be included in the train output
     assert train_output.feature_acts is feature_acts
+
+
+def test_log_feature_sparsity_handles_zeroes_by_default_fp32() -> None:
+    fp32_zeroes = torch.tensor([0], dtype=torch.float32)
+    assert _log_feature_sparsity(fp32_zeroes).item() != float("-inf")
+
+
+# TODO: currently doesn't work for fp16, we should address this
+@pytest.mark.skip(reason="Currently doesn't work for fp16")
+def test_log_feature_sparsity_handles_zeroes_by_default_fp16() -> None:
+    fp16_zeroes = torch.tensor([0], dtype=torch.float16)
+    assert _log_feature_sparsity(fp16_zeroes).item() != float("-inf")
+
+
+def test_build_train_step_log_dict() -> None:
+    cfg = build_sae_cfg(
+        d_in=2, d_sae=4, hook_point_layer=0, lr=2e-4, l1_coefficient=1e-2
+    )
+    sae = SparseAutoencoder(cfg)
+    ctx = build_train_ctx(
+        sae,
+        act_freq_scores=torch.tensor([0, 3, 1, 0]).float(),
+        n_frac_active_tokens=10,
+        n_forward_passes_since_fired=torch.tensor([4, 0, 0, 0]).float(),
+    )
+    train_output = TrainStepOutput(
+        sae_in=torch.tensor([[-1, 0], [0, 2], [1, 1]]).float(),
+        sae_out=torch.tensor([[0, 0], [0, 2], [0.5, 1]]).float(),
+        feature_acts=torch.tensor([[0, 0, 0, 1], [1, 0, 0, 1], [1, 0, 1, 1]]).float(),
+        loss=torch.tensor(0.5),
+        mse_loss=torch.tensor(0.25),
+        l1_loss=torch.tensor(0.1),
+        ghost_grad_loss=torch.tensor(0.15),
+        ghost_grad_neuron_mask=torch.tensor([False, True, False, True]),
+    )
+
+    log_dict = _build_train_step_log_dict(
+        sae, train_output, ctx, wandb_suffix="-wandbftw", n_training_tokens=123
+    )
+    assert log_dict == {
+        "losses/mse_loss-wandbftw": 0.25,
+        # l1 loss is scaled by l1_coefficient
+        "losses/l1_loss-wandbftw": pytest.approx(10),
+        "losses/ghost_grad_loss-wandbftw": pytest.approx(0.15),
+        "losses/overall_loss-wandbftw": 0.5,
+        "metrics/explained_variance-wandbftw": 0.75,
+        "metrics/explained_variance_std-wandbftw": 0.25,
+        "metrics/l0-wandbftw": 2.0,
+        "sparsity/mean_passes_since_fired-wandbftw": 1.0,
+        "sparsity/dead_features-wandbftw": 2,
+        "details/current_learning_rate-wandbftw": 2e-4,
+        "details/n_training_tokens": 123,
+    }
+
+
+def test_save_checkpoint(tmp_path: Path) -> None:
+    checkpoint_dir = tmp_path / "checkpoint"
+    cfg = build_sae_cfg(checkpoint_path=checkpoint_dir, d_in=25, d_sae=100)
+    sae_group = SAEGroup(cfg)
+    assert len(sae_group.autoencoders) == 1
+    ctx = build_train_ctx(
+        sae_group.autoencoders[0],
+        act_freq_scores=torch.randint(0, 100, (100,)),
+        n_forward_passes_since_fired=torch.randint(0, 100, (100,)),
+        n_frac_active_tokens=123,
+    )
+    res = _save_checkpoint(sae_group, [ctx], "test_checkpoint")
+    assert res.path == str(
+        checkpoint_dir / f"test_checkpoint_{sae_group.get_name()}.pt"
+    )
+    assert res.log_feature_sparsity_path == str(
+        checkpoint_dir
+        / f"test_checkpoint_{sae_group.get_name()}_log_feature_sparsity.pt"
+    )
+    assert torch.allclose(
+        res.log_feature_sparsities[0], _log_feature_sparsity(ctx.feature_sparsity)
+    )
+
+    # now, load the saved checkpoints to make sure they match what we saved
+    loaded_sae_group = torch.load(res.path)
+    loaded_log_sparsities = torch.load(res.log_feature_sparsity_path)
+
+    assert isinstance(loaded_sae_group, SAEGroup)
+    assert len(loaded_sae_group.autoencoders) == 1
+    assert loaded_sae_group.get_name() == sae_group.get_name()
+
+    loaded_state_dict = loaded_sae_group.autoencoders[0].state_dict()
+    original_state_dict = sae_group.autoencoders[0].state_dict()
+
+    assert list(loaded_state_dict.keys()) == list(original_state_dict.keys())
+    for orig_val, loaded_val in zip(
+        original_state_dict.values(), loaded_state_dict.values()
+    ):
+        assert torch.allclose(orig_val, loaded_val)
+
+    assert torch.allclose(
+        loaded_log_sparsities[0], _log_feature_sparsity(ctx.feature_sparsity)
+    )

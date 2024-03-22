@@ -406,6 +406,7 @@ def _build_train_step_log_dict(
 
 class SaveCheckpointOutput(NamedTuple):
     path: str
+    log_feature_sparsity_path: str
     log_feature_sparsities: list[torch.Tensor]
 
 
@@ -442,7 +443,7 @@ def _save_checkpoint(
         )
         sparsity_artifact.add_file(log_feature_sparsity_path)
         wandb.log_artifact(sparsity_artifact)
-    return SaveCheckpointOutput(path, log_feature_sparsities)
+    return SaveCheckpointOutput(path, log_feature_sparsity_path, log_feature_sparsities)
 
 
 def _log_feature_sparsity(
