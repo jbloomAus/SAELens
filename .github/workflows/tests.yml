@@ -7,7 +7,6 @@ on:
       - clean_up_repo
     paths-ignore:
       - '.devcontainer/**'
-      - '.github/**'
       - '.vscode/**'
       - '.gitignore'
       - '*.md'
@@ -16,7 +15,6 @@ on:
       - main
     paths-ignore:
       - '.devcontainer/**'
-      - '.github/**'
       - '.vscode/**'
       - '.gitignore'
       - '*.md'
