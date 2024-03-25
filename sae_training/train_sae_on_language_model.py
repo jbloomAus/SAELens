@@ -91,7 +91,6 @@ def train_sae_group_on_language_model(
     if not isinstance(all_layers, list):
         all_layers = [all_layers]
 
-    wandb_suffix = _wandb_log_suffix(sae_group.cfg, sae_group.cfg)
     train_contexts = [
         _build_train_context(sae, total_training_steps) for sae in sae_group
     ]
@@ -111,6 +110,7 @@ def train_sae_group_on_language_model(
             sparse_autoencoder,
             ctx,
         ) in zip(sae_group, train_contexts):
+            wandb_suffix = _wandb_log_suffix(sae_group.cfg, sparse_autoencoder.cfg)
             step_output = _train_step(
                 sparse_autoencoder=sparse_autoencoder,
                 layer_acts=layer_acts,
