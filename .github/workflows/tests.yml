@@ -55,4 +55,10 @@ jobs:
       - name: type checking
         run: poetry run pyright
       - name: Run Unit Tests
-        run: make unit-test
+    #   Would use make, but want cov report in xml format
+        run: poetry run pytest -v --cov=sae_training/ --cov-report=term-missing --cov-branch tests/unit --cov-report=xml
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v4.0.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: jbloomAus/mats_sae_training
