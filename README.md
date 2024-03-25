@@ -3,6 +3,7 @@
 # MATS SAE Training
 
 [![build](https://github.com/jbloomAus/mats_sae_training/actions/workflows/tests.yml/badge.svg)](https://github.com/jbloomAus/mats_sae_training/actions/workflows/tests.yml)
+[![codecov](https://codecov.io/gh/jbloomAus/mats_sae_training/graph/badge.svg?token=N83NGH8CGE)](https://codecov.io/gh/jbloomAus/mats_sae_training)
 
 The MATS SAE training codebase (we'll rename it soon) exists to help researchers:
 - Train sparse autoencoders.
