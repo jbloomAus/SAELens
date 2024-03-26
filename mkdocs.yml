@@ -1,0 +1,77 @@
+site_name: MATS SAE Training
+site_description: Docs for Sparse Autoencoder Training Library
+site_author: Joseph Bloom
+repo_url: http://github.com/jbloomAus/mats_sae_training/
+repo_name: jbloomAus/mats_sae_training
+edit_uri: ""
+
+theme:
+  name: material
+  font:
+    text: Nunito
+  palette:
+    - scheme: default
+      primary: green
+      accent: yellow
+      background: white
+        # Palette toggle for light mode
+      toggle:
+        icon: material/lightbulb
+        name: Switch to dark mode
+
+    # Palette toggle for dark mode
+    - scheme: slate
+      primary: green
+      accent: yellow
+      background: white
+      toggle:
+        icon: material/lightbulb-outline
+        name: Switch to light mode
+
+  features:
+    - navigation.instant
+
+  icon:
+    repo: fontawesome/brands/github
+
+    
+extra_javascript:
+  - javascript/custom_formatting.js
+  # The below three make MathJax work, see https://squidfunk.github.io/mkdocs-material/reference/mathjax/
+  - javascript/mathjax.js
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
+nav:
+  - Home: index.md
+  - Roadmap: roadmap.md
+  - Installation: installation.md
+  - Training SAEs: training_saes.md
+  # - Analysis: usage/examples.md
+  - Reference:
+    - Language Models: reference/language_models.md
+    - Toy Models: reference/toy_models.md
+    - Misc: reference/misc.md
+  - About:
+    - Citation: about/citation.md
+    - Contributing: about/contributing.md
+
+plugins:
+  - search
+  - autorefs
+  - section-index
+  - mkdocstrings:
+      custom_templates: null
+      watch:
+        - sae_training/  # Replace with the path to your Python code
+        - sae_analysis/  # Replace with the path to your Python code
+
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
