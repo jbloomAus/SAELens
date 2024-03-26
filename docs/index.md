@@ -3,6 +3,7 @@
 # MATS SAE Training
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![build](https://github.com/jbloomAus/mats_sae_training/actions/workflows/tests.yml/badge.svg)](https://github.com/jbloomAus/mats_sae_training/actions/workflows/tests.yml)
+[![Deploy Docs](https://github.com/jbloomAus/mats_sae_training/actions/workflows/deploy_docs.yml/badge.svg)](https://github.com/jbloomAus/mats_sae_training/actions/workflows/deploy_docs.yml)
 [![codecov](https://codecov.io/gh/jbloomAus/mats_sae_training/graph/badge.svg?token=N83NGH8CGE)](https://codecov.io/gh/jbloomAus/mats_sae_training)
 
 The MATS SAE training codebase (we'll rename it soon) exists to help researchers:
