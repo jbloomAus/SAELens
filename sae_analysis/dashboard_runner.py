@@ -364,19 +364,20 @@ class DashboardRunner:
                             step=test_idx,
                         )
 
-        # when done zip the folder
-        shutil.make_archive(self.dashboard_folder, "zip", self.dashboard_folder)
+        if self.use_wandb:
+            # when done zip the folder
+            shutil.make_archive(self.dashboard_folder, "zip", self.dashboard_folder)
 
-        # then upload the zip as an artifact
-        artifact = wandb.Artifact("dashboard", type="zipped_feature_dashboards")
-        artifact.add_file(f"{self.dashboard_folder}.zip")
-        assert run is not None  # keep pyright happy
-        run.log_artifact(artifact)
+            # then upload the zip as an artifact
+            artifact = wandb.Artifact("dashboard", type="zipped_feature_dashboards")
+            artifact.add_file(f"{self.dashboard_folder}.zip")
+            assert run is not None  # keep pyright happy
+            run.log_artifact(artifact)
 
-        # terminate the run
-        run.finish()
+            # terminate the run
+            run.finish()
 
-        # delete the dashboard folder
-        shutil.rmtree(self.dashboard_folder)
+            # delete the dashboard folder
+            shutil.rmtree(self.dashboard_folder)
 
         return
