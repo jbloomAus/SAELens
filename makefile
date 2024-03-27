@@ -19,3 +19,11 @@ unit-test:
 
 acceptance-test:
 	poetry run pytest -v --cov=sae_training/ --cov-report=term-missing --cov-branch tests/acceptance
+
+check-ci:
+	make check-format
+	make check-type
+	make unit-test
+
+docs-serve:
+	poetry run mkdocs serve

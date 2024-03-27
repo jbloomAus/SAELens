@@ -36,6 +36,7 @@ jobs:
         run: poetry install --no-root
 
       - name: Deploy website
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: poetry run mkdocs gh-deploy
