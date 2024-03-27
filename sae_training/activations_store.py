@@ -156,6 +156,8 @@ class ActivationsStore:
     def get_activations(self, batch_tokens: torch.Tensor):
         """
         Returns activations of shape (batches, context, num_layers, d_in)
+
+        d_in may result from a concatenated head dimension.
         """
         layers = (
             self.cfg.hook_point_layer
@@ -173,6 +175,11 @@ class ActivationsStore:
         if self.cfg.hook_point_head_index is not None:
             activations_list = [
                 act[:, :, self.cfg.hook_point_head_index] for act in activations_list
+            ]
+        elif activations_list[0].ndim > 3:  # if we have a head dimension
+            # flatten the head dimension
+            activations_list = [
+                act.view(act.shape[0], act.shape[1], -1) for act in activations_list
             ]
 
         # Stack along a new dimension to keep separate layers distinct
