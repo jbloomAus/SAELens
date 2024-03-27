@@ -10,25 +10,56 @@ from transformer_lens import HookedTransformer
 from sae_training.activations_store import ActivationsStore
 from sae_training.sparse_autoencoder import SparseAutoencoder
 
-TEST_MODEL = "tiny-stories-1M"
-TEST_DATASET = "roneneldan/TinyStories"
 
-
-@pytest.fixture
-def cfg():
+# Define a new fixture for different configurations
+@pytest.fixture(
+    params=[
+        {
+            "model_name": "tiny-stories-1M",
+            "dataset_path": "roneneldan/TinyStories",
+            "tokenized": False,
+            "hook_point": "blocks.1.hook_resid_pre",
+            "hook_point_layer": 1,
+            "d_in": 64,
+        },
+        {
+            "model_name": "tiny-stories-1M",
+            "dataset_path": "apollo-research/roneneldan-TinyStories-tokenizer-gpt2",
+            "tokenized": False,
+            "hook_point": "blocks.1.hook_resid_pre",
+            "hook_point_layer": 1,
+            "d_in": 64,
+        },
+        {
+            "model_name": "tiny-stories-1M",
+            "dataset_path": "roneneldan/TinyStories",
+            "tokenized": False,
+            "hook_point": "blocks.1.attn.hook_z",
+            "hook_point_layer": 1,
+            "d_in": 64,
+        },
+    ],
+    ids=[
+        "tiny-stories-1M-resid-pre",
+        "tiny-stories-1M-resid-pre-pretokenized",
+        "tiny-stories-1M-attn-out",
+    ],
+)
+def cfg(request: pytest.FixtureRequest) -> SimpleNamespace:
     """
     Pytest fixture to create a mock instance of LanguageModelSAERunnerConfig.
     """
+    params = request.param
     # Create a mock object with the necessary attributes
     mock_config = SimpleNamespace()
-    mock_config.model_name = TEST_MODEL
-    mock_config.hook_point = "blocks.0.hook_mlp_out"
-    mock_config.hook_point_layer = 0
+    mock_config.model_name = params["model_name"]
+    mock_config.dataset_path = params["dataset_path"]
+    mock_config.is_dataset_tokenized = params["tokenized"]
+    mock_config.hook_point = params["hook_point"]
+    mock_config.hook_point_layer = params["hook_point_layer"]
+    mock_config.d_in = params["d_in"]
     mock_config.hook_point_head_index = None
-    mock_config.dataset_path = TEST_DATASET
-    mock_config.is_dataset_tokenized = False
     mock_config.use_cached_activations = False
-    mock_config.d_in = 64
     mock_config.use_ghost_grads = False
     mock_config.expansion_factor = 2
     mock_config.d_sae = mock_config.d_in * mock_config.expansion_factor
@@ -66,12 +97,12 @@ def sparse_autoencoder(cfg: Any):
 
 
 @pytest.fixture
-def model():
-    return HookedTransformer.from_pretrained(TEST_MODEL)
+def model(cfg: SimpleNamespace):
+    return HookedTransformer.from_pretrained(cfg.model_name, device="cpu")
 
 
 @pytest.fixture
-def activation_store(cfg: Any, model: HookedTransformer):
+def activation_store(cfg: SimpleNamespace, model: HookedTransformer):
     return ActivationsStore(cfg, model)
 
 

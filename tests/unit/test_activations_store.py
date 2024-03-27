@@ -29,6 +29,14 @@ def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
             "d_in": 64,
         },
         {
+            "model_name": "tiny-stories-1M",
+            "dataset_path": "roneneldan/TinyStories",
+            "tokenized": False,
+            "hook_point": "blocks.1.attn.hook_z",
+            "hook_point_layer": 1,
+            "d_in": 64,
+        },
+        {
             "model_name": "gelu-2l",
             "dataset_path": "NeelNanda/c4-tokenized-2b",
             "tokenized": True,
@@ -53,7 +61,13 @@ def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
             "d_in": 768,
         },
     ],
-    ids=["tiny-stories-1M", "gelu-2l-tokenized", "gpt2-tokenized", "gpt2"],
+    ids=[
+        "tiny-stories-1M-resid-pre",
+        "tiny-stories-1M-attn-out",
+        "gelu-2l-tokenized",
+        "gpt2-tokenized",
+        "gpt2",
+    ],
 )
 def cfg(request: pytest.FixtureRequest) -> SimpleNamespace:
     # This function will be called with each parameter set
