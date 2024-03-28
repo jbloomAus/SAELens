@@ -1,5 +1,5 @@
 import os
-from typing import Any, cast
+from typing import Any, Optional, cast
 
 # set TOKENIZERS_PARALLELISM to false to avoid warnings
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -37,6 +37,7 @@ class NeuronpediaRunner:
     def __init__(
         self,
         sae_path: str,
+        feature_sparsity_path: Optional[str] = None,
         neuronpedia_parent_folder: str = "./neuronpedia_outputs",
         init_session: bool = True,
         # token pars
@@ -45,18 +46,14 @@ class NeuronpediaRunner:
         # sampling pars
         n_features_at_a_time: int = 1024,
         buffer_tokens: int = 8,
-        # util pars
-        alive_indexes: list[int] = [],
     ):
         self.sae_path = sae_path
-        self.feature_sparsity = None
-
         if init_session:
             self.init_sae_session()
 
+        self.feature_sparsity_path = feature_sparsity_path
         self.n_features_at_a_time = n_features_at_a_time
         self.buffer_tokens = buffer_tokens
-        self.alive_indexes = alive_indexes
         self.n_batches_to_sample_from = n_batches_to_sample_from
         self.n_prompts_to_select = n_prompts_to_select
 
@@ -116,21 +113,33 @@ class NeuronpediaRunner:
         self.n_features = self.sparse_autoencoder.cfg.d_sae
         assert self.n_features is not None
 
+        # if we have feature sparsity, then use it to only generate outputs for non-dead features
+        self.target_feature_indexes: list[int] = []
+        if self.feature_sparsity_path:
+            loaded = torch.load(
+                self.feature_sparsity_path, map_location=self.sparse_autoencoder.device
+            )
+            self.target_feature_indexes = (
+                (loaded > -5).nonzero(as_tuple=True)[0].tolist()
+            )
+        else:
+            self.target_feature_indexes = list(range(self.n_features))
+            print("No feat sparsity path specified - doing all indexes.")
+
         # divide into batches
-        feature_idx = torch.tensor(self.alive_indexes)
-        feature_idx = feature_idx.reshape(
-            -1, min(self.n_features_at_a_time, len(self.alive_indexes))
-        )
+        feature_idx = torch.tensor(self.target_feature_indexes)
+        n_subarrays = np.ceil(len(feature_idx) / self.n_features_at_a_time).astype(int)
+        feature_idx = np.array_split(feature_idx, n_subarrays)
         feature_idx = [x.tolist() for x in feature_idx]
 
         # write dead into file so we can create them as dead in Neuronpedia
-        dead_indexes = set(range(self.n_features)) - set(self.alive_indexes)
-        dead_indexes_json = json.dumps({"dead_indexes": list(dead_indexes)})
-        with open(f"{self.neuronpedia_folder}/dead.json", "w") as f:
-            f.write(dead_indexes_json)
+        skipped_indexes = set(range(self.n_features)) - set(self.target_feature_indexes)
+        skipped_indexes_json = json.dumps({"skipped_indexes": list(skipped_indexes)})
+        with open(f"{self.neuronpedia_folder}/skipped_indexes.json", "w") as f:
+            f.write(skipped_indexes_json)
 
-        print(f"Total alive: {len(self.alive_indexes)}")
-        print(f"Total dead: {len(dead_indexes)}")
+        print(f"Total features to run: {len(self.target_feature_indexes)}")
+        print(f"Total skipped: {len(skipped_indexes)}")
         print(f"Total batches: {len(feature_idx)}")
 
         print(f"Hook Point Layer: {self.sparse_autoencoder.cfg.hook_point_layer}")
@@ -149,6 +158,9 @@ class NeuronpediaRunner:
         vocab_dict = {
             v: k.replace("Ġ", " ").replace("\n", "\\n") for k, v in vocab_dict.items()
         }
+        # pad with blank tokens to the actual vocab size
+        for i in range(len(vocab_dict), self.model.cfg.d_vocab):
+            vocab_dict[i] = " "
 
         with torch.no_grad():
             feature_batch_count = 0
@@ -165,7 +177,7 @@ class NeuronpediaRunner:
                     buffer=(self.buffer_tokens, self.buffer_tokens),
                     features=features_to_process,
                     verbose=False,
-                    include_left_tables=False,
+                    include_left_tables=True,
                 )
 
                 feature_data = get_feature_data(
@@ -203,9 +215,34 @@ class NeuronpediaRunner:
                     feature_output["neg_bg_values"] = neg_bg_values
                     feature_output["pos_bg_values"] = pos_bg_values
 
-                    # TODO: neuron alignment
-                    # TODO: correlated neurons
-                    # TODO: correlated features
+                    if feature.left_tables_data:
+                        feature_output["neuron_alignment_indices"] = (
+                            feature.left_tables_data.neuron_alignment_indices
+                        )
+                        feature_output["neuron_alignment_values"] = self.round_list(
+                            feature.left_tables_data.neuron_alignment_values
+                        )
+                        feature_output["neuron_alignment_l1"] = self.round_list(
+                            feature.left_tables_data.neuron_alignment_l1
+                        )
+                        feature_output["correlated_neurons_indices"] = (
+                            feature.left_tables_data.correlated_neurons_indices
+                        )
+                        feature_output["correlated_neurons_l1"] = self.round_list(
+                            feature.left_tables_data.correlated_neurons_l1
+                        )
+                        feature_output["correlated_neurons_pearson"] = self.round_list(
+                            feature.left_tables_data.correlated_neurons_pearson
+                        )
+                        # feature_output["correlated_features_indices"] = (
+                        #     feature.left_tables_data.correlated_features_indices
+                        # )
+                        # feature_output["correlated_features_l1"] = self.round_list(
+                        #     feature.left_tables_data.correlated_features_l1
+                        # )
+                        # feature_output["correlated_features_pearson"] = self.round_list(
+                        #     feature.left_tables_data.correlated_features_pearson
+                        # )
 
                     feature_output["neg_str"] = to_str_tokens(
                         vocab_dict, feature.middle_plots_data.bottom10_token_ids
