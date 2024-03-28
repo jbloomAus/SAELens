@@ -105,11 +105,6 @@ class ActivationsStore:
 
             # TODO: Fix this so that we are limiting how many tokens we get from the same context.
             assert self.model.tokenizer is not None  # keep pyright happy
-            bos_token_id_tensor = torch.tensor(
-                [self.model.tokenizer.bos_token_id],
-                device=tokens.device,
-                dtype=torch.long,
-            )
             while token_len > 0 and batch_tokens.shape[0] < batch_size:
                 # Space left in the current batch
                 space_left = context_size - current_length
@@ -129,15 +124,21 @@ class ActivationsStore:
                     token_len -= space_left
 
                     # only add BOS if it's not already the first token
-                    if tokens[0] != bos_token_id_tensor:
-                        tokens = torch.cat(
-                            (
-                                bos_token_id_tensor,
-                                tokens,
-                            ),
-                            dim=0,
+                    if self.cfg.prepend_bos:
+                        bos_token_id_tensor = torch.tensor(
+                            [self.model.tokenizer.bos_token_id],
+                            device=tokens.device,
+                            dtype=torch.long,
                         )
-                        token_len += 1
+                        if tokens[0] != bos_token_id_tensor:
+                            tokens = torch.cat(
+                                (
+                                    bos_token_id_tensor,
+                                    tokens,
+                                ),
+                                dim=0,
+                            )
+                            token_len += 1
                     current_length = context_size
 
                 # If a batch is full, concatenate and move to next batch
@@ -170,6 +171,7 @@ class ActivationsStore:
             batch_tokens,
             names_filter=act_names,
             stop_at_layer=hook_point_max_layer + 1,
+            prepend_bos=self.cfg.prepend_bos,
         )[1]
         activations_list = [layerwise_activations[act_name] for act_name in act_names]
         if self.cfg.hook_point_head_index is not None:
@@ -330,6 +332,7 @@ class ActivationsStore:
                 s,
                 truncate=True,
                 move_to_device=True,
+                prepend_bos=self.cfg.prepend_bos,
             ).squeeze(0)
             assert (
                 len(tokens.shape) == 1
@@ -341,4 +344,9 @@ class ActivationsStore:
                 device=device,
                 requires_grad=False,
             )
+            if (
+                not self.cfg.prepend_bos
+                and tokens[0] == self.model.tokenizer.bos_token_id  # type: ignore
+            ):
+                tokens = tokens[1:]
         return tokens

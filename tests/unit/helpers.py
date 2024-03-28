@@ -42,6 +42,7 @@ def build_sae_cfg(**kwargs: Any) -> LanguageModelSAERunnerConfig:
         seed=24,
         checkpoint_path="test/checkpoints",
         dtype=torch.float32,
+        prepend_bos=True,
     )
 
     for key, val in kwargs.items():

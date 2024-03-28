@@ -86,6 +86,8 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
     # Misc
     n_checkpoints: int = 0
     checkpoint_path: str = "checkpoints"
+    prepend_bos: bool = True
+    verbose: bool = True
 
     def __post_init__(self):
         super().__post_init__()
@@ -114,45 +116,47 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
         ).util.generate_id()  # not sure why this type is erroring
         self.checkpoint_path = f"{self.checkpoint_path}/{unique_id}"
 
-        print(
-            f"Run name: {self.d_sae}-L1-{self.l1_coefficient}-LR-{self.lr}-Tokens-{self.total_training_tokens:3.3e}"
-        )
-        # Print out some useful info:
-        n_tokens_per_buffer = (
-            self.store_batch_size * self.context_size * self.n_batches_in_buffer
-        )
-        print(f"n_tokens_per_buffer (millions): {n_tokens_per_buffer / 10 **6}")
-        n_contexts_per_buffer = self.store_batch_size * self.n_batches_in_buffer
-        print(
-            f"Lower bound: n_contexts_per_buffer (millions): {n_contexts_per_buffer / 10 **6}"
-        )
+        if self.verbose:
+            print(
+                f"Run name: {self.d_sae}-L1-{self.l1_coefficient}-LR-{self.lr}-Tokens-{self.total_training_tokens:3.3e}"
+            )
+            # Print out some useful info:
+            n_tokens_per_buffer = (
+                self.store_batch_size * self.context_size * self.n_batches_in_buffer
+            )
+            print(f"n_tokens_per_buffer (millions): {n_tokens_per_buffer / 10 **6}")
+            n_contexts_per_buffer = self.store_batch_size * self.n_batches_in_buffer
+            print(
+                f"Lower bound: n_contexts_per_buffer (millions): {n_contexts_per_buffer / 10 **6}"
+            )
 
-        total_training_steps = self.total_training_tokens // self.train_batch_size
-        print(f"Total training steps: {total_training_steps}")
+            total_training_steps = self.total_training_tokens // self.train_batch_size
+            print(f"Total training steps: {total_training_steps}")
 
-        total_wandb_updates = total_training_steps // self.wandb_log_frequency
-        print(f"Total wandb updates: {total_wandb_updates}")
+            total_wandb_updates = total_training_steps // self.wandb_log_frequency
+            print(f"Total wandb updates: {total_wandb_updates}")
 
-        # how many times will we sample dead neurons?
-        # assert self.dead_feature_window <= self.feature_sampling_window, "dead_feature_window must be smaller than feature_sampling_window"
-        n_feature_window_samples = total_training_steps // self.feature_sampling_window
-        print(
-            f"n_tokens_per_feature_sampling_window (millions): {(self.feature_sampling_window * self.context_size * self.train_batch_size) / 10 **6}"
-        )
-        print(
-            f"n_tokens_per_dead_feature_window (millions): {(self.dead_feature_window * self.context_size * self.train_batch_size) / 10 **6}"
-        )
+            # how many times will we sample dead neurons?
+            # assert self.dead_feature_window <= self.feature_sampling_window, "dead_feature_window must be smaller than feature_sampling_window"
+            n_feature_window_samples = (
+                total_training_steps // self.feature_sampling_window
+            )
+            print(
+                f"n_tokens_per_feature_sampling_window (millions): {(self.feature_sampling_window * self.context_size * self.train_batch_size) / 10 **6}"
+            )
+            print(
+                f"n_tokens_per_dead_feature_window (millions): {(self.dead_feature_window * self.context_size * self.train_batch_size) / 10 **6}"
+            )
+            print(
+                f"We will reset the sparsity calculation {n_feature_window_samples} times."
+            )
+            # print("Number tokens in dead feature calculation window: ", self.dead_feature_window * self.train_batch_size)
+            print(
+                f"Number tokens in sparsity calculation window: {self.feature_sampling_window * self.train_batch_size:.2e}"
+            )
 
         if self.use_ghost_grads:
             print("Using Ghost Grads.")
-
-        print(
-            f"We will reset the sparsity calculation {n_feature_window_samples} times."
-        )
-        # print("Number tokens in dead feature calculation window: ", self.dead_feature_window * self.train_batch_size)
-        print(
-            f"Number tokens in sparsity calculation window: {self.feature_sampling_window * self.train_batch_size:.2e}"
-        )
 
 
 @dataclass

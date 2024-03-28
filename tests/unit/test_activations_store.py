@@ -27,6 +27,7 @@ def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
             "hook_point": "blocks.1.hook_resid_pre",
             "hook_point_layer": 1,
             "d_in": 64,
+            "prepend_bos": True,
         },
         {
             "model_name": "tiny-stories-1M",
@@ -35,6 +36,7 @@ def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
             "hook_point": "blocks.1.attn.hook_z",
             "hook_point_layer": 1,
             "d_in": 64,
+            "prepend_bos": True,
         },
         {
             "model_name": "gelu-2l",
@@ -43,6 +45,7 @@ def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
             "hook_point": "blocks.1.hook_resid_pre",
             "hook_point_layer": 1,
             "d_in": 512,
+            "prepend_bos": True,
         },
         {
             "model_name": "gpt2",
@@ -51,6 +54,7 @@ def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
             "hook_point": "blocks.1.hook_resid_pre",
             "hook_point_layer": 1,
             "d_in": 768,
+            "prepend_bos": True,
         },
         {
             "model_name": "gpt2",
@@ -59,6 +63,7 @@ def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
             "hook_point": "blocks.1.hook_resid_pre",
             "hook_point_layer": 1,
             "d_in": 768,
+            "prepend_bos": True,
         },
     ],
     ids=[
@@ -105,7 +110,7 @@ def cfg(request: pytest.FixtureRequest) -> SimpleNamespace:
     mock_config.seed = 24
     mock_config.checkpoint_path = "test/checkpoints"
     mock_config.dtype = torch.float32
-
+    mock_config.prepend_bos = params["prepend_bos"]
     return mock_config
 
 
