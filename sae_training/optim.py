@@ -3,7 +3,7 @@ Took the LR scheduler from my previous work: https://github.com/jbloomAus/Decisi
 """
 
 import math
-from typing import Any, Optional
+from typing import Optional
 
 import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
@@ -14,7 +14,12 @@ import torch.optim.lr_scheduler as lr_scheduler
 #  Cosine Annealing with Warmup
 #  Cosine Annealing with Warmup / Restarts
 def get_scheduler(
-    scheduler_name: Optional[str], optimizer: optim.Optimizer, **kwargs: Any
+    scheduler_name: Optional[str],
+    optimizer: optim.Optimizer,
+    warm_up_steps: int = 0,
+    training_steps: int | None = None,
+    num_cycles: int = 1,
+    lr_end: float = 0.0,
 ):
     """
     Loosely based on this, seemed simpler write this than import
@@ -54,38 +59,30 @@ def get_scheduler(
     if scheduler_name is None or scheduler_name.lower() == "constant":
         return lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda steps: 1.0)
     elif scheduler_name.lower() == "constantwithwarmup":
-        warm_up_steps = kwargs.get("warm_up_steps", 0)
         return lr_scheduler.LambdaLR(
             optimizer,
             lr_lambda=lambda steps: min(1.0, (steps + 1) / warm_up_steps),
         )
     elif scheduler_name.lower() == "linearwarmupdecay":
-        warm_up_steps = kwargs.get("warm_up_steps", 0)
-        training_steps = kwargs.get("training_steps")
         assert training_steps is not None, "training_steps must be provided"
         lr_lambda = get_warmup_lambda(warm_up_steps, training_steps)
         return lr_scheduler.LambdaLR(optimizer, lr_lambda)
     elif scheduler_name.lower() == "cosineannealing":
-        training_steps = kwargs.get("training_steps")
         assert training_steps is not None, "training_steps must be provided"
-        eta_min = kwargs.get("lr_end", 0)
         return lr_scheduler.CosineAnnealingLR(
-            optimizer, T_max=training_steps, eta_min=eta_min
+            optimizer, T_max=training_steps, eta_min=lr_end
         )
     elif scheduler_name.lower() == "cosineannealingwarmup":
-        warm_up_steps = kwargs.get("warm_up_steps", 0)
-        training_steps = kwargs.get("training_steps")
         assert training_steps is not None, "training_steps must be provided"
-        eta_min = kwargs.get("lr_end", 0)
-        lr_lambda = get_warmup_cosine_lambda(warm_up_steps, training_steps, eta_min)
+        lr_lambda = get_warmup_cosine_lambda(
+            warm_up_steps, training_steps, lr_end=lr_end
+        )
         return lr_scheduler.LambdaLR(optimizer, lr_lambda)
     elif scheduler_name.lower() == "cosineannealingwarmrestarts":
-        training_steps = kwargs.get("training_steps")
-        eta_min = kwargs.get("lr_end", 0)
-        num_cycles = kwargs.get("num_cycles", 1)
+        assert training_steps is not None, "training_steps must be provided"
         T_0 = training_steps // num_cycles
         return lr_scheduler.CosineAnnealingWarmRestarts(
-            optimizer, T_0=T_0, eta_min=eta_min
+            optimizer, T_0=T_0, eta_min=lr_end
         )
     else:
         raise ValueError(f"Unsupported scheduler: {scheduler_name}")
