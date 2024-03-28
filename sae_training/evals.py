@@ -70,8 +70,7 @@ def run_evals(
     l2_norm_out = torch.norm(sae_out, dim=-1)
     l2_norm_ratio = l2_norm_out / l2_norm_in
 
-    wandb.log(
-        {
+    metrics = {
             # l2 norms
             f"metrics/l2_norm{suffix}": l2_norm_out.mean().item(),
             f"metrics/l2_ratio{suffix}": l2_norm_ratio.mean().item(),
@@ -80,9 +79,15 @@ def run_evals(
             f"metrics/ce_loss_without_sae{suffix}": ntp_loss,
             f"metrics/ce_loss_with_sae{suffix}": recons_loss,
             f"metrics/ce_loss_with_ablation{suffix}": zero_abl_loss,
-        },
-        step=n_training_steps,
-    )
+        }
+    
+    if wandb.run is not None:
+        wandb.log(
+            metrics,
+            step=n_training_steps
+        )
+
+    return metrics
 
     # head_index = sparse_autoencoder.cfg.hook_point_head_index
 
