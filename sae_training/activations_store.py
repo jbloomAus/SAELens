@@ -344,6 +344,9 @@ class ActivationsStore:
                 device=device,
                 requires_grad=False,
             )
-            if not self.cfg.prepend_bos and tokens[0] == self.model.tokenizer.bos_token_id:
+            if (
+                not self.cfg.prepend_bos
+                and tokens[0] == self.model.tokenizer.bos_token_id
+            ):
                 tokens = tokens[1:]
         return tokens

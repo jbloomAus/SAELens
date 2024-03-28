@@ -138,7 +138,9 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
 
             # how many times will we sample dead neurons?
             # assert self.dead_feature_window <= self.feature_sampling_window, "dead_feature_window must be smaller than feature_sampling_window"
-            n_feature_window_samples = total_training_steps // self.feature_sampling_window
+            n_feature_window_samples = (
+                total_training_steps // self.feature_sampling_window
+            )
             print(
                 f"n_tokens_per_feature_sampling_window (millions): {(self.feature_sampling_window * self.context_size * self.train_batch_size) / 10 **6}"
             )
@@ -146,7 +148,7 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
                 f"n_tokens_per_dead_feature_window (millions): {(self.dead_feature_window * self.context_size * self.train_batch_size) / 10 **6}"
             )
             print(
-            f"We will reset the sparsity calculation {n_feature_window_samples} times."
+                f"We will reset the sparsity calculation {n_feature_window_samples} times."
             )
             # print("Number tokens in dead feature calculation window: ", self.dead_feature_window * self.train_batch_size)
             print(
