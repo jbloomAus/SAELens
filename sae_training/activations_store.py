@@ -346,7 +346,7 @@ class ActivationsStore:
             )
             if (
                 not self.cfg.prepend_bos
-                and tokens[0] == self.model.tokenizer.bos_token_id
+                and tokens[0] == self.model.tokenizer.bos_token_id  # type: ignore
             ):
                 tokens = tokens[1:]
         return tokens
