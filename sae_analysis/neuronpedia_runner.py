@@ -306,51 +306,48 @@ class NeuronpediaRunner:
                                 and sd.top5_logits is not None
                                 and sd.bottom5_logits is not None
                             ):
-                                try:
-                                    activation = {}
-                                    strs = []
-                                    posContribs = []
-                                    negContribs = []
-                                    for i in range(len(sd.token_ids)):
-                                        strs.append(
-                                            to_str_tokens(vocab_dict, sd.token_ids[i])
+                                activation = {}
+                                strs = []
+                                posContribs = []
+                                negContribs = []
+                                for i in range(len(sd.token_ids)):
+                                    strs.append(
+                                        to_str_tokens(vocab_dict, sd.token_ids[i])
+                                    )
+                                    posContrib = {}
+                                    posTokens = [
+                                        to_str_tokens(vocab_dict, j)
+                                        for j in sd.top5_token_ids[i]
+                                    ]
+                                    if len(posTokens) > 0:
+                                        posContrib["t"] = posTokens
+                                        posContrib["v"] = self.round_list(
+                                            sd.top5_logits[i]
                                         )
-                                        posContrib = {}
-                                        posTokens = [
-                                            to_str_tokens(vocab_dict, j)
-                                            for j in sd.top5_token_ids[i]
-                                        ]
-                                        if len(posTokens) > 0:
-                                            posContrib["t"] = posTokens
-                                            posContrib["v"] = self.round_list(
-                                                sd.top5_logits[i]
-                                            )
-                                        posContribs.append(posContrib)
-                                        negContrib = {}
-                                        negTokens = [
-                                            to_str_tokens(vocab_dict, j)
-                                            for j in sd.bottom5_token_ids[i]
-                                        ]
-                                        if len(negTokens) > 0:
-                                            negContrib["t"] = negTokens
-                                            negContrib["v"] = self.round_list(
-                                                sd.bottom5_logits[i]
-                                            )
-                                        negContribs.append(negContrib)
+                                    posContribs.append(posContrib)
+                                    negContrib = {}
+                                    negTokens = [
+                                        to_str_tokens(vocab_dict, j)
+                                        for j in sd.bottom5_token_ids[i]
+                                    ]
+                                    if len(negTokens) > 0:
+                                        negContrib["t"] = negTokens
+                                        negContrib["v"] = self.round_list(
+                                            sd.bottom5_logits[i]
+                                        )
+                                    negContribs.append(negContrib)
 
-                                    activation["logitContributions"] = json.dumps(
-                                        {"pos": posContribs, "neg": negContribs}
-                                    )
-                                    activation["tokens"] = strs
-                                    activation["values"] = self.round_list(sd.feat_acts)
-                                    activation["maxValue"] = max(activation["values"])
-                                    activation["lossValues"] = self.round_list(
-                                        sd.contribution_to_loss
-                                    )
+                                activation["logitContributions"] = json.dumps(
+                                    {"pos": posContribs, "neg": negContribs}
+                                )
+                                activation["tokens"] = strs
+                                activation["values"] = self.round_list(sd.feat_acts)
+                                activation["maxValue"] = max(activation["values"])
+                                activation["lossValues"] = self.round_list(
+                                    sd.contribution_to_loss
+                                )
 
-                                    activations.append(activation)
-                                except:
-                                    print(f"ERROR: Failed to parse index: {feat_index}")
+                                activations.append(activation)
                     feature_output["activations"] = activations
 
                     features_outputs.append(feature_output)
