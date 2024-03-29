@@ -45,7 +45,8 @@ class NeuronpediaRunner:
         n_prompts_to_select: int = 4096 * 6,
         # sampling pars
         n_features_at_a_time: int = 1024,
-        buffer_tokens: int = 8,
+        buffer_tokens_left: int = 8,
+        buffer_tokens_right: int = 8,
     ):
         self.sae_path = sae_path
         if init_session:
@@ -53,7 +54,8 @@ class NeuronpediaRunner:
 
         self.feature_sparsity_path = feature_sparsity_path
         self.n_features_at_a_time = n_features_at_a_time
-        self.buffer_tokens = buffer_tokens
+        self.buffer_tokens_left = buffer_tokens_left
+        self.buffer_tokens_right = buffer_tokens_right
         self.n_batches_to_sample_from = n_batches_to_sample_from
         self.n_prompts_to_select = n_prompts_to_select
 
@@ -156,7 +158,8 @@ class NeuronpediaRunner:
 
         vocab_dict = cast(Any, self.model.tokenizer).vocab
         vocab_dict = {
-            v: k.replace("Ġ", " ").replace("\n", "\\n") for k, v in vocab_dict.items()
+            v: k.replace("Ġ", " ").replace("\n", "\\n").replace("Ċ", "\n")
+            for k, v in vocab_dict.items()
         }
         # pad with blank tokens to the actual vocab size
         for i in range(len(vocab_dict), self.model.cfg.d_vocab):
@@ -174,7 +177,7 @@ class NeuronpediaRunner:
                     minibatch_size_tokens=64,
                     first_group_size=20,
                     other_groups_size=5,
-                    buffer=(self.buffer_tokens, self.buffer_tokens),
+                    buffer=(self.buffer_tokens_left, self.buffer_tokens_right),
                     features=features_to_process,
                     verbose=False,
                     include_left_tables=True,
