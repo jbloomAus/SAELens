@@ -47,6 +47,8 @@ class NeuronpediaRunner:
         n_features_at_a_time: int = 1024,
         buffer_tokens_left: int = 8,
         buffer_tokens_right: int = 8,
+        # start_batch
+        start_batch: int = 0,
     ):
         self.sae_path = sae_path
         if init_session:
@@ -58,6 +60,7 @@ class NeuronpediaRunner:
         self.buffer_tokens_right = buffer_tokens_right
         self.n_batches_to_sample_from = n_batches_to_sample_from
         self.n_prompts_to_select = n_prompts_to_select
+        self.start_batch = start_batch
 
         # Deal with file structure
         if not os.path.exists(neuronpedia_parent_folder):
@@ -168,8 +171,13 @@ class NeuronpediaRunner:
         with torch.no_grad():
             feature_batch_count = 0
             for features_to_process in tqdm(feature_idx):
-                print(f"Doing batch: {feature_batch_count}")
                 feature_batch_count = feature_batch_count + 1
+
+                if feature_batch_count < self.start_batch:
+                    print(f"Skipping batch: {feature_batch_count}")
+                    continue
+                print(f"Doing batch: {feature_batch_count}")
+
                 feature_vis_params = FeatureVisParams(
                     hook_point=self.sparse_autoencoder.cfg.hook_point,
                     n_groups=10,
