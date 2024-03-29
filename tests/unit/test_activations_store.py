@@ -1,6 +1,5 @@
 from collections.abc import Iterable
 from math import ceil
-from types import SimpleNamespace
 
 import pytest
 import torch
@@ -8,6 +7,7 @@ from datasets import Dataset, IterableDataset
 from transformer_lens import HookedTransformer
 
 from sae_training.activations_store import ActivationsStore
+from sae_training.config import LanguageModelSAERunnerConfig
 from tests.unit.helpers import build_sae_cfg
 
 
@@ -74,67 +74,27 @@ def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
         "gpt2",
     ],
 )
-def cfg(request: pytest.FixtureRequest) -> SimpleNamespace:
+def cfg(request: pytest.FixtureRequest) -> LanguageModelSAERunnerConfig:
     # This function will be called with each parameter set
     params = request.param
-    mock_config = SimpleNamespace()
-    mock_config.model_name = params["model_name"]
-    mock_config.dataset_path = params["dataset_path"]
-    mock_config.is_dataset_tokenized = params["tokenized"]
-    mock_config.hook_point = params["hook_point"]
-    mock_config.hook_point_layer = params["hook_point_layer"]
-    mock_config.d_in = params["d_in"]
-    mock_config.expansion_factor = 2
-    mock_config.d_sae = mock_config.d_in * mock_config.expansion_factor
-    mock_config.l1_coefficient = 2e-3
-    mock_config.lr = 2e-4
-    mock_config.train_batch_size = 32
-    mock_config.context_size = 16
-    mock_config.use_cached_activations = False
-    mock_config.hook_point_head_index = None
-
-    mock_config.feature_sampling_method = None
-    mock_config.feature_sampling_window = 50
-    mock_config.feature_reinit_scale = 0.1
-    mock_config.dead_feature_threshold = 1e-7
-
-    mock_config.n_batches_in_buffer = 4
-    mock_config.total_training_tokens = 1_000_000
-    mock_config.store_batch_size = 32
-
-    mock_config.log_to_wandb = False
-    mock_config.wandb_project = "test_project"
-    mock_config.wandb_entity = "test_entity"
-    mock_config.wandb_log_frequency = 10
-    mock_config.device = torch.device("cpu")
-    mock_config.seed = 24
-    mock_config.checkpoint_path = "test/checkpoints"
-    mock_config.dtype = torch.float32
-    mock_config.prepend_bos = params["prepend_bos"]
-    return mock_config
+    return build_sae_cfg(**params)
 
 
 @pytest.fixture
-def model(cfg: SimpleNamespace):
+def model(cfg: LanguageModelSAERunnerConfig):
     return HookedTransformer.from_pretrained(cfg.model_name, device="cpu")
 
 
 @pytest.fixture
-def activation_store(cfg: SimpleNamespace, model: HookedTransformer):
-    return ActivationsStore(cfg, model)
+def activation_store(cfg: LanguageModelSAERunnerConfig, model: HookedTransformer):
+    return ActivationsStore.from_config(model, cfg)
 
 
-@pytest.fixture
-def activation_store_head_hook(
-    cfg_head_hook: SimpleNamespace, model: HookedTransformer
+def test_activations_store__init__(
+    cfg: LanguageModelSAERunnerConfig, model: HookedTransformer
 ):
-    return ActivationsStore(cfg_head_hook, model)
+    store = ActivationsStore.from_config(model, cfg)
 
-
-def test_activations_store__init__(cfg: SimpleNamespace, model: HookedTransformer):
-    store = ActivationsStore(cfg, model)
-
-    assert store.cfg == cfg
     assert store.model == model
 
     assert isinstance(store.dataset, IterableDataset)
@@ -158,10 +118,10 @@ def test_activations_store__get_batch_tokens(activation_store: ActivationsStore)
 
     assert isinstance(batch, torch.Tensor)
     assert batch.shape == (
-        activation_store.cfg.store_batch_size,
-        activation_store.cfg.context_size,
+        activation_store.store_batch_size,
+        activation_store.context_size,
     )
-    assert batch.device == activation_store.cfg.device
+    assert batch.device == activation_store.device
 
 
 def test_activations_score_get_next_batch(
@@ -170,8 +130,8 @@ def test_activations_score_get_next_batch(
 
     batch = activation_store.get_batch_tokens()
     assert batch.shape == (
-        activation_store.cfg.store_batch_size,
-        activation_store.cfg.context_size,
+        activation_store.store_batch_size,
+        activation_store.context_size,
     )
 
     # if model.tokenizer.bos_token_id is not None:
@@ -184,10 +144,14 @@ def test_activations_store__get_activations(activation_store: ActivationsStore):
     batch = activation_store.get_batch_tokens()
     activations = activation_store.get_activations(batch)
 
-    cfg = activation_store.cfg
     assert isinstance(activations, torch.Tensor)
-    assert activations.shape == (cfg.store_batch_size, cfg.context_size, 1, cfg.d_in)
-    assert activations.device == cfg.device
+    assert activations.shape == (
+        activation_store.store_batch_size,
+        activation_store.context_size,
+        1,
+        activation_store.d_in,
+    )
+    assert activations.device == activation_store.device
 
 
 def test_activations_store__get_activations_head_hook(ts_model: HookedTransformer):
@@ -197,26 +161,33 @@ def test_activations_store__get_activations_head_hook(ts_model: HookedTransforme
         hook_point_layer=1,
         d_in=4,
     )
-    activation_store_head_hook = ActivationsStore(cfg, ts_model)
+    activation_store_head_hook = ActivationsStore.from_config(ts_model, cfg)
     batch = activation_store_head_hook.get_batch_tokens()
     activations = activation_store_head_hook.get_activations(batch)
 
-    cfg = activation_store_head_hook.cfg
     assert isinstance(activations, torch.Tensor)
-    assert activations.shape == (cfg.store_batch_size, cfg.context_size, 1, cfg.d_in)
-    assert activations.device == cfg.device
+    assert activations.shape == (
+        activation_store_head_hook.store_batch_size,
+        activation_store_head_hook.context_size,
+        1,
+        activation_store_head_hook.d_in,
+    )
+    assert activations.device == activation_store_head_hook.device
 
 
 def test_activations_store__get_buffer(activation_store: ActivationsStore):
     n_batches_in_buffer = 3
     buffer = activation_store.get_buffer(n_batches_in_buffer)
 
-    cfg = activation_store.cfg
     assert isinstance(buffer, torch.Tensor)
-    buffer_size_expected = cfg.store_batch_size * cfg.context_size * n_batches_in_buffer
+    buffer_size_expected = (
+        activation_store.store_batch_size
+        * activation_store.context_size
+        * n_batches_in_buffer
+    )
 
-    assert buffer.shape == (buffer_size_expected, 1, cfg.d_in)
-    assert buffer.device == cfg.device
+    assert buffer.shape == (buffer_size_expected, 1, activation_store.d_in)
+    assert buffer.device == activation_store.device
 
 
 # 12 is divisible by the length of "hello world", 11 and 13 are not
@@ -236,8 +207,8 @@ def test_activations_store__get_batch_tokens__fills_the_context_separated_by_bos
         context_size=context_size,
     )
 
-    activation_store = ActivationsStore(
-        cfg, ts_model, dataset=dataset, create_dataloader=False
+    activation_store = ActivationsStore.from_config(
+        ts_model, cfg, dataset=dataset, create_dataloader=False
     )
     encoded_text = tokenize_with_bos(ts_model, "hello world")
     tokens = activation_store.get_batch_tokens()
@@ -264,8 +235,8 @@ def test_activations_store__get_next_dataset_tokens__tokenizes_each_example_in_o
             {"text": "hello world3"},
         ]
     )
-    activation_store = ActivationsStore(
-        cfg, ts_model, dataset=dataset, create_dataloader=False
+    activation_store = ActivationsStore.from_config(
+        ts_model, cfg, dataset=dataset, create_dataloader=False
     )
 
     assert activation_store._get_next_dataset_tokens().tolist() == tokenize_with_bos(
