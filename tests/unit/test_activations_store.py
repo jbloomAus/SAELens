@@ -277,3 +277,19 @@ def test_activations_store__get_next_dataset_tokens__tokenizes_each_example_in_o
     assert activation_store._get_next_dataset_tokens().tolist() == tokenize_with_bos(
         ts_model, "hello world3"
     )
+
+
+def test_activations_store__get_next_dataset_tokens__can_handle_long_examples(
+    ts_model: HookedTransformer,
+):
+    cfg = build_sae_cfg()
+    dataset = Dataset.from_list(
+        [
+            {"text": " France" * 3000},
+        ]
+    )
+    activation_store = ActivationsStore(
+        cfg, ts_model, dataset=dataset, create_dataloader=False
+    )
+
+    assert len(activation_store._get_next_dataset_tokens().tolist()) == 3001

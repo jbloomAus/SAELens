@@ -330,7 +330,7 @@ class ActivationsStore:
             s = next(self.iterable_dataset)[self.tokens_column]
             tokens = self.model.to_tokens(
                 s,
-                truncate=True,
+                truncate=False,
                 move_to_device=True,
                 prepend_bos=self.cfg.prepend_bos,
             ).squeeze(0)
