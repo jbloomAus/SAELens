@@ -17,7 +17,6 @@ nbformat = "^5.9.2"
 ipykernel = "^6.29.2"
 matplotlib = "^3.8.3"
 matplotlib-inline = "^0.1.6"
-eindex = {git = "https://github.com/callummcdougall/eindex.git"}
 datasets = "^2.17.1"
 babe = "^0.0.7"
 nltk = "^3.8.1"
