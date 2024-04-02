@@ -64,9 +64,10 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
     lp_norm: float = 1
     lr: float = 3e-4
     lr_scheduler_name: str = (
-        "constantwithwarmup"  # constant, constantwithwarmup, linearwarmupdecay, cosineannealing, cosineannealingwarmup
+        "constant"  # constant, cosineannealing, cosineannealingwarmrestarts
     )
     lr_warm_up_steps: int = 500
+    lr_decay_steps: int = 0
     train_batch_size: int = 4096
 
     # Resampling protocol args

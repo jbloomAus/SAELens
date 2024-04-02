@@ -2,9 +2,6 @@
 Took the LR scheduler from my previous work: https://github.com/jbloomAus/DecisionTransformerInterpretability/blob/ee55df35cdb92e81d689c72fb9dd5a7252893363/src/decision_transformer/utils.py#L425
 """
 
-import math
-from typing import Optional
-
 import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
 
@@ -14,75 +11,88 @@ import torch.optim.lr_scheduler as lr_scheduler
 #  Cosine Annealing with Warmup
 #  Cosine Annealing with Warmup / Restarts
 def get_scheduler(
-    scheduler_name: Optional[str],
+    scheduler_name: str,
     optimizer: optim.Optimizer,
+    training_steps: int,
+    lr: float,
     warm_up_steps: int = 0,
-    training_steps: int | None = None,
+    decay_steps: int = 0,
     num_cycles: int = 1,
     lr_end: float = 0.0,
-):
+) -> lr_scheduler.LRScheduler:
     """
     Loosely based on this, seemed simpler write this than import
     transformers: https://huggingface.co/docs/transformers/main_classes/optimizer_schedules
 
     Args:
-        scheduler_name (Optional[str]): Name of the scheduler to use. If None, returns a constant scheduler
+        scheduler_name (str): Name of the scheduler to use, one of "constant", "cosineannealing", "cosineannealingwarmrestarts"
         optimizer (optim.Optimizer): Optimizer to use
-        **kwargs: Additional arguments to pass to the scheduler including warm_up_steps,
-            training_steps, num_cycles, lr_end.
+        training_steps (int): Total number of training steps
+        warm_up_steps (int, optional): Number of linear warm up steps. Defaults to 0.
+        decay_steps (int, optional): Number of linear decay steps to 0. Defaults to 0.
+        num_cycles (int, optional): Number of cycles for cosine annealing with warm restarts. Defaults to 1.
+        lr_end (float, optional): Final learning rate multiplier before decay. Defaults to 0.0.
     """
+    base_scheduler_steps = training_steps - warm_up_steps - decay_steps
+    norm_scheduler_name = scheduler_name.lower()
+    main_scheduler = _get_main_scheduler(
+        norm_scheduler_name,
+        optimizer,
+        steps=base_scheduler_steps,
+        lr_end=lr_end,
+        num_cycles=num_cycles,
+    )
+    if norm_scheduler_name == "constant":
+        # constant scheduler ignores lr_end, so decay needs to start at lr
+        lr_end = lr
+    schedulers: list[lr_scheduler.LRScheduler] = []
+    milestones: list[int] = []
+    if warm_up_steps > 0:
+        schedulers.append(
+            lr_scheduler.LinearLR(
+                optimizer,
+                start_factor=1 / warm_up_steps,
+                end_factor=1.0,
+                total_iters=warm_up_steps - 1,
+            ),
+        )
+        milestones.append(warm_up_steps)
+    schedulers.append(main_scheduler)
+    if decay_steps > 0:
+        if lr_end == 0.0:
+            raise ValueError(
+                "Cannot have decay_steps with lr_end=0.0, this would decay from 0 to 0 and be a waste."
+            )
+        schedulers.append(
+            lr_scheduler.LinearLR(
+                optimizer,
+                start_factor=lr_end / lr,
+                end_factor=0.0,
+                total_iters=decay_steps,
+            ),
+        )
+        milestones.append(training_steps - decay_steps)
+    return lr_scheduler.SequentialLR(
+        schedulers=schedulers,
+        optimizer=optimizer,
+        milestones=milestones,
+    )
 
-    def get_warmup_lambda(warm_up_steps: int, training_steps: int):
 
-        def lr_lambda(steps: int):
-            if steps < warm_up_steps:
-                return (steps + 1) / warm_up_steps
-            else:
-                return (training_steps - steps) / (training_steps - warm_up_steps)
-
-        return lr_lambda
-
-    # heavily derived from hugging face although copilot helped.
-    def get_warmup_cosine_lambda(
-        warm_up_steps: int, training_steps: int, lr_end: float
-    ):
-
-        def lr_lambda(steps: int):
-            if steps < warm_up_steps:
-                return (steps + 1) / warm_up_steps
-            else:
-                progress = (steps - warm_up_steps) / (training_steps - warm_up_steps)
-                return lr_end + 0.5 * (1 - lr_end) * (1 + math.cos(math.pi * progress))
-
-        return lr_lambda
-
-    if scheduler_name is None or scheduler_name.lower() == "constant":
+def _get_main_scheduler(
+    scheduler_name: str,
+    optimizer: optim.Optimizer,
+    steps: int,
+    lr_end: float,
+    num_cycles: int,
+) -> lr_scheduler.LRScheduler:
+    if scheduler_name == "constant":
         return lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda steps: 1.0)
-    elif scheduler_name.lower() == "constantwithwarmup":
-        return lr_scheduler.LambdaLR(
-            optimizer,
-            lr_lambda=lambda steps: min(1.0, (steps + 1) / warm_up_steps),
-        )
-    elif scheduler_name.lower() == "linearwarmupdecay":
-        assert training_steps is not None, "training_steps must be provided"
-        lr_lambda = get_warmup_lambda(warm_up_steps, training_steps)
-        return lr_scheduler.LambdaLR(optimizer, lr_lambda)
-    elif scheduler_name.lower() == "cosineannealing":
-        assert training_steps is not None, "training_steps must be provided"
-        return lr_scheduler.CosineAnnealingLR(
-            optimizer, T_max=training_steps, eta_min=lr_end
-        )
-    elif scheduler_name.lower() == "cosineannealingwarmup":
-        assert training_steps is not None, "training_steps must be provided"
-        lr_lambda = get_warmup_cosine_lambda(
-            warm_up_steps, training_steps, lr_end=lr_end
-        )
-        return lr_scheduler.LambdaLR(optimizer, lr_lambda)
-    elif scheduler_name.lower() == "cosineannealingwarmrestarts":
-        assert training_steps is not None, "training_steps must be provided"
-        T_0 = training_steps // num_cycles
+    elif scheduler_name == "cosineannealing":
+        return lr_scheduler.CosineAnnealingLR(optimizer, T_max=steps, eta_min=lr_end)
+    elif scheduler_name == "cosineannealingwarmrestarts":
         return lr_scheduler.CosineAnnealingWarmRestarts(
-            optimizer, T_0=T_0, eta_min=lr_end
+            optimizer, T_0=steps // num_cycles, eta_min=lr_end
         )
     else:
         raise ValueError(f"Unsupported scheduler: {scheduler_name}")
