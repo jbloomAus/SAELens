@@ -3,18 +3,17 @@ from typing import Any, Dict, List, Optional, Union, cast
 
 # set TOKENIZERS_PARALLELISM to false to avoid warnings
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
+import json
 import time
 
+import numpy as np
 import torch
+from matplotlib import colors
 from sae_vis.data_fetching_fns import get_feature_data
 from sae_vis.data_storing_fns import FeatureVisParams
 from tqdm import tqdm
 
-import numpy as np
 from sae_training.utils import LMSparseAutoencoderSessionloader
-import json
-
-from matplotlib import colors
 
 OUT_OF_RANGE_TOKEN = "<|outofrange|>"
 
@@ -381,7 +380,7 @@ class NeuronpediaRunner:
                                     posContribs.append(posContrib)
                                     negContrib = {}
                                     negTokens = [
-                                        self.to_str_tokens_safe(vocab_dict, j)
+                                        self.to_str_tokens_safe(vocab_dict, j)  # type: ignore
                                         for j in sd.bottom5_token_ids[i]
                                     ]
                                     if len(negTokens) > 0:
