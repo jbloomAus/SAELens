@@ -218,6 +218,7 @@ def _build_train_context(
     optimizer = Adam(sae.parameters(), lr=sae.cfg.lr)
     scheduler = get_scheduler(
         sae.cfg.lr_scheduler_name,
+        lr=sae.cfg.lr,
         optimizer=optimizer,
         warm_up_steps=sae.cfg.lr_warm_up_steps,
         training_steps=total_training_steps,

@@ -1,3 +1,5 @@
+from typing import Any
+
 import pytest
 import torch
 from torch.optim import Adam
@@ -9,10 +11,12 @@ from torch.optim.lr_scheduler import (
 
 from sae_training.optim import get_scheduler
 
+LR = 0.1
+
 
 @pytest.fixture
 def optimizer():
-    return Adam([torch.tensor(1.0)], lr=0.1)
+    return Adam([torch.tensor(1.0)], lr=LR)
 
 
 def step_times(num: int, optimizer: Adam, scheduler: LRScheduler):
@@ -25,37 +29,23 @@ def step(optimizer: Adam, scheduler: LRScheduler):
     scheduler.step()
 
 
-@pytest.mark.parametrize(
-    "scheduler_name",
-    [
-        "linearwarmupdecay",
-        "cosineannealing",
-        "cosineannealingwarmup",
-        "cosineannealingwarmrestarts",
-    ],
-)
-def test_get_scheduler_requires_training_steps(scheduler_name: str, optimizer: Adam):
-    with pytest.raises(AssertionError, match="training_steps must be provided"):
-        get_scheduler(scheduler_name, optimizer, 10)
-
-
 def test_get_scheduler_errors_on_uknown_scheduler(optimizer: Adam):
     with pytest.raises(ValueError, match="Unsupported scheduler: unknown"):
-        get_scheduler("unknown", optimizer)
+        get_scheduler("unknown", optimizer, lr=LR, training_steps=10)
 
 
 def test_get_scheduler_constant(optimizer: Adam):
-    scheduler = get_scheduler("constant", optimizer)
+    scheduler = get_scheduler("constant", optimizer, lr=LR, training_steps=4)
     assert scheduler.get_last_lr() == [0.1]
     step_times(3, optimizer, scheduler)
     assert scheduler.get_last_lr() == [0.1]
 
 
 def test_get_scheduler_constantwithwarmup(optimizer: Adam):
-    scheduler = get_scheduler("constantwithwarmup", optimizer, warm_up_steps=2)
-    assert scheduler.get_last_lr() == [0.05]
-    step(optimizer, scheduler)
-    assert scheduler.get_last_lr() == [0.1]
+    scheduler = get_scheduler(
+        "constant", optimizer, lr=LR, warm_up_steps=2, training_steps=4
+    )
+    assert scheduler.get_last_lr() == [pytest.approx(0.05)]
     step(optimizer, scheduler)
     assert scheduler.get_last_lr() == [0.1]
     step_times(3, optimizer, scheduler)
@@ -64,7 +54,7 @@ def test_get_scheduler_constantwithwarmup(optimizer: Adam):
 
 def test_get_scheduler_linearwarmupdecay(optimizer: Adam):
     scheduler = get_scheduler(
-        "linearwarmupdecay", optimizer, warm_up_steps=2, training_steps=6
+        "constant", optimizer, lr=LR, warm_up_steps=2, decay_steps=4, training_steps=6
     )
     # first, ramp up for 2 steps
     assert scheduler.get_last_lr() == [0.05]
@@ -81,29 +71,41 @@ def test_get_scheduler_linearwarmupdecay(optimizer: Adam):
     assert scheduler.get_last_lr() == [pytest.approx(0.025)]
     step(optimizer, scheduler)
     assert scheduler.get_last_lr() == [0.0]
-    # NOTE: the LR goes negative if you go beyond the training steps
+
+
+def test_get_scheduler_errors_if_lr_end_is_0_and_decay_is_set(optimizer: Adam):
+    with pytest.raises(ValueError, match="Cannot have decay_steps with lr_end=0.0"):
+        get_scheduler(
+            "cosineannealing",
+            optimizer,
+            lr=LR,
+            lr_end=0.0,
+            decay_steps=2,
+            training_steps=6,
+        )
 
 
 def test_get_scheduler_cosineannealing(optimizer: Adam):
-    scheduler = get_scheduler(
-        "cosineannealing", optimizer, training_steps=4, lr_end=0.05
+    scheduler: Any = get_scheduler(
+        "cosineannealing", optimizer, lr=LR, training_steps=4, lr_end=0.05
     )
-    assert isinstance(scheduler, CosineAnnealingLR)
-    assert scheduler.T_max == 4
-    assert scheduler.eta_min == 0.05
+    assert len(scheduler._schedulers) == 1
+    main_scheduler = scheduler._schedulers[0]
+    assert isinstance(main_scheduler, CosineAnnealingLR)
+    assert main_scheduler.T_max == 4
+    assert main_scheduler.eta_min == 0.05
 
 
-def test_get_scheduler_cosineannealingwarmup():
-    # NOTE: if the lr_end is not 0.0, this test will not pass.
-    # If eta_min = lr_end * lr, then the test will pass.
-    # We should be careful about the difference between our lr_end and eta_min.
-    lr_end = 0.0
-    optimizer = Adam([torch.tensor(1.0)], lr=0.1)
+def test_get_scheduler_cosineannealing_with_warmup_and_decay():
+    lr_end = 0.01
+    optimizer = Adam([torch.tensor(1.0)], lr=LR)
     scheduler = get_scheduler(
-        "cosineannealingwarmup",
+        "cosineannealing",
         optimizer,
+        lr=LR,
         warm_up_steps=2,
-        training_steps=6,
+        training_steps=8,
+        decay_steps=2,
         lr_end=lr_end,
     )
     # first, ramp up for 2 steps
@@ -113,7 +115,7 @@ def test_get_scheduler_cosineannealingwarmup():
     step(optimizer, scheduler)
 
     # From here on, it should match CosineAnnealingLR
-    new_optimizer = Adam([torch.tensor(1.0)], lr=0.1)
+    new_optimizer = Adam([torch.tensor(1.0)], lr=LR)
     cos_scheduler = CosineAnnealingLR(new_optimizer, T_max=4, eta_min=lr_end)
 
     step(optimizer, scheduler)
@@ -125,16 +127,29 @@ def test_get_scheduler_cosineannealingwarmup():
     step(optimizer, scheduler)
     step(new_optimizer, cos_scheduler)
     assert scheduler.get_last_lr() == pytest.approx(cos_scheduler.get_last_lr())
+    step(optimizer, scheduler)
+    step(new_optimizer, cos_scheduler)
+    assert scheduler.get_last_lr() == pytest.approx(cos_scheduler.get_last_lr())
+    assert scheduler.get_last_lr() == [lr_end]
+
+    # now, decay to 0 in 2 steps
+    step(optimizer, scheduler)
+    assert scheduler.get_last_lr() == [pytest.approx(0.005)]
+    step(optimizer, scheduler)
+    assert scheduler.get_last_lr() == [pytest.approx(0.0)]
 
 
 def test_get_scheduler_cosineannealingwarmrestarts(optimizer: Adam):
-    scheduler = get_scheduler(
+    scheduler: Any = get_scheduler(
         "cosineannealingwarmrestarts",
         optimizer,
+        lr=LR,
         training_steps=8,
         lr_end=0.05,
         num_cycles=2,
     )
-    assert isinstance(scheduler, CosineAnnealingWarmRestarts)
-    assert scheduler.T_0 == 4
-    assert scheduler.eta_min == 0.05
+    assert len(scheduler._schedulers) == 1
+    main_scheduler = scheduler._schedulers[0]
+    assert isinstance(main_scheduler, CosineAnnealingWarmRestarts)
+    assert main_scheduler.T_0 == 4
+    assert main_scheduler.eta_min == 0.05
