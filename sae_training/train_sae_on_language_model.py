@@ -216,13 +216,16 @@ def _build_train_context(
     n_frac_active_tokens = 0
 
     optimizer = Adam(sae.parameters(), lr=sae.cfg.lr)
+    assert sae.cfg.lr_end is not None  # this is set in config post-init
     scheduler = get_scheduler(
         sae.cfg.lr_scheduler_name,
         lr=sae.cfg.lr,
         optimizer=optimizer,
         warm_up_steps=sae.cfg.lr_warm_up_steps,
+        decay_steps=sae.cfg.lr_decay_steps,
         training_steps=total_training_steps,
-        lr_end=sae.cfg.lr / 10,  # heuristic for now.
+        lr_end=sae.cfg.lr_end,
+        num_cycles=sae.cfg.n_restart_cycles,
     )
 
     return SAETrainContext(
