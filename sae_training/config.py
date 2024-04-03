@@ -63,12 +63,14 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
     l1_coefficient: float = 1e-3
     lp_norm: float = 1
     lr: float = 3e-4
+    lr_end: float | None = None  # only used for cosine annealing, default is lr / 10
     lr_scheduler_name: str = (
         "constant"  # constant, cosineannealing, cosineannealingwarmrestarts
     )
     lr_warm_up_steps: int = 500
     lr_decay_steps: int = 0
     train_batch_size: int = 4096
+    n_restart_cycles: int = 1  # only used for cosineannealingwarmrestarts
 
     # Resampling protocol args
     use_ghost_grads: bool = False  # want to change this to true on some timeline.
@@ -111,6 +113,9 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
             )
 
         self.device = torch.device(self.device)
+
+        if self.lr_end is None:
+            self.lr_end = self.lr / 10
 
         unique_id = cast(
             Any, wandb

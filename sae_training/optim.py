@@ -6,19 +6,19 @@ import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
 
 
-#  None
-#  Linear Warmup and decay
+#  Constant
 #  Cosine Annealing with Warmup
 #  Cosine Annealing with Warmup / Restarts
+#  No default values specified so the type-checker can verify we don't forget any arguments.
 def get_scheduler(
     scheduler_name: str,
     optimizer: optim.Optimizer,
     training_steps: int,
     lr: float,
-    warm_up_steps: int = 0,
-    decay_steps: int = 0,
-    num_cycles: int = 1,
-    lr_end: float = 0.0,
+    warm_up_steps: int,
+    decay_steps: int,
+    lr_end: float,
+    num_cycles: int,
 ) -> lr_scheduler.LRScheduler:
     """
     Loosely based on this, seemed simpler write this than import

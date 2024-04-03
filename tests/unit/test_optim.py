@@ -31,11 +31,29 @@ def step(optimizer: Adam, scheduler: LRScheduler):
 
 def test_get_scheduler_errors_on_uknown_scheduler(optimizer: Adam):
     with pytest.raises(ValueError, match="Unsupported scheduler: unknown"):
-        get_scheduler("unknown", optimizer, lr=LR, training_steps=10)
+        get_scheduler(
+            "unknown",
+            optimizer,
+            lr=LR,
+            training_steps=10,
+            warm_up_steps=0,
+            decay_steps=0,
+            lr_end=0.0,
+            num_cycles=1,
+        )
 
 
 def test_get_scheduler_constant(optimizer: Adam):
-    scheduler = get_scheduler("constant", optimizer, lr=LR, training_steps=4)
+    scheduler = get_scheduler(
+        "constant",
+        optimizer,
+        lr=LR,
+        training_steps=4,
+        warm_up_steps=0,
+        decay_steps=0,
+        lr_end=0.0,
+        num_cycles=1,
+    )
     assert scheduler.get_last_lr() == [0.1]
     step_times(3, optimizer, scheduler)
     assert scheduler.get_last_lr() == [0.1]
@@ -43,7 +61,14 @@ def test_get_scheduler_constant(optimizer: Adam):
 
 def test_get_scheduler_constantwithwarmup(optimizer: Adam):
     scheduler = get_scheduler(
-        "constant", optimizer, lr=LR, warm_up_steps=2, training_steps=4
+        "constant",
+        optimizer,
+        lr=LR,
+        warm_up_steps=2,
+        training_steps=4,
+        decay_steps=0,
+        lr_end=0.0,
+        num_cycles=1,
     )
     assert scheduler.get_last_lr() == [pytest.approx(0.05)]
     step(optimizer, scheduler)
@@ -54,7 +79,14 @@ def test_get_scheduler_constantwithwarmup(optimizer: Adam):
 
 def test_get_scheduler_linearwarmupdecay(optimizer: Adam):
     scheduler = get_scheduler(
-        "constant", optimizer, lr=LR, warm_up_steps=2, decay_steps=4, training_steps=6
+        "constant",
+        optimizer,
+        lr=LR,
+        warm_up_steps=2,
+        decay_steps=4,
+        training_steps=6,
+        lr_end=0.0,
+        num_cycles=1,
     )
     # first, ramp up for 2 steps
     assert scheduler.get_last_lr() == [0.05]
@@ -80,14 +112,23 @@ def test_get_scheduler_errors_if_lr_end_is_0_and_decay_is_set(optimizer: Adam):
             optimizer,
             lr=LR,
             lr_end=0.0,
+            warm_up_steps=0,
             decay_steps=2,
             training_steps=6,
+            num_cycles=1,
         )
 
 
 def test_get_scheduler_cosineannealing(optimizer: Adam):
     scheduler: Any = get_scheduler(
-        "cosineannealing", optimizer, lr=LR, training_steps=4, lr_end=0.05
+        "cosineannealing",
+        optimizer,
+        lr=LR,
+        training_steps=4,
+        lr_end=0.05,
+        warm_up_steps=0,
+        decay_steps=0,
+        num_cycles=1,
     )
     assert len(scheduler._schedulers) == 1
     main_scheduler = scheduler._schedulers[0]
@@ -107,6 +148,7 @@ def test_get_scheduler_cosineannealing_with_warmup_and_decay():
         training_steps=8,
         decay_steps=2,
         lr_end=lr_end,
+        num_cycles=1,
     )
     # first, ramp up for 2 steps
     assert scheduler.get_last_lr() == [0.05]
@@ -147,6 +189,8 @@ def test_get_scheduler_cosineannealingwarmrestarts(optimizer: Adam):
         training_steps=8,
         lr_end=0.05,
         num_cycles=2,
+        warm_up_steps=0,
+        decay_steps=0,
     )
     assert len(scheduler._schedulers) == 1
     main_scheduler = scheduler._schedulers[0]

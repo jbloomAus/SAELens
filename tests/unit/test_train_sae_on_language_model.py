@@ -47,7 +47,14 @@ def build_train_ctx(
         n_frac_active_tokens=n_frac_active_tokens,
         optimizer=optimizer,
         scheduler=get_scheduler(
-            "constant", lr=sae.cfg.lr, optimizer=optimizer, training_steps=1000
+            "constant",
+            lr=sae.cfg.lr,
+            optimizer=optimizer,
+            training_steps=1000,
+            lr_end=0,
+            warm_up_steps=0,
+            decay_steps=0,
+            num_cycles=1,
         ),
     )
 
