@@ -124,7 +124,7 @@ def get_recons_loss(
     batch_tokens: torch.Tensor,
 ):
     hook_point = sparse_autoencoder.cfg.hook_point
-    loss = model(batch_tokens, return_type="loss")
+    loss = model(batch_tokens, return_type="loss", **sparse_autoencoder.cfg.model_kwargs)
     head_index = sparse_autoencoder.cfg.hook_point_head_index
 
     def standard_replacement_hook(activations: torch.Tensor, hook: Any):
