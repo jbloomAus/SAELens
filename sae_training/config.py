@@ -1,5 +1,5 @@
 from abc import ABC
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Optional, cast
 
 import torch
@@ -92,6 +92,7 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
     checkpoint_path: str = "checkpoints"
     prepend_bos: bool = True
     verbose: bool = True
+    model_kwargs: dict = field(default_factory=dict)
 
     def __post_init__(self):
         super().__post_init__()
@@ -177,6 +178,7 @@ class CacheActivationsRunnerConfig(RunnerConfig):
     n_shuffles_with_last_section: int = 10
     n_shuffles_in_entire_dir: int = 10
     n_shuffles_final: int = 100
+    model_kwargs: dict = field(default_factory=dict)
 
     def __post_init__(self):
         super().__post_init__()

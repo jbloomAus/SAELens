@@ -46,6 +46,7 @@ def run_evals(
         eval_tokens,
         prepend_bos=False,
         names_filter=[hook_point_eval, hook_point],
+        **sparse_autoencoder.cfg.model_kwargs,
     )
 
     has_head_dim_key_substrings = ["hook_q", "hook_k", "hook_v", "hook_z"]
@@ -161,10 +162,12 @@ def get_recons_loss(
         batch_tokens,
         return_type="loss",
         fwd_hooks=[(hook_point, partial(replacement_hook))],
+        **sparse_autoencoder.cfg.model_kwargs,
     )
 
     zero_abl_loss = model.run_with_hooks(
-        batch_tokens, return_type="loss", fwd_hooks=[(hook_point, zero_ablate_hook)]
+        batch_tokens, return_type="loss", fwd_hooks=[(hook_point, zero_ablate_hook)],
+        **sparse_autoencoder.cfg.model_kwargs,
     )
 
     div_val = zero_abl_loss - loss

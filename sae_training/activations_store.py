@@ -172,6 +172,7 @@ class ActivationsStore:
             names_filter=act_names,
             stop_at_layer=hook_point_max_layer + 1,
             prepend_bos=self.cfg.prepend_bos,
+            **self.cfg.model_kwargs,
         )[1]
         activations_list = [layerwise_activations[act_name] for act_name in act_names]
         if self.cfg.hook_point_head_index is not None:
