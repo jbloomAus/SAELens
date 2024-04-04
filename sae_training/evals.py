@@ -42,7 +42,7 @@ def run_evals(
 
     # get cache
     _, cache = model.run_with_cache(
-        eval_tokens,
+        tokens=eval_tokens,
         prepend_bos=False,
         names_filter=[hook_point_eval, hook_point],
         **sparse_autoencoder.cfg.model_kwargs,
@@ -123,7 +123,7 @@ def get_recons_loss(
     batch_tokens: torch.Tensor,
 ):
     hook_point = sparse_autoencoder.cfg.hook_point
-    loss = model(batch_tokens, return_type="loss", **sparse_autoencoder.cfg.model_kwargs)
+    loss = model(tokens=batch_tokens, return_type="loss", **sparse_autoencoder.cfg.model_kwargs)
     head_index = sparse_autoencoder.cfg.hook_point_head_index
 
     def standard_replacement_hook(activations: torch.Tensor, hook: Any):
@@ -158,14 +158,14 @@ def get_recons_loss(
         replacement_hook = standard_replacement_hook
 
     recons_loss = model.run_with_hooks(
-        batch_tokens,
+        tokens=batch_tokens,
         return_type="loss",
         fwd_hooks=[(hook_point, partial(replacement_hook))],
         **sparse_autoencoder.cfg.model_kwargs,
     )
 
     zero_abl_loss = model.run_with_hooks(
-        batch_tokens, return_type="loss", fwd_hooks=[(hook_point, zero_ablate_hook)],
+        tokens=batch_tokens, return_type="loss", fwd_hooks=[(hook_point, zero_ablate_hook)],
         **sparse_autoencoder.cfg.model_kwargs,
     )
 
