@@ -4,7 +4,6 @@ import os
 import torch
 from tqdm import tqdm
 from transformer_lens import HookedTransformer
-from mamba_lens import HookedMamba
 
 from sae_training.activations_store import ActivationsStore
 from sae_training.config import CacheActivationsRunnerConfig
@@ -12,7 +11,7 @@ from sae_training.utils import shuffle_activations_pairwise
 
 
 def cache_activations_runner(cfg: CacheActivationsRunnerConfig):
-    model = HookedMamba.from_pretrained(cfg.model_name)
+    model = cfg.model_class.from_pretrained(cfg.model_name)
     model.to(cfg.device)
     activations_store = ActivationsStore(cfg, model, create_dataloader=False)
 

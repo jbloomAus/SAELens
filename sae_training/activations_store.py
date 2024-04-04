@@ -10,7 +10,7 @@ from datasets import (
     load_dataset,
 )
 from torch.utils.data import DataLoader
-from transformer_lens import HookedTransformer
+from transformer_lens.hook_points import HookedRootModule
 
 HfDataset = DatasetDict | Dataset | IterableDatasetDict | IterableDataset
 
@@ -24,7 +24,7 @@ class ActivationsStore:
     def __init__(
         self,
         cfg: Any,
-        model: HookedTransformer,
+        model: HookedRootModule,
         dataset: HfDataset | None = None,
         create_dataloader: bool = True,
     ):

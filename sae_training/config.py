@@ -1,6 +1,7 @@
 from abc import ABC
 from dataclasses import dataclass, field
 from typing import Any, Optional, cast
+from transformer_lens import HookedTransformer
 
 import torch
 
@@ -15,6 +16,7 @@ class RunnerConfig(ABC):
 
     # Data Generating Function (Model + Training Distibuion)
     model_name: str = "gelu-2l"
+    model_class: type = HookedTransformer
     hook_point: str = "blocks.{layer}.hook_mlp_out"
     hook_point_eval: str = "blocks.0.attn.pattern"
     hook_point_layer: int = 0
