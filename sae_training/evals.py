@@ -23,7 +23,8 @@ def run_evals(
     hook_point = sparse_autoencoder.cfg.hook_point
     hook_point_layer = sparse_autoencoder.cfg.hook_point_layer
     hook_point_head_index = sparse_autoencoder.cfg.hook_point_head_index
-
+    hook_point_eval = sparse_autoencoder.cfg.hook_point_eval
+    
     ### Evals
     eval_tokens = activation_store.get_batch_tokens()
 
@@ -44,7 +45,7 @@ def run_evals(
     _, cache = model.run_with_cache(
         eval_tokens,
         prepend_bos=False,
-        names_filter=[get_act_name("pattern", hook_point_layer), hook_point],
+        names_filter=[hook_point_eval, hook_point],
     )
 
     has_head_dim_key_substrings = ["hook_q", "hook_k", "hook_v", "hook_z"]
@@ -63,7 +64,9 @@ def run_evals(
 
     l2_norm_in = torch.norm(original_act, dim=-1)
     l2_norm_out = torch.norm(sae_out, dim=-1)
-    l2_norm_ratio = l2_norm_out / l2_norm_in
+    l2_norm_in_for_div = l2_norm_in.clone()
+    l2_norm_in_for_div[torch.abs(l2_norm_in_for_div)<0.0001] = 1
+    l2_norm_ratio = l2_norm_out / l2_norm_in_for_div
 
     metrics = {
         # l2 norms
@@ -164,7 +167,10 @@ def get_recons_loss(
         batch_tokens, return_type="loss", fwd_hooks=[(hook_point, zero_ablate_hook)]
     )
 
-    score = (zero_abl_loss - recons_loss) / (zero_abl_loss - loss)
+    div_val = zero_abl_loss - loss
+    div_val[torch.abs(div_val)<0.0001] = 1.0
+
+    score = (zero_abl_loss - recons_loss) / div_val 
 
     return score, loss, recons_loss, zero_abl_loss
 

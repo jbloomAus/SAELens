@@ -2,6 +2,7 @@ from typing import Any, Tuple
 
 import torch
 from transformer_lens import HookedTransformer
+from mamba_lens import HookedMamba
 
 from sae_training.activations_store import ActivationsStore
 from sae_training.sae_group import SAEGroup
@@ -74,7 +75,7 @@ class LMSparseAutoencoderSessionloader:
 
         # Todo: add check that model_name is valid
 
-        model = HookedTransformer.from_pretrained(model_name)
+        model = HookedMamba.from_pretrained(model_name)
 
         return model
 
