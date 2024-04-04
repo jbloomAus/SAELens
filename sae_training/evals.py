@@ -24,7 +24,6 @@ def run_evals(
     hook_point_layer = sparse_autoencoder.cfg.hook_point_layer
     hook_point_head_index = sparse_autoencoder.cfg.hook_point_head_index
     hook_point_eval = sparse_autoencoder.cfg.hook_point_eval
-    
     ### Evals
     eval_tokens = activation_store.get_batch_tokens()
 

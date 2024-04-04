@@ -165,15 +165,24 @@ class ActivationsStore:
             if isinstance(self.cfg.hook_point_layer, list)
             else [self.cfg.hook_point_layer]
         )
+
         act_names = [self.cfg.hook_point.format(layer=layer) for layer in layers]
         hook_point_max_layer = max(layers)
+
+        #if not hasattr(self, "compiled_model_forward") or self.compiled_model_forward is None:
+        #    print("compiling model")
+        #    self.compiled_model_forward = torch.compile(get_activationsf, mode="reduce-overhead")
+        #    print("done compiling model")
+        
+        #print("running model")
         layerwise_activations = self.model.run_with_cache(
-            batch_tokens,
-            names_filter=act_names,
-            stop_at_layer=hook_point_max_layer + 1,
-            prepend_bos=self.cfg.prepend_bos,
-            **self.cfg.model_kwargs,
-        )[1]
+                batch_tokens,
+                names_filter=act_names,
+                stop_at_layer=hook_point_max_layer + 1,
+                prepend_bos=self.cfg.prepend_bos,
+                **self.cfg.model_kwargs,
+            )[1]
+        #print("done running model")
         activations_list = [layerwise_activations[act_name] for act_name in act_names]
         if self.cfg.hook_point_head_index is not None:
             activations_list = [
@@ -188,6 +197,7 @@ class ActivationsStore:
         # Stack along a new dimension to keep separate layers distinct
         stacked_activations = torch.stack(activations_list, dim=2)
 
+        #print("done rest")
         return stacked_activations
 
     def get_buffer(self, n_batches_in_buffer: int):
