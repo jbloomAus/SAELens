@@ -136,7 +136,7 @@ class SAEGroup:
             layer_string = f"{min(layers)-max(layers)}"
         else:
             layer_string = f"{layers[0]}"
-        sae_name = f"sae_group_{self.cfg.model_name.replace("/", "_")}_{self.cfg.hook_point.format(layer=layer_string)}_{self.cfg.d_sae}"
+        sae_name = f"sae_group_{self.cfg.model_name.replace('/', '_')}_{self.cfg.hook_point.format(layer=layer_string)}_{self.cfg.d_sae}"
         return sae_name
 
     def eval(self):
