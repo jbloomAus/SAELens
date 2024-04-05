@@ -8,12 +8,12 @@ from tqdm import tqdm
 from transformer_lens import HookedTransformer
 
 import wandb
-from sae_training.activations_store import ActivationsStore
-from sae_training.evals import run_evals
-from sae_training.geometric_median import compute_geometric_median
-from sae_training.optim import get_scheduler
-from sae_training.sae_group import SAEGroup
-from sae_training.sparse_autoencoder import SparseAutoencoder
+from sae_lens.training.activations_store import ActivationsStore
+from sae_lens.training.evals import run_evals
+from sae_lens.training.geometric_median import compute_geometric_median
+from sae_lens.training.optim import get_scheduler
+from sae_lens.training.sae_group import SAEGroup
+from sae_lens.training.sparse_autoencoder import SparseAutoencoder
 
 
 @dataclass

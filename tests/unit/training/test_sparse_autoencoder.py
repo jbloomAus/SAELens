@@ -7,8 +7,8 @@ import pytest
 import torch
 from transformer_lens import HookedTransformer
 
-from sae_training.config import LanguageModelSAERunnerConfig
-from sae_training.sparse_autoencoder import (
+from sae_lens.training.config import LanguageModelSAERunnerConfig
+from sae_lens.training.sparse_autoencoder import (
     SparseAutoencoder,
     _per_item_mse_loss_with_target_norm,
 )

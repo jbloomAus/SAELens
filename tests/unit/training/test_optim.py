@@ -9,7 +9,7 @@ from torch.optim.lr_scheduler import (
     LRScheduler,
 )
 
-from sae_training.optim import get_scheduler
+from sae_lens.training.optim import get_scheduler
 
 LR = 0.1
 

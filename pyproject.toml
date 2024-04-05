@@ -1,10 +1,10 @@
 [tool.poetry]
-name = "mats_sae_training"
+name = "sae-lens"
 version = "0.1.0"
-description = "Training Sparse Autoencoders (SAEs)"
+description = "Training and Analyzing Sparse Autoencoders (SAEs)"
 authors = ["Joseph Bloom"]
 readme = "README.md"
-packages = [{include = "sae_analysis"}, {include = "sae_training"}]
+packages = [{include = "sae_lens"}]
 
 [tool.poetry.dependencies]
 python = "^3.10"
@@ -42,8 +42,6 @@ pyright = "^1.1.351"
 profile = "black"
 
 [tool.pyright]
-exclude = ["./sae_training/geom_median/"]
-
 typeCheckingMode = "strict"
 reportMissingTypeStubs = "none"
 reportUnknownMemberType = "none"
@@ -59,3 +57,12 @@ reportPrivateUsage = "none"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+
+[tool.semantic_release]
+version_variables = [
+    "sae_lens/__init__.py:__version__",
+    "pyproject.toml:version",
+]
+branch = "main"
+build_command = "pip install poetry && poetry build"

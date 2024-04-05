@@ -12,7 +12,7 @@ import torch
 from torch import nn
 from transformer_lens.hook_points import HookedRootModule, HookPoint
 
-from sae_training.config import LanguageModelSAERunnerConfig
+from sae_lens.training.config import LanguageModelSAERunnerConfig
 
 
 class ForwardOutput(NamedTuple):

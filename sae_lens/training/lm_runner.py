@@ -1,11 +1,11 @@
 from typing import Any, cast
 
 import wandb
-from sae_training.config import LanguageModelSAERunnerConfig
+from sae_lens.training.config import LanguageModelSAERunnerConfig
+from sae_lens.training.session_loader import LMSparseAutoencoderSessionloader
 
-# from sae_training.activation_store import ActivationStore
-from sae_training.train_sae_on_language_model import train_sae_on_language_model
-from sae_training.utils import LMSparseAutoencoderSessionloader
+# from sae_lens.training.activation_store import ActivationStore
+from sae_lens.training.train_sae_on_language_model import train_sae_on_language_model
 
 
 def language_model_sae_runner(cfg: LanguageModelSAERunnerConfig):

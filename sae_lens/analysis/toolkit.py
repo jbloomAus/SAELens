@@ -3,7 +3,7 @@ import webbrowser
 import torch
 from huggingface_hub import hf_hub_download
 
-from sae_training.sparse_autoencoder import SparseAutoencoder
+from sae_lens.training.sparse_autoencoder import SparseAutoencoder
 
 
 def get_all_gpt2_small_saes() -> (

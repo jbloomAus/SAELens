@@ -8,11 +8,11 @@ from datasets import Dataset
 from torch import Tensor
 from transformer_lens import HookedTransformer
 
-from sae_training.activations_store import ActivationsStore
-from sae_training.optim import get_scheduler
-from sae_training.sae_group import SAEGroup
-from sae_training.sparse_autoencoder import ForwardOutput, SparseAutoencoder
-from sae_training.train_sae_on_language_model import (
+from sae_lens.training.activations_store import ActivationsStore
+from sae_lens.training.optim import get_scheduler
+from sae_lens.training.sae_group import SAEGroup
+from sae_lens.training.sparse_autoencoder import ForwardOutput, SparseAutoencoder
+from sae_lens.training.train_sae_on_language_model import (
     SAETrainContext,
     TrainStepOutput,
     _build_train_step_log_dict,

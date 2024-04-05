@@ -17,7 +17,7 @@ from torch.nn.functional import cosine_similarity
 from tqdm import tqdm
 
 import wandb
-from sae_training.utils import LMSparseAutoencoderSessionloader
+from sae_lens.training.session_loader import LMSparseAutoencoderSessionloader
 
 
 class DashboardRunner:
