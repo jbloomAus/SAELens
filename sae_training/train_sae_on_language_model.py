@@ -151,7 +151,7 @@ def train_sae_group_on_language_model(
                         sparse_autoencoder.train()
 
         # checkpoint if at checkpoint frequency
-        if checkpoint_thresholds and n_training_tokens > checkpoint_thresholds[0]:
+        if n_training_steps == 0 or (checkpoint_thresholds and n_training_tokens > checkpoint_thresholds[0]):
             checkpoint_path = _save_checkpoint(
                 sae_group,
                 train_contexts=train_contexts,
