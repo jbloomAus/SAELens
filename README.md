@@ -1,14 +1,14 @@
 <img width="1308" alt="Screenshot 2024-03-21 at 3 08 28 pm" src="https://github.com/jbloomAus/mats_sae_training/assets/69127271/209012ec-a779-4036-b4be-7b7739ea87f6">
 
-# SAELens Training
+# SAE Lens 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![build](https://github.com/jbloomAus/mats_sae_training/actions/workflows/build.yml/badge.svg)](https://github.com/jbloomAus/mats_sae_training/actions/workflows/build.yml)
 [![Deploy Docs](https://github.com/jbloomAus/mats_sae_training/actions/workflows/deploy_docs.yml/badge.svg)](https://github.com/jbloomAus/mats_sae_training/actions/workflows/deploy_docs.yml)
 [![codecov](https://codecov.io/gh/jbloomAus/mats_sae_training/graph/badge.svg?token=N83NGH8CGE)](https://codecov.io/gh/jbloomAus/mats_sae_training)
 
-The SAELens training codebase (we'll rename it soon) exists to help researchers:
+SAELens exists to help researchers:
 - Train sparse autoencoders.
-- Analyse sparse autoencoders and neural network internals.
+- Analyse sparse autoencoders / research mechanistic interpretability. 
 - Generate insights which make it easier to create safe and aligned AI systems.
 
 ## Quick Start
