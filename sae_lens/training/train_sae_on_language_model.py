@@ -205,6 +205,23 @@ def _wandb_log_suffix(cfg: Any, hyperparams: Any):
 def _build_train_context(
     sae: SparseAutoencoder, total_training_steps: int
 ) -> SAETrainContext:
+    assert not isinstance(sae.cfg.lr, list), "lr must not be a list for a single SAE"
+    assert not isinstance(
+        sae.cfg.lr_end, list
+    ), "lr_end must not be a list for a single SAE"
+    assert not isinstance(
+        sae.cfg.lr_scheduler_name, list
+    ), "lr_scheduler_name must not be a list for a single SAE"
+    assert not isinstance(
+        sae.cfg.lr_warm_up_steps, list
+    ), "lr_warm_up_steps must not be a list for a single SAE"
+    assert not isinstance(
+        sae.cfg.lr_decay_steps, list
+    ), "lr_decay_steps must not be a list for a single SAE"
+    assert not isinstance(
+        sae.cfg.n_restart_cycles, list
+    ), "n_restart_cycles must not be a list for a single SAE"
+
     act_freq_scores = torch.zeros(
         cast(int, sae.cfg.d_sae),
         device=sae.cfg.device,
@@ -246,7 +263,7 @@ def _init_sae_group_b_decs(
     geometric_medians = {}
     for sae in sae_group:
         hyperparams = sae.cfg
-        sae_layer_id = all_layers.index(hyperparams.hook_point_layer)
+        sae_layer_id = all_layers.index(sae.hook_point_layer)
         if hyperparams.b_dec_init_method == "geometric_median":
             layer_acts = activation_store.storage_buffer.detach()[:, sae_layer_id, :]
             # get geometric median of the activations if we're using those.
@@ -288,8 +305,7 @@ def _train_step(
     wandb_suffix: str,
 ) -> TrainStepOutput:
     assert sparse_autoencoder.cfg.d_sae is not None  # keep pyright happy
-    hyperparams = sparse_autoencoder.cfg
-    layer_id = all_layers.index(hyperparams.hook_point_layer)
+    layer_id = all_layers.index(sparse_autoencoder.hook_point_layer)
     sae_in = layer_acts[:, layer_id, :]
 
     sparse_autoencoder.train()

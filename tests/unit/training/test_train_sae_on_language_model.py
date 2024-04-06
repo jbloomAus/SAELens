@@ -34,6 +34,7 @@ def build_train_ctx(
     Factory helper to build a default SAETrainContext object.
     """
     assert sae.cfg.d_sae is not None
+    assert not isinstance(sae.cfg.lr, list)
     optimizer = torch.optim.Adam(sae.parameters(), lr=sae.cfg.lr)
     return SAETrainContext(
         act_freq_scores=(
@@ -323,7 +324,7 @@ def test_train_sae_group_on_language_model__runs_and_outputs_look_reasonable(
     )
     # just a tiny datast which will run quickly
     dataset = Dataset.from_list([{"text": "hello world"}] * 1000)
-    activation_store = ActivationsStore(cfg, model=ts_model, dataset=dataset)
+    activation_store = ActivationsStore.from_config(ts_model, cfg, dataset=dataset)
     sae_group = SAEGroup(cfg)
     res = train_sae_group_on_language_model(
         model=ts_model,

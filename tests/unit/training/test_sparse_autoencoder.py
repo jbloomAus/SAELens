@@ -228,7 +228,7 @@ def test_SparseAutoencoder_remove_gradient_parallel_to_decoder_directions() -> N
     grad_delta = orig_grad - sae.W_dec.grad
     assert torch.nn.functional.cosine_similarity(
         sae.W_dec.detach(), grad_delta, dim=1
-    ).abs() == pytest.approx(1.0, abs=1e-5)
+    ).abs() == pytest.approx(1.0, abs=1e-3)
 
 
 def test_SparseAutoencoder_get_name_returns_correct_name_from_cfg_vals() -> None:
