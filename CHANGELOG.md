@@ -2,6 +2,31 @@
 
 
 
+## v0.1.0 (2024-04-06)
+
+### Feature
+
+* feat: release ([`c70b148`](https://github.com/jbloomAus/mats_sae_training/commit/c70b148fd49f880d424adb62a0817e03f2aacb44))
+
+### Fix
+
+* fix: removing paths-ignore from action to avoid blocking releases ([`28ff797`](https://github.com/jbloomAus/mats_sae_training/commit/28ff7971aeeba2d90d544c0b6a6fb7b743780ef4))
+
+* fix: updating saevis version to use pypi ([`dbd96a2`](https://github.com/jbloomAus/mats_sae_training/commit/dbd96a2ef5d10012bfec43347b3ee920e59cdf9c))
+
+### Unknown
+
+* Merge pull request #69 from chanind/remove-ci-ignore
+
+fix: removing paths-ignore from action to avoid blocking releases ([`179cea1`](https://github.com/jbloomAus/mats_sae_training/commit/179cea190e8ae1a54659e325b8700d8d88026180))
+
+* Update README.md ([`1720ce8`](https://github.com/jbloomAus/mats_sae_training/commit/1720ce827f31b7ef769bd85345b9f1b996d9c3a8))
+
+* Merge pull request #68 from chanind/updating-sae-vis
+
+fix: hotfix updating saevis version to use pypi ([`a13cee3`](https://github.com/jbloomAus/mats_sae_training/commit/a13cee3b716624219523294a51b5e3655ad9630c))
+
+
 ## v0.0.0 (2024-04-06)
 
 ### Chore
