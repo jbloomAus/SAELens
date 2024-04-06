@@ -11,8 +11,15 @@ import pandas as pd
 import plotly
 import plotly.express as px
 import torch
+from sae_vis.data_config_classes import (
+    ActsHistogramConfig,
+    Column,
+    FeatureTablesConfig,
+    SaeVisConfig,
+    SaeVisLayoutConfig,
+    SequencesConfig,
+)
 from sae_vis.data_fetching_fns import get_feature_data
-from sae_vis.data_storing_fns import FeatureVisParams
 from torch.nn.functional import cosine_similarity
 from tqdm import tqdm
 
@@ -318,32 +325,48 @@ class DashboardRunner:
             for interesting_features in tqdm(feature_idx):
                 print(interesting_features)
 
-                feature_vis_params = FeatureVisParams(
+                layout = SaeVisLayoutConfig(
+                    columns=[
+                        Column(
+                            SequencesConfig(
+                                stack_mode="stack-all",
+                                buffer=(self.buffer_tokens, self.buffer_tokens),
+                                compute_buffer=False,
+                                n_quantiles=10,
+                                top_acts_group_size=20,
+                                quantile_group_size=5,
+                            ),
+                            width=650,
+                        ),
+                        Column(
+                            ActsHistogramConfig(),
+                            FeatureTablesConfig(n_rows=5),
+                            width=500,
+                        ),
+                    ],
+                    height=1000,
+                )
+                feature_vis_params = SaeVisConfig(
                     hook_point=self.sparse_autoencoder.cfg.hook_point,
-                    n_groups=10,
                     minibatch_size_features=256,
                     minibatch_size_tokens=64,
-                    first_group_size=20,
-                    other_groups_size=5,
-                    buffer=(self.buffer_tokens, self.buffer_tokens),
                     features=interesting_features,
                     verbose=True,
-                    include_left_tables=False,
+                    feature_centric_layout=layout,
                 )
 
                 feature_data = get_feature_data(
                     encoder=self.sparse_autoencoder,  # type: ignore
                     model=self.model,
                     tokens=tokens,
-                    fvp=feature_vis_params,
+                    cfg=feature_vis_params,
                 )
 
-                for i, test_idx in enumerate(feature_data.keys()):
-                    html_str = feature_data[test_idx].get_html(vocab_dict=vocab_dict)
-                    with open(
-                        f"{self.dashboard_folder}/data_{test_idx:04}.html", "w"
-                    ) as f:
-                        f.write(html_str)
+                for i, test_idx in enumerate(feature_data.feature_data_dict.keys()):
+                    feature_data.save_feature_centric_vis(
+                        f"{self.dashboard_folder}/data_{test_idx:04}.html",
+                        feature_idx=test_idx,
+                    )
 
                     if i < 10 and self.use_wandb:
                         # upload the html as an artifact
