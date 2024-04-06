@@ -3,12 +3,14 @@ from typing import Any
 
 import pytest
 import torch
+from huggingface_hub import hf_hub_download
 from transformer_lens import HookedTransformer
 
-from sae_training.activations_store import ActivationsStore
-from sae_training.config import LanguageModelSAERunnerConfig
-from sae_training.sparse_autoencoder import SparseAutoencoder
-from sae_training.utils import LMSparseAutoencoderSessionloader
+from sae_lens.training.activations_store import ActivationsStore
+from sae_lens.training.config import LanguageModelSAERunnerConfig
+from sae_lens.training.sae_group import SAEGroup
+from sae_lens.training.session_loader import LMSparseAutoencoderSessionloader
+from sae_lens.training.sparse_autoencoder import SparseAutoencoder
 
 TEST_MODEL = "tiny-stories-1M"
 TEST_DATASET = "roneneldan/TinyStories"
@@ -117,3 +119,21 @@ def test_LMSparseAutoencoderSessionloader_load_session_from_trained(cfg: Any):
     new_parameters = dict(new_sae_group.autoencoders[0].named_parameters())
     for name, param in sae_group.autoencoders[0].named_parameters():
         assert torch.allclose(param, new_parameters[name])
+
+
+def test_load_pretrained_sae_from_huggingface():
+    layer = 8  # pick a layer you want.
+    REPO_ID = "jbloom/GPT2-Small-SAEs"
+    FILENAME = (
+        f"final_sparse_autoencoder_gpt2-small_blocks.{layer}.hook_resid_pre_24576.pt"
+    )
+    path = hf_hub_download(repo_id=REPO_ID, filename=FILENAME)
+    model, sae_group, activation_store = (
+        LMSparseAutoencoderSessionloader.load_session_from_pretrained(path=path)
+    )
+    assert isinstance(model, HookedTransformer)
+    assert isinstance(sae_group, SAEGroup)
+    assert isinstance(activation_store, ActivationsStore)
+    assert len(sae_group) == 1
+    assert sae_group.cfg.hook_point_layer == layer
+    assert sae_group.cfg.model_name == "gpt2-small"

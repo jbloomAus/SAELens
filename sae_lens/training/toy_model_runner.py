@@ -5,10 +5,10 @@ import einops
 import torch
 
 import wandb
-from sae_training.sparse_autoencoder import SparseAutoencoder
-from sae_training.toy_models import Config as ToyConfig
-from sae_training.toy_models import Model as ToyModel
-from sae_training.train_sae_on_toy_model import train_toy_sae
+from sae_lens.training.sparse_autoencoder import SparseAutoencoder
+from sae_lens.training.toy_models import Config as ToyConfig
+from sae_lens.training.toy_models import Model as ToyModel
+from sae_lens.training.train_sae_on_toy_model import train_toy_sae
 
 
 @dataclass

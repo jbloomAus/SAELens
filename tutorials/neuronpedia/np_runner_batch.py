@@ -15,7 +15,7 @@ FEATURE_SPARSITY_PATH = (
     f"../../data/{SOURCE_AUTHOR_SUFFIX}/feature_sparsity_{LAYER}_{TYPE}.pt"
 )
 
-from sae_analysis.neuronpedia_runner import NeuronpediaRunner
+from sae_lens.analysis.neuronpedia_runner import NeuronpediaRunner
 
 NP_OUTPUT_FOLDER = "../../neuronpedia_outputs"
 

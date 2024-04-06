@@ -6,8 +6,8 @@ import torch
 from datasets import Dataset, IterableDataset
 from transformer_lens import HookedTransformer
 
-from sae_training.activations_store import ActivationsStore
-from sae_training.config import LanguageModelSAERunnerConfig
+from sae_lens.training.activations_store import ActivationsStore
+from sae_lens.training.config import LanguageModelSAERunnerConfig
 from tests.unit.helpers import build_sae_cfg
 
 

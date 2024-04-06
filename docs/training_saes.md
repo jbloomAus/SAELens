@@ -23,8 +23,7 @@ import sys
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 os.environ["WANDB__SERVICE_WAIT"] = "300"
 
-from sae_training.config import LanguageModelSAERunnerConfig
-from sae_training.lm_runner import language_model_sae_runner
+from sae_lens import LanguageModelSAERunnerConfig, language_model_sae_runner
 
 cfg = LanguageModelSAERunnerConfig(
 

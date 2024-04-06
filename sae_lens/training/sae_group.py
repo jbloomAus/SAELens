@@ -5,12 +5,14 @@ import gzip
 import os
 import pickle
 from itertools import product
+from types import SimpleNamespace
 from typing import Any, Iterator
 
 import torch
 
-from sae_training.config import LanguageModelSAERunnerConfig
-from sae_training.sparse_autoencoder import SparseAutoencoder
+from sae_lens.training.config import LanguageModelSAERunnerConfig
+from sae_lens.training.sparse_autoencoder import SparseAutoencoder
+from sae_lens.training.utils import BackwardsCompatibleUnpickler
 
 
 class SAEGroup:
@@ -71,14 +73,25 @@ class SAEGroup:
         # Load the state dictionary
         if path.endswith(".pt"):
             try:
-                if torch.backends.mps.is_available():
-                    group = torch.load(path, map_location="mps")
-                    if isinstance(group, dict):
-                        group["cfg"].device = "mps"
-                    else:
-                        group.cfg.device = "mps"
+                # this is hacky, but can't figure out how else to get torch to use our custom unpickler
+                fake_pickle = SimpleNamespace()
+                fake_pickle.Unpickler = BackwardsCompatibleUnpickler
+                fake_pickle.__name__ = pickle.__name__
+
+                if torch.cuda.is_available():
+                    group = torch.load(
+                        path,
+                        pickle_module=fake_pickle,
+                    )
                 else:
-                    group = torch.load(path)
+                    map_loc = "mps" if torch.backends.mps.is_available() else "cpu"
+                    group = torch.load(
+                        path, pickle_module=fake_pickle, map_location=map_loc
+                    )
+                    if isinstance(group, dict):
+                        group["cfg"].device = map_loc
+                    else:
+                        group.cfg.device = map_loc
             except Exception as e:
                 raise IOError(f"Error loading the state dictionary from .pt file: {e}")
 

@@ -14,7 +14,7 @@ from datasets import (
 from torch.utils.data import DataLoader
 from transformer_lens import HookedTransformer
 
-from sae_training.config import (
+from sae_lens.training.config import (
     CacheActivationsRunnerConfig,
     LanguageModelSAERunnerConfig,
 )

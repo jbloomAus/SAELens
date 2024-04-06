@@ -1,4 +1,4 @@
-from sae_training.sae_group import SAEGroup
+from sae_lens.training.sae_group import SAEGroup
 from tests.unit.helpers import build_sae_cfg
 
 

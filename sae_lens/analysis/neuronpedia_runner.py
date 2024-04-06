@@ -13,7 +13,7 @@ from sae_vis.data_fetching_fns import get_feature_data
 from sae_vis.data_storing_fns import FeatureVisParams
 from tqdm import tqdm
 
-from sae_training.utils import LMSparseAutoencoderSessionloader
+from sae_lens.training.session_loader import LMSparseAutoencoderSessionloader
 
 OUT_OF_RANGE_TOKEN = "<|outofrange|>"
 

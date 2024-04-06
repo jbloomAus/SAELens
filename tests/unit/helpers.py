@@ -2,7 +2,7 @@ from typing import Any
 
 import torch
 
-from sae_training.config import LanguageModelSAERunnerConfig
+from sae_lens.training.config import LanguageModelSAERunnerConfig
 
 TINYSTORIES_MODEL = "tiny-stories-1M"
 TINYSTORIES_DATASET = "roneneldan/TinyStories"

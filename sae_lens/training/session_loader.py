@@ -1,12 +1,11 @@
-from typing import Any, Tuple
+from typing import Tuple
 
-import torch
 from transformer_lens import HookedTransformer
 
-from sae_training.activations_store import ActivationsStore
-from sae_training.config import LanguageModelSAERunnerConfig
-from sae_training.sae_group import SAEGroup
-from sae_training.sparse_autoencoder import SparseAutoencoder
+from sae_lens.training.activations_store import ActivationsStore
+from sae_lens.training.config import LanguageModelSAERunnerConfig
+from sae_lens.training.sae_group import SAEGroup
+from sae_lens.training.sparse_autoencoder import SparseAutoencoder
 
 
 class LMSparseAutoencoderSessionloader:
@@ -17,7 +16,7 @@ class LMSparseAutoencoderSessionloader:
     or analysing a pretraining autoencoder
     """
 
-    def __init__(self, cfg: Any):
+    def __init__(self, cfg: LanguageModelSAERunnerConfig):
         self.cfg = cfg
 
     def load_session(
@@ -101,32 +100,3 @@ class LMSparseAutoencoderSessionloader:
         )
 
         return activations_loader
-
-
-def shuffle_activations_pairwise(datapath: str, buffer_idx_range: Tuple[int, int]):
-    """
-    Shuffles two buffers on disk.
-    """
-    assert (
-        buffer_idx_range[0] < buffer_idx_range[1] - 1
-    ), "buffer_idx_range[0] must be smaller than buffer_idx_range[1] by at least 1"
-
-    buffer_idx1 = torch.randint(buffer_idx_range[0], buffer_idx_range[1], (1,)).item()
-    buffer_idx2 = torch.randint(buffer_idx_range[0], buffer_idx_range[1], (1,)).item()
-    while buffer_idx1 == buffer_idx2:  # Make sure they're not the same
-        buffer_idx2 = torch.randint(
-            buffer_idx_range[0], buffer_idx_range[1], (1,)
-        ).item()
-
-    buffer1 = torch.load(f"{datapath}/{buffer_idx1}.pt")
-    buffer2 = torch.load(f"{datapath}/{buffer_idx2}.pt")
-    joint_buffer = torch.cat([buffer1, buffer2])
-
-    # Shuffle them
-    joint_buffer = joint_buffer[torch.randperm(joint_buffer.shape[0])]
-    shuffled_buffer1 = joint_buffer[: buffer1.shape[0]]
-    shuffled_buffer2 = joint_buffer[buffer1.shape[0] :]
-
-    # Save them back
-    torch.save(shuffled_buffer1, f"{datapath}/{buffer_idx1}.pt")
-    torch.save(shuffled_buffer2, f"{datapath}/{buffer_idx2}.pt")

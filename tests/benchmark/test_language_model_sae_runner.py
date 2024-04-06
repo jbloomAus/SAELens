@@ -1,7 +1,7 @@
 import torch
 
-from sae_training.config import LanguageModelSAERunnerConfig
-from sae_training.lm_runner import language_model_sae_runner
+from sae_lens.training.config import LanguageModelSAERunnerConfig
+from sae_lens.training.lm_runner import language_model_sae_runner
 
 
 def test_language_model_sae_runner():
