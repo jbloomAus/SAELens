@@ -5,19 +5,9 @@ on:
     branches:
       - main
       - clean_up_repo
-    paths-ignore:
-      - '.devcontainer/**'
-      - '.vscode/**'
-      - '.gitignore'
-      - '*.md'
   pull_request:
     branches:
       - main
-    paths-ignore:
-      - '.devcontainer/**'
-      - '.vscode/**'
-      - '.gitignore'
-      - '*.md'
   # Allow this workflow to be called from other workflows
   workflow_call:
     inputs:
