@@ -21,7 +21,7 @@ def run_evals(
     suffix: str = "",
 ) -> Mapping[str, Any]:
     hook_point = sparse_autoencoder.cfg.hook_point
-    hook_point_layer = sparse_autoencoder.cfg.hook_point_layer
+    hook_point_layer = sparse_autoencoder.hook_point_layer
     hook_point_head_index = sparse_autoencoder.cfg.hook_point_head_index
 
     ### Evals

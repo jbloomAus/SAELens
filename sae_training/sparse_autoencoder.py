@@ -27,6 +27,14 @@ class ForwardOutput(NamedTuple):
 class SparseAutoencoder(HookedRootModule):
     """ """
 
+    l1_coefficient: float
+    lp_norm: float
+    d_sae: int
+    use_ghost_grads: bool
+    hook_point_layer: int
+    dtype: torch.dtype
+    device: str | torch.device
+
     def __init__(
         self,
         cfg: LanguageModelSAERunnerConfig,
@@ -39,11 +47,25 @@ class SparseAutoencoder(HookedRootModule):
                 f"d_in must be an int but was {self.d_in=}; {type(self.d_in)=}"
             )
         assert cfg.d_sae is not None  # keep pyright happy
+        # lists are valid only for SAEGroup cfg, not SAE cfg vals
+        assert not isinstance(cfg.l1_coefficient, list)
+        assert not isinstance(cfg.lp_norm, list)
+        assert not isinstance(cfg.lr, list)
+        assert not isinstance(cfg.lr_scheduler_name, list)
+        assert not isinstance(cfg.lr_warm_up_steps, list)
+        assert not isinstance(cfg.use_ghost_grads, list)
+        assert not isinstance(cfg.hook_point_layer, list)
+        assert (
+            "{layer}" not in cfg.hook_point
+        ), "{layer} must be replaced with the actual layer number in SAE cfg"
+
         self.d_sae = cfg.d_sae
         self.l1_coefficient = cfg.l1_coefficient
         self.lp_norm = cfg.lp_norm
         self.dtype = cfg.dtype
         self.device = cfg.device
+        self.use_ghost_grads = cfg.use_ghost_grads
+        self.hook_point_layer = cfg.hook_point_layer
 
         # NOTE: if using resampling neurons method, you must ensure that we initialise the weights in the order W_enc, b_enc, W_dec, b_dec
         self.W_enc = nn.Parameter(
@@ -107,7 +129,7 @@ class SparseAutoencoder(HookedRootModule):
         ghost_grad_loss = torch.tensor(0.0, dtype=self.dtype, device=self.device)
         # gate on config and training so evals is not slowed down.
         if (
-            self.cfg.use_ghost_grads
+            self.use_ghost_grads
             and self.training
             and dead_neuron_mask is not None
             and dead_neuron_mask.sum() > 0

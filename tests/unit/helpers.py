@@ -23,7 +23,6 @@ def build_sae_cfg(**kwargs: Any) -> LanguageModelSAERunnerConfig:
         use_cached_activations=False,
         d_in=64,
         expansion_factor=2,
-        d_sae=64 * 2,
         l1_coefficient=2e-3,
         lp_norm=1,
         lr=2e-4,

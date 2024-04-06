@@ -1,4 +1,3 @@
-from abc import ABC
 from dataclasses import dataclass
 from typing import Any, Optional, cast
 
@@ -8,15 +7,15 @@ import wandb
 
 
 @dataclass
-class RunnerConfig(ABC):
+class LanguageModelSAERunnerConfig:
     """
-    The config that's shared across all runners.
+    Configuration for training a sparse autoencoder on a language model.
     """
 
     # Data Generating Function (Model + Training Distibuion)
     model_name: str = "gelu-2l"
     hook_point: str = "blocks.{layer}.hook_mlp_out"
-    hook_point_layer: int = 0
+    hook_point_layer: int | list[int] = 0
     hook_point_head_index: Optional[int] = None
     dataset_path: str = "NeelNanda/c4-tokenized-2b"
     is_dataset_tokenized: bool = True
@@ -33,47 +32,39 @@ class RunnerConfig(ABC):
     n_batches_in_buffer: int = 20
     total_training_tokens: int = 2_000_000
     store_batch_size: int = 32
+    train_batch_size: int = 4096
 
     # Misc
     device: str | torch.device = "cpu"
     seed: int = 42
     dtype: torch.dtype = torch.float32
-
-    def __post_init__(self):
-        # Autofill cached_activations_path unless the user overrode it
-        if self.cached_activations_path is None:
-            self.cached_activations_path = f"activations/{self.dataset_path.replace('/', '_')}/{self.model_name.replace('/', '_')}/{self.hook_point}"
-            if self.hook_point_head_index is not None:
-                self.cached_activations_path += f"_{self.hook_point_head_index}"
-
-
-@dataclass
-class LanguageModelSAERunnerConfig(RunnerConfig):
-    """
-    Configuration for training a sparse autoencoder on a language model.
-    """
+    prepend_bos: bool = True
 
     # SAE Parameters
     b_dec_init_method: str = "geometric_median"
-    expansion_factor: int = 4
+    expansion_factor: int | list[int] = 4
     from_pretrained_path: Optional[str] = None
     d_sae: Optional[int] = None
 
     # Training Parameters
-    l1_coefficient: float = 1e-3
-    lp_norm: float = 1
-    lr: float = 3e-4
-    lr_end: float | None = None  # only used for cosine annealing, default is lr / 10
-    lr_scheduler_name: str = (
+    l1_coefficient: float | list[float] = 1e-3
+    lp_norm: float | list[float] = 1
+    lr: float | list[float] = 3e-4
+    lr_scheduler_name: str | list[str] = (
         "constant"  # constant, cosineannealing, cosineannealingwarmrestarts
     )
-    lr_warm_up_steps: int = 500
-    lr_decay_steps: int = 0
+    lr_warm_up_steps: int | list[int] = 500
+    lr_end: float | list[float] | None = (
+        None  # only used for cosine annealing, default is lr / 10
+    )
+    lr_decay_steps: int | list[int] = 0
+    n_restart_cycles: int | list[int] = 1  # used only for cosineannealingwarmrestarts
     train_batch_size: int = 4096
-    n_restart_cycles: int = 1  # only used for cosineannealingwarmrestarts
 
     # Resampling protocol args
-    use_ghost_grads: bool = False  # want to change this to true on some timeline.
+    use_ghost_grads: bool | list[bool] = (
+        False  # want to change this to true on some timeline.
+    )
     feature_sampling_window: int = 2000
     dead_feature_window: int = 1000  # unless this window is larger feature sampling,
 
@@ -89,11 +80,17 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
     # Misc
     n_checkpoints: int = 0
     checkpoint_path: str = "checkpoints"
-    prepend_bos: bool = True
     verbose: bool = True
 
     def __post_init__(self):
-        super().__post_init__()
+        if self.use_cached_activations and self.cached_activations_path is None:
+            self.cached_activations_path = _default_cached_activations_path(
+                self.dataset_path,
+                self.model_name,
+                self.hook_point,
+                self.hook_point_head_index,
+            )
+
         if not isinstance(self.expansion_factor, list):
             self.d_sae = self.d_in * self.expansion_factor
         self.tokens_per_buffer = (
@@ -112,10 +109,13 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
                 "Warning: We are initializing b_dec to zeros. This is probably not what you want."
             )
 
-        self.device = torch.device(self.device)
+        self.device: str | torch.device = torch.device(self.device)
 
         if self.lr_end is None:
-            self.lr_end = self.lr / 10
+            if isinstance(self.lr, list):
+                self.lr_end = [lr / 10 for lr in self.lr]
+            else:
+                self.lr_end = self.lr / 10
 
         unique_id = cast(
             Any, wandb
@@ -161,15 +161,42 @@ class LanguageModelSAERunnerConfig(RunnerConfig):
                 f"Number tokens in sparsity calculation window: {self.feature_sampling_window * self.train_batch_size:.2e}"
             )
 
-        if self.use_ghost_grads:
+        if not isinstance(self.use_ghost_grads, list) and self.use_ghost_grads:
             print("Using Ghost Grads.")
 
 
 @dataclass
-class CacheActivationsRunnerConfig(RunnerConfig):
+class CacheActivationsRunnerConfig:
     """
     Configuration for caching activations of an LLM.
     """
+
+    # Data Generating Function (Model + Training Distibuion)
+    model_name: str = "gelu-2l"
+    hook_point: str = "blocks.{layer}.hook_mlp_out"
+    hook_point_layer: int | list[int] = 0
+    hook_point_head_index: Optional[int] = None
+    dataset_path: str = "NeelNanda/c4-tokenized-2b"
+    is_dataset_tokenized: bool = True
+    context_size: int = 128
+    cached_activations_path: Optional[str] = (
+        None  # Defaults to "activations/{dataset}/{model}/{full_hook_name}_{hook_point_head_index}"
+    )
+
+    # SAE Parameters
+    d_in: int = 512
+
+    # Activation Store Parameters
+    n_batches_in_buffer: int = 20
+    total_training_tokens: int = 2_000_000
+    store_batch_size: int = 32
+    train_batch_size: int = 4096
+
+    # Misc
+    device: str | torch.device = "cpu"
+    seed: int = 42
+    dtype: torch.dtype = torch.float32
+    prepend_bos: bool = True
 
     # Activation caching stuff
     shuffle_every_n_buffers: int = 10
@@ -178,9 +205,23 @@ class CacheActivationsRunnerConfig(RunnerConfig):
     n_shuffles_final: int = 100
 
     def __post_init__(self):
-        super().__post_init__()
-        if self.use_cached_activations:
-            # this is a dummy property in this context; only here to avoid class compatibility headaches
-            raise ValueError(
-                "use_cached_activations should be False when running cache_activations_runner"
+        # Autofill cached_activations_path unless the user overrode it
+        if self.cached_activations_path is None:
+            self.cached_activations_path = _default_cached_activations_path(
+                self.dataset_path,
+                self.model_name,
+                self.hook_point,
+                self.hook_point_head_index,
             )
+
+
+def _default_cached_activations_path(
+    dataset_path: str,
+    model_name: str,
+    hook_point: str,
+    hook_point_head_index: int | None,
+) -> str:
+    path = f"activations/{dataset_path.replace('/', '_')}/{model_name.replace('/', '_')}/{hook_point}"
+    if hook_point_head_index is not None:
+        path += f"_{hook_point_head_index}"
+    return path

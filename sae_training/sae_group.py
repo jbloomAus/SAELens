@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import dataclasses
 import gzip
 import os
@@ -7,6 +9,7 @@ from typing import Any, Iterator
 
 import torch
 
+from sae_training.config import LanguageModelSAERunnerConfig
 from sae_training.sparse_autoencoder import SparseAutoencoder
 
 
@@ -14,12 +17,12 @@ class SAEGroup:
 
     autoencoders: list[SparseAutoencoder]
 
-    def __init__(self, cfg: Any):
+    def __init__(self, cfg: LanguageModelSAERunnerConfig):
         self.cfg = cfg
         self.autoencoders = []  # This will store tuples of (instance, hyperparameters)
         self._init_autoencoders(cfg)
 
-    def _init_autoencoders(self, cfg: Any):
+    def _init_autoencoders(self, cfg: LanguageModelSAERunnerConfig):
         # Dynamically get all combinations of hyperparameters from cfg
         # Extract all hyperparameter lists from cfg
         hyperparameters = {k: v for k, v in vars(cfg).items() if isinstance(v, list)}
@@ -53,8 +56,9 @@ class SAEGroup:
         for ae in self.autoencoders:
             ae.to(device)
 
+    # old pickled SAEs load as a dict
     @classmethod
-    def load_from_pretrained(cls, path: str):
+    def load_from_pretrained(cls, path: str) -> "SAEGroup" | dict[str, Any]:
         """
         Load function for the model. Loads the model's state_dict and the config used to train it.
         This method can be called directly on the class, without needing an instance.
@@ -69,7 +73,10 @@ class SAEGroup:
             try:
                 if torch.backends.mps.is_available():
                     group = torch.load(path, map_location="mps")
-                    group["cfg"].device = "mps"
+                    if isinstance(group, dict):
+                        group["cfg"].device = "mps"
+                    else:
+                        group.cfg.device = "mps"
                 else:
                     group = torch.load(path)
             except Exception as e:
