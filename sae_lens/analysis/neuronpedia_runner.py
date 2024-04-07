@@ -307,23 +307,21 @@ class NeuronpediaRunner:
                         feature_output["correlated_neurons_indices"] = (
                             feature.feature_tables_data.correlated_neurons_indices
                         )
-                        # TODO: this value doesn't exist in the new output type, commenting out for now
-                        # there is a cossim value though - is that what's needed?
-                        # feature_output["correlated_neurons_l1"] = self.round_list(
-                        #     feature.feature_tables_data.correlated_neurons_l1
-                        # )
+                        feature_output["correlated_neurons_l1"] = self.round_list(
+                            feature.feature_tables_data.correlated_neurons_cossim
+                        )
                         feature_output["correlated_neurons_pearson"] = self.round_list(
                             feature.feature_tables_data.correlated_neurons_pearson
                         )
-                        # feature_output["correlated_features_indices"] = (
-                        #     feature.feature_tables_data.correlated_features_indices
-                        # )
-                        # feature_output["correlated_features_l1"] = self.round_list(
-                        #     feature.feature_tables_data.correlated_features_l1
-                        # )
-                        # feature_output["correlated_features_pearson"] = self.round_list(
-                        #     feature.feature_tables_data.correlated_features_pearson
-                        # )
+                        feature_output["correlated_features_indices"] = (
+                            feature.feature_tables_data.correlated_features_indices
+                        )
+                        feature_output["correlated_features_l1"] = self.round_list(
+                            feature.feature_tables_data.correlated_features_cossim
+                        )
+                        feature_output["correlated_features_pearson"] = self.round_list(
+                            feature.feature_tables_data.correlated_features_pearson
+                        )
 
                     feature_output["neg_str"] = self.to_str_tokens_safe(
                         vocab_dict, feature.logits_table_data.bottom_token_ids
@@ -335,9 +333,11 @@ class NeuronpediaRunner:
                     feature_output["pos_values"] = top10_logits
 
                     # TODO: don't know what this should be in the new version
-                    # feature_output["frac_nonzero"] = (
-                    #     feature.middle_plots_data.frac_nonzero
-                    # )
+                    feature_output["frac_nonzero"] = (
+                        feature.acts_histogram_data.title.split(" = ")[1]
+                        if feature.acts_histogram_data.title is not None
+                        else 0
+                    )
 
                     freq_hist_data = feature.acts_histogram_data
                     freq_bar_values = self.round_list(freq_hist_data.bar_values)
