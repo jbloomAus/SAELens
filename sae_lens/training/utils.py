@@ -13,6 +13,8 @@ class BackwardsCompatibleUnpickler(pickle.Unpickler):
         module = module.replace("sae_training", "sae_lens.training")
         return super().find_class(module, name)
 
+class BackwardsCompatiblePickleClass():
+    Unpickler = BackwardsCompatibleUnpickler
 
 def shuffle_activations_pairwise(datapath: str, buffer_idx_range: Tuple[int, int]):
     """
