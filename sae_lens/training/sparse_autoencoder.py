@@ -242,7 +242,11 @@ class SparseAutoencoder(HookedRootModule):
         if path.endswith(".pt"):
             try:
                 if torch.backends.mps.is_available():
-                    state_dict = torch.load(path, map_location="mps", pickle_module=BackwardsCompatiblePickleClass)
+                    state_dict = torch.load(
+                        path,
+                        map_location="mps",
+                        pickle_module=BackwardsCompatiblePickleClass,
+                    )
                     state_dict["cfg"].device = "mps"
                 else:
                     state_dict = torch.load(path)
