@@ -45,6 +45,8 @@ class LanguageModelSAERunnerConfig:
     expansion_factor: int | list[int] = 4
     from_pretrained_path: Optional[str] = None
     d_sae: Optional[int] = None
+    sae_type: str = "sae"
+    noise_scale: float = 0.0
 
     # Training Parameters
     l1_coefficient: float | list[float] = 1e-3

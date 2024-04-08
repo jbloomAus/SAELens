@@ -35,6 +35,8 @@ class SparseAutoencoder(HookedRootModule):
     hook_point_layer: int
     dtype: torch.dtype
     device: str | torch.device
+    noise_scale: float
+    sae_type: str
 
     def __init__(
         self,
@@ -67,6 +69,14 @@ class SparseAutoencoder(HookedRootModule):
         self.device = cfg.device
         self.use_ghost_grads = cfg.use_ghost_grads
         self.hook_point_layer = cfg.hook_point_layer
+        self.noise_scale = getattr(cfg, "noise_scale", 0.0)
+        self.sae_type = getattr(cfg, "sae_type", "sae")
+        if cfg.sae_type == "normalized_sae":
+            assert self.noise_scale > 0, f"Unexpected noise_scale: {self.noise_scale}, noise should be strictly positive for normalized SAEs"
+        elif cfg.sae_type == "sae":
+            self.noise_scale = 0.0
+        else:
+            raise ValueError(f"Unexpected sae_type: {cfg.sae_type}")
 
         # NOTE: if using resampling neurons method, you must ensure that we initialise the weights in the order W_enc, b_enc, W_dec, b_dec
         self.W_enc = nn.Parameter(
@@ -114,7 +124,13 @@ class SparseAutoencoder(HookedRootModule):
             )
             + self.b_enc
         )
-        feature_acts = self.hook_hidden_post(torch.nn.functional.relu(hidden_pre))
+        if self.sae_type == "sae":
+            feature_acts = self.hook_hidden_post(torch.nn.functional.relu(hidden_pre))
+        elif self.sae_type == "normalized_sae":
+            noise = torch.randn_like(hidden_pre) * self.noise_scale
+            feature_acts = self.hook_hidden_post(torch.nn.functional.tanh(torch.nn.functional.relu(hidden_pre + noise)))
+        else:
+            raise ValueError(f"Unexpected sae_type: {self.sae_type}")
 
         sae_out = self.hook_sae_out(
             einops.einsum(
@@ -180,7 +196,8 @@ class SparseAutoencoder(HookedRootModule):
 
     @torch.no_grad()
     def set_decoder_norm_to_unit_norm(self):
-        self.W_dec.data /= torch.norm(self.W_dec.data, dim=1, keepdim=True)
+        if self.sae_type == "sae":
+            self.W_dec.data /= torch.norm(self.W_dec.data, dim=1, keepdim=True)
 
     @torch.no_grad()
     def remove_gradient_parallel_to_decoder_directions(self):
@@ -188,18 +205,19 @@ class SparseAutoencoder(HookedRootModule):
         Update grads so that they remove the parallel component
             (d_sae, d_in) shape
         """
-        assert self.W_dec.grad is not None  # keep pyright happy
+        if self.sae_type == "sae":
+            assert self.W_dec.grad is not None  # keep pyright happy
 
-        parallel_component = einops.einsum(
-            self.W_dec.grad,
-            self.W_dec.data,
-            "d_sae d_in, d_sae d_in -> d_sae",
-        )
-        self.W_dec.grad -= einops.einsum(
-            parallel_component,
-            self.W_dec.data,
-            "d_sae, d_sae d_in -> d_sae d_in",
-        )
+            parallel_component = einops.einsum(
+                self.W_dec.grad,
+                self.W_dec.data,
+                "d_sae d_in, d_sae d_in -> d_sae",
+            )
+            self.W_dec.grad -= einops.einsum(
+                parallel_component,
+                self.W_dec.data,
+                "d_sae, d_sae d_in -> d_sae d_in",
+            )
 
     def save_model(self, path: str):
         """
