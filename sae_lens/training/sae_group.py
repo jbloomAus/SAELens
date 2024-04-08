@@ -6,7 +6,7 @@ import os
 import pickle
 from itertools import product
 from types import SimpleNamespace
-from typing import Any, Iterator
+from typing import Iterator
 
 import torch
 
@@ -58,9 +58,8 @@ class SAEGroup:
         for ae in self.autoencoders:
             ae.to(device)
 
-    # old pickled SAEs load as a dict
     @classmethod
-    def load_from_pretrained(cls, path: str) -> "SAEGroup" | dict[str, Any]:
+    def load_from_pretrained(cls, path: str) -> "SAEGroup":
         """
         Load function for the model. Loads the model's state_dict and the config used to train it.
         This method can be called directly on the class, without needing an instance.
@@ -114,18 +113,17 @@ class SAEGroup:
                 f"Unexpected file extension: {path}, supported extensions are .pt, .pkl, and .pkl.gz"
             )
 
+        # handle loading old autoencoders where before SAEGroup existed, where we just save a dict
+        if isinstance(group, dict):
+            sparse_autoencoder = SparseAutoencoder(cfg=group["cfg"])
+            sparse_autoencoder.load_state_dict(group["state_dict"])
+            group = cls(group["cfg"])
+            group.autoencoders[0] = sparse_autoencoder
+
+        if not isinstance(group, cls):
+            raise ValueError("The loaded object is not a valid SAEGroup")
+
         return group
-        # # # Ensure the loaded state contains both 'cfg' and 'state_dict'
-        # # if "cfg" not in state_dict or "state_dict" not in state_dict:
-        # #     raise ValueError(
-        # #         "The loaded state dictionary must contain 'cfg' and 'state_dict' keys"
-        # #     )
-
-        # # Create an instance of the class using the loaded configuration
-        # instance = cls(cfg=state_dict["cfg"])
-        # instance.load_state_dict(state_dict["state_dict"])
-
-        # return instance
 
     def save_model(self, path: str):
         """

@@ -38,6 +38,7 @@ flake8 = "^7.0.0"
 isort = "^5.13.2"
 pyright = "^1.1.351"
 
+
 [tool.isort]
 profile = "black"
 
@@ -53,6 +54,7 @@ reportUnnecessaryComparison = "none"
 reportConstantRedefinition = "none"
 reportUnknownLambdaType = "none"
 reportPrivateUsage = "none"
+
 
 [build-system]
 requires = ["poetry-core"]

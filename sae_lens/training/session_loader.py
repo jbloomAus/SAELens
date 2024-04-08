@@ -5,7 +5,6 @@ from transformer_lens import HookedTransformer
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.sae_group import SAEGroup
-from sae_lens.training.sparse_autoencoder import SparseAutoencoder
 
 
 class LMSparseAutoencoderSessionloader:
@@ -40,31 +39,8 @@ class LMSparseAutoencoderSessionloader:
         """
         Loads a session for analysing a pretrained sparse autoencoder group.
         """
-        # if torch.backends.mps.is_available():
-        #     cfg = torch.load(path, map_location="mps")["cfg"]
-        #     cfg.device = "mps"
-        # elif torch.cuda.is_available():
-        #     cfg = torch.load(path, map_location="cuda")["cfg"]
-        # else:
-        #     cfg = torch.load(path, map_location="cpu")["cfg"]
-
         sparse_autoencoders = SAEGroup.load_from_pretrained(path)
-
-        # hacky code to deal with old SAE saves
-        if type(sparse_autoencoders) is dict:
-            sparse_autoencoder = SparseAutoencoder(cfg=sparse_autoencoders["cfg"])
-            sparse_autoencoder.load_state_dict(sparse_autoencoders["state_dict"])
-            model, sparse_autoencoders, activations_loader = cls(
-                sparse_autoencoder.cfg
-            ).load_session()
-            sparse_autoencoders.autoencoders[0] = sparse_autoencoder
-        elif type(sparse_autoencoders) is SAEGroup:
-            model, _, activations_loader = cls(sparse_autoencoders.cfg).load_session()
-        else:
-            raise ValueError(
-                "The loaded sparse_autoencoders object is neither an SAE dict nor a SAEGroup"
-            )
-
+        model, _, activations_loader = cls(sparse_autoencoders.cfg).load_session()
         return model, sparse_autoencoders, activations_loader
 
     def get_model(self, model_name: str):

@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - clean_up_repo
   pull_request:
     branches:
       - main
@@ -25,14 +24,39 @@ jobs:
         python-version: ["3.10", "3.11"]
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+      - name: Cache Huggingface assets
+        uses: actions/cache@v4
+        with:
+          key: huggingface-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml') }}
+          path: ~/.cache/huggingface
+          restore-keys: |
+            huggingface-${{ runner.os }}-${{ matrix.python-version }}-
+      - name: Load cached Poetry installation
+        id: cached-poetry
+        uses: actions/cache@v4
+        with:
+          path: ~/.local  # the path depends on the OS
+          key: poetry-${{ runner.os }}-${{ matrix.python-version }}-0  # increment to reset cache
       - name: Install Poetry
+        if: steps.cached-poetry.outputs.cache-hit != 'true'
         uses: snok/install-poetry@v1
+        with:
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+          installer-parallel: true
+      - name: Load cached venv
+        id: cached-poetry-dependencies
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml') }}
       - name: Install dependencies
+        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
         run: poetry install --no-interaction
       - name: Lint with flake8
         run: poetry run flake8 .
@@ -49,7 +73,7 @@ jobs:
         uses: codecov/codecov-action@v4.0.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          slug: jbloomAus/mats_sae_training
+          slug: jbloomAus/SAELens
 
   release:
 
