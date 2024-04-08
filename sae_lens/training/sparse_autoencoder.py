@@ -13,6 +13,7 @@ from torch import nn
 from transformer_lens.hook_points import HookedRootModule, HookPoint
 
 from sae_lens.training.config import LanguageModelSAERunnerConfig
+from sae_lens.training.utils import BackwardsCompatiblePickleClass
 
 
 class ForwardOutput(NamedTuple):
@@ -241,7 +242,11 @@ class SparseAutoencoder(HookedRootModule):
         if path.endswith(".pt"):
             try:
                 if torch.backends.mps.is_available():
-                    state_dict = torch.load(path, map_location="mps")
+                    state_dict = torch.load(
+                        path,
+                        map_location="mps",
+                        pickle_module=BackwardsCompatiblePickleClass,
+                    )
                     state_dict["cfg"].device = "mps"
                 else:
                     state_dict = torch.load(path)

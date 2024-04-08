@@ -14,6 +14,10 @@ class BackwardsCompatibleUnpickler(pickle.Unpickler):
         return super().find_class(module, name)
 
 
+class BackwardsCompatiblePickleClass:
+    Unpickler = BackwardsCompatibleUnpickler
+
+
 def shuffle_activations_pairwise(datapath: str, buffer_idx_range: Tuple[int, int]):
     """
     Shuffles two buffers on disk.
