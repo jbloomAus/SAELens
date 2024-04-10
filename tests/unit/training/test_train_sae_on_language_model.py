@@ -322,11 +322,6 @@ def test_save_checkpoint(tmp_path: Path) -> None:
     #     loaded_log_sparsities[0], _log_feature_sparsity(ctx.feature_sparsity)
     # )
 
-    # reset wandb mode
-    # if previous_wandb_mode is not None:
-    #     os.environ["WANDB_MODE"] = previous_wandb_mode
-    os.environ["WANDB_MODE"] = None
-
 
 def test_train_sae_group_on_language_model__runs_and_outputs_look_reasonable(
     ts_model: HookedTransformer,
