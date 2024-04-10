@@ -37,13 +37,15 @@ def train_toy_sae(
     for _, batch in enumerate(pbar):
         batch = next(dataloader)
         # Make sure the W_dec is still zero-norm
-        sparse_autoencoder.set_decoder_norm_to_unit_norm()
+        if sparse_autoencoder.sae_type == "unit_norm_sae":
+            sparse_autoencoder.set_decoder_norm_to_unit_norm()
 
         # Forward and Backward Passes
         optimizer.zero_grad()
         sae_out, feature_acts, loss, mse_loss, l1_loss, _ = sparse_autoencoder(batch)
         loss.backward()
-        sparse_autoencoder.remove_gradient_parallel_to_decoder_directions()
+        if sparse_autoencoder.sae_type == "unit_norm_sae":
+            sparse_autoencoder.remove_gradient_parallel_to_decoder_directions()
         optimizer.step()
 
         n_training_tokens += batch_size

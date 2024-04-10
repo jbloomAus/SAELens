@@ -5,7 +5,7 @@ https://github.com/ArthurConmy/sae/blob/main/sae/model.py
 import gzip
 import os
 import pickle
-from typing import NamedTuple
+from typing import NamedTuple, Callable
 
 import einops
 import torch
@@ -35,6 +35,9 @@ class SparseAutoencoder(HookedRootModule):
     hook_point_layer: int
     dtype: torch.dtype
     device: str | torch.device
+    noise_scale: float
+    sae_type: str
+    activation_fn: Callable[[torch.Tensor], torch.Tensor]
 
     def __init__(
         self,
@@ -67,6 +70,26 @@ class SparseAutoencoder(HookedRootModule):
         self.device = cfg.device
         self.use_ghost_grads = cfg.use_ghost_grads
         self.hook_point_layer = cfg.hook_point_layer
+        self.noise_scale = getattr(cfg, "noise_scale", 0.0)
+        self.sae_type = getattr(cfg, "sae_type", "unit_norm_sae")
+        self.activation_fn = (
+            torch.nn.functional.relu
+        )  # maybe change this to `torch.relu`
+        if self.sae_type == "tanh_sae":
+            assert (
+                self.noise_scale > 0
+            ), f"Unexpected noise_scale: {self.noise_scale}, noise should be strictly positive for normalized SAEs"
+
+            def tanh_relu(input: torch.Tensor) -> torch.Tensor:
+                input = torch.relu(input)
+                input = torch.tanh(input)
+                return input
+
+            self.activation_fn = tanh_relu
+        elif self.sae_type == "unit_norm_sae":
+            self.noise_scale = 0.0
+        else:
+            raise ValueError(f"Unexpected sae_type: {cfg.sae_type}")
 
         # NOTE: if using resampling neurons method, you must ensure that we initialise the weights in the order W_enc, b_enc, W_dec, b_dec
         self.W_enc = nn.Parameter(
@@ -84,9 +107,10 @@ class SparseAutoencoder(HookedRootModule):
             )
         )
 
-        with torch.no_grad():
-            # Anthropic normalize this to have unit columns
-            self.set_decoder_norm_to_unit_norm()
+        if self.sae_type == "unit_norm_sae":
+            with torch.no_grad():
+                # Anthropic normalize this to have unit columns
+                self.set_decoder_norm_to_unit_norm()
 
         self.b_dec = nn.Parameter(
             torch.zeros(self.d_in, dtype=self.dtype, device=self.device)
@@ -114,7 +138,9 @@ class SparseAutoencoder(HookedRootModule):
             )
             + self.b_enc
         )
-        feature_acts = self.hook_hidden_post(torch.nn.functional.relu(hidden_pre))
+        noise = torch.randn_like(hidden_pre) * self.noise_scale
+        noisy_hidden_pre = hidden_pre + noise
+        feature_acts = self.hook_hidden_post(self.activation_fn(noisy_hidden_pre))
 
         sae_out = self.hook_sae_out(
             einops.einsum(

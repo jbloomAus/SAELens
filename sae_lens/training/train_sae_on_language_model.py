@@ -310,7 +310,8 @@ def _train_step(
 
     sparse_autoencoder.train()
     # Make sure the W_dec is still zero-norm
-    sparse_autoencoder.set_decoder_norm_to_unit_norm()
+    if sparse_autoencoder.sae_type == "unit_norm_sae":
+        sparse_autoencoder.set_decoder_norm_to_unit_norm()
 
     # log and then reset the feature sparsity every feature_sampling_window steps
     if (n_training_steps + 1) % feature_sampling_window == 0:
@@ -365,7 +366,8 @@ def _train_step(
 
     ctx.optimizer.zero_grad()
     loss.backward()
-    sparse_autoencoder.remove_gradient_parallel_to_decoder_directions()
+    if sparse_autoencoder.sae_type == "unit_norm_sae":
+        sparse_autoencoder.remove_gradient_parallel_to_decoder_directions()
     ctx.optimizer.step()
     ctx.scheduler.step()
 
@@ -440,7 +442,8 @@ def _save_checkpoint(
         f"{sae_group.cfg.checkpoint_path}/{checkpoint_name}_{sae_group.get_name()}.pt"
     )
     for sae in sae_group:
-        sae.set_decoder_norm_to_unit_norm()
+        if sae.sae_type == "unit_norm_sae":
+            sae.set_decoder_norm_to_unit_norm()
     sae_group.save_model(path)
     log_feature_sparsity_path = f"{sae_group.cfg.checkpoint_path}/{checkpoint_name}_{sae_group.get_name()}_log_feature_sparsity.pt"
     log_feature_sparsities = [
