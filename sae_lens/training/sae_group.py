@@ -15,7 +15,7 @@ from sae_lens.training.sparse_autoencoder import SparseAutoencoder
 from sae_lens.training.utils import BackwardsCompatibleUnpickler
 
 
-class SAEGroup:
+class SAETrainingGroup:
 
     autoencoders: list[SparseAutoencoder]
 
@@ -60,7 +60,9 @@ class SAEGroup:
 
     # old pickled SAEs load as a dict
     @classmethod
-    def load_from_pretrained(cls, path: str) -> "SAEGroup" | dict[str, Any]:
+    def load_from_pretrained_legacy(
+        cls, path: str
+    ) -> "SAETrainingGroup" | dict[str, Any]:
         """
         Load function for the model. Loads the model's state_dict and the config used to train it.
         This method can be called directly on the class, without needing an instance.
@@ -127,6 +129,55 @@ class SAEGroup:
 
         # return instance
 
+    @classmethod
+    def load_from_pretrained(cls, path: str) -> "SAETrainingGroup":
+        """
+        This function returns the SAEGroup object containing a group of SparseAutoencoders
+        that have been pretrained. The path should either point to folder containing
+        folders which have the Sparse Autoencoder files required (sae_weights.safetensor and cfg.json)
+        or should point to one of these folders directly.
+        """
+
+        assert os.path.exists(path), f"Path {path} does not exist"
+
+        if os.path.isfile(path):
+            # If the path points to a file, it should be a .pt file
+            print(
+                "Warning: Using Legacy Load Function. May not work or might require the eindex package."
+            )
+            return cls.load_from_pretrained_legacy(path)
+
+        # check if json in the folder, then we just load that one in.
+        cfg_path = os.path.join(path, "cfg.json")
+        if os.path.exists(cfg_path):
+            # we're just loading one SAE into the SAE Group.
+            sae = SparseAutoencoder.load_from_pretrained(path)
+            sae_group = cls(sae.cfg)
+            sae_group.autoencoders[0].load_state_dict(sae.state_dict())
+
+            return sae_group
+
+        else:
+            # If the path points to a folder, it should contain folders with the required files
+            # Load all the SAEs in the folder
+            print(
+                "Warning: Loading an SAE group of multiple files is not currently well supported"
+            )
+            print("We'll try to find a nice solution for this in the future.")
+
+            autoencoders = []
+            for folder in os.listdir(path):
+                if os.path.isdir(os.path.join(path, folder)):
+                    sae = SparseAutoencoder.load_from_pretrained(
+                        os.path.join(path, folder)
+                    )
+                    autoencoders.append(sae)
+
+            # Create the SAEGroup object
+            sae_group = cls(autoencoders[0].cfg)
+            sae_group.autoencoders = autoencoders
+            return sae_group
+
     def save_model(self, path: str):
         """
         Basic save function for the model. Saves the model's state_dict and the config used to train it.
@@ -136,17 +187,14 @@ class SAEGroup:
         folder = os.path.dirname(path)
         os.makedirs(folder, exist_ok=True)
 
-        if path.endswith(".pt"):
-            torch.save(self, path)
-        elif path.endswith("pkl.gz"):
-            with gzip.open(path, "wb") as f:
-                pickle.dump(self, f)
+        if len(self.autoencoders) == 1:
+            self.autoencoders[0].save_model(path)
         else:
-            raise ValueError(
-                f"Unexpected file extension: {path}, supported extensions are .pt and .pkl.gz"
-            )
-
-        print(f"Saved model to {path}")
+            # TODO: SAE Group should be a dict.
+            for i, autoencoder in enumerate(self.autoencoders):
+                subfolder_name = f"{path}/{i}"
+                os.makedirs(subfolder_name, exist_ok=True)
+                autoencoder.save_model(f"{path}/{i}")
 
     def get_name(self):
         layers = self.cfg.hook_point_layer

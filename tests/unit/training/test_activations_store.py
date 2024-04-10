@@ -87,6 +87,7 @@ def model(cfg: LanguageModelSAERunnerConfig):
 
 @pytest.fixture
 def activation_store(cfg: LanguageModelSAERunnerConfig, model: HookedTransformer):
+    cfg
     return ActivationsStore.from_config(model, cfg)
 
 

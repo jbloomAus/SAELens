@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass
 from typing import Any, NamedTuple, cast
 
@@ -12,7 +13,7 @@ from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.evals import run_evals
 from sae_lens.training.geometric_median import compute_geometric_median
 from sae_lens.training.optim import get_scheduler
-from sae_lens.training.sae_group import SAEGroup
+from sae_lens.training.sae_group import SAETrainingGroup
 from sae_lens.training.sparse_autoencoder import SparseAutoencoder
 
 
@@ -35,14 +36,14 @@ class SAETrainContext:
 
 @dataclass
 class TrainSAEGroupOutput:
-    sae_group: SAEGroup
+    sae_group: SAETrainingGroup
     checkpoint_paths: list[str]
     log_feature_sparsities: list[torch.Tensor]
 
 
 def train_sae_on_language_model(
     model: HookedTransformer,
-    sae_group: SAEGroup,
+    sae_group: SAETrainingGroup,
     activation_store: ActivationsStore,
     batch_size: int = 1024,
     n_checkpoints: int = 0,
@@ -50,7 +51,7 @@ def train_sae_on_language_model(
     dead_feature_threshold: float = 1e-8,  # how infrequently a feature has to be active to be considered dead
     use_wandb: bool = False,
     wandb_log_frequency: int = 50,
-) -> SAEGroup:
+) -> SAETrainingGroup:
     """
     @deprecated Use `train_sae_group_on_language_model` instead. This method is kept for backward compatibility.
     """
@@ -68,7 +69,7 @@ def train_sae_on_language_model(
 
 def train_sae_group_on_language_model(
     model: HookedTransformer,
-    sae_group: SAEGroup,
+    sae_group: SAETrainingGroup,
     activation_store: ActivationsStore,
     batch_size: int = 1024,
     n_checkpoints: int = 0,
@@ -255,7 +256,9 @@ def _build_train_context(
 
 
 def _init_sae_group_b_decs(
-    sae_group: SAEGroup, activation_store: ActivationsStore, all_layers: list[int]
+    sae_group: SAETrainingGroup,
+    activation_store: ActivationsStore,
+    all_layers: list[int],
 ) -> None:
     """
     extract all activations at a certain layer and use for sae b_dec initialization
@@ -431,29 +434,31 @@ class SaveCheckpointOutput(NamedTuple):
 
 
 def _save_checkpoint(
-    sae_group: SAEGroup,
+    sae_group: SAETrainingGroup,
     train_contexts: list[SAETrainContext],
     checkpoint_name: int | str,
     wandb_aliases: list[str] | None = None,
 ) -> SaveCheckpointOutput:
-    path = (
-        f"{sae_group.cfg.checkpoint_path}/{checkpoint_name}_{sae_group.get_name()}.pt"
-    )
+    path = f"{sae_group.cfg.checkpoint_path}/{checkpoint_name}_{sae_group.get_name()}"
     for sae in sae_group:
         sae.set_decoder_norm_to_unit_norm()
     sae_group.save_model(path)
-    log_feature_sparsity_path = f"{sae_group.cfg.checkpoint_path}/{checkpoint_name}_{sae_group.get_name()}_log_feature_sparsity.pt"
+    log_feature_sparsity_path = f"{sae_group.cfg.checkpoint_path}/{checkpoint_name}_{sae_group.get_name()}/log_feature_sparsity.pt"
     log_feature_sparsities = [
         _log_feature_sparsity(ctx.feature_sparsity) for ctx in train_contexts
     ]
-    torch.save(log_feature_sparsities, log_feature_sparsity_path)
-    if sae_group.cfg.log_to_wandb:
+    # To do: Reimplement this part later.
+    # log_feature_sparsities = {"sparsity": {str(i),t for i,t in enumerate(log_feature_sparsities)}
+    # save_file(log_feature_sparsities, log_feature_sparsity_path)
+
+    if sae_group.cfg.log_to_wandb and os.path.exists(log_feature_sparsity_path):
         model_artifact = wandb.Artifact(
             f"{sae_group.get_name()}",
             type="model",
             metadata=dict(sae_group.cfg.__dict__),
         )
-        model_artifact.add_file(path)
+        model_artifact.add_file(f"{path}/sae_weights.safetensors")
+        model_artifact.add_file(f"{path}/cfg.json")
         wandb.log_artifact(model_artifact, aliases=wandb_aliases)
 
         sparsity_artifact = wandb.Artifact(
@@ -463,6 +468,7 @@ def _save_checkpoint(
         )
         sparsity_artifact.add_file(log_feature_sparsity_path)
         wandb.log_artifact(sparsity_artifact)
+
     return SaveCheckpointOutput(path, log_feature_sparsity_path, log_feature_sparsities)
 
 

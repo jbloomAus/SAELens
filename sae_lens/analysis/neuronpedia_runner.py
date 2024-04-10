@@ -94,7 +94,7 @@ class NeuronpediaRunner:
             self.model,
             sae_group,
             self.activation_store,
-        ) = LMSparseAutoencoderSessionloader.load_session_from_pretrained(self.sae_path)
+        ) = LMSparseAutoencoderSessionloader.load_pretrained_sae(self.sae_path)
         # TODO: handle multiple autoencoders
         self.sparse_autoencoder = sae_group.autoencoders[0]
 

@@ -5,6 +5,13 @@ import torch
 
 import wandb
 
+DTYPE_MAP = {
+    "torch.float32": torch.float32,
+    "torch.float64": torch.float64,
+    "torch.float16": torch.float16,
+    "torch.bfloat16": torch.bfloat16,
+}
+
 
 @dataclass
 class LanguageModelSAERunnerConfig:
@@ -37,7 +44,7 @@ class LanguageModelSAERunnerConfig:
     # Misc
     device: str | torch.device = "cpu"
     seed: int = 42
-    dtype: torch.dtype = torch.float32
+    dtype: str | torch.dtype = "float32"
     prepend_bos: bool = True
 
     # SAE Parameters
@@ -108,6 +115,10 @@ class LanguageModelSAERunnerConfig:
             print(
                 "Warning: We are initializing b_dec to zeros. This is probably not what you want."
             )
+
+        self.dtype: torch.dtype = (
+            DTYPE_MAP[self.dtype] if type(self.dtype) == str else self.dtype
+        )
 
         self.device: str | torch.device = torch.device(self.device)
 
@@ -195,7 +206,7 @@ class CacheActivationsRunnerConfig:
     # Misc
     device: str | torch.device = "cpu"
     seed: int = 42
-    dtype: torch.dtype = torch.float32
+    dtype: str | torch.dtype = "float32"
     prepend_bos: bool = True
 
     # Activation caching stuff
