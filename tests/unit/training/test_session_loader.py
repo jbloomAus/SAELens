@@ -97,7 +97,7 @@ def test_LMSparseAutoencoderSessionloader_load_session(cfg: Any):
     model, sae_group, activations_loader = loader.load_sae_training_group_session()
 
     assert isinstance(model, HookedTransformer)
-    assert isinstance(sae_group.autoencoders[0], SparseAutoencoder)
+    assert isinstance(next(iter(sae_group))[1], SparseAutoencoder)
     assert isinstance(activations_loader, ActivationsStore)
 
 
@@ -107,9 +107,9 @@ def test_LMSparseAutoencoderSessionloader_load_sae_session_from_pretrained(
     # make a
     loader = LMSparseAutoencoderSessionloader(cfg)
     _, sae_group, _ = loader.load_sae_training_group_session()
-    old_sparse_autoencoder = sae_group.autoencoders[0]
+    old_sparse_autoencoder = next(iter(sae_group))[1]
     with tempfile.TemporaryDirectory() as tmpdirname:
-        sae_group.save_model(tmpdirname)
+        sae_group.save_saes(tmpdirname)
         (
             _,
             new_sparse_autoencoder,

@@ -44,7 +44,7 @@ class LanguageModelSAERunnerConfig:
     # Misc
     device: str | torch.device = "cpu"
     seed: int = 42
-    dtype: str | torch.dtype = "float32"
+    dtype: str | torch.dtype = "float32"  # type: ignore #
     prepend_bos: bool = True
 
     # SAE Parameters
@@ -116,9 +116,12 @@ class LanguageModelSAERunnerConfig:
                 "Warning: We are initializing b_dec to zeros. This is probably not what you want."
             )
 
-        self.dtype: torch.dtype = (
-            DTYPE_MAP[self.dtype] if type(self.dtype) == str else self.dtype
-        )
+        if isinstance(self.dtype, str) and self.dtype not in DTYPE_MAP:
+            raise ValueError(
+                f"dtype must be one of {list(DTYPE_MAP.keys())}. Got {self.dtype}"
+            )
+        elif isinstance(self.dtype, str):
+            self.dtype: torch.dtype = DTYPE_MAP[self.dtype]
 
         self.device: str | torch.device = torch.device(self.device)
 

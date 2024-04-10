@@ -10,7 +10,8 @@ from typing import NamedTuple, Optional
 
 import einops
 import torch
-from safetensors.torch import safe_open, save_file
+from safetensors import safe_open
+from safetensors.torch import save_file
 from torch import nn
 from transformer_lens.hook_points import HookedRootModule, HookPoint
 
@@ -245,8 +246,8 @@ class SparseAutoencoder(HookedRootModule):
         if sparsity is not None:
             # load the sparisty:
             assert sparsity is not None
-            sparsity = {"sparsity": sparsity}
-            save_file(sparsity, f"{path}/sparsity.safetensors")
+            sparsity = {"sparsity": sparsity}  # type: ignore
+            save_file(sparsity, f"{path}/sparsity.safetensors")  # type: ignore
 
     @classmethod
     def load_from_pretrained_legacy(cls, path: str):
@@ -322,7 +323,7 @@ class SparseAutoencoder(HookedRootModule):
         sae = SparseAutoencoder(config)
 
         tensors = {}
-        with safe_open(weight_path, framework="pt", device=device) as f:
+        with safe_open(weight_path, framework="pt", device=device) as f:  # type: ignore
             for k in f.keys():
                 tensors[k] = f.get_tensor(k)
         sae.load_state_dict(tensors)

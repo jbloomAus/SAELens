@@ -4,7 +4,7 @@ from transformer_lens import HookedTransformer
 
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.config import LanguageModelSAERunnerConfig
-from sae_lens.training.sae_group import SAETrainingGroup
+from sae_lens.training.sae_group import SparseAutoencoderDictionary
 from sae_lens.training.sparse_autoencoder import SparseAutoencoder
 
 
@@ -21,7 +21,7 @@ class LMSparseAutoencoderSessionloader:
 
     def load_sae_training_group_session(
         self,
-    ) -> Tuple[HookedTransformer, SAETrainingGroup, ActivationsStore]:
+    ) -> Tuple[HookedTransformer, SparseAutoencoderDictionary, ActivationsStore]:
         """
         Loads a session for training a sparse autoencoder on a language model.
         """
@@ -33,19 +33,16 @@ class LMSparseAutoencoderSessionloader:
             self.cfg,
         )
 
-        sae_group = SAETrainingGroup(self.cfg)
+        sae_group = SparseAutoencoderDictionary(self.cfg)
 
         return model, sae_group, activations_loader
 
     @classmethod
     def load_pretrained_sae(
         cls, path: str
-    ) -> Tuple[HookedTransformer, SparseAutoencoder, ActivationsStore]:
+    ) -> Tuple[HookedTransformer, SparseAutoencoderDictionary, ActivationsStore]:
         """
         Loads a session for analysing a pretrained sparse autoencoder.
-
-        We assume that analysis of pretrained model occurs does not
-        make use of SAE groups (as they are only used for training).
         """
 
         # load the SAE
@@ -53,9 +50,11 @@ class LMSparseAutoencoderSessionloader:
 
         # load the model, SAE and activations loader with it.
         session_loader = cls(sparse_autoencoder.cfg)
-        model, _, activations_loader = session_loader.load_sae_training_group_session()
+        model, sae_group, activations_loader = (
+            session_loader.load_sae_training_group_session()
+        )
 
-        return model, sparse_autoencoder, activations_loader
+        return model, sae_group, activations_loader
 
     def get_model(self, model_name: str):
         """

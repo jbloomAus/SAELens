@@ -11,9 +11,9 @@ from sae_lens.training.session_loader import LMSparseAutoencoderSessionloader
 from sae_lens.training.sparse_autoencoder import SparseAutoencoder
 
 
-def load_sparsity(path: str):
+def load_sparsity(path: str) -> torch.Tensor:
     sparsity_path = os.path.join(path, "sparsity.safetensors")
-    with safe_open(sparsity_path, framework="pt", device="cpu") as f:
+    with safe_open(sparsity_path, framework="pt", device="cpu") as f:  # type: ignore
         sparsity = f.get_tensor("sparsity")
     return sparsity
 
@@ -61,17 +61,19 @@ def convert_connor_rob_sae_to_our_saelens_format(
     device: str = "mps",
 ):
 
+    expansion_factor = int(config["dict_size"]) // int(config["act_size"])
+
     cfg = LanguageModelSAERunnerConfig(
-        model_name=config["model_name"],
-        hook_point=config["act_name"],
-        hook_point_layer=config["layer"],
+        model_name=config["model_name"],  # type: ignore
+        hook_point=config["act_name"],  # type: ignore
+        hook_point_layer=config["layer"],  # type: ignore
         # data
         # dataset_path = "/share/data/datasets/pile/the-eye.eu/public/AI/pile/train", # Training set of The Pile
         dataset_path="NeelNanda/openwebtext-tokenized-9b",
         is_dataset_tokenized=True,
-        d_in=config["act_size"],
-        expansion_factor=config["dict_size"] // config["act_size"],
-        context_size=config["seq_len"],
+        d_in=config["act_size"],  # type: ignore
+        expansion_factor=expansion_factor,
+        context_size=config["seq_len"],  # type: ignore
         device=device,
         store_batch_size=32,
         n_batches_in_buffer=10,
@@ -85,7 +87,7 @@ def convert_connor_rob_sae_to_our_saelens_format(
         model, ae_alt, activation_store = LMSparseAutoencoderSessionloader(
             cfg
         ).load_sae_training_group_session()
-        ae_alt.autoencoders[0].load_state_dict(state_dict)
+        next(iter(ae_alt))[1].load_state_dict(state_dict)
         return model, ae_alt, activation_store
     else:
         ae_alt = SparseAutoencoder(cfg)
@@ -93,7 +95,7 @@ def convert_connor_rob_sae_to_our_saelens_format(
         return ae_alt
 
 
-def get_gpt2_small_ckrk_attn_out_saes():
+def get_gpt2_small_ckrk_attn_out_saes() -> dict[str, SparseAutoencoder]:
 
     REPO_ID = "ckkissane/attn-saes-gpt2-small-all-layers"
 

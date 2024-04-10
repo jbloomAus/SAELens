@@ -96,7 +96,7 @@ class NeuronpediaRunner:
             self.activation_store,
         ) = LMSparseAutoencoderSessionloader.load_pretrained_sae(self.sae_path)
         # TODO: handle multiple autoencoders
-        self.sparse_autoencoder = sae_group.autoencoders[0]
+        self.sparse_autoencoder = next(iter(sae_group))[1]
 
     def get_tokens(
         self, n_batches_to_sample_from: int = 2**12, n_prompts_to_select: int = 4096 * 6

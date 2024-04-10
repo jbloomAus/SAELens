@@ -9,9 +9,9 @@ from tqdm import tqdm
 from sae_lens.training.sparse_autoencoder import SparseAutoencoder
 
 
-def load_sparsity(path: str):
+def load_sparsity(path: str) -> torch.Tensor:
     sparsity_path = os.path.join(path, "sparsity.safetensors")
-    with safe_open(sparsity_path, framework="pt", device="cpu") as f:
+    with safe_open(sparsity_path, framework="pt", device="cpu") as f:  # type: ignore
         sparsity = f.get_tensor("sparsity")
     return sparsity
 
