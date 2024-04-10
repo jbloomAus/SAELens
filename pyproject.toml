@@ -27,6 +27,7 @@ mkdocs-autorefs = "^1.0.1"
 mkdocs-section-index = "^0.3.8"
 mkdocstrings = "^0.24.1"
 mkdocstrings-python = "^1.9.0"
+safetensors = "^0.4.2"
 
 
 [tool.poetry.group.dev.dependencies]
