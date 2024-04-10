@@ -377,4 +377,6 @@ def _per_item_mse_loss_with_target_norm(
     """
     target_centered = target - target.mean(dim=0, keepdim=True)
     normalization = target_centered.norm(dim=-1, keepdim=True)
-    return torch.nn.functional.mse_loss(preds, target, reduction="none") / normalization
+    return torch.nn.functional.mse_loss(preds, target, reduction="none") / (
+        normalization + 1e-6
+    )
