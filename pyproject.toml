@@ -7,7 +7,7 @@ readme = "README.md"
 packages = [{include = "sae_lens"}]
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = ">=3.10,<3.12"
 transformer-lens = "^1.14.0"
 transformers = "^4.38.1"
 jupyter = "^1.0.0"
@@ -27,6 +27,7 @@ mkdocs-autorefs = "^1.0.1"
 mkdocs-section-index = "^0.3.8"
 mkdocstrings = "^0.24.1"
 mkdocstrings-python = "^1.9.0"
+sparse-autoencoder = {git = "https://github.com/HuFY-dev/sparse_autoencoder.git", rev = "dev"}
 
 
 [tool.poetry.group.dev.dependencies]
