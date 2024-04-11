@@ -151,7 +151,7 @@ def train_sae_group_on_language_model(
                         )
 
                     # record loss frequently, but not all the time.
-                    if n_training_steps == 0 or (n_training_steps + 1) % (wandb_log_frequency * 10) == 0:
+                    if (n_training_steps + 1) % (wandb_log_frequency * 10) == 0:
                         sparse_autoencoder.eval()
                         run_evals(
                             sparse_autoencoder,
@@ -163,7 +163,7 @@ def train_sae_group_on_language_model(
                         sparse_autoencoder.train()
 
         # checkpoint if at checkpoint frequency
-        if n_training_steps == 0 or (checkpoint_thresholds and n_training_tokens > checkpoint_thresholds[0]):
+        if checkpoint_thresholds and n_training_tokens > checkpoint_thresholds[0]:
             checkpoint_path = _save_checkpoint(
                 sae_group,
                 train_contexts=train_contexts,
