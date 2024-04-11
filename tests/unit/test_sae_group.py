@@ -67,7 +67,6 @@ def test_SparseAutoencoderDictionary_save_and_load_model(tmp_path: Path) -> None
     # each should
     for subfolder in os.listdir(path):
         contents = os.listdir(f"{path}/{subfolder}")
-        print(contents)
         assert len(contents) == 2
         assert "cfg.json" in contents
         assert "sae_weights.safetensors" in contents
