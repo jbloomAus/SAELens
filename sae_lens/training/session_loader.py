@@ -65,6 +65,6 @@ class LMSparseAutoencoderSessionloader:
 
         # Todo: add check that model_name is valid
 
-        model = HookedTransformer.from_pretrained(model_name)
+        model = self.cfg.model_class.from_pretrained(model_name)
 
         return model
