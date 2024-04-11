@@ -3,12 +3,15 @@ https://github.com/ArthurConmy/sae/blob/main/sae/model.py
 """
 
 import gzip
+import json
 import os
 import pickle
-from typing import NamedTuple
+from typing import NamedTuple, Optional
 
 import einops
 import torch
+from safetensors import safe_open
+from safetensors.torch import save_file
 from torch import nn
 from transformer_lens.hook_points import HookedRootModule, HookPoint
 
@@ -201,7 +204,7 @@ class SparseAutoencoder(HookedRootModule):
             "d_sae, d_sae d_in -> d_sae d_in",
         )
 
-    def save_model(self, path: str):
+    def save_model_legacy(self, path: str):
         """
         Basic save function for the model. Saves the model's state_dict and the config used to train it.
         """
@@ -214,12 +217,6 @@ class SparseAutoencoder(HookedRootModule):
 
         if path.endswith(".pt"):
             torch.save(state_dict, path)
-        elif path.endswith(".pkl"):
-            with open(path, "wb") as f:
-                pickle.dump(state_dict, f)
-        elif path.endswith("pkl.gz"):
-            with gzip.open(path, "wb") as f:
-                pickle.dump(state_dict, f)
         else:
             raise ValueError(
                 f"Unexpected file extension: {path}, supported extensions are .pt and .pkl.gz"
@@ -227,8 +224,31 @@ class SparseAutoencoder(HookedRootModule):
 
         print(f"Saved model to {path}")
 
+    def save_model(self, path: str, sparsity: Optional[torch.Tensor] = None):
+
+        if not os.path.exists(path):
+            os.mkdir(path)
+
+        # generate the weights
+        save_file(self.state_dict(), f"{path}/sae_weights.safetensors")
+
+        # save the config
+        config = {
+            **self.cfg.__dict__,
+            # some args may not be serializable by default
+            "dtype": str(self.cfg.dtype),
+            "device": str(self.cfg.device),
+        }
+
+        with open(f"{path}/cfg.json", "w") as f:
+            json.dump(config, f)
+
+        if sparsity is not None:
+            sparsity_in_dict = {"sparsity": sparsity}
+            save_file(sparsity_in_dict, f"{path}/sparsity.safetensors")  # type: ignore
+
     @classmethod
-    def load_from_pretrained(cls, path: str):
+    def load_from_pretrained_legacy(cls, path: str):
         """
         Load function for the model. Loads the model's state_dict and the config used to train it.
         This method can be called directly on the class, without needing an instance.
@@ -284,6 +304,31 @@ class SparseAutoencoder(HookedRootModule):
 
         return instance
 
+    @classmethod
+    def load_from_pretrained(cls, path: str, device: str = "cpu"):
+
+        config_path = os.path.join(path, "cfg.json")
+        weight_path = os.path.join(path, "sae_weights.safetensors")
+
+        with open(config_path, "r") as f:
+            config = json.load(f)
+
+        var_names = LanguageModelSAERunnerConfig.__init__.__code__.co_varnames
+        # filter config for varnames
+        config = {k: v for k, v in config.items() if k in var_names}
+        config["verbose"] = False
+        config["device"] = device
+        config = LanguageModelSAERunnerConfig(**config)
+        sae = SparseAutoencoder(config)
+
+        tensors = {}
+        with safe_open(weight_path, framework="pt", device=device) as f:  # type: ignore
+            for k in f.keys():
+                tensors[k] = f.get_tensor(k)
+        sae.load_state_dict(tensors)
+
+        return sae
+
     def get_name(self):
         sae_name = f"sparse_autoencoder_{self.cfg.model_name}_{self.cfg.hook_point}_{self.cfg.d_sae}"
         return sae_name
@@ -331,4 +376,6 @@ def _per_item_mse_loss_with_target_norm(
     """
     target_centered = target - target.mean(dim=0, keepdim=True)
     normalization = target_centered.norm(dim=-1, keepdim=True)
-    return torch.nn.functional.mse_loss(preds, target, reduction="none") / normalization
+    return torch.nn.functional.mse_loss(preds, target, reduction="none") / (
+        normalization + 1e-6
+    )

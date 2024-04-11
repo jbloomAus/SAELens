@@ -3,11 +3,10 @@ from typing import Any, Mapping, cast
 
 import pandas as pd
 import torch
-import wandb
-from tqdm import tqdm
 from transformer_lens import HookedTransformer
 from transformer_lens.utils import get_act_name
 
+import wandb
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.sparse_autoencoder import SparseAutoencoder
 
@@ -92,7 +91,7 @@ def recons_loss_batched(
     n_batches: int = 100,
 ):
     losses = []
-    for _ in tqdm(range(n_batches)):
+    for _ in range(n_batches):
         batch_tokens = activation_store.get_batch_tokens()
         score, loss, recons_loss, zero_abl_loss = get_recons_loss(
             sparse_autoencoder, model, batch_tokens

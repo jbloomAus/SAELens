@@ -99,12 +99,6 @@ def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
     assert isinstance(store.dataset, IterableDataset)
     assert isinstance(store.iterable_dataset, Iterable)
 
-    # I expect the dataloader to be initialised
-    assert hasattr(store, "dataloader")
-
-    # I expect the buffer to be initialised
-    assert hasattr(store, "storage_buffer")
-
     # the rest is in the dataloader.
     expected_size = (
         cfg.store_batch_size * cfg.context_size * cfg.n_batches_in_buffer // 2
@@ -187,9 +181,7 @@ def test_activations_store__get_batch_tokens__fills_the_context_separated_by_bos
         context_size=context_size,
     )
 
-    activation_store = ActivationsStore.from_config(
-        ts_model, cfg, dataset=dataset, create_dataloader=False
-    )
+    activation_store = ActivationsStore.from_config(ts_model, cfg, dataset=dataset)
     encoded_text = tokenize_with_bos(ts_model, "hello world")
     tokens = activation_store.get_batch_tokens()
     assert tokens.shape == (2, context_size)  # batch_size x context_size
@@ -215,9 +207,7 @@ def test_activations_store__get_next_dataset_tokens__tokenizes_each_example_in_o
             {"text": "hello world3"},
         ]
     )
-    activation_store = ActivationsStore.from_config(
-        ts_model, cfg, dataset=dataset, create_dataloader=False
-    )
+    activation_store = ActivationsStore.from_config(ts_model, cfg, dataset=dataset)
 
     assert activation_store._get_next_dataset_tokens().tolist() == tokenize_with_bos(
         ts_model, "hello world1"

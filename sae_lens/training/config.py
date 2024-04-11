@@ -2,7 +2,15 @@ from dataclasses import dataclass
 from typing import Any, Optional, cast
 
 import torch
+
 import wandb
+
+DTYPE_MAP = {
+    "torch.float32": torch.float32,
+    "torch.float64": torch.float64,
+    "torch.float16": torch.float16,
+    "torch.bfloat16": torch.bfloat16,
+}
 
 
 @dataclass
@@ -36,7 +44,7 @@ class LanguageModelSAERunnerConfig:
     # Misc
     device: str | torch.device = "cpu"
     seed: int = 42
-    dtype: torch.dtype = torch.float32
+    dtype: str | torch.dtype = "float32"  # type: ignore #
     prepend_bos: bool = True
 
     # SAE Parameters
@@ -107,6 +115,13 @@ class LanguageModelSAERunnerConfig:
             print(
                 "Warning: We are initializing b_dec to zeros. This is probably not what you want."
             )
+
+        if isinstance(self.dtype, str) and self.dtype not in DTYPE_MAP:
+            raise ValueError(
+                f"dtype must be one of {list(DTYPE_MAP.keys())}. Got {self.dtype}"
+            )
+        elif isinstance(self.dtype, str):
+            self.dtype: torch.dtype = DTYPE_MAP[self.dtype]
 
         self.device: str | torch.device = torch.device(self.device)
 
@@ -194,7 +209,7 @@ class CacheActivationsRunnerConfig:
     # Misc
     device: str | torch.device = "cpu"
     seed: int = 42
-    dtype: torch.dtype = torch.float32
+    dtype: str | torch.dtype = "float32"
     prepend_bos: bool = True
 
     # Activation caching stuff

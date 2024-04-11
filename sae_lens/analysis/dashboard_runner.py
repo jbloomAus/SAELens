@@ -11,7 +11,6 @@ import pandas as pd
 import plotly
 import plotly.express as px
 import torch
-import wandb
 from sae_vis.data_config_classes import (
     ActsHistogramConfig,
     Column,
@@ -24,6 +23,7 @@ from sae_vis.data_fetching_fns import get_feature_data
 from torch.nn.functional import cosine_similarity
 from tqdm import tqdm
 
+import wandb
 from sae_lens.training.session_loader import LMSparseAutoencoderSessionloader
 
 
@@ -134,9 +134,9 @@ class DashboardRunner:
             self.model,
             sae_group,
             self.activation_store,
-        ) = LMSparseAutoencoderSessionloader.load_session_from_pretrained(self.sae_path)
+        ) = LMSparseAutoencoderSessionloader.load_pretrained_sae(self.sae_path)
         # TODO: handle multiple autoencoders
-        self.sparse_autoencoder = sae_group.autoencoders[0]
+        self.sparse_autoencoder = next(iter(sae_group))[1]
 
     def get_tokens(
         self, n_batches_to_sample_from: int = 2**12, n_prompts_to_select: int = 4096 * 6
