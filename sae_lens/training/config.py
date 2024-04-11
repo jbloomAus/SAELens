@@ -24,7 +24,7 @@ class LanguageModelSAERunnerConfig:
     model_name: str = "gelu-2l"
     model_class: type = HookedTransformer
     hook_point: str = "blocks.{layer}.hook_mlp_out"
-    hook_point_eval: str = "blocks.0.attn.pattern"
+    hook_point_eval: str = "blocks.{layer}.attn.pattern"
     hook_point_layer: int | list[int] = 0
     hook_point_head_index: Optional[int] = None
     dataset_path: str = "NeelNanda/c4-tokenized-2b"
