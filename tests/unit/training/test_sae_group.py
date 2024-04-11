@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 
 import torch
+from huggingface_hub import hf_hub_download
 
 from sae_lens.training.sae_group import SparseAutoencoderDictionary
 from tests.unit.helpers import build_sae_cfg
@@ -87,3 +88,30 @@ def test_SparseAutoencoderDictionary_save_and_load_model(tmp_path: Path) -> None
         sae_group[key].cfg.verbose = new_sae_group[key].cfg.verbose = False
         sae_group[key].cfg.checkpoint_path = new_sae_group[key].cfg.checkpoint_path
         assert sae_group[key].cfg == new_sae_group[key].cfg
+
+
+def test_SAEGroup_load_from_pretrained_legacy_can_load_old_autoencoders_from_huggingface():
+    layer = 8  # pick a layer you want.
+    REPO_ID = "jbloom/GPT2-Small-SAEs"
+    FILENAME = (
+        f"final_sparse_autoencoder_gpt2-small_blocks.{layer}.hook_resid_pre_24576.pt"
+    )
+    path = hf_hub_download(repo_id=REPO_ID, filename=FILENAME)
+    sae_group = SparseAutoencoderDictionary.load_from_pretrained_legacy(path=path)
+    assert isinstance(sae_group, SparseAutoencoderDictionary)
+    assert len(sae_group) == 1
+    assert sae_group.cfg.hook_point_layer == layer
+    assert sae_group.cfg.model_name == "gpt2-small"
+
+    reloaded_sae_group = SparseAutoencoderDictionary.load_from_pretrained_legacy(
+        path=path
+    )
+    assert reloaded_sae_group.cfg == sae_group.cfg
+
+    orig_sae_state_dict = next(iter(sae_group))[1].state_dict()
+    reloaded_sae_state_dict = next(iter(reloaded_sae_group))[1].state_dict()
+    for key in orig_sae_state_dict.keys():
+        assert torch.allclose(
+            orig_sae_state_dict[key],
+            reloaded_sae_state_dict[key],
+        )
