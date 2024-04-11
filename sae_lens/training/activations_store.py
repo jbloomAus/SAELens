@@ -242,13 +242,6 @@ class ActivationsStore:
         layers = self.hook_point_layers
         act_names = [self.hook_point.format(layer=layer) for layer in layers]
         hook_point_max_layer = max(layers)
-
-        #if not hasattr(self, "compiled_model_forward") or self.compiled_model_forward is None:
-        #    print("compiling model")
-        #    self.compiled_model_forward = torch.compile(get_activationsf, mode="reduce-overhead")
-        #    print("done compiling model")
-        
-        #print("running model")
         layerwise_activations = self.model.run_with_cache(
             batch_tokens,
             names_filter=act_names,
@@ -270,7 +263,6 @@ class ActivationsStore:
         # Stack along a new dimension to keep separate layers distinct
         stacked_activations = torch.stack(activations_list, dim=2)
 
-        #print("done rest")
         return stacked_activations
 
     def get_buffer(self, n_batches_in_buffer: int) -> torch.Tensor:

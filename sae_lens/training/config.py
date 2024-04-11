@@ -1,9 +1,4 @@
-<<<<<<< HEAD:sae_training/config.py
-from abc import ABC
-from dataclasses import dataclass, field
-=======
 from dataclasses import dataclass
->>>>>>> 8784c74df08eece5d349cab9207ea1d544921c5b:sae_lens/training/config.py
 from typing import Any, Optional, cast
 from transformer_lens import HookedTransformer
 
@@ -29,12 +24,8 @@ class LanguageModelSAERunnerConfig:
     model_name: str = "gelu-2l"
     model_class: type = HookedTransformer
     hook_point: str = "blocks.{layer}.hook_mlp_out"
-<<<<<<< HEAD:sae_training/config.py
     hook_point_eval: str = "blocks.0.attn.pattern"
-    hook_point_layer: int = 0
-=======
     hook_point_layer: int | list[int] = 0
->>>>>>> 8784c74df08eece5d349cab9207ea1d544921c5b:sae_lens/training/config.py
     hook_point_head_index: Optional[int] = None
     dataset_path: str = "NeelNanda/c4-tokenized-2b"
     is_dataset_tokenized: bool = True
