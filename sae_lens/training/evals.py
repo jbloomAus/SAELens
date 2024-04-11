@@ -4,7 +4,6 @@ from typing import Any, Mapping, cast
 import pandas as pd
 import torch
 from transformer_lens import HookedTransformer
-from transformer_lens.utils import get_act_name
 
 import wandb
 from sae_lens.training.activations_store import ActivationsStore
