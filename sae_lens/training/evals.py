@@ -64,7 +64,7 @@ def run_evals(
     l2_norm_in = torch.norm(original_act, dim=-1)
     l2_norm_out = torch.norm(sae_out, dim=-1)
     l2_norm_in_for_div = l2_norm_in.clone()
-    l2_norm_in_for_div[torch.abs(l2_norm_in_for_div)<0.0001] = 1
+    l2_norm_in_for_div[torch.abs(l2_norm_in_for_div) < 0.0001] = 1
     l2_norm_ratio = l2_norm_out / l2_norm_in_for_div
 
     metrics = {
@@ -169,9 +169,9 @@ def get_recons_loss(
     )
 
     div_val = zero_abl_loss - loss
-    div_val[torch.abs(div_val)<0.0001] = 1.0
+    div_val[torch.abs(div_val) < 0.0001] = 1.0
 
-    score = (zero_abl_loss - recons_loss) / div_val 
+    score = (zero_abl_loss - recons_loss) / div_val
 
     return score, loss, recons_loss, zero_abl_loss
 
