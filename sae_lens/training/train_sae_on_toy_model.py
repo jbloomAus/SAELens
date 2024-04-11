@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 import wandb
-from sae_training.sparse_autoencoder import SparseAutoencoder
+from sae_lens.training.sparse_autoencoder import SparseAutoencoder
 
 
 def train_toy_sae(

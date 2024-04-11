@@ -3,13 +3,12 @@ from typing import Any, Mapping, cast
 
 import pandas as pd
 import torch
-from tqdm import tqdm
 from transformer_lens import HookedTransformer
 from transformer_lens.utils import get_act_name
 
 import wandb
-from sae_training.activations_store import ActivationsStore
-from sae_training.sparse_autoencoder import SparseAutoencoder
+from sae_lens.training.activations_store import ActivationsStore
+from sae_lens.training.sparse_autoencoder import SparseAutoencoder
 
 
 @torch.no_grad()
@@ -21,7 +20,7 @@ def run_evals(
     suffix: str = "",
 ) -> Mapping[str, Any]:
     hook_point = sparse_autoencoder.cfg.hook_point
-    hook_point_layer = sparse_autoencoder.cfg.hook_point_layer
+    hook_point_layer = sparse_autoencoder.hook_point_layer
     hook_point_head_index = sparse_autoencoder.cfg.hook_point_head_index
     hook_point_eval = sparse_autoencoder.cfg.hook_point_eval
     ### Evals
@@ -95,7 +94,7 @@ def recons_loss_batched(
     n_batches: int = 100,
 ):
     losses = []
-    for _ in tqdm(range(n_batches)):
+    for _ in range(n_batches):
         batch_tokens = activation_store.get_batch_tokens()
         score, loss, recons_loss, zero_abl_loss = get_recons_loss(
             sparse_autoencoder, model, batch_tokens

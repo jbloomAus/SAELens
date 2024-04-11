@@ -1,12 +1,13 @@
 <img width="1308" alt="Screenshot 2024-03-21 at 3 08 28 pm" src="https://github.com/jbloomAus/mats_sae_training/assets/69127271/209012ec-a779-4036-b4be-7b7739ea87f6">
 
-# MATS SAE Training
+# SAELens
+[![PyPI](https://img.shields.io/pypi/v/sae-lens?color=blue)](https://pypi.org/project/sae-lens/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![build](https://github.com/jbloomAus/mats_sae_training/actions/workflows/tests.yml/badge.svg)](https://github.com/jbloomAus/mats_sae_training/actions/workflows/tests.yml)
-[![Deploy Docs](https://github.com/jbloomAus/mats_sae_training/actions/workflows/deploy_docs.yml/badge.svg)](https://github.com/jbloomAus/mats_sae_training/actions/workflows/deploy_docs.yml)
-[![codecov](https://codecov.io/gh/jbloomAus/mats_sae_training/graph/badge.svg?token=N83NGH8CGE)](https://codecov.io/gh/jbloomAus/mats_sae_training)
+[![build](https://github.com/jbloomAus/SAELens/actions/workflows/build.yml/badge.svg)](https://github.com/jbloomAus/SAELens/actions/workflows/build.yml)
+[![Deploy Docs](https://github.com/jbloomAus/SAELens/actions/workflows/deploy_docs.yml/badge.svg)](https://github.com/jbloomAus/SAELens/actions/workflows/deploy_docs.yml)
+[![codecov](https://codecov.io/gh/jbloomAus/SAELens/graph/badge.svg?token=N83NGH8CGE)](https://codecov.io/gh/jbloomAus/SAELens)
 
-The MATS SAE training codebase (we'll rename it soon) exists to help researchers:
+The SAELens training codebase exists to help researchers:
 
 - Train sparse autoencoders.
 - Analyse sparse autoencoders and neural network internals.
@@ -16,12 +17,10 @@ The MATS SAE training codebase (we'll rename it soon) exists to help researchers
 
 ## Quick Start
 
-### Set Up
-
-This project uses [Poetry](https://python-poetry.org/) for dependency management. Ensure Poetry is installed, then to install the dependencies, run:
+### Installation
 
 ```
-poetry install
+pip install sae-lens
 ```
 
 ### Loading Sparse Autoencoders from Huggingface
@@ -30,7 +29,7 @@ poetry install
 
 ```python
 import torch 
-from sae_training.utils import LMSparseAutoencoderSessionloader
+from sae_lens import LMSparseAutoencoderSessionloader
 from huggingface_hub import hf_hub_download
 
 layer = 8 # pick a layer you want.
@@ -61,8 +60,8 @@ We highly recommend this [tutorial](https://www.lesswrong.com/posts/LnHowHgmrMbW
 
 The codebase contains 2 folders worth caring about:
 
-- sae_training: The main body of the code is here. Everything required for training SAEs. 
-- sae_analysis: This code is mainly house the feature visualizer code we use to generate dashboards. It was written by Callum McDougal but I've ported it here with permission and edited it to work with a few different activation types. 
+- training: The main body of the code is here. Everything required for training SAEs. 
+- analysis: This code is mainly house the feature visualizer code we use to generate dashboards. It was written by Callum McDougal but I've ported it here with permission and edited it to work with a few different activation types. 
 
 Some other folders:
 
@@ -78,7 +77,7 @@ Once your SAE is trained, the final SAE weights will be saved to wandb and are l
 - An activations loader: from which you can get randomly sampled activations or batches of tokens from the dataset you used to train the SAE. (more on this in the tutorial)
 
 ```python
-from sae_training.utils import LMSparseAutoencoderSessionloader
+from sae_lens import LMSparseAutoencoderSessionloader
 
 path ="path/to/sparse_autoencoder.pt"
 model, sparse_autoencoder, activations_loader = LMSparseAutoencoderSessionloader.load_session_from_pretrained(

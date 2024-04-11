@@ -3,7 +3,7 @@ import torch
 from tqdm import tqdm
 from transformer_lens import HookedTransformer
 
-from sae_training.sparse_autoencoder import SparseAutoencoder
+from sae_lens.training.sparse_autoencoder import SparseAutoencoder
 
 
 @torch.no_grad()

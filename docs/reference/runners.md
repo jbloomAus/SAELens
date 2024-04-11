@@ -1,3 +1,3 @@
 # Runners
 
-::: sae_training.lm_runner
+::: sae_lens.training.lm_runner

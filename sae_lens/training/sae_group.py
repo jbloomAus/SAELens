@@ -1,25 +1,30 @@
+from __future__ import annotations
+
 import dataclasses
 import gzip
 import os
 import pickle
 from itertools import product
+from types import SimpleNamespace
 from typing import Any, Iterator
 
 import torch
 
-from sae_training.sparse_autoencoder import SparseAutoencoder
+from sae_lens.training.config import LanguageModelSAERunnerConfig
+from sae_lens.training.sparse_autoencoder import SparseAutoencoder
+from sae_lens.training.utils import BackwardsCompatibleUnpickler
 
 
-class SAEGroup:
+class SparseAutoencoderDictionary:
 
-    autoencoders: list[SparseAutoencoder]
+    autoencoders: dict[str, SparseAutoencoder]
 
-    def __init__(self, cfg: Any):
+    def __init__(self, cfg: LanguageModelSAERunnerConfig):
         self.cfg = cfg
-        self.autoencoders = []  # This will store tuples of (instance, hyperparameters)
+        self.autoencoders = {}  # This will store tuples of (instance, hyperparameters)
         self._init_autoencoders(cfg)
 
-    def _init_autoencoders(self, cfg: Any):
+    def _init_autoencoders(self, cfg: LanguageModelSAERunnerConfig):
         # Dynamically get all combinations of hyperparameters from cfg
         # Extract all hyperparameter lists from cfg
         hyperparameters = {k: v for k, v in vars(cfg).items() if isinstance(v, list)}
@@ -30,31 +35,47 @@ class SAEGroup:
 
         # Create all combinations of hyperparameters
         for combination in product(*values):
+
             params = dict(zip(keys, combination))
             cfg_copy = dataclasses.replace(cfg, **params)
+
             cfg_copy.__post_init__()
             # Insert the layer into the hookpoint
             cfg_copy.hook_point = cfg_copy.hook_point.format(
                 layer=cfg_copy.hook_point_layer
             )
-            # Create and store both the SparseAutoencoder instance and its parameters
-            self.autoencoders.append(SparseAutoencoder(cfg_copy))
 
-    def __iter__(self) -> Iterator[SparseAutoencoder]:
+            sae = SparseAutoencoder(cfg_copy)
+
+            sae_name = (
+                f"{sae.cfg.model_name}_{sae.cfg.hook_point}_{sae.cfg.d_sae}_"
+                + "_".join([f"{k}_{v}" for k, v in zip(keys, combination)])
+            )
+
+            # Create and store both the SparseAutoencoder instance and its parameters
+            self.autoencoders[sae_name] = sae
+
+    def __getitem__(self, key: str) -> SparseAutoencoder:
+        return self.autoencoders[key]
+
+    def __iter__(self) -> Iterator[tuple[str, SparseAutoencoder]]:
         # Make SAEGroup iterable over its SparseAutoencoder instances and their parameters
-        for ae in self.autoencoders:
-            yield ae  # Yielding as a tuple
+        for name, sae in self.autoencoders.items():
+            yield name, sae  # Yielding as a tuple
 
     def __len__(self):
         # Return the number of SparseAutoencoder instances
         return len(self.autoencoders)
 
     def to(self, device: torch.device | str):
-        for ae in self.autoencoders:
+        for ae in self.autoencoders.values():
             ae.to(device)
 
+    # old pickled SAEs load as a dict
     @classmethod
-    def load_from_pretrained(cls, path: str):
+    def load_from_pretrained_legacy(
+        cls, path: str
+    ) -> "SparseAutoencoderDictionary" | dict[str, Any]:
         """
         Load function for the model. Loads the model's state_dict and the config used to train it.
         This method can be called directly on the class, without needing an instance.
@@ -67,11 +88,25 @@ class SAEGroup:
         # Load the state dictionary
         if path.endswith(".pt"):
             try:
-                if torch.backends.mps.is_available():
-                    group = torch.load(path, map_location="mps")
-                    group["cfg"].device = "mps"
+                # this is hacky, but can't figure out how else to get torch to use our custom unpickler
+                fake_pickle = SimpleNamespace()
+                fake_pickle.Unpickler = BackwardsCompatibleUnpickler
+                fake_pickle.__name__ = pickle.__name__
+
+                if torch.cuda.is_available():
+                    group = torch.load(
+                        path,
+                        pickle_module=fake_pickle,
+                    )
                 else:
-                    group = torch.load(path)
+                    map_loc = "mps" if torch.backends.mps.is_available() else "cpu"
+                    group = torch.load(
+                        path, pickle_module=fake_pickle, map_location=map_loc
+                    )
+                    if isinstance(group, dict):
+                        group["cfg"].device = map_loc
+                    else:
+                        group.cfg.device = map_loc
             except Exception as e:
                 raise IOError(f"Error loading the state dictionary from .pt file: {e}")
 
@@ -107,7 +142,30 @@ class SAEGroup:
 
         # return instance
 
-    def save_model(self, path: str):
+    @classmethod
+    def load_from_pretrained(
+        cls, path: str, device: str = "cpu"
+    ) -> "SparseAutoencoderDictionary":
+
+        autoencoders = {}
+
+        for sae_name in os.listdir(path):
+            if os.path.isdir(os.path.join(path, sae_name)):
+                autoencoders[sae_name] = SparseAutoencoder.load_from_pretrained(
+                    os.path.join(path, sae_name),
+                    device,
+                )
+
+        # Create the SAEGroup object
+
+        # loaded SAE groups will not contain a cfg that matches the original.
+        # TODO: figure out how to handle this
+        sae_name = next(iter(autoencoders))
+        sae_group = cls(autoencoders[sae_name].cfg)
+        sae_group.autoencoders = autoencoders
+        return sae_group
+
+    def save_saes(self, path: str):
         """
         Basic save function for the model. Saves the model's state_dict and the config used to train it.
         """
@@ -116,33 +174,25 @@ class SAEGroup:
         folder = os.path.dirname(path)
         os.makedirs(folder, exist_ok=True)
 
-        if path.endswith(".pt"):
-            torch.save(self, path)
-        elif path.endswith("pkl.gz"):
-            with gzip.open(path, "wb") as f:
-                pickle.dump(self, f)
+        if len(self.autoencoders) == 1:
+            sae: SparseAutoencoder = next(iter(self))[1]
+            sae.save_model(path)
         else:
-            raise ValueError(
-                f"Unexpected file extension: {path}, supported extensions are .pt and .pkl.gz"
-            )
-
-        print(f"Saved model to {path}")
+            for i, autoencoder in self.autoencoders.items():
+                subfolder_name = f"{path}/{i}"
+                os.makedirs(subfolder_name, exist_ok=True)
+                autoencoder.save_model(f"{path}/{i}")
 
     def get_name(self):
-        layers = self.cfg.hook_point_layer
-        if not isinstance(layers, list):
-            layers = [layers]
-        if len(layers) > 1:
-            layer_string = f"{min(layers)-max(layers)}"
-        else:
-            layer_string = f"{layers[0]}"
-        sae_name = f"sae_group_{self.cfg.model_name.replace('/', '_')}_{self.cfg.hook_point.format(layer=layer_string)}_{self.cfg.d_sae}"
+        sae_name = (
+            f"sae_group_{self.cfg.model_name.replace('/', '_')}_{self.cfg.hook_point}_{self.cfg.d_sae}"
+        )
         return sae_name
 
     def eval(self):
-        for ae in self.autoencoders:
+        for ae in self.autoencoders.values():
             ae.eval()
 
     def train(self):
-        for ae in self.autoencoders:
+        for ae in self.autoencoders.values():
             ae.train()

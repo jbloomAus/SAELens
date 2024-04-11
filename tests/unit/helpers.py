@@ -2,7 +2,7 @@ from typing import Any
 
 import torch
 
-from sae_training.config import LanguageModelSAERunnerConfig
+from sae_lens.training.config import LanguageModelSAERunnerConfig
 
 TINYSTORIES_MODEL = "tiny-stories-1M"
 TINYSTORIES_DATASET = "roneneldan/TinyStories"
@@ -23,7 +23,6 @@ def build_sae_cfg(**kwargs: Any) -> LanguageModelSAERunnerConfig:
         use_cached_activations=False,
         d_in=64,
         expansion_factor=2,
-        d_sae=64 * 2,
         l1_coefficient=2e-3,
         lp_norm=1,
         lr=2e-4,
@@ -31,9 +30,9 @@ def build_sae_cfg(**kwargs: Any) -> LanguageModelSAERunnerConfig:
         context_size=64,
         feature_sampling_window=50,
         dead_feature_threshold=1e-7,
-        n_batches_in_buffer=10,
+        n_batches_in_buffer=4,
         total_training_tokens=1_000_000,
-        store_batch_size=32,
+        store_batch_size=4,
         log_to_wandb=False,
         wandb_project="test_project",
         wandb_entity="test_entity",

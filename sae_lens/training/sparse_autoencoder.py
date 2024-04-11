@@ -3,16 +3,20 @@ https://github.com/ArthurConmy/sae/blob/main/sae/model.py
 """
 
 import gzip
+import json
 import os
 import pickle
-from typing import NamedTuple
+from typing import NamedTuple, Optional
 
 import einops
 import torch
+from safetensors import safe_open
+from safetensors.torch import save_file
 from torch import nn
 from transformer_lens.hook_points import HookedRootModule, HookPoint
 
-from sae_training.config import LanguageModelSAERunnerConfig
+from sae_lens.training.config import LanguageModelSAERunnerConfig
+from sae_lens.training.utils import BackwardsCompatiblePickleClass
 
 
 class ForwardOutput(NamedTuple):
@@ -27,6 +31,14 @@ class ForwardOutput(NamedTuple):
 class SparseAutoencoder(HookedRootModule):
     """ """
 
+    l1_coefficient: float
+    lp_norm: float
+    d_sae: int
+    use_ghost_grads: bool
+    hook_point_layer: int
+    dtype: torch.dtype
+    device: str | torch.device
+
     def __init__(
         self,
         cfg: LanguageModelSAERunnerConfig,
@@ -39,11 +51,25 @@ class SparseAutoencoder(HookedRootModule):
                 f"d_in must be an int but was {self.d_in=}; {type(self.d_in)=}"
             )
         assert cfg.d_sae is not None  # keep pyright happy
+        # lists are valid only for SAEGroup cfg, not SAE cfg vals
+        assert not isinstance(cfg.l1_coefficient, list)
+        assert not isinstance(cfg.lp_norm, list)
+        assert not isinstance(cfg.lr, list)
+        assert not isinstance(cfg.lr_scheduler_name, list)
+        assert not isinstance(cfg.lr_warm_up_steps, list)
+        assert not isinstance(cfg.use_ghost_grads, list)
+        assert not isinstance(cfg.hook_point_layer, list)
+        assert (
+            "{layer}" not in cfg.hook_point
+        ), "{layer} must be replaced with the actual layer number in SAE cfg"
+
         self.d_sae = cfg.d_sae
         self.l1_coefficient = cfg.l1_coefficient
         self.lp_norm = cfg.lp_norm
         self.dtype = cfg.dtype
         self.device = cfg.device
+        self.use_ghost_grads = cfg.use_ghost_grads
+        self.hook_point_layer = cfg.hook_point_layer
 
         # NOTE: if using resampling neurons method, you must ensure that we initialise the weights in the order W_enc, b_enc, W_dec, b_dec
         self.W_enc = nn.Parameter(
@@ -107,7 +133,7 @@ class SparseAutoencoder(HookedRootModule):
         ghost_grad_loss = torch.tensor(0.0, dtype=self.dtype, device=self.device)
         # gate on config and training so evals is not slowed down.
         if (
-            self.cfg.use_ghost_grads
+            self.use_ghost_grads
             and self.training
             and dead_neuron_mask is not None
             and dead_neuron_mask.sum() > 0
@@ -178,7 +204,7 @@ class SparseAutoencoder(HookedRootModule):
             "d_sae, d_sae d_in -> d_sae d_in",
         )
 
-    def save_model(self, path: str):
+    def save_model_legacy(self, path: str):
         """
         Basic save function for the model. Saves the model's state_dict and the config used to train it.
         """
@@ -191,12 +217,6 @@ class SparseAutoencoder(HookedRootModule):
 
         if path.endswith(".pt"):
             torch.save(state_dict, path)
-        elif path.endswith(".pkl"):
-            with open(path, "wb") as f:
-                pickle.dump(state_dict, f)
-        elif path.endswith("pkl.gz"):
-            with gzip.open(path, "wb") as f:
-                pickle.dump(state_dict, f)
         else:
             raise ValueError(
                 f"Unexpected file extension: {path}, supported extensions are .pt and .pkl.gz"
@@ -204,8 +224,31 @@ class SparseAutoencoder(HookedRootModule):
 
         print(f"Saved model to {path}")
 
+    def save_model(self, path: str, sparsity: Optional[torch.Tensor] = None):
+
+        if not os.path.exists(path):
+            os.mkdir(path)
+
+        # generate the weights
+        save_file(self.state_dict(), f"{path}/sae_weights.safetensors")
+
+        # save the config
+        config = {
+            **self.cfg.__dict__,
+            # some args may not be serializable by default
+            "dtype": str(self.cfg.dtype),
+            "device": str(self.cfg.device),
+        }
+
+        with open(f"{path}/cfg.json", "w") as f:
+            json.dump(config, f)
+
+        if sparsity is not None:
+            sparsity_in_dict = {"sparsity": sparsity}
+            save_file(sparsity_in_dict, f"{path}/sparsity.safetensors")  # type: ignore
+
     @classmethod
-    def load_from_pretrained(cls, path: str):
+    def load_from_pretrained_legacy(cls, path: str):
         """
         Load function for the model. Loads the model's state_dict and the config used to train it.
         This method can be called directly on the class, without needing an instance.
@@ -219,7 +262,11 @@ class SparseAutoencoder(HookedRootModule):
         if path.endswith(".pt"):
             try:
                 if torch.backends.mps.is_available():
-                    state_dict = torch.load(path, map_location="mps")
+                    state_dict = torch.load(
+                        path,
+                        map_location="mps",
+                        pickle_module=BackwardsCompatiblePickleClass,
+                    )
                     state_dict["cfg"].device = "mps"
                 else:
                     state_dict = torch.load(path)
@@ -256,6 +303,31 @@ class SparseAutoencoder(HookedRootModule):
         instance.load_state_dict(state_dict["state_dict"])
 
         return instance
+
+    @classmethod
+    def load_from_pretrained(cls, path: str, device: str = "cpu"):
+
+        config_path = os.path.join(path, "cfg.json")
+        weight_path = os.path.join(path, "sae_weights.safetensors")
+
+        with open(config_path, "r") as f:
+            config = json.load(f)
+
+        var_names = LanguageModelSAERunnerConfig.__init__.__code__.co_varnames
+        # filter config for varnames
+        config = {k: v for k, v in config.items() if k in var_names}
+        config["verbose"] = False
+        config["device"] = device
+        config = LanguageModelSAERunnerConfig(**config)
+        sae = SparseAutoencoder(config)
+
+        tensors = {}
+        with safe_open(weight_path, framework="pt", device=device) as f:  # type: ignore
+            for k in f.keys():
+                tensors[k] = f.get_tensor(k)
+        sae.load_state_dict(tensors)
+
+        return sae
 
     def get_name(self):
         sae_name = f"sparse_autoencoder_{self.cfg.model_name}_{self.cfg.hook_point}_{self.cfg.d_sae}"
@@ -304,4 +376,6 @@ def _per_item_mse_loss_with_target_norm(
     """
     target_centered = target - target.mean(dim=0, keepdim=True)
     normalization = target_centered.norm(dim=-1, keepdim=True)
-    return torch.nn.functional.mse_loss(preds, target, reduction="none") / normalization
+    return torch.nn.functional.mse_loss(preds, target, reduction="none") / (
+        normalization + 1e-6
+    )

@@ -1,7 +1,7 @@
 # Misc
 
-::: sae_training.config
+::: sae_lens.training.config
 
-::: sae_training.utils
+::: sae_lens.training.session_loader
 
-::: sae_training.optim
+::: sae_lens.training.optim

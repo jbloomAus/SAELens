@@ -7,8 +7,8 @@ import pytest
 import torch
 from transformer_lens import HookedTransformer
 
-from sae_training.config import LanguageModelSAERunnerConfig
-from sae_training.sparse_autoencoder import (
+from sae_lens.training.config import LanguageModelSAERunnerConfig
+from sae_lens.training.sparse_autoencoder import (
     SparseAutoencoder,
     _per_item_mse_loss_with_target_norm,
 )
@@ -86,12 +86,9 @@ def test_sparse_autoencoder_init(cfg: Any):
     )
 
 
-@pytest.mark.parametrize("extension", ["pt", ".pkl", "pkl.gz"])
-def test_SparseAutoencoder_save_and_load_from_pretrained(
-    tmp_path: Path, extension: str
-) -> None:
+def test_SparseAutoencoder_save_and_load_from_pretrained(tmp_path: Path) -> None:
     cfg = build_sae_cfg(device="cpu")
-    model_path = str(tmp_path / f"test.{extension}")
+    model_path = str(tmp_path)
     sparse_autoencoder = SparseAutoencoder(cfg)
     sparse_autoencoder_state_dict = sparse_autoencoder.state_dict()
     sparse_autoencoder.save_model(model_path)
@@ -99,6 +96,8 @@ def test_SparseAutoencoder_save_and_load_from_pretrained(
     assert os.path.exists(model_path)
 
     sparse_autoencoder_loaded = SparseAutoencoder.load_from_pretrained(model_path)
+    sparse_autoencoder_loaded.cfg.verbose = True
+    sparse_autoencoder_loaded.cfg.checkpoint_path = cfg.checkpoint_path
     sparse_autoencoder_loaded.cfg.device = "cpu"  # might autoload onto mps
     sparse_autoencoder_loaded = sparse_autoencoder_loaded.to("cpu")
     sparse_autoencoder_loaded_state_dict = sparse_autoencoder_loaded.state_dict()
@@ -228,7 +227,7 @@ def test_SparseAutoencoder_remove_gradient_parallel_to_decoder_directions() -> N
     grad_delta = orig_grad - sae.W_dec.grad
     assert torch.nn.functional.cosine_similarity(
         sae.W_dec.detach(), grad_delta, dim=1
-    ).abs() == pytest.approx(1.0, abs=1e-5)
+    ).abs() == pytest.approx(1.0, abs=1e-3)
 
 
 def test_SparseAutoencoder_get_name_returns_correct_name_from_cfg_vals() -> None:

@@ -1,4 +1,4 @@
-site_name: MATS SAE Training
+site_name: SAELens Training
 site_description: Docs for Sparse Autoencoder Training Library
 site_author: Joseph Bloom
 repo_url: http://github.com/jbloomAus/mats_sae_training/
@@ -63,8 +63,7 @@ plugins:
   - mkdocstrings:
       custom_templates: null
       watch:
-        - sae_training/  # Replace with the path to your Python code
-        - sae_analysis/  # Replace with the path to your Python code
+        - sae_lens/  # Replace with the path to your Python code
 
 
 markdown_extensions:

@@ -9,11 +9,18 @@ import time
 import numpy as np
 import torch
 from matplotlib import colors
+from sae_vis.data_config_classes import (
+    ActsHistogramConfig,
+    Column,
+    FeatureTablesConfig,
+    SaeVisConfig,
+    SaeVisLayoutConfig,
+    SequencesConfig,
+)
 from sae_vis.data_fetching_fns import get_feature_data
-from sae_vis.data_storing_fns import FeatureVisParams
 from tqdm import tqdm
 
-from sae_training.utils import LMSparseAutoencoderSessionloader
+from sae_lens.training.session_loader import LMSparseAutoencoderSessionloader
 
 OUT_OF_RANGE_TOKEN = "<|outofrange|>"
 
@@ -87,9 +94,9 @@ class NeuronpediaRunner:
             self.model,
             sae_group,
             self.activation_store,
-        ) = LMSparseAutoencoderSessionloader.load_session_from_pretrained(self.sae_path)
+        ) = LMSparseAutoencoderSessionloader.load_pretrained_sae(self.sae_path)
         # TODO: handle multiple autoencoders
-        self.sparse_autoencoder = sae_group.autoencoders[0]
+        self.sparse_autoencoder = next(iter(sae_group))[1]
 
     def get_tokens(
         self, n_batches_to_sample_from: int = 2**12, n_prompts_to_select: int = 4096 * 6
@@ -221,38 +228,56 @@ class NeuronpediaRunner:
 
                 print(f"Doing batch: {feature_batch_count}")
 
-                feature_vis_params = FeatureVisParams(
+                layout = SaeVisLayoutConfig(
+                    columns=[
+                        Column(
+                            SequencesConfig(
+                                stack_mode="stack-all",
+                                buffer=(
+                                    self.buffer_tokens_left,
+                                    self.buffer_tokens_right,
+                                ),
+                                compute_buffer=False,
+                                n_quantiles=10,
+                                top_acts_group_size=20,
+                                quantile_group_size=5,
+                            ),
+                            width=650,
+                        ),
+                        Column(
+                            ActsHistogramConfig(),
+                            FeatureTablesConfig(n_rows=5),
+                            width=500,
+                        ),
+                    ],
+                    height=1000,
+                )
+                feature_vis_params = SaeVisConfig(
                     hook_point=self.sparse_autoencoder.cfg.hook_point,
-                    n_groups=10,
                     minibatch_size_features=256,
                     minibatch_size_tokens=64,
-                    first_group_size=20,
-                    other_groups_size=5,
-                    buffer=(self.buffer_tokens_left, self.buffer_tokens_right),
                     features=features_to_process,
                     verbose=False,
-                    include_left_tables=True,
+                    feature_centric_layout=layout,
                 )
 
                 feature_data = get_feature_data(
                     encoder=self.sparse_autoencoder,  # type: ignore
                     model=self.model,
                     tokens=tokens,
-                    fvp=feature_vis_params,
+                    cfg=feature_vis_params,
                 )
 
                 features_outputs = []
-                for _, feat_index in enumerate(feature_data.keys()):
-                    feature = feature_data[feat_index]
+                for _, feat_index in enumerate(feature_data.feature_data_dict.keys()):
+                    feature = feature_data.feature_data_dict[feat_index]
 
                     feature_output = {}
                     feature_output["featureIndex"] = feat_index
 
-                    top10_logits = self.round_list(
-                        feature.middle_plots_data.top10_logits
-                    )
+                    top10_logits = self.round_list(feature.logits_table_data.top_logits)
                     bottom10_logits = self.round_list(
-                        feature.middle_plots_data.bottom10_logits
+                        feature.logits_table_data.bottom_logits
                     )
 
                     # TODO: don't precompute/store these. should do it on the frontend
@@ -269,49 +294,52 @@ class NeuronpediaRunner:
                     feature_output["neg_bg_values"] = neg_bg_values
                     feature_output["pos_bg_values"] = pos_bg_values
 
-                    if feature.left_tables_data:
+                    if feature.feature_tables_data:
                         feature_output["neuron_alignment_indices"] = (
-                            feature.left_tables_data.neuron_alignment_indices
+                            feature.feature_tables_data.neuron_alignment_indices
                         )
                         feature_output["neuron_alignment_values"] = self.round_list(
-                            feature.left_tables_data.neuron_alignment_values
+                            feature.feature_tables_data.neuron_alignment_values
                         )
                         feature_output["neuron_alignment_l1"] = self.round_list(
-                            feature.left_tables_data.neuron_alignment_l1
+                            feature.feature_tables_data.neuron_alignment_l1
                         )
                         feature_output["correlated_neurons_indices"] = (
-                            feature.left_tables_data.correlated_neurons_indices
+                            feature.feature_tables_data.correlated_neurons_indices
                         )
-                        feature_output["correlated_neurons_l1"] = self.round_list(
-                            feature.left_tables_data.correlated_neurons_l1
-                        )
+                        # TODO: this value doesn't exist in the new output type, commenting out for now
+                        # there is a cossim value though - is that what's needed?
+                        # feature_output["correlated_neurons_l1"] = self.round_list(
+                        #     feature.feature_tables_data.correlated_neurons_l1
+                        # )
                         feature_output["correlated_neurons_pearson"] = self.round_list(
-                            feature.left_tables_data.correlated_neurons_pearson
+                            feature.feature_tables_data.correlated_neurons_pearson
                         )
                         # feature_output["correlated_features_indices"] = (
-                        #     feature.left_tables_data.correlated_features_indices
+                        #     feature.feature_tables_data.correlated_features_indices
                         # )
                         # feature_output["correlated_features_l1"] = self.round_list(
-                        #     feature.left_tables_data.correlated_features_l1
+                        #     feature.feature_tables_data.correlated_features_l1
                         # )
                         # feature_output["correlated_features_pearson"] = self.round_list(
-                        #     feature.left_tables_data.correlated_features_pearson
+                        #     feature.feature_tables_data.correlated_features_pearson
                         # )
 
                     feature_output["neg_str"] = self.to_str_tokens_safe(
-                        vocab_dict, feature.middle_plots_data.bottom10_token_ids
+                        vocab_dict, feature.logits_table_data.bottom_token_ids
                     )
                     feature_output["neg_values"] = bottom10_logits
                     feature_output["pos_str"] = self.to_str_tokens_safe(
-                        vocab_dict, feature.middle_plots_data.top10_token_ids
+                        vocab_dict, feature.logits_table_data.top_token_ids
                     )
                     feature_output["pos_values"] = top10_logits
 
-                    feature_output["frac_nonzero"] = (
-                        feature.middle_plots_data.frac_nonzero
-                    )
+                    # TODO: don't know what this should be in the new version
+                    # feature_output["frac_nonzero"] = (
+                    #     feature.middle_plots_data.frac_nonzero
+                    # )
 
-                    freq_hist_data = feature.middle_plots_data.freq_histogram_data
+                    freq_hist_data = feature.acts_histogram_data
                     freq_bar_values = self.round_list(freq_hist_data.bar_values)
                     feature_output["freq_hist_data_bar_values"] = freq_bar_values
                     feature_output["freq_hist_data_tick_vals"] = self.round_list(
@@ -331,7 +359,7 @@ class NeuronpediaRunner:
                     )
                     feature_output["freq_bar_colors"] = freq_bar_colors
 
-                    logits_hist_data = feature.middle_plots_data.logits_histogram_data
+                    logits_hist_data = feature.logits_histogram_data
                     feature_output["logits_hist_data_bar_heights"] = self.round_list(
                         logits_hist_data.bar_heights
                     )
@@ -352,10 +380,10 @@ class NeuronpediaRunner:
                     for sgd in sdbs.seq_group_data:
                         for sd in sgd.seq_data:
                             if (
-                                sd.top5_token_ids is not None
-                                and sd.bottom5_token_ids is not None
-                                and sd.top5_logits is not None
-                                and sd.bottom5_logits is not None
+                                sd.top_token_ids is not None
+                                and sd.bottom_token_ids is not None
+                                and sd.top_logits is not None
+                                and sd.bottom_logits is not None
                             ):
                                 activation = {}
                                 strs = []
@@ -370,23 +398,23 @@ class NeuronpediaRunner:
                                     posContrib = {}
                                     posTokens = [
                                         self.to_str_tokens_safe(vocab_dict, j)
-                                        for j in sd.top5_token_ids[i]
+                                        for j in sd.top_token_ids[i]
                                     ]
                                     if len(posTokens) > 0:
                                         posContrib["t"] = posTokens
                                         posContrib["v"] = self.round_list(
-                                            sd.top5_logits[i]
+                                            sd.top_logits[i]
                                         )
                                     posContribs.append(posContrib)
                                     negContrib = {}
                                     negTokens = [
                                         self.to_str_tokens_safe(vocab_dict, j)  # type: ignore
-                                        for j in sd.bottom5_token_ids[i]
+                                        for j in sd.bottom_token_ids[i]
                                     ]
                                     if len(negTokens) > 0:
                                         negContrib["t"] = negTokens
                                         negContrib["v"] = self.round_list(
-                                            sd.bottom5_logits[i]
+                                            sd.bottom_logits[i]
                                         )
                                     negContribs.append(negContrib)
 
@@ -397,7 +425,7 @@ class NeuronpediaRunner:
                                 activation["values"] = self.round_list(sd.feat_acts)
                                 activation["maxValue"] = max(activation["values"])
                                 activation["lossValues"] = self.round_list(
-                                    sd.contribution_to_loss
+                                    sd.loss_contribution
                                 )
 
                                 activations.append(activation)
