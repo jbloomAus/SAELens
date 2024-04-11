@@ -244,10 +244,8 @@ class SparseAutoencoder(HookedRootModule):
             json.dump(config, f)
 
         if sparsity is not None:
-            # load the sparisty:
-            assert sparsity is not None
-            sparsity = {"sparsity": sparsity}  # type: ignore
-            save_file(sparsity, f"{path}/sparsity.safetensors")  # type: ignore
+            sparsity_in_dict = {"sparsity": sparsity}
+            save_file(sparsity_in_dict, f"{path}/sparsity.safetensors")  # type: ignore
 
     @classmethod
     def load_from_pretrained_legacy(cls, path: str):
@@ -319,6 +317,7 @@ class SparseAutoencoder(HookedRootModule):
         # filter config for varnames
         config = {k: v for k, v in config.items() if k in var_names}
         config["verbose"] = False
+        config["device"] = device
         config = LanguageModelSAERunnerConfig(**config)
         sae = SparseAutoencoder(config)
 
