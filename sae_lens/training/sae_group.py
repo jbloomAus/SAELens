@@ -143,14 +143,17 @@ class SparseAutoencoderDictionary:
         # return instance
 
     @classmethod
-    def load_from_pretrained(cls, path: str) -> "SparseAutoencoderDictionary":
+    def load_from_pretrained(
+        cls, path: str, device: str = "cpu"
+    ) -> "SparseAutoencoderDictionary":
 
         autoencoders = {}
 
         for sae_name in os.listdir(path):
             if os.path.isdir(os.path.join(path, sae_name)):
                 autoencoders[sae_name] = SparseAutoencoder.load_from_pretrained(
-                    os.path.join(path, sae_name)
+                    os.path.join(path, sae_name),
+                    device,
                 )
 
         # Create the SAEGroup object
