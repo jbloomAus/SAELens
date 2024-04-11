@@ -83,7 +83,7 @@ class ActivationsStore:
         train_batch_size: int,
         prepend_bos: bool,
         device: str | torch.device,
-        dtype: torch.dtype,
+        dtype: str | torch.dtype,
         cached_activations_path: str | None = None,
         create_dataloader: bool = True,
     ):
@@ -259,7 +259,7 @@ class ActivationsStore:
 
         return stacked_activations
 
-    def get_buffer(self, n_batches_in_buffer: int):
+    def get_buffer(self, n_batches_in_buffer: int) -> torch.Tensor:
         context_size = self.context_size
         batch_size = self.store_batch_size
         d_in = self.d_in
@@ -272,7 +272,7 @@ class ActivationsStore:
             # Initialize an empty tensor with an additional dimension for layers
             new_buffer = torch.zeros(
                 (buffer_size, num_layers, d_in),
-                dtype=self.dtype,
+                dtype=self.dtype,  # type: ignore
                 device=self.device,
             )
             n_tokens_filled = 0
@@ -323,7 +323,7 @@ class ActivationsStore:
         # Initialize empty tensor buffer of the maximum required size with an additional dimension for layers
         new_buffer = torch.zeros(
             (total_size, context_size, num_layers, d_in),
-            dtype=self.dtype,
+            dtype=self.dtype,  # type: ignore
             device=self.device,
         )
 

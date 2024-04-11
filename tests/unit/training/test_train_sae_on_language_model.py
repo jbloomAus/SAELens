@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from typing import Any, Callable
 from unittest.mock import patch
@@ -8,9 +9,10 @@ from datasets import Dataset
 from torch import Tensor
 from transformer_lens import HookedTransformer
 
+import wandb
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.optim import get_scheduler
-from sae_lens.training.sae_group import SAEGroup
+from sae_lens.training.sae_group import SparseAutoencoderDictionary
 from sae_lens.training.sparse_autoencoder import ForwardOutput, SparseAutoencoder
 from sae_lens.training.train_sae_on_language_model import (
     SAETrainContext,
@@ -267,51 +269,40 @@ def test_build_train_step_log_dict() -> None:
 
 
 def test_save_checkpoint(tmp_path: Path) -> None:
+
+    # set wandb mode to offline
+    os.environ["WANDB_MODE"] = "offline"
+
+    wandb.init()
     checkpoint_dir = tmp_path / "checkpoint"
-    cfg = build_sae_cfg(checkpoint_path=checkpoint_dir, d_in=25, d_sae=100)
-    sae_group = SAEGroup(cfg)
+    cfg = build_sae_cfg(
+        checkpoint_path=checkpoint_dir, d_in=25, d_sae=100, log_to_wandb=True
+    )
+    sae_group = SparseAutoencoderDictionary(cfg)
     assert len(sae_group.autoencoders) == 1
     ctx = build_train_ctx(
-        sae_group.autoencoders[0],
+        next(iter(sae_group))[1],
         act_freq_scores=torch.randint(0, 100, (100,)),
         n_forward_passes_since_fired=torch.randint(0, 100, (100,)),
         n_frac_active_tokens=123,
     )
-    res = _save_checkpoint(sae_group, [ctx], "test_checkpoint")
-    assert res.path == str(
-        checkpoint_dir / f"test_checkpoint_{sae_group.get_name()}.pt"
-    )
-    assert res.log_feature_sparsity_path == str(
-        checkpoint_dir
-        / f"test_checkpoint_{sae_group.get_name()}_log_feature_sparsity.pt"
-    )
-    assert torch.allclose(
-        res.log_feature_sparsities[0], _log_feature_sparsity(ctx.feature_sparsity)
-    )
+    name = next(iter(sae_group.autoencoders.keys()))
 
-    # now, load the saved checkpoints to make sure they match what we saved
-    loaded_sae_group = torch.load(res.path)
-    loaded_log_sparsities = torch.load(res.log_feature_sparsity_path)
+    res = _save_checkpoint(sae_group, {name: ctx}, "test_checkpoint")
+    assert res == str(checkpoint_dir / "test_checkpoint")
 
-    assert isinstance(loaded_sae_group, SAEGroup)
-    assert len(loaded_sae_group.autoencoders) == 1
-    assert loaded_sae_group.get_name() == sae_group.get_name()
+    subfolder = os.listdir(res)[0]
+    assert subfolder == name
 
-    loaded_state_dict = loaded_sae_group.autoencoders[0].state_dict()
-    original_state_dict = sae_group.autoencoders[0].state_dict()
-
-    assert list(loaded_state_dict.keys()) == list(original_state_dict.keys())
-    for orig_val, loaded_val in zip(
-        original_state_dict.values(), loaded_state_dict.values()
-    ):
-        assert torch.allclose(orig_val, loaded_val)
-
-    assert torch.allclose(
-        loaded_log_sparsities[0], _log_feature_sparsity(ctx.feature_sparsity)
-    )
+    # list contents of subfolder
+    contents = os.listdir(f"{res}/{subfolder}")
+    assert len(contents) == 3
+    assert "cfg.json" in contents
+    assert "sparsity.safetensors" in contents
+    assert "sae_weights.safetensors" in contents
 
 
-def test_train_sae_group_on_language_model__runs_and_outputs_look_reasonable(
+def test_train_sae_group_on_language_model__runs(
     ts_model: HookedTransformer,
     tmp_path: Path,
 ) -> None:
@@ -325,16 +316,16 @@ def test_train_sae_group_on_language_model__runs_and_outputs_look_reasonable(
     # just a tiny datast which will run quickly
     dataset = Dataset.from_list([{"text": "hello world"}] * 1000)
     activation_store = ActivationsStore.from_config(ts_model, cfg, dataset=dataset)
-    sae_group = SAEGroup(cfg)
+    sae_group = SparseAutoencoderDictionary(cfg)
     res = train_sae_group_on_language_model(
         model=ts_model,
         sae_group=sae_group,
         activation_store=activation_store,
         batch_size=32,
     )
-    assert res.checkpoint_paths == [
-        str(checkpoint_dir / f"final_{sae_group.get_name()}.pt")
-    ]
+    assert res.checkpoint_paths == [str(checkpoint_dir / "final")]
     assert len(res.log_feature_sparsities) == 1
-    assert res.log_feature_sparsities[0].shape == (cfg.d_sae,)
+
+    name = next(iter(res.sae_group))[0]
+    assert res.log_feature_sparsities[name].shape == (cfg.d_sae,)
     assert res.sae_group is sae_group
