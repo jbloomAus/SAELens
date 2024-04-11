@@ -7,7 +7,6 @@ from safetensors import safe_open
 from tqdm import tqdm
 
 from sae_lens.training.config import LanguageModelSAERunnerConfig
-from sae_lens.training.session_loader import LMSparseAutoencoderSessionloader
 from sae_lens.training.sparse_autoencoder import SparseAutoencoder
 
 
@@ -57,9 +56,18 @@ def get_gpt2_res_jb_saes() -> (
 def convert_connor_rob_sae_to_our_saelens_format(
     state_dict: dict[str, torch.Tensor],
     config: dict[str, int | str],
-    return_session: bool = False,
-    device: str = "mps",
+    device: str = "cpu",
 ):
+    """
+
+    # can get session like so.
+        model, ae_alt, activation_store = LMSparseAutoencoderSessionloader(
+            cfg
+        ).load_sae_training_group_session()
+        next(iter(ae_alt))[1].load_state_dict(state_dict)
+        return model, ae_alt, activation_store
+
+    """
 
     expansion_factor = int(config["dict_size"]) // int(config["act_size"])
 
@@ -82,17 +90,9 @@ def convert_connor_rob_sae_to_our_saelens_format(
         dtype=torch.float32,
     )
 
-    # if we want model + act store, do this
-    if return_session:
-        model, ae_alt, activation_store = LMSparseAutoencoderSessionloader(
-            cfg
-        ).load_sae_training_group_session()
-        next(iter(ae_alt))[1].load_state_dict(state_dict)
-        return model, ae_alt, activation_store
-    else:
-        ae_alt = SparseAutoencoder(cfg)
-        ae_alt.load_state_dict(state_dict)
-        return ae_alt
+    ae_alt = SparseAutoencoder(cfg)
+    ae_alt.load_state_dict(state_dict)
+    return ae_alt
 
 
 def get_gpt2_small_ckrk_attn_out_saes() -> dict[str, SparseAutoencoder]:
