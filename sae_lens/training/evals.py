@@ -41,7 +41,7 @@ def run_evals(
 
     # get cache
     _, cache = model.run_with_cache(
-        input=eval_tokens,
+        eval_tokens,
         prepend_bos=False,
         names_filter=[hook_point_eval, hook_point],
         **sparse_autoencoder.cfg.model_kwargs,
