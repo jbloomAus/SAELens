@@ -28,7 +28,7 @@ class ActivationsStore:
     while training SAEs.
     """
 
-    model: HookedTransformer
+    model:  HookedRootModule
     dataset: HfDataset
     cached_activations_path: str | None
     tokens_column: Literal["tokens", "input_ids", "text"]
@@ -37,7 +37,7 @@ class ActivationsStore:
     @classmethod
     def from_config(
         cls,
-        model: HookedTransformer,
+        model: HookedRootModule,
         cfg: LanguageModelSAERunnerConfig | CacheActivationsRunnerConfig,
         dataset: HfDataset | None = None,
         create_dataloader: bool = True,
