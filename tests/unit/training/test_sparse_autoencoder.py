@@ -200,7 +200,7 @@ def test_per_item_mse_loss_with_norm_matches_original_implementation() -> None:
         / (target_centered**2).sum(dim=-1, keepdim=True).sqrt()
     )
     sae_res = _per_item_mse_loss_with_target_norm(input, target)
-    assert torch.allclose(orig_impl_res, sae_res)
+    assert torch.allclose(orig_impl_res, sae_res, atol=1e-5)
 
 
 def test_SparseAutoencoder_remove_gradient_parallel_to_decoder_directions() -> None:

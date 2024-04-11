@@ -1,6 +1,7 @@
 from typing import Any
 
 import torch
+from transformer_lens import HookedTransformer
 
 from sae_lens.training.config import LanguageModelSAERunnerConfig
 
@@ -26,11 +27,11 @@ def build_sae_cfg(**kwargs: Any) -> LanguageModelSAERunnerConfig:
         l1_coefficient=2e-3,
         lp_norm=1,
         lr=2e-4,
-        train_batch_size=2048,
-        context_size=64,
+        train_batch_size=4,
+        context_size=6,
         feature_sampling_window=50,
         dead_feature_threshold=1e-7,
-        n_batches_in_buffer=4,
+        n_batches_in_buffer=2,
         total_training_tokens=1_000_000,
         store_batch_size=4,
         log_to_wandb=False,
@@ -48,3 +49,18 @@ def build_sae_cfg(**kwargs: Any) -> LanguageModelSAERunnerConfig:
         setattr(mock_config, key, val)
 
     return mock_config
+
+
+MODEL_CACHE: dict[str, HookedTransformer] = {}
+
+
+def load_model_cached(model_name: str) -> HookedTransformer:
+    """
+    helper to avoid unnecessarily loading the same model multiple times.
+    NOTE: if the model gets modified in tests this will not work.
+    """
+    if model_name not in MODEL_CACHE:
+        MODEL_CACHE[model_name] = HookedTransformer.from_pretrained(
+            model_name, device="cpu"
+        )
+    return MODEL_CACHE[model_name]
