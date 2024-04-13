@@ -1,11 +1,21 @@
+import json
+import urllib.parse
 import webbrowser
 
 
-def open_neuronpedia(
-    feature_id: int, layer: int = 0, model: str = "gpt2-small", dataset: str = "res-jb"
+def get_neuronpedia_quick_list(
+    features: list[int],
+    layer: int,
+    model: str = "gpt2-small",
+    dataset: str = "res-jb",
+    name: str = "temporary_list",
 ):
-
-    path_to_html = f"https://www.neuronpedia.org/{model}/{layer}-{dataset}/{feature_id}"
-
-    print(f"Feature {feature_id}")
-    webbrowser.open_new_tab(path_to_html)
+    url = "https://neuronpedia.org/quick-list/"
+    name = urllib.parse.quote(name)
+    url = url + "?name=" + name
+    list_feature = [
+        {"modelId": model, "layer": f"{layer}-{dataset}", "index": str(feature)}
+        for feature in features
+    ]
+    url = url + "&features=" + urllib.parse.quote(json.dumps(list_feature))
+    webbrowser.open(url)
