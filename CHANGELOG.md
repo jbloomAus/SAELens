@@ -2,6 +2,13 @@
 
 
 
+## v0.2.1 (2024-04-13)
+
+### Fix
+
+* fix: neuronpedia quicklist ([`6769466`](https://github.com/jbloomAus/SAELens/commit/676946654c89ea63f6244f7326cc970b9354f4e3))
+
+
 ## v0.2.0 (2024-04-13)
 
 ### Chore
