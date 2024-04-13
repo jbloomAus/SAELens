@@ -27,6 +27,7 @@ mkdocs-autorefs = "^1.0.1"
 mkdocs-section-index = "^0.3.8"
 mkdocstrings = "^0.24.1"
 mkdocstrings-python = "^1.9.0"
+safetensors = "^0.4.2"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -37,6 +38,7 @@ pre-commit = "^3.6.2"
 flake8 = "^7.0.0"
 isort = "^5.13.2"
 pyright = "^1.1.351"
+
 
 [tool.isort]
 profile = "black"
@@ -53,6 +55,7 @@ reportUnnecessaryComparison = "none"
 reportConstantRedefinition = "none"
 reportUnknownLambdaType = "none"
 reportPrivateUsage = "none"
+
 
 [build-system]
 requires = ["poetry-core"]

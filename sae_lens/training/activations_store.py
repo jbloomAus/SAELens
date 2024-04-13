@@ -33,6 +33,8 @@ class ActivationsStore:
     cached_activations_path: str | None
     tokens_column: Literal["tokens", "input_ids", "text"]
     hook_point_head_index: int | None
+    _dataloader: Iterator[Any] | None = None
+    _storage_buffer: torch.Tensor | None = None
 
     @classmethod
     def from_config(
@@ -40,7 +42,6 @@ class ActivationsStore:
         model: HookedTransformer,
         cfg: LanguageModelSAERunnerConfig | CacheActivationsRunnerConfig,
         dataset: HfDataset | None = None,
-        create_dataloader: bool = True,
     ) -> "ActivationsStore":
         cached_activations_path = cfg.cached_activations_path
         # set cached_activations_path to None if we're not using cached activations
@@ -65,7 +66,6 @@ class ActivationsStore:
             device=cfg.device,
             dtype=cfg.dtype,
             cached_activations_path=cached_activations_path,
-            create_dataloader=create_dataloader,
         )
 
     def __init__(
@@ -83,9 +83,8 @@ class ActivationsStore:
         train_batch_size: int,
         prepend_bos: bool,
         device: str | torch.device,
-        dtype: torch.dtype,
+        dtype: str | torch.dtype,
         cached_activations_path: str | None = None,
-        create_dataloader: bool = True,
     ):
         self.model = model
         self.dataset = (
@@ -151,10 +150,17 @@ class ActivationsStore:
 
             # TODO add support for "mixed loading" (ie use cache until you run out, then switch over to streaming from HF)
 
-        if create_dataloader:
-            # fill buffer half a buffer, so we can mix it with a new buffer
-            self.storage_buffer = self.get_buffer(self.n_batches_in_buffer // 2)
-            self.dataloader = self.get_data_loader()
+    @property
+    def storage_buffer(self) -> torch.Tensor:
+        if self._storage_buffer is None:
+            self._storage_buffer = self.get_buffer(self.n_batches_in_buffer // 2)
+        return self._storage_buffer
+
+    @property
+    def dataloader(self) -> Iterator[Any]:
+        if self._dataloader is None:
+            self._dataloader = self.get_data_loader()
+        return self._dataloader
 
     def get_batch_tokens(self):
         """
@@ -259,7 +265,7 @@ class ActivationsStore:
 
         return stacked_activations
 
-    def get_buffer(self, n_batches_in_buffer: int):
+    def get_buffer(self, n_batches_in_buffer: int) -> torch.Tensor:
         context_size = self.context_size
         batch_size = self.store_batch_size
         d_in = self.d_in
@@ -272,7 +278,7 @@ class ActivationsStore:
             # Initialize an empty tensor with an additional dimension for layers
             new_buffer = torch.zeros(
                 (buffer_size, num_layers, d_in),
-                dtype=self.dtype,
+                dtype=self.dtype,  # type: ignore
                 device=self.device,
             )
             n_tokens_filled = 0
@@ -323,7 +329,7 @@ class ActivationsStore:
         # Initialize empty tensor buffer of the maximum required size with an additional dimension for layers
         new_buffer = torch.zeros(
             (total_size, context_size, num_layers, d_in),
-            dtype=self.dtype,
+            dtype=self.dtype,  # type: ignore
             device=self.device,
         )
 
@@ -363,7 +369,7 @@ class ActivationsStore:
         mixing_buffer = mixing_buffer[torch.randperm(mixing_buffer.shape[0])]
 
         # 2.  put 50 % in storage
-        self.storage_buffer = mixing_buffer[: mixing_buffer.shape[0] // 2]
+        self._storage_buffer = mixing_buffer[: mixing_buffer.shape[0] // 2]
 
         # 3. put other 50 % in a dataloader
         dataloader = iter(
@@ -387,7 +393,7 @@ class ActivationsStore:
             return next(self.dataloader)
         except StopIteration:
             # If the DataLoader is exhausted, create a new one
-            self.dataloader = self.get_data_loader()
+            self._dataloader = self.get_data_loader()
             return next(self.dataloader)
 
     def _get_next_dataset_tokens(self) -> torch.Tensor:
