@@ -1,6 +1,8 @@
 import os
 from typing import Any, Dict, List, Optional, Union, cast
 
+from sae_lens.training.sparse_autoencoder import SparseAutoencoder
+
 # set TOKENIZERS_PARALLELISM to false to avoid warnings
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 import json
@@ -12,11 +14,14 @@ from matplotlib import colors
 from sae_vis.data_config_classes import (
     ActsHistogramConfig,
     Column,
+    LogitsHistogramConfig,
+    LogitsTableConfig,
     FeatureTablesConfig,
     SaeVisConfig,
     SaeVisLayoutConfig,
     SequencesConfig,
 )
+from sae_vis.utils_fns import HTML_ANOMALIES
 from sae_vis.data_fetching_fns import get_feature_data
 from tqdm import tqdm
 
@@ -45,6 +50,7 @@ class NeuronpediaRunner:
     def __init__(
         self,
         sae_path: str,
+        use_legacy: bool = False,
         feature_sparsity_path: Optional[str] = None,
         neuronpedia_parent_folder: str = "./neuronpedia_outputs",
         init_session: bool = True,
@@ -60,6 +66,7 @@ class NeuronpediaRunner:
         end_batch_inclusive: Optional[int] = None,
     ):
         self.sae_path = sae_path
+        self.use_legacy = use_legacy
         if init_session:
             self.init_sae_session()
 
@@ -90,11 +97,22 @@ class NeuronpediaRunner:
         return dashboard_folder_name
 
     def init_sae_session(self):
-        (
-            self.model,
-            sae_group,
-            self.activation_store,
-        ) = LMSparseAutoencoderSessionloader.load_pretrained_sae(self.sae_path)
+
+        if self.use_legacy:
+            # load the SAE
+            sparse_autoencoder = SparseAutoencoder.load_from_pretrained_legacy(
+                self.sae_path
+            )
+            # load the model, SAE and activations loader with it.
+            session_loader = LMSparseAutoencoderSessionloader(sparse_autoencoder.cfg)
+            (self.model, sae_group, self.activation_store) = (
+                session_loader.load_sae_training_group_session()
+            )
+        else:
+            (self.model, sae_group, self.activation_store) = (
+                LMSparseAutoencoderSessionloader.load_pretrained_sae(self.sae_path)
+            )
+
         # TODO: handle multiple autoencoders
         self.sparse_autoencoder = next(iter(sae_group))[1]
 
@@ -206,10 +224,15 @@ class NeuronpediaRunner:
         print(f"Time to get tokens: {end - start}")
 
         vocab_dict = cast(Any, self.model.tokenizer).vocab
-        vocab_dict = {
-            v: k.replace("Ġ", " ").replace("\n", "\\n").replace("Ċ", "\n")
-            for k, v in vocab_dict.items()
-        }
+        new_vocab_dict = {}
+        # Replace substrings in the keys of vocab_dict using HTML_ANOMALIES
+        for k, v in vocab_dict.items():
+            modified_key = k
+            for anomaly in HTML_ANOMALIES:
+                modified_key = modified_key.replace(anomaly, HTML_ANOMALIES[anomaly])
+            new_vocab_dict[modified_key] = v
+        vocab_dict = new_vocab_dict
+
         # pad with blank tokens to the actual vocab size
         for i in range(len(vocab_dict), self.model.cfg.d_vocab):
             vocab_dict[i] = OUT_OF_RANGE_TOKEN
@@ -227,6 +250,7 @@ class NeuronpediaRunner:
                     continue
 
                 print(f"Doing batch: {feature_batch_count}")
+                print(f"{features_to_process}")
 
                 layout = SaeVisLayoutConfig(
                     columns=[
@@ -237,27 +261,24 @@ class NeuronpediaRunner:
                                     self.buffer_tokens_left,
                                     self.buffer_tokens_right,
                                 ),
-                                compute_buffer=False,
+                                compute_buffer=True,
                                 n_quantiles=10,
                                 top_acts_group_size=20,
                                 quantile_group_size=5,
                             ),
-                            width=650,
-                        ),
-                        Column(
                             ActsHistogramConfig(),
-                            FeatureTablesConfig(n_rows=5),
-                            width=500,
-                        ),
-                    ],
-                    height=1000,
+                            LogitsHistogramConfig(),
+                            LogitsTableConfig(),
+                            FeatureTablesConfig(n_rows=3),
+                        )
+                    ]
                 )
                 feature_vis_params = SaeVisConfig(
                     hook_point=self.sparse_autoencoder.cfg.hook_point,
-                    minibatch_size_features=256,
+                    minibatch_size_features=128,
                     minibatch_size_tokens=64,
                     features=features_to_process,
-                    verbose=False,
+                    verbose=True,
                     feature_centric_layout=layout,
                 )
 
@@ -319,7 +340,11 @@ class NeuronpediaRunner:
                     feature_output["pos_values"] = top10_logits
 
                     feature_output["frac_nonzero"] = (
-                        feature.acts_histogram_data.title.split(" = ")[1]
+                        float(
+                            feature.acts_histogram_data.title.split(" = ")[1].split(
+                                "%"
+                            )[0]
+                        )
                         if feature.acts_histogram_data.title is not None
                         else 0
                     )

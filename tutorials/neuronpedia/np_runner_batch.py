@@ -8,6 +8,7 @@ FEATURES_AT_A_TIME = int(
 )  # this must stay the same or your batching will be off
 START_BATCH_INCLUSIVE = int(sys.argv[5])
 END_BATCH_INCLUSIVE = int(sys.argv[6]) if len(sys.argv) > 6 else None
+USE_LEGACY = True
 
 # Change these depending on how your files are named
 SAE_PATH = f"../../data/{SOURCE_AUTHOR_SUFFIX}/sae_{LAYER}_{TYPE}.pt"
@@ -21,6 +22,7 @@ NP_OUTPUT_FOLDER = "../../neuronpedia_outputs"
 
 runner = NeuronpediaRunner(
     sae_path=SAE_PATH,
+    use_legacy=USE_LEGACY,
     feature_sparsity_path=FEATURE_SPARSITY_PATH,
     neuronpedia_parent_folder=NP_OUTPUT_FOLDER,
     init_session=True,
@@ -28,7 +30,7 @@ runner = NeuronpediaRunner(
     n_prompts_to_select=4096 * 6,
     n_features_at_a_time=FEATURES_AT_A_TIME,
     buffer_tokens_left=64,
-    buffer_tokens_right=63,
+    buffer_tokens_right=62,
     start_batch_inclusive=START_BATCH_INCLUSIVE,
     end_batch_inclusive=END_BATCH_INCLUSIVE,
 )
