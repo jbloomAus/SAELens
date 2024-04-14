@@ -19,3 +19,5 @@ def get_neuronpedia_quick_list(
     ]
     url = url + "&features=" + urllib.parse.quote(json.dumps(list_feature))
     webbrowser.open(url)
+
+    return url

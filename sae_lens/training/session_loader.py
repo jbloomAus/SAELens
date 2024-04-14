@@ -39,7 +39,7 @@ class LMSparseAutoencoderSessionloader:
 
     @classmethod
     def load_pretrained_sae(
-        cls, path: str
+        cls, path: str, device: str = "cpu"
     ) -> Tuple[HookedTransformer, SparseAutoencoderDictionary, ActivationsStore]:
         """
         Loads a session for analysing a pretrained sparse autoencoder.
@@ -47,6 +47,8 @@ class LMSparseAutoencoderSessionloader:
 
         # load the SAE
         sparse_autoencoder = SparseAutoencoder.load_from_pretrained(path)
+        sparse_autoencoder.to(device)
+        sparse_autoencoder.cfg.device = device
 
         # load the model, SAE and activations loader with it.
         session_loader = cls(sparse_autoencoder.cfg)
@@ -56,7 +58,7 @@ class LMSparseAutoencoderSessionloader:
 
         return model, sae_group, activations_loader
 
-    def get_model(self, model_name: str):
+    def get_model(self, model_name: str) -> HookedTransformer:
         """
         Loads a model from transformer lens.
 
@@ -65,6 +67,9 @@ class LMSparseAutoencoderSessionloader:
 
         # Todo: add check that model_name is valid
 
-        model = HookedTransformer.from_pretrained(model_name)
+        model = HookedTransformer.from_pretrained(
+            model_name,
+            device=self.cfg.device,
+        )
 
         return model
