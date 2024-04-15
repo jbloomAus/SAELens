@@ -45,19 +45,3 @@ for file_name in os.listdir(FEATURE_OUTPUTS_FOLDER):
             url,
             json=data,
         )
-
-# Upload dead features (just makes blanks features)
-# We want this for completeness
-# skipped_path = os.path.join(folder_path, "skipped_indexes.json")
-# f = open(skipped_path, "r")
-# data = json.load(f)
-# skipped_indexes = data["skipped_indexes"]
-# url = host + "/api/internal/upload-dead-features"
-# resp = requests.post(
-#     url,
-#     json={
-#         "modelId": MODEL,
-#         "layer": sourceName,
-#         "deadIndexes": skipped_indexes,
-#     },
-# )
