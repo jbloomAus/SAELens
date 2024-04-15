@@ -22,8 +22,18 @@ ForwardHookData = tuple[str, TransformerLensForwardHook]
 BackwardHookData = tuple[str, TransformerLensBackwardHook]
 
 
-class SAEPatchHook:
-    """A hook for a HookedTransformer to patch an SAE into the computational graph"""
+class SAEPatcher:
+    """Patches an SAE into the computational graph of a HookedTransformer
+
+    Usage:
+
+    sae_patcher = SAEPatcher(sae)
+    with model.hooks(
+        fwd_hooks=[sae_patcher.get_forward_hook()]
+        bwd_hooks=[sae_patcher.get_backward_hook()]
+    ):
+        ...
+    """
 
     sae: SparseAutoencoder
     sae_feature_acts: Float[torch.Tensor, "n_batch n_token d_sae"]
@@ -114,16 +124,17 @@ def compute_indirect_effect(
     Float[torch.Tensor, "n_batch n_token d_sae"],
     Float[torch.Tensor, "n_batch n_token d_model"],
 ]:
-    sae_patch_hook = SAEPatchHook(sae)
-    with model.hooks(fwd_hooks=[sae_patch_hook.get_forward_hook()]):
+    sae_patcher = SAEPatcher(sae)
+    with model.hooks(fwd_hooks=[sae_patcher.get_forward_hook()]):
         metric = metric_fn(model, x_orig)
         metric.backward()
 
     if z_patch is None:
-        z_patch = torch.zeros_like(sae_patch_hook.sae_feature_acts)
+        z_patch = torch.zeros_like(sae_patcher.sae_feature_acts)
     if err_patch is None:
-        err_patch = torch.zeros_like(sae_patch_hook.sae_errors)
+        err_patch = torch.zeros_like(sae_patcher.sae_errors)
 
-    ie_atp_feat = sae_patch_hook.get_ie_atp_of_sae_features(z_patch)
-    ie_atp_err = sae_patch_hook.get_ie_atp_of_sae_errors(err_patch)
+    ie_atp_feat = sae_patcher.get_ie_atp_of_sae_features(z_patch)
+    ie_atp_err = sae_patcher.get_ie_atp_of_sae_errors(err_patch)
+    return ie_atp_feat, ie_atp_err
     return ie_atp_feat, ie_atp_err

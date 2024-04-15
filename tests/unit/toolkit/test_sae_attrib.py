@@ -7,7 +7,7 @@ from transformer_lens import HookedTransformer
 
 from sae_lens import SparseAutoencoder
 from sae_lens.toolkit.pretrained_saes import get_gpt2_res_jb_saes
-from sae_lens.toolkit.sae_attrib import SAEPatchHook
+from sae_lens.toolkit.sae_attrib import SAEPatcher
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -27,24 +27,24 @@ def prompt() -> str:
     return "Hello world"
 
 
-def test_sae_patch_hook_forward_hook_only(model, sae, prompt):
+def test_sae_patcher_hook_forward_hook_only(model, sae, prompt):
     orig_loss = model(prompt, return_type="loss")
-    sae_patch_hook = SAEPatchHook(sae)
+    sae_patcher = SAEPatcher(sae)
 
     with model.hooks(
-        fwd_hooks=[sae_patch_hook.get_forward_hook()],
+        fwd_hooks=[sae_patcher.get_forward_hook()],
     ):
         patched_loss = model(prompt, return_type="loss")
 
     assert torch.isclose(orig_loss, patched_loss, atol=1e-6)
 
 
-def test_sae_patch_hook_backward_hook_only(model, sae, prompt):
+def test_sae_patcher_backward_hook_only(model, sae, prompt):
     orig_loss = model(prompt, return_type="loss")
-    sae_patch_hook = SAEPatchHook(sae)
+    sae_patcher = SAEPatcher(sae)
 
     with model.hooks(
-        bwd_hooks=[sae_patch_hook.get_backward_hook()],
+        bwd_hooks=[sae_patcher.get_backward_hook()],
     ):
         patched_loss = model(prompt, return_type="loss")
 
@@ -59,15 +59,15 @@ def get_grads(model: nn.Module):
     return grads
 
 
-def test_sae_patch_hook_preserves_model_grad(model, sae, prompt):
+def test_sae_patcher_preserves_model_grad(model, sae, prompt):
     orig_loss = model(prompt, return_type="loss")
     orig_loss.backward()
     orig_grads = get_grads(model)
-    sae_patch_hook = SAEPatchHook(sae)
+    sae_patcher = SAEPatcher(sae)
 
     with model.hooks(
-        fwd_hooks=[sae_patch_hook.get_forward_hook()],
-        bwd_hooks=[sae_patch_hook.get_backward_hook()],
+        fwd_hooks=[sae_patcher.get_forward_hook()],
+        bwd_hooks=[sae_patcher.get_backward_hook()],
     ):
         patched_loss = model(prompt, return_type="loss")
         patched_loss.backward()
@@ -80,17 +80,17 @@ def test_sae_patch_hook_preserves_model_grad(model, sae, prompt):
         assert torch.allclose(orig_grad, patched_grad, atol=1e-5)
 
 
-def test_sae_patch_hook_fields_have_grad(model, sae, prompt):
-    sae_patch_hook = SAEPatchHook(sae)
-    assert sae_patch_hook.sae_feature_acts.grad is None
-    assert sae_patch_hook.sae_errors.grad is None
+def test_sae_patcher_fields_have_grad(model, sae, prompt):
+    sae_patcher = SAEPatcher(sae)
+    assert sae_patcher.sae_feature_acts.grad is None
+    assert sae_patcher.sae_errors.grad is None
 
     with model.hooks(
-        fwd_hooks=[sae_patch_hook.get_forward_hook()],
-        bwd_hooks=[sae_patch_hook.get_backward_hook()],
+        fwd_hooks=[sae_patcher.get_forward_hook()],
+        bwd_hooks=[sae_patcher.get_backward_hook()],
     ):
         patched_loss = model(prompt, return_type="loss")
         patched_loss.backward()
 
-    assert sae_patch_hook.sae_feature_acts.grad is not None
-    assert sae_patch_hook.sae_errors.grad is not None
+    assert sae_patcher.sae_feature_acts.grad is not None
+    assert sae_patcher.sae_errors.grad is not None
