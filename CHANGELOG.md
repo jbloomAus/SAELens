@@ -2,6 +2,27 @@
 
 
 
+## v0.2.2 (2024-04-15)
+
+### Fix
+
+* fix: dense batch dim mse norm optional ([`8018bc9`](https://github.com/jbloomAus/SAELens/commit/8018bc939811bdb7e59c999e055c26401af6d0d2))
+
+### Unknown
+
+* format ([`c359c27`](https://github.com/jbloomAus/SAELens/commit/c359c272ae4d5b1e25da5333c4beff99e924532c))
+
+* make dense_batch_mse_normalization optional ([`c41774e`](https://github.com/jbloomAus/SAELens/commit/c41774e5cfaeb195e3320e9e3fc93d60d921337d))
+
+* add warning in run script ([`9a772ca`](https://github.com/jbloomAus/SAELens/commit/9a772ca6da155b5e97bc3109da74457f5addfbfd))
+
+* update sae loading code ([`356a8ef`](https://github.com/jbloomAus/SAELens/commit/356a8efba06e4f453d2f15afe9171b71d780819a))
+
+* add device override to session loader ([`96b1e12`](https://github.com/jbloomAus/SAELens/commit/96b1e120d78f5f05cd94aec7a763bc14849aa1d3))
+
+* update readme ([`5cd5652`](https://github.com/jbloomAus/SAELens/commit/5cd5652a4b19ba985d20c229b6a92d17774bc6b9))
+
+
 ## v0.2.1 (2024-04-13)
 
 ### Fix
