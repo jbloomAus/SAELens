@@ -1,4 +1,4 @@
-__version__ = "0.1.0"
+__version__ = "0.2.1"
 
 from .training.activations_store import ActivationsStore
 from .training.cache_activations_runner import cache_activations_runner
