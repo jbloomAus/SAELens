@@ -30,7 +30,7 @@ BG_COLOR_MAP = colors.LinearSegmentedColormap.from_list(
     "bg_color_map", ["white", "darkorange"]
 )
 
-SPARSITY_THRESHOLD = -5
+DEFAULT_SPARSITY_THRESHOLD = -5
 
 HTML_ANOMALIES = {
     "âĢĶ": "—",
@@ -64,6 +64,7 @@ class NeuronpediaRunner:
         sae_path: str,
         model_id: str,
         sae_id: str,
+        sparsity_threshold: int = DEFAULT_SPARSITY_THRESHOLD,
         neuronpedia_outputs_folder: str = "../../neuronpedia_outputs",
         init_session: bool = True,
         # token pars
@@ -89,6 +90,7 @@ class NeuronpediaRunner:
         self.model_id = model_id
         self.layer = self.sparse_autoencoder.cfg.hook_point_layer
         self.sae_id = sae_id
+        self.sparsity_threshold = sparsity_threshold
         self.n_features_at_a_time = n_features_at_a_time
         self.n_batches_to_sample_from = n_batches_to_sample_from
         self.n_prompts_to_select = n_prompts_to_select
@@ -171,7 +173,7 @@ class NeuronpediaRunner:
         sparsity = load_sparsity(self.sae_path)
         sparsity = sparsity.to(self.device)
         self.target_feature_indexes = (
-            (sparsity > SPARSITY_THRESHOLD).nonzero(as_tuple=True)[0].tolist()
+            (sparsity > self.sparsity_threshold).nonzero(as_tuple=True)[0].tolist()
         )
 
         # divide into batches
