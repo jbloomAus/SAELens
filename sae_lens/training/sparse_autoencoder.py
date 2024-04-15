@@ -102,7 +102,10 @@ class SparseAutoencoder(HookedRootModule):
 
         self.setup()  # Required for `HookedRootModule`s
 
-    def forward(self, x: torch.Tensor, dead_neuron_mask: torch.Tensor | None = None):
+    def encode(
+        self, x: torch.Tensor, return_hidden_pre: bool = False
+    ) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
+
         # move x to correct dtype
         x = x.to(self.dtype)
         sae_in = self.hook_sae_in(
@@ -118,7 +121,11 @@ class SparseAutoencoder(HookedRootModule):
             + self.b_enc
         )
         feature_acts = self.hook_hidden_post(torch.nn.functional.relu(hidden_pre))
+        if return_hidden_pre:
+            return feature_acts, hidden_pre
+        return feature_acts
 
+    def decode(self, feature_acts: torch.Tensor) -> torch.Tensor:
         sae_out = self.hook_sae_out(
             einops.einsum(
                 feature_acts,
@@ -127,7 +134,11 @@ class SparseAutoencoder(HookedRootModule):
             )
             + self.b_dec
         )
+        return sae_out
 
+    def forward(self, x: torch.Tensor, dead_neuron_mask: torch.Tensor | None = None):
+        feature_acts, hidden_pre = self.encode(x, return_hidden_pre=True)
+        sae_out = self.decode(feature_acts)
         # add config for whether l2 is normalized:
         per_item_mse_loss = _per_item_mse_loss_with_target_norm(sae_out, x)
         ghost_grad_loss = torch.tensor(0.0, dtype=self.dtype, device=self.device)
