@@ -2,6 +2,13 @@
 
 
 
+## v0.3.0 (2024-04-15)
+
+### Feature
+
+* feat: add basic tutorial for training saes ([`1847280`](https://github.com/jbloomAus/SAELens/commit/18472800481dbe584e5fab8533ac47a1ee39a062))
+
+
 ## v0.2.2 (2024-04-15)
 
 ### Fix
