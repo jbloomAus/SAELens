@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "===== This will start upload the feature batch files to Neuronpedia."
+echo "===== This will create stubs for dead features using skipped_indexes.json."
 echo "===== You'll need Neuronpedia running at localhost:3000 for this to work."
 
 echo ""
@@ -11,8 +11,8 @@ read outputfilesdir
 echo ""
 read -p "===== Hit ENTER to start uploading!" start
 
-echo "RUNNING: python upload_batch.py $outputfilesdir"
-python upload_batch.py $outputfilesdir
+echo "RUNNING: python upload_dead_feature_stubs.py $outputfilesdir"
+python upload_dead_feature_stubs.py $outputfilesdir
 
 echo ""
 echo "===== ALL DONE."
