@@ -87,8 +87,8 @@ class SparseAutoencoder(HookedRootModule):
             )
         )
 
-        if self.cfg.decoder_orthogonal_init:
-            self.W_dec.data = nn.init.orthogonal_(self.W_dec.data.T).T
+        # if self.cfg.decoder_orthogonal_init:
+        #     self.W_dec.data = nn.init.orthogonal_(self.W_dec.data.T).T
 
         with torch.no_grad():
             # Anthropic normalize this to have unit columns

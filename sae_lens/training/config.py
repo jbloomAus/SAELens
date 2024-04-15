@@ -39,7 +39,7 @@ class LanguageModelSAERunnerConfig:
     expansion_factor: int | list[int] = 4
     from_pretrained_path: Optional[str] = None
     apply_b_dec_to_input: bool = True
-    decoder_orthogonal_init: bool = True
+    decoder_orthogonal_init: bool = False  # True
 
     # Activation Store Parameters
     n_batches_in_buffer: int = 20
