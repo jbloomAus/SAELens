@@ -2,7 +2,6 @@ from dataclasses import dataclass
 from typing import Any, Optional, cast
 
 import torch
-
 import wandb
 
 DTYPE_MAP = {
@@ -54,6 +53,7 @@ class LanguageModelSAERunnerConfig:
     d_sae: Optional[int] = None
 
     # Training Parameters
+    mse_loss_normalization: Optional[str] = None
     l1_coefficient: float | list[float] = 1e-3
     lp_norm: float | list[float] = 1
     lr: float | list[float] = 3e-4
