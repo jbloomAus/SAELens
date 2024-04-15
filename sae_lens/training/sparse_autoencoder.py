@@ -87,6 +87,9 @@ class SparseAutoencoder(HookedRootModule):
             )
         )
 
+        if self.cfg.decoder_orthogonal_init:
+            self.W_dec.data = nn.init.orthogonal_(self.W_dec.data.T).T
+
         with torch.no_grad():
             # Anthropic normalize this to have unit columns
             self.set_decoder_norm_to_unit_norm()
@@ -106,7 +109,7 @@ class SparseAutoencoder(HookedRootModule):
         # move x to correct dtype
         x = x.to(self.dtype)
         sae_in = self.hook_sae_in(
-            x - self.b_dec
+            x - (self.b_dec * self.cfg.apply_b_dec_to_input)
         )  # Remove decoder bias as per Anthropic
 
         hidden_pre = self.hook_hidden_pre(
