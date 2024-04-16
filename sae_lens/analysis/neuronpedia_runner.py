@@ -177,6 +177,10 @@ class NeuronpediaRunner:
         # if we have feature sparsity, then use it to only generate outputs for non-dead features
         self.target_feature_indexes: list[int] = []
         sparsity = load_sparsity(self.sae_path)
+        # convert sparsity to logged sparsity if it's not
+        # TODO: standardize the sparsity file format
+        if len(sparsity) > 0 and sparsity[0] >= 0:
+            sparsity = torch.log10(sparsity + 1e-10)
         sparsity = sparsity.to(self.device)
         self.target_feature_indexes = (
             (sparsity > self.sparsity_threshold)
