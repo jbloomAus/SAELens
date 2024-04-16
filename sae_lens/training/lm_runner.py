@@ -1,6 +1,7 @@
 from typing import Any, cast
 
 import wandb
+
 from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.session_loader import LMSparseAutoencoderSessionloader
 
