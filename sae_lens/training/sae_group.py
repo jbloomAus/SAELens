@@ -133,6 +133,10 @@ class SparseAutoencoderDictionary:
             if not hasattr(cfg, "model_kwargs"):
                 cfg.model_kwargs = {}
             sparse_autoencoder = SparseAutoencoder(cfg=cfg)
+            # add dummy scaling factor to the state dict
+            group["state_dict"]["scaling_factor"] = torch.ones(
+                cfg.d_sae, dtype=cfg.dtype, device=cfg.device
+            )
             sparse_autoencoder.load_state_dict(group["state_dict"])
             group = cls(cfg)
             for key in group.autoencoders:

@@ -59,7 +59,7 @@ class ActivationsStore:
             context_size=cfg.context_size,
             d_in=cfg.d_in,
             n_batches_in_buffer=cfg.n_batches_in_buffer,
-            total_training_tokens=cfg.total_training_tokens,
+            total_training_tokens=cfg.training_tokens,
             store_batch_size=cfg.store_batch_size,
             train_batch_size=cfg.train_batch_size,
             prepend_bos=cfg.prepend_bos,

@@ -45,7 +45,8 @@ class LanguageModelSAERunnerConfig:
 
     # Activation Store Parameters
     n_batches_in_buffer: int = 20
-    total_training_tokens: int = 2_000_000
+    training_tokens: int = 2_000_000
+    finetuning_tokens: int = 0
     store_batch_size: int = 32
     train_batch_size: int = 4096
 
@@ -56,11 +57,20 @@ class LanguageModelSAERunnerConfig:
     prepend_bos: bool = True
 
     # Training Parameters
+
+    ## Batch size
+    train_batch_size: int = 4096
+
+    ## Adam
     adam_beta1: float | list[float] = 0
     adam_beta2: float | list[float] = 0.999
+
+    ## Loss Function
     mse_loss_normalization: Optional[str] = None
     l1_coefficient: float | list[float] = 1e-3
     lp_norm: float | list[float] = 1
+
+    ## Learning Rate Schedule
     lr: float | list[float] = 3e-4
     lr_scheduler_name: str | list[str] = (
         "constant"  # constant, cosineannealing, cosineannealingwarmrestarts
@@ -71,7 +81,9 @@ class LanguageModelSAERunnerConfig:
     )
     lr_decay_steps: int | list[int] = 0
     n_restart_cycles: int | list[int] = 1  # used only for cosineannealingwarmrestarts
-    train_batch_size: int = 4096
+
+    ## FineTuning
+    finetuning_method: Optional[str] = None  # scale, decoder or unrotated_decoder
 
     # Resampling protocol args
     use_ghost_grads: bool | list[bool] = (
@@ -111,7 +123,7 @@ class LanguageModelSAERunnerConfig:
         )
 
         if self.run_name is None:
-            self.run_name = f"{self.d_sae}-L1-{self.l1_coefficient}-LR-{self.lr}-Tokens-{self.total_training_tokens:3.3e}"
+            self.run_name = f"{self.d_sae}-L1-{self.l1_coefficient}-LR-{self.lr}-Tokens-{self.training_tokens:3.3e}"
 
         if self.b_dec_init_method not in ["geometric_median", "mean", "zeros"]:
             raise ValueError(
@@ -129,6 +141,12 @@ class LanguageModelSAERunnerConfig:
         elif isinstance(self.dtype, str):
             self.dtype: torch.dtype = DTYPE_MAP[self.dtype]
 
+        # if we use decoder fine tuning, we can't be applying b_dec to the input
+        if (self.finetuning_method == "decoder") and (self.apply_b_dec_to_input):
+            raise ValueError(
+                "If we are fine tuning the decoder, we can't be applying b_dec to the input.\nSet apply_b_dec_to_input to False."
+            )
+
         self.device: str | torch.device = torch.device(self.device)
 
         if self.lr_end is None:
@@ -144,7 +162,7 @@ class LanguageModelSAERunnerConfig:
 
         if self.verbose:
             print(
-                f"Run name: {self.d_sae}-L1-{self.l1_coefficient}-LR-{self.lr}-Tokens-{self.total_training_tokens:3.3e}"
+                f"Run name: {self.d_sae}-L1-{self.l1_coefficient}-LR-{self.lr}-Tokens-{self.training_tokens:3.3e}"
             )
             # Print out some useful info:
             n_tokens_per_buffer = (
@@ -156,7 +174,7 @@ class LanguageModelSAERunnerConfig:
                 f"Lower bound: n_contexts_per_buffer (millions): {n_contexts_per_buffer / 10 **6}"
             )
 
-            total_training_steps = self.total_training_tokens // self.train_batch_size
+            total_training_steps = self.training_tokens // self.train_batch_size
             print(f"Total training steps: {total_training_steps}")
 
             total_wandb_updates = total_training_steps // self.wandb_log_frequency
@@ -209,7 +227,7 @@ class CacheActivationsRunnerConfig:
 
     # Activation Store Parameters
     n_batches_in_buffer: int = 20
-    total_training_tokens: int = 2_000_000
+    training_tokens: int = 2_000_000
     store_batch_size: int = 32
     train_batch_size: int = 4096
 
