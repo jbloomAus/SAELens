@@ -63,6 +63,25 @@ def get_grads(model: nn.Module) -> list[tuple[str, torch.Tensor]]:
     return grads
 
 
+def test_sae_patcher_preserves_cached_model_activations(
+    model: HookedTransformer, sae: SparseAutoencoder, prompt: str
+):
+    _, orig_cache = model.run_with_cache(prompt, return_type="loss")
+    sae_patcher = SAEPatcher(sae)
+
+    with model.hooks(
+        fwd_hooks=[sae_patcher.get_forward_hook()],
+        bwd_hooks=[sae_patcher.get_backward_hook()],
+    ):
+        _, patched_cache = model.run_with_cache(prompt, return_type="loss")
+
+    for orig_name, patched_name in zip(orig_cache, patched_cache):
+        assert orig_name == patched_name
+        orig_act = orig_cache[orig_name]
+        patched_act = patched_cache[patched_name]
+        assert torch.allclose(orig_act, patched_act, atol=1e-5)
+
+
 def test_sae_patcher_preserves_model_grad(
     model: HookedTransformer, sae: SparseAutoencoder, prompt: str
 ):
