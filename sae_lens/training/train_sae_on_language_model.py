@@ -3,13 +3,13 @@ from dataclasses import dataclass
 from typing import Any, cast
 
 import torch
-import wandb
 from safetensors.torch import save_file
 from torch.optim import Adam, Optimizer
 from torch.optim.lr_scheduler import LRScheduler
 from tqdm import tqdm
 from transformer_lens import HookedTransformer
 
+import wandb
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.evals import run_evals
 from sae_lens.training.geometric_median import compute_geometric_median
@@ -248,7 +248,14 @@ def _build_train_context(
     )
     n_frac_active_tokens = 0
 
-    optimizer = Adam(sae.parameters(), lr=sae.cfg.lr)
+    optimizer = Adam(
+        sae.parameters(),
+        lr=sae.cfg.lr,
+        betas=(
+            sae.cfg.adam_beta1,  # type: ignore
+            sae.cfg.adam_beta2,  # type: ignore
+        ),
+    )
     assert sae.cfg.lr_end is not None  # this is set in config post-init
     scheduler = get_scheduler(
         sae.cfg.lr_scheduler_name,
