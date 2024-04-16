@@ -39,7 +39,7 @@ class LanguageModelSAERunnerConfig:
     expansion_factor: int | list[int] = 4
     from_pretrained_path: Optional[str] = None
     apply_b_dec_to_input: bool = True
-    decoder_orthogonal_init: bool = False  # True
+    decoder_orthogonal_init: bool = False
 
     # Activation Store Parameters
     n_batches_in_buffer: int = 20
@@ -54,6 +54,8 @@ class LanguageModelSAERunnerConfig:
     prepend_bos: bool = True
 
     # Training Parameters
+    adam_beta1: float | list[float] = 0
+    adam_beta2: float | list[float] = 0.999
     mse_loss_normalization: Optional[str] = None
     l1_coefficient: float | list[float] = 1e-3
     lp_norm: float | list[float] = 1
@@ -66,7 +68,9 @@ class LanguageModelSAERunnerConfig:
         None  # only used for cosine annealing, default is lr / 10
     )
     lr_decay_steps: int | list[int] = 0
-    n_restart_cycles: int | list[int] = 1  # used only for cosineannealingwarmrestarts
+    n_restart_cycles: int | list[int] = (
+        1  # used only for cosineannealingwarmrestarts
+    )
     train_batch_size: int = 4096
 
     # Resampling protocol args
@@ -74,7 +78,9 @@ class LanguageModelSAERunnerConfig:
         False  # want to change this to true on some timeline.
     )
     feature_sampling_window: int = 2000
-    dead_feature_window: int = 1000  # unless this window is larger feature sampling,
+    dead_feature_window: int = (
+        1000  # unless this window is larger feature sampling,
+    )
 
     dead_feature_threshold: float = 1e-8
 
@@ -91,7 +97,10 @@ class LanguageModelSAERunnerConfig:
     verbose: bool = True
 
     def __post_init__(self):
-        if self.use_cached_activations and self.cached_activations_path is None:
+        if (
+            self.use_cached_activations
+            and self.cached_activations_path is None
+        ):
             self.cached_activations_path = _default_cached_activations_path(
                 self.dataset_path,
                 self.model_name,
@@ -102,7 +111,9 @@ class LanguageModelSAERunnerConfig:
         if not isinstance(self.expansion_factor, list):
             self.d_sae = self.d_in * self.expansion_factor
         self.tokens_per_buffer = (
-            self.train_batch_size * self.context_size * self.n_batches_in_buffer
+            self.train_batch_size
+            * self.context_size
+            * self.n_batches_in_buffer
         )
 
         if self.run_name is None:
@@ -143,18 +154,28 @@ class LanguageModelSAERunnerConfig:
             )
             # Print out some useful info:
             n_tokens_per_buffer = (
-                self.store_batch_size * self.context_size * self.n_batches_in_buffer
+                self.store_batch_size
+                * self.context_size
+                * self.n_batches_in_buffer
             )
-            print(f"n_tokens_per_buffer (millions): {n_tokens_per_buffer / 10 **6}")
-            n_contexts_per_buffer = self.store_batch_size * self.n_batches_in_buffer
+            print(
+                f"n_tokens_per_buffer (millions): {n_tokens_per_buffer / 10 **6}"
+            )
+            n_contexts_per_buffer = (
+                self.store_batch_size * self.n_batches_in_buffer
+            )
             print(
                 f"Lower bound: n_contexts_per_buffer (millions): {n_contexts_per_buffer / 10 **6}"
             )
 
-            total_training_steps = self.total_training_tokens // self.train_batch_size
+            total_training_steps = (
+                self.total_training_tokens // self.train_batch_size
+            )
             print(f"Total training steps: {total_training_steps}")
 
-            total_wandb_updates = total_training_steps // self.wandb_log_frequency
+            total_wandb_updates = (
+                total_training_steps // self.wandb_log_frequency
+            )
             print(f"Total wandb updates: {total_wandb_updates}")
 
             # how many times will we sample dead neurons?
