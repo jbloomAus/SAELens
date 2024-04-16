@@ -1,4 +1,4 @@
-from typing import Protocol
+from typing import Literal, Protocol
 
 import torch
 from jaxtyping import Float
@@ -19,6 +19,8 @@ class TransformerLensBackwardHook(Protocol):
 
 ForwardHookData = tuple[str, TransformerLensForwardHook]
 BackwardHookData = tuple[str, TransformerLensBackwardHook]
+
+NodeType = Literal["feature", "error", "all"]
 
 
 class SAEPatcher:
@@ -98,3 +100,36 @@ class SAEPatcher:
     def get_backward_hook(self) -> BackwardHookData:
         """Return a backward hook that patches the gradients."""
         return (self.sae.cfg.hook_point, self._backward_hook_fn)
+
+    def get_node_values(
+        self, node_type: NodeType = "all"
+    ) -> Float[torch.Tensor, "n_batch n_token n_nodes"]:
+        if node_type == "feature":
+            return self.sae_feature_acts.detach()
+        elif node_type == "error":
+            return self.sae_errors.detach()
+        elif node_type == "all":
+            return torch.cat([self.sae_feature_acts, self.sae_errors], dim=-1).detach()
+        else:
+            raise ValueError(f"Invalid node_type: {node_type}")
+
+    def get_node_grads(
+        self, node_type: NodeType = "all"
+    ) -> Float[torch.Tensor, "n_batch n_token n_nodes"]:
+
+        if node_type == "feature":
+            if self.sae_feature_acts.grad is None:
+                raise RuntimeError("Gradients are not available.")
+            return self.sae_feature_acts.grad.detach()
+        elif node_type == "error":
+            if self.sae_errors.grad is None:
+                raise RuntimeError("Gradients are not available.")
+            return self.sae_errors.grad.detach()
+        elif node_type == "all":
+            if self.sae_feature_acts.grad is None or self.sae_errors.grad is None:
+                raise RuntimeError("Gradients are not available.")
+            return torch.cat(
+                [self.sae_feature_acts.grad, self.sae_errors.grad], dim=-1
+            ).detach()
+        else:
+            raise ValueError(f"Invalid node_type: {node_type}")
