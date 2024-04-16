@@ -5,11 +5,11 @@ from unittest.mock import patch
 
 import pytest
 import torch
-import wandb
 from datasets import Dataset
 from torch import Tensor
 from transformer_lens import HookedTransformer
 
+import wandb
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.optim import get_scheduler
 from sae_lens.training.sae_group import SparseAutoencoderDictionary

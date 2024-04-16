@@ -11,7 +11,6 @@ import pandas as pd
 import plotly
 import plotly.express as px
 import torch
-import wandb
 from sae_vis.data_config_classes import (
     ActsHistogramConfig,
     Column,
@@ -24,6 +23,7 @@ from sae_vis.data_fetching_fns import get_feature_data
 from torch.nn.functional import cosine_similarity
 from tqdm import tqdm
 
+import wandb
 from sae_lens.training.session_loader import LMSparseAutoencoderSessionloader
 
 
