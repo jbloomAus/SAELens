@@ -19,6 +19,7 @@ from sae_vis.data_config_classes import (
 )
 from sae_vis.data_fetching_fns import get_feature_data
 from tqdm import tqdm
+from transformer_lens import HookedTransformer
 
 from sae_lens.training.session_loader import LMSparseAutoencoderSessionloader
 
@@ -41,6 +42,8 @@ class NpEncoder(json.JSONEncoder):
 
 
 class NeuronpediaRunner:
+
+    model: HookedTransformer | None = None
 
     def __init__(
         self,
@@ -91,10 +94,13 @@ class NeuronpediaRunner:
 
     def init_sae_session(self):
         (
-            self.model,
+            model,
             sae_group,
             self.activation_store,
         ) = LMSparseAutoencoderSessionloader.load_pretrained_sae(self.sae_path)
+        # only HookedTransformer works with this runner
+        assert isinstance(model, HookedTransformer)
+        self.model = model
         # TODO: handle multiple autoencoders
         self.sparse_autoencoder = next(iter(sae_group))[1]
 
@@ -123,6 +129,7 @@ class NeuronpediaRunner:
         """
         does to_str_tokens, except handles out of range
         """
+        assert self.model is not None
         vocab_max_index = self.model.cfg.d_vocab - 1
         # Deal with the int case separately
         if isinstance(tokens, int):
@@ -205,6 +212,7 @@ class NeuronpediaRunner:
         end = time.time()
         print(f"Time to get tokens: {end - start}")
 
+        assert self.model is not None
         vocab_dict = cast(Any, self.model.tokenizer).vocab
         vocab_dict = {
             v: k.replace("Ġ", " ").replace("\n", "\\n").replace("Ċ", "\n")

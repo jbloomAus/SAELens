@@ -28,7 +28,7 @@ class ActivationsStore:
     while training SAEs.
     """
 
-    model:  HookedRootModule
+    model: HookedRootModule
     dataset: HfDataset
     cached_activations_path: str | None
     tokens_column: Literal["tokens", "input_ids", "text"]
@@ -86,7 +86,7 @@ class ActivationsStore:
         device: str | torch.device,
         dtype: str | torch.dtype,
         cached_activations_path: str | None = None,
-        model_kwargs: dict | None = None
+        model_kwargs: dict[str, Any] | None = None,
     ):
         self.model = model
         if model_kwargs is None:

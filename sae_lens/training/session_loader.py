@@ -1,9 +1,10 @@
 from typing import Tuple
 
-from transformer_lens import HookedTransformer
+from transformer_lens.hook_points import HookedRootModule
 
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.config import LanguageModelSAERunnerConfig
+from sae_lens.training.load_model import load_model
 from sae_lens.training.sae_group import SparseAutoencoderDictionary
 from sae_lens.training.sparse_autoencoder import SparseAutoencoder
 
@@ -21,7 +22,7 @@ class LMSparseAutoencoderSessionloader:
 
     def load_sae_training_group_session(
         self,
-    ) -> Tuple[HookedTransformer, SparseAutoencoderDictionary, ActivationsStore]:
+    ) -> Tuple[HookedRootModule, SparseAutoencoderDictionary, ActivationsStore]:
         """
         Loads a session for training a sparse autoencoder on a language model.
         """
@@ -40,7 +41,7 @@ class LMSparseAutoencoderSessionloader:
     @classmethod
     def load_pretrained_sae(
         cls, path: str
-    ) -> Tuple[HookedTransformer, SparseAutoencoderDictionary, ActivationsStore]:
+    ) -> Tuple[HookedRootModule, SparseAutoencoderDictionary, ActivationsStore]:
         """
         Loads a session for analysing a pretrained sparse autoencoder.
         """
@@ -65,6 +66,8 @@ class LMSparseAutoencoderSessionloader:
 
         # Todo: add check that model_name is valid
 
-        model = self.cfg.model_class.from_pretrained(model_name)
+        model = load_model(
+            self.cfg.model_class_name, model_name, device=self.cfg.device
+        )
 
         return model

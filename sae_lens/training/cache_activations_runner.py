@@ -6,12 +6,16 @@ from tqdm import tqdm
 
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.config import CacheActivationsRunnerConfig
+from sae_lens.training.load_model import load_model
 from sae_lens.training.utils import shuffle_activations_pairwise
 
 
 def cache_activations_runner(cfg: CacheActivationsRunnerConfig):
-    model = cfg.model_class.from_pretrained(cfg.model_name)
-    model.to(cfg.device)
+    model = load_model(
+        model_class_name=cfg.model_class_name,
+        model_name=cfg.model_name,
+        device=cfg.device,
+    )
     activations_store = ActivationsStore.from_config(
         model,
         cfg,

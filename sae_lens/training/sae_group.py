@@ -129,6 +129,9 @@ class SparseAutoencoderDictionary:
         # handle loading old autoencoders where before SAEGroup existed, where we just save a dict
         if isinstance(group, dict):
             cfg = group["cfg"]
+            # need to add this field to old configs
+            if not hasattr(cfg, "model_kwargs"):
+                cfg.model_kwargs = {}
             sparse_autoencoder = SparseAutoencoder(cfg=cfg)
             sparse_autoencoder.load_state_dict(group["state_dict"])
             group = cls(cfg)
@@ -182,9 +185,7 @@ class SparseAutoencoderDictionary:
                 autoencoder.save_model(f"{path}/{i}")
 
     def get_name(self):
-        sae_name = (
-            f"sae_group_{self.cfg.model_name.replace('/', '_')}_{self.cfg.hook_point}_{self.cfg.d_sae}"
-        )
+        sae_name = f"sae_group_{self.cfg.model_name.replace('/', '_')}_{self.cfg.hook_point}_{self.cfg.d_sae}"
         return sae_name
 
     def eval(self):
