@@ -136,6 +136,47 @@ def test_sparse_autoencoder_forward(sparse_autoencoder: SparseAutoencoder):
     assert l1_loss.shape == ()
     assert torch.allclose(loss, mse_loss + l1_loss)
 
+    expected_mse_loss = (torch.pow((sae_out - x.float()), 2)).mean()
+
+    assert torch.allclose(mse_loss, expected_mse_loss)
+    expected_l1_loss = torch.abs(feature_acts).sum(dim=1).mean(dim=(0,))
+    assert torch.allclose(l1_loss, sparse_autoencoder.l1_coefficient * expected_l1_loss)
+
+    # check everything has the right dtype
+    assert sae_out.dtype == sparse_autoencoder.dtype
+    assert feature_acts.dtype == sparse_autoencoder.dtype
+    assert loss.dtype == sparse_autoencoder.dtype
+    assert mse_loss.dtype == sparse_autoencoder.dtype
+    assert l1_loss.dtype == sparse_autoencoder.dtype
+
+
+def test_sparse_autoencoder_forward_with_mse_loss_norm(
+    sparse_autoencoder: SparseAutoencoder,
+):
+    batch_size = 32
+    d_in = sparse_autoencoder.d_in
+    d_sae = sparse_autoencoder.d_sae
+    sparse_autoencoder.cfg.mse_loss_normalization = "dense_batch"
+
+    x = torch.randn(batch_size, d_in)
+    (
+        sae_out,
+        feature_acts,
+        loss,
+        mse_loss,
+        l1_loss,
+        _ghost_grad_loss,
+    ) = sparse_autoencoder.forward(
+        x,
+    )
+
+    assert sae_out.shape == (batch_size, d_in)
+    assert feature_acts.shape == (batch_size, d_sae)
+    assert loss.shape == ()
+    assert mse_loss.shape == ()
+    assert l1_loss.shape == ()
+    assert torch.allclose(loss, mse_loss + l1_loss)
+
     x_centred = x - x.mean(dim=0, keepdim=True)
     expected_mse_loss = (
         torch.pow((sae_out - x.float()), 2)
@@ -199,7 +240,9 @@ def test_per_item_mse_loss_with_norm_matches_original_implementation() -> None:
         torch.pow((input - target.float()), 2)
         / (target_centered**2).sum(dim=-1, keepdim=True).sqrt()
     )
-    sae_res = _per_item_mse_loss_with_target_norm(input, target)
+    sae_res = _per_item_mse_loss_with_target_norm(
+        input, target, mse_loss_normalization="dense_batch"
+    )
     assert torch.allclose(orig_impl_res, sae_res, atol=1e-5)
 
 

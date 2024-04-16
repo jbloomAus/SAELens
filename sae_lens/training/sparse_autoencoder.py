@@ -87,6 +87,9 @@ class SparseAutoencoder(HookedRootModule):
             )
         )
 
+        if self.cfg.decoder_orthogonal_init:
+            self.W_dec.data = nn.init.orthogonal_(self.W_dec.data.T).T
+
         with torch.no_grad():
             # Anthropic normalize this to have unit columns
             self.set_decoder_norm_to_unit_norm()
@@ -106,7 +109,7 @@ class SparseAutoencoder(HookedRootModule):
         # move x to correct dtype
         x = x.to(self.dtype)
         sae_in = self.hook_sae_in(
-            x - self.b_dec
+            x - (self.b_dec * self.cfg.apply_b_dec_to_input)
         )  # Remove decoder bias as per Anthropic
 
         hidden_pre = self.hook_hidden_pre(
@@ -129,7 +132,9 @@ class SparseAutoencoder(HookedRootModule):
         )
 
         # add config for whether l2 is normalized:
-        per_item_mse_loss = _per_item_mse_loss_with_target_norm(sae_out, x)
+        per_item_mse_loss = _per_item_mse_loss_with_target_norm(
+            sae_out, x, self.cfg.mse_loss_normalization
+        )
         ghost_grad_loss = torch.tensor(0.0, dtype=self.dtype, device=self.device)
         # gate on config and training so evals is not slowed down.
         if (
@@ -354,7 +359,7 @@ class SparseAutoencoder(HookedRootModule):
 
         # 3.
         per_item_mse_loss_ghost_resid = _per_item_mse_loss_with_target_norm(
-            ghost_out, residual.detach()
+            ghost_out, residual.detach(), self.cfg.mse_loss_normalization
         )
         mse_rescaling_factor = (
             per_item_mse_loss / (per_item_mse_loss_ghost_resid + 1e-6)
@@ -367,15 +372,20 @@ class SparseAutoencoder(HookedRootModule):
 
 
 def _per_item_mse_loss_with_target_norm(
-    preds: torch.Tensor, target: torch.Tensor
+    preds: torch.Tensor,
+    target: torch.Tensor,
+    mse_loss_normalization: Optional[str] = None,
 ) -> torch.Tensor:
     """
     Calculate MSE loss per item in the batch, without taking a mean.
     Then, normalizes by the L2 norm of the centered target.
     This normalization seems to improve performance.
     """
-    target_centered = target - target.mean(dim=0, keepdim=True)
-    normalization = target_centered.norm(dim=-1, keepdim=True)
-    return torch.nn.functional.mse_loss(preds, target, reduction="none") / (
-        normalization + 1e-6
-    )
+    if mse_loss_normalization == "dense_batch":
+        target_centered = target - target.mean(dim=0, keepdim=True)
+        normalization = target_centered.norm(dim=-1, keepdim=True)
+        return torch.nn.functional.mse_loss(preds, target, reduction="none") / (
+            normalization + 1e-6
+        )
+    else:
+        return torch.nn.functional.mse_loss(preds, target, reduction="none")

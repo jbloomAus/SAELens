@@ -36,6 +36,12 @@ class LanguageModelSAERunnerConfig:
 
     # SAE Parameters
     d_in: int = 512
+    d_sae: Optional[int] = None
+    b_dec_init_method: str = "geometric_median"
+    expansion_factor: int | list[int] = 4
+    from_pretrained_path: Optional[str] = None
+    apply_b_dec_to_input: bool = True
+    decoder_orthogonal_init: bool = True
 
     # Activation Store Parameters
     n_batches_in_buffer: int = 20
@@ -49,13 +55,8 @@ class LanguageModelSAERunnerConfig:
     dtype: str | torch.dtype = "float32"  # type: ignore #
     prepend_bos: bool = True
 
-    # SAE Parameters
-    b_dec_init_method: str = "geometric_median"
-    expansion_factor: int | list[int] = 4
-    from_pretrained_path: Optional[str] = None
-    d_sae: Optional[int] = None
-
     # Training Parameters
+    mse_loss_normalization: Optional[str] = None
     l1_coefficient: float | list[float] = 1e-3
     lp_norm: float | list[float] = 1
     lr: float | list[float] = 3e-4
