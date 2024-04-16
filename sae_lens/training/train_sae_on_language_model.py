@@ -248,7 +248,14 @@ def _build_train_context(
     )
     n_frac_active_tokens = 0
 
-    optimizer = Adam(sae.parameters(), lr=sae.cfg.lr)
+    optimizer = Adam(
+        sae.parameters(),
+        lr=sae.cfg.lr,
+        betas=(
+            sae.cfg.adam_beta1,  # type: ignore
+            sae.cfg.adam_beta2,  # type: ignore
+        ),
+    )
     assert sae.cfg.lr_end is not None  # this is set in config post-init
     scheduler = get_scheduler(
         sae.cfg.lr_scheduler_name,

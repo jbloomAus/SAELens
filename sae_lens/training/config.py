@@ -54,6 +54,8 @@ class LanguageModelSAERunnerConfig:
     prepend_bos: bool = True
 
     # Training Parameters
+    adam_beta1: float | list[float] = 0
+    adam_beta2: float | list[float] = 0.999
     mse_loss_normalization: Optional[str] = None
     l1_coefficient: float | list[float] = 1e-3
     lp_norm: float | list[float] = 1
