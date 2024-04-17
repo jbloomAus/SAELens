@@ -5,6 +5,13 @@ import torch
 
 import wandb
 
+DTYPE_MAP = {
+    "torch.float32": torch.float32,
+    "torch.float64": torch.float64,
+    "torch.float16": torch.float16,
+    "torch.bfloat16": torch.bfloat16,
+}
+
 
 @dataclass
 class LanguageModelSAERunnerConfig:
@@ -27,6 +34,14 @@ class LanguageModelSAERunnerConfig:
 
     # SAE Parameters
     d_in: int = 512
+    d_sae: Optional[int] = None
+    b_dec_init_method: str = "geometric_median"
+    expansion_factor: int | list[int] = 4
+    sae_type: str = "unit_norm_sae"
+    noise_scale: float = 0.0
+    from_pretrained_path: Optional[str] = None
+    apply_b_dec_to_input: bool = True
+    decoder_orthogonal_init: bool = False
 
     # Activation Store Parameters
     n_batches_in_buffer: int = 20
@@ -37,18 +52,13 @@ class LanguageModelSAERunnerConfig:
     # Misc
     device: str | torch.device = "cpu"
     seed: int = 42
-    dtype: torch.dtype = torch.float32
+    dtype: str | torch.dtype = "float32"  # type: ignore #
     prepend_bos: bool = True
 
-    # SAE Parameters
-    b_dec_init_method: str = "geometric_median"
-    expansion_factor: int | list[int] = 4
-    from_pretrained_path: Optional[str] = None
-    d_sae: Optional[int] = None
-    sae_type: str = "unit_norm_sae"
-    noise_scale: float = 0.0
-
     # Training Parameters
+    adam_beta1: float | list[float] = 0
+    adam_beta2: float | list[float] = 0.999
+    mse_loss_normalization: Optional[str] = None
     l1_coefficient: float | list[float] = 1e-3
     lp_norm: float | list[float] = 1
     lr: float | list[float] = 3e-4
@@ -110,6 +120,13 @@ class LanguageModelSAERunnerConfig:
             print(
                 "Warning: We are initializing b_dec to zeros. This is probably not what you want."
             )
+
+        if isinstance(self.dtype, str) and self.dtype not in DTYPE_MAP:
+            raise ValueError(
+                f"dtype must be one of {list(DTYPE_MAP.keys())}. Got {self.dtype}"
+            )
+        elif isinstance(self.dtype, str):
+            self.dtype: torch.dtype = DTYPE_MAP[self.dtype]
 
         self.device: str | torch.device = torch.device(self.device)
 
@@ -197,7 +214,7 @@ class CacheActivationsRunnerConfig:
     # Misc
     device: str | torch.device = "cpu"
     seed: int = 42
-    dtype: torch.dtype = torch.float32
+    dtype: str | torch.dtype = "float32"
     prepend_bos: bool = True
 
     # Activation caching stuff
