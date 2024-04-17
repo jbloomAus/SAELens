@@ -22,12 +22,15 @@ from sae_vis.data_config_classes import (
 from sae_vis.data_fetching_fns import get_feature_data
 from torch.nn.functional import cosine_similarity
 from tqdm import tqdm
+from transformer_lens import HookedTransformer
 
 import wandb
 from sae_lens.training.session_loader import LMSparseAutoencoderSessionloader
 
 
 class DashboardRunner:
+
+    model: HookedTransformer | None = None
 
     def __init__(
         self,
@@ -131,10 +134,14 @@ class DashboardRunner:
 
     def init_sae_session(self):
         (
-            self.model,
+            model,
             sae_group,
             self.activation_store,
         ) = LMSparseAutoencoderSessionloader.load_pretrained_sae(self.sae_path)
+        assert isinstance(
+            model, HookedTransformer
+        )  # only HookedTransformer is allowed to be used in the dashboard
+        self.model = model
         # TODO: handle multiple autoencoders
         self.sparse_autoencoder = next(iter(sae_group))[1]
 
@@ -316,6 +323,7 @@ class DashboardRunner:
         if self.use_wandb:
             wandb.log({"time/time_to_get_tokens": end - start})
 
+        assert self.model is not None
         vocab_dict = cast(Any, self.model.tokenizer).vocab
         vocab_dict = {
             v: k.replace("Ġ", " ").replace("\n", "\\n") for k, v in vocab_dict.items()

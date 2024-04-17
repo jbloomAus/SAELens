@@ -28,6 +28,7 @@ mkdocs-section-index = "^0.3.8"
 mkdocstrings = "^0.24.1"
 mkdocstrings-python = "^1.9.0"
 safetensors = "^0.4.2"
+mamba-lens = { version = "^0.0.4", optional = true }
 
 
 [tool.poetry.group.dev.dependencies]
@@ -38,6 +39,10 @@ pre-commit = "^3.6.2"
 flake8 = "^7.0.0"
 isort = "^5.13.2"
 pyright = "^1.1.351"
+mamba-lens = "^0.0.4"
+
+[tool.poetry.extras]
+mamba = ["mamba-lens"]
 
 
 [tool.isort]
