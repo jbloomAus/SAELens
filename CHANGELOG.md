@@ -2,6 +2,29 @@
 
 
 
+## v0.4.0 (2024-04-16)
+
+### Feature
+
+* feat: support orthogonal decoder init and no pre-decoder bias ([`ac606a3`](https://github.com/jbloomAus/SAELens/commit/ac606a3b85ac48dd800e434878b3a8bfe1838408))
+
+### Fix
+
+* fix: sae dict bug ([`484163e`](https://github.com/jbloomAus/SAELens/commit/484163ed4c7395694d78f8a0ce1be9570a0ded2a))
+
+* fix: session loader wasn&#39;t working ([`a928d7e`](https://github.com/jbloomAus/SAELens/commit/a928d7e24224cc79eedfd5c050d02d5f22de86e8))
+
+### Unknown
+
+* enable setting adam pars in config ([`1e53ede`](https://github.com/jbloomAus/SAELens/commit/1e53edee5cc4756283e95f824693de3c781ec532))
+
+* fix sae dict loader and format ([`c558849`](https://github.com/jbloomAus/SAELens/commit/c558849bbf310961cd0905eab087572708272774))
+
+* default orthogonal init false ([`a8b0113`](https://github.com/jbloomAus/SAELens/commit/a8b0113140bd2f9b97befccc8f158dace02a4810))
+
+* notebook update ([`feca408`](https://github.com/jbloomAus/SAELens/commit/feca408cf003737cd4eb529ca7fea2f77984f5c6))
+
+
 ## v0.3.0 (2024-04-15)
 
 ### Feature

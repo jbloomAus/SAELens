@@ -150,18 +150,30 @@ class SparseAutoencoderDictionary:
 
         autoencoders = {}
 
-        for sae_name in os.listdir(path):
-            if os.path.isdir(os.path.join(path, sae_name)):
-                autoencoders[sae_name] = SparseAutoencoder.load_from_pretrained(
-                    os.path.join(path, sae_name),
-                    device,
-                )
+        # check if there any folders inside the current path
+        folders_in_current_path = [
+            f for f in os.listdir(path) if os.path.isdir(os.path.join(path, f))
+        ]
+        if len(folders_in_current_path) == 0:
+            # sae_name is the folder name
+            sae_name = os.path.basename(path)
+            autoencoders[sae_name] = SparseAutoencoder.load_from_pretrained(
+                path,
+                device,
+            )
+        else:  # we have a list of SAE folders
+            for sae_name in os.listdir(path):
+                if os.path.isdir(os.path.join(path, sae_name)):
+                    autoencoders[sae_name] = SparseAutoencoder.load_from_pretrained(
+                        os.path.join(path, sae_name),
+                        device,
+                    )
 
         # Create the SAEGroup object
 
         # loaded SAE groups will not contain a cfg that matches the original.
         # TODO: figure out how to handle this
-        sae_name = next(iter(autoencoders))
+        sae_name = next(iter(autoencoders.keys()))
         sae_group = cls(autoencoders[sae_name].cfg)
         sae_group.autoencoders = autoencoders
         return sae_group
