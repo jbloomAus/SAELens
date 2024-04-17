@@ -89,8 +89,12 @@ class SAEPatcher:
         orig: gradient w.r.t output
         return: gradient w.r.t input
         """
-        # NOTE: Transformer lens 1.5.4 un-tuples the gradient before passing it in
+        # NOTE: We stopped the gradient in the forward pass
+        # So we need to restore the gradient here
+
+        # NOTE: Transformer lens un-tuples the gradient before passing it in
         # So we need to re-tuple it here
+        # (Valid as of transformer_lens v1.5.4)
         return (orig,)
 
     def get_forward_hook(self) -> ForwardHookData:
