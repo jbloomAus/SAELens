@@ -4,7 +4,6 @@ from typing import Any, Dict, List, Optional, Union, cast
 # set TOKENIZERS_PARALLELISM to false to avoid warnings
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 import json
-import time
 import numpy as np
 import torch
 from matplotlib import colors
@@ -61,18 +60,15 @@ class NeuronpediaRunner:
 
     def __init__(
         self,
-        sae_path: str,
-        model_id: str,
         sae_id: str,
+        sae_path: str,
+        outputs_dir: str,
         sparsity_threshold: int = DEFAULT_SPARSITY_THRESHOLD,
-        neuronpedia_outputs_folder: str = "../../neuronpedia_outputs",
-        init_session: bool = True,
         # token pars
         n_batches_to_sample_from: int = 2**12,
         n_prompts_to_select: int = 4096 * 6,
-        # sampling pars
-        n_features_at_a_time: int = 1024,
-        # start and end batch
+        # batching
+        n_features_at_a_time: int = 128,
         start_batch_inclusive: int = 0,
         end_batch_inclusive: Optional[int] = None,
     ):
@@ -84,10 +80,14 @@ class NeuronpediaRunner:
             self.device = "cuda"
 
         self.sae_path = sae_path
-        if init_session:
-            self.init_sae_session()
-
-        self.model_id = model_id
+        self.sparse_autoencoder = SparseAutoencoder.load_from_pretrained(
+            self.sae_path, device=self.device
+        )
+        loader = LMSparseAutoencoderSessionloader(self.sparse_autoencoder.cfg)
+        self.model, _, self.activation_store = (
+            loader.load_sae_training_group_session()
+        )
+        self.model_id = self.model.cfg.model_name
         self.layer = self.sparse_autoencoder.cfg.hook_point_layer
         self.sae_id = sae_id
         self.sparsity_threshold = sparsity_threshold
@@ -97,22 +97,9 @@ class NeuronpediaRunner:
         self.start_batch = start_batch_inclusive
         self.end_batch = end_batch_inclusive
 
-        if not os.path.exists(neuronpedia_outputs_folder):
-            os.makedirs(neuronpedia_outputs_folder)
-        self.neuronpedia_outputs_folder = neuronpedia_outputs_folder
-
-        self.outputs_folder = f"{neuronpedia_outputs_folder}/{self.sparse_autoencoder.cfg.model_name}_{self.sae_id}_{self.sparse_autoencoder.cfg.hook_point}"
-        if not os.path.exists(self.outputs_folder):
-            os.makedirs(self.outputs_folder)
-
-    def init_sae_session(self):
-        self.sparse_autoencoder = SparseAutoencoder.load_from_pretrained(
-            self.sae_path, device=self.device
-        )
-        loader = LMSparseAutoencoderSessionloader(self.sparse_autoencoder.cfg)
-        self.model, _, self.activation_store = (
-            loader.load_sae_training_group_session()
-        )
+        if not os.path.exists(outputs_dir):
+            os.makedirs(outputs_dir)
+        self.outputs_dir = outputs_dir
 
     def get_tokens(
         self,
@@ -164,13 +151,6 @@ class NeuronpediaRunner:
         return np.reshape(str_tokens, tokens.shape).tolist()
 
     def run(self):
-        """
-        Generate the Neuronpedia outputs.
-        """
-
-        if self.model is None:
-            self.init_sae_session()
-
         self.n_features = self.sparse_autoencoder.cfg.d_sae
         assert self.n_features is not None
 
@@ -196,9 +176,9 @@ class NeuronpediaRunner:
         feature_idx = np.array_split(feature_idx, n_subarrays)
         feature_idx = [x.tolist() for x in feature_idx]
 
-        print(f"==== Starting at batch: {self.start_batch}")
-        if self.end_batch is not None:
-            print(f"==== Ending at batch: {self.end_batch}")
+        # print(f"==== Starting Batch: {self.start_batch}")
+        # if self.end_batch is not None and self.end_batch != self.start_batch:
+        #     print(f"==== Ending at Batch: {self.end_batch}")
 
         if self.start_batch > len(feature_idx) + 1:
             print(
@@ -218,32 +198,18 @@ class NeuronpediaRunner:
                 "skipped_indexes": list(skipped_indexes),
             }
         )
-        with open(f"{self.outputs_folder}/skipped_indexes.json", "w") as f:
+        with open(f"{self.outputs_dir}/skipped_indexes.json", "w") as f:
             f.write(skipped_indexes_json)
 
-        print(f"Total features to run: {len(self.target_feature_indexes)}")
-        print(f"Total skipped: {len(skipped_indexes)}")
-        print(f"Total batches: {len(feature_idx)}")
-
-        print(
-            f"Hook Point Layer: {self.sparse_autoencoder.cfg.hook_point_layer}"
-        )
-        print(f"Hook Point: {self.sparse_autoencoder.cfg.hook_point}")
-        print(f"Writing files to: {self.outputs_folder}")
-
-        tokens_file = f"{self.outputs_folder}/tokens_{self.n_batches_to_sample_from}_{self.n_prompts_to_select}.pt"
-
+        tokens_file = f"{self.outputs_dir}/tokens_{self.n_batches_to_sample_from}_{self.n_prompts_to_select}.pt"
         if os.path.isfile(tokens_file):
-            print("Tokens exist, loading it")
+            print("Tokens exist, loading them.")
             tokens = torch.load(tokens_file)
         else:
-            start = time.time()
+            print("Tokens don't exist, making them.")
             tokens = self.get_tokens(
                 self.n_batches_to_sample_from, self.n_prompts_to_select
             )
-            end = time.time()
-            print(f"Time to get tokens: {end - start}")
-            print("Saved tokens to: " + tokens_file)
             torch.save(
                 tokens,
                 tokens_file,
@@ -280,8 +246,9 @@ class NeuronpediaRunner:
                     # print(f"Skipping batch - it's after end_batch: {feature_batch_count}")
                     continue
 
-                print(f"Doing batch: {feature_batch_count}")
-                print(f"{features_to_process}")
+                print(
+                    f"========== Running Batch #{feature_batch_count} =========="
+                )
 
                 layout = SaeVisLayoutConfig(
                     columns=[
@@ -483,11 +450,13 @@ class NeuronpediaRunner:
                     "layer": str(self.layer),
                     "sae_id": self.sae_id,
                     "features": features_outputs,
+                    "n_batches_to_sample_from": self.n_batches_to_sample_from,
+                    "n_prompts_to_select": self.n_prompts_to_select,
                 }
                 json_object = json.dumps(to_write, cls=NpEncoder)
 
                 with open(
-                    f"{self.outputs_folder}/batch-{feature_batch_count}.json",
+                    f"{self.outputs_dir}/batch-{feature_batch_count}.json",
                     "w",
                 ) as f:
                     f.write(json_object)
