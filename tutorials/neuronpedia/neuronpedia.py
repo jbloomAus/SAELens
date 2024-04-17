@@ -368,7 +368,7 @@ def upload_dead_stubs(
     skipped_path = os.path.join(outputs_dir, "skipped_indexes.json")
     f = open(skipped_path, "r")
     data = json.load(f)
-    url = host + "/api/local/upload-dead-features"
+    url = host + "/api/local/upload-skipped-features"
     requests.post(
         url,
         json=data,
