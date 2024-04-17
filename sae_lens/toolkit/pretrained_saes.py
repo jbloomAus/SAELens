@@ -1,5 +1,6 @@
 import json
 import os
+import pathlib
 from typing import Optional, Tuple
 
 import torch
@@ -9,6 +10,7 @@ from tqdm import tqdm
 
 from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.sparse_autoencoder import SparseAutoencoder
+from sae_lens.training.utils import BackwardsCompatiblePickleClass
 
 
 def load_sparsity(path: str) -> torch.Tensor:
@@ -134,6 +136,38 @@ def convert_connor_rob_sae_to_our_saelens_format(
     ae_alt.load_state_dict(state_dict)
     return ae_alt
 
+def convert_old_to_modern_saelens_format(
+    pytorch_file: str,
+    out_dir: str = None,
+    force: bool = False
+    ):
+    """
+    Reads a pretrained SAE from the old pickle-style SAELens .pt format, 
+    then saves a modern-format SAELens folder of that SAE in out_dir.
+    Returns the loaded autoencoder.
+    """
+    file_path = pathlib.Path(pytorch_file)
+    if out_dir is None:
+        out_dir = file_path.parent
+    else:
+        out_dir = pathlib.Path(out_dir)
+    out_folder = out_dir/file_path.stem
+    if (not force) and out_folder.exists():
+        raise FileExistsError(f"{out_folder} already exists and force=False")
+    out_folder.mkdir(exist_ok=True, parents=True)
+
+    #Load old data, construct modern config
+    old_sae_data = torch.load(file_path, pickle_module=BackwardsCompatiblePickleClass)
+    cfg = LanguageModelSAERunnerConfig(dtype=old_sae_data['cfg'].dtype)
+    for k in cfg.__dataclass_fields__:
+        if hasattr(old_sae_data['cfg'], k):
+            setattr(cfg, k, getattr(old_sae_data['cfg'], k))
+
+    #Get modern SAE object
+    autoencoder = SparseAutoencoder(cfg)
+    autoencoder.load_state_dict(old_sae_data['state_dict'])
+    autoencoder.save_model(out_folder)
+    return autoencoder
 
 def get_gpt2_small_ckrk_attn_out_saes() -> dict[str, SparseAutoencoder]:
 
