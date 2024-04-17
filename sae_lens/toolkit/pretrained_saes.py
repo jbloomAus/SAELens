@@ -10,7 +10,6 @@ from tqdm import tqdm
 
 from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.sparse_autoencoder import SparseAutoencoder
-from sae_lens.training.utils import BackwardsCompatiblePickleClass
 
 
 def load_sparsity(path: str) -> torch.Tensor:
@@ -138,36 +137,33 @@ def convert_connor_rob_sae_to_our_saelens_format(
 
 def convert_old_to_modern_saelens_format(
     pytorch_file: str,
-    out_dir: str = None,
+    out_folder: str = None,
     force: bool = False
     ):
     """
-    Reads a pretrained SAE from the old pickle-style SAELens .pt format, 
-    then saves a modern-format SAELens folder of that SAE in out_dir.
-    Returns the loaded autoencoder.
+    Reads a pretrained SAE from the old pickle-style SAELens .pt format, then saves a modern-format SAELens SAE.
+
+    Arguments:
+    ----------
+    pytorch_file: str
+        Path of old format file to open.
+    out_folder: str, optional
+        Path where new SAE will be stored; if None, out_folder = pytorch_file with the '.pt' removed.
+    force: bool, optional
+        If out_folder already exists, this function will not save unless force=True.
     """
     file_path = pathlib.Path(pytorch_file)
-    if out_dir is None:
-        out_dir = file_path.parent
+    if out_folder is None:
+        out_folder = file_path.parent/file_path.stem
     else:
-        out_dir = pathlib.Path(out_dir)
-    out_folder = out_dir/file_path.stem
+        out_folder = pathlib.Path(out_folder)
     if (not force) and out_folder.exists():
         raise FileExistsError(f"{out_folder} already exists and force=False")
     out_folder.mkdir(exist_ok=True, parents=True)
 
-    #Load old data, construct modern config
-    old_sae_data = torch.load(file_path, pickle_module=BackwardsCompatiblePickleClass)
-    cfg = LanguageModelSAERunnerConfig(dtype=old_sae_data['cfg'].dtype)
-    for k in cfg.__dataclass_fields__:
-        if hasattr(old_sae_data['cfg'], k):
-            setattr(cfg, k, getattr(old_sae_data['cfg'], k))
-
-    #Get modern SAE object
-    autoencoder = SparseAutoencoder(cfg)
-    autoencoder.load_state_dict(old_sae_data['state_dict'])
+    #Load model & save in new format.
+    autoencoder = SparseAutoencoder.load_from_pretrained_legacy(str(file_path))
     autoencoder.save_model(out_folder)
-    return autoencoder
 
 def get_gpt2_small_ckrk_attn_out_saes() -> dict[str, SparseAutoencoder]:
 
