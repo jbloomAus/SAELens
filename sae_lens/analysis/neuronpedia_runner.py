@@ -88,7 +88,7 @@ class NeuronpediaRunner:
         self.model, _, self.activation_store = (
             loader.load_sae_training_group_session()
         )
-        self.model_id = self.model.cfg.model_name
+        self.model_id = self.sparse_autoencoder.cfg.model_name
         self.layer = self.sparse_autoencoder.cfg.hook_point_layer
         self.sae_id = sae_id
         self.sparsity_threshold = sparsity_threshold
