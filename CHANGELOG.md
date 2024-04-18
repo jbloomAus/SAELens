@@ -2,6 +2,71 @@
 
 
 
+## v0.5.0 (2024-04-17)
+
+### Feature
+
+* feat: Mamba support vs mamba-lens (#79)
+
+* mamba support
+
+* added init
+
+* added optional model kwargs
+
+* Support transformers and mamba
+
+* forgot one model kwargs
+
+* failed opts
+
+* tokens input
+
+* hack to fix tokens, will look into fixing mambalens
+
+* fixed checkpoint
+
+* added sae group
+
+* removed some comments and fixed merge error
+
+* removed unneeded params since that issue is fixed in mambalens now
+
+* Unneded input param
+
+* removed debug checkpoing and eval
+
+* added refs to hookedrootmodule
+
+* feed linter
+
+* added example and fixed loading
+
+* made layer for eval change
+
+* fix linter issues
+
+* adding mamba-lens as optional dep, and fixing typing/linting
+
+* adding a test for loading mamba model
+
+* adding mamba-lens to dev for CI
+
+* updating min mamba-lens version
+
+* updating mamba-lens version
+
+---------
+
+Co-authored-by: David Chanin &lt;chanindav@gmail.com&gt; ([`eea7db4`](https://github.com/jbloomAus/SAELens/commit/eea7db4b99098c33cd862e7e2280a32b630826bd))
+
+### Unknown
+
+* update readme ([`440df7b`](https://github.com/jbloomAus/SAELens/commit/440df7b6c0ef55ba3d116054f81e1ee4a58f9089))
+
+* update readme ([`3694fd2`](https://github.com/jbloomAus/SAELens/commit/3694fd2c4cc7438121e4549636508c45835a5d38))
+
+
 ## v0.4.0 (2024-04-16)
 
 ### Feature

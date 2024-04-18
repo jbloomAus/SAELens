@@ -19,6 +19,7 @@ from sae_vis.data_config_classes import (
 )
 from tqdm import tqdm
 from sae_vis.data_storing_fns import SaeVisData
+from transformer_lens import HookedTransformer
 from sae_lens.training.session_loader import LMSparseAutoencoderSessionloader
 from sae_lens.training.sparse_autoencoder import SparseAutoencoder
 from sae_lens.toolkit.pretrained_saes import load_sparsity
@@ -130,6 +131,7 @@ class NeuronpediaRunner:
         """
         does to_str_tokens, except handles out of range
         """
+        assert self.model is not None
         vocab_max_index = self.model.cfg.d_vocab - 1
         # Deal with the int case separately
         if isinstance(tokens, int):
@@ -215,7 +217,7 @@ class NeuronpediaRunner:
                 tokens_file,
             )
 
-        vocab_dict = cast(Any, self.model.tokenizer).vocab
+        vocab_dict = self.model.tokenizer.vocab
         new_vocab_dict = {}
         # Replace substrings in the keys of vocab_dict using HTML_ANOMALIES
         for k, v in vocab_dict.items():
@@ -278,7 +280,7 @@ class NeuronpediaRunner:
                 )
                 feature_data = SaeVisData.create(
                     encoder=self.sparse_autoencoder,  # type: ignore
-                    model=self.model,
+                    model=cast(HookedTransformer, self.model),
                     tokens=tokens,
                     cfg=feature_vis_params,
                 )

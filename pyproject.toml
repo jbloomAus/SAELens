@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sae-lens"
-version = "0.4.0"
+version = "0.5.0"
 description = "Training and Analyzing Sparse Autoencoders (SAEs)"
 authors = ["Joseph Bloom"]
 readme = "README.md"
@@ -20,8 +20,7 @@ matplotlib-inline = "^0.1.6"
 datasets = "^2.17.1"
 babe = "^0.0.7"
 nltk = "^3.8.1"
-eindex-callum = {git = "https://github.com/callummcdougall/eindex.git"}
-sae-vis = { git = "https://github.com/hijohnnylin/sae_vis.git", branch = "disable_bdec" }
+sae-vis = { git = "https://github.com/hijohnnylin/sae_vis.git", branch = "disable_bdec_dont_merge" }
 mkdocs = "^1.5.3"
 mkdocs-material = "^9.5.15"
 mkdocs-autorefs = "^1.0.1"
@@ -30,6 +29,7 @@ mkdocstrings = "^0.24.1"
 mkdocstrings-python = "^1.9.0"
 safetensors = "^0.4.2"
 typer = "^0.12.3"
+mamba-lens = { version = "^0.0.4", optional = true }
 
 
 [tool.poetry.group.dev.dependencies]
@@ -40,6 +40,10 @@ pre-commit = "^3.6.2"
 flake8 = "^7.0.0"
 isort = "^5.13.2"
 pyright = "^1.1.351"
+mamba-lens = "^0.0.4"
+
+[tool.poetry.extras]
+mamba = ["mamba-lens"]
 
 
 [tool.isort]

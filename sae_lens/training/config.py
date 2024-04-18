@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Optional, cast
 
 import torch
@@ -21,7 +21,9 @@ class LanguageModelSAERunnerConfig:
 
     # Data Generating Function (Model + Training Distibuion)
     model_name: str = "gelu-2l"
+    model_class_name: str = "HookedTransformer"
     hook_point: str = "blocks.{layer}.hook_mlp_out"
+    hook_point_eval: str = "blocks.{layer}.attn.pattern"
     hook_point_layer: int | list[int] = 0
     hook_point_head_index: Optional[int] = None
     dataset_path: str = "NeelNanda/c4-tokenized-2b"
@@ -95,6 +97,7 @@ class LanguageModelSAERunnerConfig:
     n_checkpoints: int = 0
     checkpoint_path: str = "checkpoints"
     verbose: bool = True
+    model_kwargs: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         if (
@@ -209,6 +212,7 @@ class CacheActivationsRunnerConfig:
 
     # Data Generating Function (Model + Training Distibuion)
     model_name: str = "gelu-2l"
+    model_class_name: str = "HookedTransformer"
     hook_point: str = "blocks.{layer}.hook_mlp_out"
     hook_point_layer: int | list[int] = 0
     hook_point_head_index: Optional[int] = None
@@ -239,6 +243,7 @@ class CacheActivationsRunnerConfig:
     n_shuffles_with_last_section: int = 10
     n_shuffles_in_entire_dir: int = 10
     n_shuffles_final: int = 100
+    model_kwargs: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         # Autofill cached_activations_path unless the user overrode it
