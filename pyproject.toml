@@ -20,7 +20,7 @@ matplotlib-inline = "^0.1.6"
 datasets = "^2.17.1"
 babe = "^0.0.7"
 nltk = "^3.8.1"
-sae-vis = { git = "https://github.com/hijohnnylin/sae_vis.git", branch = "allow_disable_buffer" }
+sae-vis = { git = "https://github.com/callummcdougall/sae_vis.git", branch = "allow_disable_buffer" }
 mkdocs = "^1.5.3"
 mkdocs-material = "^9.5.15"
 mkdocs-autorefs = "^1.0.1"
