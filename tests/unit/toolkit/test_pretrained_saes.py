@@ -1,7 +1,6 @@
 import pathlib
 import shutil
 
-import pytest
 import torch
 
 from sae_lens.toolkit import pretrained_saes
