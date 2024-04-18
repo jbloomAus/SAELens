@@ -38,7 +38,7 @@ pytest = "^8.0.2"
 pytest-cov = "^4.1.0"
 pre-commit = "^3.6.2"
 flake8 = "^7.0.0"
-isort = "^5.13.2"
+isort = "5.13.2"
 pyright = "^1.1.351"
 mamba-lens = "^0.0.4"
 
@@ -48,6 +48,7 @@ mamba = ["mamba-lens"]
 
 [tool.isort]
 profile = "black"
+src_paths = ["sae_lens", "tests"]
 
 [tool.pyright]
 typeCheckingMode = "strict"

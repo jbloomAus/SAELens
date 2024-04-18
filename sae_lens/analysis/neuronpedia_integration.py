@@ -1,6 +1,7 @@
 import json
 import urllib.parse
 import webbrowser
+
 import requests
 
 
