@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sae-lens"
-version = "0.5.0"
+version = "0.5.1"
 description = "Training and Analyzing Sparse Autoencoders (SAEs)"
 authors = ["Joseph Bloom"]
 readme = "README.md"
@@ -20,7 +20,7 @@ matplotlib-inline = "^0.1.6"
 datasets = "^2.17.1"
 babe = "^0.0.7"
 nltk = "^3.8.1"
-sae-vis = { git = "https://github.com/callummcdougall/sae_vis.git", branch = "allow_disable_buffer" }
+sae-vis = "^0.2.15"
 mkdocs = "^1.5.3"
 mkdocs-material = "^9.5.15"
 mkdocs-autorefs = "^1.0.1"
