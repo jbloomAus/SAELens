@@ -151,7 +151,7 @@ Enter value""",
     outputs_dir.mkdir(parents=True, exist_ok=True)
     # Check if output_dir has any files starting with "batch_"
     batch_files = list(outputs_dir.glob("batch-*.json"))
-    if len(batch_files) > 0 and resume_from_batch != 1:
+    if len(batch_files) > 0 and resume_from_batch == 1:
         print(
             f"Error: Output directory {outputs_dir.as_posix()} has existing batch files. This is only allowed if you are resuming from a batch. Please delete or move the existing batch-*.json files."
         )
@@ -230,7 +230,7 @@ Enter value""",
     )
 
     # iterate from 1 to num_batches
-    for i in range(1, num_batches + 1):
+    for i in range(resume_from_batch, num_batches + 1):
         command = [
             "python",
             "make_batch.py",
