@@ -3,6 +3,9 @@ from typing import Any, Mapping, cast
 
 import pandas as pd
 import torch
+import torch.nn.functional as F
+from transformer_lens.hook_points import HookedRootModule
+
 import wandb
 from transformer_lens.hook_points import HookedRootModule
 
@@ -68,7 +71,25 @@ def run_evals(
     l2_norm_in_for_div[torch.abs(l2_norm_in_for_div) < 0.0001] = 1
     l2_norm_ratio = l2_norm_out / l2_norm_in_for_div
 
+    l1_norm_in = torch.norm(original_act, p=1, dim=-1)
+    l1_norm_out = torch.norm(sae_out, p=1, dim=-1)
+    l1_norm_in_for_div = l1_norm_in.clone()
+    l1_norm_in_for_div[torch.abs(l1_norm_in_for_div) < 0.0001] = 1
+    l1_norm_ratio = l1_norm_out / l1_norm_in_for_div
+
+    l0_norm_in = torch.sum(original_act != 0, dim=-1, dtype=original_act.dtype)
+    l0_norm_out = torch.sum(sae_out != 0, dim=-1, dtype=sae_out.dtype)
+    l0_norm_ratio = l0_norm_out / l0_norm_in
+
+    kl_div = get_kl_div(original_act, sae_out)
+
     metrics = {
+        # L0
+        f"metrics/l0_norm{suffix}": l0_norm_out.mean().item(),
+        f"metrics/l0_ratio{suffix}": l0_norm_ratio.mean().item(),
+        # L1
+        f"metrics/l1_norm{suffix}": l1_norm_out.mean().item(),
+        f"metrics/l1_ratio{suffix}": l1_norm_ratio.mean().item(),
         # l2 norms
         f"metrics/l2_norm{suffix}": l2_norm_out.mean().item(),
         f"metrics/l2_ratio{suffix}": l2_norm_ratio.mean().item(),
@@ -77,6 +98,8 @@ def run_evals(
         f"metrics/ce_loss_without_sae{suffix}": ntp_loss,
         f"metrics/ce_loss_with_sae{suffix}": recons_loss,
         f"metrics/ce_loss_with_ablation{suffix}": zero_abl_loss,
+        # KL div
+        f"metrics/kl_div{suffix}": kl_div.item(),
     }
 
     if wandb.run is not None:
@@ -186,9 +209,8 @@ def zero_ablate_hook(activations: torch.Tensor, hook: Any):
     return activations
 
 
-def kl_divergence_attention(y_true: torch.Tensor, y_pred: torch.Tensor):
-    # Compute log probabilities for KL divergence
-    log_y_true = torch.log2(y_true + 1e-10)
-    log_y_pred = torch.log2(y_pred + 1e-10)
-
-    return y_true * (log_y_true - log_y_pred)
+def get_kl_div(y_true: torch.Tensor, y_pred: torch.Tensor):
+    probs1 = F.softmax(y_true, dim=-1)
+    probs2 = F.softmax(y_pred, dim=-1)
+    kl_divergence = F.kl_div(probs1.log(), probs2, reduction='sum')
+    return kl_divergence
