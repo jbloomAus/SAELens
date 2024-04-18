@@ -174,7 +174,9 @@ class LanguageModelSAERunnerConfig:
                 f"Lower bound: n_contexts_per_buffer (millions): {n_contexts_per_buffer / 10 **6}"
             )
 
-            total_training_steps = self.training_tokens // self.train_batch_size
+            total_training_steps = (
+                self.training_tokens + self.finetuning_tokens
+            ) // self.train_batch_size
             print(f"Total training steps: {total_training_steps}")
 
             total_wandb_updates = total_training_steps // self.wandb_log_frequency
