@@ -98,6 +98,11 @@ class SparseAutoencoder(HookedRootModule):
             torch.zeros(self.d_in, dtype=self.dtype, device=self.device)
         )
 
+        # scaling factor for fine-tuning (not to be used in initial training)
+        self.scaling_factor = nn.Parameter(
+            torch.ones(self.d_sae, dtype=self.dtype, device=self.device)
+        )
+
         self.hook_sae_in = HookPoint()
         self.hook_hidden_pre = HookPoint()
         self.hook_hidden_post = HookPoint()
@@ -124,7 +129,8 @@ class SparseAutoencoder(HookedRootModule):
 
         sae_out = self.hook_sae_out(
             einops.einsum(
-                feature_acts,
+                feature_acts
+                * self.scaling_factor,  # need to make sure this handled when loading old models.
                 self.W_dec,
                 "... d_sae, d_sae d_in -> ... d_in",
             )
@@ -330,6 +336,14 @@ class SparseAutoencoder(HookedRootModule):
         with safe_open(weight_path, framework="pt", device=device) as f:  # type: ignore
             for k in f.keys():
                 tensors[k] = f.get_tensor(k)
+
+        # old saves may not have scaling factors.
+        if "scaling_factor" not in tensors:
+            assert isinstance(config.d_sae, int)
+            tensors["scaling_factor"] = torch.ones(
+                config.d_sae, dtype=config.dtype, device=config.device
+            )
+
         sae.load_state_dict(tensors)
 
         return sae
