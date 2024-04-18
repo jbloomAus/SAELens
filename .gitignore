@@ -168,6 +168,7 @@ activations/
 
 *.html
 *.DS_Store
+*.idea
 
 feature_dashboards/
 research/
