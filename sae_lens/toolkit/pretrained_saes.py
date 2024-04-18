@@ -135,11 +135,10 @@ def convert_connor_rob_sae_to_our_saelens_format(
     ae_alt.load_state_dict(state_dict)
     return ae_alt
 
+
 def convert_old_to_modern_saelens_format(
-    pytorch_file: str,
-    out_folder: str = None,
-    force: bool = False
-    ):
+    pytorch_file: str, out_folder: str = None, force: bool = False
+):
     """
     Reads a pretrained SAE from the old pickle-style SAELens .pt format, then saves a modern-format SAELens SAE.
 
@@ -154,16 +153,17 @@ def convert_old_to_modern_saelens_format(
     """
     file_path = pathlib.Path(pytorch_file)
     if out_folder is None:
-        out_folder = file_path.parent/file_path.stem
+        out_folder = file_path.parent / file_path.stem
     else:
         out_folder = pathlib.Path(out_folder)
     if (not force) and out_folder.exists():
         raise FileExistsError(f"{out_folder} already exists and force=False")
     out_folder.mkdir(exist_ok=True, parents=True)
 
-    #Load model & save in new format.
+    # Load model & save in new format.
     autoencoder = SparseAutoencoder.load_from_pretrained_legacy(str(file_path))
     autoencoder.save_model(out_folder)
+
 
 def get_gpt2_small_ckrk_attn_out_saes() -> dict[str, SparseAutoencoder]:
 

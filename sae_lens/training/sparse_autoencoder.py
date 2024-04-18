@@ -281,8 +281,7 @@ class SparseAutoencoder(HookedRootModule):
                     state_dict["cfg"].device = "mps"
                 else:
                     state_dict = torch.load(
-                        path,
-                        pickle_module=BackwardsCompatiblePickleClass
+                        path, pickle_module=BackwardsCompatiblePickleClass
                     )
             except Exception as e:
                 raise IOError(f"Error loading the state dictionary from .pt file: {e}")
