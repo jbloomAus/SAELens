@@ -182,26 +182,30 @@ def get_recons_loss(
     else:
         replacement_hook = standard_replacement_hook
 
-    recons_loss = model.run_with_hooks(
+    recons_out = model.run_with_hooks(
         batch_tokens,
-        return_type="loss",
+        return_type="both",
         fwd_hooks=[(hook_point, partial(replacement_hook))],
         **sparse_autoencoder.cfg.model_kwargs,
     )
+    recons_loss = recons_out.loss
 
-    zero_abl_loss = model.run_with_hooks(
+    zero_abl_out = model.run_with_hooks(
         batch_tokens,
-        return_type="loss",
+        return_type="both",
         fwd_hooks=[(hook_point, zero_ablate_hook)],
         **sparse_autoencoder.cfg.model_kwargs,
     )
+    zero_abl_loss = zero_abl_out.loss
 
     div_val = zero_abl_loss - loss
     div_val[torch.abs(div_val) < 0.0001] = 1.0
 
     score = (zero_abl_loss - recons_loss) / div_val
 
-    return score, loss, recons_loss, zero_abl_loss
+    kl_div = get_kl_div(loss, recons_loss)
+
+    return score, loss, recons_loss, zero_abl_loss, kl_div
 
 
 def zero_ablate_hook(activations: torch.Tensor, hook: Any):
@@ -212,5 +216,5 @@ def zero_ablate_hook(activations: torch.Tensor, hook: Any):
 def get_kl_div(y_true: torch.Tensor, y_pred: torch.Tensor):
     probs1 = F.softmax(y_true, dim=-1)
     probs2 = F.softmax(y_pred, dim=-1)
-    kl_divergence = F.kl_div(probs1.log(), probs2, reduction='sum')
+    kl_divergence = F.kl_div(probs1.log(), probs2, reduction='batchmean')
     return kl_divergence
