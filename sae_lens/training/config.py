@@ -2,7 +2,6 @@ from dataclasses import dataclass, field
 from typing import Any, Optional, cast
 
 import torch
-
 import wandb
 
 DTYPE_MAP = {

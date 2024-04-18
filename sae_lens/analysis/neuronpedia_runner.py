@@ -4,7 +4,6 @@ from typing import Any, Dict, List, Optional, Union, cast
 # set TOKENIZERS_PARALLELISM to false to avoid warnings
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 import json
-import time
 
 import numpy as np
 import torch
@@ -13,21 +12,40 @@ from sae_vis.data_config_classes import (
     ActsHistogramConfig,
     Column,
     FeatureTablesConfig,
+    LogitsHistogramConfig,
+    LogitsTableConfig,
     SaeVisConfig,
     SaeVisLayoutConfig,
     SequencesConfig,
 )
-from sae_vis.data_fetching_fns import get_feature_data
+from sae_vis.data_storing_fns import SaeVisData
 from tqdm import tqdm
 from transformer_lens import HookedTransformer
 
+from sae_lens.toolkit.pretrained_saes import load_sparsity
 from sae_lens.training.session_loader import LMSparseAutoencoderSessionloader
+from sae_lens.training.sparse_autoencoder import SparseAutoencoder
 
 OUT_OF_RANGE_TOKEN = "<|outofrange|>"
 
 BG_COLOR_MAP = colors.LinearSegmentedColormap.from_list(
     "bg_color_map", ["white", "darkorange"]
 )
+
+DEFAULT_SPARSITY_THRESHOLD = -5
+
+HTML_ANOMALIES = {
+    "âĢĶ": "—",
+    "âĢĵ": "–",
+    "âĢľ": "“",
+    "âĢĿ": "”",
+    "âĢĺ": "‘",
+    "âĢĻ": "’",
+    "âĢĭ": " ",  # todo: this is actually zero width space
+    "Ġ": " ",
+    "Ċ": "\n",
+    "ĉ": "\t",
+}
 
 
 class NpEncoder(json.JSONEncoder):
@@ -43,69 +61,51 @@ class NpEncoder(json.JSONEncoder):
 
 class NeuronpediaRunner:
 
-    model: HookedTransformer | None = None
-
     def __init__(
         self,
+        sae_id: str,
         sae_path: str,
-        feature_sparsity_path: Optional[str] = None,
-        neuronpedia_parent_folder: str = "./neuronpedia_outputs",
-        init_session: bool = True,
+        outputs_dir: str,
+        sparsity_threshold: int = DEFAULT_SPARSITY_THRESHOLD,
         # token pars
         n_batches_to_sample_from: int = 2**12,
         n_prompts_to_select: int = 4096 * 6,
-        # sampling pars
-        n_features_at_a_time: int = 1024,
-        buffer_tokens_left: int = 8,
-        buffer_tokens_right: int = 8,
-        # start and end batch
+        # batching
+        n_features_at_a_time: int = 128,
         start_batch_inclusive: int = 0,
         end_batch_inclusive: Optional[int] = None,
     ):
-        self.sae_path = sae_path
-        if init_session:
-            self.init_sae_session()
 
-        self.feature_sparsity_path = feature_sparsity_path
+        self.device = "cpu"
+        if torch.backends.mps.is_available():
+            self.device = "mps"
+        elif torch.cuda.is_available():
+            self.device = "cuda"
+
+        self.sae_path = sae_path
+        self.sparse_autoencoder = SparseAutoencoder.load_from_pretrained(
+            self.sae_path, device=self.device
+        )
+        loader = LMSparseAutoencoderSessionloader(self.sparse_autoencoder.cfg)
+        self.model, _, self.activation_store = loader.load_sae_training_group_session()
+        self.model_id = self.sparse_autoencoder.cfg.model_name
+        self.layer = self.sparse_autoencoder.cfg.hook_point_layer
+        self.sae_id = sae_id
+        self.sparsity_threshold = sparsity_threshold
         self.n_features_at_a_time = n_features_at_a_time
-        self.buffer_tokens_left = buffer_tokens_left
-        self.buffer_tokens_right = buffer_tokens_right
         self.n_batches_to_sample_from = n_batches_to_sample_from
         self.n_prompts_to_select = n_prompts_to_select
         self.start_batch = start_batch_inclusive
         self.end_batch = end_batch_inclusive
 
-        # Deal with file structure
-        if not os.path.exists(neuronpedia_parent_folder):
-            os.makedirs(neuronpedia_parent_folder)
-        self.neuronpedia_folder = (
-            f"{neuronpedia_parent_folder}/{self.get_folder_name()}"
-        )
-        if not os.path.exists(self.neuronpedia_folder):
-            os.makedirs(self.neuronpedia_folder)
-
-    def get_folder_name(self):
-        model = self.sparse_autoencoder.cfg.model_name
-        hook_point = self.sparse_autoencoder.cfg.hook_point
-        d_sae = self.sparse_autoencoder.cfg.d_sae
-        dashboard_folder_name = f"{model}_{hook_point}_{d_sae}"
-
-        return dashboard_folder_name
-
-    def init_sae_session(self):
-        (
-            model,
-            sae_group,
-            self.activation_store,
-        ) = LMSparseAutoencoderSessionloader.load_pretrained_sae(self.sae_path)
-        # only HookedTransformer works with this runner
-        assert isinstance(model, HookedTransformer)
-        self.model = model
-        # TODO: handle multiple autoencoders
-        self.sparse_autoencoder = next(iter(sae_group))[1]
+        if not os.path.exists(outputs_dir):
+            os.makedirs(outputs_dir)
+        self.outputs_dir = outputs_dir
 
     def get_tokens(
-        self, n_batches_to_sample_from: int = 2**12, n_prompts_to_select: int = 4096 * 6
+        self,
+        n_batches_to_sample_from: int = 2**12,
+        n_prompts_to_select: int = 4096 * 6,
     ):
         all_tokens_list = []
         pbar = tqdm(range(n_batches_to_sample_from))
@@ -124,7 +124,9 @@ class NeuronpediaRunner:
         return list(np.round(to_round, 3))
 
     def to_str_tokens_safe(
-        self, vocab_dict: Dict[int, str], tokens: Union[int, List[int], torch.Tensor]
+        self,
+        vocab_dict: Dict[int, str],
+        tokens: Union[int, List[int], torch.Tensor],
     ):
         """
         does to_str_tokens, except handles out of range
@@ -151,28 +153,20 @@ class NeuronpediaRunner:
         return np.reshape(str_tokens, tokens.shape).tolist()
 
     def run(self):
-        """
-        Generate the Neuronpedia outputs.
-        """
-
-        if self.model is None:
-            self.init_sae_session()
-
         self.n_features = self.sparse_autoencoder.cfg.d_sae
         assert self.n_features is not None
 
         # if we have feature sparsity, then use it to only generate outputs for non-dead features
         self.target_feature_indexes: list[int] = []
-        if self.feature_sparsity_path:
-            loaded = torch.load(
-                self.feature_sparsity_path, map_location=self.sparse_autoencoder.device
-            )
-            self.target_feature_indexes = (
-                (loaded > -5).nonzero(as_tuple=True)[0].tolist()
-            )
-        else:
-            self.target_feature_indexes = list(range(self.n_features))
-            print("No feat sparsity path specified - doing all indexes.")
+        sparsity = load_sparsity(self.sae_path)
+        # convert sparsity to logged sparsity if it's not
+        # TODO: standardize the sparsity file format
+        if len(sparsity) > 0 and sparsity[0] >= 0:
+            sparsity = torch.log10(sparsity + 1e-10)
+        sparsity = sparsity.to(self.device)
+        self.target_feature_indexes = (
+            (sparsity > self.sparsity_threshold).nonzero(as_tuple=True)[0].tolist()
+        )
 
         # divide into batches
         feature_idx = torch.tensor(self.target_feature_indexes)
@@ -180,9 +174,9 @@ class NeuronpediaRunner:
         feature_idx = np.array_split(feature_idx, n_subarrays)
         feature_idx = [x.tolist() for x in feature_idx]
 
-        print(f"==== Starting at batch: {self.start_batch}")
-        if self.end_batch is not None:
-            print(f"==== Ending at batch: {self.end_batch}")
+        # print(f"==== Starting Batch: {self.start_batch}")
+        # if self.end_batch is not None and self.end_batch != self.start_batch:
+        #     print(f"==== Ending at Batch: {self.end_batch}")
 
         if self.start_batch > len(feature_idx) + 1:
             print(
@@ -192,32 +186,41 @@ class NeuronpediaRunner:
 
         # write dead into file so we can create them as dead in Neuronpedia
         skipped_indexes = set(range(self.n_features)) - set(self.target_feature_indexes)
-        skipped_indexes_json = json.dumps({"skipped_indexes": list(skipped_indexes)})
-        with open(f"{self.neuronpedia_folder}/skipped_indexes.json", "w") as f:
+        skipped_indexes_json = json.dumps(
+            {
+                "model_id": self.model_id,
+                "layer": str(self.layer),
+                "sae_id": self.sae_id,
+                "skipped_indexes": list(skipped_indexes),
+            }
+        )
+        with open(f"{self.outputs_dir}/skipped_indexes.json", "w") as f:
             f.write(skipped_indexes_json)
 
-        print(f"Total features to run: {len(self.target_feature_indexes)}")
-        print(f"Total skipped: {len(skipped_indexes)}")
-        print(f"Total batches: {len(feature_idx)}")
+        tokens_file = f"{self.outputs_dir}/tokens_{self.n_batches_to_sample_from}_{self.n_prompts_to_select}.pt"
+        if os.path.isfile(tokens_file):
+            print("Tokens exist, loading them.")
+            tokens = torch.load(tokens_file)
+        else:
+            print("Tokens don't exist, making them.")
+            tokens = self.get_tokens(
+                self.n_batches_to_sample_from, self.n_prompts_to_select
+            )
+            torch.save(
+                tokens,
+                tokens_file,
+            )
 
-        print(f"Hook Point Layer: {self.sparse_autoencoder.cfg.hook_point_layer}")
-        print(f"Hook Point: {self.sparse_autoencoder.cfg.hook_point}")
-        print(f"Writing files to: {self.neuronpedia_folder}")
+        vocab_dict = self.model.tokenizer.vocab
+        new_vocab_dict = {}
+        # Replace substrings in the keys of vocab_dict using HTML_ANOMALIES
+        for k, v in vocab_dict.items():
+            modified_key = k
+            for anomaly in HTML_ANOMALIES:
+                modified_key = modified_key.replace(anomaly, HTML_ANOMALIES[anomaly])
+            new_vocab_dict[v] = modified_key
+        vocab_dict = new_vocab_dict
 
-        # get tokens:
-        start = time.time()
-        tokens = self.get_tokens(
-            self.n_batches_to_sample_from, self.n_prompts_to_select
-        )
-        end = time.time()
-        print(f"Time to get tokens: {end - start}")
-
-        assert self.model is not None
-        vocab_dict = cast(Any, self.model.tokenizer).vocab
-        vocab_dict = {
-            v: k.replace("Ġ", " ").replace("\n", "\\n").replace("Ċ", "\n")
-            for k, v in vocab_dict.items()
-        }
         # pad with blank tokens to the actual vocab size
         for i in range(len(vocab_dict), self.model.cfg.d_vocab):
             vocab_dict[i] = OUT_OF_RANGE_TOKEN
@@ -234,44 +237,37 @@ class NeuronpediaRunner:
                     # print(f"Skipping batch - it's after end_batch: {feature_batch_count}")
                     continue
 
-                print(f"Doing batch: {feature_batch_count}")
+                print(f"========== Running Batch #{feature_batch_count} ==========")
 
                 layout = SaeVisLayoutConfig(
                     columns=[
                         Column(
                             SequencesConfig(
                                 stack_mode="stack-all",
-                                buffer=(
-                                    self.buffer_tokens_left,
-                                    self.buffer_tokens_right,
-                                ),
-                                compute_buffer=False,
-                                n_quantiles=10,
+                                buffer=None,
+                                compute_buffer=True,
+                                n_quantiles=5,
                                 top_acts_group_size=20,
                                 quantile_group_size=5,
                             ),
-                            width=650,
-                        ),
-                        Column(
                             ActsHistogramConfig(),
-                            FeatureTablesConfig(n_rows=5),
-                            width=500,
-                        ),
-                    ],
-                    height=1000,
+                            LogitsHistogramConfig(),
+                            LogitsTableConfig(),
+                            FeatureTablesConfig(n_rows=3),
+                        )
+                    ]
                 )
                 feature_vis_params = SaeVisConfig(
                     hook_point=self.sparse_autoencoder.cfg.hook_point,
-                    minibatch_size_features=256,
+                    minibatch_size_features=128,
                     minibatch_size_tokens=64,
                     features=features_to_process,
-                    verbose=False,
+                    verbose=True,
                     feature_centric_layout=layout,
                 )
-
-                feature_data = get_feature_data(
+                feature_data = SaeVisData.create(
                     encoder=self.sparse_autoencoder,  # type: ignore
-                    model=self.model,
+                    model=cast(HookedTransformer, self.model),
                     tokens=tokens,
                     cfg=feature_vis_params,
                 )
@@ -288,20 +284,6 @@ class NeuronpediaRunner:
                         feature.logits_table_data.bottom_logits
                     )
 
-                    # TODO: don't precompute/store these. should do it on the frontend
-                    max_value = max(
-                        np.absolute(bottom10_logits).max(),
-                        np.absolute(top10_logits).max(),
-                    )
-                    neg_bg_values = self.round_list(
-                        np.absolute(bottom10_logits) / max_value
-                    )
-                    pos_bg_values = self.round_list(
-                        np.absolute(top10_logits) / max_value
-                    )
-                    feature_output["neg_bg_values"] = neg_bg_values
-                    feature_output["pos_bg_values"] = pos_bg_values
-
                     if feature.feature_tables_data:
                         feature_output["neuron_alignment_indices"] = (
                             feature.feature_tables_data.neuron_alignment_indices
@@ -315,23 +297,21 @@ class NeuronpediaRunner:
                         feature_output["correlated_neurons_indices"] = (
                             feature.feature_tables_data.correlated_neurons_indices
                         )
-                        # TODO: this value doesn't exist in the new output type, commenting out for now
-                        # there is a cossim value though - is that what's needed?
-                        # feature_output["correlated_neurons_l1"] = self.round_list(
-                        #     feature.feature_tables_data.correlated_neurons_l1
-                        # )
+                        feature_output["correlated_neurons_l1"] = self.round_list(
+                            feature.feature_tables_data.correlated_neurons_cossim
+                        )
                         feature_output["correlated_neurons_pearson"] = self.round_list(
                             feature.feature_tables_data.correlated_neurons_pearson
                         )
-                        # feature_output["correlated_features_indices"] = (
-                        #     feature.feature_tables_data.correlated_features_indices
-                        # )
-                        # feature_output["correlated_features_l1"] = self.round_list(
-                        #     feature.feature_tables_data.correlated_features_l1
-                        # )
-                        # feature_output["correlated_features_pearson"] = self.round_list(
-                        #     feature.feature_tables_data.correlated_features_pearson
-                        # )
+                        feature_output["correlated_features_indices"] = (
+                            feature.feature_tables_data.correlated_features_indices
+                        )
+                        feature_output["correlated_features_l1"] = self.round_list(
+                            feature.feature_tables_data.correlated_features_cossim
+                        )
+                        feature_output["correlated_features_pearson"] = self.round_list(
+                            feature.feature_tables_data.correlated_features_pearson
+                        )
 
                     feature_output["neg_str"] = self.to_str_tokens_safe(
                         vocab_dict, feature.logits_table_data.bottom_token_ids
@@ -342,30 +322,23 @@ class NeuronpediaRunner:
                     )
                     feature_output["pos_values"] = top10_logits
 
-                    # TODO: don't know what this should be in the new version
-                    # feature_output["frac_nonzero"] = (
-                    #     feature.middle_plots_data.frac_nonzero
-                    # )
+                    feature_output["frac_nonzero"] = (
+                        float(
+                            feature.acts_histogram_data.title.split(" = ")[1].split(
+                                "%"
+                            )[0]
+                        )
+                        / 100
+                        if feature.acts_histogram_data.title is not None
+                        else 0
+                    )
 
                     freq_hist_data = feature.acts_histogram_data
                     freq_bar_values = self.round_list(freq_hist_data.bar_values)
                     feature_output["freq_hist_data_bar_values"] = freq_bar_values
-                    feature_output["freq_hist_data_tick_vals"] = self.round_list(
-                        freq_hist_data.tick_vals
-                    )
-
-                    # TODO: don't precompute/store these. should do it on the frontend
-                    freq_bar_values_clipped = [
-                        (0.4 * max(freq_bar_values) + 0.6 * v) / max(freq_bar_values)
-                        for v in freq_bar_values
-                    ]
-                    freq_bar_colors = [
-                        colors.rgb2hex(BG_COLOR_MAP(v)) for v in freq_bar_values_clipped
-                    ]
                     feature_output["freq_hist_data_bar_heights"] = self.round_list(
                         freq_hist_data.bar_heights
                     )
-                    feature_output["freq_bar_colors"] = freq_bar_colors
 
                     logits_hist_data = feature.logits_histogram_data
                     feature_output["logits_hist_data_bar_heights"] = self.round_list(
@@ -374,11 +347,7 @@ class NeuronpediaRunner:
                     feature_output["logits_hist_data_bar_values"] = self.round_list(
                         logits_hist_data.bar_values
                     )
-                    feature_output["logits_hist_data_tick_vals"] = self.round_list(
-                        logits_hist_data.tick_vals
-                    )
 
-                    # TODO: check this
                     feature_output["num_tokens_for_dashboard"] = (
                         self.n_prompts_to_select
                     )
@@ -441,10 +410,19 @@ class NeuronpediaRunner:
 
                     features_outputs.append(feature_output)
 
-                json_object = json.dumps(features_outputs, cls=NpEncoder)
+                to_write = {
+                    "model_id": self.model_id,
+                    "layer": str(self.layer),
+                    "sae_id": self.sae_id,
+                    "features": features_outputs,
+                    "n_batches_to_sample_from": self.n_batches_to_sample_from,
+                    "n_prompts_to_select": self.n_prompts_to_select,
+                }
+                json_object = json.dumps(to_write, cls=NpEncoder)
 
                 with open(
-                    f"{self.neuronpedia_folder}/batch-{feature_batch_count}.json", "w"
+                    f"{self.outputs_dir}/batch-{feature_batch_count}.json",
+                    "w",
                 ) as f:
                     f.write(json_object)
 
