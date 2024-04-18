@@ -7,7 +7,7 @@ from safetensors.torch import save_file
 from torch.optim import Adam, Optimizer
 from torch.optim.lr_scheduler import LRScheduler
 from tqdm import tqdm
-from transformer_lens import HookedTransformer
+from transformer_lens.hook_points import HookedRootModule
 
 import wandb
 from sae_lens.training.activations_store import ActivationsStore
@@ -53,7 +53,7 @@ class TrainSAEGroupOutput:
 
 
 def train_sae_on_language_model(
-    model: HookedTransformer,
+    model: HookedRootModule,
     sae_group: SparseAutoencoderDictionary,
     activation_store: ActivationsStore,
     batch_size: int = 1024,
@@ -79,7 +79,7 @@ def train_sae_on_language_model(
 
 
 def train_sae_group_on_language_model(
-    model: HookedTransformer,
+    model: HookedRootModule,
     sae_group: SparseAutoencoderDictionary,
     activation_store: ActivationsStore,
     batch_size: int = 1024,
