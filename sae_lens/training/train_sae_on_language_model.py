@@ -81,7 +81,8 @@ def train_sae_on_language_model(
     activation_store: ActivationsStore,
     batch_size: int = 1024,
     n_checkpoints: int = 0,
-    feature_sampling_window: int = 1000,  # how many training steps between resampling the features / considiring neurons dead
+    feature_sampling_window: int = 1000,
+    # how many training steps between resampling the features / considiring neurons dead
     dead_feature_threshold: float = 1e-8,  # how infrequently a feature has to be active to be considered dead
     use_wandb: bool = False,
     wandb_log_frequency: int = 50,
@@ -107,7 +108,8 @@ def train_sae_group_on_language_model(
     activation_store: ActivationsStore,
     batch_size: int = 1024,
     n_checkpoints: int = 0,
-    feature_sampling_window: int = 1000,  # how many training steps between resampling the features / considiring neurons dead
+    feature_sampling_window: int = 1000,
+    # how many training steps between resampling the features / considiring neurons dead
     use_wandb: bool = False,
     wandb_log_frequency: int = 50,
 ) -> TrainSAEGroupOutput:
@@ -177,14 +179,17 @@ def train_sae_group_on_language_model(
                         )
 
                     # record loss frequently, but not all the time.
+                    ctx = {
+                        "n_training_steps": n_training_steps,
+                        "suffix": wandb_suffix,
+                    }
                     if (n_training_steps + 1) % (wandb_log_frequency * 10) == 0:
                         sparse_autoencoder.eval()
                         run_evals(
                             sparse_autoencoder,
                             activation_store,
                             model,
-                            n_training_steps,
-                            suffix=wandb_suffix,
+                            ctx
                         )
                         sparse_autoencoder.train()
 
@@ -343,8 +348,8 @@ def _init_sae_group_b_decs(
             sae.initialize_b_dec_with_precalculated(geometric_medians[sae_layer_id])
         elif hyperparams.b_dec_init_method == "mean":
             layer_acts = activation_store.storage_buffer.detach().cpu()[
-                :, sae_layer_id, :
-            ]
+                         :, sae_layer_id, :
+                         ]
             sae.initialize_b_dec_with_mean(layer_acts)
 
 
@@ -478,7 +483,7 @@ def _build_train_step_log_dict(
         # losses
         f"losses/mse_loss{wandb_suffix}": mse_loss.item(),
         f"losses/l1_loss{wandb_suffix}": l1_loss.item()
-        / sparse_autoencoder.l1_coefficient,  # normalize by l1 coefficient
+                                         / sparse_autoencoder.l1_coefficient,  # normalize by l1 coefficient
         f"losses/ghost_grad_loss{wandb_suffix}": ghost_grad_loss.item(),
         f"losses/overall_loss{wandb_suffix}": loss.item(),
         # variance explained
@@ -499,7 +504,6 @@ def _save_checkpoint(
     checkpoint_name: int | str,
     wandb_aliases: list[str] | None = None,
 ) -> str:
-
     checkpoint_path = f"{sae_group.cfg.checkpoint_path}/{checkpoint_name}"
     os.makedirs(checkpoint_path, exist_ok=True)
     for name, sae in sae_group.autoencoders.items():
