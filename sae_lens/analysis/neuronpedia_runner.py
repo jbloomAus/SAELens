@@ -244,7 +244,7 @@ class NeuronpediaRunner:
                         Column(
                             SequencesConfig(
                                 stack_mode="stack-all",
-                                buffer=None,
+                                buffer=None,  # type: ignore
                                 compute_buffer=True,
                                 n_quantiles=5,
                                 top_acts_group_size=20,
