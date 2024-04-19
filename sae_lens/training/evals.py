@@ -15,11 +15,11 @@ from sae_lens.training.sparse_autoencoder import SparseAutoencoder
 
 @torch.no_grad()
 def run_evals(
-        sparse_autoencoder: SparseAutoencoder,
-        activation_store: ActivationsStore,
-        model: HookedRootModule,
-        n_training_steps: int,
-        suffix: str = "",
+    sparse_autoencoder: SparseAutoencoder,
+    activation_store: ActivationsStore,
+    model: HookedRootModule,
+    n_training_steps: int,
+    suffix: str = "",
 ) -> Mapping[str, Any]:
     hook_point = sparse_autoencoder.cfg.hook_point
     hook_point_layer = sparse_autoencoder.hook_point_layer
@@ -82,7 +82,7 @@ def run_evals(
     l0_norm_out = torch.sum(sae_out != 0, dim=-1, dtype=sae_out.dtype)
     l0_norm_ratio = l0_norm_out / l0_norm_in
 
-    # l0_logits, l1_logits, sparsity, percent_alive = get_sparsity_metrics(sparse_autoencoder, activation_store)
+    l0_logits, l1_logits, sparsity, percent_alive = get_sparsity_metrics(sparse_autoencoder, activation_store)
 
     metrics = {
         # L0
@@ -101,12 +101,11 @@ def run_evals(
         f"metrics/ce_loss_with_ablation{suffix}": zero_abl_loss,
         # KL div
         f"metrics/kl_div{suffix}": kl_div.item(),
-
         # Sparsity
-        # f"metrics/l0_logits{suffix}": l0_logits,
-        # f"metrics/l1_logits{suffix}": l1_logits,
-        # f"metrics/sparsity{suffix}": sparsity.mean().item(),
-        # f"metrics/percent_alive{suffix}": percent_alive,
+        f"metrics/l0_logits{suffix}": l0_logits,
+        f"metrics/l1_logits{suffix}": l1_logits,
+        f"metrics/sparsity{suffix}": sparsity.mean().item(),
+        f"metrics/percent_alive{suffix}": percent_alive,
     }
 
     if wandb.run is not None:
@@ -147,16 +146,8 @@ def recons_loss_batched(
     return losses
 
 
-@torch.no_grad()
-def get_recons_loss(
-        sparse_autoencoder: SparseAutoencoder,
-        model: HookedRootModule,
-        batch_tokens: torch.Tensor,
-):
+def get_replacement_hook(sparse_autoencoder: SparseAutoencoder):
     hook_point = sparse_autoencoder.cfg.hook_point
-    loss = model(
-        batch_tokens, return_type="loss", **sparse_autoencoder.cfg.model_kwargs
-    )
     head_index = sparse_autoencoder.cfg.hook_point_head_index
 
     def standard_replacement_hook(activations: torch.Tensor, hook: Any):
@@ -181,8 +172,9 @@ def get_recons_loss(
         activations[:, :, head_index] = new_activations
         return activations
 
-    has_head_dim_key_substrings = ["hook_q", "hook_k", "hook_v", "hook_z"]
-    if any(substring in hook_point for substring in has_head_dim_key_substrings):
+    head_dim_key_names = ["hook_q", "hook_k", "hook_v", "hook_z"]
+
+    if any(name in hook_point for name in head_dim_key_names):
         if head_index is None:
             replacement_hook = all_head_replacement_hook
         else:
@@ -190,10 +182,26 @@ def get_recons_loss(
     else:
         replacement_hook = standard_replacement_hook
 
+    return replacement_hook
+
+
+@torch.no_grad()
+def get_recons_loss(
+        sparse_autoencoder: SparseAutoencoder,
+        model: HookedRootModule,
+        batch_tokens: torch.Tensor,
+):
+    hook_point = sparse_autoencoder.cfg.hook_point
+    loss = model(
+        batch_tokens, return_type="loss", **sparse_autoencoder.cfg.model_kwargs
+    )
+
     logits_without_sae = model(  # 4, 64, 50257
         batch_tokens,
         **sparse_autoencoder.cfg.model_kwargs,
     )
+
+    replacement_hook = get_replacement_hook(sparse_autoencoder)
 
     reconstructed = model.run_with_hooks(
         batch_tokens,
@@ -234,6 +242,7 @@ def get_sparsity_metrics(
         activation_store: ActivationsStore,
         n_batches: int = 50,
 ) -> tuple[float, float, torch.Tensor, float]:
+    assert activation_store.d_in == sparse_autoencoder.cfg.d_in  # TODO this should be checked on initialization
     batch_size = sparse_autoencoder.cfg.train_batch_size
 
     assert isinstance(sparse_autoencoder.cfg.d_sae, int)
@@ -241,7 +250,6 @@ def get_sparsity_metrics(
     l0s_list = []
     l1s_list = []
     for i in range(n_batches):
-        print(i)
         batch_activations = activation_store.next_batch()
         feature_acts = sparse_autoencoder(batch_activations).feature_acts.squeeze()
         l0s = (feature_acts > 0).float().squeeze().sum(dim=1)
