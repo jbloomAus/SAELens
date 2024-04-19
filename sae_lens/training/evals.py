@@ -15,11 +15,11 @@ from sae_lens.training.sparse_autoencoder import SparseAutoencoder
 
 @torch.no_grad()
 def run_evals(
-    sparse_autoencoder: SparseAutoencoder,
-    activation_store: ActivationsStore,
-    model: HookedRootModule,
-    n_training_steps: int,
-    suffix: str = "",
+        sparse_autoencoder: SparseAutoencoder,
+        activation_store: ActivationsStore,
+        model: HookedRootModule,
+        n_training_steps: int,
+        suffix: str = "",
 ) -> Mapping[str, Any]:
     hook_point = sparse_autoencoder.cfg.hook_point
     hook_point_layer = sparse_autoencoder.hook_point_layer
@@ -42,6 +42,7 @@ def run_evals(
     ntp_loss = losses_df["loss"].mean()
     recons_loss = losses_df["recons_loss"].mean()
     zero_abl_loss = losses_df["zero_abl_loss"].mean()
+    kl_div = losses_df["kl_div"].mean()
 
     # get cache
     _, cache = model.run_with_cache(
@@ -81,7 +82,7 @@ def run_evals(
     l0_norm_out = torch.sum(sae_out != 0, dim=-1, dtype=sae_out.dtype)
     l0_norm_ratio = l0_norm_out / l0_norm_in
 
-    kl_div = get_kl_div(original_act, sae_out)
+    # l0_logits, l1_logits, sparsity, percent_alive = get_sparsity_metrics(sparse_autoencoder, activation_store)
 
     metrics = {
         # L0
@@ -100,6 +101,12 @@ def run_evals(
         f"metrics/ce_loss_with_ablation{suffix}": zero_abl_loss,
         # KL div
         f"metrics/kl_div{suffix}": kl_div.item(),
+
+        # Sparsity
+        # f"metrics/l0_logits{suffix}": l0_logits,
+        # f"metrics/l1_logits{suffix}": l1_logits,
+        # f"metrics/sparsity{suffix}": sparsity.mean().item(),
+        # f"metrics/percent_alive{suffix}": percent_alive,
     }
 
     if wandb.run is not None:
@@ -112,15 +119,15 @@ def run_evals(
 
 
 def recons_loss_batched(
-    sparse_autoencoder: SparseAutoencoder,
-    model: HookedRootModule,
-    activation_store: ActivationsStore,
-    n_batches: int = 100,
+        sparse_autoencoder: SparseAutoencoder,
+        model: HookedRootModule,
+        activation_store: ActivationsStore,
+        n_batches: int = 100,
 ):
     losses = []
     for _ in range(n_batches):
         batch_tokens = activation_store.get_batch_tokens()
-        score, loss, recons_loss, zero_abl_loss = get_recons_loss(
+        score, loss, recons_loss, zero_abl_loss, kl_div = get_recons_loss(
             sparse_autoencoder, model, batch_tokens
         )
         losses.append(
@@ -129,11 +136,12 @@ def recons_loss_batched(
                 loss.mean().item(),
                 recons_loss.mean().item(),
                 zero_abl_loss.mean().item(),
+                kl_div.mean().item(),
             )
         )
 
     losses = pd.DataFrame(
-        losses, columns=cast(Any, ["score", "loss", "recons_loss", "zero_abl_loss"])
+        losses, columns=cast(Any, ["score", "loss", "recons_loss", "zero_abl_loss", "kl_div"])
     )
 
     return losses
@@ -141,9 +149,9 @@ def recons_loss_batched(
 
 @torch.no_grad()
 def get_recons_loss(
-    sparse_autoencoder: SparseAutoencoder,
-    model: HookedRootModule,
-    batch_tokens: torch.Tensor,
+        sparse_autoencoder: SparseAutoencoder,
+        model: HookedRootModule,
+        batch_tokens: torch.Tensor,
 ):
     hook_point = sparse_autoencoder.cfg.hook_point
     loss = model(
@@ -203,7 +211,11 @@ def get_recons_loss(
 
     score = (zero_abl_loss - recons_loss) / div_val
 
-    kl_div = get_kl_div(loss, recons_loss)
+    kl_div = get_kl_div(zero_abl_out.logits, recons_out.logits)
+    print(zero_abl_out.logits.shape)
+    print(recons_out.logits.shape)
+    print(zero_abl_out.logits[0:5])
+    print(recons_out.logits[0:5])
 
     return score, loss, recons_loss, zero_abl_loss, kl_div
 
@@ -218,3 +230,35 @@ def get_kl_div(y_true: torch.Tensor, y_pred: torch.Tensor):
     probs2 = F.softmax(y_pred, dim=-1)
     kl_divergence = F.kl_div(probs1.log(), probs2, reduction='batchmean')
     return kl_divergence
+
+
+@torch.no_grad()
+def get_sparsity_metrics(
+        sparse_autoencoder: SparseAutoencoder,
+        activation_store: ActivationsStore,
+        n_batches: int = 50,
+) -> tuple[float, float, torch.Tensor, float]:
+    batch_size = sparse_autoencoder.cfg.train_batch_size
+
+    assert isinstance(sparse_autoencoder.cfg.d_sae, int)
+    total_feature_acts = torch.zeros(sparse_autoencoder.cfg.d_sae)
+    l0s_list = []
+    l1s_list = []
+    for i in range(n_batches):
+        print(i)
+        batch_activations = activation_store.next_batch()
+        feature_acts = sparse_autoencoder(batch_activations).feature_acts.squeeze()
+        l0s = (feature_acts > 0).float().squeeze().sum(dim=1)
+        l1s = feature_acts.abs().sum(dim=1)
+        total_feature_acts += (feature_acts > 0).squeeze().sum(dim=0).cpu()
+        l0s_list.append(l0s)
+        l1s_list.append(l1s)
+
+    l0 = torch.concat(l0s_list).mean().item()
+    l1 = torch.concat(l1s_list).mean().item()
+
+    sparsity = total_feature_acts / (n_batches * batch_size)
+    log_feature_sparsity = torch.log10(sparsity + 1e-10)
+    percent_alive = (log_feature_sparsity > -5).float().mean().item()
+
+    return l0, l1, sparsity, percent_alive
