@@ -136,7 +136,7 @@ def recons_loss_batched(
                 loss.mean().item(),
                 recons_loss.mean().item(),
                 zero_abl_loss.mean().item(),
-                kl_div.mean().item(),
+                kl_div.item(),
             )
         )
 
@@ -190,46 +190,42 @@ def get_recons_loss(
     else:
         replacement_hook = standard_replacement_hook
 
-    recons_out = model.run_with_hooks(
+    logits_without_sae = model(  # 4, 64, 50257
+        batch_tokens,
+        **sparse_autoencoder.cfg.model_kwargs,
+    )
+
+    reconstructed = model.run_with_hooks(
         batch_tokens,
         return_type="both",
         fwd_hooks=[(hook_point, partial(replacement_hook))],
         **sparse_autoencoder.cfg.model_kwargs,
     )
-    recons_loss = recons_out.loss
 
-    zero_abl_out = model.run_with_hooks(
+    zero_abl = model.run_with_hooks(
         batch_tokens,
         return_type="both",
         fwd_hooks=[(hook_point, zero_ablate_hook)],
         **sparse_autoencoder.cfg.model_kwargs,
     )
-    zero_abl_loss = zero_abl_out.loss
 
-    div_val = zero_abl_loss - loss
+    div_val = zero_abl.loss - loss
     div_val[torch.abs(div_val) < 0.0001] = 1.0
 
-    score = (zero_abl_loss - recons_loss) / div_val
+    score = (zero_abl.loss - reconstructed.loss) / div_val
 
-    kl_div = get_kl_div(zero_abl_out.logits, recons_out.logits)
-    print(zero_abl_out.logits.shape)
-    print(recons_out.logits.shape)
-    print(zero_abl_out.logits[0:5])
-    print(recons_out.logits[0:5])
+    kl_div = F.kl_div(
+        F.log_softmax(reconstructed.logits, dim=-1),
+        F.softmax(logits_without_sae, dim=-1),
+        reduction='batchmean'
+    )
 
-    return score, loss, recons_loss, zero_abl_loss, kl_div
+    return score, loss, reconstructed.loss, zero_abl.loss, kl_div
 
 
 def zero_ablate_hook(activations: torch.Tensor, hook: Any):
     activations = torch.zeros_like(activations)
     return activations
-
-
-def get_kl_div(y_true: torch.Tensor, y_pred: torch.Tensor):
-    probs1 = F.softmax(y_true, dim=-1)
-    probs2 = F.softmax(y_pred, dim=-1)
-    kl_divergence = F.kl_div(probs1.log(), probs2, reduction='batchmean')
-    return kl_divergence
 
 
 @torch.no_grad()
