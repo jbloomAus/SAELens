@@ -36,12 +36,14 @@ class SparseAutoencoder(HookedRootModule):
     d_sae: int
     use_ghost_grads: bool
     hook_point_layer: int
+    use_error_term: bool
     dtype: torch.dtype
     device: str | torch.device
 
     def __init__(
         self,
         cfg: LanguageModelSAERunnerConfig,
+        use_error_term: bool = False,
     ):
         super().__init__()
         self.cfg = cfg
@@ -70,6 +72,7 @@ class SparseAutoencoder(HookedRootModule):
         self.device = cfg.device
         self.use_ghost_grads = cfg.use_ghost_grads
         self.hook_point_layer = cfg.hook_point_layer
+        self.use_error_term = use_error_term
 
         # NOTE: if using resampling neurons method, you must ensure that we initialise the weights in the order W_enc, b_enc, W_dec, b_dec
         self.W_enc = nn.Parameter(
@@ -103,21 +106,23 @@ class SparseAutoencoder(HookedRootModule):
             torch.ones(self.d_sae, dtype=self.dtype, device=self.device)
         )
 
-        self.hook_sae_in = HookPoint()
-        self.hook_hidden_pre = HookPoint()
-        self.hook_hidden_post = HookPoint()
-        self.hook_sae_out = HookPoint()
+        self.hook_sae_input = HookPoint()
+        self.hook_sae_acts_pre = HookPoint()
+        self.hook_sae_acts_post = HookPoint()
+        self.hook_sae_recons = HookPoint()
+        self.hook_sae_error = HookPoint()
+        self.hook_sae_output = HookPoint()
 
         self.setup()  # Required for `HookedRootModule`s
 
     def forward(self, x: torch.Tensor, dead_neuron_mask: torch.Tensor | None = None):
         # move x to correct dtype
         x = x.to(self.dtype)
-        sae_in = self.hook_sae_in(
+        sae_in = self.hook_sae_input(
             x - (self.b_dec * self.cfg.apply_b_dec_to_input)
         )  # Remove decoder bias as per Anthropic
 
-        hidden_pre = self.hook_hidden_pre(
+        hidden_pre = self.hook_sae_acts_pre(
             einops.einsum(
                 sae_in,
                 self.W_enc,
@@ -125,9 +130,9 @@ class SparseAutoencoder(HookedRootModule):
             )
             + self.b_enc
         )
-        feature_acts = self.hook_hidden_post(torch.nn.functional.relu(hidden_pre))
+        feature_acts = self.hook_sae_acts_post(torch.nn.functional.relu(hidden_pre))
 
-        sae_out = self.hook_sae_out(
+        sae_out = (
             einops.einsum(
                 feature_acts
                 * self.scaling_factor,  # need to make sure this handled when loading old models.
@@ -162,8 +167,45 @@ class SparseAutoencoder(HookedRootModule):
         l1_loss = self.l1_coefficient * sparsity
         loss = mse_loss + l1_loss + ghost_grad_loss
 
+        if self.use_error_term:
+            with torch.no_grad():
+
+                # Recompute everything without hooks to get true error term
+                # Otherwise, the output with error term will always equal input, even for causal interventions that affect x_reconstruct
+                # This is in a no_grad context to detach the error, so we can compute SAE feature gradients (eg for attribution patching).
+                # See A.3 in https://arxiv.org/pdf/2403.19647.pdf for more detail
+
+                sae_in = self.hook_sae_input(
+                    x - (self.b_dec * self.cfg.apply_b_dec_to_input)
+                )  # Remove decoder bias as per Anthropic
+
+                hidden_pre = (
+                    einops.einsum(
+                        sae_in,
+                        self.W_enc,
+                        "... d_in, d_in d_sae -> ... d_sae",
+                    )
+                    + self.b_enc
+                )
+                feature_acts_err_calc = torch.nn.functional.relu(hidden_pre)
+                sae_out_err_calc = (
+                    einops.einsum(
+                        feature_acts_err_calc,
+                        self.W_dec,
+                        "... d_sae, d_sae d_in -> ... d_in",
+                    )
+                    + self.b_dec
+                )
+                error = self.hook_sae_error(x - sae_out_err_calc)
+
+                # note: we are intentionally returning the sae_out not calculated in this loop (see comment above)
+                sae_out_final = self.hook_sae_output(sae_out + error)
+
+        else:
+            sae_out_final = self.hook_sae_output(sae_out)
+
         return ForwardOutput(
-            sae_out=sae_out,
+            sae_out=sae_out_final,
             feature_acts=feature_acts,
             loss=loss,
             mse_loss=mse_loss,

@@ -1,8 +1,8 @@
 from typing import Any
 
 import torch
-from transformer_lens import HookedTransformer
 
+from sae_lens.analysis.hooked_sae_transformer import HookedSAETransformer
 from sae_lens.training.config import LanguageModelSAERunnerConfig
 
 TINYSTORIES_MODEL = "tiny-stories-1M"
@@ -51,16 +51,16 @@ def build_sae_cfg(**kwargs: Any) -> LanguageModelSAERunnerConfig:
     return mock_config
 
 
-MODEL_CACHE: dict[str, HookedTransformer] = {}
+MODEL_CACHE: dict[str, HookedSAETransformer] = {}
 
 
-def load_model_cached(model_name: str) -> HookedTransformer:
+def load_model_cached(model_name: str) -> HookedSAETransformer:
     """
     helper to avoid unnecessarily loading the same model multiple times.
     NOTE: if the model gets modified in tests this will not work.
     """
     if model_name not in MODEL_CACHE:
-        MODEL_CACHE[model_name] = HookedTransformer.from_pretrained(
-            model_name, device="cpu"
-        )
+        model = HookedSAETransformer.from_pretrained(model_name, device="cpu")
+        assert isinstance(model, HookedSAETransformer)
+        MODEL_CACHE[model_name] = model
     return MODEL_CACHE[model_name]
