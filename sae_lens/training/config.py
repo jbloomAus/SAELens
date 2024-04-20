@@ -167,10 +167,10 @@ class LanguageModelSAERunnerConfig:
             n_tokens_per_buffer = (
                 self.store_batch_size * self.context_size * self.n_batches_in_buffer
             )
-            print(f"n_tokens_per_buffer (millions): {n_tokens_per_buffer / 10 **6}")
+            print(f"n_tokens_per_buffer (millions): {n_tokens_per_buffer / 10 ** 6}")
             n_contexts_per_buffer = self.store_batch_size * self.n_batches_in_buffer
             print(
-                f"Lower bound: n_contexts_per_buffer (millions): {n_contexts_per_buffer / 10 **6}"
+                f"Lower bound: n_contexts_per_buffer (millions): {n_contexts_per_buffer / 10 ** 6}"
             )
 
             total_training_steps = (
@@ -187,10 +187,10 @@ class LanguageModelSAERunnerConfig:
                 total_training_steps // self.feature_sampling_window
             )
             print(
-                f"n_tokens_per_feature_sampling_window (millions): {(self.feature_sampling_window * self.context_size * self.train_batch_size) / 10 **6}"
+                f"n_tokens_per_feature_sampling_window (millions): {(self.feature_sampling_window * self.context_size * self.train_batch_size) / 10 ** 6}"
             )
             print(
-                f"n_tokens_per_dead_feature_window (millions): {(self.dead_feature_window * self.context_size * self.train_batch_size) / 10 **6}"
+                f"n_tokens_per_dead_feature_window (millions): {(self.dead_feature_window * self.context_size * self.train_batch_size) / 10 ** 6}"
             )
             print(
                 f"We will reset the sparsity calculation {n_feature_window_samples} times."
