@@ -246,6 +246,26 @@ def test_per_item_mse_loss_with_norm_matches_original_implementation() -> None:
     assert torch.allclose(orig_impl_res, sae_res, atol=1e-5)
 
 
+def test_SparseAutoencoder_forward_can_add_noise_to_hidden_pre() -> None:
+    clean_cfg = build_sae_cfg(d_in=2, d_sae=4, noise_scale=0)
+    noisy_cfg = build_sae_cfg(d_in=2, d_sae=4, noise_scale=100)
+    clean_sae = SparseAutoencoder(clean_cfg)
+    noisy_sae = SparseAutoencoder(noisy_cfg)
+
+    input = torch.randn(3, 2)
+
+    clean_output1 = clean_sae.forward(input).sae_out
+    clean_output2 = clean_sae.forward(input).sae_out
+    noisy_output1 = noisy_sae.forward(input).sae_out
+    noisy_output2 = noisy_sae.forward(input).sae_out
+
+    # with no noise, the outputs should be identical
+    assert torch.allclose(clean_output1, clean_output2)
+    # noisy outputs should be different
+    assert not torch.allclose(noisy_output1, noisy_output2)
+    assert not torch.allclose(clean_output1, noisy_output1)
+
+
 def test_SparseAutoencoder_remove_gradient_parallel_to_decoder_directions() -> None:
     cfg = build_sae_cfg(normalize_sae_decoder=True)
     sae = SparseAutoencoder(cfg)
