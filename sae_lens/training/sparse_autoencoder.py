@@ -280,10 +280,11 @@ class SparseAutoencoder(HookedRootModule):
                     )
                     state_dict["cfg"].device = "mps"
                 else:
-                    state_dict = torch.load(path)
+                    state_dict = torch.load(
+                        path, pickle_module=BackwardsCompatiblePickleClass
+                    )
             except Exception as e:
                 raise IOError(f"Error loading the state dictionary from .pt file: {e}")
-
         elif path.endswith(".pkl.gz"):
             try:
                 with gzip.open(path, "rb") as f:
