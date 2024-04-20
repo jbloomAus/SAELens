@@ -3,16 +3,19 @@ import os
 
 import torch
 from tqdm import tqdm
-from transformer_lens import HookedTransformer
 
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.config import CacheActivationsRunnerConfig
+from sae_lens.training.load_model import load_model
 from sae_lens.training.utils import shuffle_activations_pairwise
 
 
 def cache_activations_runner(cfg: CacheActivationsRunnerConfig):
-    model = HookedTransformer.from_pretrained(cfg.model_name)
-    model.to(cfg.device)
+    model = load_model(
+        model_class_name=cfg.model_class_name,
+        model_name=cfg.model_name,
+        device=cfg.device,
+    )
     activations_store = ActivationsStore.from_config(
         model,
         cfg,
@@ -28,11 +31,11 @@ def cache_activations_runner(cfg: CacheActivationsRunnerConfig):
     else:
         os.makedirs(activations_store.cached_activations_path)
 
-    print(f"Started caching {cfg.total_training_tokens} activations")
+    print(f"Started caching {cfg.training_tokens} activations")
     tokens_per_buffer = (
         cfg.store_batch_size * cfg.context_size * cfg.n_batches_in_buffer
     )
-    n_buffers = math.ceil(cfg.total_training_tokens / tokens_per_buffer)
+    n_buffers = math.ceil(cfg.training_tokens / tokens_per_buffer)
     # for i in tqdm(range(n_buffers), desc="Caching activations"):
     for i in range(n_buffers):
         buffer = activations_store.get_buffer(cfg.n_batches_in_buffer)

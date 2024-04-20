@@ -2,6 +2,128 @@
 
 
 
+## v0.5.1 (2024-04-19)
+
+### Chore
+
+* chore: re-enabling isort in CI (#86) ([`9c44731`](https://github.com/jbloomAus/SAELens/commit/9c44731a9b7718c9f0913136ed9df42dac87c390))
+
+### Fix
+
+* fix: pin pyzmq==26.0.1 temporarily ([`0094021`](https://github.com/jbloomAus/SAELens/commit/00940219754ddb1be6708e54cdd0ac6ed5dc3948))
+
+* fix: typing issue, temporary ([`25cebf1`](https://github.com/jbloomAus/SAELens/commit/25cebf1e5e0630a377a5045c1b3571a5f181853f))
+
+### Unknown
+
+* v0.5.1 ([`0ac218b`](https://github.com/jbloomAus/SAELens/commit/0ac218bf8068b8568310b40a1399f9eb3c8d992e))
+
+* Merge pull request #91 from jbloomAus/decoder-fine-tuning
+
+Decoder fine tuning ([`1fc652c`](https://github.com/jbloomAus/SAELens/commit/1fc652c19e2a34172c1fd520565e9620366f565c))
+
+* par update ([`2bb5975`](https://github.com/jbloomAus/SAELens/commit/2bb5975226807d352f2d3cf6b6dad7aefaf1b662))
+
+* Merge pull request #89 from jbloomAus/fix_np
+
+Enhance + Fix Neuronpedia generation / upload ([`38d507c`](https://github.com/jbloomAus/SAELens/commit/38d507c052875cbd78f8fd9dae45a658e47c2b9d))
+
+* minor changes ([`bc766e4`](https://github.com/jbloomAus/SAELens/commit/bc766e4f7a8d472f647408b8a5cd3c6140d856b7))
+
+* reformat run.ipynb ([`822882c`](https://github.com/jbloomAus/SAELens/commit/822882cac9c05449b7237b7d42ce17297903da2f))
+
+* get decoder fine tuning working ([`11a71e1`](https://github.com/jbloomAus/SAELens/commit/11a71e1b95576ef6dc3dbec7eb1c76ce7ca44dfd))
+
+* format ([`040676d`](https://github.com/jbloomAus/SAELens/commit/040676db6814c1f64171a32344e0bed40528c8f9))
+
+* Merge pull request #88 from jbloomAus/get_feature_from_neuronpedia
+
+FEAT: Add API for getting Neuronpedia feature ([`1666a68`](https://github.com/jbloomAus/SAELens/commit/1666a68bb7d7ee4837e03d95b203ee371ca9ea9e))
+
+* Fix resuming from batch ([`145a407`](https://github.com/jbloomAus/SAELens/commit/145a407f8d57755301bf56c87efd4e775c59b980))
+
+* Use original repo for sae_vis ([`1a7d636`](https://github.com/jbloomAus/SAELens/commit/1a7d636c95ef508dde8bd100ab6d9f241b0be977))
+
+* Use correct model name for np runner ([`138d5d4`](https://github.com/jbloomAus/SAELens/commit/138d5d445878c0830c6c96a5fbe6b10a1d9644b0))
+
+* Merge main, remove eindex ([`6578436`](https://github.com/jbloomAus/SAELens/commit/6578436891e71a0ef60fb2ed6d6a6b6279d71cbc))
+
+* Add API for getting Neuronpedia feature ([`e78207d`](https://github.com/jbloomAus/SAELens/commit/e78207d086cb3372dc805cbb4c87b694749cd905))
+
+
+## v0.5.0 (2024-04-17)
+
+### Feature
+
+* feat: Mamba support vs mamba-lens (#79)
+
+* mamba support
+
+* added init
+
+* added optional model kwargs
+
+* Support transformers and mamba
+
+* forgot one model kwargs
+
+* failed opts
+
+* tokens input
+
+* hack to fix tokens, will look into fixing mambalens
+
+* fixed checkpoint
+
+* added sae group
+
+* removed some comments and fixed merge error
+
+* removed unneeded params since that issue is fixed in mambalens now
+
+* Unneded input param
+
+* removed debug checkpoing and eval
+
+* added refs to hookedrootmodule
+
+* feed linter
+
+* added example and fixed loading
+
+* made layer for eval change
+
+* fix linter issues
+
+* adding mamba-lens as optional dep, and fixing typing/linting
+
+* adding a test for loading mamba model
+
+* adding mamba-lens to dev for CI
+
+* updating min mamba-lens version
+
+* updating mamba-lens version
+
+---------
+
+Co-authored-by: David Chanin &lt;chanindav@gmail.com&gt; ([`eea7db4`](https://github.com/jbloomAus/SAELens/commit/eea7db4b99098c33cd862e7e2280a32b630826bd))
+
+### Unknown
+
+* update readme ([`440df7b`](https://github.com/jbloomAus/SAELens/commit/440df7b6c0ef55ba3d116054f81e1ee4a58f9089))
+
+* update readme ([`3694fd2`](https://github.com/jbloomAus/SAELens/commit/3694fd2c4cc7438121e4549636508c45835a5d38))
+
+* Fix upload skipped/dead features ([`932f380`](https://github.com/jbloomAus/SAELens/commit/932f380971ce3d431e6592c804d12f6df2b4ec78))
+
+* Use python typer instead of shell script for neuronpedia jobs ([`b611e72`](https://github.com/jbloomAus/SAELens/commit/b611e721dd2620ab5a030cc0f6e37029c30711ca))
+
+* Merge branch &#39;main&#39; into fix_np ([`cc6cb6a`](https://github.com/jbloomAus/SAELens/commit/cc6cb6a96b793e41fb91f4ebbaf3bfa5e7c11b4e))
+
+* convert sparsity to log sparsity if needed ([`8d7d404`](https://github.com/jbloomAus/SAELens/commit/8d7d4040033fb80c5b994cdc662b0f90b8fcc7aa))
+
+
 ## v0.4.0 (2024-04-16)
 
 ### Feature
@@ -22,7 +144,25 @@
 
 * default orthogonal init false ([`a8b0113`](https://github.com/jbloomAus/SAELens/commit/a8b0113140bd2f9b97befccc8f158dace02a4810))
 
+* Formatting ([`1e3d53e`](https://github.com/jbloomAus/SAELens/commit/1e3d53ec2b72897bfebb6065f3b530fe65d3a97c))
+
+* Eindex required by sae_vis ([`f769e7a`](https://github.com/jbloomAus/SAELens/commit/f769e7a65ab84d4073852931a86ff3b5076eea3c))
+
+* Upload dead feature stubs ([`9067380`](https://github.com/jbloomAus/SAELens/commit/9067380bf67b89d8b2d235944f696016286f683e))
+
+* Make feature sparsity an argument ([`8230570`](https://github.com/jbloomAus/SAELens/commit/8230570297d68e35cb614a63abf442e4a01174d2))
+
+* Fix buffer&#34; ([`dde2481`](https://github.com/jbloomAus/SAELens/commit/dde248162b70ff4311d4182333b7cce43aed78df))
+
+* Merge branch &#39;main&#39; into fix_np ([`6658392`](https://github.com/jbloomAus/SAELens/commit/66583923cd625bfc1c1ef152bc5f5beaa764b2d6))
+
 * notebook update ([`feca408`](https://github.com/jbloomAus/SAELens/commit/feca408cf003737cd4eb529ca7fea2f77984f5c6))
+
+* Merge branch &#39;main&#39; into fix_np ([`f8fb3ef`](https://github.com/jbloomAus/SAELens/commit/f8fb3efbde7fc79e6fafe2d9b3324c9f0b2a337d))
+
+* Final fixes ([`e87788d`](https://github.com/jbloomAus/SAELens/commit/e87788d63a9b767e34e497c85a318337ab8aabb8))
+
+* Don&#39;t use buffer, fix anomalies ([`2c9ca64`](https://github.com/jbloomAus/SAELens/commit/2c9ca642b334b7a444544a4640c483229dc04c62))
 
 
 ## v0.3.0 (2024-04-15)
@@ -43,6 +183,10 @@
 * format ([`c359c27`](https://github.com/jbloomAus/SAELens/commit/c359c272ae4d5b1e25da5333c4beff99e924532c))
 
 * make dense_batch_mse_normalization optional ([`c41774e`](https://github.com/jbloomAus/SAELens/commit/c41774e5cfaeb195e3320e9e3fc93d60d921337d))
+
+* Runner is fixed, faster, cleaned up, and now gives whole sequences instead of buffer. ([`3837884`](https://github.com/jbloomAus/SAELens/commit/383788485917cee114fba24e8ded944aefcfb568))
+
+* Merge branch &#39;main&#39; into fix_np ([`3ed30cf`](https://github.com/jbloomAus/SAELens/commit/3ed30cf2b84a2444c8ed030641214f0dbb65898a))
 
 * add warning in run script ([`9a772ca`](https://github.com/jbloomAus/SAELens/commit/9a772ca6da155b5e97bc3109da74457f5addfbfd))
 
@@ -73,6 +217,10 @@
 * feat: overhaul saving and loading ([`004e8f6`](https://github.com/jbloomAus/SAELens/commit/004e8f64498a8cca52c9bb485baee8cb934dbfc7))
 
 ### Unknown
+
+* Use legacy loader, add back histograms, logits. Fix anomaly characters. ([`ebbb622`](https://github.com/jbloomAus/SAELens/commit/ebbb622353bef21c953f844a108ea8d9fe31e9f9))
+
+* Merge branch &#39;main&#39; into fix_np ([`586e088`](https://github.com/jbloomAus/SAELens/commit/586e0881e08a9b013e2d4101878ef054c1f3dd8b))
 
 * Merge pull request #80 from wllgrnt/will-update-tutorial
 
@@ -118,6 +266,8 @@ Fix artifact saving loading ([`8784c74`](https://github.com/jbloomAus/SAELens/co
 
 * add safetensors to project ([`0da48b0`](https://github.com/jbloomAus/SAELens/commit/0da48b044357eed17e5afffd3ce541e064185043))
 
+* Don&#39;t precompute background colors and tick values ([`271dbf0`](https://github.com/jbloomAus/SAELens/commit/271dbf05567b6e6ae4cfc1dab138132872038381))
+
 * Merge pull request #71 from weissercn/main
 
 Addressing notebook issues ([`8417505`](https://github.com/jbloomAus/SAELens/commit/84175055ba5876b335cbc0de38bf709d0b11cec1))
@@ -125,6 +275,8 @@ Addressing notebook issues ([`8417505`](https://github.com/jbloomAus/SAELens/com
 * Merge pull request #70 from jbloomAus/update-readme-install
 
 chore: updating README.md with pip install instructions and PyPI badge ([`4d7d1e7`](https://github.com/jbloomAus/SAELens/commit/4d7d1e7db5e952c7e9accf19c0ccce466cdcf6cf))
+
+* FIX: Add back correlated neurons, frac_nonzero ([`d532b82`](https://github.com/jbloomAus/SAELens/commit/d532b828bd77c18b73f495d6b42ca53b5148fd2f))
 
 * linting ([`1db0b5a`](https://github.com/jbloomAus/SAELens/commit/1db0b5ae7e091822c72bba0488d30fc16bc9a1c6))
 

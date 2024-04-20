@@ -3,19 +3,26 @@ from dataclasses import dataclass
 from typing import Any, cast
 
 import torch
+import wandb
 from safetensors.torch import save_file
 from torch.optim import Adam, Optimizer
 from torch.optim.lr_scheduler import LRScheduler
 from tqdm import tqdm
-from transformer_lens import HookedTransformer
+from transformer_lens.hook_points import HookedRootModule
 
-import wandb
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.evals import run_evals
 from sae_lens.training.geometric_median import compute_geometric_median
 from sae_lens.training.optim import get_scheduler
 from sae_lens.training.sae_group import SparseAutoencoderDictionary
 from sae_lens.training.sparse_autoencoder import SparseAutoencoder
+
+# used to map between parameters which are updated during finetuning and the config str.
+FINETUNING_PARAMETERS = {
+    "scale": ["scaling_factor"],
+    "decoder": ["scaling_factor", "W_dec", "b_dec"],
+    "unrotated_decoder": ["scaling_factor", "b_dec"],
+}
 
 
 def _log_feature_sparsity(
@@ -35,6 +42,7 @@ class SAETrainContext:
     n_frac_active_tokens: int
     optimizer: Optimizer
     scheduler: LRScheduler
+    finetuning: bool = False
 
     @property
     def feature_sparsity(self) -> torch.Tensor:
@@ -43,6 +51,21 @@ class SAETrainContext:
     @property
     def log_feature_sparsity(self) -> torch.Tensor:
         return _log_feature_sparsity(self.feature_sparsity)
+
+    def begin_finetuning(self, sae: SparseAutoencoder):
+
+        # finetuning method should be set in the config
+        # if not, then we don't finetune
+        if not isinstance(sae.cfg.finetuning_method, str):
+            return
+
+        for name, param in sae.named_parameters():
+            if name in FINETUNING_PARAMETERS[sae.cfg.finetuning_method]:
+                param.requires_grad = True
+            else:
+                param.requires_grad = False
+
+        self.finetuning = True
 
 
 @dataclass
@@ -53,7 +76,7 @@ class TrainSAEGroupOutput:
 
 
 def train_sae_on_language_model(
-    model: HookedTransformer,
+    model: HookedRootModule,
     sae_group: SparseAutoencoderDictionary,
     activation_store: ActivationsStore,
     batch_size: int = 1024,
@@ -79,7 +102,7 @@ def train_sae_on_language_model(
 
 
 def train_sae_group_on_language_model(
-    model: HookedTransformer,
+    model: HookedRootModule,
     sae_group: SparseAutoencoderDictionary,
     activation_store: ActivationsStore,
     batch_size: int = 1024,
@@ -88,10 +111,13 @@ def train_sae_group_on_language_model(
     use_wandb: bool = False,
     wandb_log_frequency: int = 50,
 ) -> TrainSAEGroupOutput:
-    total_training_tokens = sae_group.cfg.total_training_tokens
+    total_training_tokens = (
+        sae_group.cfg.training_tokens + sae_group.cfg.finetuning_tokens
+    )
     total_training_steps = total_training_tokens // batch_size
     n_training_steps = 0
     n_training_tokens = 0
+    started_fine_tuning = False
 
     checkpoint_thresholds = []
     if n_checkpoints > 0:
@@ -180,6 +206,16 @@ def train_sae_group_on_language_model(
         )
         pbar.update(batch_size)
 
+        ### If n_training_tokens > sae_group.cfg.training_tokens, then we should switch to fine-tuning (if we haven't already)
+        if (not started_fine_tuning) and (
+            n_training_tokens > sae_group.cfg.training_tokens
+        ):
+            started_fine_tuning = True
+            for name, sparse_autoencoder in sae_group.autoencoders.items():
+                ctx = train_contexts[name]
+                # this should turn grads on for the scaling factor and other parameters.
+                ctx.begin_finetuning(sae_group.autoencoders[name])
+
     # save final sae group to checkpoints folder
     final_checkpoint = _save_checkpoint(
         sae_group,
@@ -247,6 +283,12 @@ def _build_train_context(
         device=sae.cfg.device,
     )
     n_frac_active_tokens = 0
+
+    # we don't train the scaling factor (initially)
+    # set requires grad to false for the scaling factor
+    for name, param in sae.named_parameters():
+        if "scaling_factor" in name:
+            param.requires_grad = False
 
     optimizer = Adam(
         sae.parameters(),
