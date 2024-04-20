@@ -6,7 +6,7 @@ import gzip
 import json
 import os
 import pickle
-from typing import NamedTuple, Callable, Optional
+from typing import Callable, NamedTuple, Optional
 
 import einops
 import torch
@@ -15,6 +15,7 @@ from safetensors.torch import save_file
 from torch import nn
 from transformer_lens.hook_points import HookedRootModule, HookPoint
 
+from sae_lens.training.activation_functions import get_activation_fn
 from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.utils import BackwardsCompatiblePickleClass
 
@@ -35,11 +36,11 @@ class SparseAutoencoder(HookedRootModule):
     lp_norm: float
     d_sae: int
     use_ghost_grads: bool
+    normalize_sae_decoder: bool
     hook_point_layer: int
     dtype: torch.dtype
     device: str | torch.device
     noise_scale: float
-    sae_type: str
     activation_fn: Callable[[torch.Tensor], torch.Tensor]
 
     def __init__(
@@ -72,27 +73,10 @@ class SparseAutoencoder(HookedRootModule):
         self.dtype = cfg.dtype
         self.device = cfg.device
         self.use_ghost_grads = cfg.use_ghost_grads
+        self.normalize_sae_decoder = cfg.normalize_sae_decoder
         self.hook_point_layer = cfg.hook_point_layer
-        self.noise_scale = getattr(cfg, "noise_scale", 0.0)
-        self.sae_type = getattr(cfg, "sae_type", "unit_norm_sae")
-        self.activation_fn = (
-            torch.nn.functional.relu
-        )  # maybe change this to `torch.relu`
-        if self.sae_type == "tanh_sae":
-            assert (
-                self.noise_scale > 0
-            ), f"Unexpected noise_scale: {self.noise_scale}, noise should be strictly positive for normalized SAEs"
-
-            def tanh_relu(input: torch.Tensor) -> torch.Tensor:
-                input = torch.relu(input)
-                input = torch.tanh(input)
-                return input
-
-            self.activation_fn = tanh_relu
-        elif self.sae_type == "unit_norm_sae":
-            self.noise_scale = 0.0
-        else:
-            raise ValueError(f"Unexpected sae_type: {cfg.sae_type}")
+        self.noise_scale = cfg.noise_scale
+        self.activation_fn = get_activation_fn(cfg.activation_fn)
 
         # NOTE: if using resampling neurons method, you must ensure that we initialise the weights in the order W_enc, b_enc, W_dec, b_dec
         self.W_enc = nn.Parameter(
@@ -113,7 +97,7 @@ class SparseAutoencoder(HookedRootModule):
         if self.cfg.decoder_orthogonal_init:
             self.W_dec.data = nn.init.orthogonal_(self.W_dec.data.T).T
 
-        if self.sae_type == "unit_norm_sae":
+        if self.normalize_sae_decoder:
             with torch.no_grad():
                 # Anthropic normalize this to have unit columns
                 self.set_decoder_norm_to_unit_norm()
@@ -149,8 +133,10 @@ class SparseAutoencoder(HookedRootModule):
             )
             + self.b_enc
         )
-        noise = torch.randn_like(hidden_pre) * self.noise_scale
-        noisy_hidden_pre = hidden_pre + noise
+        noisy_hidden_pre = hidden_pre
+        if self.noise_scale > 0:
+            noise = torch.randn_like(hidden_pre) * self.noise_scale
+            noisy_hidden_pre = hidden_pre + noise
         feature_acts = self.hook_hidden_post(self.activation_fn(noisy_hidden_pre))
 
         sae_out = self.hook_sae_out(

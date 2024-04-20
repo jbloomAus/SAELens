@@ -247,14 +247,12 @@ def test_per_item_mse_loss_with_norm_matches_original_implementation() -> None:
 
 
 def test_SparseAutoencoder_remove_gradient_parallel_to_decoder_directions() -> None:
-    cfg = build_sae_cfg()
+    cfg = build_sae_cfg(normalize_sae_decoder=True)
     sae = SparseAutoencoder(cfg)
     orig_grad = torch.randn_like(sae.W_dec)
     orig_W_dec = sae.W_dec.clone()
     sae.W_dec.grad = orig_grad.clone()
-
-    if sae.sae_type == "unit_norm_sae":
-        sae.remove_gradient_parallel_to_decoder_directions()
+    sae.remove_gradient_parallel_to_decoder_directions()
 
     # check that the gradient is orthogonal to the decoder directions
     parallel_component = einops.einsum(
@@ -281,11 +279,10 @@ def test_SparseAutoencoder_get_name_returns_correct_name_from_cfg_vals() -> None
 
 
 def test_SparseAutoencoder_set_decoder_norm_to_unit_norm() -> None:
-    cfg = build_sae_cfg()
+    cfg = build_sae_cfg(normalize_sae_decoder=True)
     sae = SparseAutoencoder(cfg)
     sae.W_dec.data = 20 * torch.randn_like(sae.W_dec)
-    if sae.sae_type == "unit_norm_sae":
-        sae.set_decoder_norm_to_unit_norm()
+    sae.set_decoder_norm_to_unit_norm()
     assert torch.allclose(
         torch.norm(sae.W_dec, dim=1), torch.ones_like(sae.W_dec[:, 0])
     )
