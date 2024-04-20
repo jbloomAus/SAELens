@@ -312,7 +312,7 @@ class SparseAutoencoder(HookedRootModule):
 
         # Create an instance of the class using the loaded configuration
         instance = cls(cfg=state_dict["cfg"])
-        instance.load_state_dict(state_dict["state_dict"])
+        instance.load_state_dict(state_dict["state_dict"], strict=False)
 
         return instance
 
