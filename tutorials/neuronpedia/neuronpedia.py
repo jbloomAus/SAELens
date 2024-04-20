@@ -2,21 +2,23 @@
 # better fix is to investigate and fix the memory issues
 
 import json
-import os
-import requests
-import typer
-import torch
 import math
+import os
 import subprocess
-from typing import Any
 from decimal import Decimal
 from pathlib import Path
-from typing_extensions import Annotated
+from typing import Any
+
+import requests
+import torch
+import typer
 from rich import print
 from rich.align import Align
 from rich.panel import Panel
-from sae_lens.training.sparse_autoencoder import SparseAutoencoder
+from typing_extensions import Annotated
+
 from sae_lens.toolkit.pretrained_saes import load_sparsity
+from sae_lens.training.sparse_autoencoder import SparseAutoencoder
 
 OUTPUT_DIR_BASE = Path("../../neuronpedia_outputs")
 
@@ -120,9 +122,7 @@ Enter value""",
         print("Error: cfg.json file not found in SAE directory.")
         raise typer.Abort()
     if sae_path.joinpath("sae_weights.safetensors").is_file() is not True:
-        print(
-            "Error: sae_weights.safetensors file not found in SAE directory."
-        )
+        print("Error: sae_weights.safetensors file not found in SAE directory.")
         raise typer.Abort()
     if sae_path.joinpath("sparsity.safetensors").is_file() is not True:
         print("Error: sparsity.safetensors file not found in SAE directory.")
@@ -144,9 +144,7 @@ Enter value""",
     outputs_subdir = f"{model_id}_{sae_id}_{sparse_autoencoder.cfg.hook_point}"
     outputs_dir = OUTPUT_DIR_BASE.joinpath(outputs_subdir)
     if outputs_dir.exists() and outputs_dir.is_file():
-        print(
-            f"Error: Output directory {outputs_dir.as_posix()} exists and is a file."
-        )
+        print(f"Error: Output directory {outputs_dir.as_posix()} exists and is a file.")
         raise typer.Abort()
     outputs_dir.mkdir(parents=True, exist_ok=True)
     # Check if output_dir has any files starting with "batch_"
@@ -163,9 +161,7 @@ Enter value""",
     if len(sparsity) > 0 and sparsity[0] >= 0:
         sparsity = torch.log10(sparsity + 1e-10)
     sparsity = sparsity.to(device)
-    alive_indexes = (
-        (sparsity > log_sparsity).nonzero(as_tuple=True)[0].tolist()
-    )
+    alive_indexes = (sparsity > log_sparsity).nonzero(as_tuple=True)[0].tolist()
     num_alive = len(alive_indexes)
     num_dead = sparse_autoencoder.d_sae - num_alive
 
@@ -394,9 +390,7 @@ def nanToNeg999(obj: Any) -> Any:
         return {k: nanToNeg999(v) for k, v in obj.items()}
     elif isinstance(obj, list):
         return [nanToNeg999(v) for v in obj]
-    elif (isinstance(obj, float) or isinstance(obj, Decimal)) and math.isnan(
-        obj
-    ):
+    elif (isinstance(obj, float) or isinstance(obj, Decimal)) and math.isnan(obj):
         return -999
     return obj
 

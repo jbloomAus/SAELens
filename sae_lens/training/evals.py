@@ -3,9 +3,9 @@ from typing import Any, Mapping, cast
 
 import pandas as pd
 import torch
+import wandb
 from transformer_lens.hook_points import HookedRootModule
 
-import wandb
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.sparse_autoencoder import SparseAutoencoder
 
