@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.10", "3.11"]
+        python-version: ["3.10", "3.11", "3.12"]
 
     steps:
       - uses: actions/checkout@v4
@@ -64,8 +64,8 @@ jobs:
         run: poetry run flake8 .
       - name: black code formatting
         run: poetry run black . --check
-    #   - name: isort linting
-    #     run: poetry run isort . --check-only --diff
+      - name: isort linting
+        run: poetry run isort . --check-only --diff
       - name: type checking
         run: poetry run pyright
       - name: Run Unit Tests
