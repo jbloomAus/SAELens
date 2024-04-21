@@ -2,6 +2,67 @@
 
 
 
+## v0.6.0 (2024-04-21)
+
+### Chore
+
+* chore: enabling pythong 3.12 checks for CI ([`25526ea`](https://github.com/jbloomAus/SAELens/commit/25526ea2f72aeee77daad677cfd3555fe48d9e88))
+
+* chore: setting up precommit to be consistent with CI ([`18e706d`](https://github.com/jbloomAus/SAELens/commit/18e706dad75f3f9bddf388f5f5c32328669749fe))
+
+### Feature
+
+* feat: Added `tanh-relu` activation fn and input noise options  (#77)
+
+* Still need to pip-install from GitHub hufy implementation.
+
+* Added support for `tanh_sae`.
+
+* Added notebook for loading the `tanh_sae`
+
+* tweaking config options to be more declarating / composable
+
+* testing adding noise to SAE forward pass
+
+* updating notebook
+
+---------
+
+Co-authored-by: David Chanin &lt;chanindav@gmail.com&gt; ([`551e94d`](https://github.com/jbloomAus/SAELens/commit/551e94de83797791e10d9c67e328031e207718c5))
+
+### Unknown
+
+* Update proposal.md ([`6d45b33`](https://github.com/jbloomAus/SAELens/commit/6d45b33423fb308343c0b5bb0a49b12322b8c620))
+
+* Merge pull request #96 from jbloomAus/github-templates
+
+add templates for PR&#39;s / issues ([`241a201`](https://github.com/jbloomAus/SAELens/commit/241a20195d58fbc03f33218458d43e5cbedf1745))
+
+* add templates for PR&#39;s / issues ([`74ff597`](https://github.com/jbloomAus/SAELens/commit/74ff5979e9d64b7af9fc4e0978da37857c6c8dcf))
+
+* Merge pull request #95 from jbloomAus/load-state-dict-not-strict
+
+Make load_state_dict use strict=False ([`4a9e274`](https://github.com/jbloomAus/SAELens/commit/4a9e2748ce34510b92328606fd5351851472eb48))
+
+* fix accidental bug ([`c22fbbd`](https://github.com/jbloomAus/SAELens/commit/c22fbbdebc31c42cc579a1ff6433cfc73a8aeb2b))
+
+* fix load pretrained legacy with state dict change ([`b5e97f8`](https://github.com/jbloomAus/SAELens/commit/b5e97f8b343be5c2bed36914741df9dad96361b7))
+
+* Make load_state_dict use strict=False ([`fdf7fe9`](https://github.com/jbloomAus/SAELens/commit/fdf7fe951bf8275b7b9bee62e7c06b83570f2798))
+
+* Merge pull request #94 from jbloomAus/update-pre-commit
+
+chore: setting up precommit to be consistent with CI ([`6a056b7`](https://github.com/jbloomAus/SAELens/commit/6a056b7b6914f6bf6dfca5eb006f3114d4d61d11))
+
+* Merge pull request #87 from evanhanders/old_to_new
+
+Adds function that converts old .pt pretrained SAEs to new folder format ([`1cb1725`](https://github.com/jbloomAus/SAELens/commit/1cb17251c4a5f9d3e19c1cd4b109b58e7c6f0e7c))
+
+* Merge pull request #93 from jbloomAus/py-312-ci
+
+chore: enabling python 3.12 checks for CI ([`87be422`](https://github.com/jbloomAus/SAELens/commit/87be42246e9173bacd98530368e2267e8e917912))
+
+
 ## v0.5.1 (2024-04-19)
 
 ### Chore
@@ -17,6 +78,16 @@
 ### Unknown
 
 * v0.5.1 ([`0ac218b`](https://github.com/jbloomAus/SAELens/commit/0ac218bf8068b8568310b40a1399f9eb3c8d992e))
+
+* fixes string vs path typing errors ([`94f1fc1`](https://github.com/jbloomAus/SAELens/commit/94f1fc127f74dbd95ae586ff3ce4d15605403e14))
+
+* removes unused import ([`06406b0`](https://github.com/jbloomAus/SAELens/commit/06406b096f5295aab2235247def704cddd4d3dd4))
+
+* updates formatting for alignment with repo standards. ([`5e1f342`](https://github.com/jbloomAus/SAELens/commit/5e1f3428058d63ffa8e627f322909685ed1fdf59))
+
+* consolidates with SAE class load_legacy function &amp; adds test ([`0f85ded`](https://github.com/jbloomAus/SAELens/commit/0f85dede8437271724f1ec5dc79cc97829dee49b))
+
+* adds old-&gt;new file conversion function ([`fda2b57`](https://github.com/jbloomAus/SAELens/commit/fda2b571bc303545b5714bee3c27d3f4a2e56186))
 
 * Merge pull request #91 from jbloomAus/decoder-fine-tuning
 
