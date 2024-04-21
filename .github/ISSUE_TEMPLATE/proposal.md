@@ -1,6 +1,6 @@
 ---
 name: Proposal
-about: Propose changes that are not fixes bugs
+about: Propose changes that are not bug fixes
 title: "[Proposal] Proposal title"
 ---
 
