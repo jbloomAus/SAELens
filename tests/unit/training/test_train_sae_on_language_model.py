@@ -5,11 +5,11 @@ from unittest.mock import patch
 
 import pytest
 import torch
+import wandb
 from datasets import Dataset
 from torch import Tensor
 from transformer_lens import HookedTransformer
 
-import wandb
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.optim import get_scheduler
 from sae_lens.training.sae_group import SparseAutoencoderDictionary
@@ -26,6 +26,7 @@ from sae_lens.training.train_sae_on_language_model import (
 from tests.unit.helpers import build_sae_cfg
 
 
+# TODO: Address why we have this code here rather than importing it.
 def build_train_ctx(
     sae: SparseAutoencoder,
     act_freq_scores: Tensor | None = None,
@@ -310,11 +311,11 @@ def test_train_sae_group_on_language_model__runs(
     cfg = build_sae_cfg(
         checkpoint_path=checkpoint_dir,
         train_batch_size=32,
-        total_training_tokens=100,
+        training_tokens=100,
         context_size=8,
     )
     # just a tiny datast which will run quickly
-    dataset = Dataset.from_list([{"text": "hello world"}] * 1000)
+    dataset = Dataset.from_list([{"text": "hello world"}] * 2000)
     activation_store = ActivationsStore.from_config(ts_model, cfg, dataset=dataset)
     sae_group = SparseAutoencoderDictionary(cfg)
     res = train_sae_group_on_language_model(

@@ -32,7 +32,7 @@ def build_sae_cfg(**kwargs: Any) -> LanguageModelSAERunnerConfig:
         feature_sampling_window=50,
         dead_feature_threshold=1e-7,
         n_batches_in_buffer=2,
-        total_training_tokens=1_000_000,
+        training_tokens=1_000_000,
         store_batch_size=4,
         log_to_wandb=False,
         wandb_project="test_project",
