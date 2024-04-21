@@ -79,23 +79,17 @@ class LanguageModelSAERunnerConfig:
         None  # only used for cosine annealing, default is lr / 10
     )
     lr_decay_steps: int | list[int] = 0
-    n_restart_cycles: int | list[int] = (
-        1  # used only for cosineannealingwarmrestarts
-    )
+    n_restart_cycles: int | list[int] = 1  # used only for cosineannealingwarmrestarts
 
     ## FineTuning
-    finetuning_method: Optional[str] = (
-        None  # scale, decoder or unrotated_decoder
-    )
+    finetuning_method: Optional[str] = None  # scale, decoder or unrotated_decoder
 
     # Resampling protocol args
     use_ghost_grads: bool | list[bool] = (
         False  # want to change this to true on some timeline.
     )
     feature_sampling_window: int = 2000
-    dead_feature_window: int = (
-        1000  # unless this window is larger feature sampling,
-    )
+    dead_feature_window: int = 1000  # unless this window is larger feature sampling,
 
     dead_feature_threshold: float = 1e-8
 
@@ -113,10 +107,7 @@ class LanguageModelSAERunnerConfig:
     model_kwargs: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
-        if (
-            self.use_cached_activations
-            and self.cached_activations_path is None
-        ):
+        if self.use_cached_activations and self.cached_activations_path is None:
             self.cached_activations_path = _default_cached_activations_path(
                 self.dataset_path,
                 self.model_name,
@@ -127,9 +118,7 @@ class LanguageModelSAERunnerConfig:
         if not isinstance(self.expansion_factor, list):
             self.d_sae = self.d_in * self.expansion_factor
         self.tokens_per_buffer = (
-            self.train_batch_size
-            * self.context_size
-            * self.n_batches_in_buffer
+            self.train_batch_size * self.context_size * self.n_batches_in_buffer
         )
 
         if self.run_name is None:
@@ -152,9 +141,7 @@ class LanguageModelSAERunnerConfig:
             self.dtype: torch.dtype = DTYPE_MAP[self.dtype]
 
         # if we use decoder fine tuning, we can't be applying b_dec to the input
-        if (self.finetuning_method == "decoder") and (
-            self.apply_b_dec_to_input
-        ):
+        if (self.finetuning_method == "decoder") and (self.apply_b_dec_to_input):
             raise ValueError(
                 "If we are fine tuning the decoder, we can't be applying b_dec to the input.\nSet apply_b_dec_to_input to False."
             )
@@ -178,16 +165,10 @@ class LanguageModelSAERunnerConfig:
             )
             # Print out some useful info:
             n_tokens_per_buffer = (
-                self.store_batch_size
-                * self.context_size
-                * self.n_batches_in_buffer
+                self.store_batch_size * self.context_size * self.n_batches_in_buffer
             )
-            print(
-                f"n_tokens_per_buffer (millions): {n_tokens_per_buffer / 10 ** 6}"
-            )
-            n_contexts_per_buffer = (
-                self.store_batch_size * self.n_batches_in_buffer
-            )
+            print(f"n_tokens_per_buffer (millions): {n_tokens_per_buffer / 10 ** 6}")
+            n_contexts_per_buffer = self.store_batch_size * self.n_batches_in_buffer
             print(
                 f"Lower bound: n_contexts_per_buffer (millions): {n_contexts_per_buffer / 10 ** 6}"
             )
@@ -197,9 +178,7 @@ class LanguageModelSAERunnerConfig:
             ) // self.train_batch_size
             print(f"Total training steps: {total_training_steps}")
 
-            total_wandb_updates = (
-                total_training_steps // self.wandb_log_frequency
-            )
+            total_wandb_updates = total_training_steps // self.wandb_log_frequency
             print(f"Total wandb updates: {total_wandb_updates}")
 
             # how many times will we sample dead neurons?
