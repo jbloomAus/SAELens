@@ -1,10 +1,12 @@
 import os
 import tempfile
+from dataclasses import fields
 
 import pytest
 import torch
 from huggingface_hub import hf_hub_download
 from transformer_lens import HookedTransformer
+from typeguard import TypeCheckError, check_type
 
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.config import LanguageModelSAERunnerConfig
@@ -105,3 +107,13 @@ def test_load_pretrained_sae_from_huggingface():
     assert isinstance(activation_store, ActivationsStore)
     assert sae.cfg.hook_point_layer == layer
     assert sae.cfg.model_name == "gpt2-small"
+
+    for field in fields(LanguageModelSAERunnerConfig):
+        val = getattr(sae.cfg, field.name)
+        try:
+            check_type(val, field.type)
+        except TypeCheckError as e:
+            # reraise to get nicer error message so we know what field is messed up
+            raise ValueError(
+                f"Field {field.name} with value {val} is not of type {field.type} in the config.\n{e}"
+            )

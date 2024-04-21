@@ -6,7 +6,8 @@ import gzip
 import json
 import os
 import pickle
-from typing import Callable, NamedTuple, Optional
+from dataclasses import fields
+from typing import Any, Callable, NamedTuple, Optional
 
 import einops
 import torch

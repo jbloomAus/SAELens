@@ -1,9 +1,11 @@
 import json
-from typing import Protocol
+from dataclasses import fields
+from typing import Any, Protocol
 
 import torch
 from huggingface_hub import hf_hub_download
 from safetensors import safe_open
+from typeguard import TypeCheckError, check_type
 
 from sae_lens import __version__
 from sae_lens.training.config import LanguageModelSAERunnerConfig
@@ -44,9 +46,21 @@ def load_pretrained_sae_lens_sae_components(
 ) -> tuple[LanguageModelSAERunnerConfig, dict[str, torch.Tensor]]:
     with open(cfg_path, "r") as f:
         config = json.load(f)
-    var_names = LanguageModelSAERunnerConfig.__init__.__code__.co_varnames
-    # filter config for varnames
-    config = {k: v for k, v in config.items() if k in var_names}
+
+    config_fields = fields(LanguageModelSAERunnerConfig)
+    fields_by_name = {f.name: f for f in config_fields}
+
+    def is_valid_config_field(var_name: str, val: Any) -> bool:
+        if var_name not in fields_by_name:
+            return False
+        try:
+            check_type(val, fields_by_name[var_name].type)
+            return True
+        except TypeCheckError:
+            return False
+
+    # filter out any invalid config fields
+    config = {k: v for k, v in config.items() if is_valid_config_field(k, v)}
     config["verbose"] = False
     config["device"] = device
 
