@@ -312,7 +312,13 @@ class SparseAutoencoder(HookedRootModule):
 
         # Create an instance of the class using the loaded configuration
         instance = cls(cfg=state_dict["cfg"])
-        instance.load_state_dict(state_dict["state_dict"], strict=False)
+        new_state_dict = instance.state_dict()
+        if "scaling_factor" not in state_dict["state_dict"]:
+            assert isinstance(instance.cfg.d_sae, int)
+            state_dict["state_dict"]["scaling_factor"] = torch.ones(
+                instance.cfg.d_sae, dtype=instance.cfg.dtype, device=instance.cfg.device
+            )
+        instance.load_state_dict(new_state_dict, strict=True)
 
         return instance
 

@@ -112,6 +112,43 @@ def test_SparseAutoencoder_save_and_load_from_pretrained(tmp_path: Path) -> None
         )
 
 
+def test_SparseAutoencoder_save_and_load_from_pretrained_lacks_scaling_factor(
+    tmp_path: Path,
+) -> None:
+    cfg = build_sae_cfg(device="cpu")
+    model_path = str(tmp_path)
+    sparse_autoencoder = SparseAutoencoder(cfg)
+    sparse_autoencoder_state_dict = sparse_autoencoder.state_dict()
+    # sometimes old state dicts will be missing the scaling factor
+    del sparse_autoencoder_state_dict["scaling_factor"]  # = torch.tensor(0.0)
+    sparse_autoencoder.save_model(model_path)
+
+    assert os.path.exists(model_path)
+
+    sparse_autoencoder_loaded = SparseAutoencoder.load_from_pretrained(model_path)
+    sparse_autoencoder_loaded.cfg.verbose = True
+    sparse_autoencoder_loaded.cfg.checkpoint_path = cfg.checkpoint_path
+    sparse_autoencoder_loaded.cfg.device = "cpu"  # might autoload onto mps
+    sparse_autoencoder_loaded = sparse_autoencoder_loaded.to("cpu")
+    sparse_autoencoder_loaded_state_dict = sparse_autoencoder_loaded.state_dict()
+    # check cfg matches the original
+    assert sparse_autoencoder_loaded.cfg == cfg
+
+    # check state_dict matches the original
+    for key in sparse_autoencoder.state_dict().keys():
+        if key == "scaling_factor":
+            assert isinstance(cfg.d_sae, int)
+            assert torch.allclose(
+                torch.ones(cfg.d_sae, dtype=cfg.dtype, device=cfg.device),
+                sparse_autoencoder_loaded_state_dict[key],
+            )
+        else:
+            assert torch.allclose(
+                sparse_autoencoder_state_dict[key],
+                sparse_autoencoder_loaded_state_dict[key],
+            )
+
+
 def test_sparse_autoencoder_forward(sparse_autoencoder: SparseAutoencoder):
     batch_size = 32
     d_in = sparse_autoencoder.d_in
