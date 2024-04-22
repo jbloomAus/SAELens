@@ -191,6 +191,7 @@ class NeuronpediaRunner:
                 "model_id": self.model_id,
                 "layer": str(self.layer),
                 "sae_id": self.sae_id,
+                "log_sparsity": self.sparsity_threshold,
                 "skipped_indexes": list(skipped_indexes),
             }
         )
@@ -235,6 +236,13 @@ class NeuronpediaRunner:
                     continue
                 if self.end_batch is not None and feature_batch_count > self.end_batch:
                     # print(f"Skipping batch - it's after end_batch: {feature_batch_count}")
+                    continue
+
+                output_file = f"{self.outputs_dir}/batch-{feature_batch_count}.json"
+                # if output_file exists, skip
+                if os.path.isfile(output_file):
+                    logline = f"\n++++++++++ Skipping Batch #{feature_batch_count} output. File exists: {output_file} ++++++++++\n"
+                    print(logline)
                     continue
 
                 print(f"========== Running Batch #{feature_batch_count} ==========")
@@ -421,9 +429,11 @@ class NeuronpediaRunner:
                 json_object = json.dumps(to_write, cls=NpEncoder)
 
                 with open(
-                    f"{self.outputs_dir}/batch-{feature_batch_count}.json",
+                    output_file,
                     "w",
                 ) as f:
                     f.write(json_object)
+
+                logline = f"\n========== Completed Batch #{feature_batch_count} output: {output_file} ==========\n"
 
         return
