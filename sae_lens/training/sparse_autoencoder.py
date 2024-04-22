@@ -6,7 +6,7 @@ import gzip
 import json
 import os
 import pickle
-from typing import NamedTuple, Optional
+from typing import Callable, NamedTuple, Optional
 
 import einops
 import torch
@@ -15,6 +15,7 @@ from safetensors.torch import save_file
 from torch import nn
 from transformer_lens.hook_points import HookedRootModule, HookPoint
 
+from sae_lens.training.activation_functions import get_activation_fn
 from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.utils import BackwardsCompatiblePickleClass
 
@@ -35,9 +36,12 @@ class SparseAutoencoder(HookedRootModule):
     lp_norm: float
     d_sae: int
     use_ghost_grads: bool
+    normalize_sae_decoder: bool
     hook_point_layer: int
     dtype: torch.dtype
     device: str | torch.device
+    noise_scale: float
+    activation_fn: Callable[[torch.Tensor], torch.Tensor]
 
     def __init__(
         self,
@@ -69,7 +73,10 @@ class SparseAutoencoder(HookedRootModule):
         self.dtype = cfg.dtype
         self.device = cfg.device
         self.use_ghost_grads = cfg.use_ghost_grads
+        self.normalize_sae_decoder = cfg.normalize_sae_decoder
         self.hook_point_layer = cfg.hook_point_layer
+        self.noise_scale = cfg.noise_scale
+        self.activation_fn = get_activation_fn(cfg.activation_fn)
 
         # NOTE: if using resampling neurons method, you must ensure that we initialise the weights in the order W_enc, b_enc, W_dec, b_dec
         self.W_enc = nn.Parameter(
@@ -90,9 +97,10 @@ class SparseAutoencoder(HookedRootModule):
         # if self.cfg.decoder_orthogonal_init:
         #     self.W_dec.data = nn.init.orthogonal_(self.W_dec.data.T).T
 
-        with torch.no_grad():
-            # Anthropic normalize this to have unit columns
-            self.set_decoder_norm_to_unit_norm()
+        if self.normalize_sae_decoder:
+            with torch.no_grad():
+                # Anthropic normalize this to have unit columns
+                self.set_decoder_norm_to_unit_norm()
 
         self.b_dec = nn.Parameter(
             torch.zeros(self.d_in, dtype=self.dtype, device=self.device)
@@ -125,7 +133,11 @@ class SparseAutoencoder(HookedRootModule):
             )
             + self.b_enc
         )
-        feature_acts = self.hook_hidden_post(torch.nn.functional.relu(hidden_pre))
+        noisy_hidden_pre = hidden_pre
+        if self.noise_scale > 0:
+            noise = torch.randn_like(hidden_pre) * self.noise_scale
+            noisy_hidden_pre = hidden_pre + noise
+        feature_acts = self.hook_hidden_post(self.activation_fn(noisy_hidden_pre))
 
         sae_out = self.hook_sae_out(
             einops.einsum(
@@ -312,7 +324,12 @@ class SparseAutoencoder(HookedRootModule):
 
         # Create an instance of the class using the loaded configuration
         instance = cls(cfg=state_dict["cfg"])
-        instance.load_state_dict(state_dict["state_dict"])
+        if "scaling_factor" not in state_dict["state_dict"]:
+            assert isinstance(instance.cfg.d_sae, int)
+            state_dict["state_dict"]["scaling_factor"] = torch.ones(
+                instance.cfg.d_sae, dtype=instance.cfg.dtype, device=instance.cfg.device
+            )
+        instance.load_state_dict(state_dict["state_dict"], strict=True)
 
         return instance
 
