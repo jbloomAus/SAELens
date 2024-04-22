@@ -147,13 +147,6 @@ Enter value""",
         print(f"Error: Output directory {outputs_dir.as_posix()} exists and is a file.")
         raise typer.Abort()
     outputs_dir.mkdir(parents=True, exist_ok=True)
-    # Check if output_dir has any files starting with "batch_"
-    batch_files = list(outputs_dir.glob("batch-*.json"))
-    if len(batch_files) > 0 and resume_from_batch == 1:
-        print(
-            f"Error: Output directory {outputs_dir.as_posix()} has existing batch files. This is only allowed if you are resuming from a batch. Please delete or move the existing batch-*.json files."
-        )
-        raise typer.Abort()
 
     sparsity = load_sparsity(sae_path_string)
     # convert sparsity to logged sparsity if it's not
