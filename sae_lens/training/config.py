@@ -38,6 +38,9 @@ class LanguageModelSAERunnerConfig:
     d_sae: Optional[int] = None
     b_dec_init_method: str = "geometric_median"
     expansion_factor: int | list[int] = 4
+    activation_fn: str = "relu"  # relu, tanh-relu
+    normalize_sae_decoder: bool = True
+    noise_scale: float = 0.0
     from_pretrained_path: Optional[str] = None
     apply_b_dec_to_input: bool = True
     decoder_orthogonal_init: bool = False

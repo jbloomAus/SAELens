@@ -24,7 +24,7 @@ def test_convert_old_to_modern_saelens_format():
 
     # convert file format
     pretrained_saes.convert_old_to_modern_saelens_format(
-        legacy_out_file, new_out_folder
+        legacy_out_file, new_out_folder, force=True
     )
 
     # Load from new converted file
