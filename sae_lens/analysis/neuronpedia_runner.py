@@ -191,6 +191,7 @@ class NeuronpediaRunner:
                 "model_id": self.model_id,
                 "layer": str(self.layer),
                 "sae_id": self.sae_id,
+                "log_sparsity": self.sparsity_threshold,
                 "skipped_indexes": list(skipped_indexes),
             }
         )
