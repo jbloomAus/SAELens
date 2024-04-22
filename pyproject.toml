@@ -1,10 +1,10 @@
 [tool.poetry]
-name = "mats_sae_training"
-version = "0.1.0"
-description = "Training Sparse Autoencoders (SAEs)"
+name = "sae-lens"
+version = "0.6.0"
+description = "Training and Analyzing Sparse Autoencoders (SAEs)"
 authors = ["Joseph Bloom"]
 readme = "README.md"
-packages = [{include = "sae_analysis"}, {include = "sae_training"}]
+packages = [{include = "sae_lens"}]
 
 [tool.poetry.dependencies]
 python = "^3.10"
@@ -20,30 +20,38 @@ matplotlib-inline = "^0.1.6"
 datasets = "^2.17.1"
 babe = "^0.0.7"
 nltk = "^3.8.1"
-sae-vis = {git = "https://github.com/callummcdougall/sae_vis.git", rev = "4bcef489b644dd3357b1975f3245d534f6f0d2e0"}
+sae-vis = "^0.2.15"
 mkdocs = "^1.5.3"
 mkdocs-material = "^9.5.15"
 mkdocs-autorefs = "^1.0.1"
 mkdocs-section-index = "^0.3.8"
 mkdocstrings = "^0.24.1"
 mkdocstrings-python = "^1.9.0"
+safetensors = "^0.4.2"
+typer = "^0.12.3"
+mamba-lens = { version = "^0.0.4", optional = true }
+pyzmq = "26.0.0"
 
 
 [tool.poetry.group.dev.dependencies]
-black = "^24.2.0"
+black = "24.4.0"
 pytest = "^8.0.2"
 pytest-cov = "^4.1.0"
 pre-commit = "^3.6.2"
-flake8 = "^7.0.0"
-isort = "^5.13.2"
+flake8 = "7.0.0"
+isort = "5.13.2"
 pyright = "^1.1.351"
+mamba-lens = "^0.0.4"
+
+[tool.poetry.extras]
+mamba = ["mamba-lens"]
+
 
 [tool.isort]
 profile = "black"
+src_paths = ["sae_lens", "tests"]
 
 [tool.pyright]
-exclude = ["./sae_training/geom_median/"]
-
 typeCheckingMode = "strict"
 reportMissingTypeStubs = "none"
 reportUnknownMemberType = "none"
@@ -56,6 +64,16 @@ reportConstantRedefinition = "none"
 reportUnknownLambdaType = "none"
 reportPrivateUsage = "none"
 
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+
+[tool.semantic_release]
+version_variables = [
+    "sae_lens/__init__.py:__version__",
+    "pyproject.toml:version",
+]
+branch = "main"
+build_command = "pip install poetry && poetry build"

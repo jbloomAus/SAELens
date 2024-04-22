@@ -23,8 +23,7 @@ import sys
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 os.environ["WANDB__SERVICE_WAIT"] = "300"
 
-from sae_training.config import LanguageModelSAERunnerConfig
-from sae_training.lm_runner import language_model_sae_runner
+from sae_lens import LanguageModelSAERunnerConfig, language_model_sae_runner
 
 cfg = LanguageModelSAERunnerConfig(
 
@@ -50,7 +49,7 @@ cfg = LanguageModelSAERunnerConfig(
     
     # Activation Store Parameters
     n_batches_in_buffer = 128,
-    total_training_tokens = 1_000_000 * 300,
+    training_tokens = 1_000_000 * 300,
     store_batch_size = 32,
     
     # Dead Neurons and Sparsity
@@ -61,7 +60,7 @@ cfg = LanguageModelSAERunnerConfig(
     
     # WANDB
     log_to_wandb = True,
-    wandb_project= "mats_sae_training_gpt2",
+    wandb_project= "gpt2",
     wandb_entity = None,
     wandb_log_frequency=100,
     
