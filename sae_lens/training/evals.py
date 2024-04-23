@@ -1,10 +1,9 @@
 from functools import partial
-from typing import Any, Mapping, cast
+from typing import Any, cast
 
 import pandas as pd
 import torch
 import torch.nn.functional as F
-from transformer_lens.hook_points import HookedRootModule
 
 import wandb
 from transformer_lens.hook_points import HookedRootModule
@@ -17,10 +16,6 @@ from dataclasses import dataclass, asdict
 
 @dataclass
 class Metrics:
-    l0_norm: float
-    l0_ratio: float
-    l1_norm: float
-    l1_ratio: float
     l2_norm: float
     l2_ratio: float
     CE_loss_score: float
@@ -61,30 +56,11 @@ def run_evals(
     )
 
     original_act, sae_out = get_activations(model, activation_store, sparse_autoencoder)
-
-    l2_norm_in = torch.norm(original_act, dim=-1)
-    l2_norm_out = torch.norm(sae_out, dim=-1)
-    l2_norm_in_for_div = l2_norm_in.clone()
-    l2_norm_in_for_div[torch.abs(l2_norm_in_for_div) < 0.0001] = 1
-    l2_norm_ratio = l2_norm_out / l2_norm_in_for_div
-
-    l1_norm_in = torch.norm(original_act, p=1, dim=-1)
-    l1_norm_out = torch.norm(sae_out, p=1, dim=-1)
-    l1_norm_in_for_div = l1_norm_in.clone()
-    l1_norm_in_for_div[torch.abs(l1_norm_in_for_div) < 0.0001] = 1
-    l1_norm_ratio = l1_norm_out / l1_norm_in_for_div
-
-    l0_norm_in = torch.sum(original_act != 0, dim=-1, dtype=original_act.dtype)
-    l0_norm_out = torch.sum(sae_out != 0, dim=-1, dtype=sae_out.dtype)
-    l0_norm_ratio = l0_norm_out / l0_norm_in
+    l2_norm_out, l2_norm_ratio = get_activation_metrics(original_act, sae_out)
 
     l0_logits, l1_logits, sparsity, percent_alive = get_sparsity_metrics(sparse_autoencoder, activation_store)
 
     metrics = Metrics(
-        l0_norm=l0_norm_out.mean().item(),
-        l0_ratio=l0_norm_ratio.mean().item(),
-        l1_norm=l1_norm_out.mean().item(),
-        l1_ratio=l1_norm_ratio.mean().item(),
         l2_norm=l2_norm_out.mean().item(),
         l2_ratio=l2_norm_ratio.mean().item(),
         CE_loss_score=recons_score,
@@ -294,3 +270,12 @@ def get_activations(model: HookedRootModule, activation_store: ActivationsStore,
     del cache
 
     return original_act, sae_out
+
+
+def get_activation_metrics(original_act, sae_out):
+    l2_norm_in = torch.norm(original_act, dim=-1)
+    l2_norm_out = torch.norm(sae_out, dim=-1)
+    l2_norm_in_for_div = l2_norm_in.clone()
+    l2_norm_in_for_div[torch.abs(l2_norm_in_for_div) < 0.0001] = 1
+    l2_norm_ratio = l2_norm_out / l2_norm_in_for_div
+    return l2_norm_out, l2_norm_ratio
