@@ -2,6 +2,25 @@
 
 
 
+## v0.7.0 (2024-04-24)
+
+### Feature
+
+* feat: make a neuronpedia list with features via api call (#101) ([`23e680d`](https://github.com/jbloomAus/SAELens/commit/23e680d2ae03b4c375651e14feb247d3eb29e516))
+
+### Unknown
+
+* Merge pull request #100 from jbloomAus/np_improvements
+
+Improvements to Neuronpedia Runner ([`5118f7f`](https://github.com/jbloomAus/SAELens/commit/5118f7f7019cb3b33a26f0acc8fca55e2074202b))
+
+* neuronpedia: save run settings to json file to avoid errors when resuming later. automatically skip batch files that already exist ([`4b5412b`](https://github.com/jbloomAus/SAELens/commit/4b5412b4c351156f20b965a4675b5448781dc951))
+
+* skip batch file if it already exists ([`7d0e396`](https://github.com/jbloomAus/SAELens/commit/7d0e3961903fbc559bc6f7e92b497d87b5a34244))
+
+* neuronpedia: include log sparsity threshold in skipped_indexes.json ([`5c967e7`](https://github.com/jbloomAus/SAELens/commit/5c967e7e83e27dd10bb5fbf5ba4a1291af41a16b))
+
+
 ## v0.6.0 (2024-04-21)
 
 ### Chore
