@@ -91,11 +91,7 @@ class SAETrainContext:
         return state_dict
 
     @classmethod
-    def load(cls,
-             path : str,
-             sae : SparseAutoencoder,
-             total_training_steps: int
-    ):
+    def load(cls, path: str, sae: SparseAutoencoder, total_training_steps: int):
         state_dict = load_file(path)
         attached_ctx = _build_train_context(
             sae=sae, total_training_steps=total_training_steps
@@ -254,7 +250,7 @@ def train_sae_group_on_language_model(
     class InterruptedException(Exception):
         pass
 
-    def interrupt_callback(sig_num : Any, stack_frame : Any):
+    def interrupt_callback(sig_num: Any, stack_frame: Any):
         raise InterruptedException()
 
     try:

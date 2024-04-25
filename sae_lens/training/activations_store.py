@@ -435,9 +435,8 @@ class ActivationsStore:
             "n_dataset_processed": torch.tensor(self.n_dataset_processed),
         }
         if not self._storage_buffer is None:  # first time might be None
-            result['storage_buffer'] = self._storage_buffer
+            result["storage_buffer"] = self._storage_buffer
         return result
-
 
     def save(self, file_path: str):
         save_file(self.state_dict(), file_path)

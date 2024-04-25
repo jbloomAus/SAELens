@@ -212,12 +212,12 @@ class LanguageModelSAERunnerConfig:
             print("Using Ghost Grads.")
 
     def get_checkpoints_by_step(self) -> tuple[dict[int, str], bool]:
-        '''
+        """
         Returns (dict, is_done)
         where dict is [steps] = path
         for each checkpoint, and
         is_done is True if there is a "final_{steps}" checkpoint
-        '''
+        """
         is_done = False
         checkpoints = [
             f
