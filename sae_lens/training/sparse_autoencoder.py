@@ -497,27 +497,26 @@ class GatedSparseAutoencoder(SparseAutoencoder):
             x - (self.b_dec * self.cfg.apply_b_dec_to_input)
         )  # Remove decoder bias as per Anthropic
 
-        # NOTE: implement gated SAE here
-        hidden_pre = einops.einsum(
-            sae_in,
-            self.W_enc,
-            "... d_in, d_in d_sae -> ... d_sae",
+        hidden_pre = self.hook_hidden_pre(
+            einops.einsum(
+                sae_in,
+                self.W_enc,
+                "... d_in, d_in d_sae -> ... d_sae",
+            )
         )
+        noisy_hidden_pre = hidden_pre
+        if self.noise_scale > 0:
+            noise = torch.randn_like(hidden_pre) * self.noise_scale
+            noisy_hidden_pre = hidden_pre + noise
+
+        # gated sae stuff
+        hidden_pre = noisy_hidden_pre
         hidden_pre_mag = hidden_pre * torch.exp(self.r_mag) + self.b_mag
-        hidden_pre_mag = self.activation_fn(hidden_pre_mag)
-        hidden_pre_gate = torch.sign(hidden_pre + self.b_gate)
+        hidden_pre_mag = self.hook_hidden_pre(self.activation_fn(hidden_pre_mag))
+        # 1 if positive, 0 if negative
+        hidden_pre_gate = (torch.sign(hidden_pre + self.b_gate) + 1) / 2
         hidden_pre = hidden_pre_mag * hidden_pre_gate
 
-        # TODO: Unsure where to add noise
-        # NOTE: currently disabled
-        # noisy_hidden_pre = hidden_pre
-        # if self.noise_scale > 0:
-        #     noise = torch.randn_like(hidden_pre) * self.noise_scale
-        #     noisy_hidden_pre = hidden_pre + noise)
-
-        # TODO: Unsure where to apply hooks
-        # NOTE: currently applied at same place
-        hidden_pre = self.hook_hidden_pre(hidden_pre)
         feature_acts = self.hook_hidden_post(hidden_pre)
 
         sae_out = self.hook_sae_out(
