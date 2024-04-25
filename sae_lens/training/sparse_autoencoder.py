@@ -403,6 +403,168 @@ class SparseAutoencoder(HookedRootModule):
         return per_item_mse_loss_ghost_resid.mean()
 
 
+class GatedSparseAutoencoder(SparseAutoencoder):
+
+    def __init__(
+        self,
+        cfg: LanguageModelSAERunnerConfig,
+    ):
+        super(SparseAutoencoder, self).__init__()
+        self.cfg = cfg
+        self.d_in = cfg.d_in
+        if not isinstance(self.d_in, int):
+            raise ValueError(
+                f"d_in must be an int but was {self.d_in=}; {type(self.d_in)=}"
+            )
+        assert cfg.d_sae is not None  # keep pyright happy
+        # lists are valid only for SAEGroup cfg, not SAE cfg vals
+        assert not isinstance(cfg.l1_coefficient, list)
+        assert not isinstance(cfg.lp_norm, list)
+        assert not isinstance(cfg.lr, list)
+        assert not isinstance(cfg.lr_scheduler_name, list)
+        assert not isinstance(cfg.lr_warm_up_steps, list)
+        assert not isinstance(cfg.use_ghost_grads, list)
+        assert not isinstance(cfg.hook_point_layer, list)
+        assert (
+            "{layer}" not in cfg.hook_point
+        ), "{layer} must be replaced with the actual layer number in SAE cfg"
+
+        self.d_sae = cfg.d_sae
+        self.l1_coefficient = cfg.l1_coefficient
+        self.lp_norm = cfg.lp_norm
+        self.dtype = cfg.dtype
+        self.device = cfg.device
+        self.use_ghost_grads = cfg.use_ghost_grads
+        self.normalize_sae_decoder = cfg.normalize_sae_decoder
+        self.hook_point_layer = cfg.hook_point_layer
+        self.noise_scale = cfg.noise_scale
+        self.activation_fn = get_activation_fn(cfg.activation_fn)
+
+        # NOTE: if using resampling neurons method, you must ensure that we initialise the weights in the order W_enc, b_enc, W_dec, b_dec
+        self.W_enc = nn.Parameter(
+            torch.nn.init.kaiming_uniform_(
+                torch.empty(self.d_in, self.d_sae, dtype=self.dtype, device=self.device)
+            )
+        )
+
+        self.W_dec = nn.Parameter(
+            torch.nn.init.kaiming_uniform_(
+                torch.empty(self.d_sae, self.d_in, dtype=self.dtype, device=self.device)
+            )
+        )
+
+        # gated SAE things
+        # add: --> r_mag
+        # replace: b_enc --> b_mag, b_gate
+        self.r_mag = nn.Parameter(
+            torch.zeros(self.d_sae, dtype=self.dtype, device=self.device)
+        )
+        self.b_mag = nn.Parameter(
+            torch.zeros(self.d_sae, dtype=self.dtype, device=self.device)
+        )
+        self.b_gate = nn.Parameter(
+            torch.zeros(self.d_sae, dtype=self.dtype, device=self.device)
+        )
+
+        if self.cfg.decoder_orthogonal_init:
+            self.W_dec.data = nn.init.orthogonal_(self.W_dec.data.T).T
+
+        if self.normalize_sae_decoder:
+            with torch.no_grad():
+                # Anthropic normalize this to have unit columns
+                self.set_decoder_norm_to_unit_norm()
+
+        self.b_dec = nn.Parameter(
+            torch.zeros(self.d_in, dtype=self.dtype, device=self.device)
+        )
+
+        # scaling factor for fine-tuning (not to be used in initial training)
+        self.scaling_factor = nn.Parameter(
+            torch.ones(self.d_sae, dtype=self.dtype, device=self.device)
+        )
+
+        self.hook_sae_in = HookPoint()
+        self.hook_hidden_pre = HookPoint()
+        self.hook_hidden_post = HookPoint()
+        self.hook_sae_out = HookPoint()
+
+        self.setup()  # Required for `HookedRootModule`s
+
+    def forward(self, x: torch.Tensor, dead_neuron_mask: torch.Tensor | None = None):
+        # move x to correct dtype
+        x = x.to(self.dtype)
+        sae_in = self.hook_sae_in(
+            x - (self.b_dec * self.cfg.apply_b_dec_to_input)
+        )  # Remove decoder bias as per Anthropic
+
+        # NOTE: implement gated SAE here
+        hidden_pre = einops.einsum(
+            sae_in,
+            self.W_enc,
+            "... d_in, d_in d_sae -> ... d_sae",
+        )
+        hidden_pre_mag = hidden_pre * torch.exp(self.r_mag) + self.b_mag
+        hidden_pre_mag = self.activation_fn(hidden_pre_mag)
+        hidden_pre_gate = torch.sign(hidden_pre + self.b_gate)
+        hidden_pre = hidden_pre_mag * hidden_pre_gate
+
+        # TODO: Unsure where to add noise
+        # NOTE: currently disabled
+        # noisy_hidden_pre = hidden_pre
+        # if self.noise_scale > 0:
+        #     noise = torch.randn_like(hidden_pre) * self.noise_scale
+        #     noisy_hidden_pre = hidden_pre + noise)
+
+        # TODO: Unsure where to apply hooks
+        # NOTE: currently applied at same place
+        hidden_pre = self.hook_hidden_pre(hidden_pre)
+        feature_acts = self.hook_hidden_post(hidden_pre)
+
+        sae_out = self.hook_sae_out(
+            einops.einsum(
+                feature_acts
+                * self.scaling_factor,  # need to make sure this handled when loading old models.
+                self.W_dec,
+                "... d_sae, d_sae d_in -> ... d_in",
+            )
+            + self.b_dec
+        )
+
+        # add config for whether l2 is normalized:
+        per_item_mse_loss = _per_item_mse_loss_with_target_norm(
+            sae_out, x, self.cfg.mse_loss_normalization
+        )
+        ghost_grad_loss = torch.tensor(0.0, dtype=self.dtype, device=self.device)
+        # gate on config and training so evals is not slowed down.
+        if (
+            self.use_ghost_grads
+            and self.training
+            and dead_neuron_mask is not None
+            and dead_neuron_mask.sum() > 0
+        ):
+            ghost_grad_loss = self.calculate_ghost_grad_loss(
+                x=x,
+                sae_out=sae_out,
+                per_item_mse_loss=per_item_mse_loss,
+                hidden_pre=hidden_pre,
+                dead_neuron_mask=dead_neuron_mask,
+            )
+
+        mse_loss = per_item_mse_loss.mean()
+        sparsity = feature_acts.norm(p=self.lp_norm, dim=1).mean(dim=(0,))
+        l1_loss = self.l1_coefficient * sparsity
+        loss = mse_loss + l1_loss + ghost_grad_loss
+
+        return ForwardOutput(
+            sae_out=sae_out,
+            feature_acts=feature_acts,
+            loss=loss,
+            mse_loss=mse_loss,
+            l1_loss=l1_loss,
+            ghost_grad_loss=ghost_grad_loss,
+        )
+
+
 def _per_item_mse_loss_with_target_norm(
     preds: torch.Tensor,
     target: torch.Tensor,
