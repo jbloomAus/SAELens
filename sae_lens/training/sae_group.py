@@ -11,7 +11,10 @@ from typing import Iterator
 import torch
 
 from sae_lens.training.config import LanguageModelSAERunnerConfig
-from sae_lens.training.sparse_autoencoder import SparseAutoencoder
+from sae_lens.training.sparse_autoencoder import (
+    GatedSparseAutoencoder,
+    SparseAutoencoder,
+)
 from sae_lens.training.utils import BackwardsCompatibleUnpickler
 
 
@@ -45,7 +48,14 @@ class SparseAutoencoderDictionary:
                 layer=cfg_copy.hook_point_layer
             )
 
-            sae = SparseAutoencoder(cfg_copy)
+            if cfg_copy.sae_class_name == "SparseAutoencoder":
+                sae = SparseAutoencoder(cfg_copy)
+            elif cfg_copy.sae_class_name == "GatedSparseAutoencoder":
+                sae = GatedSparseAutoencoder(cfg_copy)
+            else:
+                raise ValueError(
+                    f"Invalid sae_class_name: {cfg_copy.sae_class_name}. Must be 'SparseAutoencoder' or 'GatedSparseAutoencoder'"
+                )
 
             sae_name = (
                 f"{sae.cfg.model_name}_{sae.cfg.hook_point}_{sae.cfg.d_sae}_"

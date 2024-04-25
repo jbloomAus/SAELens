@@ -5,7 +5,22 @@ import torch
 from huggingface_hub import hf_hub_download
 
 from sae_lens.training.sae_group import SparseAutoencoderDictionary
+from sae_lens.training.sparse_autoencoder import GatedSparseAutoencoder
 from tests.unit.helpers import build_sae_cfg
+
+
+def test_SparseAutoencoderDictionary_creates_gated_sparse_autoencoders():
+    cfg = build_sae_cfg(
+        d_in=5,
+        lr=[0.01, 0.001],
+        expansion_factor=[2, 4],
+        sae_class_name="GatedSparseAutoencoder",
+    )
+    sae_group = SparseAutoencoderDictionary(cfg)
+    assert len(sae_group) == 4
+    for _, sae in sae_group:
+        assert isinstance(sae, torch.nn.Module)
+        assert isinstance(sae, GatedSparseAutoencoder)
 
 
 def test_SparseAutoencoderDictionary_initializes_all_permutations_of_list_params():

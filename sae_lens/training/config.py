@@ -21,6 +21,7 @@ class LanguageModelSAERunnerConfig:
     # Data Generating Function (Model + Training Distibuion)
     model_name: str = "gelu-2l"
     model_class_name: str = "HookedTransformer"
+    sae_class_name: str = "SparseAutoencoder"
     hook_point: str = "blocks.{layer}.hook_mlp_out"
     hook_point_eval: str = "blocks.{layer}.attn.pattern"
     hook_point_layer: int | list[int] = 0
