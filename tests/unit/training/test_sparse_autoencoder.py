@@ -9,6 +9,7 @@ from transformer_lens import HookedTransformer
 
 from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.sparse_autoencoder import (
+    GatedSparseAutoencoder,
     SparseAutoencoder,
     _per_item_mse_loss_with_target_norm,
 )
@@ -63,6 +64,14 @@ def sparse_autoencoder(cfg: Any):
     Pytest fixture to create a mock instance of SparseAutoencoder.
     """
     return SparseAutoencoder(cfg)
+
+
+@pytest.fixture
+def gated_sparse_autoencoder(cfg: Any):
+    """
+    Pytest fixture to create a mock instance of GatedSparseAutoencoder.
+    """
+    return GatedSparseAutoencoder(cfg)
 
 
 @pytest.fixture
@@ -147,6 +156,66 @@ def test_SparseAutoencoder_save_and_load_from_pretrained_lacks_scaling_factor(
                 sparse_autoencoder_state_dict[key],
                 sparse_autoencoder_loaded_state_dict[key],
             )
+
+
+def test_gated_sparse_autoencoder_init(cfg: Any):
+    gated_sparse_autoencoder = GatedSparseAutoencoder(cfg)
+
+    assert isinstance(gated_sparse_autoencoder, GatedSparseAutoencoder)
+
+    assert gated_sparse_autoencoder.W_enc.shape == (cfg.d_in, cfg.d_sae)
+    assert gated_sparse_autoencoder.W_dec.shape == (cfg.d_sae, cfg.d_in)
+    assert gated_sparse_autoencoder.b_mag.shape == (cfg.d_sae,)
+    assert gated_sparse_autoencoder.b_gate.shape == (cfg.d_sae,)
+    assert gated_sparse_autoencoder.r_mag.shape == (cfg.d_sae,)
+    assert gated_sparse_autoencoder.b_dec.shape == (cfg.d_in,)
+
+    # assert decoder columns have unit norm
+    assert torch.allclose(
+        torch.norm(gated_sparse_autoencoder.W_dec, dim=1), torch.ones(cfg.d_sae)
+    )
+
+
+def test_gated_sparse_autoencoder_forward(
+    gated_sparse_autoencoder: GatedSparseAutoencoder,
+):
+    batch_size = 32
+    d_in = gated_sparse_autoencoder.d_in
+    d_sae = gated_sparse_autoencoder.d_sae
+
+    x = torch.randn(batch_size, d_in)
+    (
+        sae_out,
+        feature_acts,
+        loss,
+        mse_loss,
+        l1_loss,
+        _ghost_grad_loss,
+    ) = gated_sparse_autoencoder.forward(
+        x,
+    )
+
+    assert sae_out.shape == (batch_size, d_in)
+    assert feature_acts.shape == (batch_size, d_sae)
+    assert loss.shape == ()
+    assert mse_loss.shape == ()
+    assert l1_loss.shape == ()
+    assert torch.allclose(loss, mse_loss + l1_loss)
+
+    expected_mse_loss = (torch.pow((sae_out - x.float()), 2)).mean()
+
+    assert torch.allclose(mse_loss, expected_mse_loss)
+    expected_l1_loss = torch.abs(feature_acts).sum(dim=1).mean(dim=(0,))
+    assert torch.allclose(
+        l1_loss, gated_sparse_autoencoder.l1_coefficient * expected_l1_loss
+    )
+
+    # check everything has the right dtype
+    assert sae_out.dtype == gated_sparse_autoencoder.dtype
+    assert feature_acts.dtype == gated_sparse_autoencoder.dtype
+    assert loss.dtype == gated_sparse_autoencoder.dtype
+    assert mse_loss.dtype == gated_sparse_autoencoder.dtype
+    assert l1_loss.dtype == gated_sparse_autoencoder.dtype
 
 
 def test_sparse_autoencoder_forward(sparse_autoencoder: SparseAutoencoder):
