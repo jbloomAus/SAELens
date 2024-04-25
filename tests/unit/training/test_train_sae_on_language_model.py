@@ -306,7 +306,8 @@ def test_save_and_load_checkpoint(tmp_path: Path) -> None:
             {"text": "hello world1"},
             {"text": "hello world2"},
             {"text": "hello world3"},
-        ]*2000
+        ]
+        * 2000
     )
     model = load_model_cached(cfg.model_name)
     activation_store = ActivationsStore.from_config(model, cfg, dataset=dataset)
