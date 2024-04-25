@@ -560,20 +560,22 @@ class GatedSparseAutoencoder(SparseAutoencoder):
 
         # NOTE: in paper, they use ReLU for this
         # Unsure if we should hardcode ReLU also
-        z = F.relu(hidden_pre_gate)
-        x_frozen = (
+        via_gate_feature_magnitudes = F.relu(hidden_pre_gate)
+        # NOTE: detach W_dec and b_dec (See Fig 17)
+        via_gate_reconstruction = (
             einops.einsum(
-                z
+                via_gate_feature_magnitudes
                 * self.scaling_factor,  # need to make sure this handled when loading old models.
-                self.W_dec,
+                self.W_dec.detach(),
                 "... d_sae, d_sae d_in -> ... d_in",
             )
-            + self.b_dec
+            + self.b_dec.detach()
         )
         # TODO: should we use _per_item_mse_loss_with_target_norm here?
         # NOTE: this does not appear to be done in the paper.
-        aux_loss = F.mse_loss(x_frozen, x, reduction="mean")
+        aux_loss = F.mse_loss(via_gate_reconstruction, x, reduction="mean")
         # TODO: add coefficient for aux loss
+        # NOTE: in the paper, the coefficient appears to be fixed to 1.0 (see Eq. 8)
         loss = mse_loss + l1_loss + ghost_grad_loss + aux_loss
 
         return ForwardOutput(
