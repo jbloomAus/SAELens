@@ -344,7 +344,7 @@ def train_sae_group_on_language_model(
         activation_store=activation_store,
         train_contexts=train_contexts,
         training_run_state=training_run_state,
-        checkpoint_name="final",
+        checkpoint_name=f"final_{training_run_state.n_training_tokens}",
         wandb_aliases=["final_model"],
     )
     
@@ -669,6 +669,7 @@ def _save_checkpoint(
             metadata=dict(sae_group.cfg.__dict__),
         )
         training_run_state_artifact.add_file(training_run_state_path)
+        # TODO: should these have aliases=wandb_aliases?
         wandb.log_artifact(training_run_state_artifact)
 
     activations_store_path = f"{checkpoint_path}/{ACTIVATIONS_STORE_PATH}"

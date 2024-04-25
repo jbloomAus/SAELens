@@ -24,6 +24,7 @@ def language_model_sae_runner(cfg: LanguageModelSAERunnerConfig):
                 model=model,
                 batch_size=cfg.train_batch_size,
             )
+        # no checkpoints found, don't resume
         except FileNotFoundError:
             print(traceback.format_exc())
             print("failed to find checkpoint to resume from, setting resume to False")
