@@ -1,4 +1,5 @@
 import os
+from dataclasses import fields
 from pathlib import Path
 from typing import Any, Callable
 from unittest.mock import patch
@@ -13,17 +14,28 @@ from transformer_lens import HookedTransformer
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.optim import get_scheduler
 from sae_lens.training.sae_group import SparseAutoencoderDictionary
-from sae_lens.training.sparse_autoencoder import ForwardOutput, SparseAutoencoder
+from sae_lens.training.sparse_autoencoder import (
+    SAE_CFG_PATH,
+    SAE_WEIGHTS_PATH,
+    SPARSITY_PATH,
+    ForwardOutput,
+    SparseAutoencoder,
+)
 from sae_lens.training.train_sae_on_language_model import (
+    ACTIVATION_STORE_PATH,
+    SAE_CONTEXT_PATH,
+    TRAINING_RUN_STATE_PATH,
     SAETrainContext,
+    SAETrainingRunState,
     TrainStepOutput,
     _build_train_step_log_dict,
     _log_feature_sparsity,
     _save_checkpoint,
     _train_step,
+    load_checkpoint,
     train_sae_group_on_language_model,
 )
-from tests.unit.helpers import build_sae_cfg
+from tests.unit.helpers import build_sae_cfg, load_model_cached
 
 
 # TODO: Address why we have this code here rather than importing it.
@@ -269,7 +281,7 @@ def test_build_train_step_log_dict() -> None:
     }
 
 
-def test_save_checkpoint(tmp_path: Path) -> None:
+def test_save_and_load_checkpoint(tmp_path: Path) -> None:
 
     # set wandb mode to offline
     os.environ["WANDB_MODE"] = "offline"
@@ -289,7 +301,29 @@ def test_save_checkpoint(tmp_path: Path) -> None:
     )
     name = next(iter(sae_group.autoencoders.keys()))
 
-    res = _save_checkpoint(sae_group, {name: ctx}, "test_checkpoint")
+    dataset = Dataset.from_list(
+        [
+            {"text": "hello world1"},
+            {"text": "hello world2"},
+            {"text": "hello world3"},
+        ]
+    )
+    model = load_model_cached(cfg.model_name)
+    activation_store = ActivationsStore.from_config(model, cfg, dataset=dataset)
+
+    training_run_state = SAETrainingRunState(1, 2, True, ["hi"])
+
+    train_contexts = {name: ctx}
+    _ = activation_store.get_batch_tokens()
+    activation_store.n_dataset_processed = 1
+
+    res = _save_checkpoint(
+        sae_group,
+        activation_store=activation_store,
+        train_contexts=train_contexts,
+        training_run_state=training_run_state,
+        checkpoint_name="test_checkpoint",
+    )
     assert res == str(checkpoint_dir / "test_checkpoint")
 
     subfolder = os.listdir(res)[0]
@@ -297,10 +331,56 @@ def test_save_checkpoint(tmp_path: Path) -> None:
 
     # list contents of subfolder
     contents = os.listdir(f"{res}/{subfolder}")
+    assert len(contents) == 4
+    assert SAE_CONTEXT_PATH in contents
+    assert SAE_CFG_PATH in contents
+    assert SPARSITY_PATH in contents
+    assert SAE_WEIGHTS_PATH in contents
+    # stuff not tied to a single sae
+    contents = os.listdir(f"{res}")
     assert len(contents) == 3
-    assert "cfg.json" in contents
-    assert "sparsity.safetensors" in contents
-    assert "sae_weights.safetensors" in contents
+    assert ACTIVATION_STORE_PATH in contents
+    assert TRAINING_RUN_STATE_PATH in contents
+    assert subfolder in contents
+
+    training_run_state_2, activation_store_2, sae_group_2, train_contexts_2 = (
+        load_checkpoint(
+            checkpoint_path=res, cfg=cfg, model=model, batch_size=cfg.train_batch_size
+        )
+    )
+
+    def assert_state_dicts_close(
+        sd1: dict[str, torch.Tensor], sd2: dict[str, torch.Tensor]
+    ):
+        assert sd1.keys() == sd2.keys()
+        for attr in sd1.keys():
+            assert torch.allclose(sd1[attr], sd2[attr])
+
+    # compare training run states
+    for attr in fields(training_run_state):
+        f1 = getattr(training_run_state, attr.name)
+        f2 = getattr(training_run_state_2, attr.name)
+        assert f1 == f2
+
+    # compare sae groups and ctxs
+    assert sae_group.autoencoders.keys() == sae_group_2.autoencoders.keys()
+    for name, sae in sae_group.autoencoders.items():
+        sae2 = sae_group_2.autoencoders[name]
+        assert_state_dicts_close(sae.state_dict(), sae2.state_dict())
+
+    # compare activation stores
+    assert_state_dicts_close(
+        activation_store.state_dict(), activation_store_2.state_dict()
+    )
+
+    # compare loaded train context
+    assert train_contexts_2.keys() == train_contexts.keys()
+    for k in train_contexts.keys():
+        ctx1 = train_contexts[k]
+        ctx2 = train_contexts[k]
+        sd1 = ctx1.state_dict()
+        sd2 = ctx2.state_dict()
+        assert_state_dicts_close(sd1, sd2)
 
 
 def test_train_sae_group_on_language_model__runs(

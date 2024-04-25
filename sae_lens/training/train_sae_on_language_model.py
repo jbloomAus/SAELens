@@ -104,9 +104,8 @@ class SAETrainContext:
                 state_dict[attr.name] = value
             # non-tensor values (like int or bool)
             elif not type(value) is torch.Tensor:
-                state_dict[attr.name] = state_dict[
-                    attr.name
-                ].item()  # pyright: ignore [reportArgumentType]
+                ctx_val = state_dict[attr.name].item()
+                state_dict[attr.name] = ctx_val  # pyright: ignore [reportArgumentType]
         ctx = cls(**state_dict)  # pyright: ignore [reportArgumentType]
         # if fine tuning, we need to set sae requires grad properly
         if ctx.finetuning:
@@ -644,7 +643,7 @@ def _build_train_step_log_dict(
 
 ACTIVATION_STORE_PATH = "activation_store.safetensors"
 TRAINING_RUN_STATE_PATH = "training_run_state.json"
-TRAINING_CONTEXT_PATH = "ctx.safetensors"
+SAE_CONTEXT_PATH = "ctx.safetensors"
 
 
 def load_checkpoint(
@@ -676,7 +675,7 @@ def load_checkpoint(
     train_contexts = {}
     for name, sae in sae_group.autoencoders.items():
         path = f"{checkpoint_path}/{name}"
-        ctx_path = f"{path}/{TRAINING_CONTEXT_PATH}"
+        ctx_path = f"{path}/{SAE_CONTEXT_PATH}"
         train_contexts[name] = SAETrainContext.load(
             ctx_path, sae=sae, total_training_steps=total_training_steps
         )
@@ -728,7 +727,7 @@ def _save_checkpoint(
         ctx = train_contexts[name]
         path = f"{checkpoint_path}/{name}"
 
-        ctx_path = f"{path}/{TRAINING_CONTEXT_PATH}"
+        ctx_path = f"{path}/{SAE_CONTEXT_PATH}"
         ctx.save(ctx_path)
 
         if sae.normalize_sae_decoder:
