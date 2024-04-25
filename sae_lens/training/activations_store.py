@@ -434,7 +434,7 @@ class ActivationsStore:
         result = {
             "n_dataset_processed": torch.tensor(self.n_dataset_processed),
         }
-        if not self._storage_buffer is None:  # first time might be None
+        if self._storage_buffer is not None:  # first time might be None
             result["storage_buffer"] = self._storage_buffer
         return result
 
