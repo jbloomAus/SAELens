@@ -416,8 +416,9 @@ class ActivationsStore:
         activation_store = cls.from_config(model=model, cfg=cfg, dataset=dataset)
 
         state_dict = load_file(file_path)
-        activation_store.storage_buffer = state_dict["storage_buffer"]
-        n_dataset_processed = state_dict["n_dataset_processed"]
+        if "storage_buffer" in state_dict.keys():
+            activation_store._storage_buffer = state_dict["storage_buffer"]
+        n_dataset_processed = state_dict["n_dataset_processed"].item()
         # fastforward data
         pbar = tqdm.tqdm(
             total=n_dataset_processed - activation_store.n_dataset_processed,
@@ -429,13 +430,16 @@ class ActivationsStore:
             activation_store.n_dataset_processed += 1
         return activation_store
 
-    def state_dict(self):
-        return {
-            "storage_buffer": self.storage_buffer,
-            "n_dataset_processed": self.n_dataset_processed,
+    def state_dict(self) -> dict[str, torch.Tensor]:
+        result = {
+            "n_dataset_processed": torch.tensor(self.n_dataset_processed),
         }
+        if not self._storage_buffer is None:  # first time might be None
+            result['storage_buffer'] = self._storage_buffer
+        return result
 
-    def save(self, file_path):
+
+    def save(self, file_path: str):
         save_file(self.state_dict(), file_path)
 
     def _get_next_dataset_tokens(self) -> torch.Tensor:

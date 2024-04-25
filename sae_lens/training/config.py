@@ -211,7 +211,13 @@ class LanguageModelSAERunnerConfig:
         if not isinstance(self.use_ghost_grads, list) and self.use_ghost_grads:
             print("Using Ghost Grads.")
 
-    def get_checkpoints_by_step(self):
+    def get_checkpoints_by_step(self) -> tuple[dict[int, str], bool]:
+        '''
+        Returns (dict, is_done)
+        where dict is [steps] = path
+        for each checkpoint, and
+        is_done is True if there is a "final_{steps}" checkpoint
+        '''
         is_done = False
         checkpoints = [
             f
@@ -230,9 +236,9 @@ class LanguageModelSAERunnerConfig:
                     continue  # ignore this directory
             full_path = os.path.join(self.checkpoint_path, c)
             mapped_to_steps[steps].append(full_path)
-        return mapped_to_steps, is_done
+        return dict(mapped_to_steps), is_done
 
-    def get_resume_checkpoint_path(self):
+    def get_resume_checkpoint_path(self) -> str:
         """
         Gets the checkpoint path with the most steps
         raises StopIteration if the model is done (there is a final_{steps} directoryh
