@@ -8,6 +8,7 @@ from sae_lens.training.session_loader import LMSparseAutoencoderSessionloader
 from sae_lens.training.train_sae_on_language_model import train_sae_group_on_language_model, load_checkpoint
 from sae_lens.training.load_model import load_model
 
+
 def language_model_sae_runner(cfg: LanguageModelSAERunnerConfig):
     """ """
     if cfg.resume:
@@ -29,7 +30,7 @@ def language_model_sae_runner(cfg: LanguageModelSAERunnerConfig):
             print(traceback.format_exc())
             print("failed to find checkpoint to resume from, setting resume to False")
             cfg.resume = False
-    
+
     if not cfg.resume:
         training_run_state = None
         train_contexts = None

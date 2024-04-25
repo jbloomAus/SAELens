@@ -406,11 +406,12 @@ class ActivationsStore:
             return next(self.dataloader)
 
     @classmethod
-    def load(cls,
-        file_path: str,
-        model: HookedRootModule,
-        cfg: LanguageModelSAERunnerConfig | CacheActivationsRunnerConfig,
-        dataset: HfDataset | None = None,
+    def load(
+             cls,
+             file_path: str,
+             model: HookedRootModule,
+             cfg: LanguageModelSAERunnerConfig | CacheActivationsRunnerConfig,
+             dataset: HfDataset | None = None,
     ):
         activation_store = cls.from_config(
                             model=model,
@@ -436,7 +437,7 @@ class ActivationsStore:
 
     def save(self, file_path):
         save_file(self.state_dict(), file_path)
-    
+
     def _get_next_dataset_tokens(self) -> torch.Tensor:
         device = self.device
         if not self.is_dataset_tokenized:

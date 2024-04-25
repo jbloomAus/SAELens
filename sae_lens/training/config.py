@@ -223,7 +223,7 @@ class LanguageModelSAERunnerConfig:
                     steps = int(c.split("_")[1])
                     is_done = True
                 else:
-                    continue # ignore this directory
+                    continue  # ignore this directory
             full_path = os.path.join(self.checkpoint_path, c)
             mapped_to_steps[steps].append(full_path)
         return mapped_to_steps, is_done
@@ -244,6 +244,7 @@ class LanguageModelSAERunnerConfig:
             checkpoint_dir = mapped_to_steps[max_step]
             print(f"resuming from step {max_step} at path {checkpoint_dir}")
             return mapped_to_steps[max_step]
+
 
 @dataclass
 class CacheActivationsRunnerConfig:

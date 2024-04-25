@@ -23,6 +23,7 @@ SPARSITY_PATH = 'sparsity.safetensors'
 SAE_WEIGHTS_PATH = 'sae_weights.safetensors'
 SAE_CFG_PATH = 'cfg.json'
 
+
 class ForwardOutput(NamedTuple):
     sae_out: torch.Tensor
     feature_acts: torch.Tensor
