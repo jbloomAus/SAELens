@@ -104,7 +104,9 @@ class SAETrainContext:
                 state_dict[attr.name] = value
             # non-tensor values (like int or bool)
             elif not type(value) is torch.Tensor:
-                state_dict[attr.name] = state_dict[attr.name].item()  # pyright: ignore [reportArgumentType]
+                state_dict[attr.name] = state_dict[
+                    attr.name
+                ].item()  # pyright: ignore [reportArgumentType]
         ctx = cls(**state_dict)  # pyright: ignore [reportArgumentType]
         # if fine tuning, we need to set sae requires grad properly
         if ctx.finetuning:
@@ -131,7 +133,10 @@ class SAETrainingRunState:
     checkpoint_paths: list[str] = field(default_factory=list)
     torch_state: Optional[torch.Tensor] = None
     torch_cuda_state: Optional[list[torch.Tensor]] = None
-    numpy_state: Optional[dict[str, Any] | tuple[str, np.ndarray[Any, np.dtype[np.uint32]], int, int, float]] = None
+    numpy_state: Optional[
+        dict[str, Any]
+        | tuple[str, np.ndarray[Any, np.dtype[np.uint32]], int, int, float]
+    ] = None
     random_state: Optional[Any] = None
 
     def __post_init__(self):
