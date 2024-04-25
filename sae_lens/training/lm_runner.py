@@ -14,6 +14,9 @@ from sae_lens.training.train_sae_on_language_model import (
 
 def language_model_sae_runner(cfg: LanguageModelSAERunnerConfig):
     """ """
+    training_run_state = None
+    train_contexts = None
+
     if cfg.resume:
         try:
             checkpoint_path = cfg.get_resume_checkpoint_path()
@@ -41,8 +44,6 @@ def language_model_sae_runner(cfg: LanguageModelSAERunnerConfig):
             cfg.resume = False
 
     if not cfg.resume:
-        training_run_state = None
-        train_contexts = None
         if cfg.from_pretrained_path is not None:
             (
                 model,
@@ -62,11 +63,10 @@ def language_model_sae_runner(cfg: LanguageModelSAERunnerConfig):
         wandb.init(project=cfg.wandb_project, config=cast(Any, cfg), name=cfg.run_name)
 
     # train SAE
-
     sparse_autoencoder = train_sae_group_on_language_model(
-        model=model,
-        sae_group=sparse_autoencoder,
-        activation_store=activations_loader,
+        model=model,  # pyright: ignore [reportPossiblyUnboundVariable]
+        sae_group=sparse_autoencoder,  # pyright: ignore [reportPossiblyUnboundVariable]
+        activation_store=activations_loader,  # pyright: ignore [reportPossiblyUnboundVariable]
         train_contexts=train_contexts,
         training_run_state=training_run_state,
         batch_size=cfg.train_batch_size,

@@ -104,8 +104,8 @@ class SAETrainContext:
                 state_dict[attr.name] = value
             # non-tensor values (like int or bool)
             elif not type(value) is torch.Tensor:
-                state_dict[attr.name] = state_dict[attr.name].item()
-        ctx = cls(**state_dict)
+                state_dict[attr.name] = state_dict[attr.name].item()  # pyright: ignore [reportArgumentType]
+        ctx = cls(**state_dict)  # pyright: ignore [reportArgumentType]
         # if fine tuning, we need to set sae requires grad properly
         if ctx.finetuning:
             ctx.begin_finetuning(sae=sae)
@@ -129,9 +129,9 @@ class SAETrainingRunState:
     n_training_tokens: int = 0
     started_fine_tuning: bool = False
     checkpoint_paths: list[str] = field(default_factory=list)
-    torch_state: Optional[torch.ByteTensor] = None
-    torch_cuda_state: Optional[torch.ByteTensor] = None
-    numpy_state: Optional[tuple[str, np.ndarray[np.uint32], int, int, float]] = None
+    torch_state: Optional[torch.Tensor] = None
+    torch_cuda_state: Optional[list[torch.Tensor]] = None
+    numpy_state: Optional[dict[str, Any] | tuple[str, np.ndarray[Any, np.dtype[np.uint32]], int, int, float]] = None
     random_state: Optional[Any] = None
 
     def __post_init__(self):
@@ -145,9 +145,13 @@ class SAETrainingRunState:
             self.random_state = random.getstate()
 
     def set_random_state(self):
+        assert self.torch_state is not None
         torch.random.set_rng_state(self.torch_state)
+        assert self.torch_cuda_state is not None
         torch.cuda.set_rng_state_all(self.torch_cuda_state)
+        assert self.numpy_state is not None
         np.random.set_state(self.numpy_state)
+        assert self.random_state is not None
         random.setstate(self.random_state)
 
     @classmethod
