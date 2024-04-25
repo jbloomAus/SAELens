@@ -1,5 +1,5 @@
-import json
 import os
+import pickle
 import random
 import signal
 from dataclasses import dataclass, field, fields
@@ -160,14 +160,14 @@ class SAETrainingRunState:
 
     @classmethod
     def load(cls, path: str):
-        with open(path, "r") as f:
-            attr_dict = json.load(f)
+        with open(path, "rb") as f:
+            attr_dict = pickle.load(f)
         return cls(**attr_dict)
 
     def save(self, path: str):
         attr_dict = {**self.__dict__}
-        with open(path, "w") as f:
-            json.dump(attr_dict, f)
+        with open(path, "wb") as f:
+            pickle.dump(attr_dict, f)
 
 
 @dataclass
