@@ -348,12 +348,25 @@ def upload(
             prompt="""Host to upload to? (Default: http://localhost:3000)""",
         ),
     ] = "http://localhost:3000",
+    resume: Annotated[
+        int,
+        typer.Option(
+            prompt="""Resume from batch? (Default: 1)""",
+        ),
+    ] = 1,
 ):
     """
     This will upload features that were generated to Neuronpedia. It currently only works if you have admin access to a Neuronpedia instance via localhost:3000.
     """
 
     files_to_upload = list(outputs_dir.glob("batch-*.json"))
+
+    # filter files where batch-[number].json the number is >= resume
+    files_to_upload = [
+        file_path
+        for file_path in files_to_upload
+        if int(file_path.stem.split("-")[1]) >= resume
+    ]
 
     # sort files by batch number
     files_to_upload.sort(key=lambda x: int(x.stem.split("-")[1]))
