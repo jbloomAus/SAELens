@@ -509,17 +509,21 @@ class GatedSparseAutoencoder(SparseAutoencoder):
         if self.noise_scale > 0:
             noise = torch.randn_like(hidden_pre) * self.noise_scale
             noisy_hidden_pre = hidden_pre + noise
+        hidden_pre = noisy_hidden_pre
+        del noisy_hidden_pre, sae_in
 
         # gated sae stuff
-        hidden_pre = noisy_hidden_pre
         hidden_pre_mag = hidden_pre * torch.exp(self.r_mag) + self.b_mag
         hidden_post_mag = self.hook_hidden_pre(self.activation_fn(hidden_pre_mag))
+        del hidden_pre_mag
         # 1 if positive, 0 if negative
         hidden_pre_gate = hidden_pre + self.b_gate
         hidden_post_gate = (torch.sign(hidden_pre_gate) + 1) / 2
         hidden_post = hidden_post_mag * hidden_post_gate
+        del hidden_post_mag, hidden_post_gate
 
         feature_acts = self.hook_hidden_post(hidden_post)
+        del hidden_post
 
         sae_out = self.hook_sae_out(
             einops.einsum(

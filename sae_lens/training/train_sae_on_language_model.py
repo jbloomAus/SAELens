@@ -1,3 +1,4 @@
+import gc
 import os
 from dataclasses import dataclass
 from typing import Any, cast
@@ -23,6 +24,11 @@ FINETUNING_PARAMETERS = {
     "decoder": ["scaling_factor", "W_dec", "b_dec"],
     "unrotated_decoder": ["scaling_factor", "b_dec"],
 }
+
+
+def clear_memory():
+    gc.collect()
+    torch.cuda.empty_cache()
 
 
 def _log_feature_sparsity(
@@ -215,6 +221,9 @@ def train_sae_group_on_language_model(
                 ctx = train_contexts[name]
                 # this should turn grads on for the scaling factor and other parameters.
                 ctx.begin_finetuning(sae_group.autoencoders[name])
+
+        if (n_training_steps % 512) == 0:
+            clear_memory()
 
     # save final sae group to checkpoints folder
     final_checkpoint = _save_checkpoint(
