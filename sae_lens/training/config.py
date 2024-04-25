@@ -213,13 +213,17 @@ class LanguageModelSAERunnerConfig:
 
     def get_checkpoints_by_step(self):
         is_done = False
-        checkpoints = [f for f in os.listdir(self.checkpoint_path) if os.path.isfile(os.path.join(self.checkpoint_path, f))]
+        checkpoints = [
+            f
+            for f in os.listdir(self.checkpoint_path)
+            if os.path.isfile(os.path.join(self.checkpoint_path, f))
+        ]
         mapped_to_steps = defaultdict(lambda: [])
         for c in checkpoints:
             try:
                 steps = int(c)
             except ValueError:
-                if c.startswith('final'):
+                if c.startswith("final"):
                     steps = int(c.split("_")[1])
                     is_done = True
                 else:
@@ -229,11 +233,11 @@ class LanguageModelSAERunnerConfig:
         return mapped_to_steps, is_done
 
     def get_resume_checkpoint_path(self):
-        '''
+        """
         Gets the checkpoint path with the most steps
         raises StopIteration if the model is done (there is a final_{steps} directoryh
         raises FileNotFoundError if there are no checkpoints found
-        '''
+        """
         mapped_to_steps, is_done = self.get_checkpoints_by_step()
         if is_done:
             raise StopIteration("Finished training model")

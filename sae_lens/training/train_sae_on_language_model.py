@@ -19,7 +19,12 @@ from sae_lens.training.evals import run_evals
 from sae_lens.training.geometric_median import compute_geometric_median
 from sae_lens.training.optim import get_scheduler
 from sae_lens.training.sae_group import SparseAutoencoderDictionary
-from sae_lens.training.sparse_autoencoder import SparseAutoencoder, SPARSITY_PATH, SAE_WEIGHTS_PATH, SAE_CFG_PATH
+from sae_lens.training.sparse_autoencoder import (
+    SparseAutoencoder,
+    SPARSITY_PATH,
+    SAE_WEIGHTS_PATH,
+    SAE_CFG_PATH,
+)
 from sae_lens.training.config import (
     CacheActivationsRunnerConfig,
     LanguageModelSAERunnerConfig,
@@ -91,11 +96,13 @@ class SAETrainContext:
     @classmethod
     def load(cls, path, sae, total_training_steps):
         state_dict = load_file(path)
-        attached_ctx = _build_train_context(sae=sae, total_training_steps=total_training_steps)
+        attached_ctx = _build_train_context(
+            sae=sae, total_training_steps=total_training_steps
+        )
         for attr in fields(attached_ctx):
             value = getattr(attached_ctx, attr)
             # optimizer and scheduler, this attaches them properly
-            if hasattr(value, 'state_dict'):
+            if hasattr(value, "state_dict"):
                 value.load_state_dict(state_dict[attr])
                 state_dict[attr] = value
             # non-tensor values (like int or bool)
@@ -121,8 +128,8 @@ class SAETrainingRunState:
     and rng states
     """
 
-    n_training_steps : int = 0
-    n_training_tokens : int = 0
+    n_training_steps: int = 0
+    n_training_tokens: int = 0
     started_fine_tuning: bool = False
     checkpoint_paths: list[str] = field(default_factory=list)
     torch_state: Optional[torch.ByteTensor] = None
@@ -191,9 +198,7 @@ def train_sae_on_language_model(
     ).sae_group
 
 
-def get_total_training_tokens(
-    sae_group: SparseAutoencoderDictionary
-) -> int:
+def get_total_training_tokens(sae_group: SparseAutoencoderDictionary) -> int:
     return sae_group.cfg.training_tokens + sae_group.cfg.finetuning_tokens
 
 
@@ -235,9 +240,13 @@ def train_sae_group_on_language_model(
     # resuming
     else:
         if train_contexts is None:
-            raise ValueError("train_contexts is None, when resuming, pass in training_run_state and train_contexts")
+            raise ValueError(
+                "train_contexts is None, when resuming, pass in training_run_state and train_contexts"
+            )
         if training_run_state is None:
-            raise ValueError("training_run_state is None, when resuming, pass in training_run_state and train_contexts")
+            raise ValueError(
+                "training_run_state is None, when resuming, pass in training_run_state and train_contexts"
+            )
         pbar.update(training_run_state.n_training_tokens)
         training_run_state.set_random_state()
 
@@ -278,7 +287,9 @@ def train_sae_group_on_language_model(
                 l1_losses.append(step_output.l1_loss)
                 if use_wandb:
                     with torch.no_grad():
-                        if (training_run_state.n_training_steps + 1) % wandb_log_frequency == 0:
+                        if (
+                            training_run_state.n_training_steps + 1
+                        ) % wandb_log_frequency == 0:
                             wandb.log(
                                 _build_train_step_log_dict(
                                     sparse_autoencoder,
@@ -291,7 +302,9 @@ def train_sae_group_on_language_model(
                             )
 
                         # record loss frequently, but not all the time.
-                        if (training_run_state.n_training_steps + 1) % (wandb_log_frequency * 10) == 0:
+                        if (training_run_state.n_training_steps + 1) % (
+                            wandb_log_frequency * 10
+                        ) == 0:
                             sparse_autoencoder.eval()
                             run_evals(
                                 sparse_autoencoder,
@@ -303,7 +316,10 @@ def train_sae_group_on_language_model(
                             sparse_autoencoder.train()
 
             # checkpoint if at checkpoint frequency
-            if checkpoint_thresholds and training_run_state.n_training_tokens > checkpoint_thresholds[0]:
+            if (
+                checkpoint_thresholds
+                and training_run_state.n_training_tokens > checkpoint_thresholds[0]
+            ):
                 _save_checkpoint(
                     sae_group,
                     activation_store=activation_store,
@@ -620,9 +636,9 @@ def _build_train_step_log_dict(
     }
 
 
-ACTIVATIONS_STORE_PATH = 'activations_store.safetensors'
-TRAINING_RUN_STATE_PATH = 'training_run_state.json'
-TRAINING_CONTEXT_PATH = 'ctx.safetensors'
+ACTIVATIONS_STORE_PATH = "activations_store.safetensors"
+TRAINING_RUN_STATE_PATH = "training_run_state.json"
+TRAINING_CONTEXT_PATH = "ctx.safetensors"
 
 
 def load_checkpoint(
@@ -631,14 +647,23 @@ def load_checkpoint(
     model: HookedRootModule,
     batch_size: int,
     dataset: HfDataset | None = None,
-) -> tuple[SAETrainingRunState, ActivationsStore, SparseAutoencoderDictionary, dict[str, SAETrainContext]]:
+) -> tuple[
+    SAETrainingRunState,
+    ActivationsStore,
+    SparseAutoencoderDictionary,
+    dict[str, SAETrainContext],
+]:
     training_run_state_path = f"{checkpoint_path}/{TRAINING_RUN_STATE_PATH}"
     training_run_state = SAETrainingRunState.load(training_run_state_path)
 
     activations_store_path = f"{checkpoint_path}/{ACTIVATIONS_STORE_PATH}"
-    activations_store = ActivationsStore.load(activations_store_path, model=model, cfg=cfg, dataset=dataset)
+    activations_store = ActivationsStore.load(
+        activations_store_path, model=model, cfg=cfg, dataset=dataset
+    )
 
-    sae_group = SparseAutoencoderDictionary.load_from_pretrained(checkpoint_path, device=cfg.device)
+    sae_group = SparseAutoencoderDictionary.load_from_pretrained(
+        checkpoint_path, device=cfg.device
+    )
 
     total_training_steps = get_total_training_tokens(sae_group=sae_group) // batch_size
 
@@ -646,7 +671,9 @@ def load_checkpoint(
     for name, sae in sae_group.autoencoders.items():
         path = f"{checkpoint_path}/{name}"
         ctx_path = f"{path}/{TRAINING_CONTEXT_PATH}"
-        train_contexts[name] = SAETrainContext.load(ctx_path, sae=sae, total_training_steps=total_training_steps)
+        train_contexts[name] = SAETrainContext.load(
+            ctx_path, sae=sae, total_training_steps=total_training_steps
+        )
 
     # overwrite sae gruop cfg with our new cfg in case we want to change things
     sae_group.cfg = cfg

@@ -19,9 +19,9 @@ from sae_lens.training.activation_functions import get_activation_fn
 from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.utils import BackwardsCompatiblePickleClass
 
-SPARSITY_PATH = 'sparsity.safetensors'
-SAE_WEIGHTS_PATH = 'sae_weights.safetensors'
-SAE_CFG_PATH = 'cfg.json'
+SPARSITY_PATH = "sparsity.safetensors"
+SAE_WEIGHTS_PATH = "sae_weights.safetensors"
+SAE_CFG_PATH = "cfg.json"
 
 
 class ForwardOutput(NamedTuple):

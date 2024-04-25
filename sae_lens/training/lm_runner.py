@@ -5,7 +5,10 @@ import traceback
 
 from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.session_loader import LMSparseAutoencoderSessionloader
-from sae_lens.training.train_sae_on_language_model import train_sae_group_on_language_model, load_checkpoint
+from sae_lens.training.train_sae_on_language_model import (
+    train_sae_group_on_language_model,
+    load_checkpoint,
+)
 from sae_lens.training.load_model import load_model
 
 
@@ -17,9 +20,15 @@ def language_model_sae_runner(cfg: LanguageModelSAERunnerConfig):
             model = load_model(
                 model_class_name=cfg.model_class_name,
                 model_name=cfg.model_name,
-                device=cfg.device)
+                device=cfg.device,
+            )
             model.to(cfg.device)
-            training_run_state, activations_loader, sparse_autoencoder, train_contexts = load_checkpoint(
+            (
+                training_run_state,
+                activations_loader,
+                sparse_autoencoder,
+                train_contexts,
+            ) = load_checkpoint(
                 checkpoint_path=checkpoint_path,
                 cfg=cfg,
                 model=model,
