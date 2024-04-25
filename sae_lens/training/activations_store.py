@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import os
 from typing import Any, Iterator, Literal, TypeVar, cast
-from safetensors.torch import save_file, load_file
-import tqdm
 
 import torch
+import tqdm
 from datasets import (
     Dataset,
     DatasetDict,
@@ -13,6 +12,7 @@ from datasets import (
     IterableDatasetDict,
     load_dataset,
 )
+from safetensors.torch import load_file, save_file
 from torch.utils.data import DataLoader
 from transformer_lens.hook_points import HookedRootModule
 

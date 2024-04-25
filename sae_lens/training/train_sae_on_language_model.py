@@ -1,33 +1,33 @@
+import json
 import os
-from dataclasses import dataclass, field, fields
-from typing import Any, cast, Optional
-import numpy as np
 import random
 import signal
-import json
+from dataclasses import dataclass, field, fields
+from typing import Any, Optional, cast
 
+import numpy as np
 import torch
 import wandb
-from safetensors.torch import save_file, load_file
+from safetensors.torch import load_file, save_file
 from torch.optim import Adam, Optimizer
 from torch.optim.lr_scheduler import LRScheduler
 from tqdm import tqdm
 from transformer_lens.hook_points import HookedRootModule
 
 from sae_lens.training.activations_store import ActivationsStore, HfDataset
+from sae_lens.training.config import (
+    CacheActivationsRunnerConfig,
+    LanguageModelSAERunnerConfig,
+)
 from sae_lens.training.evals import run_evals
 from sae_lens.training.geometric_median import compute_geometric_median
 from sae_lens.training.optim import get_scheduler
 from sae_lens.training.sae_group import SparseAutoencoderDictionary
 from sae_lens.training.sparse_autoencoder import (
-    SparseAutoencoder,
-    SPARSITY_PATH,
-    SAE_WEIGHTS_PATH,
     SAE_CFG_PATH,
-)
-from sae_lens.training.config import (
-    CacheActivationsRunnerConfig,
-    LanguageModelSAERunnerConfig,
+    SAE_WEIGHTS_PATH,
+    SPARSITY_PATH,
+    SparseAutoencoder,
 )
 
 # used to map between parameters which are updated during finetuning and the config str.

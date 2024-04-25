@@ -1,7 +1,7 @@
+import os
+from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Any, Optional, cast
-from collections import defaultdict
-import os
 
 import torch
 import wandb

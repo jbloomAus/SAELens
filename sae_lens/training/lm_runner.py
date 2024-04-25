@@ -1,15 +1,15 @@
+import traceback
 from typing import Any, cast
 
 import wandb
-import traceback
 
 from sae_lens.training.config import LanguageModelSAERunnerConfig
+from sae_lens.training.load_model import load_model
 from sae_lens.training.session_loader import LMSparseAutoencoderSessionloader
 from sae_lens.training.train_sae_on_language_model import (
-    train_sae_group_on_language_model,
     load_checkpoint,
+    train_sae_group_on_language_model,
 )
-from sae_lens.training.load_model import load_model
 
 
 def language_model_sae_runner(cfg: LanguageModelSAERunnerConfig):
