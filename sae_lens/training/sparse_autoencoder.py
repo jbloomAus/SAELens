@@ -13,6 +13,7 @@ import torch
 from safetensors import safe_open
 from safetensors.torch import save_file
 from torch import nn
+from torch.nn import functional as F
 from transformer_lens.hook_points import HookedRootModule, HookPoint
 
 from sae_lens.training.activation_functions import get_activation_fn
@@ -512,12 +513,13 @@ class GatedSparseAutoencoder(SparseAutoencoder):
         # gated sae stuff
         hidden_pre = noisy_hidden_pre
         hidden_pre_mag = hidden_pre * torch.exp(self.r_mag) + self.b_mag
-        hidden_pre_mag = self.hook_hidden_pre(self.activation_fn(hidden_pre_mag))
+        hidden_post_mag = self.hook_hidden_pre(self.activation_fn(hidden_pre_mag))
         # 1 if positive, 0 if negative
-        hidden_pre_gate = (torch.sign(hidden_pre + self.b_gate) + 1) / 2
-        hidden_pre = hidden_pre_mag * hidden_pre_gate
+        hidden_pre_gate = hidden_pre + self.b_gate
+        hidden_post_gate = (torch.sign(hidden_pre_gate) + 1) / 2
+        hidden_post = hidden_post_mag * hidden_post_gate
 
-        feature_acts = self.hook_hidden_post(hidden_pre)
+        feature_acts = self.hook_hidden_post(hidden_post)
 
         sae_out = self.hook_sae_out(
             einops.einsum(
@@ -550,9 +552,29 @@ class GatedSparseAutoencoder(SparseAutoencoder):
             )
 
         mse_loss = per_item_mse_loss.mean()
-        sparsity = feature_acts.norm(p=self.lp_norm, dim=1).mean(dim=(0,))
+        # l1 loss only applied to hidden_pre_gate
+        sparsity = hidden_pre_gate.norm(p=self.lp_norm, dim=1).mean(dim=(0,))
         l1_loss = self.l1_coefficient * sparsity
-        loss = mse_loss + l1_loss + ghost_grad_loss
+        # auxiliary loss
+        # NOTE: var names are transcribed from Eq (8) of Gated SAEs paper
+
+        # NOTE: in paper, they use ReLU for this
+        # Unsure if we should hardcode ReLU also
+        z = F.relu(hidden_pre_gate)
+        x_frozen = (
+            einops.einsum(
+                z
+                * self.scaling_factor,  # need to make sure this handled when loading old models.
+                self.W_dec,
+                "... d_sae, d_sae d_in -> ... d_in",
+            )
+            + self.b_dec
+        )
+        # TODO: should we use _per_item_mse_loss_with_target_norm here?
+        # NOTE: this does not appear to be done in the paper.
+        aux_loss = F.mse_loss(x_frozen, x, reduction="mean")
+        # TODO: add coefficient for aux loss
+        loss = mse_loss + l1_loss + ghost_grad_loss + aux_loss
 
         return ForwardOutput(
             sae_out=sae_out,
