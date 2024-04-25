@@ -1,9 +1,11 @@
 import os
+from collections import OrderedDict
 from dataclasses import fields
 from pathlib import Path
 from typing import Any, Callable
 from unittest.mock import patch
 
+import numpy as np
 import pytest
 import torch
 import wandb
@@ -327,7 +329,13 @@ def test_save_and_load_checkpoint(tmp_path: Path) -> None:
     )
     assert res == str(checkpoint_dir / "test_checkpoint")
 
-    subfolder = os.listdir(res)[0]
+    contents = os.listdir(f"{res}")
+    assert len(contents) == 3
+    assert ACTIVATION_STORE_PATH in contents
+    assert TRAINING_RUN_STATE_PATH in contents
+    contents.remove(ACTIVATION_STORE_PATH)
+    contents.remove(TRAINING_RUN_STATE_PATH)
+    subfolder = contents[0]
     assert subfolder == name
 
     # list contents of subfolder
@@ -338,11 +346,6 @@ def test_save_and_load_checkpoint(tmp_path: Path) -> None:
     assert SPARSITY_PATH in contents
     assert SAE_WEIGHTS_PATH in contents
     # stuff not tied to a single sae
-    contents = os.listdir(f"{res}")
-    assert len(contents) == 3
-    assert ACTIVATION_STORE_PATH in contents
-    assert TRAINING_RUN_STATE_PATH in contents
-    assert subfolder in contents
 
     training_run_state_2, activation_store_2, sae_group_2, train_contexts_2 = (
         load_checkpoint(
@@ -350,29 +353,42 @@ def test_save_and_load_checkpoint(tmp_path: Path) -> None:
         )
     )
 
-    def assert_state_dicts_close(
-        sd1: dict[str, torch.Tensor], sd2: dict[str, torch.Tensor]
-    ):
-        assert sd1.keys() == sd2.keys()
-        for attr in sd1.keys():
-            assert torch.allclose(sd1[attr], sd2[attr])
+    # recursive handle lots of types
+    def assert_close(sd1: Any, sd2: Any):
+        assert type(sd1) == type(sd2)
+        if type(sd1) is torch.Tensor:
+            assert torch.allclose(sd1, sd2)
+        elif type(sd1) is np.ndarray:
+            assert np.allclose(sd1, sd2)
+        elif type(sd1) in [dict, OrderedDict]:
+            assert sd1.keys() == sd2.keys()
+            for k in sd1.keys():
+                assert_close(sd1[k], sd2[k])
+        elif type(sd1) is list or type(sd1) is tuple:
+            assert len(sd1) == len(sd2)
+            for v1, v2 in zip(sd1, sd2):
+                assert_close(v1, v2)
+        elif type(sd1) in [str, int, bool, float]:
+            assert sd1 == sd2
+        elif sd1 is None:
+            assert sd1 == sd2
+        else:
+            raise ValueError(f"didn't handle {sd1} of type {type(sd1)}")
 
     # compare training run states
     for attr in fields(training_run_state):
         f1 = getattr(training_run_state, attr.name)
         f2 = getattr(training_run_state_2, attr.name)
-        assert f1 == f2
+        assert_close(f1, f2)
 
     # compare sae groups and ctxs
     assert sae_group.autoencoders.keys() == sae_group_2.autoencoders.keys()
     for name, sae in sae_group.autoencoders.items():
         sae2 = sae_group_2.autoencoders[name]
-        assert_state_dicts_close(sae.state_dict(), sae2.state_dict())
+        assert_close(sae.state_dict(), sae2.state_dict())
 
     # compare activation stores
-    assert_state_dicts_close(
-        activation_store.state_dict(), activation_store_2.state_dict()
-    )
+    assert_close(activation_store.state_dict(), activation_store_2.state_dict())
 
     # compare loaded train context
     assert train_contexts_2.keys() == train_contexts.keys()
@@ -381,7 +397,7 @@ def test_save_and_load_checkpoint(tmp_path: Path) -> None:
         ctx2 = train_contexts[k]
         sd1 = ctx1.state_dict()
         sd2 = ctx2.state_dict()
-        assert_state_dicts_close(sd1, sd2)
+        assert_close(sd1, sd2)
 
 
 def test_train_sae_group_on_language_model__runs(
@@ -405,7 +421,7 @@ def test_train_sae_group_on_language_model__runs(
         activation_store=activation_store,
         batch_size=32,
     )
-    assert res.checkpoint_paths == [str(checkpoint_dir / "final")]
+    assert res.checkpoint_paths == [str(checkpoint_dir / "final_128")]
     assert len(res.log_feature_sparsities) == 1
 
     name = next(iter(res.sae_group))[0]

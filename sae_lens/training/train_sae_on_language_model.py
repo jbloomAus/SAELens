@@ -8,7 +8,7 @@ from typing import Any, Optional, cast
 import numpy as np
 import torch
 import wandb
-from safetensors.torch import load_file, save_file
+from safetensors.torch import save_file
 from torch.optim import Adam, Optimizer
 from torch.optim.lr_scheduler import LRScheduler
 from tqdm import tqdm
@@ -83,16 +83,15 @@ class SAETrainContext:
             value = getattr(self, attr.name)
             # serializable fields
             if hasattr(value, "state_dict"):
-                value = value.state_dict()
-            # int/bool fields
-            elif not type(value) is torch.Tensor:
-                value = torch.Tensor(value)
-            state_dict[attr.name] = value
+                state_dict[attr.name] = value.state_dict()
+            else:
+                state_dict[attr.name] = value
         return state_dict
 
     @classmethod
     def load(cls, path: str, sae: SparseAutoencoder, total_training_steps: int):
-        state_dict = load_file(path)
+        with open(path, "rb") as f:
+            state_dict = pickle.load(f)
         attached_ctx = _build_train_context(
             sae=sae, total_training_steps=total_training_steps
         )
@@ -102,10 +101,6 @@ class SAETrainContext:
             if hasattr(value, "state_dict"):
                 value.load_state_dict(state_dict[attr.name])
                 state_dict[attr.name] = value
-            # non-tensor values (like int or bool)
-            elif not type(value) is torch.Tensor:
-                ctx_val = state_dict[attr.name].item()
-                state_dict[attr.name] = ctx_val  # pyright: ignore [reportArgumentType]
         ctx = cls(**state_dict)  # pyright: ignore [reportArgumentType]
         # if fine tuning, we need to set sae requires grad properly
         if ctx.finetuning:
@@ -113,7 +108,8 @@ class SAETrainContext:
         return ctx
 
     def save(self, path: str):
-        save_file(self.state_dict(), path)
+        with open(path, "wb") as f:
+            pickle.dump(self.state_dict(), f)
 
 
 @dataclass
@@ -642,7 +638,7 @@ def _build_train_step_log_dict(
 
 
 ACTIVATION_STORE_PATH = "activation_store.safetensors"
-TRAINING_RUN_STATE_PATH = "training_run_state.json"
+TRAINING_RUN_STATE_PATH = "training_run_state.pkl"
 SAE_CONTEXT_PATH = "ctx.safetensors"
 
 
@@ -726,7 +722,7 @@ def _save_checkpoint(
 
         ctx = train_contexts[name]
         path = f"{checkpoint_path}/{name}"
-
+        os.makedirs(path, exist_ok=True)
         ctx_path = f"{path}/{SAE_CONTEXT_PATH}"
         ctx.save(ctx_path)
 
