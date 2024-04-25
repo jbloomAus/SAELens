@@ -23,7 +23,7 @@ cfg = LanguageModelSAERunnerConfig(
     lr=0.0004,
     l1_coefficient=0.00008,
     lr_scheduler_name="constant",
-    train_batch_size=4096,
+    train_batch_size=1024,
     context_size=128,
     lr_warm_up_steps=5000,
     # Activation Store Parameters
