@@ -19,6 +19,9 @@ from sae_lens.training.activation_functions import get_activation_fn
 from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.utils import BackwardsCompatiblePickleClass
 
+SPARSITY_PATH = 'sparsity.safetensors'
+SAE_WEIGHTS_PATH = 'sae_weights.safetensors'
+SAE_CFG_PATH = 'cfg.json'
 
 class ForwardOutput(NamedTuple):
     sae_out: torch.Tensor
@@ -253,7 +256,7 @@ class SparseAutoencoder(HookedRootModule):
             os.mkdir(path)
 
         # generate the weights
-        save_file(self.state_dict(), f"{path}/sae_weights.safetensors")
+        save_file(self.state_dict(), f"{path}/{SAE_WEIGHTS_PATH}")
 
         # save the config
         config = {
@@ -263,12 +266,12 @@ class SparseAutoencoder(HookedRootModule):
             "device": str(self.cfg.device),
         }
 
-        with open(f"{path}/cfg.json", "w") as f:
+        with open(f"{path}/{SAE_CFG_PATH}", "w") as f:
             json.dump(config, f)
 
         if sparsity is not None:
             sparsity_in_dict = {"sparsity": sparsity}
-            save_file(sparsity_in_dict, f"{path}/sparsity.safetensors")  # type: ignore
+            save_file(sparsity_in_dict, f"{path}/{SPARSITY_PATH}")  # type: ignore
 
     @classmethod
     def load_from_pretrained_legacy(cls, path: str):

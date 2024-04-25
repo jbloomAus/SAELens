@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import os
 from typing import Any, Iterator, Literal, TypeVar, cast
+from safetensors.torch import save_file, load_file
+import tqdm
 
 import torch
 from datasets import (
@@ -111,6 +113,7 @@ class ActivationsStore:
         self.dtype = dtype
         self.cached_activations_path = cached_activations_path
 
+        self.n_dataset_processed = 0
         self.iterable_dataset = iter(self.dataset)
 
         # Check if dataset is tokenized
@@ -402,6 +405,38 @@ class ActivationsStore:
             self._dataloader = self.get_data_loader()
             return next(self.dataloader)
 
+    @classmethod
+    def load(cls,
+        file_path: str,
+        model: HookedRootModule,
+        cfg: LanguageModelSAERunnerConfig | CacheActivationsRunnerConfig,
+        dataset: HfDataset | None = None,
+    ):
+        activation_store = cls.from_config(
+                            model=model,
+                            cfg=cfg,
+                            dataset=dataset)
+
+        state_dict = load_file(file_path)
+        activation_store.storage_buffer = state_dict['storage_buffer']
+        n_dataset_processed = state_dict['n_dataset_processed']
+        # fastforward data
+        pbar = tqdm.tqdm(total=n_dataset_processed-activation_store.n_dataset_processed, desc="Fast forwarding data")
+        while activation_store.n_dataset_processed < n_dataset_processed:
+            next(activation_store.iterable_dataset)
+            pbar.update(1)
+            activation_store.n_dataset_processed += 1
+        return activation_store
+
+    def state_dict(self):
+        return {
+            'storage_buffer': self.storage_buffer,
+            'n_dataset_processed': self.n_dataset_processed
+        }
+
+    def save(self, file_path):
+        save_file(self.state_dict(), file_path)
+    
     def _get_next_dataset_tokens(self) -> torch.Tensor:
         device = self.device
         if not self.is_dataset_tokenized:
@@ -427,6 +462,7 @@ class ActivationsStore:
                 and tokens[0] == self.model.tokenizer.bos_token_id  # type: ignore
             ):
                 tokens = tokens[1:]
+        self.n_dataset_processed += 1
         return tokens
 
 
