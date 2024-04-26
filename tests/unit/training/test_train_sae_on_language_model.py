@@ -283,7 +283,7 @@ def test_build_train_step_log_dict() -> None:
     }
 
 
-def test_save_and_load_checkpoint(tmp_path: Path) -> None:
+def test_save_load_and_resume_checkpoint(tmp_path: Path) -> None:
 
     # set wandb mode to offline
     os.environ["WANDB_MODE"] = "offline"
@@ -291,14 +291,18 @@ def test_save_and_load_checkpoint(tmp_path: Path) -> None:
     wandb.init()
     checkpoint_dir = tmp_path / "checkpoint"
     cfg = build_sae_cfg(
-        checkpoint_path=checkpoint_dir, d_in=25, d_sae=100, log_to_wandb=True
+        checkpoint_path=checkpoint_dir,
+        d_in=64,
+        d_sae=128,
+        log_to_wandb=True,
+        training_tokens=256,
     )
     sae_group = SparseAutoencoderDictionary(cfg)
     assert len(sae_group.autoencoders) == 1
     ctx = build_train_ctx(
         next(iter(sae_group))[1],
-        act_freq_scores=torch.randint(0, 100, (100,)),
-        n_forward_passes_since_fired=torch.randint(0, 100, (100,)),
+        act_freq_scores=torch.rand((128,)),
+        n_forward_passes_since_fired=torch.randint(0, 128, (128,)),
         n_frac_active_tokens=123,
     )
     name = next(iter(sae_group.autoencoders.keys()))
@@ -309,7 +313,7 @@ def test_save_and_load_checkpoint(tmp_path: Path) -> None:
             {"text": "hello world2"},
             {"text": "hello world3"},
         ]
-        * 2000
+        * 5000
     )
     model = load_model_cached(cfg.model_name)
     activation_store = ActivationsStore.from_config(model, cfg, dataset=dataset)
@@ -318,7 +322,8 @@ def test_save_and_load_checkpoint(tmp_path: Path) -> None:
 
     train_contexts = {name: ctx}
     _ = activation_store.get_batch_tokens()
-    activation_store.n_dataset_processed = 1
+    _ = activation_store.get_batch_tokens()
+    _ = activation_store.get_batch_tokens()
 
     res = _save_checkpoint(
         sae_group,
@@ -398,6 +403,21 @@ def test_save_and_load_checkpoint(tmp_path: Path) -> None:
         sd1 = ctx1.state_dict()
         sd2 = ctx2.state_dict()
         assert_close(sd1, sd2)
+
+    res = train_sae_group_on_language_model(
+        model=model,
+        sae_group=sae_group,
+        activation_store=activation_store,
+        train_contexts=train_contexts_2,
+        training_run_state=training_run_state_2,
+        batch_size=cfg.train_batch_size,
+    )
+    assert res.checkpoint_paths[-1] == str(checkpoint_dir / "final_258")
+    assert len(res.log_feature_sparsities) == 1
+
+    name = next(iter(res.sae_group))[0]
+    assert res.log_feature_sparsities[name].shape == (cfg.d_sae,)
+    assert res.sae_group is sae_group
 
 
 def test_train_sae_group_on_language_model__runs(
