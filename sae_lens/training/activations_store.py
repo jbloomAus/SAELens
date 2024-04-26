@@ -417,7 +417,9 @@ class ActivationsStore:
 
         state_dict = load_file(file_path)
         if "storage_buffer" in state_dict.keys():
-            activation_store._storage_buffer = state_dict["storage_buffer"]
+            activation_store._storage_buffer = state_dict["storage_buffer"].to(
+                cfg.device
+            )
         n_dataset_processed = state_dict["n_dataset_processed"].item()
         # fastforward data
         pbar = tqdm.tqdm(

@@ -1,5 +1,4 @@
 import os
-from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Any, Optional, cast
 
@@ -224,9 +223,9 @@ class LanguageModelSAERunnerConfig:
         checkpoints = [
             f
             for f in os.listdir(self.checkpoint_path)
-            if os.path.isfile(os.path.join(self.checkpoint_path, f))
+            if os.path.isdir(os.path.join(self.checkpoint_path, f))
         ]
-        mapped_to_steps = defaultdict(lambda: [])
+        mapped_to_steps = {}
         for c in checkpoints:
             try:
                 steps = int(c)
@@ -237,8 +236,8 @@ class LanguageModelSAERunnerConfig:
                 else:
                     continue  # ignore this directory
             full_path = os.path.join(self.checkpoint_path, c)
-            mapped_to_steps[steps].append(full_path)
-        return dict(mapped_to_steps), is_done
+            mapped_to_steps[steps] = full_path
+        return mapped_to_steps, is_done
 
     def get_resume_checkpoint_path(self) -> str:
         """
