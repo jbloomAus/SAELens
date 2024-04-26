@@ -1,0 +1,24 @@
+FROM python:3.12-slim
+
+# Set bash to default shell
+SHELL ["/bin/bash", "-c"]
+ENV PATH="${PATH}:/root/.local/bin"
+
+# Install curl 
+RUN apt-get -y update && \
+    apt-get -y install curl
+
+# Install poetry
+RUN curl -sSL https://install.python-poetry.org | python3 -
+# Test poetry installation
+RUN echo $(poetry --version)
+
+# Install pdm 
+RUN curl -sSL https://pdm-project.org/install-pdm.py | python3 -
+RUN echo $(pdm --version)
+
+# Install package
+WORKDIR /sae_lens
+COPY pyproject.toml /sae_lens/
+RUN poetry install
+COPY . /sae_lens

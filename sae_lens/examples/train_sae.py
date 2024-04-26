@@ -1,6 +1,13 @@
+import os
+from pprint import pprint
+
+import simple_parsing
 import torch
 
-from sae_lens import LanguageModelSAERunnerConfig
+from sae_lens import LanguageModelSAERunnerConfig, language_model_sae_runner
+
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+os.environ["WANDB__SERVICE_WAIT"] = "300"
 
 
 def get_lm_sae_runner_config():
@@ -44,3 +51,16 @@ def get_lm_sae_runner_config():
         checkpoint_path="checkpoints",
         dtype=torch.float32,
     )
+
+
+if __name__ == "__main__":
+    parser = simple_parsing.ArgumentParser()
+    parser.add_arguments(
+        LanguageModelSAERunnerConfig, dest="cfg", default=get_lm_sae_runner_config()
+    )
+
+    args = parser.parse_args()
+    cfg = args.cfg
+    pprint(cfg)
+
+    language_model_sae_runner(cfg)
