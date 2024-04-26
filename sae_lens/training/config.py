@@ -103,6 +103,7 @@ class LanguageModelSAERunnerConfig:
     log_activations_store_to_wandb: bool = False
     log_optimizer_state_to_wandb: bool = False
     wandb_project: str = "mats_sae_training_language_model"
+    wandb_id: Optional[str] = None
     run_name: Optional[str] = None
     wandb_entity: Optional[str] = None
     wandb_log_frequency: int = 10

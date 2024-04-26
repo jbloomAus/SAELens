@@ -60,7 +60,16 @@ def language_model_sae_runner(cfg: LanguageModelSAERunnerConfig):
             )
 
     if cfg.log_to_wandb:
-        wandb.init(project=cfg.wandb_project, config=cast(Any, cfg), name=cfg.run_name)
+        resume = None
+        if cfg.resume:
+            resume = "allow"
+        wandb.init(
+            project=cfg.wandb_project,
+            config=cast(Any, cfg),
+            name=cfg.run_name,
+            resume=resume,
+            id=cfg.wandb_id,
+        )
 
     # train SAE
     sparse_autoencoder = train_sae_group_on_language_model(
