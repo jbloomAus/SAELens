@@ -1,12 +1,8 @@
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-[project]
+[tool.poetry]
 name = "sae-lens"
 version = "0.7.0"
 description = "Training and Analyzing Sparse Autoencoders (SAEs)"
-authors = [{name = "Joseph Bloom"}]
+authors = ["Joseph Bloom"]
 readme = "README.md"
 packages = [{include = "sae_lens"}]
 
@@ -35,7 +31,6 @@ safetensors = "^0.4.2"
 typer = "^0.12.3"
 mamba-lens = { version = "^0.0.4", optional = true }
 pyzmq = "26.0.0"
-torch = "^2.3.0"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -47,12 +42,6 @@ flake8 = "7.0.0"
 isort = "5.13.2"
 pyright = "^1.1.351"
 mamba-lens = "^0.0.4"
-
-
-[tool.poetry.group.cluster.dependencies]
-lxm3 = "^0.4.2"
-simple-parsing = "^0.1.5"
-torch = "^2.3.0"
 
 [tool.poetry.extras]
 mamba = ["mamba-lens"]
@@ -74,6 +63,11 @@ reportUnnecessaryComparison = "none"
 reportConstantRedefinition = "none"
 reportUnknownLambdaType = "none"
 reportPrivateUsage = "none"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
 
 
 [tool.semantic_release]
