@@ -1,0 +1,13 @@
+Bootstrap: localimage
+From: ./cluster/py312.sif
+
+%files 
+    ./sae_lens /project/sae_lens
+    ./pyproject.toml /project
+    ./README.md /project
+%post
+    cd /project
+    poetry install
+
+%runscript
+    python "$@"
