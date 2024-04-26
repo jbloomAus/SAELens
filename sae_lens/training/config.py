@@ -162,10 +162,11 @@ class LanguageModelSAERunnerConfig:
                 self.lr_end = [lr / 10 for lr in self.lr]
             else:
                 self.lr_end = self.lr / 10
-
-        unique_id = cast(
-            Any, wandb
-        ).util.generate_id()  # not sure why this type is erroring
+        unique_id = self.wandb_id
+        if unique_id is None:
+            unique_id = cast(
+                Any, wandb
+            ).util.generate_id()  # not sure why this type is erroring
         self.checkpoint_path = f"{self.checkpoint_path}/{unique_id}"
 
         if self.verbose:
