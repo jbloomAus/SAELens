@@ -14,7 +14,7 @@ def get_lm_sae_runner_config():
     return LanguageModelSAERunnerConfig(
         # Data Generating Function (Model + Training Distibuion)
         model_name="gpt2-small",
-        sae_class_name="GatedSparseAutoencoder",
+        sae_class_name="SparseAutoencoder",
         hook_point="blocks.2.hook_resid_pre",
         hook_point_layer=2,
         d_in=768,
@@ -27,7 +27,7 @@ def get_lm_sae_runner_config():
         lr=0.0004,
         l1_coefficient=0.00008,
         lr_scheduler_name="constant",
-        train_batch_size=256,
+        train_batch_size=4096,
         context_size=128,
         lr_warm_up_steps=5000,
         # Activation Store Parameters

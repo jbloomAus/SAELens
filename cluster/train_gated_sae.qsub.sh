@@ -23,7 +23,8 @@ cd /home/$USER/Scratch/SAELens
 poetry install
 
 # Run the script
-poetry run python scripts/train_gated_sae.py
+poetry run python -m sae_lens.examples.train_sae --config.sae_class_name GatedSparseAutoencoder
+poetry run python -m sae_lens.examples.train_sae --config.sae_class_name SparseAutoencoder
 
 # End the job
 send_slack_notification "Job $JOB_NAME:$JOB_ID ended"
