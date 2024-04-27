@@ -43,6 +43,10 @@ isort = "5.13.2"
 pyright = "^1.1.351"
 mamba-lens = "^0.0.4"
 
+
+[tool.poetry.group.examples.dependencies]
+simple-parsing = "^0.1.5"
+
 [tool.poetry.extras]
 mamba = ["mamba-lens"]
 
