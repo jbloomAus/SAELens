@@ -19,13 +19,13 @@ source $HOME/setup/env.sh
 # NOTE: Install cluster utils here: https://github.com/90HH/cluster-utils/
 source $HOME/setup/cluster-utils/import.sh
 
-assert_env_var_set "SINGULARITYENV_WANDB_API_TOKEN"
+send_slack_notification "Job $JOB_NAME:$JOB_ID started" 
+
+assert_env_var_set "SINGULARITYENV_WANDB_API_KEY"
 
 # activate python environment
 source /share/apps/source_files/cuda/cuda-11.8.source
 source /share/apps/source_files/python/python-3.11.9.source
-
-send_slack_notification "Job $JOB_NAME:$JOB_ID started" 
 
 # NOTE: Assume you have uploaded a singularity image
 CONTAINER=$HOME/Scratch/SAELens/cluster/sae_lens.sif
