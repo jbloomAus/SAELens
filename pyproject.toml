@@ -8,7 +8,6 @@ packages = [{include = "sae_lens"}]
 
 [tool.poetry.dependencies]
 python = "^3.10"
-neuron-explainer = { git = "https://github.com/hijohnnylin/automated-interpretability.git", subdirectory = "neuron-explainer" }
 transformer-lens = "^1.14.0"
 transformers = "^4.38.1"
 jupyter = "^1.0.0"
@@ -32,6 +31,7 @@ safetensors = "^0.4.2"
 typer = "^0.12.3"
 mamba-lens = { version = "^0.0.4", optional = true }
 pyzmq = "26.0.0"
+automated-interpretability = "^0.0.2"
 
 
 [tool.poetry.group.dev.dependencies]
