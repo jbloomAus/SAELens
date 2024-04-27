@@ -2,6 +2,31 @@
 
 
 
+## v1.0.0 (2024-04-27)
+
+### Breaking
+
+* chore: empty commit to bump release
+
+BREAKING CHANGE: v1 release ([`2615a3e`](https://github.com/jbloomAus/SAELens/commit/2615a3ec472db25678971c4a11b804e316daa8a5))
+
+### Chore
+
+* chore: fix outdated lr_scheduler_name in docs (#109)
+
+* chore: fix outdated lr_scheduler_name in docs
+
+* add tutorial hparams ([`7cba332`](https://github.com/jbloomAus/SAELens/commit/7cba332800ff6aa826aaf53b1c86a56afabde6ec))
+
+### Unknown
+
+* BREAKING CHANGE: 1.0.0 release
+
+BREAKING CHANGE: 1.0.0 release ([`c23098f`](https://github.com/jbloomAus/SAELens/commit/c23098f17615cd092d82ee12b2e61edc93dbb1ec))
+
+* Neuronpedia: allow resuming upload (#102) ([`0184671`](https://github.com/jbloomAus/SAELens/commit/0184671bafa2ff53e97e6ff6e157a334df2428b9))
+
+
 ## v0.7.0 (2024-04-24)
 
 ### Feature
