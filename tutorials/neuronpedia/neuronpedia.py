@@ -5,9 +5,7 @@ import json
 import math
 import os
 import subprocess
-from decimal import Decimal
 from pathlib import Path
-from typing import Any
 
 import requests
 import torch
@@ -17,6 +15,7 @@ from rich.align import Align
 from rich.panel import Panel
 from typing_extensions import Annotated
 
+from sae_lens.analysis.neuronpedia_integration import NanAndInfReplacer
 from sae_lens.toolkit.pretrained_saes import load_sparsity
 from sae_lens.training.sparse_autoencoder import SparseAutoencoder
 
@@ -376,11 +375,7 @@ def upload(
     for file_path in files_to_upload:
         print("===== Uploading file: " + os.path.basename(file_path))
         f = open(file_path, "r")
-        data = json.load(f)
-
-        # Replace NaNs
-        data_fixed = json.dumps(data, cls=NanConverter)
-        data = json.loads(data_fixed)
+        data = json.load(f, parse_constant=NanAndInfReplacer)
 
         url = host + "/api/local/upload-features"
         requests.post(
@@ -442,24 +437,6 @@ Dead feature stubs created.
             )
         )
     )
-
-
-# Helper utilities that help fix weird NaNs in the feature outputs
-
-
-def nanToNeg999(obj: Any) -> Any:
-    if isinstance(obj, dict):
-        return {k: nanToNeg999(v) for k, v in obj.items()}
-    elif isinstance(obj, list):
-        return [nanToNeg999(v) for v in obj]
-    elif (isinstance(obj, float) or isinstance(obj, Decimal)) and math.isnan(obj):
-        return -999
-    return obj
-
-
-class NanConverter(json.JSONEncoder):
-    def encode(self, o: Any, *args: Any, **kwargs: Any):
-        return super().encode(nanToNeg999(o), *args, **kwargs)
 
 
 if __name__ == "__main__":

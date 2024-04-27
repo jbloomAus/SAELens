@@ -8,6 +8,7 @@ packages = [{include = "sae_lens"}]
 
 [tool.poetry.dependencies]
 python = "^3.10"
+automated-interpretability = { git = "https://github.com/hijohnnylin/automated-interpretability.git" }
 transformer-lens = "^1.14.0"
 transformers = "^4.38.1"
 jupyter = "^1.0.0"
