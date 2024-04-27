@@ -42,7 +42,7 @@ cfg = LanguageModelSAERunnerConfig(
     # Training Parameters
     lr = 0.0004,
     l1_coefficient = 0.00008,
-    lr_scheduler_name="constantwithwarmup",
+    lr_scheduler_name="constant",
     train_batch_size = 4096,
     context_size = 128,
     lr_warm_up_steps=5000,
