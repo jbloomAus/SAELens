@@ -17,7 +17,7 @@
 source /share/apps/source_files/cuda/cuda-11.8.source
 source /share/apps/source_files/python/python-3.11.9.source
 
-SLACK_WEBHOOK_URL=https://hooks.slack.com/services/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
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/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
 SLACK_USER_ID=U070NUR0S04
 
 send_slack_notification() {
@@ -30,9 +30,9 @@ send_slack_notification() {
 send_slack_notification "Job $JOB_NAME:$JOB_ID started" 
 
 # NOTE: Assume you have uploaded a singularity image
-CONTAINER=$HOME/Scratch/sae_lens.sif
-singularity exec --nv $CONTAINER --fakeroot python -m sae_lens.examples.train_sae --config.sae_class_name GatedSparseAutoencoder
-singularity exec --nv $CONTAINER --fakeroot python -m sae_lens.examples.train_sae --config.sae_class_name SparseAutoencoder
+CONTAINER=$HOME/Scratch/SAELens/cluster/sae_lens.sif
+singularity exec --fakeroot --nv $CONTAINER python -m sae_lens.examples.train_sae --config.sae_class_name GatedSparseAutoencoder
+singularity exec --fakeroot --nv $CONTAINER python -m sae_lens.examples.train_sae --config.sae_class_name SparseAutoencoder
 
 send_slack_notification "Job $JOB_NAME:$JOB_ID ended"
 
