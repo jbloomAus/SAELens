@@ -556,15 +556,15 @@ class GatedSparseAutoencoder(SparseAutoencoder):
             )
 
         mse_loss = per_item_mse_loss.mean()
-        # l1 loss only applied to hidden_pre_gate
-        sparsity = hidden_pre_gate.norm(p=self.lp_norm, dim=1).mean(dim=(0,))
-        l1_loss = self.l1_coefficient * sparsity
-        # auxiliary loss
-        # NOTE: var names are transcribed from Eq (8) of Gated SAEs paper
-
+        # l1 loss only applied to pre-gate magnitude
         # NOTE: in paper, they use ReLU for this
         # Unsure if we should hardcode ReLU also
         via_gate_feature_magnitudes = F.relu(hidden_pre_gate)
+        sparsity = via_gate_feature_magnitudes.norm(p=self.lp_norm, dim=1).mean(
+            dim=(0,)
+        )
+        l1_loss = self.l1_coefficient * sparsity
+        # auxiliary loss
         # NOTE: detach W_dec and b_dec (See Fig 17)
         via_gate_reconstruction = (
             einops.einsum(
