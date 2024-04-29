@@ -31,6 +31,7 @@ safetensors = "^0.4.2"
 typer = "^0.12.3"
 mamba-lens = { version = "^0.0.4", optional = true }
 pyzmq = "26.0.0"
+automated-interpretability = "^0.0.2"
 
 
 [tool.poetry.group.dev.dependencies]
