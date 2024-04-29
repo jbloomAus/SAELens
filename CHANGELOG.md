@@ -2,6 +2,17 @@
 
 
 
+## v1.2.0 (2024-04-29)
+
+### Feature
+
+* feat: breaks up SAE.forward() into encode() and decode() (#107)
+
+* breaks up SAE.forward() into encode() and decode()
+
+* cleans up return typing of encode by splitting into a hidden and public function ([`7b4311b`](https://github.com/jbloomAus/SAELens/commit/7b4311bab965775bbb37e5d1f7b27d1379954fa8))
+
+
 ## v1.1.0 (2024-04-29)
 
 ### Feature
