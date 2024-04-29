@@ -10,6 +10,7 @@ from typing import Callable, NamedTuple, Optional
 
 import einops
 import torch
+from jaxtyping import Float
 from safetensors import safe_open
 from safetensors.torch import save_file
 from torch import nn
@@ -118,7 +119,16 @@ class SparseAutoencoder(HookedRootModule):
 
         self.setup()  # Required for `HookedRootModule`s
 
-    def forward(self, x: torch.Tensor, dead_neuron_mask: torch.Tensor | None = None):
+    def encode(
+        self, x: Float[torch.Tensor, "... d_in"]
+    ) -> Float[torch.Tensor, "... d_sae"]:
+        feature_acts, _ = self._encode_with_hidden_pre(x)
+        return feature_acts
+
+    def _encode_with_hidden_pre(
+        self, x: Float[torch.Tensor, "... d_in"]
+    ) -> tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
+        """Encodes input activation tensor x into an SAE feature activation tensor."""
         # move x to correct dtype
         x = x.to(self.dtype)
         sae_in = self.hook_sae_in(
@@ -139,6 +149,12 @@ class SparseAutoencoder(HookedRootModule):
             noisy_hidden_pre = hidden_pre + noise
         feature_acts = self.hook_hidden_post(self.activation_fn(noisy_hidden_pre))
 
+        return feature_acts, hidden_pre
+
+    def decode(
+        self, feature_acts: Float[torch.Tensor, "... d_sae"]
+    ) -> Float[torch.Tensor, "... d_in"]:
+        """Decodes SAE feature activation tensor into a reconstructed input activation tensor."""
         sae_out = self.hook_sae_out(
             einops.einsum(
                 feature_acts
@@ -148,6 +164,14 @@ class SparseAutoencoder(HookedRootModule):
             )
             + self.b_dec
         )
+        return sae_out
+
+    def forward(
+        self, x: torch.Tensor, dead_neuron_mask: torch.Tensor | None = None
+    ) -> ForwardOutput:
+
+        feature_acts, hidden_pre = self._encode_with_hidden_pre(x)
+        sae_out = self.decode(feature_acts)
 
         # add config for whether l2 is normalized:
         per_item_mse_loss = _per_item_mse_loss_with_target_norm(

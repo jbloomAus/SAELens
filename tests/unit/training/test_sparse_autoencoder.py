@@ -149,6 +149,54 @@ def test_SparseAutoencoder_save_and_load_from_pretrained_lacks_scaling_factor(
             )
 
 
+def test_sparse_autoencoder_encode(sparse_autoencoder: SparseAutoencoder):
+    batch_size = 32
+    d_in = sparse_autoencoder.d_in
+    d_sae = sparse_autoencoder.d_sae
+
+    x = torch.randn(batch_size, d_in)
+    feature_acts1 = sparse_autoencoder.encode(x)
+    (
+        _,
+        feature_acts2,
+        _,
+        _,
+        _,
+        _,
+    ) = sparse_autoencoder.forward(
+        x,
+    )
+
+    # Check shape
+    assert feature_acts1.shape == (batch_size, d_sae)
+
+    # Check values
+    assert torch.allclose(feature_acts1, feature_acts2)
+
+
+def test_sparse_autoencoder_decode(sparse_autoencoder: SparseAutoencoder):
+    batch_size = 32
+    d_in = sparse_autoencoder.d_in
+
+    x = torch.randn(batch_size, d_in)
+    feature_acts = sparse_autoencoder.encode(x)
+    sae_out1 = sparse_autoencoder.decode(feature_acts)
+
+    (
+        sae_out2,
+        _,
+        _,
+        _,
+        _,
+        _,
+    ) = sparse_autoencoder.forward(
+        x,
+    )
+
+    assert sae_out1.shape == x.shape
+    assert torch.allclose(sae_out1, sae_out2)
+
+
 def test_sparse_autoencoder_forward(sparse_autoencoder: SparseAutoencoder):
     batch_size = 32
     d_in = sparse_autoencoder.d_in
