@@ -2,6 +2,21 @@
 
 
 
+## v1.1.0 (2024-04-29)
+
+### Feature
+
+* feat: API for generating autointerp + scoring for neuronpedia (#108)
+
+* API for generating autointerp for neuronpedia
+
+* Undo pytest vscode setting change
+
+* Fix autointerp import
+
+* Use pypi import for automated-interpretability ([`7c43c4c`](https://github.com/jbloomAus/SAELens/commit/7c43c4caa84aea421ac81ae0e326d9c62bb17bec))
+
+
 ## v1.0.0 (2024-04-27)
 
 ### Breaking
