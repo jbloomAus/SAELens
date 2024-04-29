@@ -25,7 +25,24 @@ pip install sae-lens
 
 ### Loading Sparse Autoencoders from Huggingface
 
-[Previously trained sparse autoencoders](https://huggingface.co/jbloom/GPT2-Small-SAEs) can be loaded from huggingface with close to single line of code. For more details and performance metrics for these sparse autoencoder, read my [blog post](https://www.alignmentforum.org/posts/f9EgfLSurAiqRJySD/open-source-sparse-autoencoders-for-all-residual-stream). 
+
+#### Loading officially supported SAEs
+
+To load an officially supported sparse autoencoder, you can use `SparseAutoencoder.from_pretrained()` as below:
+
+```python
+from sae_lens import SparseAutoencoder
+
+layer = 8 # pick a layer you want.
+sparse_autoencoder = SparseAutoencoder.from_pretrained(
+    "gpt2-small-res-jb", f"blocks.{layer}.hook_resid_pre
+)
+```
+Currently, only `gpt2-small-res-jb` SAEs for the gpt2-small residual-stream are available via this method, but more SAEs will be added soon!
+
+#### Loading SAEs, ActivationsStore, and Sparsity from Huggingface 
+
+For more advanced use-cases like fine-tuning a pre-trained SAE, [previously trained sparse autoencoders](https://huggingface.co/jbloom/GPT2-Small-SAEs) can be loaded from huggingface with close to single line of code. For more details and performance metrics for these sparse autoencoder, read my [blog post](https://www.alignmentforum.org/posts/f9EgfLSurAiqRJySD/open-source-sparse-autoencoders-for-all-residual-stream). 
 
 ```python
 import torch 

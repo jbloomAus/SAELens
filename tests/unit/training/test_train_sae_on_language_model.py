@@ -10,6 +10,7 @@ from datasets import Dataset
 from torch import Tensor
 from transformer_lens import HookedTransformer
 
+from sae_lens import __version__
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.optim import get_scheduler
 from sae_lens.training.sae_group import SparseAutoencoderDictionary
@@ -21,6 +22,7 @@ from sae_lens.training.train_sae_on_language_model import (
     _log_feature_sparsity,
     _save_checkpoint,
     _train_step,
+    _update_sae_lens_training_version,
     train_sae_group_on_language_model,
 )
 from tests.unit.helpers import build_sae_cfg
@@ -330,3 +332,12 @@ def test_train_sae_group_on_language_model__runs(
     name = next(iter(res.sae_group))[0]
     assert res.log_feature_sparsities[name].shape == (cfg.d_sae,)
     assert res.sae_group is sae_group
+
+
+def test_update_sae_lens_training_version_sets_the_current_version():
+    cfg = build_sae_cfg(sae_lens_training_version="0.1.0")
+    sae_group = SparseAutoencoderDictionary(cfg)
+    _update_sae_lens_training_version(sae_group)
+    assert sae_group.cfg.sae_lens_training_version == __version__
+    for sae in sae_group.autoencoders.values():
+        assert sae.cfg.sae_lens_training_version == __version__

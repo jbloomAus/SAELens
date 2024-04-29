@@ -3,28 +3,9 @@ import shutil
 
 import torch
 
-from sae_lens.toolkit.pretrained_saes import (
-    convert_old_to_modern_saelens_format,
-    load_pretrained_sae_yaml,
-)
+from sae_lens.toolkit.pretrained_saes import convert_old_to_modern_saelens_format
 from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.sparse_autoencoder import SparseAutoencoder
-
-
-def test_get_pretrained_sae_yaml():
-    sae_directory = load_pretrained_sae_yaml()
-    assert isinstance(sae_directory, dict)
-
-
-def test_sparse_autoencoder_from_pretrained():
-
-    sparse_autoencoder = SparseAutoencoder.from_pretrained(
-        release="res-jb",
-        id="blocks.0.hook_resid_pre",
-        device="cpu",
-    )
-
-    assert isinstance(sparse_autoencoder, SparseAutoencoder)
 
 
 def test_convert_old_to_modern_saelens_format():

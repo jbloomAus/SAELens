@@ -10,6 +10,7 @@ from torch.optim.lr_scheduler import LRScheduler
 from tqdm import tqdm
 from transformer_lens.hook_points import HookedRootModule
 
+from sae_lens import __version__
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.evals import run_evals
 from sae_lens.training.geometric_median import compute_geometric_median
@@ -111,6 +112,7 @@ def train_sae_group_on_language_model(
     use_wandb: bool = False,
     wandb_log_frequency: int = 50,
 ) -> TrainSAEGroupOutput:
+    _update_sae_lens_training_version(sae_group)
     total_training_tokens = (
         sae_group.cfg.training_tokens + sae_group.cfg.finetuning_tokens
     )
@@ -346,6 +348,15 @@ def _init_sae_group_b_decs(
                 :, sae_layer_id, :
             ]
             sae.initialize_b_dec_with_mean(layer_acts)
+
+
+def _update_sae_lens_training_version(sae_group: SparseAutoencoderDictionary) -> None:
+    """
+    Make sure we record the version of SAELens used for the training run
+    """
+    sae_group.cfg.sae_lens_training_version = __version__
+    for sae in sae_group.autoencoders.values():
+        sae.cfg.sae_lens_training_version = __version__
 
 
 @dataclass
