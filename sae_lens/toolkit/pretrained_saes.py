@@ -1,15 +1,30 @@
 import json
 import os
 import pathlib
+from importlib import resources
 from typing import Optional, Tuple
 
 import torch
+import yaml
 from huggingface_hub import hf_hub_download, list_files_info
 from safetensors import safe_open
 from tqdm import tqdm
 
 from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.sparse_autoencoder import SparseAutoencoder
+
+
+def load_pretrained_sae_yaml():
+
+    package = "sae_lens"
+    # Access the file within the package using importlib.resources
+    with resources.open_text(package, "pretrained_saes.yaml") as file:
+        # Load the YAML file content
+        return yaml.safe_load(file)
+
+
+def get_convertions_func(func_name):
+    pass
 
 
 def load_sparsity(path: str) -> torch.Tensor:

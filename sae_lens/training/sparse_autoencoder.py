@@ -16,6 +16,10 @@ from safetensors.torch import save_file
 from torch import nn
 from transformer_lens.hook_points import HookedRootModule, HookPoint
 
+from sae_lens.toolkit.pretrained_saes import (
+    get_conversion_func,
+    load_pretrained_sae_yaml,
+)
 from sae_lens.training.activation_functions import get_activation_fn
 from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.utils import BackwardsCompatiblePickleClass
@@ -389,6 +393,27 @@ class SparseAutoencoder(HookedRootModule):
         sae.load_state_dict(tensors)
 
         return sae
+
+    @classmethod
+    def from_pretrained(cls, release: str, id: str, device: str = "cpu"):
+        """
+
+        Load a pretrained SAE from the Hugging Face model hub.
+
+        Args:
+            release: The release name. This will be mapped to a huggingface repo id based on the pretrained_saes.yaml file.
+            id: The id of the SAE to load. This will be mapped to a path in the huggingface repo.
+            device: The device to load the SAE on.
+
+        """
+
+        # get sae directory
+        sae_directory = load_pretrained_sae_yaml()
+
+        # get the repo id and path to the SAE
+        hf_repo_id = sae_directory[release]
+        hf_path = sae_directory[release][id]
+        conversion_func = sae_directory[release].get("conversion_func", "standard")
 
     def get_name(self):
         sae_name = f"sparse_autoencoder_{self.cfg.model_name}_{self.cfg.hook_point}_{self.cfg.d_sae}"

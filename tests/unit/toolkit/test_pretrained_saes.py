@@ -3,9 +3,28 @@ import shutil
 
 import torch
 
-from sae_lens.toolkit import pretrained_saes
+from sae_lens.toolkit.pretrained_saes import (
+    convert_old_to_modern_saelens_format,
+    load_pretrained_sae_yaml,
+)
 from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.sparse_autoencoder import SparseAutoencoder
+
+
+def test_get_pretrained_sae_yaml():
+    sae_directory = load_pretrained_sae_yaml()
+    assert isinstance(sae_directory, dict)
+
+
+def test_sparse_autoencoder_from_pretrained():
+
+    sparse_autoencoder = SparseAutoencoder.from_pretrained(
+        release="res-jb",
+        id="blocks.0.hook_resid_pre",
+        device="cpu",
+    )
+
+    assert isinstance(sparse_autoencoder, SparseAutoencoder)
 
 
 def test_convert_old_to_modern_saelens_format():
@@ -23,9 +42,7 @@ def test_convert_old_to_modern_saelens_format():
     old_sae.save_model_legacy(legacy_out_file)
 
     # convert file format
-    pretrained_saes.convert_old_to_modern_saelens_format(
-        legacy_out_file, new_out_folder, force=True
-    )
+    convert_old_to_modern_saelens_format(legacy_out_file, new_out_folder, force=True)
 
     # Load from new converted file
     new_sae = SparseAutoencoder.load_from_pretrained(new_out_folder)
