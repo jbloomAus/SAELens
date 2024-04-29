@@ -120,11 +120,14 @@ class SparseAutoencoder(HookedRootModule):
         self.setup()  # Required for `HookedRootModule`s
 
     def encode(
-        self, x: Float[torch.Tensor, "... d_in"], return_hidden_pre: bool = False
-    ) -> (
-        Float[torch.Tensor, "... d_sae"]
-        | tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]
-    ):
+        self, x: Float[torch.Tensor, "... d_in"]
+    ) -> Float[torch.Tensor, "... d_sae"]:
+        feature_acts, _ = self._encode_with_hidden_pre(x)
+        return feature_acts
+
+    def _encode_with_hidden_pre(
+        self, x: Float[torch.Tensor, "... d_in"]
+    ) -> tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
         """Encodes input activation tensor x into an SAE feature activation tensor."""
         # move x to correct dtype
         x = x.to(self.dtype)
@@ -145,10 +148,8 @@ class SparseAutoencoder(HookedRootModule):
             noise = torch.randn_like(hidden_pre) * self.noise_scale
             noisy_hidden_pre = hidden_pre + noise
         feature_acts = self.hook_hidden_post(self.activation_fn(noisy_hidden_pre))
-        if return_hidden_pre:
-            return feature_acts, hidden_pre
-        else:
-            return feature_acts
+
+        return feature_acts, hidden_pre
 
     def decode(
         self, feature_acts: Float[torch.Tensor, "... d_sae"]
@@ -169,7 +170,7 @@ class SparseAutoencoder(HookedRootModule):
         self, x: torch.Tensor, dead_neuron_mask: torch.Tensor | None = None
     ) -> ForwardOutput:
 
-        feature_acts, hidden_pre = self.encode(x, return_hidden_pre=True)
+        feature_acts, hidden_pre = self._encode_with_hidden_pre(x)
         sae_out = self.decode(feature_acts)
 
         # add config for whether l2 is normalized:
