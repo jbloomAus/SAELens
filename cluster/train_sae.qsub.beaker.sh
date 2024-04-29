@@ -12,6 +12,8 @@
 #$ -l gpu=true
 #$ -l gpu_type=(a100|rtx8000|a100_80|a100_dgx)
 #$ -pe gpu 1
+#$ -o $HOME/logs
+#$ -e $HOME/logs
 
 # NOTE: Set env variables in this script
 # e.g. export MYENV=MYVALUE
