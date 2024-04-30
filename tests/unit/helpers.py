@@ -3,7 +3,10 @@ from typing import Any
 import torch
 from transformer_lens import HookedTransformer
 
-from sae_lens.training.config import LanguageModelSAERunnerConfig
+from sae_lens.training.config import (
+    CacheActivationsRunnerConfig,
+    LanguageModelSAERunnerConfig,
+)
 
 TINYSTORIES_MODEL = "tiny-stories-1M"
 TINYSTORIES_DATASET = "roneneldan/TinyStories"
@@ -41,6 +44,36 @@ def build_sae_cfg(**kwargs: Any) -> LanguageModelSAERunnerConfig:
         device=torch.device("cpu"),
         seed=24,
         checkpoint_path="test/checkpoints",
+        dtype=torch.float32,
+        prepend_bos=True,
+    )
+
+    for key, val in kwargs.items():
+        setattr(mock_config, key, val)
+
+    return mock_config
+
+
+def build_cache_runner_cfg(**kwargs: Any) -> CacheActivationsRunnerConfig:
+    """
+    Helper to create a mock instance of CacheActivationsRunnerConfig.
+    """
+    # Create a mock object with the necessary attributes
+    mock_config = CacheActivationsRunnerConfig(
+        model_name=TINYSTORIES_MODEL,
+        hook_point="blocks.0.hook_mlp_out",
+        hook_point_layer=0,
+        hook_point_head_index=None,
+        dataset_path=TINYSTORIES_DATASET,
+        is_dataset_tokenized=False,
+        d_in=64,
+        train_batch_size=4,
+        context_size=6,
+        n_batches_in_buffer=2,
+        training_tokens=1_000_000,
+        store_batch_size=4,
+        device=torch.device("cpu"),
+        seed=24,
         dtype=torch.float32,
         prepend_bos=True,
     )

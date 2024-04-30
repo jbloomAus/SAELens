@@ -50,6 +50,9 @@ class ActivationsStore:
             and not cfg.use_cached_activations
         ):
             cached_activations_path = None
+        # don't try to load from the cache for the cache runner, since we're building a new cache
+        if isinstance(cfg, CacheActivationsRunnerConfig):
+            cached_activations_path = None
         return cls(
             model=model,
             dataset=dataset or cfg.dataset_path,
@@ -132,8 +135,7 @@ class ActivationsStore:
             )
         self.iterable_dataset = iter(self.dataset)  # Reset iterator after checking
 
-        if cached_activations_path is not None:  # EDIT: load from multi-layer acts
-            assert self.cached_activations_path is not None  # keep pyright happy
+        if self.cached_activations_path is not None:  # EDIT: load from multi-layer acts
             # Sanity check: does the cache directory exist?
             assert os.path.exists(
                 self.cached_activations_path
