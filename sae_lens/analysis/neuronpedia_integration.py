@@ -1,11 +1,35 @@
+import asyncio
 import json
 import os
 import urllib.parse
 import webbrowser
 from datetime import datetime
-from typing import Literal, Optional
+from typing import Any, Optional, TypeVar
 
 import requests
+from dotenv import load_dotenv
+from neuron_explainer.activations.activation_records import calculate_max_activation
+from neuron_explainer.activations.activations import ActivationRecord
+from neuron_explainer.explanations.calibrated_simulator import (
+    UncalibratedNeuronSimulator,
+)
+from neuron_explainer.explanations.explainer import (
+    HARMONY_V4_MODELS,
+    ContextSize,
+    TokenActivationPairExplainer,
+)
+from neuron_explainer.explanations.explanations import ScoredSimulation
+from neuron_explainer.explanations.few_shot_examples import FewShotExampleSet
+from neuron_explainer.explanations.prompt_builder import PromptFormat
+from neuron_explainer.explanations.scoring import (
+    _simulate_and_score_sequence,
+    aggregate_scored_sequence_simulations,
+)
+from neuron_explainer.explanations.simulator import (
+    LogprobFreeExplanationTokenSimulator,
+    NeuronSimulator,
+)
+from tenacity import retry, stop_after_attempt, wait_random_exponential
 
 NEURONPEDIA_DOMAIN = "https://neuronpedia.org"
 
@@ -15,34 +39,31 @@ NEGATIVE_INF_REPLACEMENT = -9999
 NAN_REPLACEMENT = 0
 OTHER_INVALID_REPLACEMENT = -99999
 
+# Pick up OPENAI_API_KEY from environment variable
+load_dotenv()
+
 
 def NanAndInfReplacer(value: str):
+    """Replace NaNs and Infs in outputs."""
     replacements = {
         "-Infinity": NEGATIVE_INF_REPLACEMENT,
         "Infinity": POSITIVE_INF_REPLACEMENT,
         "NaN": NAN_REPLACEMENT,
     }
     if value in replacements:
-        replacedValue = replacements[value]
-        # print(f"Warning: Replacing value {value} with {replacedValue}")
-        return float(replacedValue)
+        replaced_value = replacements[value]
+        return float(replaced_value)
     else:
-        # print(f"Warning: Replacing value {value} with {NAN_REPLACEMENT}")
         return NAN_REPLACEMENT
 
 
 def get_neuronpedia_feature(
-    feature: int,
-    layer: int,
-    model: str = "gpt2-small",
-    dataset: str = "res-jb",
-):
-    url = NEURONPEDIA_DOMAIN + "/api/feature/"
-    url = url + f"{model}/{layer}-{dataset}/{feature}"
-
+    feature: int, layer: int, model: str = "gpt2-small", dataset: str = "res-jb"
+) -> dict[str, Any]:
+    """Fetch a feature from Neuronpedia API."""
+    url = f"{NEURONPEDIA_DOMAIN}/api/feature/{model}/{layer}-{dataset}/{feature}"
     result = requests.get(url).json()
     result["index"] = int(result["index"])
-
     return result
 
 
@@ -70,10 +91,8 @@ def get_neuronpedia_quick_list(
     return url
 
 
-class NeuronpediaActivation(object):
-    id: str = ""
-    tokens = []
-    act_values = []
+class NeuronpediaActivation:
+    """Represents an activation from Neuronpedia."""
 
     def __init__(self, id: str, tokens: list[str], act_values: list[float]):
         self.id = id
@@ -81,15 +100,8 @@ class NeuronpediaActivation(object):
         self.act_values = act_values
 
 
-class NeuronpediaFeature(object):
-    modelId = ""
-    layer = 0
-    dataset = ""
-    index = 0
-    description = ""
-    activations = []
-    autointerp_explanation = ""
-    autointerp_explanation_score = 0
+class NeuronpediaFeature:
+    """Represents a feature from Neuronpedia."""
 
     def __init__(
         self,
@@ -98,7 +110,7 @@ class NeuronpediaFeature(object):
         dataset: str,
         feature: int,
         description: str = "",
-        activations: list[NeuronpediaActivation] = [],
+        activations: list[NeuronpediaActivation] | None = None,
         autointerp_explanation: str = "",
         autointerp_explanation_score: float = 0.0,
     ):
@@ -107,17 +119,41 @@ class NeuronpediaFeature(object):
         self.dataset = dataset
         self.feature = feature
         self.description = description
-        self.activations = activations
+        self.activations = activations or []
         self.autointerp_explanation = autointerp_explanation
         self.autointerp_explanation_score = autointerp_explanation_score
 
-    def has_activating_text(self):
-        has_activating_text = False
-        for activation in self.activations:
-            if max(activation.act_values) > 0:
-                has_activating_text = True
-                break
-        return has_activating_text
+    def has_activating_text(self) -> bool:
+        """Check if the feature has activating text."""
+        return any(max(activation.act_values) > 0 for activation in self.activations)
+
+
+T = TypeVar("T")
+
+
+@retry(wait=wait_random_exponential(min=1, max=500), stop=stop_after_attempt(10))
+def sleep_identity(x: T) -> T:
+    """Dummy function for retrying."""
+    return x
+
+
+@retry(wait=wait_random_exponential(min=1, max=500), stop=stop_after_attempt(10))
+async def simulate_and_score(
+    simulator: NeuronSimulator, activation_records: list[ActivationRecord]
+) -> ScoredSimulation:
+    """Score an explanation of a neuron by how well it predicts activations on the given text sequences."""
+    scored_sequence_simulations = await asyncio.gather(
+        *[
+            sleep_identity(
+                _simulate_and_score_sequence(
+                    simulator,
+                    activation_record,
+                )
+            )
+            for activation_record in activation_records
+        ]
+    )
+    return aggregate_scored_sequence_simulations(scored_sequence_simulations)
 
 
 def make_neuronpedia_list_with_features(
@@ -155,10 +191,9 @@ def make_neuronpedia_list_with_features(
 
 
 def test_key(api_key: str):
-    url = NEURONPEDIA_DOMAIN + "/api/test"
-    body = {
-        "apiKey": api_key,
-    }
+    """Test the validity of the Neuronpedia API key."""
+    url = f"{NEURONPEDIA_DOMAIN}/api/test"
+    body = {"apiKey": api_key}
     response = requests.post(url, json=body)
     if response.status_code != 200:
         raise Exception("Neuronpedia API key is not valid.")
@@ -166,64 +201,66 @@ def test_key(api_key: str):
 
 async def autointerp_neuronpedia_features(
     features: list[NeuronpediaFeature],
-    openai_api_key: str,
+    openai_api_key: str | None = None,
     autointerp_retry_attempts: int = 3,
-    autointerp_score_max_concurrent: int = 20,  # good for this to match num_activations_to_use_for_score
-    neuronpedia_api_key: str = "",
-    # TODO check max budget estimate based on: num features, num act texts, act text lengths. fail if too high.
-    # max_budget_approx_usd: float = 5.00,
+    autointerp_score_max_concurrent: int = 20,
+    neuronpedia_api_key: str | None = None,
     do_score: bool = True,
     output_dir: str = "neuronpedia_outputs/autointerp",
     num_activations_to_use: int = 20,
+    max_explanation_activation_records: int = 20,
     upload_to_neuronpedia: bool = True,
-    autointerp_model_name: Literal["gpt-3.5-turbo", "gpt-4-turbo"] = "gpt-3.5-turbo",
+    autointerp_explainer_model_name: str = "gpt-4-1106-preview",
+    autointerp_scorer_model_name: str = "gpt-3.5-turbo",
 ):
+    """
+    Autointerp Neuronpedia features.
+
+    Args:
+        features: List of NeuronpediaFeature objects.
+        openai_api_key: OpenAI API key.
+        autointerp_retry_attempts: Number of retry attempts for autointerp.
+        autointerp_score_max_concurrent: Maximum number of concurrent requests for autointerp scoring.
+        neuronpedia_api_key: Neuronpedia API key.
+        do_score: Whether to score the features.
+        output_dir: Output directory for saving the results.
+        num_activations_to_use: Number of activations to use.
+        max_explanation_activation_records: Maximum number of activation records for explanation.
+        upload_to_neuronpedia: Whether to upload the results to Neuronpedia.
+        autointerp_explainer_model_name: Model name for autointerp explainer.
+        autointerp_scorer_model_name: Model name for autointerp scorer.
+
+    Returns:
+        None
+    """
     print("\n\n")
 
-    # make output_file named autointerp-<timestamp>
-    output_file = output_dir + "/" + datetime.now().strftime("%Y%m%d-%H%M%S") + ".jsonl"
-    if not os.path.exists(output_dir):
-        print("Creating output directory " + output_dir)
-        os.makedirs(output_dir, exist_ok=True)
-    print("===== Your results will be saved to: " + output_file + "=====")
+    if os.getenv("OPENAI_API_KEY") is None:
+        if openai_api_key is None:
+            raise Exception(
+                "You need to provide an OpenAI API key either in environment variable OPENAI_API_KEY or as an argument."
+            )
+        else:
+            os.environ["OPENAI_API_KEY"] = openai_api_key
 
-    # we import this here instead of top of file because the library requires the API key to be set first
-    os.environ["OPENAI_API_KEY"] = openai_api_key
-    from neuron_explainer.activations.activation_records import calculate_max_activation
-    from neuron_explainer.activations.activations import ActivationRecord
-    from neuron_explainer.explanations.calibrated_simulator import (
-        UncalibratedNeuronSimulator,
-    )
-    from neuron_explainer.explanations.explainer import (
-        ContextSize,
-        TokenActivationPairExplainer,
-    )
-    from neuron_explainer.explanations.few_shot_examples import FewShotExampleSet
-    from neuron_explainer.explanations.prompt_builder import PromptFormat
-    from neuron_explainer.explanations.scoring import simulate_and_score
-    from neuron_explainer.explanations.simulator import (
-        LogprobFreeExplanationTokenSimulator,
-    )
-
-    """
-    This does the following:
-    1. Fetches the features from Neuronpedia, including their activation texts
-    2. Explains the features using the autointerp_explainer_model_name
-    3. Scores the features using the autointerp_scorer_model_name
-    4. Saves the results in output_dir
-    5. Uploads the results to Neuronpedia
-
-    The openai_api_key is not sent to Neuronpedia, only to OpenAI.
-    """
-
-    if upload_to_neuronpedia and neuronpedia_api_key == "":
+    if autointerp_explainer_model_name not in HARMONY_V4_MODELS:
         raise Exception(
-            "You need to provide a Neuronpedia API key to upload the results to Neuronpedia."
+            f"Invalid explainer model name: {autointerp_explainer_model_name}. Must be one of: {HARMONY_V4_MODELS}"
         )
 
-    test_key(neuronpedia_api_key)
+    if autointerp_scorer_model_name not in HARMONY_V4_MODELS:
+        raise Exception(
+            f"Invalid scorer model name: {autointerp_scorer_model_name}. Must be one of: {HARMONY_V4_MODELS}"
+        )
 
-    # 1. Fetches the features from Neuronpedia, including their activation texts. Perform check for dead features.
+    if upload_to_neuronpedia:
+        if neuronpedia_api_key is None:
+            raise Exception(
+                "You need to provide a Neuronpedia API key to upload the results to Neuronpedia."
+            )
+        else:
+            test_key(neuronpedia_api_key)
+
     print("\n\n=== Step 1) Fetching features from Neuronpedia")
     for feature in features:
         feature_data = get_neuronpedia_feature(
@@ -256,16 +293,12 @@ async def autointerp_neuronpedia_features(
                 )
         feature.activations = activations_to_add
 
-        if feature.has_activating_text() is False:
+        if not feature.has_activating_text():
             raise Exception(
                 f"Feature {feature.modelId}@{feature.layer}-{feature.dataset}:{feature.feature} appears dead - it does not have activating text."
             )
 
-    # TODO check max budget estimate based on number of features and act texts and act text length, fail if too high
-
-    # 2. Explain the features using the selected autointerp_explainer_model_name
     for iteration_num, feature in enumerate(features):
-        # print start time
         start_time = datetime.now()
 
         print(
@@ -274,15 +307,20 @@ async def autointerp_neuronpedia_features(
         print(
             f"\n=== Step 2) Explaining feature {feature.modelId}@{feature.layer}-{feature.dataset}:{feature.feature}"
         )
-        activationRecords = []
-        for activation in feature.activations:
-            activationRecord = ActivationRecord(
+
+        activation_records = [
+            ActivationRecord(
                 tokens=activation.tokens, activations=activation.act_values
             )
-            activationRecords.append(activationRecord)
+            for activation in feature.activations
+        ]
+
+        activation_records_explaining = activation_records[
+            :max_explanation_activation_records
+        ]
 
         explainer = TokenActivationPairExplainer(
-            model_name=autointerp_model_name,
+            model_name=autointerp_explainer_model_name,
             prompt_format=PromptFormat.HARMONY_V4,
             context_size=ContextSize.SIXTEEN_K,
             max_concurrent=1,
@@ -292,8 +330,10 @@ async def autointerp_neuronpedia_features(
         for _ in range(autointerp_retry_attempts):
             try:
                 explanations = await explainer.generate_explanations(
-                    all_activation_records=activationRecords,
-                    max_activation=calculate_max_activation(activationRecords),
+                    all_activation_records=activation_records_explaining,
+                    max_activation=calculate_max_activation(
+                        activation_records_explaining
+                    ),
                     num_samples=1,
                 )
             except Exception as e:
@@ -306,47 +346,37 @@ async def autointerp_neuronpedia_features(
             )
 
         assert len(explanations) == 1
-        explanation = explanations[0]
-        # GPT ends its explanations with a period. Remove it.
-        if explanation.endswith("."):
-            explanation = explanation[:-1]
-        print(f"===== {autointerp_model_name}'s explanation: {explanation}")
+        explanation = explanations[0].rstrip(".")
+        print(f"===== {autointerp_explainer_model_name}'s explanation: {explanation}")
         feature.autointerp_explanation = explanation
 
-        # 3. Scores the features using the autointerp_scorer_model_name
         if do_score:
             print(
                 f"\n=== Step 3) Scoring feature {feature.modelId}@{feature.layer}-{feature.dataset}:{feature.feature}"
             )
             print("=== This can take up to 30 seconds.")
 
-            # GPT struggles with non-ascii so we turn them into string representations
-            # make a temporary activation records copy for this, so we can return the original later
-            tempActivationRecords: list[ActivationRecord] = []
-            for activationRecord in activationRecords:
-                replacedActTokens: list[str] = []
-                for _, token in enumerate(activationRecord.tokens):
-                    replacedActTokens.append(
+            temp_activation_records = [
+                ActivationRecord(
+                    tokens=[
                         token.replace("<|endoftext|>", "<|not_endoftext|>")
                         .replace(" 55", "_55")
                         .encode("ascii", errors="backslashreplace")
                         .decode("ascii")
-                    )
-                tempActivationRecords.append(
-                    ActivationRecord(
-                        tokens=replacedActTokens,
-                        activations=activationRecord.activations,
-                    )
+                        for token in activation_record.tokens
+                    ],
+                    activations=activation_record.activations,
                 )
+                for activation_record in activation_records
+            ]
 
-            # Simulate and score the explanation.
             score = None
             scored_simulation = None
             for _ in range(autointerp_retry_attempts):
                 try:
                     simulator = UncalibratedNeuronSimulator(
                         LogprobFreeExplanationTokenSimulator(
-                            autointerp_model_name,
+                            autointerp_scorer_model_name,
                             explanation,
                             json_mode=True,
                             max_concurrent=autointerp_score_max_concurrent,
@@ -355,7 +385,7 @@ async def autointerp_neuronpedia_features(
                         )
                     )
                     scored_simulation = await simulate_and_score(
-                        simulator, tempActivationRecords
+                        simulator, temp_activation_records
                     )
                     score = scored_simulation.get_preferred_score()
                 except Exception as e:
@@ -374,9 +404,15 @@ async def autointerp_neuronpedia_features(
                 )
                 continue
             feature.autointerp_explanation_score = score
-            print(f"===== {autointerp_model_name}'s score: {(score * 100):.0f}")
+            print(f"===== {autointerp_scorer_model_name}'s score: {(score * 100):.0f}")
 
-            # replace NaNs and Infs in the output so we get valid JSON
+            output_file = (
+                f"{output_dir}/{feature.layer}-{feature.dataset}_feature-{feature.feature}_score-"
+                f"{feature.autointerp_explanation_score}_time-{datetime.now().strftime('%Y%m%d-%H%M%S')}.jsonl"
+            )
+            os.makedirs(output_dir, exist_ok=True)
+            print(f"===== Your results will be saved to: {output_file} =====")
+
             output_data = json.dumps(
                 {
                     "apiKey": neuronpedia_api_key,
@@ -387,31 +423,26 @@ async def autointerp_neuronpedia_features(
                         "activations": feature.activations,
                         "explanation": feature.autointerp_explanation,
                         "explanationScore": feature.autointerp_explanation_score,
-                        "autointerpModel": autointerp_model_name,
+                        "explanationModel": autointerp_explainer_model_name,
+                        "autointerpModel": autointerp_scorer_model_name,
                         "simulatedActivations": scored_simulation.scored_sequence_simulations,
                     },
                 },
                 default=vars,
             )
-            output_data_json = json.loads(
-                output_data,
-                parse_constant=NanAndInfReplacer,
-            )
+            output_data_json = json.loads(output_data, parse_constant=NanAndInfReplacer)
             output_data_str = json.dumps(output_data)
 
-            # 4. Save the results in output_file
-            # open output_file and append the feature
             print(f"\n=== Step 4) Saving feature to {output_file}")
             with open(output_file, "a") as f:
                 f.write(output_data_str)
                 f.write("\n")
 
-            # 5. Uploads the results to Neuronpedia
             if upload_to_neuronpedia:
                 print(
                     f"\n=== Step 5) Uploading feature to Neuronpedia: {feature.modelId}@{feature.layer}-{feature.dataset}:{feature.feature}"
                 )
-                url = NEURONPEDIA_DOMAIN + "/api/upload-explanation"
+                url = f"{NEURONPEDIA_DOMAIN}/api/upload-explanation"
                 body = output_data_json
                 response = requests.post(url, json=body)
                 if response.status_code != 200:
@@ -419,8 +450,7 @@ async def autointerp_neuronpedia_features(
                         f"ERROR: Couldn't upload explanation to Neuronpedia: {response.text}"
                     )
 
-        # print end_time minus start_time)
         end_time = datetime.now()
-        print("\n========== Time Spent for Feature: {}\n".format(end_time - start_time))
+        print(f"\n========== Time Spent for Feature: {end_time - start_time}\n")
 
     print("\n\n========== Generation and Upload Complete ==========\n\n")
