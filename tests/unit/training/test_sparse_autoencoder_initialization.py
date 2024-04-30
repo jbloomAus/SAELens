@@ -4,48 +4,6 @@ import torch
 from sae_lens.training.sparse_autoencoder import SparseAutoencoder
 from tests.unit.helpers import build_sae_cfg
 
-# # Define a new fixture for different configurations
-# @pytest.fixture(
-#     params=[
-#         {
-#             "model_name": "tiny-stories-1M",
-#             "dataset_path": "roneneldan/TinyStories",
-#             "hook_point": "blocks.1.hook_resid_pre",
-#             "hook_point_layer": 1,
-#             "d_in": 64,
-#         },
-#         {
-#             "model_name": "tiny-stories-1M",
-#             "dataset_path": "roneneldan/TinyStories",
-#             "hook_point": "blocks.1.hook_resid_pre",
-#             "hook_point_layer": 1,
-#             "d_in": 64,
-#             "decoder_orthogonal_init": True,
-#         },
-#         {
-#             "model_name": "tiny-stories-1M",
-#             "dataset_path": "roneneldan/TinyStories",
-#             "hook_point": "blocks.1.hook_resid_pre",
-#             "hook_point_layer": 1,
-#             "d_in": 64,
-#             "decoder_heuristic_init": True,
-#         },
-#     ],
-#     ids=[
-#         "old_default",
-#         "orthogonal_W_dec_init",
-#         "heuristic_W_dec_norms",
-#         "encoder_decoder_transpose",
-#         "different_activation_function",
-#     ],
-# )
-# def cfg(request: pytest.FixtureRequest):
-#     """
-#     Pytest fixture to create a mock instance of LanguageModelSAERunnerConfig.
-#     """
-#     params = request.param
-#     return build_sae_cfg(**params)
-
 
 def test_SparseAutoencoder_initialization_standard():
     cfg = build_sae_cfg()

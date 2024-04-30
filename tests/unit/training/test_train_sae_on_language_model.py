@@ -15,7 +15,7 @@ from transformer_lens import HookedTransformer
 
 from sae_lens import __version__
 from sae_lens.training.activations_store import ActivationsStore
-from sae_lens.training.optim import get_scheduler
+from sae_lens.training.optim import L1Scheduler, get_lr_scheduler
 from sae_lens.training.sae_group import SparseAutoencoderDictionary
 from sae_lens.training.sparse_autoencoder import (
     SAE_CFG_PATH,
@@ -66,7 +66,7 @@ def build_train_ctx(
         ),
         n_frac_active_tokens=n_frac_active_tokens,
         optimizer=optimizer,
-        scheduler=get_scheduler(
+        lr_scheduler=get_lr_scheduler(
             "constant",
             lr=sae.cfg.lr,
             optimizer=optimizer,
@@ -75,6 +75,11 @@ def build_train_ctx(
             warm_up_steps=0,
             decay_steps=0,
             num_cycles=1,
+        ),
+        l1_scheduler=L1Scheduler(
+            l1_warmup_steps=0,
+            total_steps=sae.cfg.training_tokens,
+            sparse_autoencoder=sae,
         ),
     )
 
@@ -281,6 +286,7 @@ def test_build_train_step_log_dict() -> None:
         "sparsity/mean_passes_since_fired-wandbftw": 1.0,
         "sparsity/dead_features-wandbftw": 2,
         "details/current_learning_rate-wandbftw": 2e-4,
+        "details/current_l1_coefficient-wandbftw": 0.01,
         "details/n_training_tokens": 123,
     }
 

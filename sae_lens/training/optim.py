@@ -5,12 +5,14 @@ Took the LR scheduler from my previous work: https://github.com/jbloomAus/Decisi
 import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
 
+from sae_lens.training.sparse_autoencoder import SparseAutoencoder
+
 
 #  Constant
 #  Cosine Annealing with Warmup
 #  Cosine Annealing with Warmup / Restarts
 #  No default values specified so the type-checker can verify we don't forget any arguments.
-def get_scheduler(
+def get_lr_scheduler(
     scheduler_name: str,
     optimizer: optim.Optimizer,
     training_steps: int,
@@ -35,7 +37,7 @@ def get_scheduler(
     """
     base_scheduler_steps = training_steps - warm_up_steps - decay_steps
     norm_scheduler_name = scheduler_name.lower()
-    main_scheduler = _get_main_scheduler(
+    main_scheduler = _get_main_lr_scheduler(
         norm_scheduler_name,
         optimizer,
         steps=base_scheduler_steps,
@@ -79,7 +81,7 @@ def get_scheduler(
     )
 
 
-def _get_main_scheduler(
+def _get_main_lr_scheduler(
     scheduler_name: str,
     optimizer: optim.Optimizer,
     steps: int,
@@ -96,3 +98,46 @@ def _get_main_scheduler(
         )
     else:
         raise ValueError(f"Unsupported scheduler: {scheduler_name}")
+
+
+class L1Scheduler:
+
+    def __init__(
+        self,
+        l1_warmup_steps: float,
+        total_steps: int,
+        sparse_autoencoder: SparseAutoencoder,
+    ):
+
+        self.type = type
+        self.l1_warmup_steps = l1_warmup_steps
+        self.total_steps = total_steps
+        self.sparse_autoencoder = sparse_autoencoder
+        self.final_l1_value = sparse_autoencoder.cfg.l1_coefficient
+        self.current_step = 0
+        assert isinstance(self.final_l1_value, float | int)
+
+        # assume using warm-up
+        if self.l1_warmup_steps != 0:
+            sparse_autoencoder.l1_coefficient = 0.0
+
+    def __repr__(self) -> str:
+        return (
+            f"L1Scheduler(final_l1_value={self.final_l1_value}, "
+            f"l1_warmup_steps={self.l1_warmup_steps}, "
+            f"total_steps={self.total_steps})"
+        )
+
+    def step(self):
+        """
+        Updates the l1 coefficient of the sparse autoencoder.
+        """
+        step = self.current_step
+        if step < self.l1_warmup_steps:
+            self.sparse_autoencoder.l1_coefficient = self.final_l1_value * (
+                (1 + step) / self.l1_warmup_steps
+            )  # type: ignore
+        else:
+            self.sparse_autoencoder.l1_coefficient = self.final_l1_value  # type: ignore
+
+        self.current_step += 1

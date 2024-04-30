@@ -19,7 +19,7 @@ from sae_lens.training.activations_store import ActivationsStore, HfDataset
 from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.evals import run_evals
 from sae_lens.training.geometric_median import compute_geometric_median
-from sae_lens.training.optim import get_scheduler
+from sae_lens.training.optim import L1Scheduler, get_lr_scheduler
 from sae_lens.training.sae_group import SparseAutoencoderDictionary
 from sae_lens.training.sparse_autoencoder import (
     SAE_CFG_PATH,
@@ -52,7 +52,8 @@ class SAETrainContext:
     n_forward_passes_since_fired: torch.Tensor
     n_frac_active_tokens: int
     optimizer: Optimizer
-    scheduler: LRScheduler
+    lr_scheduler: LRScheduler
+    l1_scheduler: L1Scheduler
     finetuning: bool = False
 
     @property
@@ -445,7 +446,7 @@ def _build_train_context(
         ),
     )
     assert sae.cfg.lr_end is not None  # this is set in config post-init
-    scheduler = get_scheduler(
+    lr_scheduler = get_lr_scheduler(
         sae.cfg.lr_scheduler_name,
         lr=sae.cfg.lr,
         optimizer=optimizer,
@@ -456,12 +457,19 @@ def _build_train_context(
         num_cycles=sae.cfg.n_restart_cycles,
     )
 
+    l1_scheduler = L1Scheduler(
+        l1_warmup_steps=sae.cfg.l1_warmup_steps,  # type: ignore
+        total_steps=total_training_steps,
+        sparse_autoencoder=sae,
+    )
+
     return SAETrainContext(
         act_freq_scores=act_freq_scores,
         n_forward_passes_since_fired=n_forward_passes_since_fired,
         n_frac_active_tokens=n_frac_active_tokens,
         optimizer=optimizer,
-        scheduler=scheduler,
+        lr_scheduler=lr_scheduler,
+        l1_scheduler=l1_scheduler,
     )
 
 
@@ -588,10 +596,17 @@ def _train_step(
 
     ctx.optimizer.zero_grad()
     loss.backward()
+
+    # clip grad norm
+    # TODO: Work out if this should be in config / how to test it.
+    torch.nn.utils.clip_grad_norm_(sparse_autoencoder.parameters(), 1.0)
+
     if sparse_autoencoder.normalize_sae_decoder:
         sparse_autoencoder.remove_gradient_parallel_to_decoder_directions()
+
     ctx.optimizer.step()
-    ctx.scheduler.step()
+    ctx.lr_scheduler.step()
+    ctx.l1_scheduler.step()
 
     return TrainStepOutput(
         sae_in=sae_in,
@@ -644,6 +659,7 @@ def _build_train_step_log_dict(
         f"sparsity/mean_passes_since_fired{wandb_suffix}": ctx.n_forward_passes_since_fired.mean().item(),
         f"sparsity/dead_features{wandb_suffix}": ghost_grad_neuron_mask.sum().item(),
         f"details/current_learning_rate{wandb_suffix}": current_learning_rate,
+        f"details/current_l1_coefficient{wandb_suffix}": sparse_autoencoder.l1_coefficient,
         "details/n_training_tokens": n_training_tokens,
     }
 
