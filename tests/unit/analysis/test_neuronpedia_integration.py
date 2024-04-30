@@ -68,6 +68,7 @@ async def test_neuronpedia_autointerp():
         features=features,
         openai_api_key="your-oai-key",
         neuronpedia_api_key="your-np-key",
-        autointerp_model_name="gpt-3.5-turbo",
-        num_activations_to_use=20,
+        autointerp_explainer_model_name="gpt-4-turbo-2024-04-09",
+        autointerp_scorer_model_name="gpt-3.5-turbo",
+        num_activations_to_use=5,
     )
