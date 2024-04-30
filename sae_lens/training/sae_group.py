@@ -129,9 +129,13 @@ class SparseAutoencoderDictionary:
         # handle loading old autoencoders where before SAEGroup existed, where we just save a dict
         if isinstance(group, dict):
             cfg = group["cfg"]
-            # need to add this field to old configs
+            # need to add fields to old configs
             if not hasattr(cfg, "model_kwargs"):
                 cfg.model_kwargs = {}
+            if not hasattr(cfg, "sae_lens_version"):
+                cfg.sae_lens_version = "0.0.0"
+            if not hasattr(cfg, "sae_lens_training_version"):
+                cfg.sae_lens_training_version = "0.0.0"
             sparse_autoencoder = SparseAutoencoder(cfg=cfg)
             # add dummy scaling factor to the state dict
             group["state_dict"]["scaling_factor"] = torch.ones(

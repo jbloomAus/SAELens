@@ -5,8 +5,11 @@ from typing import Any
 import einops
 import pytest
 import torch
+from huggingface_hub import hf_hub_download
+from safetensors import safe_open
 from transformer_lens import HookedTransformer
 
+from sae_lens import __version__
 from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.sparse_autoencoder import (
     SparseAutoencoder,
@@ -95,11 +98,12 @@ def test_SparseAutoencoder_save_and_load_from_pretrained(tmp_path: Path) -> None
 
     assert os.path.exists(model_path)
 
-    sparse_autoencoder_loaded = SparseAutoencoder.load_from_pretrained(model_path)
+    sparse_autoencoder_loaded = SparseAutoencoder.load_from_pretrained(
+        model_path, device="cpu"
+    )
+    sparse_autoencoder_loaded.cfg.device = "cpu"
     sparse_autoencoder_loaded.cfg.verbose = True
     sparse_autoencoder_loaded.cfg.checkpoint_path = cfg.checkpoint_path
-    sparse_autoencoder_loaded.cfg.device = "cpu"  # might autoload onto mps
-    sparse_autoencoder_loaded = sparse_autoencoder_loaded.to("cpu")
     sparse_autoencoder_loaded_state_dict = sparse_autoencoder_loaded.state_dict()
     # check cfg matches the original
     assert sparse_autoencoder_loaded.cfg == cfg
@@ -110,6 +114,26 @@ def test_SparseAutoencoder_save_and_load_from_pretrained(tmp_path: Path) -> None
             sparse_autoencoder_state_dict[key],
             sparse_autoencoder_loaded_state_dict[key],
         )
+
+
+def test_SparseAutoencoder_save_and_load_from_pretrained_update_the_sae_lens_version_on_load(
+    tmp_path: Path,
+):
+    cfg = build_sae_cfg(
+        device="cpu", sae_lens_training_version="9999.0.0", sae_lens_version="9999.0.0"
+    )
+    model_path = str(tmp_path)
+    sparse_autoencoder = SparseAutoencoder(cfg)
+    sparse_autoencoder.save_model(model_path)
+
+    assert os.path.exists(model_path)
+
+    sparse_autoencoder_loaded = SparseAutoencoder.load_from_pretrained(
+        model_path, device="cpu"
+    )
+    # the sae_lens_version should update, but not the training version unless we actually run training
+    assert sparse_autoencoder_loaded.cfg.sae_lens_version == __version__
+    assert sparse_autoencoder_loaded.cfg.sae_lens_training_version == "9999.0.0"
 
 
 def test_SparseAutoencoder_save_and_load_from_pretrained_lacks_scaling_factor(
@@ -391,3 +415,48 @@ def test_SparseAutoencoder_set_decoder_norm_to_unit_norm() -> None:
     assert torch.allclose(
         torch.norm(sae.W_dec, dim=1), torch.ones_like(sae.W_dec[:, 0])
     )
+
+
+def test_SparseAutoencoder_from_pretrained_loads_from_hugginface_using_shorthand():
+    sae = SparseAutoencoder.from_pretrained(
+        release="gpt2-small-res-jb",
+        sae_id="blocks.0.hook_resid_pre",
+        device="cpu",
+    )
+
+    # it should match what we get when manually loading from hf
+    repo_id = "jbloom/GPT2-Small-SAEs-Reformatted"
+    hook_point = "blocks.0.hook_resid_pre"
+    filename = f"{hook_point}/sae_weights.safetensors"
+    weight_path = hf_hub_download(repo_id=repo_id, filename=filename)
+    state_dict = {}
+    with safe_open(weight_path, framework="pt", device="cpu") as f:  # type: ignore
+        for k in f.keys():
+            state_dict[k] = f.get_tensor(k)
+
+    assert isinstance(sae, SparseAutoencoder)
+    assert sae.cfg.model_name == "gpt2-small"
+    assert sae.cfg.hook_point == "blocks.0.hook_resid_pre"
+
+    for k in sae.state_dict().keys():
+        if k == "scaling_factor":
+            continue
+        assert torch.allclose(sae.state_dict()[k], state_dict[k])
+
+
+def test_SparseAutoencoder_from_pretrained_errors_for_invalid_releases():
+    with pytest.raises(ValueError):
+        SparseAutoencoder.from_pretrained(
+            release="wrong",
+            sae_id="blocks.0.hook_resid_pre",
+            device="cpu",
+        )
+
+
+def test_SparseAutoencoder_from_pretrained_errors_for_invalid_sae_ids():
+    with pytest.raises(ValueError):
+        SparseAutoencoder.from_pretrained(
+            release="gpt2-small-res-jb",
+            sae_id="wrong",
+            device="cpu",
+        )
