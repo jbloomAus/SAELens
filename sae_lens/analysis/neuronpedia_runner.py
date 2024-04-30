@@ -74,6 +74,10 @@ class NeuronpediaRunner:
         n_features_at_a_time: int = 128,
         start_batch_inclusive: int = 0,
         end_batch_inclusive: Optional[int] = None,
+        # quantiles
+        n_quantiles: int = 5,
+        top_acts_group_size: int = 20,
+        quantile_group_size: int = 5,
     ):
 
         self.device = "cpu"
@@ -97,6 +101,9 @@ class NeuronpediaRunner:
         self.n_prompts_to_select = n_prompts_to_select
         self.start_batch = start_batch_inclusive
         self.end_batch = end_batch_inclusive
+        self.n_quantiles = n_quantiles
+        self.top_acts_group_size = top_acts_group_size
+        self.quantile_group_size = quantile_group_size
 
         if not os.path.exists(outputs_dir):
             os.makedirs(outputs_dir)
@@ -254,9 +261,9 @@ class NeuronpediaRunner:
                                 stack_mode="stack-all",
                                 buffer=None,  # type: ignore
                                 compute_buffer=True,
-                                n_quantiles=5,
-                                top_acts_group_size=20,
-                                quantile_group_size=5,
+                                n_quantiles=self.n_quantiles,
+                                top_acts_group_size=self.top_acts_group_size,
+                                quantile_group_size=self.quantile_group_size,
                             ),
                             ActsHistogramConfig(),
                             LogitsHistogramConfig(),
@@ -363,6 +370,27 @@ class NeuronpediaRunner:
                     activations = []
                     sdbs = feature.sequence_data
                     for sgd in sdbs.seq_group_data:
+                        binMin = 0
+                        binMax = 0
+                        binContains = 0
+                        if "TOP ACTIVATIONS" in sgd.title:
+                            binMin = -1
+                            try:
+                                binMax = float(sgd.title.split(" = ")[-1])
+                            except ValueError:
+                                print(f"Error parsing top acts: {sgd.title}")
+                                binMax = 99
+                            binContains = -1
+                        elif "INTERVAL" in sgd.title:
+                            try:
+                                split = sgd.title.split("<br>")
+                                firstSplit = split[0].split(" ")
+                                binMin = float(firstSplit[1])
+                                binMax = float(firstSplit[-1])
+                                secondSplit = split[1].split(" ")
+                                binContains = float(secondSplit[-1].rstrip("%")) / 100
+                            except ValueError:
+                                print(f"Error parsing interval: {sgd.title}")
                         for sd in sgd.seq_data:
                             if (
                                 sd.top_token_ids is not None
@@ -371,6 +399,10 @@ class NeuronpediaRunner:
                                 and sd.bottom_logits is not None
                             ):
                                 activation = {}
+                                activation["binMin"] = binMin
+                                activation["binMax"] = binMax
+                                activation["binContains"] = binContains
+
                                 strs = []
                                 posContribs = []
                                 negContribs = []
