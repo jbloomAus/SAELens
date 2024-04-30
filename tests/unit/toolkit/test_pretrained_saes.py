@@ -3,7 +3,7 @@ import shutil
 
 import torch
 
-from sae_lens.toolkit import pretrained_saes
+from sae_lens.toolkit.pretrained_saes import convert_old_to_modern_saelens_format
 from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.sparse_autoencoder import SparseAutoencoder
 
@@ -23,9 +23,7 @@ def test_convert_old_to_modern_saelens_format():
     old_sae.save_model_legacy(legacy_out_file)
 
     # convert file format
-    pretrained_saes.convert_old_to_modern_saelens_format(
-        legacy_out_file, new_out_folder, force=True
-    )
+    convert_old_to_modern_saelens_format(legacy_out_file, new_out_folder, force=True)
 
     # Load from new converted file
     new_sae = SparseAutoencoder.load_from_pretrained(new_out_folder)

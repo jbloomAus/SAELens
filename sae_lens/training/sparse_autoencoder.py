@@ -11,11 +11,15 @@ from typing import Callable, NamedTuple, Optional
 import einops
 import torch
 from jaxtyping import Float
-from safetensors import safe_open
 from safetensors.torch import save_file
 from torch import nn
 from transformer_lens.hook_points import HookedRootModule, HookPoint
 
+from sae_lens.toolkit.pretrained_sae_loaders import (
+    NAMED_PRETRAINED_SAE_LOADERS,
+    load_pretrained_sae_lens_sae_components,
+)
+from sae_lens.toolkit.pretrained_saes_directory import get_pretrained_saes_directory
 from sae_lens.training.activation_functions import get_activation_fn
 from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.utils import BackwardsCompatiblePickleClass
@@ -358,35 +362,67 @@ class SparseAutoencoder(HookedRootModule):
         return instance
 
     @classmethod
-    def load_from_pretrained(cls, path: str, device: str = "cpu"):
+    def load_from_pretrained(
+        cls, path: str, device: str = "cpu"
+    ) -> "SparseAutoencoder":
 
         config_path = os.path.join(path, "cfg.json")
         weight_path = os.path.join(path, "sae_weights.safetensors")
 
-        with open(config_path, "r") as f:
-            config = json.load(f)
+        cfg, state_dict = load_pretrained_sae_lens_sae_components(
+            config_path, weight_path, device
+        )
 
-        var_names = LanguageModelSAERunnerConfig.__init__.__code__.co_varnames
-        # filter config for varnames
-        config = {k: v for k, v in config.items() if k in var_names}
-        config["verbose"] = False
-        config["device"] = device
-        config = LanguageModelSAERunnerConfig(**config)
-        sae = SparseAutoencoder(config)
+        sae = cls(cfg)
+        sae.load_state_dict(state_dict)
 
-        tensors = {}
-        with safe_open(weight_path, framework="pt", device=device) as f:  # type: ignore
-            for k in f.keys():
-                tensors[k] = f.get_tensor(k)
+        return sae
 
-        # old saves may not have scaling factors.
-        if "scaling_factor" not in tensors:
-            assert isinstance(config.d_sae, int)
-            tensors["scaling_factor"] = torch.ones(
-                config.d_sae, dtype=config.dtype, device=config.device
+    @classmethod
+    def from_pretrained(
+        cls, release: str, sae_id: str, device: str = "cpu"
+    ) -> "SparseAutoencoder":
+        """
+
+        Load a pretrained SAE from the Hugging Face model hub.
+
+        Args:
+            release: The release name. This will be mapped to a huggingface repo id based on the pretrained_saes.yaml file.
+            id: The id of the SAE to load. This will be mapped to a path in the huggingface repo.
+            device: The device to load the SAE on.
+
+        """
+
+        # get sae directory
+        sae_directory = get_pretrained_saes_directory()
+
+        # get the repo id and path to the SAE
+        if release not in sae_directory:
+            raise ValueError(
+                f"Release {release} not found in pretrained SAEs directory."
             )
+        if sae_id not in sae_directory[release].saes_map:
+            raise ValueError(f"ID {sae_id} not found in release {release}.")
+        sae_info = sae_directory[release]
+        hf_repo_id = sae_info.repo_id
+        hf_path = sae_info.saes_map[sae_id]
 
-        sae.load_state_dict(tensors)
+        conversion_loader_name = sae_info.conversion_func or "sae_lens"
+        if conversion_loader_name not in NAMED_PRETRAINED_SAE_LOADERS:
+            raise ValueError(
+                f"Conversion func {conversion_loader_name} not found in NAMED_PRETRAINED_SAE_LOADERS."
+            )
+        conversion_loader = NAMED_PRETRAINED_SAE_LOADERS[conversion_loader_name]
+
+        cfg, state_dict = conversion_loader(
+            repo_id=hf_repo_id,
+            folder_name=hf_path,
+            device=device,
+            force_download=False,
+        )
+
+        sae = cls(cfg)
+        sae.load_state_dict(state_dict)
 
         return sae
 

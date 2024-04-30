@@ -4,6 +4,8 @@ from typing import Any, Optional, cast
 import torch
 import wandb
 
+from sae_lens import __version__
+
 DTYPE_MAP = {
     "torch.float32": torch.float32,
     "torch.float64": torch.float64,
@@ -108,6 +110,8 @@ class LanguageModelSAERunnerConfig:
     checkpoint_path: str = "checkpoints"
     verbose: bool = True
     model_kwargs: dict[str, Any] = field(default_factory=dict)
+    sae_lens_version: str = field(default_factory=lambda: __version__)
+    sae_lens_training_version: str = field(default_factory=lambda: __version__)
 
     def __post_init__(self):
         if self.use_cached_activations and self.cached_activations_path is None:
