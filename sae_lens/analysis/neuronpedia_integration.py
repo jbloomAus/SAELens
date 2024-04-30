@@ -235,13 +235,12 @@ async def autointerp_neuronpedia_features(
     """
     print("\n\n")
 
-    if os.getenv("OPENAI_API_KEY") is None:
-        if openai_api_key is None:
-            raise Exception(
-                "You need to provide an OpenAI API key either in environment variable OPENAI_API_KEY or as an argument."
-            )
-        else:
-            os.environ["OPENAI_API_KEY"] = openai_api_key
+    if os.getenv("OPENAI_API_KEY") is not None:
+        openai_api_key = os.environ["OPENAI_API_KEY"]
+    if openai_api_key is None:
+        raise Exception(
+            "You need to provide an OpenAI API key either in environment variable OPENAI_API_KEY or as an argument."
+        )
 
     if autointerp_explainer_model_name not in HARMONY_V4_MODELS:
         raise Exception(
