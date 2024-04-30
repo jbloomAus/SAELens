@@ -77,7 +77,7 @@ def build_train_ctx(
             num_cycles=1,
         ),
         l1_scheduler=L1Scheduler(
-            l1_warmup_steps=0,
+            l1_warm_up_steps=0,
             total_steps=sae.cfg.training_tokens,
             sparse_autoencoder=sae,
         ),

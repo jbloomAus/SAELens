@@ -56,6 +56,7 @@ class LanguageModelSAERunnerConfig:
     finetuning_tokens: int = 0
     store_batch_size: int = 32
     train_batch_size: int = 4096
+    normalize_activations: bool = False
 
     # Misc
     device: str | torch.device = "cpu"
@@ -298,6 +299,7 @@ class CacheActivationsRunnerConfig:
     training_tokens: int = 2_000_000
     store_batch_size: int = 32
     train_batch_size: int = 4096
+    normalize_activations: bool = False
 
     # Misc
     device: str | torch.device = "cpu"

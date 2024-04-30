@@ -7,13 +7,13 @@ def test_l1_scheduler_initialization():
     cfg = build_sae_cfg(
         l1_coefficient=5,
         training_tokens=100 * 4,  # train batch size (so 100 steps)
-        l1_warmup_steps=10,
+        l1_warm_up_steps=10,
     )
 
     sparse_autoencoder = SparseAutoencoder(cfg)
 
     l1_scheduler = L1Scheduler(
-        l1_warmup_steps=cfg.l1_warm_up_steps,  # type: ignore
+        l1_warm_up_steps=cfg.l1_warm_up_steps,  # type: ignore
         total_steps=cfg.training_tokens // cfg.train_batch_size,
         sparse_autoencoder=sparse_autoencoder,
     )
@@ -33,13 +33,13 @@ def test_l1_scheduler_initialization_no_warmup():
     cfg = build_sae_cfg(
         l1_coefficient=5,
         training_tokens=100 * 4,  # train batch size (so 100 steps)
-        l1_warmup_steps=0,
+        l1_warm_up_steps=0,
     )
 
     sparse_autoencoder = SparseAutoencoder(cfg)
 
     l1_scheduler = L1Scheduler(
-        l1_warmup_steps=cfg.l1_warm_up_steps,  # type: ignore
+        l1_warm_up_steps=cfg.l1_warm_up_steps,  # type: ignore
         total_steps=cfg.training_tokens // cfg.train_batch_size,
         sparse_autoencoder=sparse_autoencoder,
     )

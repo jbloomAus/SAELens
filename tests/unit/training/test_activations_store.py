@@ -142,6 +142,12 @@ def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
     assert buffer.shape == (buffer_size_expected, 1, store.d_in)
     assert buffer.device == store.device
 
+    # # check the buffer norm
+    # if cfg.normalize_activations:
+    #     assert torch.allclose(
+    #         buffer.norm(dim=-1), torch.ones_like(buffer.norm(dim=-1)), atol=1e-6
+    #     )
+
 
 def test_activations_store__get_activations_head_hook(ts_model: HookedTransformer):
     cfg = build_sae_cfg(

@@ -65,6 +65,7 @@ class ActivationsStore:
             store_batch_size=cfg.store_batch_size,
             train_batch_size=cfg.train_batch_size,
             prepend_bos=cfg.prepend_bos,
+            normalize_activations=cfg.normalize_activations,
             device=cfg.device,
             dtype=cfg.dtype,
             cached_activations_path=cached_activations_path,
@@ -85,6 +86,7 @@ class ActivationsStore:
         store_batch_size: int,
         train_batch_size: int,
         prepend_bos: bool,
+        normalize_activations: bool,
         device: str | torch.device,
         dtype: str | torch.dtype,
         cached_activations_path: str | None = None,
@@ -109,6 +111,7 @@ class ActivationsStore:
         self.store_batch_size = store_batch_size
         self.train_batch_size = train_batch_size
         self.prepend_bos = prepend_bos
+        self.normalize_activations = normalize_activations
         self.device = device
         self.dtype = dtype
         self.cached_activations_path = cached_activations_path
@@ -158,10 +161,17 @@ class ActivationsStore:
 
             # TODO add support for "mixed loading" (ie use cache until you run out, then switch over to streaming from HF)
 
+    def apply_norm_scaling_factor(self, activations: torch.Tensor) -> torch.Tensor:
+        return activations * self.estimated_norm_scaling_factor
+
+    def get_norm_scaling_factor(self, activations: torch.Tensor) -> torch.Tensor:
+        return (self.d_in**0.5) / activations.norm(dim=-1).mean()
+
     @property
     def storage_buffer(self) -> torch.Tensor:
         if self._storage_buffer is None:
             self._storage_buffer = self.get_buffer(self.n_batches_in_buffer // 2)
+
         return self._storage_buffer
 
     @property
@@ -353,6 +363,22 @@ class ActivationsStore:
 
         new_buffer = new_buffer.reshape(-1, num_layers, d_in)
         new_buffer = new_buffer[torch.randperm(new_buffer.shape[0])]
+
+        # every buffer should be normalized:
+        if self.normalize_activations:
+            try:
+                # check if we've already estimated the norm scaling factor
+                assert self.estimated_norm_scaling_factor is not None
+            except AttributeError:
+                # if we haven't estimated it yet, do so.
+                assert (
+                    new_buffer.shape[0] > 3e5
+                ), "Warning: Storage buffer is too small to calculate norm scaling factor and expect it to be reliable."
+                self.estimated_norm_scaling_factor = self.get_norm_scaling_factor(
+                    new_buffer
+                )
+
+            new_buffer = self.apply_norm_scaling_factor(new_buffer)
 
         return new_buffer
 
