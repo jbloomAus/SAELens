@@ -1,9 +1,14 @@
+import os
+
 import torch
 
 from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.lm_runner import language_model_sae_runner
 
+os.environ["WANDB_MODE"] = "offline"  # turn this off if you want to see the output
 
+# The way to run this with this command:
+# poetry run py.test tests/benchmark/test_language_model_sae_runner.py --profile-svg -s
 def test_language_model_sae_runner():
     if torch.cuda.is_available():
         device = "cuda"
@@ -12,7 +17,7 @@ def test_language_model_sae_runner():
     else:
         device = "cpu"
 
-    total_training_steps = 20_000
+    # total_training_steps = 20_000
     total_training_steps = 500
     batch_size = 4096
     total_training_tokens = total_training_steps * batch_size
@@ -36,7 +41,7 @@ def test_language_model_sae_runner():
         is_dataset_tokenized=True,
         prepend_bos=True,  # I used to train GPT2 SAEs with a prepended-bos but no longer think we should do this.
         # How big do we want our SAE to be?
-        expansion_factor=16,
+        expansion_factor=256,
         # Dataset / Activation Store
         # When we do a proper test
         # training_tokens= 820_000_000, # 200k steps * 4096 batch size ~ 820M tokens (doable overnight on an A100)
@@ -82,7 +87,7 @@ def test_language_model_sae_runner():
         dead_feature_threshold=1e-4,
         # WANDB
         log_to_wandb=True,  # always use wandb unless you are just testing code.
-        wandb_project="how_we_train_SAEs_replication_1",
+        wandb_project="benchmark",
         wandb_log_frequency=50,
         # Misc
         device=device,
@@ -95,5 +100,5 @@ def test_language_model_sae_runner():
     # look at the next cell to see some instruction for what to do while this is running.
     sparse_autoencoder_dictionary = language_model_sae_runner(cfg)
 
-    assert sparse_autoencoder is not None
-    # know whether or not this works by looking at the dashbaord!
+    assert sparse_autoencoder_dictionary is not None
+    # know whether or not this works by looking at the dashboard!
