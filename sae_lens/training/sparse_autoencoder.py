@@ -259,7 +259,7 @@ class SparseAutoencoder(HookedRootModule):
                 dead_neuron_mask=dead_neuron_mask,
             )
 
-        mse_loss = per_item_mse_loss.mean()
+        mse_loss = per_item_mse_loss.sum(dim=-1).mean()
         sparsity = self.get_sparsity_loss_term(feature_acts)
         l1_loss = (self.l1_coefficient * sparsity).mean()
         loss = mse_loss + l1_loss + ghost_grad_loss
@@ -558,7 +558,7 @@ def _per_item_mse_loss_with_target_norm(
 ) -> torch.Tensor:
     """
     Calculate MSE loss per item in the batch, without taking a mean.
-    Then, normalizes by the L2 norm of the centered target.
+    Then, optionally, normalizes by the L2 norm of the centered target.
     This normalization seems to improve performance.
     """
     if mse_loss_normalization == "dense_batch":
