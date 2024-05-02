@@ -82,6 +82,7 @@ class SparseAutoencoder(HookedRootModule):
         self.hook_point_layer = cfg.hook_point_layer
         self.noise_scale = cfg.noise_scale
         self.activation_fn = get_activation_fn(cfg.activation_fn)
+        self.l1_normalization_fn = get_activation_fn(cfg.l1_normalization_fn)
 
         # NOTE: if using resampling neurons method, you must ensure that we initialise the weights in the order W_enc, b_enc, W_dec, b_dec
         self.W_enc = nn.Parameter(
@@ -198,6 +199,7 @@ class SparseAutoencoder(HookedRootModule):
             )
 
         mse_loss = per_item_mse_loss.mean()
+        feature_acts = self.l1_normalization_fn(feature_acts)
         sparsity = feature_acts.norm(p=self.lp_norm, dim=1).mean(dim=(0,))
         l1_loss = self.l1_coefficient * sparsity
         loss = mse_loss + l1_loss + ghost_grad_loss

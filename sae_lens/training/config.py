@@ -73,6 +73,7 @@ class LanguageModelSAERunnerConfig:
     mse_loss_normalization: Optional[str] = None
     l1_coefficient: float | list[float] = 1e-3
     lp_norm: float | list[float] = 1
+    l1_normalization_fn: str = "identity"
 
     ## Learning Rate Schedule
     lr: float | list[float] = 3e-4
