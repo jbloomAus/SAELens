@@ -7,6 +7,7 @@ from sae_lens.training.lm_runner import language_model_sae_runner
 
 os.environ["WANDB_MODE"] = "offline"  # turn this off if you want to see the output
 
+
 # The way to run this with this command:
 # poetry run py.test tests/benchmark/test_language_model_sae_runner.py --profile-svg -s
 def test_language_model_sae_runner():

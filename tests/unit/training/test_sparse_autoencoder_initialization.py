@@ -133,11 +133,6 @@ def test_SparseAutoencoder_initialization_heuristic_init():
         decoder_norms, torch.ones_like(sae.W_dec.norm(dim=1)), atol=1e-6
     )
 
-    # check that the mean is close to 0.1
-    assert torch.allclose(decoder_norms.mean(), torch.tensor(0.1), atol=5e-2)
-
-    # check that the min isn't less than 0.05
-    assert decoder_norms.min().item() >= 0.0499
-
-    # check that the max is less than 1
-    assert decoder_norms.max() < 1.001
+    assert torch.allclose(
+        decoder_norms, torch.ones_like(decoder_norms) * 0.1, atol=5e-2
+    )

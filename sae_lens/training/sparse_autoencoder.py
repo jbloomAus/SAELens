@@ -9,7 +9,6 @@ import pickle
 from typing import Callable, NamedTuple, Optional
 
 import einops
-import numpy as np
 import torch
 from jaxtyping import Float
 from safetensors.torch import save_file
@@ -126,7 +125,7 @@ class SparseAutoencoder(HookedRootModule):
             self.W_dec = nn.Parameter(
                 torch.rand(self.d_sae, self.d_in, dtype=self.dtype, device=self.device)
             )
-            self.initialize_decoder_norm_gamma_dist()
+            self.initialize_decoder_norm_constant_norm()
 
         elif self.cfg.normalize_sae_decoder:
             self.set_decoder_norm_to_unit_norm()
@@ -299,30 +298,16 @@ class SparseAutoencoder(HookedRootModule):
         self.W_dec.data /= torch.norm(self.W_dec.data, dim=1, keepdim=True)
 
     @torch.no_grad()
-    def initialize_decoder_norm_gamma_dist(self, mean_norm: float = 0.1):
+    def initialize_decoder_norm_constant_norm(self, norm: float = 0.1):
         """
         A heuristic proceedure inspired by:
         https://transformer-circuits.pub/2024/april-update/index.html#training-saes
         """
-
-        # Define the mean and shape parameter for the gamma distribution
-        k = 0.2 / np.sqrt(self.d_in / self.d_sae)
-        theta = mean_norm / k
-
-        # Draw norms for each column from the gamma distribution
-        norms = np.random.gamma(k, theta, size=self.d_sae)
-
-        # clip norms between 0.05 and 1
-        norms = np.clip(norms, 0.05, 1)
+        # TODO: Parameterise this as a function of m and n
 
         # ensure W_dec norms at unit norm
         self.W_dec.data /= torch.norm(self.W_dec.data, dim=1, keepdim=True)
         self.W_dec.data *= 0.1  # will break tests but do this for now.
-
-        # then multiply by the norms
-        # self.W_dec.data *= torch.tensor(norms, dtype=self.dtype, device=self.device)[
-        #     :, None
-        # ]
 
     @torch.no_grad()
     def remove_gradient_parallel_to_decoder_directions(self):
