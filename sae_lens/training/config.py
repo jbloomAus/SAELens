@@ -288,10 +288,11 @@ class CacheActivationsRunnerConfig:
     dataset_path: str = "NeelNanda/c4-tokenized-2b"
     is_dataset_tokenized: bool = True
     context_size: int = 128
-    cached_activations_path: Optional[str] = (
+    new_cached_activations_path: Optional[str] = (
         None  # Defaults to "activations/{dataset}/{model}/{full_hook_name}_{hook_point_head_index}"
     )
-
+    # dont' specify this since you don't want to load from disk with the cache runner.
+    cached_activations_path: Optional[str] = None
     # SAE Parameters
     d_in: int = 512
 
@@ -317,8 +318,8 @@ class CacheActivationsRunnerConfig:
 
     def __post_init__(self):
         # Autofill cached_activations_path unless the user overrode it
-        if self.cached_activations_path is None:
-            self.cached_activations_path = _default_cached_activations_path(
+        if self.new_cached_activations_path is None:
+            self.new_cached_activations_path = _default_cached_activations_path(
                 self.dataset_path,
                 self.model_name,
                 self.hook_point,
