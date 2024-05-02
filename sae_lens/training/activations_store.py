@@ -269,7 +269,6 @@ class ActivationsStore:
             prepend_bos=self.prepend_bos,
             **self.model_kwargs,
         )[1]
-        n_batches, n_context = batch_tokens.shape
 
         activations_list = [layerwise_activations[act_name] for act_name in act_names]
         if self.hook_point_head_index is not None:
