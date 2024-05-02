@@ -119,13 +119,18 @@ class NeuronpediaFeature:
         self.dataset = dataset
         self.feature = feature
         self.description = description
-        self.activations = activations or []
+        self.activations = activations
         self.autointerp_explanation = autointerp_explanation
         self.autointerp_explanation_score = autointerp_explanation_score
 
     def has_activating_text(self) -> bool:
         """Check if the feature has activating text."""
-        return any(max(activation.act_values) > 0 for activation in self.activations)
+        if self.activations is None:
+            return False
+        else:
+            return any(
+                max(activation.act_values) > 0 for activation in self.activations
+            )
 
 
 T = TypeVar("T")
@@ -235,12 +240,13 @@ async def autointerp_neuronpedia_features(
     """
     print("\n\n")
 
-    if os.getenv("OPENAI_API_KEY") is not None:
-        openai_api_key = os.environ["OPENAI_API_KEY"]
-    if openai_api_key is None:
-        raise Exception(
-            "You need to provide an OpenAI API key either in environment variable OPENAI_API_KEY or as an argument."
-        )
+    if os.getenv("OPENAI_API_KEY") is None:
+        if openai_api_key is None:
+            raise Exception(
+                "You need to provide an OpenAI API key either in environment variable OPENAI_API_KEY or as an argument."
+            )
+        else:
+            os.environ["OPENAI_API_KEY"] = openai_api_key
 
     if autointerp_explainer_model_name not in HARMONY_V4_MODELS:
         raise Exception(
@@ -307,6 +313,8 @@ async def autointerp_neuronpedia_features(
             f"\n=== Step 2) Explaining feature {feature.modelId}@{feature.layer}-{feature.dataset}:{feature.feature}"
         )
 
+        if feature.activations is None:
+            feature.activations = []
         activation_records = [
             ActivationRecord(
                 tokens=activation.tokens, activations=activation.act_values
