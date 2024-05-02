@@ -271,22 +271,19 @@ class ActivationsStore:
         )[1]
         n_batches, n_context = batch_tokens.shape
 
-        stacked_activations = torch.zeros(
-            (n_batches, n_context, len(layers), self.d_in)
-        )
+        activations_list = [layerwise_activations[act_name] for act_name in act_names]
+        if self.hook_point_head_index is not None:
+            activations_list = [
+                act[:, :, self.hook_point_head_index] for act in activations_list
+            ]
+        elif activations_list[0].ndim > 3:  # if we have a head dimension
+            # flatten the head dimension
+            activations_list = [
+                act.view(act.shape[0], act.shape[1], -1) for act in activations_list
+            ]
 
-        for i, act_name in enumerate(act_names):
-
-            if self.hook_point_head_index is not None:
-                stacked_activations[:, :, i] = layerwise_activations[act_name][
-                    :, :, self.hook_point_head_index
-                ]
-            elif (
-                layerwise_activations[act_names[0]].ndim > 3
-            ):  # if we have a head dimension
-                stacked_activations[:, :, i] = layerwise_activations[act_name].view(
-                    n_batches, n_context, -1
-                )
+        # Stack along a new dimension to keep separate layers distinct
+        stacked_activations = torch.stack(activations_list, dim=2)
 
         return stacked_activations
 
