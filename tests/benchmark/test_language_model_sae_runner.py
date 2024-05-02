@@ -42,7 +42,7 @@ def test_language_model_sae_runner():
         is_dataset_tokenized=True,
         prepend_bos=True,  # I used to train GPT2 SAEs with a prepended-bos but no longer think we should do this.
         # How big do we want our SAE to be?
-        expansion_factor=256,
+        expansion_factor=16,
         # Dataset / Activation Store
         # When we do a proper test
         # training_tokens= 820_000_000, # 200k steps * 4096 batch size ~ 820M tokens (doable overnight on an A100)
@@ -53,7 +53,7 @@ def test_language_model_sae_runner():
         ## Reconstruction Coefficient.
         mse_loss_normalization=None,  # MSE Loss Normalization is not mentioned (so we use stanrd MSE Loss). But not we take an average over the batch.
         ## Anthropic does not mention using an Lp norm other than L1.
-        l1_coefficient=0.005,
+        l1_coefficient=5,
         lp_norm=1.0,
         # Instead, they multiply the L1 loss contribution
         # from each feature of the activations by the decoder norm of the corresponding feature.
