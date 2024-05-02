@@ -21,5 +21,6 @@ def tanh_relu(input: torch.Tensor) -> torch.Tensor:
     input = torch.tanh(input)
     return input
 
+
 def identity(input: torch.Tensor) -> torch.Tensor:
     return input
