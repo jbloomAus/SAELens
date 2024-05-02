@@ -113,7 +113,6 @@ def test_SparseAutoencoder_save_and_load_from_pretrained(tmp_path: Path) -> None
     sparse_autoencoder_loaded = SparseAutoencoder.load_from_pretrained(
         model_path, device="cpu"
     )
-    sparse_autoencoder_loaded.cfg.device = "cpu"
     sparse_autoencoder_loaded.cfg.verbose = True
     sparse_autoencoder_loaded.cfg.checkpoint_path = cfg.checkpoint_path
     sparse_autoencoder_loaded_state_dict = sparse_autoencoder_loaded.state_dict()
