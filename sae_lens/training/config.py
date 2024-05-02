@@ -73,7 +73,10 @@ class LanguageModelSAERunnerConfig:
     mse_loss_normalization: Optional[str] = None
     l1_coefficient: float | list[float] = 1e-3
     lp_norm: float | list[float] = 1
-    l1_normalization_fn: str = "identity"
+    # Normalize the L1 norm of the feature activations. Default is do nothing.
+    # This aims to mitigate the feature suppression problem.
+    # You can observe the effect of this by looking at the `l2_ratio` metric.
+    l1_normalization_fn: str = "identity" # identity, tanh
 
     ## Learning Rate Schedule
     lr: float | list[float] = 3e-4

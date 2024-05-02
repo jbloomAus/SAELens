@@ -199,6 +199,8 @@ class SparseAutoencoder(HookedRootModule):
             )
 
         mse_loss = per_item_mse_loss.mean()
+        # Normalize the L1 norm of the feature activations. Default is do nothing.
+        # See config for more info.
         feature_acts = self.l1_normalization_fn(feature_acts)
         sparsity = feature_acts.norm(p=self.lp_norm, dim=1).mean(dim=(0,))
         l1_loss = self.l1_coefficient * sparsity
