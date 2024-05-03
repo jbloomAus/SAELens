@@ -2,6 +2,39 @@
 
 
 
+## v1.3.0 (2024-05-03)
+
+### Feature
+
+* feat: add activation bins for neuronpedia outputs, and allow customizing quantiles (#113) ([`05d650d`](https://github.com/jbloomAus/SAELens/commit/05d650d8ece48bee64077ac075b18a1efae206d4))
+
+* feat: Update for Neuropedia auto-interp (#112)
+
+* cleanup Neuronpedia autointerp code
+
+* Fix logic bug with OpenAI key
+
+---------
+
+Co-authored-by: Joseph Bloom &lt;69127271+jbloomAus@users.noreply.github.com&gt; ([`033283d`](https://github.com/jbloomAus/SAELens/commit/033283d99447a0949c1241adc2c99ed31342650f))
+
+* feat: SparseAutoencoder.from_pretrained() similar to transformer lens (#111)
+
+* add partial work so David can continue
+
+* feat: adding a SparseAutoencoder.from_pretrained() function
+
+---------
+
+Co-authored-by: jbloomaus &lt;jbloomaus@gmail.com&gt; ([`617d416`](https://github.com/jbloomAus/SAELens/commit/617d416f34101047c6bceb31fdbd325fb9ff7c84))
+
+### Fix
+
+* fix: replace list_files_info with list_repo_tree (#117) ([`676062c`](https://github.com/jbloomAus/SAELens/commit/676062cae4cd72e198e87b14fcae124ec2c534ca))
+
+* fix: Improved activation initialization, fix using argument to pass in API key (#116) ([`7047bcc`](https://github.com/jbloomAus/SAELens/commit/7047bcc6d5d8d15b990605a7c2f68a210db603d0))
+
+
 ## v1.2.0 (2024-04-29)
 
 ### Feature
