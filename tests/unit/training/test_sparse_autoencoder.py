@@ -303,6 +303,65 @@ def test_sparse_autoencoder_forward_with_mse_loss_norm(
     assert l1_loss.dtype == sparse_autoencoder.dtype
 
 
+def test_sparse_autoencoder_forward_with_3d_input(
+    sparse_autoencoder: SparseAutoencoder,
+):
+    batch_size = 32
+    seq_length = 256
+    d_in = sparse_autoencoder.d_in
+    d_sae = sparse_autoencoder.d_sae
+    sparse_autoencoder.cfg.mse_loss_normalization = "dense_batch"
+    sparse_autoencoder.cfg.lp_norm = 1
+
+    x = torch.randn(batch_size, seq_length, d_in)
+    (
+        sae_out,
+        feature_acts,
+        loss,
+        mse_loss,
+        l1_loss,
+        _,
+    ) = sparse_autoencoder.forward(
+        x,
+    )
+    sparse_autoencoder.lp_norm = 2
+    (
+        _,
+        _,
+        _,
+        _,
+        l2_loss,
+        _,
+    ) = sparse_autoencoder.forward(
+        x,
+    )
+
+    assert sae_out.shape == (batch_size, seq_length, d_in)
+    assert feature_acts.shape == (batch_size, seq_length, d_sae)
+    assert loss.shape == ()
+    assert mse_loss.shape == ()
+    assert l1_loss.shape == ()
+    assert torch.allclose(loss, mse_loss + l1_loss)
+
+    x_centred = x - x.mean(dim=0, keepdim=True)
+    expected_mse_loss = (
+        torch.pow((sae_out - x.float()), 2)
+        / (x_centred**2).sum(dim=-1, keepdim=True).sqrt()
+    ).mean()
+    assert torch.allclose(mse_loss, expected_mse_loss)
+    expected_l1_loss = torch.abs(feature_acts).sum(dim=-1).mean()
+    assert torch.allclose(l1_loss, sparse_autoencoder.l1_coefficient * expected_l1_loss)
+    expected_l2_loss = feature_acts.norm(p=2, dim=-1).mean()
+    assert torch.allclose(l2_loss, sparse_autoencoder.l1_coefficient * expected_l2_loss)
+
+    # check everything has the right dtype
+    assert sae_out.dtype == sparse_autoencoder.dtype
+    assert feature_acts.dtype == sparse_autoencoder.dtype
+    assert loss.dtype == sparse_autoencoder.dtype
+    assert mse_loss.dtype == sparse_autoencoder.dtype
+    assert l1_loss.dtype == sparse_autoencoder.dtype
+
+
 def test_SparseAutoencoder_forward_ghost_grad_loss_returns_0_if_no_dead_neurons():
     cfg = build_sae_cfg(d_in=2, d_sae=4, use_ghost_grads=True)
     sae = SparseAutoencoder(cfg)
