@@ -4,7 +4,7 @@ import pathlib
 from typing import Optional, Tuple
 
 import torch
-from huggingface_hub import hf_hub_download, list_files_info
+from huggingface_hub import hf_hub_download, list_repo_tree
 from safetensors import safe_open
 from tqdm import tqdm
 
@@ -172,7 +172,7 @@ def get_gpt2_small_ckrk_attn_out_saes() -> dict[str, SparseAutoencoder]:
     # list all files in repo
     saes_weights = {}
     sae_configs = {}
-    repo_files = list_files_info(REPO_ID)
+    repo_files = list_repo_tree(REPO_ID)
     for i in tqdm(repo_files):
         file_name = i.path
         if file_name.endswith(".pt"):
