@@ -113,7 +113,7 @@ class LanguageModelSAERunnerConfig:
     run_name: Optional[str] = None
     wandb_entity: Optional[str] = None
     wandb_log_frequency: int = 10
-    eval_every_n_wandb_logs: int = 1000
+    eval_every_n_wandb_logs: int = 100  # logs every 1000 steps.
 
     # Misc
     resume: bool = False

@@ -1,7 +1,9 @@
 import os
-from pathlib import Path
 
 # import pytest
+# import shutil
+from pathlib import Path
+
 import torch
 from safetensors import safe_open
 from transformer_lens import HookedTransformer
@@ -40,6 +42,7 @@ def test_cache_activations_runner(tmp_path: Path):
 
     # better if we can look at the files (change tmp_path to a real path to look at the files)
     # tmp_path = os.path.join(os.path.dirname(__file__), "tmp")
+    # tmp_path = Path("/Volumes/T7 Shield/activations/gelu_1l")
     # if os.path.exists(tmp_path):
     #     shutil.rmtree(tmp_path)
 

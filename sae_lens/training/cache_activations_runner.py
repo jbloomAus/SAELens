@@ -57,6 +57,7 @@ class CacheActivationsRunner:
             f"{self.cfg}"
         )
 
+    @torch.no_grad()
     def run(self):
 
         new_cached_activations_path = self.cfg.new_cached_activations_path
@@ -77,9 +78,10 @@ class CacheActivationsRunner:
             * self.cfg.context_size
             * self.cfg.n_batches_in_buffer
         )
+
         n_buffers = math.ceil(self.cfg.training_tokens / tokens_per_buffer)
-        # for i in tqdm(range(n_buffers), desc="Caching activations"):
-        for i in range(n_buffers):
+
+        for i in tqdm(range(n_buffers), desc="Caching activations"):
             buffer = self.activations_store.get_buffer(self.cfg.n_batches_in_buffer)
             self.activations_store.save_buffer(
                 buffer, f"{new_cached_activations_path}/{i}.safetensors"
@@ -112,6 +114,7 @@ class CacheActivationsRunner:
                     buffer_idx_range=(0, n_buffers),
                 )
 
+    @torch.no_grad()
     def shuffle_activations_pairwise(
         self, datapath: str, buffer_idx_range: Tuple[int, int]
     ):
