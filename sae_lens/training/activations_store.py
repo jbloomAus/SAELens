@@ -12,7 +12,12 @@ from datasets import (
     IterableDatasetDict,
     load_dataset,
 )
+<<<<<<< HEAD
 from safetensors.torch import load_file, save_file
+=======
+from safetensors import safe_open
+from safetensors.torch import save_file
+>>>>>>> bc960f2 (get cache activation runner working and add some tests)
 from torch.utils.data import DataLoader
 from transformer_lens.hook_points import HookedRootModule
 
@@ -138,7 +143,13 @@ class ActivationsStore:
             )
         self.iterable_dataset = iter(self.dataset)  # Reset iterator after checking
 
-        if cached_activations_path is not None:  # EDIT: load from multi-layer acts
+        self.check_cached_activations_against_config()
+
+        # TODO add support for "mixed loading" (ie use cache until you run out, then switch over to streaming from HF)
+
+    def check_cached_activations_against_config(self):
+
+        if self.cached_activations_path is not None:  # EDIT: load from multi-layer acts
             assert self.cached_activations_path is not None  # keep pyright happy
             # Sanity check: does the cache directory exist?
             assert os.path.exists(
@@ -149,17 +160,19 @@ class ActivationsStore:
             self.next_idx_within_buffer = 0  # where to start reading from in that file
 
             # Check that we have enough data on disk
-            first_buffer = torch.load(f"{self.cached_activations_path}/0.pt")
+            first_buffer = self.load_buffer(
+                f"{self.cached_activations_path}/{self.next_cache_idx}.safetensors"
+            )
+
             buffer_size_on_disk = first_buffer.shape[0]
             n_buffers_on_disk = len(os.listdir(self.cached_activations_path))
+
             # Note: we're assuming all files have the same number of tokens
             # (which seems reasonable imo since that's what our script does)
             n_activations_on_disk = buffer_size_on_disk * n_buffers_on_disk
             assert (
-                n_activations_on_disk > self.total_training_tokens
+                n_activations_on_disk >= self.total_training_tokens
             ), f"Only {n_activations_on_disk/1e6:.1f}M activations on disk, but total_training_tokens is {self.total_training_tokens/1e6:.1f}M."
-
-            # TODO add support for "mixed loading" (ie use cache until you run out, then switch over to streaming from HF)
 
     def apply_norm_scaling_factor(self, activations: torch.Tensor) -> torch.Tensor:
         return activations * self.estimated_norm_scaling_factor
@@ -270,19 +283,26 @@ class ActivationsStore:
             **self.model_kwargs,
         )[1]
 
-        activations_list = [layerwise_activations[act_name] for act_name in act_names]
-        if self.hook_point_head_index is not None:
-            activations_list = [
-                act[:, :, self.hook_point_head_index] for act in activations_list
-            ]
-        elif activations_list[0].ndim > 3:  # if we have a head dimension
-            # flatten the head dimension
-            activations_list = [
-                act.view(act.shape[0], act.shape[1], -1) for act in activations_list
-            ]
+        n_batches, n_context = batch_tokens.shape
 
-        # Stack along a new dimension to keep separate layers distinct
-        stacked_activations = torch.stack(activations_list, dim=2)
+        stacked_activations = torch.zeros(
+            (n_batches, n_context, len(layers), self.d_in)
+        )
+
+        for i, act_name in enumerate(act_names):
+
+            if self.hook_point_head_index is not None:
+                stacked_activations[:, :, i] = layerwise_activations[act_name][
+                    :, :, self.hook_point_head_index
+                ]
+            elif (
+                layerwise_activations[act_names[0]].ndim > 3
+            ):  # if we have a head dimension
+                stacked_activations[:, :, i] = layerwise_activations[act_name].view(
+                    n_batches, n_context, -1
+                )
+            else:
+                stacked_activations[:, :, i] = layerwise_activations[act_name]
 
         return stacked_activations
 
@@ -307,7 +327,7 @@ class ActivationsStore:
             # Assume activations for different layers are stored separately and need to be combined
             while n_tokens_filled < buffer_size:
                 if not os.path.exists(
-                    f"{self.cached_activations_path}/{self.next_cache_idx}.pt"
+                    f"{self.cached_activations_path}/{self.next_cache_idx}.safetensors"
                 ):
                     print(
                         "\n\nWarning: Ran out of cached activation files earlier than expected."
@@ -324,8 +344,8 @@ class ActivationsStore:
                     new_buffer = new_buffer[:n_tokens_filled, ...]
                     return new_buffer
 
-                activations = torch.load(
-                    f"{self.cached_activations_path}/{self.next_cache_idx}.pt"
+                activations = self.load_buffer(
+                    f"{self.cached_activations_path}/{self.next_cache_idx}.safetensors"
                 )
                 taking_subset_of_file = False
                 if n_tokens_filled + activations.shape[0] > buffer_size:
@@ -383,6 +403,19 @@ class ActivationsStore:
             new_buffer = self.apply_norm_scaling_factor(new_buffer)
 
         return new_buffer
+
+    def save_buffer(self, buffer: torch.Tensor, path: str):
+        """
+        Used by cached activations runner to save a buffer to disk.
+        For reuse by later workflows.
+        """
+        save_file({"activations": buffer}, path)
+
+    def load_buffer(self, path: str) -> torch.Tensor:
+
+        with safe_open(path, framework="pt", device=str(self.device)) as f:  # type: ignore
+            buffer = f.get_tensor("activations")
+        return buffer
 
     def get_data_loader(
         self,
