@@ -52,7 +52,7 @@ class CacheActivationsRunner:
             f"Total training tokens: {total_training_tokens}\n"
             f"Number of buffers: {math.ceil(total_training_tokens / tokens_in_buffer)}\n"
             f"Tokens per buffer: {tokens_in_buffer}\n"
-            f"Disk space required: {total_disk_space_gb:.2f} GB"
+            f"Disk space required: {total_disk_space_gb:.2f} GB\n"
             f"Configuration:\n"
             f"{self.cfg}"
         )
