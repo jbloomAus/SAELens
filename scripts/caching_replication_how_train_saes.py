@@ -1,6 +1,6 @@
 import os
 import shutil
-
+import time
 import torch
 
 from sae_lens.training.cache_activations_runner import CacheActivationsRunner
@@ -18,24 +18,32 @@ else:
 print("Using device:", device)
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-total_training_steps = 2_000
+total_training_steps = 200_000
 batch_size = 4096
 total_training_tokens = total_training_steps * batch_size
 print(f"Total Training Tokens: {total_training_tokens}")
 
-lr_warm_up_steps = 0
-lr_decay_steps = 200_000 // 5  # 20% of training steps.
-print(f"lr_decay_steps: {lr_decay_steps}")
-l1_warmup_steps = 200_000 // 20  # 5% of training steps.
-print(f"l1_warmup_steps: {l1_warmup_steps}")
+new_cached_activations_path = "/home/paperspace/shared_volumes/activations_volume_1/gelu-1l"
 
-new_cached_activations_path = "/Volumes/T7 Shield/activations/gelu_1l_test"
+# check how much data is in the directory
+if os.path.exists(new_cached_activations_path):
+    print("Directory exists. Checking how much data is in the directory.")
+    total_files = sum(
+        os.path.getsize(os.path.join(new_cached_activations_path, f))
+        for f in os.listdir(new_cached_activations_path)
+        if os.path.isfile(os.path.join(new_cached_activations_path, f))
+    )
+    print(f"Total size of directory: {total_files / 1e9:.2f} GB")
 
 # If the directory exists, delete it.
-if os.path.exists(new_cached_activations_path):
-    shutil.rmtree(new_cached_activations_path)
+if input("Delete the directory? (y/n): ") == "y" and os.path.exists(new_cached_activations_path):
+    if os.path.exists(new_cached_activations_path):
+        shutil.rmtree(new_cached_activations_path)
 
-torch.mps.empty_cache()
+if device == "cuda":
+    torch.cuda.empty_cache()
+elif device == "mps":
+    torch.mps.empty_cache()
 
 cfg = CacheActivationsRunnerConfig(
     new_cached_activations_path=new_cached_activations_path,
@@ -52,8 +60,8 @@ cfg = CacheActivationsRunnerConfig(
     training_tokens=total_training_tokens,  # For initial testing I think this is a good number.
     train_batch_size=4096,
     # buffer details
-    n_batches_in_buffer=32,
-    store_batch_size=16,
+    n_batches_in_buffer=4,
+    store_batch_size=128,
     normalize_activations=False,
     #
     shuffle_every_n_buffers=8,
@@ -63,7 +71,22 @@ cfg = CacheActivationsRunnerConfig(
     # Misc
     device=device,
     seed=42,
-    dtype=torch.float32,
+    dtype=torch.float16,
 )
 # look at the next cell to see some instruction for what to do while this is running.
-CacheActivationsRunner(cfg).run()
+
+start_time = time.time()
+
+
+
+runner = CacheActivationsRunner(cfg)
+
+print("-"*50)
+print(runner.__str__())
+print("-"*50)
+runner.run()
+
+
+end_time = time.time()
+print(f"Total time taken: {end_time - start_time:.2f} seconds")
+print(f"{total_training_tokens / ((end_time - start_time)*10**6):.2f} Million Tokens / Second")
