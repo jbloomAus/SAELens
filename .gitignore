@@ -172,6 +172,7 @@ activations/
 feature_dashboards/
 research/
 
+cached_activations/
 
 # neuronpedia outputs
 neuronpedia_outputs/

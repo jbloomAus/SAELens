@@ -1,6 +1,7 @@
 import os
 import shutil
 import time
+
 import torch
 
 from sae_lens.training.cache_activations_runner import CacheActivationsRunner
@@ -18,12 +19,15 @@ else:
 print("Using device:", device)
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-total_training_steps = 200_000
+# change these configs
+model_name = "gelu-1l"
+dataset_path = "NeelNanda/c4-tokenized-2b"
+new_cached_activations_path = f"./cached_activations/{model_name}/{dataset_path}"
+
+total_training_steps = 20_000
 batch_size = 4096
 total_training_tokens = total_training_steps * batch_size
 print(f"Total Training Tokens: {total_training_tokens}")
-
-new_cached_activations_path = "/home/paperspace/shared_volumes/activations_volume_1/gelu-1l"
 
 # check how much data is in the directory
 if os.path.exists(new_cached_activations_path):
@@ -36,7 +40,9 @@ if os.path.exists(new_cached_activations_path):
     print(f"Total size of directory: {total_files / 1e9:.2f} GB")
 
 # If the directory exists, delete it.
-if input("Delete the directory? (y/n): ") == "y" and os.path.exists(new_cached_activations_path):
+if input("Delete the directory? (y/n): ") == "y" and os.path.exists(
+    new_cached_activations_path
+):
     if os.path.exists(new_cached_activations_path):
         shutil.rmtree(new_cached_activations_path)
 
@@ -48,12 +54,12 @@ elif device == "mps":
 cfg = CacheActivationsRunnerConfig(
     new_cached_activations_path=new_cached_activations_path,
     # Pick a tiny model to make this easier.
-    model_name="gelu-1l",
+    model_name=model_name,
     ## MLP Layer 0 ##
     hook_point="blocks.0.hook_mlp_out",
     hook_point_layer=0,
     d_in=512,
-    dataset_path="NeelNanda/c4-tokenized-2b",
+    dataset_path=dataset_path,
     context_size=1024,
     is_dataset_tokenized=True,
     prepend_bos=True,
@@ -78,15 +84,16 @@ cfg = CacheActivationsRunnerConfig(
 start_time = time.time()
 
 
-
 runner = CacheActivationsRunner(cfg)
 
-print("-"*50)
+print("-" * 50)
 print(runner.__str__())
-print("-"*50)
+print("-" * 50)
 runner.run()
 
 
 end_time = time.time()
 print(f"Total time taken: {end_time - start_time:.2f} seconds")
-print(f"{total_training_tokens / ((end_time - start_time)*10**6):.2f} Million Tokens / Second")
+print(
+    f"{total_training_tokens / ((end_time - start_time)*10**6):.2f} Million Tokens / Second"
+)

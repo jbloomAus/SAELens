@@ -18,25 +18,32 @@ else:
 print("Using device:", device)
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
+# change these configs
+model_name = "gelu-1l"
+dataset_path = "NeelNanda/c4-tokenized-2b"
+new_cached_activations_path = f"./cached_activations/{model_name}/{dataset_path}"
+
 total_training_steps = 20_000
 batch_size = 4096
 total_training_tokens = total_training_steps * batch_size
 print(f"Total Training Tokens: {total_training_tokens}")
 
 lr_warm_up_steps = 0
-lr_decay_steps = 200_000 // 5  # 20% of training steps.
+lr_decay_steps = total_training_steps // 5  # 20% of training steps.
 print(f"lr_decay_steps: {lr_decay_steps}")
-l1_warmup_steps = 200_000 // 20  # 5% of training steps.
+l1_warmup_steps = total_training_steps // 20  # 5% of training steps.
 print(f"l1_warmup_steps: {l1_warmup_steps}")
+
+log_to_wandb = True
 
 cfg = LanguageModelSAERunnerConfig(
     # Pick a tiny model to make this easier.
-    model_name="gelu-1l",
+    model_name=model_name,
     ## MLP Layer 0 ##
     hook_point="blocks.0.hook_mlp_out",
     hook_point_layer=0,
     d_in=512,
-    dataset_path="NeelNanda/c4-tokenized-2b",
+    dataset_path=dataset_path,
     context_size=1024,
     is_dataset_tokenized=True,
     prepend_bos=False,  # I used to train GPT2 SAEs with a prepended-bos but no longer think we should do this.
@@ -47,7 +54,7 @@ cfg = LanguageModelSAERunnerConfig(
     # training_tokens= 820_000_000, # 200k steps * 4096 batch size ~ 820M tokens (doable overnight on an A100)
     # For now.
     use_cached_activations=True,
-    cached_activations_path="/Volumes/T7 Shield/activations/gelu_1l",
+    cached_activations_path=cached_activations_path,
     training_tokens=total_training_tokens,  # For initial testing I think this is a good number.
     train_batch_size=4096,
     # Loss Function
@@ -88,7 +95,7 @@ cfg = LanguageModelSAERunnerConfig(
     dead_feature_window=1000,
     dead_feature_threshold=1e-4,
     # WANDB
-    log_to_wandb=True,  # always use wandb unless you are just testing code.
+    log_to_wandb=log_to_wandb,  # always use wandb unless you are just testing code.
     wandb_project="how_we_train_SAEs_replication_1",
     wandb_log_frequency=50,
     # Misc
