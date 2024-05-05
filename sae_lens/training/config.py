@@ -29,6 +29,7 @@ class LanguageModelSAERunnerConfig:
     hook_point_layer: int | list[int] = 0
     hook_point_head_index: Optional[int] = None
     dataset_path: str = "NeelNanda/c4-tokenized-2b"
+    streaming: bool = True
     is_dataset_tokenized: bool = True
     context_size: int = 128
     use_cached_activations: bool = False
@@ -286,6 +287,7 @@ class CacheActivationsRunnerConfig:
     hook_point_layer: int | list[int] = 0
     hook_point_head_index: Optional[int] = None
     dataset_path: str = "NeelNanda/c4-tokenized-2b"
+    streaming: bool = True
     is_dataset_tokenized: bool = True
     context_size: int = 128
     new_cached_activations_path: Optional[str] = (

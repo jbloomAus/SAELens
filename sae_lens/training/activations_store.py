@@ -60,6 +60,7 @@ class ActivationsStore:
         return cls(
             model=model,
             dataset=dataset or cfg.dataset_path,
+            streaming=cfg.streaming,
             hook_point=cfg.hook_point,
             hook_point_layers=listify(cfg.hook_point_layer),
             hook_point_head_index=cfg.hook_point_head_index,
@@ -81,6 +82,7 @@ class ActivationsStore:
         self,
         model: HookedRootModule,
         dataset: HfDataset | str,
+        streaming: bool,
         hook_point: str,
         hook_point_layers: list[int],
         hook_point_head_index: int | None,
@@ -102,7 +104,7 @@ class ActivationsStore:
             model_kwargs = {}
         self.model_kwargs = model_kwargs
         self.dataset = (
-            load_dataset(dataset, split="train", streaming=True)
+            load_dataset(dataset, split="train", streaming=streaming)
             if isinstance(dataset, str)
             else dataset
         )
