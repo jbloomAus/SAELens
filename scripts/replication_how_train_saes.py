@@ -54,7 +54,7 @@ cfg = LanguageModelSAERunnerConfig(
     # training_tokens= 820_000_000, # 200k steps * 4096 batch size ~ 820M tokens (doable overnight on an A100)
     # For now.
     use_cached_activations=True,
-    cached_activations_path=cached_activations_path,
+    cached_activations_path=new_cached_activations_path,
     training_tokens=total_training_tokens,  # For initial testing I think this is a good number.
     train_batch_size=4096,
     # Loss Function
