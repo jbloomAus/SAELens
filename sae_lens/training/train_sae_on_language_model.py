@@ -648,12 +648,14 @@ def _build_train_step_log_dict(
     total_variance = (sae_in - sae_in.mean(0)).pow(2).sum(-1)
     explained_variance = 1 - per_token_l2_loss / total_variance
 
+    if isinstance(ghost_grad_loss, torch.Tensor):
+        ghost_grad_loss = ghost_grad_loss.item()
     return {
         # losses
         f"losses/mse_loss{wandb_suffix}": mse_loss.item(),
         f"losses/l1_loss{wandb_suffix}": l1_loss.item()
         / sparse_autoencoder.l1_coefficient,  # normalize by l1 coefficient
-        f"losses/ghost_grad_loss{wandb_suffix}": ghost_grad_loss.item(),
+        f"losses/ghost_grad_loss{wandb_suffix}": ghost_grad_loss,
         f"losses/overall_loss{wandb_suffix}": loss.item(),
         # variance explained
         f"metrics/explained_variance{wandb_suffix}": explained_variance.mean().item(),

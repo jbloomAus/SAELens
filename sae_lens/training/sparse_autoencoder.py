@@ -35,7 +35,7 @@ class ForwardOutput(NamedTuple):
     loss: torch.Tensor
     mse_loss: torch.Tensor
     l1_loss: torch.Tensor
-    ghost_grad_loss: torch.Tensor
+    ghost_grad_loss: torch.Tensor | float
 
 
 class SparseAutoencoder(HookedRootModule):
@@ -242,7 +242,7 @@ class SparseAutoencoder(HookedRootModule):
         per_item_mse_loss = _per_item_mse_loss_with_target_norm(
             sae_out, x, self.cfg.mse_loss_normalization
         )
-        ghost_grad_loss = torch.tensor(0.0, dtype=self.dtype, device=self.device)
+
         # gate on config and training so evals is not slowed down.
         if (
             self.use_ghost_grads
@@ -257,6 +257,8 @@ class SparseAutoencoder(HookedRootModule):
                 hidden_pre=hidden_pre,
                 dead_neuron_mask=dead_neuron_mask,
             )
+        else:
+            ghost_grad_loss = 0
 
         mse_loss = per_item_mse_loss.sum(dim=-1).mean()
         sparsity = self.get_sparsity_loss_term(feature_acts)
