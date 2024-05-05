@@ -179,3 +179,6 @@ neuronpedia_outputs/
 
 # test fixtures
 tests/benchmark/fixtures/
+
+# ignore prof
+prof/   
