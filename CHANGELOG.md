@@ -2,6 +2,69 @@
 
 
 
+## v1.4.0 (2024-05-05)
+
+### Feature
+
+* feat: Store state to allow resuming a run (#106)
+
+* first pass of saving
+
+* added runner resume code
+
+* added auto detect most recent checkpoint code
+
+* make linter happy (and one small bug)
+
+* blak code formatting
+
+* isort
+
+* help pyright
+
+* black reformatting:
+
+* activations store flake
+
+* pyright typing
+
+* black code formatting
+
+* added test for saving and loading
+
+* bigger training set
+
+* black code
+
+* move to pickle
+
+* use pickle because safetensors doesn&#39;t support all the stuff needed for optimizer and scheduler state
+
+* added resume test
+
+* added wandb_id for resuming
+
+* use wandb id for checkpoint
+
+* moved loaded to device and minor fixes to resuming
+
+---------
+
+Co-authored-by: David Chanin &lt;chanindav@gmail.com&gt; ([`4d12e7a`](https://github.com/jbloomAus/SAELens/commit/4d12e7a4e42079442922ccad7e22e9aca279b6aa))
+
+### Unknown
+
+* Fix: sparsity norm calculated at incorrect dimension. (#119)
+
+* Fix: sparsity norm calculated at incorrect dimension.
+
+For L1 this does not effect anything as essentially it&#39;s calculating the abs() and average everything. For L2 this is problematic as L2 involves sum and sqrt. Unexpected behaviors occur when x is of shape (batch, sen_length, hidden_dim).
+
+* Added tests.
+
+* Changed sparsity calculation to handle 3d inputs. ([`ce95fb2`](https://github.com/jbloomAus/SAELens/commit/ce95fb200e67fab6f9dc3cd24ac6078c9a4b1050))
+
+
 ## v1.3.0 (2024-05-03)
 
 ### Feature
