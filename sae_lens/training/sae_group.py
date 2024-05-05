@@ -48,7 +48,7 @@ class SparseAutoencoderDictionary:
             sae = SparseAutoencoder(cfg_copy)
 
             sae_name = (
-                f"{sae.cfg.model_name}_{sae.cfg.hook_point}_{sae.cfg.d_sae}_"
+                f"{sae.cfg.model_name.replace('/', '_')}_{sae.cfg.hook_point}_{sae.cfg.d_sae}_"
                 + "_".join([f"{k}_{v}" for k, v in zip(keys, combination)])
             )
 

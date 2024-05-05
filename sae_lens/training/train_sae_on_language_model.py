@@ -1,7 +1,11 @@
 import os
-from dataclasses import dataclass
-from typing import Any, cast
+import pickle
+import random
+import signal
+from dataclasses import dataclass, field, fields
+from typing import Any, Optional, cast
 
+import numpy as np
 import torch
 import wandb
 from safetensors.torch import save_file
@@ -11,12 +15,18 @@ from tqdm import tqdm
 from transformer_lens.hook_points import HookedRootModule
 
 from sae_lens import __version__
-from sae_lens.training.activations_store import ActivationsStore
+from sae_lens.training.activations_store import ActivationsStore, HfDataset
+from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.evals import run_evals
 from sae_lens.training.geometric_median import compute_geometric_median
 from sae_lens.training.optim import get_scheduler
 from sae_lens.training.sae_group import SparseAutoencoderDictionary
-from sae_lens.training.sparse_autoencoder import SparseAutoencoder
+from sae_lens.training.sparse_autoencoder import (
+    SAE_CFG_PATH,
+    SAE_WEIGHTS_PATH,
+    SPARSITY_PATH,
+    SparseAutoencoder,
+)
 
 # used to map between parameters which are updated during finetuning and the config str.
 FINETUNING_PARAMETERS = {
@@ -68,6 +78,94 @@ class SAETrainContext:
 
         self.finetuning = True
 
+    def state_dict(self) -> dict[str, torch.Tensor]:
+        state_dict = {}
+        for attr in fields(self):
+            value = getattr(self, attr.name)
+            # serializable fields
+            if hasattr(value, "state_dict"):
+                state_dict[attr.name] = value.state_dict()
+            else:
+                state_dict[attr.name] = value
+        return state_dict
+
+    @classmethod
+    def load(cls, path: str, sae: SparseAutoencoder, total_training_steps: int):
+        with open(path, "rb") as f:
+            state_dict = pickle.load(f)
+        attached_ctx = _build_train_context(
+            sae=sae, total_training_steps=total_training_steps
+        )
+        for attr in fields(attached_ctx):
+            value = getattr(attached_ctx, attr.name)
+            # optimizer and scheduler, this attaches them properly
+            if hasattr(value, "state_dict"):
+                value.load_state_dict(state_dict[attr.name])
+                state_dict[attr.name] = value
+        ctx = cls(**state_dict)  # pyright: ignore [reportArgumentType]
+        # if fine tuning, we need to set sae requires grad properly
+        if ctx.finetuning:
+            ctx.begin_finetuning(sae=sae)
+        return ctx
+
+    def save(self, path: str):
+        with open(path, "wb") as f:
+            pickle.dump(self.state_dict(), f)
+
+
+@dataclass
+class SAETrainingRunState:
+    """
+    Training run state for all SAES
+    includes n_training_steps
+    n_training_tokens
+    started_fine_tuning
+    and rng states
+    """
+
+    n_training_steps: int = 0
+    n_training_tokens: int = 0
+    started_fine_tuning: bool = False
+    checkpoint_paths: list[str] = field(default_factory=list)
+    torch_state: Optional[torch.Tensor] = None
+    torch_cuda_state: Optional[list[torch.Tensor]] = None
+    numpy_state: Optional[
+        dict[str, Any]
+        | tuple[str, np.ndarray[Any, np.dtype[np.uint32]], int, int, float]
+    ] = None
+    random_state: Optional[Any] = None
+
+    def __post_init__(self):
+        if self.torch_state is None:
+            self.torch_state = torch.get_rng_state()
+        if self.torch_cuda_state is None:
+            self.torch_cuda_state = torch.cuda.get_rng_state_all()
+        if self.numpy_state is None:
+            self.numpy_state = np.random.get_state()
+        if self.random_state is None:
+            self.random_state = random.getstate()
+
+    def set_random_state(self):
+        assert self.torch_state is not None
+        torch.random.set_rng_state(self.torch_state)
+        assert self.torch_cuda_state is not None
+        torch.cuda.set_rng_state_all(self.torch_cuda_state)
+        assert self.numpy_state is not None
+        np.random.set_state(self.numpy_state)
+        assert self.random_state is not None
+        random.setstate(self.random_state)
+
+    @classmethod
+    def load(cls, path: str):
+        with open(path, "rb") as f:
+            attr_dict = pickle.load(f)
+        return cls(**attr_dict)
+
+    def save(self, path: str):
+        attr_dict = {**self.__dict__}
+        with open(path, "wb") as f:
+            pickle.dump(attr_dict, f)
+
 
 @dataclass
 class TrainSAEGroupOutput:
@@ -91,35 +189,36 @@ def train_sae_on_language_model(
     @deprecated Use `train_sae_group_on_language_model` instead. This method is kept for backward compatibility.
     """
     return train_sae_group_on_language_model(
-        model,
-        sae_group,
-        activation_store,
-        batch_size,
-        n_checkpoints,
-        feature_sampling_window,
-        use_wandb,
-        wandb_log_frequency,
+        model=model,
+        sae_group=sae_group,
+        activation_store=activation_store,
+        batch_size=batch_size,
+        n_checkpoints=n_checkpoints,
+        feature_sampling_window=feature_sampling_window,
+        use_wandb=use_wandb,
+        wandb_log_frequency=wandb_log_frequency,
     ).sae_group
+
+
+def get_total_training_tokens(sae_group: SparseAutoencoderDictionary) -> int:
+    return sae_group.cfg.training_tokens + sae_group.cfg.finetuning_tokens
 
 
 def train_sae_group_on_language_model(
     model: HookedRootModule,
     sae_group: SparseAutoencoderDictionary,
     activation_store: ActivationsStore,
+    train_contexts: Optional[dict[str, SAETrainContext]] = None,
+    training_run_state: Optional[SAETrainingRunState] = None,
     batch_size: int = 1024,
     n_checkpoints: int = 0,
     feature_sampling_window: int = 1000,  # how many training steps between resampling the features / considiring neurons dead
     use_wandb: bool = False,
     wandb_log_frequency: int = 50,
 ) -> TrainSAEGroupOutput:
+    total_training_tokens = get_total_training_tokens(sae_group=sae_group)
     _update_sae_lens_training_version(sae_group)
-    total_training_tokens = (
-        sae_group.cfg.training_tokens + sae_group.cfg.finetuning_tokens
-    )
     total_training_steps = total_training_tokens // batch_size
-    n_training_steps = 0
-    n_training_tokens = 0
-    started_fine_tuning = False
 
     checkpoint_thresholds = []
     if n_checkpoints > 0:
@@ -131,101 +230,146 @@ def train_sae_group_on_language_model(
     if not isinstance(all_layers, list):
         all_layers = [all_layers]
 
-    train_contexts = {
-        name: _build_train_context(sae, total_training_steps)
-        for name, sae in sae_group.autoencoders.items()
-    }
-
-    _init_sae_group_b_decs(sae_group, activation_store, all_layers)
-
     pbar = tqdm(total=total_training_tokens, desc="Training SAE")
-    checkpoint_paths: list[str] = []
-    while n_training_tokens < total_training_tokens:
-        # Do a training step.
-        layer_acts = activation_store.next_batch()
-        n_training_tokens += batch_size
 
-        mse_losses: list[torch.Tensor] = []
-        l1_losses: list[torch.Tensor] = []
-
-        for name, sparse_autoencoder in sae_group.autoencoders.items():
-            ctx = train_contexts[name]
-            wandb_suffix = _wandb_log_suffix(sae_group.cfg, sparse_autoencoder.cfg)
-            step_output = _train_step(
-                sparse_autoencoder=sparse_autoencoder,
-                layer_acts=layer_acts,
-                ctx=ctx,
-                feature_sampling_window=feature_sampling_window,
-                use_wandb=use_wandb,
-                n_training_steps=n_training_steps,
-                all_layers=all_layers,
-                batch_size=batch_size,
-                wandb_suffix=wandb_suffix,
+    # not resuming
+    if training_run_state is None and train_contexts is None:
+        train_contexts = {
+            name: _build_train_context(sae, total_training_steps)
+            for name, sae in sae_group.autoencoders.items()
+        }
+        training_run_state = SAETrainingRunState()
+        _init_sae_group_b_decs(sae_group, activation_store, all_layers)
+    # resuming
+    else:
+        if train_contexts is None:
+            raise ValueError(
+                "train_contexts is None, when resuming, pass in training_run_state and train_contexts"
             )
-            mse_losses.append(step_output.mse_loss)
-            l1_losses.append(step_output.l1_loss)
-            if use_wandb:
-                with torch.no_grad():
-                    if (n_training_steps + 1) % wandb_log_frequency == 0:
-                        wandb.log(
-                            _build_train_step_log_dict(
-                                sparse_autoencoder,
-                                step_output,
-                                ctx,
-                                wandb_suffix,
-                                n_training_tokens,
-                            ),
-                            step=n_training_steps,
-                        )
-
-                    # record loss frequently, but not all the time.
-                    if (n_training_steps + 1) % (wandb_log_frequency * 10) == 0:
-                        sparse_autoencoder.eval()
-                        run_evals(
-                            sparse_autoencoder,
-                            activation_store,
-                            model,
-                            n_training_steps,
-                            suffix=wandb_suffix,
-                        )
-                        sparse_autoencoder.train()
-
-        # checkpoint if at checkpoint frequency
-        if checkpoint_thresholds and n_training_tokens > checkpoint_thresholds[0]:
-            checkpoint_path = _save_checkpoint(
-                sae_group,
-                train_contexts=train_contexts,
-                checkpoint_name=n_training_tokens,
+        if training_run_state is None:
+            raise ValueError(
+                "training_run_state is None, when resuming, pass in training_run_state and train_contexts"
             )
-            checkpoint_paths.append(checkpoint_path)
-            checkpoint_thresholds.pop(0)
+        pbar.update(training_run_state.n_training_tokens)
+        training_run_state.set_random_state()
 
-        ###############
+    class InterruptedException(Exception):
+        pass
 
-        n_training_steps += 1
-        pbar.set_description(
-            f"{n_training_steps}| MSE Loss {torch.stack(mse_losses).mean().item():.3f} | L1 {torch.stack(l1_losses).mean().item():.3f}"
-        )
-        pbar.update(batch_size)
+    def interrupt_callback(sig_num: Any, stack_frame: Any):
+        raise InterruptedException()
 
-        ### If n_training_tokens > sae_group.cfg.training_tokens, then we should switch to fine-tuning (if we haven't already)
-        if (not started_fine_tuning) and (
-            n_training_tokens > sae_group.cfg.training_tokens
-        ):
-            started_fine_tuning = True
+    try:
+        # signal handlers (if preempted)
+        signal.signal(signal.SIGINT, interrupt_callback)
+        signal.signal(signal.SIGTERM, interrupt_callback)
+
+        while training_run_state.n_training_tokens < total_training_tokens:
+            # Do a training step.
+            layer_acts = activation_store.next_batch()
+            training_run_state.n_training_tokens += batch_size
+
+            mse_losses: list[torch.Tensor] = []
+            l1_losses: list[torch.Tensor] = []
+
             for name, sparse_autoencoder in sae_group.autoencoders.items():
                 ctx = train_contexts[name]
-                # this should turn grads on for the scaling factor and other parameters.
-                ctx.begin_finetuning(sae_group.autoencoders[name])
+                wandb_suffix = _wandb_log_suffix(sae_group.cfg, sparse_autoencoder.cfg)
+                step_output = _train_step(
+                    sparse_autoencoder=sparse_autoencoder,
+                    layer_acts=layer_acts,
+                    ctx=ctx,
+                    feature_sampling_window=feature_sampling_window,
+                    use_wandb=use_wandb,
+                    n_training_steps=training_run_state.n_training_steps,
+                    all_layers=all_layers,
+                    batch_size=batch_size,
+                    wandb_suffix=wandb_suffix,
+                )
+                mse_losses.append(step_output.mse_loss)
+                l1_losses.append(step_output.l1_loss)
+                if use_wandb:
+                    with torch.no_grad():
+                        if (
+                            training_run_state.n_training_steps + 1
+                        ) % wandb_log_frequency == 0:
+                            wandb.log(
+                                _build_train_step_log_dict(
+                                    sparse_autoencoder,
+                                    step_output,
+                                    ctx,
+                                    wandb_suffix,
+                                    training_run_state.n_training_tokens,
+                                ),
+                                step=training_run_state.n_training_steps,
+                            )
 
+                        # record loss frequently, but not all the time.
+                        if (training_run_state.n_training_steps + 1) % (
+                            wandb_log_frequency * 10
+                        ) == 0:
+                            sparse_autoencoder.eval()
+                            run_evals(
+                                sparse_autoencoder,
+                                activation_store,
+                                model,
+                                training_run_state.n_training_steps,
+                                suffix=wandb_suffix,
+                            )
+                            sparse_autoencoder.train()
+
+            # checkpoint if at checkpoint frequency
+            if (
+                checkpoint_thresholds
+                and training_run_state.n_training_tokens > checkpoint_thresholds[0]
+            ):
+                _save_checkpoint(
+                    sae_group,
+                    activation_store=activation_store,
+                    train_contexts=train_contexts,
+                    training_run_state=training_run_state,
+                    checkpoint_name=training_run_state.n_training_tokens,
+                )
+                checkpoint_thresholds.pop(0)
+
+            ###############
+
+            training_run_state.n_training_steps += 1
+            pbar.set_description(
+                f"{training_run_state.n_training_steps}| MSE Loss {torch.stack(mse_losses).mean().item():.3f} | L1 {torch.stack(l1_losses).mean().item():.3f}"
+            )
+            pbar.update(batch_size)
+
+            ### If n_training_tokens > sae_group.cfg.training_tokens, then we should switch to fine-tuning (if we haven't already)
+            if (not training_run_state.started_fine_tuning) and (
+                training_run_state.n_training_tokens > sae_group.cfg.training_tokens
+            ):
+                training_run_state.started_fine_tuning = True
+                for name, sparse_autoencoder in sae_group.autoencoders.items():
+                    ctx = train_contexts[name]
+                    # this should turn grads on for the scaling factor and other parameters.
+                    ctx.begin_finetuning(sae_group.autoencoders[name])
+    except (KeyboardInterrupt, InterruptedException):
+        print("interrupted, saving progress")
+        checkpoint_name = training_run_state.n_training_tokens
+        _save_checkpoint(
+            sae_group,
+            activation_store=activation_store,
+            train_contexts=train_contexts,
+            training_run_state=training_run_state,
+            checkpoint_name=checkpoint_name,
+        )
+        print("done saving")
+        raise
     # save final sae group to checkpoints folder
-    final_checkpoint = _save_checkpoint(
+    _save_checkpoint(
         sae_group,
+        activation_store=activation_store,
         train_contexts=train_contexts,
-        checkpoint_name="final",
+        training_run_state=training_run_state,
+        checkpoint_name=f"final_{training_run_state.n_training_tokens}",
         wandb_aliases=["final_model"],
     )
-    checkpoint_paths.append(final_checkpoint)
 
     log_feature_sparsities = {
         name: ctx.log_feature_sparsity for name, ctx in train_contexts.items()
@@ -233,7 +377,7 @@ def train_sae_group_on_language_model(
 
     return TrainSAEGroupOutput(
         sae_group=sae_group,
-        checkpoint_paths=checkpoint_paths,
+        checkpoint_paths=training_run_state.checkpoint_paths,
         log_feature_sparsities=log_feature_sparsities,
     )
 
@@ -504,25 +648,101 @@ def _build_train_step_log_dict(
     }
 
 
+ACTIVATION_STORE_PATH = "activation_store.safetensors"
+TRAINING_RUN_STATE_PATH = "training_run_state.pkl"
+SAE_CONTEXT_PATH = "ctx.safetensors"
+
+
+def load_checkpoint(
+    checkpoint_path: str,
+    cfg: LanguageModelSAERunnerConfig,
+    model: HookedRootModule,
+    batch_size: int,
+    dataset: HfDataset | None = None,
+) -> tuple[
+    SAETrainingRunState,
+    ActivationsStore,
+    SparseAutoencoderDictionary,
+    dict[str, SAETrainContext],
+]:
+    training_run_state_path = f"{checkpoint_path}/{TRAINING_RUN_STATE_PATH}"
+    training_run_state = SAETrainingRunState.load(training_run_state_path)
+
+    activation_store_path = f"{checkpoint_path}/{ACTIVATION_STORE_PATH}"
+    activation_store = ActivationsStore.load(
+        activation_store_path, model=model, cfg=cfg, dataset=dataset
+    )
+
+    sae_group = SparseAutoencoderDictionary.load_from_pretrained(
+        checkpoint_path, device=str(cfg.device)
+    )
+
+    total_training_steps = get_total_training_tokens(sae_group=sae_group) // batch_size
+
+    train_contexts = {}
+    for name, sae in sae_group.autoencoders.items():
+        path = f"{checkpoint_path}/{name}"
+        ctx_path = f"{path}/{SAE_CONTEXT_PATH}"
+        train_contexts[name] = SAETrainContext.load(
+            ctx_path, sae=sae, total_training_steps=total_training_steps
+        )
+
+    # overwrite sae gruop cfg with our new cfg in case we want to change things
+    sae_group.cfg = cfg
+    # TODO: individual saes don't get new cfgs, maybe they should idk its messy bc of _init_autoencoders stuff
+    return training_run_state, activation_store, sae_group, train_contexts
+
+
 def _save_checkpoint(
     sae_group: SparseAutoencoderDictionary,
+    activation_store: ActivationsStore,
     train_contexts: dict[str, SAETrainContext],
+    training_run_state: SAETrainingRunState,
     checkpoint_name: int | str,
     wandb_aliases: list[str] | None = None,
 ) -> str:
 
     checkpoint_path = f"{sae_group.cfg.checkpoint_path}/{checkpoint_name}"
+    training_run_state.checkpoint_paths.append(checkpoint_path)
     os.makedirs(checkpoint_path, exist_ok=True)
+
+    training_run_state_path = f"{checkpoint_path}/{TRAINING_RUN_STATE_PATH}"
+    training_run_state.save(training_run_state_path)
+    if sae_group.cfg.log_to_wandb:
+        training_run_state_artifact = wandb.Artifact(
+            f"{sae_group.get_name()}_training_run_state",
+            type="training_run_state",
+            metadata=dict(sae_group.cfg.__dict__),
+        )
+        training_run_state_artifact.add_file(training_run_state_path)
+        # TODO: should these have aliases=wandb_aliases?
+        wandb.log_artifact(training_run_state_artifact)
+
+    activation_store_path = f"{checkpoint_path}/{ACTIVATION_STORE_PATH}"
+    activation_store.save(activation_store_path)
+    if sae_group.cfg.log_to_wandb and sae_group.cfg.log_activations_store_to_wandb:
+        activation_store_artifact = wandb.Artifact(
+            f"{sae_group.get_name()}_activations_store",
+            type="activation_store",
+            metadata=dict(sae_group.cfg.__dict__),
+        )
+        activation_store_artifact.add_file(activation_store_path)
+        wandb.log_artifact(activation_store_artifact)
+
     for name, sae in sae_group.autoencoders.items():
 
         ctx = train_contexts[name]
         path = f"{checkpoint_path}/{name}"
+        os.makedirs(path, exist_ok=True)
+        ctx_path = f"{path}/{SAE_CONTEXT_PATH}"
+        ctx.save(ctx_path)
+
         if sae.normalize_sae_decoder:
             sae.set_decoder_norm_to_unit_norm()
         sae.save_model(path)
         log_feature_sparsities = {"sparsity": ctx.log_feature_sparsity}
 
-        log_feature_sparsity_path = f"{path}/sparsity.safetensors"
+        log_feature_sparsity_path = f"{path}/{SPARSITY_PATH}"
         save_file(log_feature_sparsities, log_feature_sparsity_path)
 
         if sae_group.cfg.log_to_wandb and os.path.exists(log_feature_sparsity_path):
@@ -531,8 +751,10 @@ def _save_checkpoint(
                 type="model",
                 metadata=dict(sae_group.cfg.__dict__),
             )
-            model_artifact.add_file(f"{path}/sae_weights.safetensors")
-            model_artifact.add_file(f"{path}/cfg.json")
+            model_artifact.add_file(f"{path}/{SAE_WEIGHTS_PATH}")
+            model_artifact.add_file(f"{path}/{SAE_CFG_PATH}")
+            if sae_group.cfg.log_optimizer_state_to_wandb:
+                model_artifact.add_file(ctx_path)
             wandb.log_artifact(model_artifact, aliases=wandb_aliases)
 
             sparsity_artifact = wandb.Artifact(

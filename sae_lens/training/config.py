@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass, field
 from typing import Any, Optional, cast
 
@@ -100,12 +101,16 @@ class LanguageModelSAERunnerConfig:
 
     # WANDB
     log_to_wandb: bool = True
+    log_activations_store_to_wandb: bool = False
+    log_optimizer_state_to_wandb: bool = False
     wandb_project: str = "mats_sae_training_language_model"
+    wandb_id: Optional[str] = None
     run_name: Optional[str] = None
     wandb_entity: Optional[str] = None
     wandb_log_frequency: int = 10
 
     # Misc
+    resume: bool = False
     n_checkpoints: int = 0
     checkpoint_path: str = "checkpoints"
     verbose: bool = True
@@ -160,10 +165,11 @@ class LanguageModelSAERunnerConfig:
                 self.lr_end = [lr / 10 for lr in self.lr]
             else:
                 self.lr_end = self.lr / 10
-
-        unique_id = cast(
-            Any, wandb
-        ).util.generate_id()  # not sure why this type is erroring
+        unique_id = self.wandb_id
+        if unique_id is None:
+            unique_id = cast(
+                Any, wandb
+            ).util.generate_id()  # not sure why this type is erroring
         self.checkpoint_path = f"{self.checkpoint_path}/{unique_id}"
 
         if self.verbose:
@@ -209,6 +215,50 @@ class LanguageModelSAERunnerConfig:
 
         if not isinstance(self.use_ghost_grads, list) and self.use_ghost_grads:
             print("Using Ghost Grads.")
+
+    def get_checkpoints_by_step(self) -> tuple[dict[int, str], bool]:
+        """
+        Returns (dict, is_done)
+        where dict is [steps] = path
+        for each checkpoint, and
+        is_done is True if there is a "final_{steps}" checkpoint
+        """
+        is_done = False
+        checkpoints = [
+            f
+            for f in os.listdir(self.checkpoint_path)
+            if os.path.isdir(os.path.join(self.checkpoint_path, f))
+        ]
+        mapped_to_steps = {}
+        for c in checkpoints:
+            try:
+                steps = int(c)
+            except ValueError:
+                if c.startswith("final"):
+                    steps = int(c.split("_")[1])
+                    is_done = True
+                else:
+                    continue  # ignore this directory
+            full_path = os.path.join(self.checkpoint_path, c)
+            mapped_to_steps[steps] = full_path
+        return mapped_to_steps, is_done
+
+    def get_resume_checkpoint_path(self) -> str:
+        """
+        Gets the checkpoint path with the most steps
+        raises StopIteration if the model is done (there is a final_{steps} directoryh
+        raises FileNotFoundError if there are no checkpoints found
+        """
+        mapped_to_steps, is_done = self.get_checkpoints_by_step()
+        if is_done:
+            raise StopIteration("Finished training model")
+        if len(mapped_to_steps) == 0:
+            raise FileNotFoundError("no checkpoints available to resume from")
+        else:
+            max_step = max(list(mapped_to_steps.keys()))
+            checkpoint_dir = mapped_to_steps[max_step]
+            print(f"resuming from step {max_step} at path {checkpoint_dir}")
+            return mapped_to_steps[max_step]
 
 
 @dataclass

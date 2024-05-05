@@ -4,6 +4,7 @@ import os
 from typing import Any, Iterator, Literal, TypeVar, cast
 
 import torch
+import tqdm
 from datasets import (
     Dataset,
     DatasetDict,
@@ -11,6 +12,7 @@ from datasets import (
     IterableDatasetDict,
     load_dataset,
 )
+from safetensors.torch import load_file, save_file
 from torch.utils.data import DataLoader
 from transformer_lens.hook_points import HookedRootModule
 
@@ -111,6 +113,7 @@ class ActivationsStore:
         self.dtype = dtype
         self.cached_activations_path = cached_activations_path
 
+        self.n_dataset_processed = 0
         self.iterable_dataset = iter(self.dataset)
 
         # Check if dataset is tokenized
@@ -402,6 +405,44 @@ class ActivationsStore:
             self._dataloader = self.get_data_loader()
             return next(self.dataloader)
 
+    @classmethod
+    def load(
+        cls,
+        file_path: str,
+        model: HookedRootModule,
+        cfg: LanguageModelSAERunnerConfig | CacheActivationsRunnerConfig,
+        dataset: HfDataset | None = None,
+    ):
+        activation_store = cls.from_config(model=model, cfg=cfg, dataset=dataset)
+
+        state_dict = load_file(file_path)
+        if "storage_buffer" in state_dict.keys():
+            activation_store._storage_buffer = state_dict["storage_buffer"].to(
+                cfg.device
+            )
+        n_dataset_processed = state_dict["n_dataset_processed"].item()
+        # fastforward data
+        pbar = tqdm.tqdm(
+            total=n_dataset_processed - activation_store.n_dataset_processed,
+            desc="Fast forwarding data",
+        )
+        while activation_store.n_dataset_processed < n_dataset_processed:
+            next(activation_store.iterable_dataset)
+            pbar.update(1)
+            activation_store.n_dataset_processed += 1
+        return activation_store
+
+    def state_dict(self) -> dict[str, torch.Tensor]:
+        result = {
+            "n_dataset_processed": torch.tensor(self.n_dataset_processed),
+        }
+        if self._storage_buffer is not None:  # first time might be None
+            result["storage_buffer"] = self._storage_buffer
+        return result
+
+    def save(self, file_path: str):
+        save_file(self.state_dict(), file_path)
+
     def _get_next_dataset_tokens(self) -> torch.Tensor:
         device = self.device
         if not self.is_dataset_tokenized:
@@ -427,6 +468,7 @@ class ActivationsStore:
                 and tokens[0] == self.model.tokenizer.bos_token_id  # type: ignore
             ):
                 tokens = tokens[1:]
+        self.n_dataset_processed += 1
         return tokens
 
 
