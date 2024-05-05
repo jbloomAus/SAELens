@@ -13,7 +13,6 @@ import einops
 import numpy as np
 import torch
 import torch as t
-from IPython.display import clear_output
 from jaxtyping import Float
 from matplotlib import pyplot as plt
 from matplotlib.animation import FuncAnimation
@@ -477,6 +476,8 @@ def plot_features_in_2d(
         ani = FuncAnimation(
             fig, cast(Any, update), frames=n_timesteps, interval=0.04, repeat=False
         )
+        from IPython.display import clear_output  # type: ignore
+
         clear_output()
         return ani
 
