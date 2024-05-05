@@ -176,3 +176,6 @@ cached_activations/
 
 # neuronpedia outputs
 neuronpedia_outputs/
+
+# test fixtures
+tests/benchmark/fixtures/
