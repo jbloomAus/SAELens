@@ -18,15 +18,17 @@ else:
 print("Using device:", device)
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-# change these configs
-model_name = "gelu-1l"
-dataset_path = "NeelNanda/c4-tokenized-2b"
-new_cached_activations_path = f"./cached_activations/{model_name}/{dataset_path}"
-
 total_training_steps = 20_000
 batch_size = 4096
 total_training_tokens = total_training_steps * batch_size
 print(f"Total Training Tokens: {total_training_tokens}")
+
+# change these configs
+model_name = "gelu-1l"
+dataset_path = "NeelNanda/c4-tokenized-2b"
+new_cached_activations_path = (
+    f"./cached_activations/{model_name}/{dataset_path}/{total_training_steps}"
+)
 
 lr_warm_up_steps = 0
 lr_decay_steps = total_training_steps // 5  # 20% of training steps.
