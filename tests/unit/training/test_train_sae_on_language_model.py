@@ -155,7 +155,7 @@ def test_train_step__output_looks_reasonable() -> None:
     assert output.ghost_grad_neuron_mask.shape == (128,)
     assert output.loss.shape == ()
     assert output.mse_loss.shape == ()
-    assert output.ghost_grad_loss.shape == ()
+    assert output.ghost_grad_loss == 0
     # ghots grads shouldn't trigger until dead_feature_window, which hasn't been reached yet
     assert torch.all(output.ghost_grad_neuron_mask == False)  # noqa
     assert output.ghost_grad_loss == 0

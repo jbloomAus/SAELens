@@ -411,7 +411,7 @@ def test_SparseAutoencoder_forward_ghost_grad_loss_only_adds_gradients_to_dead_n
         x=torch.randn(3, 2),
         dead_neuron_mask=dead_neuron_mask,
     )
-    forward_out.ghost_grad_loss.backward()
+    forward_out.ghost_grad_loss.backward()  # type: ignore
 
     # only features 1 and 3 should have non-zero gradients on the encoder weights
     assert sae.W_enc.grad is not None
