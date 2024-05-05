@@ -2,6 +2,90 @@
 
 
 
+## v1.3.0 (2024-05-03)
+
+### Feature
+
+* feat: add activation bins for neuronpedia outputs, and allow customizing quantiles (#113) ([`05d650d`](https://github.com/jbloomAus/SAELens/commit/05d650d8ece48bee64077ac075b18a1efae206d4))
+
+* feat: Update for Neuropedia auto-interp (#112)
+
+* cleanup Neuronpedia autointerp code
+
+* Fix logic bug with OpenAI key
+
+---------
+
+Co-authored-by: Joseph Bloom &lt;69127271+jbloomAus@users.noreply.github.com&gt; ([`033283d`](https://github.com/jbloomAus/SAELens/commit/033283d99447a0949c1241adc2c99ed31342650f))
+
+* feat: SparseAutoencoder.from_pretrained() similar to transformer lens (#111)
+
+* add partial work so David can continue
+
+* feat: adding a SparseAutoencoder.from_pretrained() function
+
+---------
+
+Co-authored-by: jbloomaus &lt;jbloomaus@gmail.com&gt; ([`617d416`](https://github.com/jbloomAus/SAELens/commit/617d416f34101047c6bceb31fdbd325fb9ff7c84))
+
+### Fix
+
+* fix: replace list_files_info with list_repo_tree (#117) ([`676062c`](https://github.com/jbloomAus/SAELens/commit/676062cae4cd72e198e87b14fcae124ec2c534ca))
+
+* fix: Improved activation initialization, fix using argument to pass in API key (#116) ([`7047bcc`](https://github.com/jbloomAus/SAELens/commit/7047bcc6d5d8d15b990605a7c2f68a210db603d0))
+
+
+## v1.2.0 (2024-04-29)
+
+### Feature
+
+* feat: breaks up SAE.forward() into encode() and decode() (#107)
+
+* breaks up SAE.forward() into encode() and decode()
+
+* cleans up return typing of encode by splitting into a hidden and public function ([`7b4311b`](https://github.com/jbloomAus/SAELens/commit/7b4311bab965775bbb37e5d1f7b27d1379954fa8))
+
+
+## v1.1.0 (2024-04-29)
+
+### Feature
+
+* feat: API for generating autointerp + scoring for neuronpedia (#108)
+
+* API for generating autointerp for neuronpedia
+
+* Undo pytest vscode setting change
+
+* Fix autointerp import
+
+* Use pypi import for automated-interpretability ([`7c43c4c`](https://github.com/jbloomAus/SAELens/commit/7c43c4caa84aea421ac81ae0e326d9c62bb17bec))
+
+
+## v1.0.0 (2024-04-27)
+
+### Breaking
+
+* chore: empty commit to bump release
+
+BREAKING CHANGE: v1 release ([`2615a3e`](https://github.com/jbloomAus/SAELens/commit/2615a3ec472db25678971c4a11b804e316daa8a5))
+
+### Chore
+
+* chore: fix outdated lr_scheduler_name in docs (#109)
+
+* chore: fix outdated lr_scheduler_name in docs
+
+* add tutorial hparams ([`7cba332`](https://github.com/jbloomAus/SAELens/commit/7cba332800ff6aa826aaf53b1c86a56afabde6ec))
+
+### Unknown
+
+* BREAKING CHANGE: 1.0.0 release
+
+BREAKING CHANGE: 1.0.0 release ([`c23098f`](https://github.com/jbloomAus/SAELens/commit/c23098f17615cd092d82ee12b2e61edc93dbb1ec))
+
+* Neuronpedia: allow resuming upload (#102) ([`0184671`](https://github.com/jbloomAus/SAELens/commit/0184671bafa2ff53e97e6ff6e157a334df2428b9))
+
+
 ## v0.7.0 (2024-04-24)
 
 ### Feature

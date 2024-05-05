@@ -5,8 +5,11 @@ from typing import Any
 import einops
 import pytest
 import torch
+from huggingface_hub import hf_hub_download
+from safetensors import safe_open
 from transformer_lens import HookedTransformer
 
+from sae_lens import __version__
 from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.sparse_autoencoder import (
     SparseAutoencoder,
@@ -95,11 +98,12 @@ def test_SparseAutoencoder_save_and_load_from_pretrained(tmp_path: Path) -> None
 
     assert os.path.exists(model_path)
 
-    sparse_autoencoder_loaded = SparseAutoencoder.load_from_pretrained(model_path)
+    sparse_autoencoder_loaded = SparseAutoencoder.load_from_pretrained(
+        model_path, device="cpu"
+    )
+    sparse_autoencoder_loaded.cfg.device = "cpu"
     sparse_autoencoder_loaded.cfg.verbose = True
     sparse_autoencoder_loaded.cfg.checkpoint_path = cfg.checkpoint_path
-    sparse_autoencoder_loaded.cfg.device = "cpu"  # might autoload onto mps
-    sparse_autoencoder_loaded = sparse_autoencoder_loaded.to("cpu")
     sparse_autoencoder_loaded_state_dict = sparse_autoencoder_loaded.state_dict()
     # check cfg matches the original
     assert sparse_autoencoder_loaded.cfg == cfg
@@ -110,6 +114,26 @@ def test_SparseAutoencoder_save_and_load_from_pretrained(tmp_path: Path) -> None
             sparse_autoencoder_state_dict[key],
             sparse_autoencoder_loaded_state_dict[key],
         )
+
+
+def test_SparseAutoencoder_save_and_load_from_pretrained_update_the_sae_lens_version_on_load(
+    tmp_path: Path,
+):
+    cfg = build_sae_cfg(
+        device="cpu", sae_lens_training_version="9999.0.0", sae_lens_version="9999.0.0"
+    )
+    model_path = str(tmp_path)
+    sparse_autoencoder = SparseAutoencoder(cfg)
+    sparse_autoencoder.save_model(model_path)
+
+    assert os.path.exists(model_path)
+
+    sparse_autoencoder_loaded = SparseAutoencoder.load_from_pretrained(
+        model_path, device="cpu"
+    )
+    # the sae_lens_version should update, but not the training version unless we actually run training
+    assert sparse_autoencoder_loaded.cfg.sae_lens_version == __version__
+    assert sparse_autoencoder_loaded.cfg.sae_lens_training_version == "9999.0.0"
 
 
 def test_SparseAutoencoder_save_and_load_from_pretrained_lacks_scaling_factor(
@@ -147,6 +171,54 @@ def test_SparseAutoencoder_save_and_load_from_pretrained_lacks_scaling_factor(
                 sparse_autoencoder_state_dict[key],
                 sparse_autoencoder_loaded_state_dict[key],
             )
+
+
+def test_sparse_autoencoder_encode(sparse_autoencoder: SparseAutoencoder):
+    batch_size = 32
+    d_in = sparse_autoencoder.d_in
+    d_sae = sparse_autoencoder.d_sae
+
+    x = torch.randn(batch_size, d_in)
+    feature_acts1 = sparse_autoencoder.encode(x)
+    (
+        _,
+        feature_acts2,
+        _,
+        _,
+        _,
+        _,
+    ) = sparse_autoencoder.forward(
+        x,
+    )
+
+    # Check shape
+    assert feature_acts1.shape == (batch_size, d_sae)
+
+    # Check values
+    assert torch.allclose(feature_acts1, feature_acts2)
+
+
+def test_sparse_autoencoder_decode(sparse_autoencoder: SparseAutoencoder):
+    batch_size = 32
+    d_in = sparse_autoencoder.d_in
+
+    x = torch.randn(batch_size, d_in)
+    feature_acts = sparse_autoencoder.encode(x)
+    sae_out1 = sparse_autoencoder.decode(feature_acts)
+
+    (
+        sae_out2,
+        _,
+        _,
+        _,
+        _,
+        _,
+    ) = sparse_autoencoder.forward(
+        x,
+    )
+
+    assert sae_out1.shape == x.shape
+    assert torch.allclose(sae_out1, sae_out2)
 
 
 def test_sparse_autoencoder_forward(sparse_autoencoder: SparseAutoencoder):
@@ -222,6 +294,65 @@ def test_sparse_autoencoder_forward_with_mse_loss_norm(
     assert torch.allclose(mse_loss, expected_mse_loss)
     expected_l1_loss = torch.abs(feature_acts).sum(dim=1).mean(dim=(0,))
     assert torch.allclose(l1_loss, sparse_autoencoder.l1_coefficient * expected_l1_loss)
+
+    # check everything has the right dtype
+    assert sae_out.dtype == sparse_autoencoder.dtype
+    assert feature_acts.dtype == sparse_autoencoder.dtype
+    assert loss.dtype == sparse_autoencoder.dtype
+    assert mse_loss.dtype == sparse_autoencoder.dtype
+    assert l1_loss.dtype == sparse_autoencoder.dtype
+
+
+def test_sparse_autoencoder_forward_with_3d_input(
+    sparse_autoencoder: SparseAutoencoder,
+):
+    batch_size = 32
+    seq_length = 256
+    d_in = sparse_autoencoder.d_in
+    d_sae = sparse_autoencoder.d_sae
+    sparse_autoencoder.cfg.mse_loss_normalization = "dense_batch"
+    sparse_autoencoder.cfg.lp_norm = 1
+
+    x = torch.randn(batch_size, seq_length, d_in)
+    (
+        sae_out,
+        feature_acts,
+        loss,
+        mse_loss,
+        l1_loss,
+        _,
+    ) = sparse_autoencoder.forward(
+        x,
+    )
+    sparse_autoencoder.lp_norm = 2
+    (
+        _,
+        _,
+        _,
+        _,
+        l2_loss,
+        _,
+    ) = sparse_autoencoder.forward(
+        x,
+    )
+
+    assert sae_out.shape == (batch_size, seq_length, d_in)
+    assert feature_acts.shape == (batch_size, seq_length, d_sae)
+    assert loss.shape == ()
+    assert mse_loss.shape == ()
+    assert l1_loss.shape == ()
+    assert torch.allclose(loss, mse_loss + l1_loss)
+
+    x_centred = x - x.mean(dim=0, keepdim=True)
+    expected_mse_loss = (
+        torch.pow((sae_out - x.float()), 2)
+        / (x_centred**2).sum(dim=-1, keepdim=True).sqrt()
+    ).mean()
+    assert torch.allclose(mse_loss, expected_mse_loss)
+    expected_l1_loss = torch.abs(feature_acts).sum(dim=-1).mean()
+    assert torch.allclose(l1_loss, sparse_autoencoder.l1_coefficient * expected_l1_loss)
+    expected_l2_loss = feature_acts.norm(p=2, dim=-1).mean()
+    assert torch.allclose(l2_loss, sparse_autoencoder.l1_coefficient * expected_l2_loss)
 
     # check everything has the right dtype
     assert sae_out.dtype == sparse_autoencoder.dtype
@@ -343,3 +474,48 @@ def test_SparseAutoencoder_set_decoder_norm_to_unit_norm() -> None:
     assert torch.allclose(
         torch.norm(sae.W_dec, dim=1), torch.ones_like(sae.W_dec[:, 0])
     )
+
+
+def test_SparseAutoencoder_from_pretrained_loads_from_hugginface_using_shorthand():
+    sae = SparseAutoencoder.from_pretrained(
+        release="gpt2-small-res-jb",
+        sae_id="blocks.0.hook_resid_pre",
+        device="cpu",
+    )
+
+    # it should match what we get when manually loading from hf
+    repo_id = "jbloom/GPT2-Small-SAEs-Reformatted"
+    hook_point = "blocks.0.hook_resid_pre"
+    filename = f"{hook_point}/sae_weights.safetensors"
+    weight_path = hf_hub_download(repo_id=repo_id, filename=filename)
+    state_dict = {}
+    with safe_open(weight_path, framework="pt", device="cpu") as f:  # type: ignore
+        for k in f.keys():
+            state_dict[k] = f.get_tensor(k)
+
+    assert isinstance(sae, SparseAutoencoder)
+    assert sae.cfg.model_name == "gpt2-small"
+    assert sae.cfg.hook_point == "blocks.0.hook_resid_pre"
+
+    for k in sae.state_dict().keys():
+        if k == "scaling_factor":
+            continue
+        assert torch.allclose(sae.state_dict()[k], state_dict[k])
+
+
+def test_SparseAutoencoder_from_pretrained_errors_for_invalid_releases():
+    with pytest.raises(ValueError):
+        SparseAutoencoder.from_pretrained(
+            release="wrong",
+            sae_id="blocks.0.hook_resid_pre",
+            device="cpu",
+        )
+
+
+def test_SparseAutoencoder_from_pretrained_errors_for_invalid_sae_ids():
+    with pytest.raises(ValueError):
+        SparseAutoencoder.from_pretrained(
+            release="gpt2-small-res-jb",
+            sae_id="wrong",
+            device="cpu",
+        )

@@ -14,6 +14,7 @@ from torch.optim.lr_scheduler import LRScheduler
 from tqdm import tqdm
 from transformer_lens.hook_points import HookedRootModule
 
+from sae_lens import __version__
 from sae_lens.training.activations_store import ActivationsStore, HfDataset
 from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.evals import run_evals
@@ -216,6 +217,7 @@ def train_sae_group_on_language_model(
     wandb_log_frequency: int = 50,
 ) -> TrainSAEGroupOutput:
     total_training_tokens = get_total_training_tokens(sae_group=sae_group)
+    _update_sae_lens_training_version(sae_group)
     total_training_steps = total_training_tokens // batch_size
 
     checkpoint_thresholds = []
@@ -490,6 +492,15 @@ def _init_sae_group_b_decs(
                 :, sae_layer_id, :
             ]
             sae.initialize_b_dec_with_mean(layer_acts)
+
+
+def _update_sae_lens_training_version(sae_group: SparseAutoencoderDictionary) -> None:
+    """
+    Make sure we record the version of SAELens used for the training run
+    """
+    sae_group.cfg.sae_lens_training_version = __version__
+    for sae in sae_group.autoencoders.values():
+        sae.cfg.sae_lens_training_version = __version__
 
 
 @dataclass
