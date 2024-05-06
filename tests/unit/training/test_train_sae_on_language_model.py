@@ -299,7 +299,11 @@ def test_save_load_and_resume_checkpoint(tmp_path: Path) -> None:
     wandb.init()
     checkpoint_dir = tmp_path / "checkpoint"
     cfg = build_sae_cfg(
-        checkpoint_path=checkpoint_dir, d_in=25, d_sae=128, log_to_wandb=True
+        checkpoint_path=checkpoint_dir,
+        d_in=64,
+        d_sae=128,
+        log_to_wandb=True,
+        training_tokens=256,
     )
     sae_group = SparseAutoencoderDictionary(cfg)
     assert len(sae_group.autoencoders) == 1

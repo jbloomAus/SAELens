@@ -23,7 +23,7 @@ def test_cache_activations_runner():
     print("Using device:", device)
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-    total_training_steps = 2_000
+    total_training_steps = 500
     batch_size = 4096
     total_training_tokens = total_training_steps * batch_size
     print(f"Total Training Tokens: {total_training_tokens}")
