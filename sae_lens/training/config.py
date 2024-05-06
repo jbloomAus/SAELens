@@ -47,6 +47,8 @@ class LanguageModelSAERunnerConfig:
     from_pretrained_path: Optional[str] = None
     apply_b_dec_to_input: bool = True
     decoder_orthogonal_init: bool = False
+    decoder_heuristic_init: bool = False
+    init_encoder_as_decoder_transpose: bool = False
 
     # Activation Store Parameters
     n_batches_in_buffer: int = 20
@@ -143,6 +145,11 @@ class LanguageModelSAERunnerConfig:
         if self.b_dec_init_method == "zeros":
             print(
                 "Warning: We are initializing b_dec to zeros. This is probably not what you want."
+            )
+
+        if self.normalize_sae_decoder and self.decoder_heuristic_init:
+            raise ValueError(
+                "You can't normalize the decoder and use heuristic initialization."
             )
 
         if isinstance(self.dtype, str) and self.dtype not in DTYPE_MAP:

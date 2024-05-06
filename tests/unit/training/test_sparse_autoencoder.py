@@ -152,7 +152,6 @@ def test_SparseAutoencoder_save_and_load_from_pretrained_lacks_scaling_factor(
     sparse_autoencoder_loaded = SparseAutoencoder.load_from_pretrained(model_path)
     sparse_autoencoder_loaded.cfg.verbose = True
     sparse_autoencoder_loaded.cfg.checkpoint_path = cfg.checkpoint_path
-    sparse_autoencoder_loaded.cfg.device = "cpu"  # might autoload onto mps
     sparse_autoencoder_loaded = sparse_autoencoder_loaded.to("cpu")
     sparse_autoencoder_loaded_state_dict = sparse_autoencoder_loaded.state_dict()
     # check cfg matches the original
@@ -461,9 +460,11 @@ def test_SparseAutoencoder_remove_gradient_parallel_to_decoder_directions() -> N
 
 
 def test_SparseAutoencoder_get_name_returns_correct_name_from_cfg_vals() -> None:
-    cfg = build_sae_cfg(model_name="test_model", hook_point="test_hook_point", d_sae=10)
+    cfg = build_sae_cfg(
+        model_name="test_model", hook_point="test_hook_point", d_sae=128
+    )
     sae = SparseAutoencoder(cfg)
-    assert sae.get_name() == "sparse_autoencoder_test_model_test_hook_point_10"
+    assert sae.get_name() == "sparse_autoencoder_test_model_test_hook_point_128"
 
 
 def test_SparseAutoencoder_set_decoder_norm_to_unit_norm() -> None:

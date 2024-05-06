@@ -9,6 +9,7 @@ import pickle
 from typing import Callable, NamedTuple, Optional
 
 import einops
+import numpy as np
 import torch
 from jaxtyping import Float
 from safetensors.torch import save_file
@@ -87,30 +88,68 @@ class SparseAutoencoder(HookedRootModule):
         self.noise_scale = cfg.noise_scale
         self.activation_fn = get_activation_fn(cfg.activation_fn)
 
-        # NOTE: if using resampling neurons method, you must ensure that we initialise the weights in the order W_enc, b_enc, W_dec, b_dec
-        self.W_enc = nn.Parameter(
-            torch.nn.init.kaiming_uniform_(
-                torch.empty(self.d_in, self.d_sae, dtype=self.dtype, device=self.device)
-            )
-        )
+        self.initialize_weights()
+
+        self.hook_sae_in = HookPoint()
+        self.hook_hidden_pre = HookPoint()
+        self.hook_hidden_post = HookPoint()
+        self.hook_sae_out = HookPoint()
+
+        self.setup()  # Required for `HookedRootModule`s
+
+    def initialize_weights(self):
+        """
+        Wrapped around weight initialization code to make init cleaner.
+
+        """
+
+        # no config changes encoder bias init for now.
         self.b_enc = nn.Parameter(
             torch.zeros(self.d_sae, dtype=self.dtype, device=self.device)
         )
 
+        # Start with the default init strategy:
         self.W_dec = nn.Parameter(
             torch.nn.init.kaiming_uniform_(
                 torch.empty(self.d_sae, self.d_in, dtype=self.dtype, device=self.device)
             )
         )
-
         if self.cfg.decoder_orthogonal_init:
             self.W_dec.data = nn.init.orthogonal_(self.W_dec.data.T).T
+
+        elif self.cfg.decoder_heuristic_init:
+            self.W_dec = nn.Parameter(
+                torch.rand(self.d_sae, self.d_in, dtype=self.dtype, device=self.device)
+            )
+            self.initialize_decoder_norm_gamma_dist()
+
+        elif self.cfg.normalize_sae_decoder:
+            self.set_decoder_norm_to_unit_norm()
+
+        self.W_enc = nn.Parameter(
+            torch.nn.init.kaiming_uniform_(
+                torch.empty(self.d_in, self.d_sae, dtype=self.dtype, device=self.device)
+            )
+        )
+
+        # Then we intialize the encoder weights (either as the transpose of decoder or not)
+        if self.cfg.init_encoder_as_decoder_transpose:
+            self.W_enc.data = self.W_dec.data.T.clone().contiguous()
+        else:
+            self.W_enc = nn.Parameter(
+                torch.nn.init.kaiming_uniform_(
+                    torch.empty(
+                        self.d_in, self.d_sae, dtype=self.dtype, device=self.device
+                    )
+                )
+            )
 
         if self.normalize_sae_decoder:
             with torch.no_grad():
                 # Anthropic normalize this to have unit columns
                 self.set_decoder_norm_to_unit_norm()
 
+        # methdods which change b_dec as a function of the dataset are implemented after init.
         self.b_dec = nn.Parameter(
             torch.zeros(self.d_in, dtype=self.dtype, device=self.device)
         )
@@ -119,13 +158,6 @@ class SparseAutoencoder(HookedRootModule):
         self.scaling_factor = nn.Parameter(
             torch.ones(self.d_sae, dtype=self.dtype, device=self.device)
         )
-
-        self.hook_sae_in = HookPoint()
-        self.hook_hidden_pre = HookPoint()
-        self.hook_hidden_post = HookPoint()
-        self.hook_sae_out = HookPoint()
-
-        self.setup()  # Required for `HookedRootModule`s
 
     def encode(
         self, x: Float[torch.Tensor, "... d_in"]
@@ -239,6 +271,31 @@ class SparseAutoencoder(HookedRootModule):
     @torch.no_grad()
     def set_decoder_norm_to_unit_norm(self):
         self.W_dec.data /= torch.norm(self.W_dec.data, dim=1, keepdim=True)
+
+    @torch.no_grad()
+    def initialize_decoder_norm_gamma_dist(self, mean_norm: float = 0.1):
+        """
+        A heuristic proceedure inspired by:
+        https://transformer-circuits.pub/2024/april-update/index.html#training-saes
+        """
+
+        # Define the mean and shape parameter for the gamma distribution
+        k = 0.2 / np.sqrt(self.d_in / self.d_sae)
+        theta = mean_norm / k
+
+        # Draw norms for each column from the gamma distribution
+        norms = np.random.gamma(k, theta, size=self.d_sae)
+
+        # clip norms between 0.05 and 1
+        norms = np.clip(norms, 0.05, 1)
+
+        # ensure W_dec norms at unit norm
+        self.W_dec.data /= torch.norm(self.W_dec.data, dim=1, keepdim=True)
+
+        # then multiply by the norms
+        self.W_dec.data *= torch.tensor(norms, dtype=self.dtype, device=self.device)[
+            :, None
+        ]
 
     @torch.no_grad()
     def remove_gradient_parallel_to_decoder_directions(self):

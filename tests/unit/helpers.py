@@ -48,6 +48,18 @@ def build_sae_cfg(**kwargs: Any) -> LanguageModelSAERunnerConfig:
     for key, val in kwargs.items():
         setattr(mock_config, key, val)
 
+    # Call the post-init method to set any derived attributes
+    # useful for checking the correctness of the configuration
+    # in the tests.
+    mock_config.__post_init__()
+
+    # reset checkpoint path (as we add an id to each each time)
+    mock_config.checkpoint_path = (
+        "test/checkpoints"
+        if "checkpoint_path" not in kwargs
+        else kwargs["checkpoint_path"]
+    )
+
     return mock_config
 
 
