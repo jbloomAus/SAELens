@@ -273,6 +273,7 @@ def train_sae_group_on_language_model(
             mse_losses: list[torch.Tensor] = []
             l1_losses: list[torch.Tensor] = []
 
+
             for name, sparse_autoencoder in sae_group.autoencoders.items():
                 ctx = train_contexts[name]
                 wandb_suffix = _wandb_log_suffix(sae_group.cfg, sparse_autoencoder.cfg)
@@ -336,9 +337,10 @@ def train_sae_group_on_language_model(
             ###############
 
             training_run_state.n_training_steps += 1
-            pbar.set_description(
-                f"{training_run_state.n_training_steps}| MSE Loss {torch.stack(mse_losses).mean().item():.3f} | L1 {torch.stack(l1_losses).mean().item():.3f}"
-            )
+            if training_run_state.n_training_steps % 100 == 0:
+                pbar.set_description(
+                    f"{training_run_state.n_training_steps}| MSE Loss {torch.stack(mse_losses).mean().item():.3f} | L1 {torch.stack(l1_losses).mean().item():.3f}"
+                )
             pbar.update(batch_size)
 
             ### If n_training_tokens > sae_group.cfg.training_tokens, then we should switch to fine-tuning (if we haven't already)
