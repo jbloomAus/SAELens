@@ -185,6 +185,7 @@ def train_sae_on_language_model(
     dead_feature_threshold: float = 1e-8,  # how infrequently a feature has to be active to be considered dead
     use_wandb: bool = False,
     wandb_log_frequency: int = 50,
+    eval_every_n_wandb_logs: int = 100,
 ) -> SparseAutoencoderDictionary:
     """
     @deprecated Use `train_sae_group_on_language_model` instead. This method is kept for backward compatibility.
@@ -198,6 +199,7 @@ def train_sae_on_language_model(
         feature_sampling_window=feature_sampling_window,
         use_wandb=use_wandb,
         wandb_log_frequency=wandb_log_frequency,
+        eval_every_n_wandb_logs=eval_every_n_wandb_logs,
     ).sae_group
 
 
@@ -216,6 +218,7 @@ def train_sae_group_on_language_model(
     feature_sampling_window: int = 1000,  # how many training steps between resampling the features / considiring neurons dead
     use_wandb: bool = False,
     wandb_log_frequency: int = 50,
+    eval_every_n_wandb_logs: int = 100,
 ) -> TrainSAEGroupOutput:
     total_training_tokens = get_total_training_tokens(sae_group=sae_group)
     _update_sae_lens_training_version(sae_group)
@@ -290,11 +293,10 @@ def train_sae_group_on_language_model(
                 )
                 mse_losses.append(step_output.mse_loss)
                 l1_losses.append(step_output.l1_loss)
+                
                 if use_wandb:
                     with torch.no_grad():
-                        if (
-                            training_run_state.n_training_steps + 1
-                        ) % wandb_log_frequency == 0:
+                        if (training_run_state.n_training_steps + 1) % wandb_log_frequency == 0:
                             wandb.log(
                                 _build_train_step_log_dict(
                                     sparse_autoencoder,
@@ -308,7 +310,7 @@ def train_sae_group_on_language_model(
 
                         # record loss frequently, but not all the time.
                         if (training_run_state.n_training_steps + 1) % (
-                            wandb_log_frequency * 10
+                            wandb_log_frequency * eval_every_n_wandb_logs
                         ) == 0:
                             sparse_autoencoder.eval()
                             run_evals(
@@ -319,7 +321,7 @@ def train_sae_group_on_language_model(
                                 suffix=wandb_suffix,
                             )
                             sparse_autoencoder.train()
-
+    
             # checkpoint if at checkpoint frequency
             if (
                 checkpoint_thresholds
