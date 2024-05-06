@@ -33,7 +33,7 @@ new_cached_activations_path = (
 lr_warm_up_steps = total_training_steps // 20
 lr_decay_steps = total_training_steps // 5  # 20% of training steps.
 print(f"lr_decay_steps: {lr_decay_steps}")
-l1_warmup_steps =  0 #total_training_steps // 20  # 5% of training steps.
+l1_warmup_steps = 0  # total_training_steps // 20  # 5% of training steps.
 print(f"l1_warmup_steps: {l1_warmup_steps}")
 log_to_wandb = True
 
@@ -114,4 +114,4 @@ for l1_coefficient in [2, 5, 10]:
     # look at the next cell to see some instruction for what to do while this is running.
     sparse_autoencoder_dictionary = language_model_sae_runner(cfg)
 
-    print("="*50)
+    print("=" * 50)

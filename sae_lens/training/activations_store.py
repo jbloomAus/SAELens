@@ -12,12 +12,8 @@ from datasets import (
     IterableDatasetDict,
     load_dataset,
 )
-<<<<<<< HEAD
-from safetensors.torch import load_file, save_file
-=======
 from safetensors import safe_open
-from safetensors.torch import save_file
->>>>>>> bc960f2 (get cache activation runner working and add some tests)
+from safetensors.torch import load_file, save_file
 from torch.utils.data import DataLoader
 from transformer_lens.hook_points import HookedRootModule
 

@@ -114,4 +114,4 @@ for l1_coefficient in [2, 5, 10]:
     # look at the next cell to see some instruction for what to do while this is running.
     sparse_autoencoder_dictionary = language_model_sae_runner(cfg)
 
-    print("="*50)
+    print("=" * 50)

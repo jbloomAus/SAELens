@@ -276,7 +276,6 @@ def train_sae_group_on_language_model(
             mse_losses: list[torch.Tensor] = []
             l1_losses: list[torch.Tensor] = []
 
-
             for name, sparse_autoencoder in sae_group.autoencoders.items():
                 ctx = train_contexts[name]
                 wandb_suffix = _wandb_log_suffix(sae_group.cfg, sparse_autoencoder.cfg)
@@ -293,10 +292,12 @@ def train_sae_group_on_language_model(
                 )
                 mse_losses.append(step_output.mse_loss)
                 l1_losses.append(step_output.l1_loss)
-                
+
                 if use_wandb:
                     with torch.no_grad():
-                        if (training_run_state.n_training_steps + 1) % wandb_log_frequency == 0:
+                        if (
+                            training_run_state.n_training_steps + 1
+                        ) % wandb_log_frequency == 0:
                             wandb.log(
                                 _build_train_step_log_dict(
                                     sparse_autoencoder,
@@ -321,7 +322,7 @@ def train_sae_group_on_language_model(
                                 suffix=wandb_suffix,
                             )
                             sparse_autoencoder.train()
-    
+
             # checkpoint if at checkpoint frequency
             if (
                 checkpoint_thresholds

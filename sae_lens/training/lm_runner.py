@@ -86,7 +86,6 @@ def language_model_sae_runner(cfg: LanguageModelSAERunnerConfig):
         eval_every_n_wandb_logs=cfg.eval_every_n_wandb_logs,
     ).sae_group
 
-
     if cfg.log_to_wandb:
         wandb.finish()
 
