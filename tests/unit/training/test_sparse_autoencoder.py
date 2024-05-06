@@ -375,10 +375,15 @@ def test_sparse_autoencoder_forward_with_3d_input(
     expected_mse_loss = (
         torch.pow((sae_out - x.float()), 2)
         / (x_centred**2).sum(dim=-1, keepdim=True).sqrt()
-    ).mean()
+    ).sum(dim=-1).mean()
     assert torch.allclose(mse_loss, expected_mse_loss)
-    expected_l1_loss = torch.abs(feature_acts).sum(dim=-1).mean()
+    
+    if sparse_autoencoder.cfg.scale_sparsity_penalty_by_decoder_norm:
+        feature_acts = (feature_acts* sparse_autoencoder.W_dec.norm(dim=1))
+    
+    expected_l1_loss = feature_acts.sum(dim=-1).mean()
     assert torch.allclose(l1_loss, sparse_autoencoder.l1_coefficient * expected_l1_loss)
+
     expected_l2_loss = feature_acts.norm(p=2, dim=-1).mean()
     assert torch.allclose(l2_loss, sparse_autoencoder.l1_coefficient * expected_l2_loss)
 

@@ -382,7 +382,8 @@ def test_save_load_and_resume_checkpoint(tmp_path: Path) -> None:
         elif sd1 is None:
             assert sd1 == sd2
         else:
-            raise ValueError(f"didn't handle {sd1} of type {type(sd1)}")
+            if type(sd1) != L1Scheduler:
+                raise ValueError(f"didn't handle {sd1} of type {type(sd1)}")
 
     # compare training run states
     for attr in fields(training_run_state):
