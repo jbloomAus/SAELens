@@ -31,6 +31,16 @@ from tests.unit.helpers import build_sae_cfg
         },
         {
             "model_name": "tiny-stories-1M",
+            "dataset_path": "roneneldan/TinyStories",
+            "tokenized": False,
+            "hook_point": "blocks.1.hook_resid_pre",
+            "hook_point_layer": 1,
+            "d_in": 64,
+            "normalize_sae_decoder": False,
+            "scale_sparsity_penalty_by_decoder_norm": True,
+        },
+        {
+            "model_name": "tiny-stories-1M",
             "dataset_path": "apollo-research/roneneldan-TinyStories-tokenizer-gpt2",
             "tokenized": False,
             "hook_point": "blocks.1.hook_resid_pre",
@@ -48,6 +58,7 @@ from tests.unit.helpers import build_sae_cfg
     ],
     ids=[
         "tiny-stories-1M-resid-pre",
+        "tiny-stories-1M-resid-pre-L1-W-dec-Norm",
         "tiny-stories-1M-resid-pre-pretokenized",
         "tiny-stories-1M-attn-out",
     ],
@@ -84,9 +95,10 @@ def test_sparse_autoencoder_init(cfg: Any):
     assert sparse_autoencoder.b_dec.shape == (cfg.d_in,)
 
     # assert decoder columns have unit norm
-    assert torch.allclose(
-        torch.norm(sparse_autoencoder.W_dec, dim=1), torch.ones(cfg.d_sae)
-    )
+    if sparse_autoencoder.cfg.normalize_sae_decoder:
+        assert torch.allclose(
+            torch.norm(sparse_autoencoder.W_dec, dim=1), torch.ones(cfg.d_sae)
+        )
 
 
 def test_SparseAutoencoder_save_and_load_from_pretrained(tmp_path: Path) -> None:
@@ -247,7 +259,14 @@ def test_sparse_autoencoder_forward(sparse_autoencoder: SparseAutoencoder):
     expected_mse_loss = (torch.pow((sae_out - x.float()), 2)).mean()
 
     assert torch.allclose(mse_loss, expected_mse_loss)
-    expected_l1_loss = torch.abs(feature_acts).sum(dim=1).mean(dim=(0,))
+    if not sparse_autoencoder.cfg.scale_sparsity_penalty_by_decoder_norm:
+        expected_l1_loss = feature_acts.sum(dim=1).mean(dim=(0,))
+    else:
+        expected_l1_loss = (
+            (feature_acts * sparse_autoencoder.W_dec.norm(dim=1))
+            .norm(dim=1, p=1)
+            .mean()
+        )
     assert torch.allclose(l1_loss, sparse_autoencoder.l1_coefficient * expected_l1_loss)
 
     # check everything has the right dtype
@@ -291,7 +310,14 @@ def test_sparse_autoencoder_forward_with_mse_loss_norm(
         / (x_centred**2).sum(dim=-1, keepdim=True).sqrt()
     ).mean()
     assert torch.allclose(mse_loss, expected_mse_loss)
-    expected_l1_loss = torch.abs(feature_acts).sum(dim=1).mean(dim=(0,))
+    if not sparse_autoencoder.cfg.scale_sparsity_penalty_by_decoder_norm:
+        expected_l1_loss = feature_acts.sum(dim=1).mean(dim=(0,))
+    else:
+        expected_l1_loss = (
+            (feature_acts * sparse_autoencoder.W_dec.norm(dim=1))
+            .norm(dim=1, p=1)
+            .mean()
+        )
     assert torch.allclose(l1_loss, sparse_autoencoder.l1_coefficient * expected_l1_loss)
 
     # check everything has the right dtype

@@ -76,7 +76,8 @@ class LanguageModelSAERunnerConfig:
     mse_loss_normalization: Optional[str] = None
     l1_coefficient: float | list[float] = 1e-3
     lp_norm: float | list[float] = 1
-    l1_warmup_steps: int | list[int] = 0
+    scale_sparsity_penalty_by_decoder_norm: bool = False
+    l1_warm_up_steps: int | list[int] = 0
 
     ## Learning Rate Schedule
     lr: float | list[float] = 3e-4
@@ -143,14 +144,15 @@ class LanguageModelSAERunnerConfig:
             raise ValueError(
                 f"b_dec_init_method must be geometric_median, mean, or zeros. Got {self.b_dec_init_method}"
             )
-        if self.b_dec_init_method == "zeros":
-            print(
-                "Warning: We are initializing b_dec to zeros. This is probably not what you want."
-            )
 
         if self.normalize_sae_decoder and self.decoder_heuristic_init:
             raise ValueError(
                 "You can't normalize the decoder and use heuristic initialization."
+            )
+
+        if self.normalize_sae_decoder and self.scale_sparsity_penalty_by_decoder_norm:
+            raise ValueError(
+                "Weighting loss by decoder norm makes no sense if you are normalizing the decoder weight norms to 1"
             )
 
         if isinstance(self.dtype, str) and self.dtype not in DTYPE_MAP:

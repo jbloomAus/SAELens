@@ -458,7 +458,7 @@ def _build_train_context(
     )
 
     l1_scheduler = L1Scheduler(
-        l1_warmup_steps=sae.cfg.l1_warmup_steps,  # type: ignore
+        l1_warmup_steps=sae.cfg.l1_warm_up_steps,  # type: ignore
         total_steps=total_training_steps,
         sparse_autoencoder=sae,
     )

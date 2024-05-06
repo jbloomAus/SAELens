@@ -88,6 +88,11 @@ class SparseAutoencoder(HookedRootModule):
         self.noise_scale = cfg.noise_scale
         self.activation_fn = get_activation_fn(cfg.activation_fn)
 
+        if self.cfg.scale_sparsity_penalty_by_decoder_norm:
+            self.get_sparsity_loss_term = self.get_sparsity_loss_term_decoder_norm
+        else:
+            self.get_sparsity_loss_term = self.get_sparsity_loss_term_standard
+
         self.initialize_weights()
 
         self.hook_sae_in = HookPoint()
@@ -206,6 +211,27 @@ class SparseAutoencoder(HookedRootModule):
         )
         return sae_out
 
+    def get_sparsity_loss_term_standard(
+        self, feature_acts: torch.Tensor
+    ) -> torch.Tensor:
+        """
+        Sparsity loss term calculated as the L1 norm of the feature activations.
+        """
+        sparsity = feature_acts.norm(p=self.lp_norm, dim=-1)
+        return sparsity
+
+    def get_sparsity_loss_term_decoder_norm(
+        self, feature_acts: torch.Tensor
+    ) -> torch.Tensor:
+        """
+        Sparsity loss term for decoder norm regularization.
+        """
+        weighted_feature_acts = feature_acts * self.W_dec.norm(dim=1)
+        sparsity = weighted_feature_acts.norm(
+            p=self.lp_norm, dim=-1
+        )  # sum over the feature dimension
+        return sparsity
+
     def forward(
         self, x: torch.Tensor, dead_neuron_mask: torch.Tensor | None = None
     ) -> ForwardOutput:
@@ -234,8 +260,8 @@ class SparseAutoencoder(HookedRootModule):
             )
 
         mse_loss = per_item_mse_loss.mean()
-        sparsity = feature_acts.norm(p=self.lp_norm, dim=-1).mean()
-        l1_loss = self.l1_coefficient * sparsity
+        sparsity = self.get_sparsity_loss_term(feature_acts)
+        l1_loss = (self.l1_coefficient * sparsity).mean()
         loss = mse_loss + l1_loss + ghost_grad_loss
 
         return ForwardOutput(

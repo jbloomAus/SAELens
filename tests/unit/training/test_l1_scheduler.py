@@ -13,7 +13,7 @@ def test_l1_scheduler_initialization():
     sparse_autoencoder = SparseAutoencoder(cfg)
 
     l1_scheduler = L1Scheduler(
-        l1_warmup_steps=cfg.l1_warmup_steps,  # type: ignore
+        l1_warmup_steps=cfg.l1_warm_up_steps,  # type: ignore
         total_steps=cfg.training_tokens // cfg.train_batch_size,
         sparse_autoencoder=sparse_autoencoder,
     )
@@ -39,7 +39,7 @@ def test_l1_scheduler_initialization_no_warmup():
     sparse_autoencoder = SparseAutoencoder(cfg)
 
     l1_scheduler = L1Scheduler(
-        l1_warmup_steps=cfg.l1_warmup_steps,  # type: ignore
+        l1_warmup_steps=cfg.l1_warm_up_steps,  # type: ignore
         total_steps=cfg.training_tokens // cfg.train_batch_size,
         sparse_autoencoder=sparse_autoencoder,
     )

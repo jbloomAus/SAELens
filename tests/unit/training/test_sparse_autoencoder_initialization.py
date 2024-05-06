@@ -108,6 +108,16 @@ def test_SparseAutoencoder_initialization_heuristic_init_and_normalize_sae_decod
         )
 
 
+def test_SparseAutoencoder_initialization_decoder_norm_in_loss_and_normalize_sae_decoder():
+
+    # assert that an error is raised
+    with pytest.raises(ValueError):
+        _ = build_sae_cfg(
+            scale_sparsity_penalty_by_decoder_norm=True,
+            normalize_sae_decoder=True,
+        )
+
+
 def test_SparseAutoencoder_initialization_heuristic_init():
     cfg = build_sae_cfg(
         decoder_heuristic_init=True,
