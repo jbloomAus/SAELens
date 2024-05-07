@@ -115,9 +115,7 @@ def recons_loss_batched(
 
     losses = pd.DataFrame(
         losses,
-        columns=cast(
-            Any, ["score", "loss", "recons_loss", "zero_abl_loss", "d_kl"]
-            )
+        columns=cast(Any, ["score", "loss", "recons_loss", "zero_abl_loss", "d_kl"]),
     )
 
     return losses
@@ -189,18 +187,16 @@ def get_recons_loss(
 
     # KL divergence
     model_logits = model_outs.logits  # [batch, pos, d_vocab]
-    model_logprobs = torch.nn.functional.log_softmax(
-        model_logits, dim=-1)
+    model_logprobs = torch.nn.functional.log_softmax(model_logits, dim=-1)
     recons_logits = recons_outs.logits
-    recons_logprobs = torch.nn.functional.log_softmax(
-        recons_logits, dim=-1)
+    recons_logprobs = torch.nn.functional.log_softmax(recons_logits, dim=-1)
     # Note: PyTorch KL is backwards compared to the mathematical definition
     # target distribution comes second, see
     # https://pytorch.org/docs/stable/generated/torch.nn.functional.kl_div.html
     d_kl = torch.nn.functional.kl_div(
         recons_logprobs,
         model_logprobs,
-        reduction='batchmean',
+        reduction="batchmean",
         log_target=True,  # for numerics
     )
 
