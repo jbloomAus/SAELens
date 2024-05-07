@@ -32,3 +32,5 @@ def test_convert_old_to_modern_saelens_format():
     # Test similarity
     assert torch.allclose(new_sae.W_enc, old_sae.W_enc)
     assert torch.allclose(new_sae.W_dec, old_sae.W_dec)
+    assert torch.allclose(new_sae.b_dec, old_sae.b_dec)
+    assert torch.allclose(new_sae.b_enc, old_sae.b_enc)

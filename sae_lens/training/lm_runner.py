@@ -83,6 +83,7 @@ def language_model_sae_runner(cfg: LanguageModelSAERunnerConfig):
         feature_sampling_window=cfg.feature_sampling_window,
         use_wandb=cfg.log_to_wandb,
         wandb_log_frequency=cfg.wandb_log_frequency,
+        eval_every_n_wandb_logs=cfg.eval_every_n_wandb_logs,
     ).sae_group
 
     if cfg.log_to_wandb:

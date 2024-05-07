@@ -19,7 +19,7 @@ from sae_lens.training.activations_store import ActivationsStore, HfDataset
 from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.evals import run_evals
 from sae_lens.training.geometric_median import compute_geometric_median
-from sae_lens.training.optim import get_scheduler
+from sae_lens.training.optim import L1Scheduler, get_lr_scheduler
 from sae_lens.training.sae_group import SparseAutoencoderDictionary
 from sae_lens.training.sparse_autoencoder import (
     SAE_CFG_PATH,
@@ -52,7 +52,8 @@ class SAETrainContext:
     n_forward_passes_since_fired: torch.Tensor
     n_frac_active_tokens: int
     optimizer: Optimizer
-    scheduler: LRScheduler
+    lr_scheduler: LRScheduler
+    l1_scheduler: L1Scheduler
     finetuning: bool = False
 
     @property
@@ -184,6 +185,7 @@ def train_sae_on_language_model(
     dead_feature_threshold: float = 1e-8,  # how infrequently a feature has to be active to be considered dead
     use_wandb: bool = False,
     wandb_log_frequency: int = 50,
+    eval_every_n_wandb_logs: int = 100,
 ) -> SparseAutoencoderDictionary:
     """
     @deprecated Use `train_sae_group_on_language_model` instead. This method is kept for backward compatibility.
@@ -197,6 +199,7 @@ def train_sae_on_language_model(
         feature_sampling_window=feature_sampling_window,
         use_wandb=use_wandb,
         wandb_log_frequency=wandb_log_frequency,
+        eval_every_n_wandb_logs=eval_every_n_wandb_logs,
     ).sae_group
 
 
@@ -215,6 +218,7 @@ def train_sae_group_on_language_model(
     feature_sampling_window: int = 1000,  # how many training steps between resampling the features / considiring neurons dead
     use_wandb: bool = False,
     wandb_log_frequency: int = 50,
+    eval_every_n_wandb_logs: int = 100,
 ) -> TrainSAEGroupOutput:
     total_training_tokens = get_total_training_tokens(sae_group=sae_group)
     _update_sae_lens_training_version(sae_group)
@@ -288,6 +292,7 @@ def train_sae_group_on_language_model(
                 )
                 mse_losses.append(step_output.mse_loss)
                 l1_losses.append(step_output.l1_loss)
+
                 if use_wandb:
                     with torch.no_grad():
                         if (
@@ -306,7 +311,7 @@ def train_sae_group_on_language_model(
 
                         # record loss frequently, but not all the time.
                         if (training_run_state.n_training_steps + 1) % (
-                            wandb_log_frequency * 10
+                            wandb_log_frequency * eval_every_n_wandb_logs
                         ) == 0:
                             sparse_autoencoder.eval()
                             run_evals(
@@ -335,9 +340,10 @@ def train_sae_group_on_language_model(
             ###############
 
             training_run_state.n_training_steps += 1
-            pbar.set_description(
-                f"{training_run_state.n_training_steps}| MSE Loss {torch.stack(mse_losses).mean().item():.3f} | L1 {torch.stack(l1_losses).mean().item():.3f}"
-            )
+            if training_run_state.n_training_steps % 100 == 0:
+                pbar.set_description(
+                    f"{training_run_state.n_training_steps}| MSE Loss {torch.stack(mse_losses).mean().item():.3f} | L1 {torch.stack(l1_losses).mean().item():.3f}"
+                )
             pbar.update(batch_size)
 
             ### If n_training_tokens > sae_group.cfg.training_tokens, then we should switch to fine-tuning (if we haven't already)
@@ -349,6 +355,7 @@ def train_sae_group_on_language_model(
                     ctx = train_contexts[name]
                     # this should turn grads on for the scaling factor and other parameters.
                     ctx.begin_finetuning(sae_group.autoencoders[name])
+
     except (KeyboardInterrupt, InterruptedException):
         print("interrupted, saving progress")
         checkpoint_name = training_run_state.n_training_tokens
@@ -445,7 +452,7 @@ def _build_train_context(
         ),
     )
     assert sae.cfg.lr_end is not None  # this is set in config post-init
-    scheduler = get_scheduler(
+    lr_scheduler = get_lr_scheduler(
         sae.cfg.lr_scheduler_name,
         lr=sae.cfg.lr,
         optimizer=optimizer,
@@ -456,12 +463,19 @@ def _build_train_context(
         num_cycles=sae.cfg.n_restart_cycles,
     )
 
+    l1_scheduler = L1Scheduler(
+        l1_warm_up_steps=sae.cfg.l1_warm_up_steps,  # type: ignore
+        total_steps=total_training_steps,
+        sparse_autoencoder=sae,
+    )
+
     return SAETrainContext(
         act_freq_scores=act_freq_scores,
         n_forward_passes_since_fired=n_forward_passes_since_fired,
         n_frac_active_tokens=n_frac_active_tokens,
         optimizer=optimizer,
-        scheduler=scheduler,
+        lr_scheduler=lr_scheduler,
+        l1_scheduler=l1_scheduler,
     )
 
 
@@ -588,10 +602,17 @@ def _train_step(
 
     ctx.optimizer.zero_grad()
     loss.backward()
+
+    # clip grad norm
+    # TODO: Work out if this should be in config / how to test it.
+    torch.nn.utils.clip_grad_norm_(sparse_autoencoder.parameters(), 1.0)
+
     if sparse_autoencoder.normalize_sae_decoder:
         sparse_autoencoder.remove_gradient_parallel_to_decoder_directions()
+
     ctx.optimizer.step()
-    ctx.scheduler.step()
+    ctx.lr_scheduler.step()
+    ctx.l1_scheduler.step()
 
     return TrainStepOutput(
         sae_in=sae_in,
@@ -629,12 +650,14 @@ def _build_train_step_log_dict(
     total_variance = (sae_in - sae_in.mean(0)).pow(2).sum(-1)
     explained_variance = 1 - per_token_l2_loss / total_variance
 
+    if isinstance(ghost_grad_loss, torch.Tensor):
+        ghost_grad_loss = ghost_grad_loss.item()
     return {
         # losses
         f"losses/mse_loss{wandb_suffix}": mse_loss.item(),
         f"losses/l1_loss{wandb_suffix}": l1_loss.item()
         / sparse_autoencoder.l1_coefficient,  # normalize by l1 coefficient
-        f"losses/ghost_grad_loss{wandb_suffix}": ghost_grad_loss.item(),
+        f"losses/ghost_grad_loss{wandb_suffix}": ghost_grad_loss,
         f"losses/overall_loss{wandb_suffix}": loss.item(),
         # variance explained
         f"metrics/explained_variance{wandb_suffix}": explained_variance.mean().item(),
@@ -644,6 +667,7 @@ def _build_train_step_log_dict(
         f"sparsity/mean_passes_since_fired{wandb_suffix}": ctx.n_forward_passes_since_fired.mean().item(),
         f"sparsity/dead_features{wandb_suffix}": ghost_grad_neuron_mask.sum().item(),
         f"details/current_learning_rate{wandb_suffix}": current_learning_rate,
+        f"details/current_l1_coefficient{wandb_suffix}": sparse_autoencoder.l1_coefficient,
         "details/n_training_tokens": n_training_tokens,
     }
 
