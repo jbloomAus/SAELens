@@ -2,6 +2,63 @@
 
 
 
+## v1.5.0 (2024-05-07)
+
+### Feature
+
+* feat: Add kl eval (#124)
+
+* add kl divergence to evals.py
+
+* fix linter ([`c1d9cbe`](https://github.com/jbloomAus/SAELens/commit/c1d9cbe8627f27f4d5384ed4c9438c3ad350d412))
+
+### Unknown
+
+* major: How we train saes replication (#123)
+
+* l1 scheduler, clip grad norm
+
+* add provisional ability to normalize activations
+
+* notebook
+
+* change heuristic norm init to constant, report b_e and W_dec norms (fix tests later)
+
+* fix mse calculation
+
+* add benchmark test
+
+* update heuristic init to 0.1
+
+* make tests pass device issue
+
+* continue rebase
+
+* use better args in benchmark
+
+* remove stack in get activations
+
+* broken! improve CA runner
+
+* get cache activation runner working and add some tests
+
+* add training steps to path
+
+* avoid ghost grad tensor casting
+
+* enable download of full dataset if desired
+
+* add benchmark for cache activation runner
+
+* add updated tutorial
+
+* format
+
+---------
+
+Co-authored-by: Johnny Lin &lt;hijohnnylin@gmail.com&gt; ([`5f46329`](https://github.com/jbloomAus/SAELens/commit/5f46329d1df90e374d44729966e57542c435d6cf))
+
+
 ## v1.4.0 (2024-05-05)
 
 ### Feature
