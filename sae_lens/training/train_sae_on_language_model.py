@@ -544,7 +544,7 @@ def _train_step(
     all_layers: list[int],
     batch_size: int,
     wandb_suffix: str,
-    autocast: bool = True,  # TODO(tomMcGrath): propagate up to config
+    autocast: bool = True,
 ) -> TrainStepOutput:
     assert sparse_autoencoder.cfg.d_sae is not None  # keep pyright happy
     layer_id = all_layers.index(sparse_autoencoder.hook_point_layer)
