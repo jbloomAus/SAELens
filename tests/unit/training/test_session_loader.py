@@ -19,18 +19,32 @@ TEST_MODEL = "tiny-stories-1M"
 TEST_DATASET = "roneneldan/TinyStories"
 
 
-@pytest.fixture
-def cfg():
+@pytest.fixture(
+    params=[
+        {
+            "model_name": "tiny-stories-1M",
+            "hook_point": "blocks.0.hook_mlp_out",
+            "hook_point_layer": 0,
+            "dataset_path": "roneneldan/TinyStories",
+            "is_dataset_tokenized": False,
+        },
+        # For testing 'model_from_pretrained_kwargs' parameter
+        {
+            "model_name": "pythia-14m",
+            "hook_point": "blocks.0.hook_mlp_out",
+            "hook_point_layer": 0,
+            "dataset_path": "roneneldan/TinyStories",
+            "is_dataset_tokenized": False,
+            "model_from_pretrained_kwargs": {"checkpoint_index": 0},
+        },
+    ],
+    ids=["tiny-stories-1M", "pythia-14m with model_from_pretrained_kwargs"],
+)
+def cfg(request: pytest.FixtureRequest):
     """
     Pytest fixture to create a mock instance of LanguageModelSAERunnerConfig.
     """
-    cfg = build_sae_cfg(
-        model_name=TEST_MODEL,
-        hook_point="blocks.0.hook_mlp_out",
-        hook_point_layer=0,
-        dataset_path=TEST_DATASET,
-        is_dataset_tokenized=False,
-    )
+    cfg = build_sae_cfg(**request.param)
     return cfg
 
 
@@ -48,6 +62,17 @@ def test_LMSparseAutoencoderSessionloader_load_session(
     assert isinstance(model, HookedTransformer)
     assert isinstance(next(iter(sae_group))[1], SparseAutoencoder)
     assert isinstance(activations_loader, ActivationsStore)
+
+    if (
+        cfg.model_from_pretrained_kwargs is not None
+        and "checkpoint_index" in cfg.model_from_pretrained_kwargs
+    ):
+        assert (
+            model.cfg.checkpoint_index
+            == cfg.model_from_pretrained_kwargs["checkpoint_index"]
+        )
+    elif cfg.model_from_pretrained_kwargs is None:
+        assert model.cfg.checkpoint_index is None
 
 
 def test_LMSparseAutoencoderSessionloader_load_sae_session_from_pretrained(
