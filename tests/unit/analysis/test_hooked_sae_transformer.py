@@ -303,7 +303,7 @@ def test_run_with_cache(
     assert isinstance(logits_with_saes, torch.Tensor)
     assert not torch.allclose(logits_with_saes, original_logits)
     assert isinstance(cache, ActivationCache)
-    assert (act_name + ".hook_sae_acts_post") in cache.keys()
+    assert (act_name + ".hook_hidden_post") in cache.keys()
     assert isinstance(get_deep_attr(model, act_name), InferenceSparseAutoencoder)
     model.remove_all_saes()
 
@@ -330,7 +330,7 @@ def test_run_with_cache_with_saes(
     assert isinstance(logits_with_saes, torch.Tensor)
     assert not torch.allclose(logits_with_saes, original_logits)
     assert isinstance(cache, ActivationCache)
-    assert (act_name + ".hook_sae_acts_post") in cache.keys()
+    assert (act_name + ".hook_hidden_post") in cache.keys()
     assert isinstance(get_deep_attr(model, act_name), HookPoint)
     model.remove_all_saes()
 
@@ -355,7 +355,7 @@ def test_run_with_hooks(
     assert len(model.acts_to_saes) == 1
     assert isinstance(get_deep_attr(model, act_name), InferenceSparseAutoencoder)
     logits_with_saes = model.run_with_hooks(
-        prompt, fwd_hooks=[(act_name + ".hook_sae_acts_post", c.inc)]
+        prompt, fwd_hooks=[(act_name + ".hook_hidden_post", c.inc)]
     )
     assert isinstance(get_deep_attr(model, act_name), InferenceSparseAutoencoder)
     assert not torch.allclose(logits_with_saes, original_logits)
@@ -387,7 +387,7 @@ def test_run_with_hooks_with_saes(
     logits_with_saes = model.run_with_hooks_with_saes(
         prompt,
         act_names=act_name,
-        fwd_hooks=[(act_name + ".hook_sae_acts_post", c.inc)],
+        fwd_hooks=[(act_name + ".hook_hidden_post", c.inc)],
     )
     assert not torch.allclose(logits_with_saes, original_logits)
     assert isinstance(get_deep_attr(model, act_name), HookPoint)
