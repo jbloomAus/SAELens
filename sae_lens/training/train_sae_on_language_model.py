@@ -1,3 +1,4 @@
+import contextlib
 import os
 import pickle
 import random
@@ -186,6 +187,7 @@ def train_sae_on_language_model(
     use_wandb: bool = False,
     wandb_log_frequency: int = 50,
     eval_every_n_wandb_logs: int = 100,
+    autocast: bool = False,
 ) -> SparseAutoencoderDictionary:
     """
     @deprecated Use `train_sae_group_on_language_model` instead. This method is kept for backward compatibility.
@@ -200,6 +202,7 @@ def train_sae_on_language_model(
         use_wandb=use_wandb,
         wandb_log_frequency=wandb_log_frequency,
         eval_every_n_wandb_logs=eval_every_n_wandb_logs,
+        autocast=autocast,
     ).sae_group
 
 
@@ -219,6 +222,7 @@ def train_sae_group_on_language_model(
     use_wandb: bool = False,
     wandb_log_frequency: int = 50,
     eval_every_n_wandb_logs: int = 100,
+    autocast: bool = False,
 ) -> TrainSAEGroupOutput:
     total_training_tokens = get_total_training_tokens(sae_group=sae_group)
     _update_sae_lens_training_version(sae_group)
@@ -289,6 +293,7 @@ def train_sae_group_on_language_model(
                     all_layers=all_layers,
                     batch_size=batch_size,
                     wandb_suffix=wandb_suffix,
+                    autocast=autocast,
                 )
                 mse_losses.append(step_output.mse_loss)
                 l1_losses.append(step_output.l1_loss)
@@ -539,6 +544,7 @@ def _train_step(
     all_layers: list[int],
     batch_size: int,
     wandb_suffix: str,
+    autocast: bool = True,  # TODO(tomMcGrath): propagate up to config
 ) -> TrainStepOutput:
     assert sparse_autoencoder.cfg.d_sae is not None  # keep pyright happy
     layer_id = all_layers.index(sparse_autoencoder.hook_point_layer)
@@ -579,18 +585,31 @@ def _train_step(
         ctx.n_forward_passes_since_fired > sparse_autoencoder.cfg.dead_feature_window
     ).bool()
 
+    # Setup autocast if necessary
+    if autocast:
+        scaler = torch.cuda.amp.GradScaler()
+        autocast_if_enabled = torch.autocast(device_type='cuda', dtype=torch.bfloat16)
+
+    else:
+        autocast_if_enabled = contextlib.nullcontext()
+        scaler = None
+
     # Forward and Backward Passes
-    (
-        sae_out,
-        feature_acts,
-        loss,
-        mse_loss,
-        l1_loss,
-        ghost_grad_loss,
-    ) = sparse_autoencoder(
-        sae_in,
-        ghost_grad_neuron_mask,
-    )
+    # for documentation on autocasting see:
+    # https://pytorch.org/tutorials/recipes/recipes/amp_recipe.html
+    with autocast_if_enabled:
+        (
+            sae_out,
+            feature_acts,
+            loss,
+            mse_loss,
+            l1_loss,
+            ghost_grad_loss,
+        ) = sparse_autoencoder(
+            sae_in,
+            ghost_grad_neuron_mask,
+        )
+    
     did_fire = (feature_acts > 0).float().sum(-2) > 0
     ctx.n_forward_passes_since_fired += 1
     ctx.n_forward_passes_since_fired[did_fire] = 0
@@ -600,17 +619,26 @@ def _train_step(
         ctx.act_freq_scores += (feature_acts.abs() > 0).float().sum(0)
         ctx.n_frac_active_tokens += batch_size
 
-    ctx.optimizer.zero_grad()
-    loss.backward()
+    # Rescale gradients if we autocasted
+    if autocast and scaler is not None:  # 2nd condition to keep pylance happy
+        scaler.scale(loss).backward()
+        scaler.unscale_(ctx.optimizer)  # needed to clip correctly
+        # TODO: Work out if grad norm clipping should be in config / how to test it.
+        torch.nn.utils.clip_grad_norm_(sparse_autoencoder.parameters(), 1.0)
+        scaler.step(ctx.optimizer)
+        scaler.update()
 
-    # clip grad norm
-    # TODO: Work out if this should be in config / how to test it.
-    torch.nn.utils.clip_grad_norm_(sparse_autoencoder.parameters(), 1.0)
+    else:
+        loss.backward()
+        # TODO: Work out if grad norm clipping should be in config / how to test it.
+        torch.nn.utils.clip_grad_norm_(sparse_autoencoder.parameters(), 1.0)
+        ctx.optimizer.step()
 
     if sparse_autoencoder.normalize_sae_decoder:
         sparse_autoencoder.remove_gradient_parallel_to_decoder_directions()
 
-    ctx.optimizer.step()
+    ctx.optimizer.zero_grad()
+
     ctx.lr_scheduler.step()
     ctx.l1_scheduler.step()
 
