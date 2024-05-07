@@ -29,6 +29,7 @@ class LanguageModelSAERunnerConfig:
     hook_point_layer: int | list[int] = 0
     hook_point_head_index: Optional[int] = None
     dataset_path: str = "NeelNanda/c4-tokenized-2b"
+    streaming: bool = True
     is_dataset_tokenized: bool = True
     context_size: int = 128
     use_cached_activations: bool = False
@@ -47,6 +48,8 @@ class LanguageModelSAERunnerConfig:
     from_pretrained_path: Optional[str] = None
     apply_b_dec_to_input: bool = True
     decoder_orthogonal_init: bool = False
+    decoder_heuristic_init: bool = False
+    init_encoder_as_decoder_transpose: bool = False
 
     # Activation Store Parameters
     n_batches_in_buffer: int = 20
@@ -54,12 +57,14 @@ class LanguageModelSAERunnerConfig:
     finetuning_tokens: int = 0
     store_batch_size: int = 32
     train_batch_size: int = 4096
+    normalize_activations: bool = False
 
     # Misc
     device: str | torch.device = "cpu"
     seed: int = 42
     dtype: str | torch.dtype = "float32"  # type: ignore #
     prepend_bos: bool = True
+    autocast: bool = False  # autocast to autocast_dtype during training
 
     # Training Parameters
 
@@ -74,6 +79,8 @@ class LanguageModelSAERunnerConfig:
     mse_loss_normalization: Optional[str] = None
     l1_coefficient: float | list[float] = 1e-3
     lp_norm: float | list[float] = 1
+    scale_sparsity_penalty_by_decoder_norm: bool = False
+    l1_warm_up_steps: int | list[int] = 0
 
     ## Learning Rate Schedule
     lr: float | list[float] = 3e-4
@@ -108,6 +115,7 @@ class LanguageModelSAERunnerConfig:
     run_name: Optional[str] = None
     wandb_entity: Optional[str] = None
     wandb_log_frequency: int = 10
+    eval_every_n_wandb_logs: int = 100  # logs every 1000 steps.
 
     # Misc
     resume: bool = False
@@ -141,9 +149,15 @@ class LanguageModelSAERunnerConfig:
             raise ValueError(
                 f"b_dec_init_method must be geometric_median, mean, or zeros. Got {self.b_dec_init_method}"
             )
-        if self.b_dec_init_method == "zeros":
-            print(
-                "Warning: We are initializing b_dec to zeros. This is probably not what you want."
+
+        if self.normalize_sae_decoder and self.decoder_heuristic_init:
+            raise ValueError(
+                "You can't normalize the decoder and use heuristic initialization."
+            )
+
+        if self.normalize_sae_decoder and self.scale_sparsity_penalty_by_decoder_norm:
+            raise ValueError(
+                "Weighting loss by decoder norm makes no sense if you are normalizing the decoder weight norms to 1"
             )
 
         if isinstance(self.dtype, str) and self.dtype not in DTYPE_MAP:
@@ -275,12 +289,14 @@ class CacheActivationsRunnerConfig:
     hook_point_layer: int | list[int] = 0
     hook_point_head_index: Optional[int] = None
     dataset_path: str = "NeelNanda/c4-tokenized-2b"
+    streaming: bool = True
     is_dataset_tokenized: bool = True
     context_size: int = 128
-    cached_activations_path: Optional[str] = (
+    new_cached_activations_path: Optional[str] = (
         None  # Defaults to "activations/{dataset}/{model}/{full_hook_name}_{hook_point_head_index}"
     )
-
+    # dont' specify this since you don't want to load from disk with the cache runner.
+    cached_activations_path: Optional[str] = None
     # SAE Parameters
     d_in: int = 512
 
@@ -289,6 +305,7 @@ class CacheActivationsRunnerConfig:
     training_tokens: int = 2_000_000
     store_batch_size: int = 32
     train_batch_size: int = 4096
+    normalize_activations: bool = False
 
     # Misc
     device: str | torch.device = "cpu"
@@ -306,8 +323,8 @@ class CacheActivationsRunnerConfig:
 
     def __post_init__(self):
         # Autofill cached_activations_path unless the user overrode it
-        if self.cached_activations_path is None:
-            self.cached_activations_path = _default_cached_activations_path(
+        if self.new_cached_activations_path is None:
+            self.new_cached_activations_path = _default_cached_activations_path(
                 self.dataset_path,
                 self.model_name,
                 self.hook_point,

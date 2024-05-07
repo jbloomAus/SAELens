@@ -68,10 +68,17 @@ def run_evals(
     l2_norm_in_for_div[torch.abs(l2_norm_in_for_div) < 0.0001] = 1
     l2_norm_ratio = l2_norm_out / l2_norm_in_for_div
 
+    W_dec_norm_dist = sparse_autoencoder.W_dec.norm(dim=1).detach().cpu().numpy()
+    b_e_dist = sparse_autoencoder.b_enc.detach().cpu().numpy()
+
     metrics = {
         # l2 norms
         f"metrics/l2_norm{suffix}": l2_norm_out.mean().item(),
         f"metrics/l2_ratio{suffix}": l2_norm_ratio.mean().item(),
+        f"metrics/l2_norm_in{suffix}": l2_norm_in.mean().item(),
+        # More detail on loss.
+        f"weights/W_dec_norms{suffix}": wandb.Histogram(W_dec_norm_dist),
+        f"weights/b_e{suffix}": wandb.Histogram(b_e_dist),
         # CE Loss
         f"metrics/CE_loss_score{suffix}": recons_score,
         f"metrics/ce_loss_without_sae{suffix}": ntp_loss,

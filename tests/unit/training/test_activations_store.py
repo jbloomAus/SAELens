@@ -87,10 +87,17 @@ def model(cfg: LanguageModelSAERunnerConfig):
 
 # tests involving loading real models / real datasets are very slow
 # so do lots of stuff in this one test to make each load of model / data count
+# poetry run py.test tests/unit/training/test_activations_store.py -k 'test_activations_store__shapes_look_correct_with_real_models_and_datasets' --profile-svg -s
 def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
     cfg: LanguageModelSAERunnerConfig, model: HookedTransformer
 ):
     # --- first, test initialisation ---
+
+    # config if you want to benchmark this:
+    #
+    # cfg.context_size = 1024
+    # cfg.n_batches_in_buffer = 64
+    # cfg.store_batch_size = 16
 
     store = ActivationsStore.from_config(model, cfg)
 
@@ -141,6 +148,12 @@ def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
 
     assert buffer.shape == (buffer_size_expected, 1, store.d_in)
     assert buffer.device == store.device
+
+    # # check the buffer norm
+    # if cfg.normalize_activations:
+    #     assert torch.allclose(
+    #         buffer.norm(dim=-1), torch.ones_like(buffer.norm(dim=-1)), atol=1e-6
+    #     )
 
 
 def test_activations_store__get_activations_head_hook(ts_model: HookedTransformer):

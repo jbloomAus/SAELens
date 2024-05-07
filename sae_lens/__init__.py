@@ -1,7 +1,7 @@
-__version__ = "1.4.0"
+__version__ = "1.6.1"
 
 from .training.activations_store import ActivationsStore
-from .training.cache_activations_runner import cache_activations_runner
+from .training.cache_activations_runner import CacheActivationsRunner
 from .training.config import CacheActivationsRunnerConfig, LanguageModelSAERunnerConfig
 from .training.evals import run_evals
 from .training.lm_runner import language_model_sae_runner
@@ -18,7 +18,7 @@ __all__ = [
     "SparseAutoencoderDictionary",
     "run_evals",
     "language_model_sae_runner",
-    "cache_activations_runner",
+    "CacheActivationsRunner",
     "ActivationsStore",
     "train_sae_group_on_language_model",
 ]

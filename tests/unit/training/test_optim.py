@@ -9,7 +9,7 @@ from torch.optim.lr_scheduler import (
     LRScheduler,
 )
 
-from sae_lens.training.optim import get_scheduler
+from sae_lens.training.optim import get_lr_scheduler
 
 LR = 0.1
 
@@ -31,7 +31,7 @@ def step(optimizer: Adam, scheduler: LRScheduler):
 
 def test_get_scheduler_errors_on_uknown_scheduler(optimizer: Adam):
     with pytest.raises(ValueError, match="Unsupported scheduler: unknown"):
-        get_scheduler(
+        get_lr_scheduler(
             "unknown",
             optimizer,
             lr=LR,
@@ -44,7 +44,7 @@ def test_get_scheduler_errors_on_uknown_scheduler(optimizer: Adam):
 
 
 def test_get_scheduler_constant(optimizer: Adam):
-    scheduler = get_scheduler(
+    scheduler = get_lr_scheduler(
         "constant",
         optimizer,
         lr=LR,
@@ -60,7 +60,7 @@ def test_get_scheduler_constant(optimizer: Adam):
 
 
 def test_get_scheduler_constantwithwarmup(optimizer: Adam):
-    scheduler = get_scheduler(
+    scheduler = get_lr_scheduler(
         "constant",
         optimizer,
         lr=LR,
@@ -78,7 +78,7 @@ def test_get_scheduler_constantwithwarmup(optimizer: Adam):
 
 
 def test_get_scheduler_linearwarmupdecay(optimizer: Adam):
-    scheduler = get_scheduler(
+    scheduler = get_lr_scheduler(
         "constant",
         optimizer,
         lr=LR,
@@ -107,7 +107,7 @@ def test_get_scheduler_linearwarmupdecay(optimizer: Adam):
 
 def test_get_scheduler_errors_if_lr_end_is_0_and_decay_is_set(optimizer: Adam):
     with pytest.raises(ValueError, match="Cannot have decay_steps with lr_end=0.0"):
-        get_scheduler(
+        get_lr_scheduler(
             "cosineannealing",
             optimizer,
             lr=LR,
@@ -120,7 +120,7 @@ def test_get_scheduler_errors_if_lr_end_is_0_and_decay_is_set(optimizer: Adam):
 
 
 def test_get_scheduler_cosineannealing(optimizer: Adam):
-    scheduler: Any = get_scheduler(
+    scheduler: Any = get_lr_scheduler(
         "cosineannealing",
         optimizer,
         lr=LR,
@@ -140,7 +140,7 @@ def test_get_scheduler_cosineannealing(optimizer: Adam):
 def test_get_scheduler_cosineannealing_with_warmup_and_decay():
     lr_end = 0.01
     optimizer = Adam([torch.tensor(1.0)], lr=LR)
-    scheduler = get_scheduler(
+    scheduler = get_lr_scheduler(
         "cosineannealing",
         optimizer,
         lr=LR,
@@ -182,7 +182,7 @@ def test_get_scheduler_cosineannealing_with_warmup_and_decay():
 
 
 def test_get_scheduler_cosineannealingwarmrestarts(optimizer: Adam):
-    scheduler: Any = get_scheduler(
+    scheduler: Any = get_lr_scheduler(
         "cosineannealingwarmrestarts",
         optimizer,
         lr=LR,
