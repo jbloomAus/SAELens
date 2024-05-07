@@ -2,6 +2,25 @@
 
 
 
+## v1.6.0 (2024-05-07)
+
+### Feature
+
+* feat: Add bf16 autocast (#126)
+
+* add bf16 autocast and gradient scaling
+
+* simplify autocast setup
+
+* remove completed TODO
+
+* add autocast dtype selection (generally keep bf16)
+
+* formatting fix
+
+* remove autocast dtype ([`8e28bfb`](https://github.com/jbloomAus/SAELens/commit/8e28bfb6ddded2e006f38a18ca0603627ed32ae2))
+
+
 ## v1.5.0 (2024-05-07)
 
 ### Feature
