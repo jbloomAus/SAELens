@@ -42,5 +42,3 @@ This project uses [mkdocs](https://www.mkdocs.org/) for documentation. You can s
 make docs-serve
 ```
 If you make changes to code which requires updating documentation, it would be greatly appreciated if you could update the docs as well.
-
-
