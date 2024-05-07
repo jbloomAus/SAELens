@@ -177,7 +177,7 @@ class SparseAutoencoder(HookedRootModule):
         """Encodes input activation tensor x into an SAE feature activation tensor."""
         # move x to correct dtype
         x = x.to(self.dtype)
-        sae_in = self.hook_sae_input(
+        sae_in = self.hook_sae_in(
             x - (self.b_dec * self.cfg.apply_b_dec_to_input)
         )  # Remove decoder bias as per Anthropic
 
@@ -275,7 +275,7 @@ class SparseAutoencoder(HookedRootModule):
                 # This is in a no_grad context to detach the error, so we can compute SAE feature gradients (eg for attribution patching).
                 # See A.3 in https://arxiv.org/pdf/2403.19647.pdf for more detail
 
-                sae_in = self.hook_sae_input(
+                sae_in = self.hook_sae_in(
                     x - (self.b_dec * self.cfg.apply_b_dec_to_input)
                 )  # Remove decoder bias as per Anthropic
 
@@ -299,10 +299,10 @@ class SparseAutoencoder(HookedRootModule):
                 error = self.hook_sae_error(x - sae_out_err_calc)
 
                 # note: we are intentionally returning the sae_out not calculated in this loop (see comment above)
-                sae_out_final = self.hook_sae_output(sae_out + error)
+                sae_out_final = self.hook_sae_out(sae_out + error)
 
         else:
-            sae_out_final = self.hook_sae_output(sae_out)
+            sae_out_final = self.hook_sae_out(sae_out)
 
         return ForwardOutput(
             sae_out=sae_out_final,
