@@ -87,6 +87,7 @@ class SparseAutoencoder(HookedRootModule):
         self.normalize_sae_decoder = cfg.normalize_sae_decoder
         self.hook_point_layer = cfg.hook_point_layer
         self.noise_scale = cfg.noise_scale
+        self.use_error_term = use_error_term
         self.activation_fn = get_activation_fn(cfg.activation_fn)
 
         if self.cfg.scale_sparsity_penalty_by_decoder_norm:
@@ -99,6 +100,7 @@ class SparseAutoencoder(HookedRootModule):
         self.hook_sae_in = HookPoint()
         self.hook_hidden_pre = HookPoint()
         self.hook_hidden_post = HookPoint()
+        self.hook_sae_error = HookPoint()
         self.hook_sae_out = HookPoint()
 
         self.setup()  # Required for `HookedRootModule`s
@@ -181,7 +183,7 @@ class SparseAutoencoder(HookedRootModule):
             x - (self.b_dec * self.cfg.apply_b_dec_to_input)
         )  # Remove decoder bias as per Anthropic
 
-        hidden_pre = self.hook_sae_acts_pre(
+        hidden_pre = self.hook_hidden_pre(
             einops.einsum(
                 sae_in,
                 self.W_enc,
