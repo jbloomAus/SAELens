@@ -585,14 +585,16 @@ def _train_step(
         ctx.n_forward_passes_since_fired > sparse_autoencoder.cfg.dead_feature_window
     ).bool()
 
-    # Setup autocast if necessary
+    # Setup autocast if using
+    scaler = torch.cuda.amp.GradScaler(enabled=autocast)
     if autocast:
-        scaler = torch.cuda.amp.GradScaler()
-        autocast_if_enabled = torch.autocast(device_type='cuda', dtype=torch.bfloat16)
-
+        autocast_if_enabled = torch.autocast(
+            device_type="cuda",
+            dtype=torch.bfloat16,
+            enabled=autocast,
+            )
     else:
         autocast_if_enabled = contextlib.nullcontext()
-        scaler = None
 
     # Forward and Backward Passes
     # for documentation on autocasting see:
@@ -609,7 +611,7 @@ def _train_step(
             sae_in,
             ghost_grad_neuron_mask,
         )
-    
+
     did_fire = (feature_acts > 0).float().sum(-2) > 0
     ctx.n_forward_passes_since_fired += 1
     ctx.n_forward_passes_since_fired[did_fire] = 0
@@ -619,20 +621,13 @@ def _train_step(
         ctx.act_freq_scores += (feature_acts.abs() > 0).float().sum(0)
         ctx.n_frac_active_tokens += batch_size
 
-    # Rescale gradients if we autocasted
-    if autocast and scaler is not None:  # 2nd condition to keep pylance happy
-        scaler.scale(loss).backward()
-        scaler.unscale_(ctx.optimizer)  # needed to clip correctly
-        # TODO: Work out if grad norm clipping should be in config / how to test it.
-        torch.nn.utils.clip_grad_norm_(sparse_autoencoder.parameters(), 1.0)
-        scaler.step(ctx.optimizer)
-        scaler.update()
-
-    else:
-        loss.backward()
-        # TODO: Work out if grad norm clipping should be in config / how to test it.
-        torch.nn.utils.clip_grad_norm_(sparse_autoencoder.parameters(), 1.0)
-        ctx.optimizer.step()
+    # Scaler will rescale gradients if autocast is enabled
+    scaler.scale(loss).backward()  # loss.backward() if not autocasting
+    scaler.unscale_(ctx.optimizer)  # needed to clip correctly
+    # TODO: Work out if grad norm clipping should be in config / how to test it.
+    torch.nn.utils.clip_grad_norm_(sparse_autoencoder.parameters(), 1.0)
+    scaler.step(ctx.optimizer)  # just ctx.optimizer.step() if not autocasting
+    scaler.update()
 
     if sparse_autoencoder.normalize_sae_decoder:
         sparse_autoencoder.remove_gradient_parallel_to_decoder_directions()
