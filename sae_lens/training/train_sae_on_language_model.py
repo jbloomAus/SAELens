@@ -355,7 +355,7 @@ def train_sae_group_on_language_model(
                     ctx = train_contexts[name]
                     # this should turn grads on for the scaling factor and other parameters.
                     ctx.begin_finetuning(sae_group.autoencoders[name])
-                    
+
     except (KeyboardInterrupt, InterruptedException):
         print("interrupted, saving progress")
         checkpoint_name = training_run_state.n_training_tokens
