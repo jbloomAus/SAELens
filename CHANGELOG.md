@@ -2,6 +2,15 @@
 
 
 
+## v1.6.1 (2024-05-07)
+
+### Fix
+
+* fix: Revert &#34;feat: Add kl eval (#124)&#34; (#127)
+
+This reverts commit c1d9cbe8627f27f4d5384ed4c9438c3ad350d412. ([`1a0619c`](https://github.com/jbloomAus/SAELens/commit/1a0619ccb758a0a8b7130fe163cbfb06bf4bc7cc))
+
+
 ## v1.6.0 (2024-05-07)
 
 ### Feature
