@@ -64,7 +64,8 @@ class LanguageModelSAERunnerConfig:
     seed: int = 42
     dtype: str | torch.dtype = "float32"  # type: ignore #
     prepend_bos: bool = True
-    autocast: bool = False  # autocast to bf16 during training
+    autocast: bool = False  # autocast to autocast_dtype during training
+    autocast_dtype: torch.dtype = torch.bfloat16  # float16 is typically unstable
 
     # Training Parameters
 

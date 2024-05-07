@@ -188,6 +188,7 @@ def train_sae_on_language_model(
     wandb_log_frequency: int = 50,
     eval_every_n_wandb_logs: int = 100,
     autocast: bool = False,
+    autocast_dtype: torch.dtype = torch.bfloat16,
 ) -> SparseAutoencoderDictionary:
     """
     @deprecated Use `train_sae_group_on_language_model` instead. This method is kept for backward compatibility.
@@ -203,6 +204,7 @@ def train_sae_on_language_model(
         wandb_log_frequency=wandb_log_frequency,
         eval_every_n_wandb_logs=eval_every_n_wandb_logs,
         autocast=autocast,
+        autocast_dtype=autocast_dtype,
     ).sae_group
 
 
@@ -223,6 +225,7 @@ def train_sae_group_on_language_model(
     wandb_log_frequency: int = 50,
     eval_every_n_wandb_logs: int = 100,
     autocast: bool = False,
+    autocast_dtype: torch.dtype = torch.bfloat16,
 ) -> TrainSAEGroupOutput:
     total_training_tokens = get_total_training_tokens(sae_group=sae_group)
     _update_sae_lens_training_version(sae_group)
@@ -294,6 +297,7 @@ def train_sae_group_on_language_model(
                     batch_size=batch_size,
                     wandb_suffix=wandb_suffix,
                     autocast=autocast,
+                    autocast_dtype=autocast_dtype,
                 )
                 mse_losses.append(step_output.mse_loss)
                 l1_losses.append(step_output.l1_loss)
@@ -545,6 +549,7 @@ def _train_step(
     batch_size: int,
     wandb_suffix: str,
     autocast: bool = True,
+    autocast_dtype: torch.dtype = torch.bfloat16,
 ) -> TrainStepOutput:
     assert sparse_autoencoder.cfg.d_sae is not None  # keep pyright happy
     layer_id = all_layers.index(sparse_autoencoder.hook_point_layer)
@@ -590,7 +595,8 @@ def _train_step(
     if autocast:
         autocast_if_enabled = torch.autocast(
             device_type="cuda",
-            dtype=torch.bfloat16,
+            # dtype=torch.bfloat16,
+            dtype=autocast_dtype,
             enabled=autocast,
             )
     else:
