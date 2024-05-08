@@ -82,11 +82,20 @@ def language_model_sae_runner(cfg: LanguageModelSAERunnerConfig):
     # use max-autotune on SAE and max-autotune-no-cudagraphs on LM
     # (also pylance seems to really hate this)
     if cfg.compile_llm:
-        model = torch.compile(model, mode=cfg.llm_compilation_mode)  # pyright: ignore [reportPossiblyUnboundVariable]
+        model = torch.compile(
+            model,  # pyright: ignore [reportPossiblyUnboundVariable]
+            mode=cfg.llm_compilation_mode,
+        )
 
     if cfg.compile_sae:
-        for k in sparse_autoencoder.autoencoders.keys():  # pyright: ignore [reportPossiblyUnboundVariable]
-            sae = sparse_autoencoder.autoencoders[k]  # pyright: ignore [reportPossiblyUnboundVariable]
+        for (
+            k
+        ) in (
+            sparse_autoencoder.autoencoders.keys()  # pyright: ignore [reportPossiblyUnboundVariable]
+        ):
+            sae = sparse_autoencoder.autoencoders[  # pyright: ignore [reportPossiblyUnboundVariable]
+                k
+            ]
             sae = torch.compile(sae, mode=cfg.sae_compilation_mode)
             sparse_autoencoder.autoencoders[k] = sae  # type: ignore # pyright: ignore [reportPossiblyUnboundVariable]
 
