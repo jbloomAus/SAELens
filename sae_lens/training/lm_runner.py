@@ -1,6 +1,7 @@
 import traceback
 from typing import Any, cast
 
+import torch
 import wandb
 
 from sae_lens.training.config import LanguageModelSAERunnerConfig
@@ -71,9 +72,27 @@ def language_model_sae_runner(cfg: LanguageModelSAERunnerConfig):
             id=cfg.wandb_id,
         )
 
+    # Compile model and SAE
+    # torch.compile can provide significant speedups (10-20% in testing)
+    # using max-autotune gives the best speedups but:
+    # (a) increases VRAM usage,
+    # (b) can't be used on both SAE and LM (some issue with cudagraphs), and
+    # (c) takes some time to compile
+    # optimal settings seem to be:
+    # use max-autotune on SAE and max-autotune-no-cudagraphs on LM
+    # (also pylance seems to really hate this)
+    if cfg.compile_llm:
+        model = torch.compile(model, mode=cfg.llm_compilation_mode)  # pyright: ignore [reportPossiblyUnboundVariable]
+
+    if cfg.compile_sae:
+        for k in sparse_autoencoder.autoencoders.keys():  # pyright: ignore [reportPossiblyUnboundVariable]
+            sae = sparse_autoencoder.autoencoders[k]  # pyright: ignore [reportPossiblyUnboundVariable]
+            sae = torch.compile(sae, mode=cfg.sae_compilation_mode)
+            sparse_autoencoder.autoencoders[k] = sae  # type: ignore # pyright: ignore [reportPossiblyUnboundVariable]
+
     # train SAE
     sparse_autoencoder = train_sae_group_on_language_model(
-        model=model,  # pyright: ignore [reportPossiblyUnboundVariable]
+        model=model,  # pyright: ignore [reportPossiblyUnboundVariable] # type: ignore
         sae_group=sparse_autoencoder,  # pyright: ignore [reportPossiblyUnboundVariable]
         activation_store=activations_loader,  # pyright: ignore [reportPossiblyUnboundVariable]
         train_contexts=train_contexts,
