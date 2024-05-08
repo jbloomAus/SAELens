@@ -106,6 +106,10 @@ class LanguageModelSAERunnerConfig:
 
     dead_feature_threshold: float = 1e-8
 
+    # Evals
+    n_eval_batches: int = 10
+    n_eval_seqs: int | None = None  # useful if evals cause OOM
+
     # WANDB
     log_to_wandb: bool = True
     log_activations_store_to_wandb: bool = False

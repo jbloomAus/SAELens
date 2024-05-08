@@ -191,12 +191,12 @@ class ActivationsStore:
             self._dataloader = self.get_data_loader()
         return self._dataloader
 
-    def get_batch_tokens(self):
+    def get_batch_tokens(self, batch_size: int | None = None):
         """
         Streams a batch of tokens from a dataset.
         """
-
-        batch_size = self.store_batch_size
+        if not batch_size:
+            batch_size = self.store_batch_size
         context_size = self.context_size
         device = self.device
 
