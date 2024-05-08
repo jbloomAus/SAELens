@@ -85,6 +85,8 @@ def language_model_sae_runner(cfg: LanguageModelSAERunnerConfig):
         wandb_log_frequency=cfg.wandb_log_frequency,
         eval_every_n_wandb_logs=cfg.eval_every_n_wandb_logs,
         autocast=cfg.autocast,
+        n_eval_batches=cfg.n_eval_batches,
+        n_eval_seqs=cfg.n_eval_seqs,
     ).sae_group
 
     if cfg.log_to_wandb:
