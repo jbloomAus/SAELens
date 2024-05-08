@@ -2,6 +2,33 @@
 
 
 
+## v1.7.0 (2024-05-08)
+
+### Feature
+
+* feat: Add torch compile (#129)
+
+* Surface # of eval batches and # of eval sequences
+
+* fix formatting
+
+* config changes
+
+* add compilation to lm_runner.py
+
+* remove accidental print statement
+
+* formatting fix ([`5c41336`](https://github.com/jbloomAus/SAELens/commit/5c41336853beac6bbe2105fefc55c746e3e2e61f))
+
+* feat: Change eval batch size (#128)
+
+* Surface # of eval batches and # of eval sequences
+
+* fix formatting
+
+* fix print statement accidentally left in ([`758a50b`](https://github.com/jbloomAus/SAELens/commit/758a50b073777028cd0dabcc50049798c2fcd68f))
+
+
 ## v1.6.1 (2024-05-07)
 
 ### Fix

@@ -64,7 +64,13 @@ class LanguageModelSAERunnerConfig:
     seed: int = 42
     dtype: str | torch.dtype = "float32"  # type: ignore #
     prepend_bos: bool = True
+
+    # Performance - see compilation section of lm_runner.py for info
     autocast: bool = False  # autocast to autocast_dtype during training
+    compile_llm: bool = False  # use torch.compile on the LLM
+    llm_compilation_mode: str | None = None  # which torch.compile mode to use
+    compile_sae: bool = False  # use torch.compile on the SAE
+    sae_compilation_mode: str | None = None
 
     # Training Parameters
 
@@ -105,6 +111,10 @@ class LanguageModelSAERunnerConfig:
     dead_feature_window: int = 1000  # unless this window is larger feature sampling,
 
     dead_feature_threshold: float = 1e-8
+
+    # Evals
+    n_eval_batches: int = 10
+    n_eval_seqs: int | None = None  # useful if evals cause OOM
 
     # WANDB
     log_to_wandb: bool = True
