@@ -28,8 +28,8 @@ def run_evals(
     )
     ### Evals
     eval_tokens = activation_store.get_batch_tokens(n_eval_seqs)
-    print(f'Eval tokens shape: {eval_tokens.shape}')
-    print(f'Normal activation store batch size: {activation_store.store_batch_size}')
+    print(f"Eval tokens shape: {eval_tokens.shape}")
+    print(f"Normal activation store batch size: {activation_store.store_batch_size}")
 
     # Get Reconstruction Score
     losses_df = recons_loss_batched(
