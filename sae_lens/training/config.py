@@ -409,3 +409,27 @@ def _default_cached_activations_path(
     if hook_point_head_index is not None:
         path += f"_{hook_point_head_index}"
     return path
+
+
+@dataclass
+class PretokenizeRunnerConfig:
+    tokenizer_name: str = "gpt2"
+    dataset_path: str = "NeelNanda/c4-10k"
+    split: str | None = "train"
+    data_files: list[str] | None = None
+    data_dir: str | None = None
+    num_proc: int = 4
+    context_size: int = 123
+    column_name: str = "text"
+    shuffle: bool = True
+    seed: int | None = None
+    streaming: bool = False
+
+    # if saving locally, set save_path
+    save_path: str | None = None
+
+    # if saving to huggingface, set hf_repo_id
+    hf_repo_id: str | None = None
+    hf_num_shards: int = 64
+    hf_revision: str = "main"
+    hf_is_private_repo: bool = False
