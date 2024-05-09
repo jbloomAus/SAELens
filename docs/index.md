@@ -35,7 +35,7 @@ from sae_lens import SparseAutoencoder
 
 layer = 8 # pick a layer you want.
 sparse_autoencoder = SparseAutoencoder.from_pretrained(
-    "gpt2-small-res-jb", f"blocks.{layer}.hook_resid_pre
+    "gpt2-small-res-jb", f"blocks.{layer}.hook_resid_pre"
 )
 ```
 Currently, only `gpt2-small-res-jb` SAEs for the gpt2-small residual-stream are available via this method, but more SAEs will be added soon!

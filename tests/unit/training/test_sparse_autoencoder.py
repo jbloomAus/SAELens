@@ -31,6 +31,16 @@ from tests.unit.helpers import build_sae_cfg
         },
         {
             "model_name": "tiny-stories-1M",
+            "dataset_path": "roneneldan/TinyStories",
+            "tokenized": False,
+            "hook_point": "blocks.1.hook_resid_pre",
+            "hook_point_layer": 1,
+            "d_in": 64,
+            "normalize_sae_decoder": False,
+            "scale_sparsity_penalty_by_decoder_norm": True,
+        },
+        {
+            "model_name": "tiny-stories-1M",
             "dataset_path": "apollo-research/roneneldan-TinyStories-tokenizer-gpt2",
             "tokenized": False,
             "hook_point": "blocks.1.hook_resid_pre",
@@ -48,6 +58,7 @@ from tests.unit.helpers import build_sae_cfg
     ],
     ids=[
         "tiny-stories-1M-resid-pre",
+        "tiny-stories-1M-resid-pre-L1-W-dec-Norm",
         "tiny-stories-1M-resid-pre-pretokenized",
         "tiny-stories-1M-attn-out",
     ],
@@ -84,9 +95,10 @@ def test_sparse_autoencoder_init(cfg: Any):
     assert sparse_autoencoder.b_dec.shape == (cfg.d_in,)
 
     # assert decoder columns have unit norm
-    assert torch.allclose(
-        torch.norm(sparse_autoencoder.W_dec, dim=1), torch.ones(cfg.d_sae)
-    )
+    if sparse_autoencoder.cfg.normalize_sae_decoder:
+        assert torch.allclose(
+            torch.norm(sparse_autoencoder.W_dec, dim=1), torch.ones(cfg.d_sae)
+        )
 
 
 def test_SparseAutoencoder_save_and_load_from_pretrained(tmp_path: Path) -> None:
@@ -101,7 +113,6 @@ def test_SparseAutoencoder_save_and_load_from_pretrained(tmp_path: Path) -> None
     sparse_autoencoder_loaded = SparseAutoencoder.load_from_pretrained(
         model_path, device="cpu"
     )
-    sparse_autoencoder_loaded.cfg.device = "cpu"
     sparse_autoencoder_loaded.cfg.verbose = True
     sparse_autoencoder_loaded.cfg.checkpoint_path = cfg.checkpoint_path
     sparse_autoencoder_loaded_state_dict = sparse_autoencoder_loaded.state_dict()
@@ -152,7 +163,6 @@ def test_SparseAutoencoder_save_and_load_from_pretrained_lacks_scaling_factor(
     sparse_autoencoder_loaded = SparseAutoencoder.load_from_pretrained(model_path)
     sparse_autoencoder_loaded.cfg.verbose = True
     sparse_autoencoder_loaded.cfg.checkpoint_path = cfg.checkpoint_path
-    sparse_autoencoder_loaded.cfg.device = "cpu"  # might autoload onto mps
     sparse_autoencoder_loaded = sparse_autoencoder_loaded.to("cpu")
     sparse_autoencoder_loaded_state_dict = sparse_autoencoder_loaded.state_dict()
     # check cfg matches the original
@@ -245,10 +255,17 @@ def test_sparse_autoencoder_forward(sparse_autoencoder: SparseAutoencoder):
     assert l1_loss.shape == ()
     assert torch.allclose(loss, mse_loss + l1_loss)
 
-    expected_mse_loss = (torch.pow((sae_out - x.float()), 2)).mean()
+    expected_mse_loss = (torch.pow((sae_out - x.float()), 2)).sum(dim=-1).mean()
 
     assert torch.allclose(mse_loss, expected_mse_loss)
-    expected_l1_loss = torch.abs(feature_acts).sum(dim=1).mean(dim=(0,))
+    if not sparse_autoencoder.cfg.scale_sparsity_penalty_by_decoder_norm:
+        expected_l1_loss = feature_acts.sum(dim=1).mean(dim=(0,))
+    else:
+        expected_l1_loss = (
+            (feature_acts * sparse_autoencoder.W_dec.norm(dim=1))
+            .norm(dim=1, p=1)
+            .mean()
+        )
     assert torch.allclose(l1_loss, sparse_autoencoder.l1_coefficient * expected_l1_loss)
 
     # check everything has the right dtype
@@ -288,11 +305,22 @@ def test_sparse_autoencoder_forward_with_mse_loss_norm(
 
     x_centred = x - x.mean(dim=0, keepdim=True)
     expected_mse_loss = (
-        torch.pow((sae_out - x.float()), 2)
-        / (x_centred**2).sum(dim=-1, keepdim=True).sqrt()
-    ).mean()
+        (
+            torch.pow((sae_out - x.float()), 2)
+            / (x_centred**2).sum(dim=-1, keepdim=True).sqrt()
+        )
+        .sum(dim=-1)
+        .mean()
+    )
     assert torch.allclose(mse_loss, expected_mse_loss)
-    expected_l1_loss = torch.abs(feature_acts).sum(dim=1).mean(dim=(0,))
+    if not sparse_autoencoder.cfg.scale_sparsity_penalty_by_decoder_norm:
+        expected_l1_loss = feature_acts.sum(dim=1).mean(dim=(0,))
+    else:
+        expected_l1_loss = (
+            (feature_acts * sparse_autoencoder.W_dec.norm(dim=1))
+            .norm(dim=1, p=1)
+            .mean()
+        )
     assert torch.allclose(l1_loss, sparse_autoencoder.l1_coefficient * expected_l1_loss)
 
     # check everything has the right dtype
@@ -345,12 +373,21 @@ def test_sparse_autoencoder_forward_with_3d_input(
 
     x_centred = x - x.mean(dim=0, keepdim=True)
     expected_mse_loss = (
-        torch.pow((sae_out - x.float()), 2)
-        / (x_centred**2).sum(dim=-1, keepdim=True).sqrt()
-    ).mean()
+        (
+            torch.pow((sae_out - x.float()), 2)
+            / (x_centred**2).sum(dim=-1, keepdim=True).sqrt()
+        )
+        .sum(dim=-1)
+        .mean()
+    )
     assert torch.allclose(mse_loss, expected_mse_loss)
-    expected_l1_loss = torch.abs(feature_acts).sum(dim=-1).mean()
+
+    if sparse_autoencoder.cfg.scale_sparsity_penalty_by_decoder_norm:
+        feature_acts = feature_acts * sparse_autoencoder.W_dec.norm(dim=1)
+
+    expected_l1_loss = feature_acts.sum(dim=-1).mean()
     assert torch.allclose(l1_loss, sparse_autoencoder.l1_coefficient * expected_l1_loss)
+
     expected_l2_loss = feature_acts.norm(p=2, dim=-1).mean()
     assert torch.allclose(l2_loss, sparse_autoencoder.l1_coefficient * expected_l2_loss)
 
@@ -383,7 +420,7 @@ def test_SparseAutoencoder_forward_ghost_grad_loss_only_adds_gradients_to_dead_n
         x=torch.randn(3, 2),
         dead_neuron_mask=dead_neuron_mask,
     )
-    forward_out.ghost_grad_loss.backward()
+    forward_out.ghost_grad_loss.backward()  # type: ignore
 
     # only features 1 and 3 should have non-zero gradients on the encoder weights
     assert sae.W_enc.grad is not None
@@ -461,9 +498,11 @@ def test_SparseAutoencoder_remove_gradient_parallel_to_decoder_directions() -> N
 
 
 def test_SparseAutoencoder_get_name_returns_correct_name_from_cfg_vals() -> None:
-    cfg = build_sae_cfg(model_name="test_model", hook_point="test_hook_point", d_sae=10)
+    cfg = build_sae_cfg(
+        model_name="test_model", hook_point="test_hook_point", d_sae=128
+    )
     sae = SparseAutoencoder(cfg)
-    assert sae.get_name() == "sparse_autoencoder_test_model_test_hook_point_10"
+    assert sae.get_name() == "sparse_autoencoder_test_model_test_hook_point_128"
 
 
 def test_SparseAutoencoder_set_decoder_norm_to_unit_norm() -> None:

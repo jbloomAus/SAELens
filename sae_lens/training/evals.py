@@ -17,6 +17,8 @@ def run_evals(
     model: HookedRootModule,
     n_training_steps: int,
     suffix: str = "",
+    n_eval_batches: int = 10,
+    n_eval_seqs: int | None = None,
 ) -> Mapping[str, Any]:
     hook_point = sparse_autoencoder.cfg.hook_point
     hook_point_layer = sparse_autoencoder.hook_point_layer
@@ -25,14 +27,15 @@ def run_evals(
         layer=hook_point_layer
     )
     ### Evals
-    eval_tokens = activation_store.get_batch_tokens()
+    eval_tokens = activation_store.get_batch_tokens(n_eval_seqs)
 
     # Get Reconstruction Score
     losses_df = recons_loss_batched(
         sparse_autoencoder,
         model,
         activation_store,
-        n_batches=10,
+        n_batches=n_eval_batches,
+        n_eval_seqs=n_eval_seqs,
     )
 
     recons_score = losses_df["score"].mean()
@@ -68,10 +71,17 @@ def run_evals(
     l2_norm_in_for_div[torch.abs(l2_norm_in_for_div) < 0.0001] = 1
     l2_norm_ratio = l2_norm_out / l2_norm_in_for_div
 
+    W_dec_norm_dist = sparse_autoencoder.W_dec.norm(dim=1).detach().cpu().numpy()
+    b_e_dist = sparse_autoencoder.b_enc.detach().cpu().numpy()
+
     metrics = {
         # l2 norms
         f"metrics/l2_norm{suffix}": l2_norm_out.mean().item(),
         f"metrics/l2_ratio{suffix}": l2_norm_ratio.mean().item(),
+        f"metrics/l2_norm_in{suffix}": l2_norm_in.mean().item(),
+        # More detail on loss.
+        f"weights/W_dec_norms{suffix}": wandb.Histogram(W_dec_norm_dist),
+        f"weights/b_e{suffix}": wandb.Histogram(b_e_dist),
         # CE Loss
         f"metrics/CE_loss_score{suffix}": recons_score,
         f"metrics/ce_loss_without_sae{suffix}": ntp_loss,
@@ -93,10 +103,11 @@ def recons_loss_batched(
     model: HookedRootModule,
     activation_store: ActivationsStore,
     n_batches: int = 100,
+    n_eval_seqs: int | None = None,
 ):
     losses = []
     for _ in range(n_batches):
-        batch_tokens = activation_store.get_batch_tokens()
+        batch_tokens = activation_store.get_batch_tokens(n_eval_seqs)
         score, loss, recons_loss, zero_abl_loss = get_recons_loss(
             sparse_autoencoder, model, batch_tokens
         )

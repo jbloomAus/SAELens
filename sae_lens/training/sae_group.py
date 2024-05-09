@@ -48,7 +48,7 @@ class SparseAutoencoderDictionary:
             sae = SparseAutoencoder(cfg_copy)
 
             sae_name = (
-                f"{sae.cfg.model_name}_{sae.cfg.hook_point}_{sae.cfg.d_sae}_"
+                f"{sae.cfg.model_name.replace('/', '_')}_{sae.cfg.hook_point}_{sae.cfg.d_sae}_"
                 + "_".join([f"{k}_{v}" for k, v in zip(keys, combination)])
             )
 
@@ -136,6 +136,8 @@ class SparseAutoencoderDictionary:
                 cfg.sae_lens_version = "0.0.0"
             if not hasattr(cfg, "sae_lens_training_version"):
                 cfg.sae_lens_training_version = "0.0.0"
+            if not hasattr(cfg, "model_from_pretrained_kwargs"):
+                cfg.model_from_pretrained_kwargs = {}
             sparse_autoencoder = SparseAutoencoder(cfg=cfg)
             # add dummy scaling factor to the state dict
             group["state_dict"]["scaling_factor"] = torch.ones(

@@ -24,6 +24,10 @@ from sae_lens.training.activation_functions import get_activation_fn
 from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.utils import BackwardsCompatiblePickleClass
 
+SPARSITY_PATH = "sparsity.safetensors"
+SAE_WEIGHTS_PATH = "sae_weights.safetensors"
+SAE_CFG_PATH = "cfg.json"
+
 
 class ForwardOutput(NamedTuple):
     sae_out: torch.Tensor
@@ -31,7 +35,7 @@ class ForwardOutput(NamedTuple):
     loss: torch.Tensor
     mse_loss: torch.Tensor
     l1_loss: torch.Tensor
-    ghost_grad_loss: torch.Tensor
+    ghost_grad_loss: torch.Tensor | float
 
 
 class SparseAutoencoder(HookedRootModule):
@@ -83,30 +87,73 @@ class SparseAutoencoder(HookedRootModule):
         self.noise_scale = cfg.noise_scale
         self.activation_fn = get_activation_fn(cfg.activation_fn)
 
-        # NOTE: if using resampling neurons method, you must ensure that we initialise the weights in the order W_enc, b_enc, W_dec, b_dec
-        self.W_enc = nn.Parameter(
-            torch.nn.init.kaiming_uniform_(
-                torch.empty(self.d_in, self.d_sae, dtype=self.dtype, device=self.device)
-            )
-        )
+        if self.cfg.scale_sparsity_penalty_by_decoder_norm:
+            self.get_sparsity_loss_term = self.get_sparsity_loss_term_decoder_norm
+        else:
+            self.get_sparsity_loss_term = self.get_sparsity_loss_term_standard
+
+        self.initialize_weights()
+
+        self.hook_sae_in = HookPoint()
+        self.hook_hidden_pre = HookPoint()
+        self.hook_hidden_post = HookPoint()
+        self.hook_sae_out = HookPoint()
+
+        self.setup()  # Required for `HookedRootModule`s
+
+    def initialize_weights(self):
+        """
+        Wrapped around weight initialization code to make init cleaner.
+
+        """
+
+        # no config changes encoder bias init for now.
         self.b_enc = nn.Parameter(
             torch.zeros(self.d_sae, dtype=self.dtype, device=self.device)
         )
 
+        # Start with the default init strategy:
         self.W_dec = nn.Parameter(
             torch.nn.init.kaiming_uniform_(
                 torch.empty(self.d_sae, self.d_in, dtype=self.dtype, device=self.device)
             )
         )
-
         if self.cfg.decoder_orthogonal_init:
             self.W_dec.data = nn.init.orthogonal_(self.W_dec.data.T).T
+
+        elif self.cfg.decoder_heuristic_init:
+            self.W_dec = nn.Parameter(
+                torch.rand(self.d_sae, self.d_in, dtype=self.dtype, device=self.device)
+            )
+            self.initialize_decoder_norm_constant_norm()
+
+        elif self.cfg.normalize_sae_decoder:
+            self.set_decoder_norm_to_unit_norm()
+
+        self.W_enc = nn.Parameter(
+            torch.nn.init.kaiming_uniform_(
+                torch.empty(self.d_in, self.d_sae, dtype=self.dtype, device=self.device)
+            )
+        )
+
+        # Then we intialize the encoder weights (either as the transpose of decoder or not)
+        if self.cfg.init_encoder_as_decoder_transpose:
+            self.W_enc.data = self.W_dec.data.T.clone().contiguous()
+        else:
+            self.W_enc = nn.Parameter(
+                torch.nn.init.kaiming_uniform_(
+                    torch.empty(
+                        self.d_in, self.d_sae, dtype=self.dtype, device=self.device
+                    )
+                )
+            )
 
         if self.normalize_sae_decoder:
             with torch.no_grad():
                 # Anthropic normalize this to have unit columns
                 self.set_decoder_norm_to_unit_norm()
 
+        # methdods which change b_dec as a function of the dataset are implemented after init.
         self.b_dec = nn.Parameter(
             torch.zeros(self.d_in, dtype=self.dtype, device=self.device)
         )
@@ -115,13 +162,6 @@ class SparseAutoencoder(HookedRootModule):
         self.scaling_factor = nn.Parameter(
             torch.ones(self.d_sae, dtype=self.dtype, device=self.device)
         )
-
-        self.hook_sae_in = HookPoint()
-        self.hook_hidden_pre = HookPoint()
-        self.hook_hidden_post = HookPoint()
-        self.hook_sae_out = HookPoint()
-
-        self.setup()  # Required for `HookedRootModule`s
 
     def encode(
         self, x: Float[torch.Tensor, "... d_in"]
@@ -170,6 +210,27 @@ class SparseAutoencoder(HookedRootModule):
         )
         return sae_out
 
+    def get_sparsity_loss_term_standard(
+        self, feature_acts: torch.Tensor
+    ) -> torch.Tensor:
+        """
+        Sparsity loss term calculated as the L1 norm of the feature activations.
+        """
+        sparsity = feature_acts.norm(p=self.lp_norm, dim=-1)
+        return sparsity
+
+    def get_sparsity_loss_term_decoder_norm(
+        self, feature_acts: torch.Tensor
+    ) -> torch.Tensor:
+        """
+        Sparsity loss term for decoder norm regularization.
+        """
+        weighted_feature_acts = feature_acts * self.W_dec.norm(dim=1)
+        sparsity = weighted_feature_acts.norm(
+            p=self.lp_norm, dim=-1
+        )  # sum over the feature dimension
+        return sparsity
+
     def forward(
         self, x: torch.Tensor, dead_neuron_mask: torch.Tensor | None = None
     ) -> ForwardOutput:
@@ -181,7 +242,7 @@ class SparseAutoencoder(HookedRootModule):
         per_item_mse_loss = _per_item_mse_loss_with_target_norm(
             sae_out, x, self.cfg.mse_loss_normalization
         )
-        ghost_grad_loss = torch.tensor(0.0, dtype=self.dtype, device=self.device)
+
         # gate on config and training so evals is not slowed down.
         if (
             self.use_ghost_grads
@@ -196,10 +257,12 @@ class SparseAutoencoder(HookedRootModule):
                 hidden_pre=hidden_pre,
                 dead_neuron_mask=dead_neuron_mask,
             )
+        else:
+            ghost_grad_loss = 0
 
-        mse_loss = per_item_mse_loss.mean()
-        sparsity = feature_acts.norm(p=self.lp_norm, dim=-1).mean()
-        l1_loss = self.l1_coefficient * sparsity
+        mse_loss = per_item_mse_loss.sum(dim=-1).mean()
+        sparsity = self.get_sparsity_loss_term(feature_acts)
+        l1_loss = (self.l1_coefficient * sparsity).mean()
         loss = mse_loss + l1_loss + ghost_grad_loss
 
         return ForwardOutput(
@@ -235,6 +298,18 @@ class SparseAutoencoder(HookedRootModule):
     @torch.no_grad()
     def set_decoder_norm_to_unit_norm(self):
         self.W_dec.data /= torch.norm(self.W_dec.data, dim=1, keepdim=True)
+
+    @torch.no_grad()
+    def initialize_decoder_norm_constant_norm(self, norm: float = 0.1):
+        """
+        A heuristic proceedure inspired by:
+        https://transformer-circuits.pub/2024/april-update/index.html#training-saes
+        """
+        # TODO: Parameterise this as a function of m and n
+
+        # ensure W_dec norms at unit norm
+        self.W_dec.data /= torch.norm(self.W_dec.data, dim=1, keepdim=True)
+        self.W_dec.data *= 0.1  # will break tests but do this for now.
 
     @torch.no_grad()
     def remove_gradient_parallel_to_decoder_directions(self):
@@ -281,7 +356,7 @@ class SparseAutoencoder(HookedRootModule):
             os.mkdir(path)
 
         # generate the weights
-        save_file(self.state_dict(), f"{path}/sae_weights.safetensors")
+        save_file(self.state_dict(), f"{path}/{SAE_WEIGHTS_PATH}")
 
         # save the config
         config = {
@@ -291,12 +366,12 @@ class SparseAutoencoder(HookedRootModule):
             "device": str(self.cfg.device),
         }
 
-        with open(f"{path}/cfg.json", "w") as f:
+        with open(f"{path}/{SAE_CFG_PATH}", "w") as f:
             json.dump(config, f)
 
         if sparsity is not None:
             sparsity_in_dict = {"sparsity": sparsity}
-            save_file(sparsity_in_dict, f"{path}/sparsity.safetensors")  # type: ignore
+            save_file(sparsity_in_dict, f"{path}/{SPARSITY_PATH}")  # type: ignore
 
     @classmethod
     def load_from_pretrained_legacy(cls, path: str):
@@ -470,7 +545,7 @@ def _per_item_mse_loss_with_target_norm(
 ) -> torch.Tensor:
     """
     Calculate MSE loss per item in the batch, without taking a mean.
-    Then, normalizes by the L2 norm of the centered target.
+    Then, optionally, normalizes by the L2 norm of the centered target.
     This normalization seems to improve performance.
     """
     if mse_loss_normalization == "dense_batch":

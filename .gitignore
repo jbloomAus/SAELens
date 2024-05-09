@@ -172,6 +172,13 @@ activations/
 feature_dashboards/
 research/
 
+cached_activations/
 
 # neuronpedia outputs
 neuronpedia_outputs/
+
+# test fixtures
+tests/benchmark/fixtures/
+
+# ignore prof
+prof/   
