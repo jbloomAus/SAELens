@@ -63,7 +63,6 @@ def toy_model_sae_runner(cfg: SAEToyModelRunnerConfig):
     """
     # Toy Model Config
     toy_model_cfg = ToyConfig(
-        n_instances=1,  # Not set up to train > 1 SAE so shouldn't do > 1 model.
         n_features=cfg.n_features,
         n_hidden=cfg.n_hidden,
         n_correlated_pairs=cfg.n_correlated_pairs,
@@ -85,7 +84,7 @@ def toy_model_sae_runner(cfg: SAEToyModelRunnerConfig):
     hidden = einops.einsum(
         batch,
         model.W,
-        "batch_size instances features, instances hidden features -> batch_size instances hidden",
+        "batch_size features, hidden features -> batch_size hidden",
     )
 
     sparse_autoencoder = SparseAutoencoder(
