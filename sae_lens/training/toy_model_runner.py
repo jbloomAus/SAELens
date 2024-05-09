@@ -6,8 +6,8 @@ import torch
 import wandb
 
 from sae_lens.training.sparse_autoencoder import SparseAutoencoder
-from sae_lens.training.toy_models import Config as ToyConfig
-from sae_lens.training.toy_models import Model as ToyModel
+from sae_lens.training.toy_models import ReluOutputModel as ToyModel
+from sae_lens.training.toy_models import ToyConfig
 from sae_lens.training.train_sae_on_toy_model import train_toy_sae
 
 
@@ -48,7 +48,7 @@ class SAEToyModelRunnerConfig:
     wandb_log_frequency: int = 50
 
     # Misc
-    device: str = "cpu"
+    device: torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     seed: int = 42
     checkpoint_path: str = "checkpoints"
     dtype: torch.dtype = torch.float32
@@ -68,13 +68,13 @@ def toy_model_sae_runner(cfg: SAEToyModelRunnerConfig):
         n_hidden=cfg.n_hidden,
         n_correlated_pairs=cfg.n_correlated_pairs,
         n_anticorrelated_pairs=cfg.n_anticorrelated_pairs,
+        feature_probability=cfg.feature_probability,
     )
 
     # Initialize Toy Model
     model = ToyModel(
         cfg=toy_model_cfg,
         device=cfg.device,
-        feature_probability=cfg.feature_probability,
     )
 
     # Train the Toy Model

@@ -38,7 +38,7 @@ def test_toy_model_sae_runner():
         log_to_wandb=True,
         wandb_project="mats_sae_training_benchmarks_toy",
         wandb_log_frequency=5,
-        device=device,
+        device=torch.device(device),
     )
 
     trained_sae = toy_model_sae_runner(cfg)
