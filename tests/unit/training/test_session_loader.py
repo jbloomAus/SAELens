@@ -48,6 +48,28 @@ def test_LMSparseAutoencoderSessionloader_load_session(
     assert isinstance(model, HookedTransformer)
     assert isinstance(next(iter(sae_group))[1], SparseAutoencoder)
     assert isinstance(activations_loader, ActivationsStore)
+    assert model.cfg.checkpoint_index is None
+
+
+def test_LMSparseAutoencoderSessionloader_load_session_can_load_model_with_kwargs():
+    cfg = build_sae_cfg(
+        model_name="pythia-14m",
+        hook_point="blocks.0.hook_mlp_out",
+        hook_point_layer=0,
+        dataset_path="roneneldan/TinyStories",
+        is_dataset_tokenized=False,
+        model_from_pretrained_kwargs={"checkpoint_index": 0},
+    )
+    loader = LMSparseAutoencoderSessionloader(cfg)
+    model, sae_group, activations_loader = loader.load_sae_training_group_session()
+
+    assert isinstance(model, HookedTransformer)
+    assert isinstance(next(iter(sae_group))[1], SparseAutoencoder)
+    assert isinstance(activations_loader, ActivationsStore)
+    assert (
+        model.cfg.checkpoint_index
+        == cfg.model_from_pretrained_kwargs["checkpoint_index"]
+    )
 
 
 def test_LMSparseAutoencoderSessionloader_load_sae_session_from_pretrained(

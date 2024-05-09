@@ -133,6 +133,7 @@ class LanguageModelSAERunnerConfig:
     checkpoint_path: str = "checkpoints"
     verbose: bool = True
     model_kwargs: dict[str, Any] = field(default_factory=dict)
+    model_from_pretrained_kwargs: dict[str, Any] = field(default_factory=dict)
     sae_lens_version: str = field(default_factory=lambda: __version__)
     sae_lens_training_version: str = field(default_factory=lambda: __version__)
 
@@ -328,6 +329,7 @@ class CacheActivationsRunnerConfig:
     n_shuffles_in_entire_dir: int = 10
     n_shuffles_final: int = 100
     model_kwargs: dict[str, Any] = field(default_factory=dict)
+    model_from_pretrained_kwargs: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         # Autofill cached_activations_path unless the user overrode it

@@ -6,10 +6,17 @@ from transformer_lens.hook_points import HookedRootModule
 
 
 def load_model(
-    model_class_name: str, model_name: str, device: str | torch.device | None = None
+    model_class_name: str,
+    model_name: str,
+    device: str | torch.device | None = None,
+    model_from_pretrained_kwargs: dict[str, Any] | None = None,
 ) -> HookedRootModule:
+    model_from_pretrained_kwargs = model_from_pretrained_kwargs or {}
+
     if model_class_name == "HookedTransformer":
-        return HookedTransformer.from_pretrained(model_name=model_name, device=device)
+        return HookedTransformer.from_pretrained(
+            model_name=model_name, device=device, **model_from_pretrained_kwargs
+        )
     elif model_class_name == "HookedMamba":
         try:
             from mamba_lens import HookedMamba
@@ -20,7 +27,9 @@ def load_model(
         # HookedMamba has incorrect typing information, so we need to cast the type here
         return cast(
             HookedRootModule,
-            HookedMamba.from_pretrained(model_name, device=cast(Any, device)),
+            HookedMamba.from_pretrained(
+                model_name, device=cast(Any, device), **model_from_pretrained_kwargs
+            ),
         )
     else:
         raise ValueError(f"Unknown model class: {model_class_name}")

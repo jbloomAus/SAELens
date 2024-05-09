@@ -18,6 +18,7 @@ class CacheActivationsRunner:
             model_class_name=cfg.model_class_name,
             model_name=cfg.model_name,
             device=cfg.device,
+            model_from_pretrained_kwargs=cfg.model_from_pretrained_kwargs,
         )
         self.activations_store = ActivationsStore.from_config(
             self.model,
