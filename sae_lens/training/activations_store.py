@@ -64,8 +64,8 @@ class ActivationsStore:
             d_in=cfg.d_in,
             n_batches_in_buffer=cfg.n_batches_in_buffer,
             total_training_tokens=cfg.training_tokens,
-            store_batch_size=cfg.store_batch_size,
-            train_batch_size=cfg.train_batch_size,
+            store_batch_size_prompts=cfg.store_batch_size_prompts,
+            train_batch_size_tokens=cfg.train_batch_size_tokens,
             prepend_bos=cfg.prepend_bos,
             normalize_activations=cfg.normalize_activations,
             device=cfg.device,
@@ -86,8 +86,8 @@ class ActivationsStore:
         d_in: int,
         n_batches_in_buffer: int,
         total_training_tokens: int,
-        store_batch_size: int,
-        train_batch_size: int,
+        store_batch_size_prompts: int,
+        train_batch_size_tokens: int,
         prepend_bos: bool,
         normalize_activations: bool,
         device: str | torch.device,
@@ -111,8 +111,8 @@ class ActivationsStore:
         self.d_in = d_in
         self.n_batches_in_buffer = n_batches_in_buffer
         self.total_training_tokens = total_training_tokens
-        self.store_batch_size = store_batch_size
-        self.train_batch_size = train_batch_size
+        self.store_batch_size_prompts = store_batch_size_prompts
+        self.train_batch_size_tokens = train_batch_size_tokens
         self.prepend_bos = prepend_bos
         self.normalize_activations = normalize_activations
         self.device = device
@@ -196,7 +196,7 @@ class ActivationsStore:
         Streams a batch of tokens from a dataset.
         """
         if not batch_size:
-            batch_size = self.store_batch_size
+            batch_size = self.store_batch_size_prompts
         context_size = self.context_size
         device = self.device
 
@@ -306,7 +306,7 @@ class ActivationsStore:
 
     def get_buffer(self, n_batches_in_buffer: int) -> torch.Tensor:
         context_size = self.context_size
-        batch_size = self.store_batch_size
+        batch_size = self.store_batch_size_prompts
         d_in = self.d_in
         total_size = batch_size * n_batches_in_buffer
         num_layers = len(self.hook_point_layers)  # Number of hook points or layers
@@ -426,7 +426,7 @@ class ActivationsStore:
 
         """
 
-        batch_size = self.train_batch_size
+        batch_size = self.train_batch_size_tokens
 
         # 1. # create new buffer by mixing stored and new buffer
         mixing_buffer = torch.cat(

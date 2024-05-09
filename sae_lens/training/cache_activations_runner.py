@@ -41,7 +41,7 @@ class CacheActivationsRunner:
         )
         tokens_in_buffer = (
             self.cfg.n_batches_in_buffer
-            * self.cfg.store_batch_size
+            * self.cfg.store_batch_size_prompts
             * self.cfg.context_size
         )
         total_training_tokens = self.cfg.training_tokens
@@ -74,7 +74,7 @@ class CacheActivationsRunner:
 
         print(f"Started caching {self.cfg.training_tokens} activations")
         tokens_per_buffer = (
-            self.cfg.store_batch_size
+            self.cfg.store_batch_size_prompts
             * self.cfg.context_size
             * self.cfg.n_batches_in_buffer
         )

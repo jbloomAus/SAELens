@@ -60,7 +60,7 @@ for l1_coefficient in [2, 5, 10]:
         use_cached_activations=True,
         cached_activations_path="/home/paperspace/shared_volumes/activations_volume_1/gelu-1l",
         training_tokens=total_training_tokens,  # For initial testing I think this is a good number.
-        train_batch_size=4096,
+        train_batch_size_tokens=4096,
         # Loss Function
         ## Reconstruction Coefficient.
         mse_loss_normalization=None,  # MSE Loss Normalization is not mentioned (so we use stanrd MSE Loss). But not we take an average over the batch.
@@ -92,7 +92,7 @@ for l1_coefficient in [2, 5, 10]:
         adam_beta2=0.999,
         # Buffer details won't matter in we cache / shuffle our activations ahead of time.
         n_batches_in_buffer=64,
-        store_batch_size=16,
+        store_batch_size_prompts=16,
         normalize_activations=False,
         # Feature Store
         feature_sampling_window=1000,

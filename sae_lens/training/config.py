@@ -55,8 +55,8 @@ class LanguageModelSAERunnerConfig:
     n_batches_in_buffer: int = 20
     training_tokens: int = 2_000_000
     finetuning_tokens: int = 0
-    store_batch_size: int = 32
-    train_batch_size: int = 4096
+    store_batch_size_prompts: int = 32
+    train_batch_size_tokens: int = 4096
     normalize_activations: bool = False
 
     # Misc
@@ -75,7 +75,7 @@ class LanguageModelSAERunnerConfig:
     # Training Parameters
 
     ## Batch size
-    train_batch_size: int = 4096
+    train_batch_size_tokens: int = 4096
 
     ## Adam
     adam_beta1: float | list[float] = 0
@@ -114,7 +114,7 @@ class LanguageModelSAERunnerConfig:
 
     # Evals
     n_eval_batches: int = 10
-    n_eval_seqs: int | None = None  # useful if evals cause OOM
+    eval_batch_size_prompts: int | None = None  # useful if evals cause OOM
 
     # WANDB
     log_to_wandb: bool = True
@@ -148,7 +148,7 @@ class LanguageModelSAERunnerConfig:
         if not isinstance(self.expansion_factor, list):
             self.d_sae = self.d_in * self.expansion_factor
         self.tokens_per_buffer = (
-            self.train_batch_size * self.context_size * self.n_batches_in_buffer
+            self.train_batch_size_tokens * self.context_size * self.n_batches_in_buffer
         )
 
         if self.run_name is None:
@@ -202,17 +202,21 @@ class LanguageModelSAERunnerConfig:
             )
             # Print out some useful info:
             n_tokens_per_buffer = (
-                self.store_batch_size * self.context_size * self.n_batches_in_buffer
+                self.store_batch_size_prompts
+                * self.context_size
+                * self.n_batches_in_buffer
             )
             print(f"n_tokens_per_buffer (millions): {n_tokens_per_buffer / 10 ** 6}")
-            n_contexts_per_buffer = self.store_batch_size * self.n_batches_in_buffer
+            n_contexts_per_buffer = (
+                self.store_batch_size_prompts * self.n_batches_in_buffer
+            )
             print(
                 f"Lower bound: n_contexts_per_buffer (millions): {n_contexts_per_buffer / 10 ** 6}"
             )
 
             total_training_steps = (
                 self.training_tokens + self.finetuning_tokens
-            ) // self.train_batch_size
+            ) // self.train_batch_size_tokens
             print(f"Total training steps: {total_training_steps}")
 
             total_wandb_updates = total_training_steps // self.wandb_log_frequency
@@ -224,17 +228,17 @@ class LanguageModelSAERunnerConfig:
                 total_training_steps // self.feature_sampling_window
             )
             print(
-                f"n_tokens_per_feature_sampling_window (millions): {(self.feature_sampling_window * self.context_size * self.train_batch_size) / 10 ** 6}"
+                f"n_tokens_per_feature_sampling_window (millions): {(self.feature_sampling_window * self.context_size * self.train_batch_size_tokens) / 10 ** 6}"
             )
             print(
-                f"n_tokens_per_dead_feature_window (millions): {(self.dead_feature_window * self.context_size * self.train_batch_size) / 10 ** 6}"
+                f"n_tokens_per_dead_feature_window (millions): {(self.dead_feature_window * self.context_size * self.train_batch_size_tokens) / 10 ** 6}"
             )
             print(
                 f"We will reset the sparsity calculation {n_feature_window_samples} times."
             )
-            # print("Number tokens in dead feature calculation window: ", self.dead_feature_window * self.train_batch_size)
+            # print("Number tokens in dead feature calculation window: ", self.dead_feature_window * self.train_batch_size_tokens)
             print(
-                f"Number tokens in sparsity calculation window: {self.feature_sampling_window * self.train_batch_size:.2e}"
+                f"Number tokens in sparsity calculation window: {self.feature_sampling_window * self.train_batch_size_tokens:.2e}"
             )
 
         if not isinstance(self.use_ghost_grads, list) and self.use_ghost_grads:
@@ -312,8 +316,8 @@ class CacheActivationsRunnerConfig:
     # Activation Store Parameters
     n_batches_in_buffer: int = 20
     training_tokens: int = 2_000_000
-    store_batch_size: int = 32
-    train_batch_size: int = 4096
+    store_batch_size_prompts: int = 32
+    train_batch_size_tokens: int = 4096
     normalize_activations: bool = False
 
     # Misc
