@@ -1,6 +1,8 @@
-### WIP - Not ready. Do not use.
+### WIP - Very rough draft
 
 This is an Ansible playbook that runs `caching_replication_how_train_saes.py` and `replication_how_train_saes.py` in AWS.
+
+Jobs are configured by the `config.yml` file.
 
 ### Prerequisites
 - AWS Account
@@ -63,6 +65,9 @@ ansible-playbook playbook.yml -i aws_ec2.yml --list-tags
 Then run specific tags with the --tags flag
 
 ### TODO
-    - Use `typer` to make job creation a step-by-step process and available via command line
+    - use containers to simplify instance configuration
+    - use 'typer' on `cache_activations.py` and `train_sae.py` 
+    - split into different playbooks, roles
+    - don't use 777 permissions
 	- AWX server for GUI monitoring jobs
     - Automatically pull the latest AMI using Ansible

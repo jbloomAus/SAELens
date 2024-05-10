@@ -151,7 +151,7 @@
         src: "{{ output_yaml_path }}"
         mode: "put"
 
-- name: "Cache Activations: Launch for job {{ cache_acts_job_name }}"
+- name: "Cache Activations: Launch instance for job {{ cache_acts_job_name }}"
   hosts: localhost
   connection: local
   gather_facts: false
@@ -171,19 +171,17 @@
               instance-state-name: running
           register: cache_acts_instances
 
-        - name: Print existing Cache Activations Instance
-          ansible.builtin.debug:
-            msg: "{{ cache_acts_instances }}"
-
     - name: Start Cache Activations Instance if not running, wait for it
       amazon.aws.ec2_instance:
-        name: "Cache Activations"
+        name: "Cache Acts {{ cache_acts_job_name }}"
         key_name: "{{ ssh_key_filename }}"
         iam_instance_profile: "{{ iam_role_name }}"
         instance_type: "{{ cache_acts_instance_type }}"
         security_group: "{{ sec_group }}"
         wait: true
+        state: running
         count: 1
+        instance_initiated_shutdown_behavior: terminate
         network:
           assign_public_ip: true
         image_id: "{{ ec2_image }}"
@@ -191,6 +189,14 @@
           service: "{{ instance_tag_service_cache_acts }}"
           job: "{{ cache_acts_job_name }}"
       when: cache_acts_instances.instances == []
+      register: new_cache_acts_instances
+
+    - name: Set the EC2 instance information again (in case we did make a new instance)
+      amazon.aws.ec2_instance_info:
+        filters:
+          "tag:service": "{{ instance_tag_service_cache_acts }}"
+          "tag:job": "{{ cache_acts_job_name }}"
+          instance-state-name: running
       register: new_cache_acts_instances
 
     - name: Wait for SSH to come up
@@ -203,21 +209,13 @@
         state: started
       loop: "{{ new_cache_acts_instances.instances }}"
 
-    - name: Set the EC2 instance information again (in case we did make a new instance)
-      amazon.aws.ec2_instance_info:
-        filters:
-          "tag:service": "{{ instance_tag_service_cache_acts }}"
-          "tag:job": "{{ cache_acts_job_name }}"
-          instance-state-name: running
-      register: cache_acts_instances
-
     - name: Refresh inventory to detect the new instance
       ansible.builtin.meta: refresh_inventory
 
 
 - name: Configure Cache Activations Instance
   hosts: tag_service__{{ instance_tag_service_cache_acts }}:&tag_job__{{ cache_acts_job_name }}
-  gather_facts: false
+  gather_facts: true
   tags:
     - cache_acts
     - cache_acts_config
@@ -231,6 +229,11 @@
     - config.yml
 
   tasks:
+
+    - name: Wait for connection again
+      wait_for_connection:
+        delay: 0
+        timeout: 300
 
     - name: Configure instance storage (for faster I/O on S3 caches vs EBS)
       block:
@@ -297,15 +300,18 @@
           become: true
           become_user: root
 
-        - name: Mount S3 bucket
-          ansible.builtin.command:
-            cmd: "mount-s3 {{ s3_bucket_name }} {{ local_s3_mount_path }}/{{ s3_bucket_name }} \
+        # We have to do this in this insane way for some reason.
+        # The mount-s3 command doesn't work if we try to execute it on the instance directly,
+        # so we ask Ansible to run a literal ssh command from local machine.
+        # Either way we're just happy it works.
+        - name: Mount S3 Bucket
+          delegate_to: localhost
+          ansible.builtin.raw: "ssh ec2-user@{{ inventory_hostname }} 'mount-s3 {{ s3_bucket_name }} {{ local_s3_mount_path }}/{{ s3_bucket_name }} \
                     --allow-overwrite \
                     --allow-delete \
-                    --cache {{ s3_local_cache_path }}"
-          become: true
-          become_user: root
-          changed_when: true
+                    --uid 1000 \
+                    --gid 1000 \
+                    --cache {{ s3_local_cache_path }}'"
 
     - name: Install SAELens
       block:
@@ -334,7 +340,7 @@
 
 - name: Run Cache Activations Job
   hosts: tag_service__{{ instance_tag_service_cache_acts }}:&tag_job__{{ cache_acts_job_name }}
-  gather_facts: false
+  gather_facts: true
   tags:
     - cache_acts
     - cache_acts_job
@@ -342,10 +348,28 @@
     ansible_user: ec2-user
     ansible_ssh_private_key_file: "{{ ssh_key_path }}"
     ansible_python_interpreter: "/home/ec2-user/SAELens/.venv/bin/python"
+    cache_acts_dir: "/home/ec2-user/SAELens/scripts/ansible/jobs/cache_acts"
   vars_files:
     - config.yml
 
   tasks:
+    - name: Make the job directory
+      ansible.builtin.file:
+        path: "{{ cache_acts_dir }}/{{ cache_acts_job_name }}"
+        state: directory
+        owner: ec2-user
+        group: ec2-user
+        mode: '0777'
+        recurse: true
+
+    - name: Copy job config to the instance
+      ansible.builtin.copy:
+        src: "jobs/cache_acts/{{ cache_acts_job_name }}/config.yml"
+        dest: "{{ cache_acts_dir }}/{{ cache_acts_job_name }}/config.yml"
+        owner: ec2-user
+        group: ec2-user
+        mode: '0777'
+
     - name: Run Cache Activations Job
       ansible.builtin.command:
         cmd: "poetry run python cache_activations.py {{ cache_acts_job_name }}"
@@ -353,31 +377,82 @@
       register: cache_acts_job_output
       changed_when: true
 
+    - name: Finished job, terminate the instance
+      ansible.builtin.command:
+        cmd: shutdown -h +3
+      become: true
+      become_user: root
+      changed_when: true
 
-# - name: Configure Cache Activations Instance
-#   hosts: tag_service__{{ instance_tag_service_cache_acts }}:&tag_job__{{ cache_acts_job_name }}
-#   gather_facts: false
-#   tags:
-#     - cache_acts
-#     - cache_acts_config
-#   vars:
-#     ansible_user: ec2-user
-#     ansible_ssh_private_key_file: "{{ ssh_key_path }}"
-#     ansible_python_interpreter: auto_silent
-#   vars_files:
-#     - config.yml
 
-# - name: Facts
-#   block:
-#   - name: Get instances facts
-#     ec2_instance_info:
-#       aws_access_key: "{{ aws_access_key }}"
-#       aws_secret_key: "{{ aws_access_key }}"
-#       region: "{{ region }}"
-#     register: result
+# ============ to do below
 
-#   - name: Instances ID
-#     debug:
-#       msg: "ID: {{ item.instance_id }} - State: {{ item.state.name }} - Public DNS: {{ item.public_dns_name }}"
-#     loop: "{{ result.instances }}"
-#   tags: always
+# - name: "Train SAE: Initialize - Update config file and save it under jobs"
+  # hosts: localhost
+  # gather_facts: false
+  # tags:
+  #   - train_sae
+  #   - train_sae_init
+  # vars:
+  #   input_yaml_path: "config.yml"
+  #   output_yaml_dir_path: "jobs/cache_acts/{{ cache_acts_job_name }}"
+  #   output_yaml_path: "{{ output_yaml_dir_path }}/config.yml"
+  #   new_cached_activations_path_key: "new_cached_activations_path"
+  #   new_cached_activations_path_value: "{{ local_s3_mount_path }}/{{ s3_bucket_name }}/cached_activations/{{ cache_acts_job_name }}"
+  #   training_tokens_key: "training_tokens"
+  #   training_token_value: "{{ (total_training_steps | int * train_batch_size | int) | int }}"
+  # vars_files:
+  #   - config.yml
+  # tasks:
+
+  #   - name: Check that the activation cache doesn't already exist on S3
+  #     amazon.aws.s3_object:
+  #       bucket: "{{ s3_bucket_name }}"
+  #       prefix: "cached_activations/{{ cache_acts_job_name }}"
+  #       mode: list
+  #     register: s3_list
+
+  #   - name: Fail the playbook if the directory already exists
+  #     ansible.builtin.fail:
+  #       msg: "Error: The directory 'cached_activations/{{ cache_acts_job_name }}' already exists \
+  #               in the bucket '{{ s3_bucket_name }}'. Specify a different job name or move/delete the existing directory on S3."
+  #     when: s3_list.s3_keys | length > 0
+
+  #   - name: Load the YAML file into a variable for modification
+  #     ansible.builtin.slurp:
+  #       path: "{{ input_yaml_path }}"
+  #     register: config_yaml_file
+
+  #   - name: Read yaml to dictionary
+  #     ansible.builtin.set_fact:
+  #       config_yaml_content: "{{ config_yaml_file['content'] | b64decode | from_yaml }}"
+
+  #   - name: Update the values
+  #     ansible.builtin.set_fact:
+  #       updated_config_yaml_content: >-
+  #         {{
+  #           config_yaml_content | combine({
+  #             training_tokens_key: training_token_value | int,
+  #             new_cached_activations_path_key: new_cached_activations_path_value
+  #           })
+  #         }}
+
+  #   - name: Create the job history directory
+  #     ansible.builtin.file:
+  #       path: "{{ output_yaml_dir_path }}"
+  #       state: directory
+  #       recurse: true
+  #       mode: '0766'
+
+  #   - name: Write back the modified YAML to a new file
+  #     ansible.builtin.copy:
+  #       content: "{{ updated_config_yaml_content | to_nice_yaml }}"
+  #       dest: "{{ output_yaml_path }}"
+  #       mode: '0644'
+
+  #   - name: Upload the YAML to AWS too
+  #     amazon.aws.s3_object:
+  #       bucket: "{{ s3_bucket_name }}"
+  #       object: "cached_activations/{{ cache_acts_job_name }}-config.yml"
+  #       src: "{{ output_yaml_path }}"
+  #       mode: "put"
