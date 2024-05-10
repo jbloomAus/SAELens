@@ -181,4 +181,7 @@ neuronpedia_outputs/
 tests/benchmark/fixtures/
 
 # ignore prof
-prof/   
+prof/
+
+scripts/ansible/config.yml
+jobs/

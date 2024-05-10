@@ -63,7 +63,7 @@ train_sae_job_name: residuals
 
 # Change these depending on your job
 train_sae_instance_type: g6.xlarge
-saelens_version_or_branch: v1.8.0
+saelens_version_or_branch: automation
 
 
 

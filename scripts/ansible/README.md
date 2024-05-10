@@ -54,6 +54,14 @@ cd scripts/ansible
 ansible-playbook -i aws_ec2.yml playbook.yml --tags cache_acts
 ```
 
+#### See All Supported Commands ("tags")
+
+```
+cd scripts/ansible
+ansible-playbook playbook.yml -i aws_ec2.yml --list-tags
+```
+Then run specific tags with the --tags flag
+
 ### TODO
     - Use `typer` to make job creation a step-by-step process and available via command line
 	- AWX server for GUI monitoring jobs
