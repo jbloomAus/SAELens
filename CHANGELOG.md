@@ -2,6 +2,25 @@
 
 
 
+## v1.8.0 (2024-05-09)
+
+### Chore
+
+* chore: closing &#34; in docs (#130) ([`5154d29`](https://github.com/jbloomAus/SAELens/commit/5154d29498a480c4e7ddc9edc9effd30cecbeda7))
+
+### Feature
+
+* feat: Add model_from_pretrained_kwargs as config parameter (#122)
+
+* add model_from_pretrained_kwargs config parameter to allow full control over model used to extract activations from. Update tests to cover new cases
+
+* tweaking test style
+
+---------
+
+Co-authored-by: David Chanin &lt;chanindav@gmail.com&gt; ([`094b1e8`](https://github.com/jbloomAus/SAELens/commit/094b1e8250c1ae6cd3fc8336e09075d61ce967d1))
+
+
 ## v1.7.0 (2024-05-08)
 
 ### Feature
