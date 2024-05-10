@@ -2,6 +2,33 @@
 
 
 
+## v2.0.0 (2024-05-10)
+
+### Breaking
+
+* feat: rename batch sizes to give informative units (#133)
+
+BREAKING CHANGE: renamed batch sizing config params
+
+* renaming batch sizes to give units
+
+* changes in notebooks
+
+* missed one!
+
+---------
+
+Co-authored-by: David Chanin &lt;chanindav@gmail.com&gt; ([`cc78e27`](https://github.com/jbloomAus/SAELens/commit/cc78e277ae639f57df389e61899278919c16d993))
+
+### Chore
+
+* chore: tools to make tests more deterministic (#132) ([`2071d09`](https://github.com/jbloomAus/SAELens/commit/2071d096c46b0b532e2d99381b300c3c64071747))
+
+* chore: Make tutorial notebooks work in Google Colab (#120)
+
+Co-authored-by: David Chanin &lt;chanindav@gmail.com&gt; ([`007141e`](https://github.com/jbloomAus/SAELens/commit/007141e67a447f8dfe8d6797a6fba0fc4fce61bd))
+
+
 ## v1.8.0 (2024-05-09)
 
 ### Chore
