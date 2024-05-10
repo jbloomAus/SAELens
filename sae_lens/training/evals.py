@@ -18,7 +18,7 @@ def run_evals(
     n_training_steps: int,
     suffix: str = "",
     n_eval_batches: int = 10,
-    n_eval_seqs: int | None = None,
+    eval_batch_size_prompts: int | None = None,
 ) -> Mapping[str, Any]:
     hook_point = sparse_autoencoder.cfg.hook_point
     hook_point_layer = sparse_autoencoder.hook_point_layer
@@ -27,7 +27,7 @@ def run_evals(
         layer=hook_point_layer
     )
     ### Evals
-    eval_tokens = activation_store.get_batch_tokens(n_eval_seqs)
+    eval_tokens = activation_store.get_batch_tokens(eval_batch_size_prompts)
 
     # Get Reconstruction Score
     losses_df = recons_loss_batched(
@@ -35,7 +35,7 @@ def run_evals(
         model,
         activation_store,
         n_batches=n_eval_batches,
-        n_eval_seqs=n_eval_seqs,
+        eval_batch_size_prompts=eval_batch_size_prompts,
     )
 
     recons_score = losses_df["score"].mean()
@@ -103,11 +103,11 @@ def recons_loss_batched(
     model: HookedRootModule,
     activation_store: ActivationsStore,
     n_batches: int = 100,
-    n_eval_seqs: int | None = None,
+    eval_batch_size_prompts: int | None = None,
 ):
     losses = []
     for _ in range(n_batches):
-        batch_tokens = activation_store.get_batch_tokens(n_eval_seqs)
+        batch_tokens = activation_store.get_batch_tokens(eval_batch_size_prompts)
         score, loss, recons_loss, zero_abl_loss = get_recons_loss(
             sparse_autoencoder, model, batch_tokens
         )

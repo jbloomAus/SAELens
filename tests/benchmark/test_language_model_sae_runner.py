@@ -48,7 +48,7 @@ def test_language_model_sae_runner():
         # training_tokens= 820_000_000, # 200k steps * 4096 batch size ~ 820M tokens (doable overnight on an A100)
         # For now.
         training_tokens=total_training_tokens,  # For initial testing I think this is a good number.
-        train_batch_size=4096,
+        train_batch_size_tokens=4096,
         # Loss Function
         ## Reconstruction Coefficient.
         mse_loss_normalization=None,  # MSE Loss Normalization is not mentioned (so we use stanrd MSE Loss). But not we take an average over the batch.
@@ -80,7 +80,7 @@ def test_language_model_sae_runner():
         adam_beta2=0.999,
         # Buffer details won't matter in we cache / shuffle our activations ahead of time.
         n_batches_in_buffer=64,
-        store_batch_size=16,
+        store_batch_size_prompts=16,
         normalize_activations=False,
         # Feature Store
         feature_sampling_window=1000,

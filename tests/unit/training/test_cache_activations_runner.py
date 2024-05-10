@@ -59,12 +59,12 @@ def test_cache_activations_runner(tmp_path: Path):
         is_dataset_tokenized=True,
         prepend_bos=True,  # I used to train GPT2 SAEs with a prepended-bos but no longer think we should do this.
         training_tokens=total_training_tokens,  # For initial testing I think this is a good number.
-        train_batch_size=4096,
+        train_batch_size_tokens=4096,
         # Loss Function
         ## Reconstruction Coefficient.
         # Buffer details won't matter in we cache / shuffle our activations ahead of time.
         n_batches_in_buffer=n_batches_in_buffer,
-        store_batch_size=store_batch_size,
+        store_batch_size_prompts=store_batch_size,
         normalize_activations=False,
         #
         shuffle_every_n_buffers=2,
@@ -137,12 +137,12 @@ def test_load_cached_activations():
         is_dataset_tokenized=True,
         prepend_bos=True,  # I used to train GPT2 SAEs with a prepended-bos but no longer think we should do this.
         training_tokens=total_training_tokens,  # For initial testing I think this is a good number.
-        train_batch_size=4096,
+        train_batch_size_tokens=4096,
         # Loss Function
         ## Reconstruction Coefficient.
         # Buffer details won't matter in we cache / shuffle our activations ahead of time.
         n_batches_in_buffer=n_batches_in_buffer,
-        store_batch_size=store_batch_size,
+        store_batch_size_prompts=store_batch_size,
         normalize_activations=False,
         # shuffle_every_n_buffers=2,
         # n_shuffles_with_last_section=1,

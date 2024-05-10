@@ -67,10 +67,10 @@ cfg = CacheActivationsRunnerConfig(
     is_dataset_tokenized=True,
     prepend_bos=True,
     training_tokens=total_training_tokens,  # For initial testing I think this is a good number.
-    train_batch_size=4096,
+    train_batch_size_tokens=4096,
     # buffer details
     n_batches_in_buffer=4,
-    store_batch_size=128,
+    store_batch_size_prompts=128,
     normalize_activations=False,
     #
     shuffle_every_n_buffers=8,

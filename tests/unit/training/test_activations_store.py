@@ -97,7 +97,7 @@ def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
     #
     # cfg.context_size = 1024
     # cfg.n_batches_in_buffer = 64
-    # cfg.store_batch_size = 16
+    # cfg.store_batch_size_prompts = 16
 
     store = ActivationsStore.from_config(model, cfg)
 
@@ -108,7 +108,7 @@ def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
 
     # the rest is in the dataloader.
     expected_size = (
-        cfg.store_batch_size * cfg.context_size * cfg.n_batches_in_buffer // 2
+        cfg.store_batch_size_prompts * cfg.context_size * cfg.n_batches_in_buffer // 2
     )
     assert store.storage_buffer.shape == (expected_size, 1, cfg.d_in)
 
@@ -118,7 +118,7 @@ def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
 
     assert isinstance(batch, torch.Tensor)
     assert batch.shape == (
-        store.store_batch_size,
+        store.store_batch_size_prompts,
         store.context_size,
     )
     assert batch.device == store.device
@@ -129,7 +129,7 @@ def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
 
     assert isinstance(activations, torch.Tensor)
     assert activations.shape == (
-        store.store_batch_size,
+        store.store_batch_size_prompts,
         store.context_size,
         1,
         store.d_in,
@@ -143,7 +143,7 @@ def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
 
     assert isinstance(buffer, torch.Tensor)
     buffer_size_expected = (
-        store.store_batch_size * store.context_size * n_batches_in_buffer
+        store.store_batch_size_prompts * store.context_size * n_batches_in_buffer
     )
 
     assert buffer.shape == (buffer_size_expected, 1, store.d_in)
@@ -169,7 +169,7 @@ def test_activations_store__get_activations_head_hook(ts_model: HookedTransforme
 
     assert isinstance(activations, torch.Tensor)
     assert activations.shape == (
-        activation_store_head_hook.store_batch_size,
+        activation_store_head_hook.store_batch_size_prompts,
         activation_store_head_hook.context_size,
         1,
         activation_store_head_hook.d_in,
@@ -190,7 +190,7 @@ def test_activations_store__get_batch_tokens__fills_the_context_separated_by_bos
         * 100
     )
     cfg = build_sae_cfg(
-        store_batch_size=2,
+        store_batch_size_prompts=2,
         context_size=context_size,
     )
 

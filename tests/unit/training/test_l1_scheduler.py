@@ -14,7 +14,7 @@ def test_l1_scheduler_initialization():
 
     l1_scheduler = L1Scheduler(
         l1_warm_up_steps=cfg.l1_warm_up_steps,  # type: ignore
-        total_steps=cfg.training_tokens // cfg.train_batch_size,
+        total_steps=cfg.training_tokens // cfg.train_batch_size_tokens,
         sparse_autoencoder=sparse_autoencoder,
     )
 
@@ -40,7 +40,7 @@ def test_l1_scheduler_initialization_no_warmup():
 
     l1_scheduler = L1Scheduler(
         l1_warm_up_steps=cfg.l1_warm_up_steps,  # type: ignore
-        total_steps=cfg.training_tokens // cfg.train_batch_size,
+        total_steps=cfg.training_tokens // cfg.train_batch_size_tokens,
         sparse_autoencoder=sparse_autoencoder,
     )
 
