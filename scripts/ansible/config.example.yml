@@ -23,14 +23,15 @@ ec2_image: ami-0fcc44e33ff6e4a5f
 
 ########## Cache Activations Job Parameters
 
+# Name your Cache Activations job.
 # Job are tagged on AWS by names, which allows you to run multiple jobs.
-# No dashes in job names. Underscores are fine.
-cache_acts_job_name: gpt2_small_200000
+# NO DASHES IN JOB NAMES. Underscores are fine.
+cache_acts_job_name: gelu_1l_test_500
 # Overview on GPU vs Instance Types: https://docs.aws.amazon.com/dlami/latest/devguide/gpu.html
 # Instance Specs and Pricing: https://instances.vantage.sh/?cost_duration=daily
 # g6.12xlarge seems to work fine for gelu-1l, c4-tokenized-2b, 200_000 training steps, batch size 4096
 cache_acts_instance_type: g6.xlarge
-total_training_steps: 20_000
+total_training_steps: 500
 
 model_name: gelu-1l
 hook_point: blocks.0.hook_mlp_out
@@ -54,10 +55,11 @@ seed: 42
 dtype: torch.float16
 
 
-########## SAE Training Job Parameters
+########## Train SAE Job Parameters
 
+# Name your Train SAE Job
 # Job are tagged on AWS by names, which allows you to run multiple jobs.
-# No dashes in job names. Underscores are fine.
+# NO DASHES IN JOB NAMES. Underscores are fine.
 train_sae_job_name: residuals
 
 
