@@ -91,7 +91,7 @@ class NeuronpediaRunner:
             self.sae_path, device=self.device
         )
         loader = LMSparseAutoencoderSessionloader(self.sparse_autoencoder.cfg)
-        self.model, _, self.activation_store = loader.load_sae_training_group_session()
+        self.model, _, self.activation_store = loader.load_sae_session()
         self.model_id = self.sparse_autoencoder.cfg.model_name
         self.layer = self.sparse_autoencoder.cfg.hook_point_layer
         self.sae_id = sae_id

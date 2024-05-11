@@ -21,43 +21,50 @@ class LanguageModelSAERunnerConfig:
     Configuration for training a sparse autoencoder on a language model.
     """
 
-    # Data Generating Function (Model + Training Distibuion)
+    # Model Name
     model_name: str = "gelu-2l"
     model_class_name: str = "HookedTransformer"
-    hook_point: str = "blocks.{layer}.hook_mlp_out"
-    hook_point_eval: str = "blocks.{layer}.attn.pattern"
-    hook_point_layer: int | list[int] = 0
+
+    # If finetuning an existing SAE.
+    from_pretrained_path: Optional[str] = None
+
+    # SAE Architecture Parameters
     hook_point_head_index: Optional[int] = None
+    hook_point: str = "blocks.{layer}.hook_mlp_out"
+    hook_point_layer: int = 0
+    d_in: int = 512
+    d_sae: Optional[int] = None
+    expansion_factor: int = 4
+    activation_fn: str = "relu"  # relu, tanh-relu
+    noise_scale: float = 0.0
+
+    # SAE Training Parameters (intialization / training run time stuff)
+    apply_b_dec_to_input: bool = True
+    normalize_sae_decoder: bool = True
+    b_dec_init_method: str = "geometric_median"
+    decoder_orthogonal_init: bool = False
+    decoder_heuristic_init: bool = False
+    init_encoder_as_decoder_transpose: bool = False
+
+    # Dataset / Activation Store Parameters
     dataset_path: str = "NeelNanda/c4-tokenized-2b"
-    streaming: bool = True
     is_dataset_tokenized: bool = True
     context_size: int = 128
+    streaming: bool = True
+    normalize_activations: bool = False
     use_cached_activations: bool = False
     cached_activations_path: Optional[str] = (
         None  # Defaults to "activations/{dataset}/{model}/{full_hook_name}_{hook_point_head_index}"
     )
 
-    # SAE Parameters
-    d_in: int = 512
-    d_sae: Optional[int] = None
-    b_dec_init_method: str = "geometric_median"
-    expansion_factor: int | list[int] = 4
-    activation_fn: str = "relu"  # relu, tanh-relu
-    normalize_sae_decoder: bool = True
-    noise_scale: float = 0.0
-    from_pretrained_path: Optional[str] = None
-    apply_b_dec_to_input: bool = True
-    decoder_orthogonal_init: bool = False
-    decoder_heuristic_init: bool = False
-    init_encoder_as_decoder_transpose: bool = False
-
-    # Activation Store Parameters
     n_batches_in_buffer: int = 20
     training_tokens: int = 2_000_000
     finetuning_tokens: int = 0
     store_batch_size_prompts: int = 32
     train_batch_size_tokens: int = 4096
-    normalize_activations: bool = False
+
+    # Eval Parameters
+    hook_point_eval: str = "blocks.{layer}.attn.pattern"
 
     # Misc
     device: str | torch.device = "cpu"
@@ -78,35 +85,31 @@ class LanguageModelSAERunnerConfig:
     train_batch_size_tokens: int = 4096
 
     ## Adam
-    adam_beta1: float | list[float] = 0
-    adam_beta2: float | list[float] = 0.999
+    adam_beta1: float = 0
+    adam_beta2: float = 0.999
 
     ## Loss Function
     mse_loss_normalization: Optional[str] = None
-    l1_coefficient: float | list[float] = 1e-3
-    lp_norm: float | list[float] = 1
+    l1_coefficient: float = 1e-3
+    lp_norm: float = 1
     scale_sparsity_penalty_by_decoder_norm: bool = False
-    l1_warm_up_steps: int | list[int] = 0
+    l1_warm_up_steps: int = 0
 
     ## Learning Rate Schedule
-    lr: float | list[float] = 3e-4
-    lr_scheduler_name: str | list[str] = (
+    lr: float = 3e-4
+    lr_scheduler_name: str = (
         "constant"  # constant, cosineannealing, cosineannealingwarmrestarts
     )
-    lr_warm_up_steps: int | list[int] = 500
-    lr_end: float | list[float] | None = (
-        None  # only used for cosine annealing, default is lr / 10
-    )
-    lr_decay_steps: int | list[int] = 0
-    n_restart_cycles: int | list[int] = 1  # used only for cosineannealingwarmrestarts
+    lr_warm_up_steps: int = 500
+    lr_end: float | None = None  # only used for cosine annealing, default is lr / 10
+    lr_decay_steps: int = 0
+    n_restart_cycles: int = 1  # used only for cosineannealingwarmrestarts
 
     ## FineTuning
     finetuning_method: Optional[str] = None  # scale, decoder or unrotated_decoder
 
     # Resampling protocol args
-    use_ghost_grads: bool | list[bool] = (
-        False  # want to change this to true on some timeline.
-    )
+    use_ghost_grads: bool = False  # want to change this to true on some timeline.
     feature_sampling_window: int = 2000
     dead_feature_window: int = 1000  # unless this window is larger feature sampling,
 
@@ -146,8 +149,7 @@ class LanguageModelSAERunnerConfig:
                 self.hook_point_head_index,
             )
 
-        if not isinstance(self.expansion_factor, list):
-            self.d_sae = self.d_in * self.expansion_factor
+        self.d_sae = self.d_in * self.expansion_factor
         self.tokens_per_buffer = (
             self.train_batch_size_tokens * self.context_size * self.n_batches_in_buffer
         )
@@ -186,10 +188,8 @@ class LanguageModelSAERunnerConfig:
         self.device: str | torch.device = torch.device(self.device)
 
         if self.lr_end is None:
-            if isinstance(self.lr, list):
-                self.lr_end = [lr / 10 for lr in self.lr]
-            else:
-                self.lr_end = self.lr / 10
+            self.lr_end = self.lr / 10
+
         unique_id = self.wandb_id
         if unique_id is None:
             unique_id = cast(
@@ -242,7 +242,7 @@ class LanguageModelSAERunnerConfig:
                 f"Number tokens in sparsity calculation window: {self.feature_sampling_window * self.train_batch_size_tokens:.2e}"
             )
 
-        if not isinstance(self.use_ghost_grads, list) and self.use_ghost_grads:
+        if self.use_ghost_grads:
             print("Using Ghost Grads.")
 
     def get_checkpoints_by_step(self) -> tuple[dict[int, str], bool]:
@@ -300,7 +300,7 @@ class CacheActivationsRunnerConfig:
     model_name: str = "gelu-2l"
     model_class_name: str = "HookedTransformer"
     hook_point: str = "blocks.{layer}.hook_mlp_out"
-    hook_point_layer: int | list[int] = 0
+    hook_point_layer: int = 0
     hook_point_head_index: Optional[int] = None
     dataset_path: str = "NeelNanda/c4-tokenized-2b"
     streaming: bool = True

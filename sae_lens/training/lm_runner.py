@@ -7,16 +7,17 @@ import wandb
 from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.load_model import load_model
 from sae_lens.training.session_loader import LMSparseAutoencoderSessionloader
+from sae_lens.training.sparse_autoencoder import SparseAutoencoder
 from sae_lens.training.train_sae_on_language_model import (
     load_checkpoint,
-    train_sae_group_on_language_model,
+    train_sae_on_language_model,
 )
 
 
-def language_model_sae_runner(cfg: LanguageModelSAERunnerConfig):
+def language_model_sae_runner(cfg: LanguageModelSAERunnerConfig) -> SparseAutoencoder:
     """ """
     training_run_state = None
-    train_contexts = None
+    train_context = None
 
     if cfg.resume:
         try:
@@ -31,7 +32,7 @@ def language_model_sae_runner(cfg: LanguageModelSAERunnerConfig):
                 training_run_state,
                 activations_loader,
                 sparse_autoencoder,
-                train_contexts,
+                train_context,
             ) = load_checkpoint(
                 checkpoint_path=checkpoint_path,
                 cfg=cfg,
@@ -56,9 +57,7 @@ def language_model_sae_runner(cfg: LanguageModelSAERunnerConfig):
             cfg = sparse_autoencoder.cfg
         else:
             loader = LMSparseAutoencoderSessionloader(cfg)
-            model, sparse_autoencoder, activations_loader = (
-                loader.load_sae_training_group_session()
-            )
+            model, sparse_autoencoder, activations_loader = loader.load_sae_session()
 
     if cfg.log_to_wandb:
         resume = None
@@ -100,11 +99,11 @@ def language_model_sae_runner(cfg: LanguageModelSAERunnerConfig):
             sparse_autoencoder.autoencoders[k] = sae  # type: ignore # pyright: ignore [reportPossiblyUnboundVariable]
 
     # train SAE
-    sparse_autoencoder = train_sae_group_on_language_model(
+    sparse_autoencoder = train_sae_on_language_model(
         model=model,  # pyright: ignore [reportPossiblyUnboundVariable] # type: ignore
-        sae_group=sparse_autoencoder,  # pyright: ignore [reportPossiblyUnboundVariable]
+        sparse_autoencoder=sparse_autoencoder,  # pyright: ignore [reportPossiblyUnboundVariable]
         activation_store=activations_loader,  # pyright: ignore [reportPossiblyUnboundVariable]
-        train_contexts=train_contexts,
+        train_context=train_context,
         training_run_state=training_run_state,
         batch_size=cfg.train_batch_size_tokens,
         n_checkpoints=cfg.n_checkpoints,
@@ -115,7 +114,7 @@ def language_model_sae_runner(cfg: LanguageModelSAERunnerConfig):
         autocast=cfg.autocast,
         n_eval_batches=cfg.n_eval_batches,
         eval_batch_size_prompts=cfg.eval_batch_size_prompts,
-    ).sae_group
+    ).sparse_autoencoder
 
     if cfg.log_to_wandb:
         wandb.finish()
