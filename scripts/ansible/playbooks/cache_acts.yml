@@ -1,0 +1,256 @@
+---
+
+- name: "Cache Activations: Initialize - Update config file and save it under jobs"
+  hosts: localhost
+  gather_facts: false
+  vars:
+    input_yaml_path: "{{ lookup('env', 'PWD') ~ '/job_configs/cache_acts.config.yml' }}"
+    output_yaml_dir_path: "{{ lookup('env', 'PWD') ~ '/jobs/cache_acts/' ~ cache_acts_job_name }}"
+    output_yaml_path: "{{ output_yaml_dir_path }}/cache_acts.config.yml"
+    new_cached_activations_path_key: "new_cached_activations_path"
+    new_cached_activations_path_value: "{{ local_s3_mount_path }}/{{ s3_bucket_name }}/cached_activations/{{ cache_acts_job_name }}"
+    training_tokens_key: "training_tokens"
+    training_token_value: "{{ (total_training_steps | int * train_batch_size | int) | int }}"
+  vars_files:
+    - "{{ lookup('env', 'PWD') ~ '/job_configs/cache_acts.config.yml' }}"
+    - "{{ lookup('env', 'PWD') ~ '/job_configs/shared.config.yml' }}"
+
+  tasks:
+
+    - name: Check that the activation cache doesn't already exist on S3
+      amazon.aws.s3_object:
+        bucket: "{{ s3_bucket_name }}"
+        prefix: "cached_activations/{{ cache_acts_job_name }}"
+        mode: list
+      register: s3_list
+
+    # - name: Fail the playbook if the directory already exists
+    #   ansible.builtin.fail:
+    #     msg: "Error: The directory 'cached_activations/{{ cache_acts_job_name }}' already exists \
+    #             in the bucket '{{ s3_bucket_name }}'. Specify a different job name or move/delete the existing directory on S3."
+    #   when: s3_list.s3_keys | length > 0
+
+    - name: Load the YAML file into a variable for modification
+      ansible.builtin.slurp:
+        path: "{{ input_yaml_path }}"
+      register: config_yaml_file
+
+    - name: Read yaml to dictionary
+      ansible.builtin.set_fact:
+        config_yaml_content: "{{ config_yaml_file['content'] | b64decode | from_yaml }}"
+
+    - name: Update the values
+      ansible.builtin.set_fact:
+        updated_config_yaml_content: >-
+          {{
+            config_yaml_content | combine({
+              training_tokens_key: training_token_value | int,
+              new_cached_activations_path_key: new_cached_activations_path_value
+            })
+          }}
+
+    - name: Create the job history directory
+      ansible.builtin.file:
+        path: "{{ output_yaml_dir_path }}"
+        state: directory
+        recurse: true
+        mode: '0766'
+
+    - name: Write back the modified YAML to a new file
+      ansible.builtin.copy:
+        content: "{{ updated_config_yaml_content | to_nice_yaml }}"
+        dest: "{{ output_yaml_path }}"
+        mode: '0644'
+
+    - name: Upload the YAML to AWS too
+      amazon.aws.s3_object:
+        bucket: "{{ s3_bucket_name }}"
+        object: "cached_activations/{{ cache_acts_job_name }}.yml"
+        src: "{{ output_yaml_path }}"
+        mode: "put"
+
+- name: "Make values for Cache Activations Job"
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - "{{ lookup('env', 'PWD') ~ '/job_configs/cache_acts.config.yml' }}"
+
+  tasks:
+    - set_fact:
+        cache_acts_instance_type: "{{ cache_acts_instance_type }}"
+        instance_tag_service_cache_acts: "{{ instance_tag_service_cache_acts }}"
+        cache_acts_job_name: "{{ cache_acts_job_name }}"
+
+- name: "Cache Activations: Launch instance for job {{ cache_acts_job_name }}"
+  ansible.builtin.import_playbook: "{{ lookup('env', 'PWD') ~ '/tasks/launch_ec2_instance.yml' }}"
+  vars:
+    instance_type: "{{ cache_acts_instance_type }}"
+    service_name: "{{ instance_tag_service_cache_acts }}"
+    job_name: "{{ cache_acts_job_name }}"
+
+- name: Configure Instance
+  hosts: tag_service__{{ instance_tag_service_cache_acts }}:&tag_job__{{ cache_acts_job_name }}
+  gather_facts: true
+  vars:
+    ansible_user: ubuntu
+    ansible_ssh_private_key_file: "{{ ssh_key_path }}"
+    ansible_python_interpreter: auto_silent
+    instance_storage_path: "{{ instance_storage_path }}"
+    s3_local_cache_path: "{{ instance_storage_path }}/s3-local-cache"
+  vars_files:
+    - "{{ lookup('env', 'PWD') ~ '/job_configs/shared.config.yml' }}"
+    - "{{ lookup('env', 'PWD') ~ '/job_configs/cache_acts.config.yml' }}"
+
+  tasks:
+
+    - name: Wait for connection
+      wait_for_connection:
+        delay: 0
+        timeout: 300
+
+    - name: Configure instance storage (for faster I/O on S3 caches vs EBS)
+      block:
+      
+        - name: Make the cache directory
+          ansible.builtin.file:
+            path: "{{ s3_local_cache_path }}"
+            state: directory
+            owner: ubuntu
+            group: ubuntu
+            mode: '0755'
+          become: true
+          become_user: root
+
+    - name: Configure S3 Mount
+      block:
+
+        - name: Download AWS mountpoint
+          ansible.builtin.get_url:
+            url: https://s3.amazonaws.com/mountpoint-s3-release/latest/x86_64/mount-s3.deb
+            dest: /home/ubuntu/mount-s3.deb
+            mode: '0444'
+
+        - name: Install AWS mountpoint
+          ansible.builtin.apt:
+            deb: /home/ubuntu/mount-s3.deb
+          become: true
+          become_user: root
+
+        - name: Check if mount point exists
+          ansible.builtin.stat:
+            path: "{{ local_s3_mount_path }}/{{ s3_bucket_name }}"
+          register: stat_result
+
+        - name: Make S3 mount directory
+          ansible.builtin.file:
+            path: "{{ local_s3_mount_path }}/{{ s3_bucket_name }}"
+            state: directory
+            owner: root
+            group: root
+            mode: '0777'
+          become: true
+          become_user: root
+          when: not stat_result.stat.exists
+
+        # We have to do this in this insane way for some reason.
+        # The mount-s3 command doesn't work if we try to execute it on the instance directly,
+        # so we ask Ansible to run a literal ssh command from local machine.
+        # Either way we're just happy it works.
+        - name: Mount S3 Bucket
+          delegate_to: localhost
+          ansible.builtin.raw: "ssh ubuntu@{{ inventory_hostname }} 'mount-s3 {{ s3_bucket_name }} {{ local_s3_mount_path }}/{{ s3_bucket_name }} \
+                    --allow-overwrite \
+                    --allow-delete \
+                    --uid 1000 \
+                    --gid 1000 \
+                    --cache {{ s3_local_cache_path }}'"
+          when: not stat_result.stat.exists
+
+    - name: Install SAELens
+      block:
+
+        - name: "Git checkout SAELens {{ saelens_version_or_branch }}"
+          ansible.builtin.git:
+            repo: 'https://github.com/jbloomAus/SAELens.git'
+            dest: /home/ubuntu/SAELens
+            version: "{{ saelens_version_or_branch }}"
+
+        - name: Install poetry
+          ansible.builtin.command:
+            cmd: "pip install poetry"
+
+        - name: Poetry lock
+          ansible.builtin.shell:
+            cmd: poetry config --local virtualenvs.in-project true && poetry lock
+            chdir: /home/ubuntu/SAELens
+          changed_when: true
+
+        - name: Poetry install (this will take a few minutes)
+          ansible.builtin.command:
+            cmd: poetry install --without dev
+            chdir: /home/ubuntu/SAELens
+          changed_when: true
+
+- name: Run Cache Activations Job
+  hosts: tag_service__{{ instance_tag_service_cache_acts }}:&tag_job__{{ cache_acts_job_name }}
+  gather_facts: true
+  vars:
+    ansible_user: ubuntu
+    ansible_ssh_private_key_file: "{{ ssh_key_path }}"
+    ansible_python_interpreter: "/home/ubuntu/SAELens/.venv/bin/python"
+    cache_acts_dir: "/home/ubuntu/SAELens/scripts/ansible/jobs/cache_acts"
+    local_job_dir: "{{ lookup('env', 'PWD') ~ '/jobs/cache_acts/' ~ cache_acts_job_name }}"
+  vars_files:
+    - "{{ lookup('env', 'PWD') ~ '/job_configs/cache_acts.config.yml' }}"
+    - "{{ lookup('env', 'PWD') ~ '/job_configs/shared.config.yml' }}"
+
+  tasks:
+    - name: Make the job directory
+      ansible.builtin.file:
+        path: "{{ cache_acts_dir }}/{{ cache_acts_job_name }}"
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0777'
+        recurse: true
+
+    - name: Copy job config to the instance
+      ansible.builtin.copy:
+        src: "{{ local_job_dir ~ '/cache_acts.config.yml' }}"
+        dest: "{{ cache_acts_dir }}/{{ cache_acts_job_name }}/cache_acts.config.yml"
+        owner: ubuntu
+        group: ubuntu
+        mode: '0777'
+    
+    - name: "Run Cache Activations Job. Log: {{ s3_bucket_name }}/cached_activations/{{ cache_acts_job_name }}.log"
+      ansible.builtin.shell:
+        cmd: "poetry run python util/cache_acts.py {{ cache_acts_job_name }} } 2>&1 \
+                | tee -a {{ local_s3_mount_path }}/{{ s3_bucket_name }}/cached_activations/{{ cache_acts_job_name }}.log"
+        chdir: /home/ubuntu/SAELens/scripts/ansible
+      changed_when: true
+
+    - name: Copy python log file to local
+      ansible.builtin.fetch:
+        src: "{{ local_s3_mount_path }}/{{ s3_bucket_name }}/cached_activations/{{ cache_acts_job_name }}.log"
+        dest: "{{ local_job_dir ~ '/python.log' }}"
+        flat: true
+    
+    - name: Finished job, terminate the instance
+      ansible.builtin.command:
+        cmd: shutdown -h +10
+      become: true
+      become_user: root
+      changed_when: true
+
+- name: Copy ansible.log file to job path, clear it
+  hosts: localhost
+  connection: local
+  vars_files:
+    - "{{ lookup('env', 'PWD') ~ '/job_configs/cache_acts.config.yml' }}"
+  
+  tasks:
+    - name: Copy ansible.log file to job path
+      ansible.builtin.copy:
+        src: "{{ lookup('env', 'PWD') ~ 'ansible.log' }}"
+        dest: "{{ lookup('env', 'PWD') ~ '/jobs/cache_acts/' ~ cache_acts_job_name }}/ansible.log"
+        mode: '0777'

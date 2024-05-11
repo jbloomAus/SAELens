@@ -32,7 +32,9 @@ TORCH_DTYPES = {"torch.float16": torch.float16, "torch.float32": torch.float32}
 # load the yaml file as config
 # load only the keys that are in CacheActivationsRunnerConfig
 # TODO: this is a hacky way of importing
-with open(f"./jobs/cache_acts/{cache_acts_job_name}/config.yml", "r") as file:
+with open(
+    f"./jobs/cache_acts/{cache_acts_job_name}/cache_acts.config.yml", "r"
+) as file:
     config_yaml = yaml.load(file, Loader=yaml.FullLoader)
 
     config_params = inspect.signature(CacheActivationsRunnerConfig).parameters
@@ -47,6 +49,7 @@ if config is None:
 
 print(f"Total Training Tokens: {config.training_tokens}")
 
+# This is set by Ansible
 new_cached_activations_path = config.new_cached_activations_path
 if new_cached_activations_path is None:
     raise ValueError("Error: The new_cached_activations_path is not set.")

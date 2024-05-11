@@ -2,7 +2,7 @@
 
 This is an Ansible playbook that runs `caching_replication_how_train_saes.py` and `replication_how_train_saes.py` in AWS.
 
-Jobs are configured by the `config.yml` file.
+Jobs are configured by the `cache_acts.config.yml` file.
 
 ### Prerequisites
 - AWS Account
@@ -22,7 +22,7 @@ Jobs are configured by the `config.yml` file.
 	https://us-east-1.console.aws.amazon.com/iam/home?region=us-east-1#/security_credentials/access-key-wizard)
 
 2) Save the following file into `~/.aws/credentials`, replacing the values with the ones you generated.
-   - Don't change the region - keep it as `us-east-1`. Since all data transfer is in the same data center, it doesn't matter where you physically reside. If you change this, you will need to update `aws_ec2.yml` and the AMI ID in `config.yml`, and some services may not be available in other regions.
+   - Don't change the region - keep it as `us-east-1`. Since all data transfer is in the same data center, it doesn't matter where you physically reside. If you change this, you will need to update `aws_ec2.yml` and the AMI ID in `cache_acts.config.yml`, and some services may not be available in other regions.
 
 ```
 # ~/.aws/credentials
@@ -38,22 +38,26 @@ region=us-east-1
 pip install ansible
 ansible --version
 
-ansible-galaxy collection install -r requirements.yml
+ansible-galaxy collection install -r util/requirements.yml
 ```
 
 #### Configure a Job to Run
 ```
 cd scripts/ansible
-cp config.example.yml config.yml
+cp examples/config.cache_acts.yml config.cache_acts.yml
 ```
-Modify `config.yml` for your job. Why is this YAML and not JSON? Because YAML supports comments.
+Modify `config_cache_acts.yml` for your job. Why is this YAML and not JSON? Because YAML supports comments.
 
 #### Run the Job
 
-Cache Activations
+You'll want to have the [AWS EC2 Console](https://us-east-1.console.aws.amazon.com/ec2/home?region=us-east-1) open so you can watch the instance be launched, terminate it manually in case it has any problems. By default if you kill/exit Ansible prematurely we will not stop your EC2 instance, so you'll keep getting billed for it.
+
+
+__Cache Activations__
+
 ```
 cd scripts/ansible
-ansible-playbook -i aws_ec2.yml playbook.yml --tags cache_acts
+ansible-playbook playbookvar.yml --tags cache_acts
 ```
 
 #### See All Supported Commands ("tags")
@@ -66,7 +70,7 @@ Then run specific tags with the --tags flag
 
 ### TODO
     - use containers to simplify instance configuration
-    - use 'typer' on `cache_activations.py` and `train_sae.py` 
+    - use 'typer' on `cache_acts.py` and `train_sae.py` 
     - split into different playbooks, roles
     - don't use 777 permissions
 	- AWX server for GUI monitoring jobs

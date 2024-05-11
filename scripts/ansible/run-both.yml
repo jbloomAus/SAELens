@@ -1,0 +1,16 @@
+---
+
+- name: Run Setup
+  ansible.builtin.import_playbook: playbooks/setup.yml
+
+- name: Run Cache Acts
+  ansible.builtin.import_playbook: playbooks/cache_acts.yml
+
+# - name: Run Train SAE
+#   ansible.builtin.import_playbook: playbooks/train_sae.yml
+
+# - name: Clear ansible.log
+#   ansible.builtin.copy:
+#     content: ""
+#     dest: "ansible.log"
+#     mode: '0644'
