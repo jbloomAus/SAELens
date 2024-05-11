@@ -1,19 +1,17 @@
 ---
 
-- name: Load the config for this job
+- name: "Load config for service {{ service_name }} job {{ job_name }}"
   include_vars:
     file: "{{ config_file }}"
 
 - name: "Get EC2 instances for job {{ job_name }}"
-  block:
-    - name: Get EC2 instance information
-      amazon.aws.ec2_instance_info:
-        filters:
-          "tag:service": "{{ service_name }}"
-          "tag:sweep": "{{ sweep_name | default(omit) }}"
-          "tag:job": "{{ job_name }}"
-          instance-state-name: running
-      register: result
+  amazon.aws.ec2_instance_info:
+    filters:
+      "tag:service": "{{ service_name }}"
+      "tag:sweep": "{{ sweep_name | default(omit) }}"
+      "tag:job": "{{ job_name }}"
+      instance-state-name: running
+  register: result
 
 - name: Start instance and wait for it
   amazon.aws.ec2_instance:
@@ -40,7 +38,7 @@
       job: "{{ job_name }}"
   register: instances
 
-- name: Set the EC2 instance information again (in case we did make a new instance)
+- name: Refresh EC2 instance information
   amazon.aws.ec2_instance_info:
     filters:
       "tag:service": "{{ service_name }}"

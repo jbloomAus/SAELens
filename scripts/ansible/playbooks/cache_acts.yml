@@ -12,7 +12,7 @@
     training_tokens_key: "training_tokens"
     training_token_value: "{{ (total_training_steps | int * train_batch_size | int) | int }}"
   vars_files:
-    - "{{ lookup('env', 'PWD') ~ '/job_configs/cache_acts/cache_acts.yml' }}"
+    - "{{ lookup('env', 'PWD') ~ '/job_configs/cache_acts.yml' }}"
     - "{{ lookup('env', 'PWD') ~ '/job_configs/shared.yml' }}"
 
   tasks:
@@ -78,6 +78,7 @@
       include_tasks: "{{ lookup('env', 'PWD') ~ '/tasks/launch_ec2_instance.yml' }}"
       vars:
         config_file: "{{ lookup('env', 'PWD') ~ '/job_configs/cache_acts.yml' }}"
+        service_name: "cache_acts"
 
 - name: "Configure instance for job {{ job_name }}"
   hosts: tag_service__cache_acts:&tag_job__{{ job_name }}

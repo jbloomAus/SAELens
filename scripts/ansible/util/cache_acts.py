@@ -7,7 +7,7 @@ import torch
 import yaml
 
 from sae_lens.training.cache_activations_runner import CacheActivationsRunner
-from sae_lens.training.config import CacheActivationsRunnerConfig
+from sae_lens.training.config import DTYPE_MAP, CacheActivationsRunnerConfig
 
 if len(sys.argv) > 1:
     job_name = sys.argv[1]
@@ -27,8 +27,6 @@ else:
 print("Using device:", device)
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-TORCH_DTYPES = {"torch.float16": torch.float16, "torch.float32": torch.float32}
-
 # load the yaml file as config
 # load only the keys that are in CacheActivationsRunnerConfig
 # TODO: this is a hacky way of importing
@@ -39,7 +37,8 @@ with open(f"./jobs/cache_acts/{job_name}/cache_acts.yml", "r") as file:
     filtered_data = {k: v for k, v in config_yaml.items() if k in config_params}
     config = CacheActivationsRunnerConfig(**filtered_data)
 
-    config.dtype = TORCH_DTYPES[config.dtype]  # type: ignore
+    if type(config.dtype) != torch.dtype:
+        config.dtype = DTYPE_MAP[config.dtype]  # type: ignore
     config.device = device
 
 if config is None:

@@ -183,7 +183,7 @@ tests/benchmark/fixtures/
 # ignore prof
 prof/
 
-scripts/ansible/cache_acts.config.yml
-jobs/
-job_configs/
-ansible.log
+scripts/ansible/cache_acts.yml
+scripts/ansible/jobs/
+scripts/ansible/job_configs/
+scripts/ansible/ansible.log

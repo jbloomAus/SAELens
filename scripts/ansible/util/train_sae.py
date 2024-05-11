@@ -5,7 +5,7 @@ import sys
 import torch
 import yaml
 
-from sae_lens.training.config import LanguageModelSAERunnerConfig
+from sae_lens.training.config import DTYPE_MAP, LanguageModelSAERunnerConfig
 from sae_lens.training.lm_runner import language_model_sae_runner
 
 # sys.path.append("..")
@@ -29,19 +29,18 @@ else:
 print("Using device:", device)
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-TORCH_DTYPES = {"torch.float16": torch.float16, "torch.float32": torch.float32}
-
 # load the yaml file as config
-# load only the keys that are in CacheActivationsRunnerConfig
+# load only the keys that are in LanguageModelSAERunnerConfig
 # TODO: this is a hacky way of importing
-with open(f"./jobs/train_sae/{job_name}/train_sae.config.yml", "r") as file:
+with open(f"./jobs/train_sae/{job_name}/{job_name}.yml", "r") as file:
     config_yaml = yaml.load(file, Loader=yaml.FullLoader)
 
     config_params = inspect.signature(LanguageModelSAERunnerConfig).parameters
     filtered_data = {k: v for k, v in config_yaml.items() if k in config_params}
     config = LanguageModelSAERunnerConfig(**filtered_data)
 
-    config.dtype = TORCH_DTYPES[config.dtype]  # type: ignore
+    if type(config.dtype) != torch.dtype:
+        config.dtype = DTYPE_MAP[config.dtype]  # type: ignore
     config.device = device
 
 if config is None:
