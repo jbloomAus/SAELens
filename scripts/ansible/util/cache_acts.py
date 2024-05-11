@@ -10,8 +10,8 @@ from sae_lens.training.cache_activations_runner import CacheActivationsRunner
 from sae_lens.training.config import CacheActivationsRunnerConfig
 
 if len(sys.argv) > 1:
-    cache_acts_job_name = sys.argv[1]
-    print(f"Cache Activations Job Name: {cache_acts_job_name}")
+    job_name = sys.argv[1]
+    print(f"Cache Activations Job Name: {job_name}")
 else:
     raise ValueError("Error: One argument required - the Cache Activations Job Name")
 
@@ -32,9 +32,7 @@ TORCH_DTYPES = {"torch.float16": torch.float16, "torch.float32": torch.float32}
 # load the yaml file as config
 # load only the keys that are in CacheActivationsRunnerConfig
 # TODO: this is a hacky way of importing
-with open(
-    f"./jobs/cache_acts/{cache_acts_job_name}/cache_acts.config.yml", "r"
-) as file:
+with open(f"./jobs/cache_acts/{job_name}/cache_acts.yml", "r") as file:
     config_yaml = yaml.load(file, Loader=yaml.FullLoader)
 
     config_params = inspect.signature(CacheActivationsRunnerConfig).parameters

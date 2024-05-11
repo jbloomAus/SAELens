@@ -1,0 +1,89 @@
+---
+
+- name: Wait for connection
+  wait_for_connection:
+    delay: 0
+    timeout: 300
+
+- name: Configure instance storage (for faster I/O on S3 caches vs EBS)
+  block:
+  
+    - name: Make the cache directory
+      ansible.builtin.file:
+        path: "{{ s3_local_cache_path }}"
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+      become: true
+      become_user: root
+
+- name: Configure S3 Mount
+  block:
+
+    - name: Download AWS mountpoint
+      ansible.builtin.get_url:
+        url: https://s3.amazonaws.com/mountpoint-s3-release/latest/x86_64/mount-s3.deb
+        dest: /home/ubuntu/mount-s3.deb
+        mode: '0444'
+
+    - name: Install AWS mountpoint
+      ansible.builtin.apt:
+        deb: /home/ubuntu/mount-s3.deb
+      become: true
+      become_user: root
+
+    - name: Check if mount point exists
+      ansible.builtin.stat:
+        path: "{{ local_s3_mount_path }}/{{ s3_bucket_name }}"
+      register: stat_result
+
+    - name: Make S3 mount directory
+      ansible.builtin.file:
+        path: "{{ local_s3_mount_path }}/{{ s3_bucket_name }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0777'
+      become: true
+      become_user: root
+      when: not stat_result.stat.exists
+
+    # We have to do this in this insane way for some reason.
+    # The mount-s3 command doesn't work if we try to execute it on the instance directly,
+    # so we ask Ansible to run a literal ssh command from local machine.
+    # Either way we're just happy it works.
+    - name: Mount S3 Bucket
+      delegate_to: localhost
+      ansible.builtin.raw: "ssh ubuntu@{{ inventory_hostname }} 'mount-s3 {{ s3_bucket_name }} {{ local_s3_mount_path }}/{{ s3_bucket_name }} \
+                --allow-overwrite \
+                --allow-delete \
+                --uid 1000 \
+                --gid 1000 \
+                --cache {{ s3_local_cache_path }}'"
+      when: not stat_result.stat.exists
+
+- name: Install SAELens
+  block:
+
+    - name: "Git checkout SAELens {{ saelens_version_or_branch }}"
+      ansible.builtin.git:
+        repo: 'https://github.com/jbloomAus/SAELens.git'
+        dest: /home/ubuntu/SAELens
+        version: "{{ saelens_version_or_branch }}"
+
+    - name: Install poetry
+      ansible.builtin.command:
+        cmd: "pip install poetry"
+
+    - name: Poetry lock
+      ansible.builtin.shell:
+        cmd: poetry config --local virtualenvs.in-project true && poetry lock
+        chdir: /home/ubuntu/SAELens
+      changed_when: true
+
+    - name: Poetry install (this will take a few minutes)
+      ansible.builtin.command:
+        cmd: poetry install --without dev
+        chdir: /home/ubuntu/SAELens
+      changed_when: true

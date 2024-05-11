@@ -2,7 +2,7 @@
 
 This is an Ansible playbook that runs `caching_replication_how_train_saes.py` and `replication_how_train_saes.py` in AWS.
 
-Jobs are configured by the `cache_acts.config.yml` file.
+Jobs are configured by the `cache_acts.yml` file.
 
 ### Prerequisites
 - AWS Account
@@ -22,7 +22,7 @@ Jobs are configured by the `cache_acts.config.yml` file.
 	https://us-east-1.console.aws.amazon.com/iam/home?region=us-east-1#/security_credentials/access-key-wizard)
 
 2) Save the following file into `~/.aws/credentials`, replacing the values with the ones you generated.
-   - Don't change the region - keep it as `us-east-1`. Since all data transfer is in the same data center, it doesn't matter where you physically reside. If you change this, you will need to update `aws_ec2.yml` and the AMI ID in `cache_acts.config.yml`, and some services may not be available in other regions.
+   - Don't change the region - keep it as `us-east-1`. Since all data transfer is in the same data center, it doesn't matter where you physically reside. If you change this, you will need to update `aws_ec2.yml` and the AMI ID in `cache_acts.yml`, and some services may not be available in other regions.
 
 ```
 # ~/.aws/credentials

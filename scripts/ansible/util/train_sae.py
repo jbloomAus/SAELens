@@ -12,8 +12,8 @@ from sae_lens.training.lm_runner import language_model_sae_runner
 
 
 if len(sys.argv) > 1:
-    train_sae_job_name = sys.argv[1]
-    print(f"Train SAE Job Name: {train_sae_job_name}")
+    job_name = sys.argv[1]
+    print(f"Train SAE Job Name: {job_name}")
 else:
     raise ValueError("Error: One argument required - the Train SAE Job Name")
 
@@ -34,7 +34,7 @@ TORCH_DTYPES = {"torch.float16": torch.float16, "torch.float32": torch.float32}
 # load the yaml file as config
 # load only the keys that are in CacheActivationsRunnerConfig
 # TODO: this is a hacky way of importing
-with open(f"./jobs/train_sae/{train_sae_job_name}/train_sae.config.yml", "r") as file:
+with open(f"./jobs/train_sae/{job_name}/train_sae.config.yml", "r") as file:
     config_yaml = yaml.load(file, Loader=yaml.FullLoader)
 
     config_params = inspect.signature(LanguageModelSAERunnerConfig).parameters

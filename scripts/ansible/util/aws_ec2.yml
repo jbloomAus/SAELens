@@ -5,6 +5,8 @@ regions:
 keyed_groups:
   - key: tags.service
     prefix: tag_service_
+  - key: tags.sweep
+    prefix: tag_sweep_
   - key: tags.job
     prefix: tag_job_
   - key: instance-state-name
