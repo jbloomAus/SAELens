@@ -17,7 +17,6 @@ def reproducibility():
     seed = 0x1234_5678_9ABC_DEF0
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
-    torch.use_deterministic_algorithms(True)
     torch.backends.cudnn.benchmark = False
     # Python native RNG; docs don't give any limitations on seed range
     random.seed(seed)
