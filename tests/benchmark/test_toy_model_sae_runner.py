@@ -1,7 +1,7 @@
 import torch
 
 from sae_lens.training.toy_model_runner import (
-    SAEToyModelRunnerConfig,
+    ToyModelSAERunnerConfig,
     toy_model_sae_runner,
 )
 
@@ -15,7 +15,7 @@ def test_toy_model_sae_runner():
     else:
         device = "cpu"
 
-    cfg = SAEToyModelRunnerConfig(
+    cfg = ToyModelSAERunnerConfig(
         # Model Details
         n_features=100,
         n_hidden=10,
@@ -38,7 +38,7 @@ def test_toy_model_sae_runner():
         log_to_wandb=True,
         wandb_project="mats_sae_training_benchmarks_toy",
         wandb_log_frequency=5,
-        device=device,
+        device=torch.device(device),
     )
 
     trained_sae = toy_model_sae_runner(cfg)
