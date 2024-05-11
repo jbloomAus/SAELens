@@ -2,6 +2,27 @@
 
 
 
+## v2.1.0 (2024-05-11)
+
+### Chore
+
+* chore: remove use_deterministic_algorithms=True since it causes cuda errors (#137) ([`1a3bedb`](https://github.com/jbloomAus/SAELens/commit/1a3bedbc3192ca919fc0716ce52d06f060ad2550))
+
+### Feature
+
+* feat: Hooked toy model (#134)
+
+* adds initial re-implementation of toy models
+
+* removes instance dimension from toy models
+
+* fixing up minor nits and adding more tests
+
+---------
+
+Co-authored-by: David Chanin &lt;chanindav@gmail.com&gt; ([`03aa25c`](https://github.com/jbloomAus/SAELens/commit/03aa25c6e8589c1eb9a6b94911e6d77187d6bef7))
+
+
 ## v2.0.0 (2024-05-10)
 
 ### Breaking
