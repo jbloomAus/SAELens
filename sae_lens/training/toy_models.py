@@ -38,11 +38,21 @@ def cosine_decay_lr(step: int, steps: int):
     return np.cos(0.5 * np.pi * step / (steps - 1))
 
 
+def _init_importance(
+    importance: Optional[Union[float, Tensor]],
+    n_features: int,
+    device: str | torch.device,
+) -> Tensor:
+    if importance is None:
+        importance = t.ones(())
+    if isinstance(importance, float):
+        importance = t.tensor(importance)
+    assert isinstance(importance, Tensor)  # pyright can't seem to infer this
+    return importance.to(device).broadcast_to((n_features))
+
+
 @dataclass
 class ToyConfig:
-    # We optimize n_instances models in a single training loop to let us sweep over
-    # sparsity or importance curves  efficiently. You should treat `n_instances` as
-    # kinda like a batch dimension, but one which is built into our training setup.
     n_features: int = 5
     n_hidden: int = 2
     n_correlated_pairs: int = 0
@@ -69,16 +79,10 @@ class HookedToyModel(HookedRootModule, ABC):
             (cfg.n_features)
         )
 
-        importance = cfg.importance
-        if importance is None:
-            importance = t.ones(())
-        if isinstance(importance, float):
-            importance = t.tensor(importance)
-        assert isinstance(importance, Tensor)  # pyright can't seem to infer this
-        self.importance = importance.to(device).broadcast_to((cfg.n_features))
+        self.importance = _init_importance(cfg.importance, cfg.n_features, device)
 
     @abstractmethod
-    def forward(self, features: Tensor, return_type: str | None = None) -> Tensor:
+    def forward(self, features: Tensor, return_type: str) -> Tensor:
         """Forward pass, to be implemented by subclasses"""
 
     @abstractmethod
@@ -241,7 +245,7 @@ class ReluOutputModel(HookedToyModel):
     def forward(
         self,
         features: Float[Tensor, "... features"],
-        return_type: str | None = None,
+        return_type: str = "reconstruction",
     ) -> Float[Tensor, "... features"]:
         hidden = self.hook_hidden(
             einops.einsum(
@@ -261,8 +265,10 @@ class ReluOutputModel(HookedToyModel):
 
         if return_type == "loss":
             return self.calculate_loss(reconstructed, features)
-        else:
+        elif return_type == "reconstruction":
             return reconstructed
+        else:
+            raise ValueError(f"Unknown return type: {return_type}")
 
     def calculate_loss(
         self,
@@ -307,6 +313,7 @@ class ReluOutputModelCE(ReluOutputModel):
             nn.init.xavier_normal_(t.empty((cfg.n_hidden, cfg.n_features + 1)))
         )
         self.b_final = nn.Parameter(t.zeros((cfg.n_features + 1)))
+        self.importance = _init_importance(cfg.importance, cfg.n_features + 1, device)
         self.to(device)
 
     def generate_batch(self, batch_size: int) -> Float[Tensor, "batch_size features"]:
@@ -485,7 +492,7 @@ def parse_colors_for_superposition_plot(
     """
     # If colors is a tensor, we assume it's the importances tensor, and we color according to a viridis color scheme
     # if isinstance(colors, Tensor):
-    #     colors = t.broadcast_to(colors, (n_instances, n_feats))
+    #     colors = t.broadcast_to(colors, (n_feats))
     #     colors = [
     #         [helper_get_viridis(v.item()) for v in colors_for_this_instance]
     #         for colors_for_this_instance in colors

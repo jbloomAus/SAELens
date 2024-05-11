@@ -340,6 +340,59 @@ class CacheActivationsRunnerConfig:
             )
 
 
+@dataclass
+class ToyModelSAERunnerConfig:
+    # ReLu Model Parameters
+    n_features: int = 5
+    n_hidden: int = 2
+    n_correlated_pairs: int = 0
+    n_anticorrelated_pairs: int = 0
+    feature_probability: float = 0.025
+    model_training_steps: int = 10_000
+
+    # SAE Parameters
+    d_sae: int = 5
+
+    # Training Parameters
+    l1_coefficient: float = 1e-3
+    lr: float = 3e-4
+    train_batch_size: int = 1024
+    b_dec_init_method: str = "geometric_median"
+
+    # Sparsity / Dead Feature Handling
+    use_ghost_grads: bool = (
+        False  # not currently implemented, but SAE class expects it.
+    )
+    feature_sampling_window: int = 100
+    dead_feature_window: int = 100  # unless this window is larger feature sampling,
+    dead_feature_threshold: float = 1e-8
+
+    # Activation Store Parameters
+    total_training_tokens: int = 25_000
+
+    # WANDB
+    log_to_wandb: bool = True
+    wandb_project: str = "mats_sae_training_toy_model"
+    wandb_entity: str | None = None
+    wandb_log_frequency: int = 50
+
+    # Misc
+    device: str | torch.device = "cuda" if torch.cuda.is_available() else "cpu"
+    seed: int = 42
+    checkpoint_path: str = "checkpoints"
+    dtype: str | torch.dtype = "float32"
+
+    def __post_init__(self):
+        self.d_in = self.n_hidden  # hidden for the ReLu model is the input for the SAE
+
+        if isinstance(self.dtype, str) and self.dtype not in DTYPE_MAP:
+            raise ValueError(
+                f"dtype must be one of {list(DTYPE_MAP.keys())}. Got {self.dtype}"
+            )
+        elif isinstance(self.dtype, str):
+            self.dtype = DTYPE_MAP[self.dtype]
+
+
 def _default_cached_activations_path(
     dataset_path: str,
     model_name: str,

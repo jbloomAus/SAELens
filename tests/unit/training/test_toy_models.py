@@ -101,3 +101,30 @@ def test_reluoutputce_batch_shape():
     model = ReluOutputModelCE(cfg)
     batch = model.generate_batch(100)
     assert batch.shape == (100, cfg.n_features + 1)
+
+
+def test_ReluOutputModel_can_overfit_with_full_hidden_layer():
+    cfg = ToyConfig(n_features=6, n_hidden=6, feature_probability=0.5)
+    model = ReluOutputModel(cfg)
+    batch = model.generate_batch(5)
+
+    # before training, the model should be able to reproduce the input
+    assert not torch.allclose(model(batch), batch, atol=1e-2)
+
+    model.optimize(steps=10000)
+
+    # after training, the model should be able to reproduce the input
+    assert torch.allclose(model(batch), batch, atol=1e-2)
+
+
+def test_ReluOutputModelCE_can_overfit_with_full_hidden_layer():
+    cfg = ToyConfig(n_features=6, n_hidden=6, feature_probability=0.5)
+    model = ReluOutputModelCE(cfg)
+    batch = model.generate_batch(5)
+    top_batch_feats = torch.argmax(batch, dim=-1)
+
+    model.optimize(steps=10000)
+
+    # after training, the model should be able to reproduce the input
+    output_top_feats = torch.argmax(model(batch), dim=-1)
+    assert torch.allclose(output_top_feats, top_batch_feats)
