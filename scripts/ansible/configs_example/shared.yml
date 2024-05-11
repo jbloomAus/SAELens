@@ -15,10 +15,8 @@
 # Example: johnny.saes.1234
 s3_bucket_name: johnny.saes.1234
 
-
 # Change if you need a specific version
 saelens_version_or_branch: automation
-
 
 #################### DON'T CHANGE THE FOLLOWING
 

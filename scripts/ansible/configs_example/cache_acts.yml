@@ -3,7 +3,7 @@
 # Name your Cache Activations job.
 # Job are tagged on AWS by names, which allows you to run multiple jobs.
 # NO DASHES IN JOB NAMES. Underscores are fine.
-job_name: gelu_1l_test_500_c
+job_name: gelu_1l_500
 
 # Overview on GPU vs Instance Types: https://docs.aws.amazon.com/dlami/latest/devguide/gpu.html
 # Instance Specs and Pricing: https://instances.vantage.sh/?cost_duration=daily

@@ -1,11 +1,16 @@
 # Name your Train SAE Job
+# This job name should match the file name.
 # Job are tagged on AWS by names, which allows you to run multiple jobs.
 # NO DASHES IN JOB NAMES. Underscores are fine.
-job_name: gelu_l1_coefficient_5
-wandb_project: "how_we_train_SAEs_replication_1"
+job_name: gelu_l1_coeff_2
+wandb_project: "gelu_l1"
 
 # The name of your completed Cache Activation job. Must match exactly.
-cache_acts_job_name: gelu_1l_test_500_c
+cache_acts_job_name: gelu_1l_500
+
+# IMPORTANT
+# YAML 1.1 spec requires scientific notation to include the decimal to be parsed as a number
+# 1.0e-4 is correct and will be parsed as a number. 1e-4 is NOT correct and will be parsed as a string.
 
 # Overview on GPU vs Instance Types: https://docs.aws.amazon.com/dlami/latest/devguide/gpu.html
 # Instance Specs and Pricing: https://instances.vantage.sh/?cost_duration=daily
@@ -30,7 +35,7 @@ context_size: 1024
 is_dataset_tokenized: True
 prepend_bos: True
 # How big do we want our SAE to be?
-expansion_factor: 64,
+expansion_factor: 64
 # Dataset / Activation Store
 # When we do a proper test
 # training_tokens= 820_000_000, # 200k steps * 4096 batch size ~ 820M tokens (doable overnight on an A100)
@@ -42,7 +47,7 @@ train_batch_size: 4096
 ## Reconstruction Coefficient.
 mse_loss_normalization: None  # MSE Loss Normalization is not mentioned (so we use stanrd MSE Loss). But not we take an average over the batch.
 ## Anthropic does not mention using an Lp norm other than L1.
-l1_coefficient: 5
+l1_coefficient: 2
 lp_norm: 1.0
 # Instead, they multiply the L1 loss contribution
 # from each feature of the activations by the decoder norm of the corresponding feature.
@@ -60,7 +65,7 @@ normalize_sae_decoder: False
 decoder_heuristic_init: True
 init_encoder_as_decoder_transpose: True
 # Optimizer
-lr: 5e-5
+lr: 5.0e-5
 ## adam optimizer has no weight decay by default so worry about this.
 adam_beta1: 0.9
 adam_beta2: 0.999
@@ -71,7 +76,7 @@ normalize_activations: False
 # Feature Store
 feature_sampling_window: 1000
 dead_feature_window: 1000
-dead_feature_threshold: 1e-4
+dead_feature_threshold: 1.0e-4
 # WANDB
 log_to_wandb: true
 wandb_log_frequency: 50

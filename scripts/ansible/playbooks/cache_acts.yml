@@ -4,7 +4,7 @@
   hosts: localhost
   gather_facts: false
   vars:
-    input_yaml_path: "{{ lookup('env', 'PWD') ~ '/job_configs/cache_acts.yml' }}"
+    input_yaml_path: "{{ lookup('env', 'PWD') ~ '/configs/cache_acts.yml' }}"
     output_yaml_dir_path: "{{ lookup('env', 'PWD') ~ '/jobs/cache_acts/' ~ job_name }}"
     output_yaml_path: "{{ output_yaml_dir_path }}/cache_acts.yml"
     new_cached_activations_path_key: "new_cached_activations_path"
@@ -12,8 +12,8 @@
     training_tokens_key: "training_tokens"
     training_token_value: "{{ (total_training_steps | int * train_batch_size | int) | int }}"
   vars_files:
-    - "{{ lookup('env', 'PWD') ~ '/job_configs/cache_acts.yml' }}"
-    - "{{ lookup('env', 'PWD') ~ '/job_configs/shared.yml' }}"
+    - "{{ lookup('env', 'PWD') ~ '/configs/cache_acts.yml' }}"
+    - "{{ lookup('env', 'PWD') ~ '/configs/shared.yml' }}"
 
   tasks:
 
@@ -72,12 +72,12 @@
 - name: "Launch instance for job {{ job_name }}"
   hosts: localhost
   vars_files:
-    - "{{ lookup('env', 'PWD') ~ '/job_configs/shared.yml' }}"
+    - "{{ lookup('env', 'PWD') ~ '/configs/shared.yml' }}"
   tasks:
     - name: Launch the EC2 Instance
       include_tasks: "{{ lookup('env', 'PWD') ~ '/tasks/launch_ec2_instance.yml' }}"
       vars:
-        config_file: "{{ lookup('env', 'PWD') ~ '/job_configs/cache_acts.yml' }}"
+        config_file: "{{ lookup('env', 'PWD') ~ '/configs/cache_acts.yml' }}"
         service_name: "cache_acts"
 
 - name: "Configure instance for job {{ job_name }}"
@@ -90,8 +90,8 @@
     instance_storage_path: "{{ instance_storage_path }}"
     s3_local_cache_path: "{{ instance_storage_path }}/s3-local-cache"
   vars_files:
-    - "{{ lookup('env', 'PWD') ~ '/job_configs/cache_acts.yml' }}"
-    - "{{ lookup('env', 'PWD') ~ '/job_configs/shared.yml' }}"
+    - "{{ lookup('env', 'PWD') ~ '/configs/cache_acts.yml' }}"
+    - "{{ lookup('env', 'PWD') ~ '/configs/shared.yml' }}"
   tasks:
     - name: Configure the EC2 Instance
       include_tasks: "{{ lookup('env', 'PWD') ~ '/tasks/configure_ec2_instance.yml' }}"
@@ -106,8 +106,8 @@
     cache_acts_dir: "/home/ubuntu/SAELens/scripts/ansible/jobs/cache_acts"
     local_job_dir: "{{ lookup('env', 'PWD') ~ '/jobs/cache_acts/' ~ job_name }}"
   vars_files:
-    - "{{ lookup('env', 'PWD') ~ '/job_configs/cache_acts.yml' }}"
-    - "{{ lookup('env', 'PWD') ~ '/job_configs/shared.yml' }}"
+    - "{{ lookup('env', 'PWD') ~ '/configs/cache_acts.yml' }}"
+    - "{{ lookup('env', 'PWD') ~ '/configs/shared.yml' }}"
 
   tasks:
     - name: Make the job directory
@@ -151,7 +151,7 @@
   hosts: localhost
   connection: local
   vars_files:
-    - "{{ lookup('env', 'PWD') ~ '/job_configs/cache_acts.yml' }}"
+    - "{{ lookup('env', 'PWD') ~ '/configs/cache_acts.yml' }}"
   
   tasks:
     - name: Copy ansible.log file to job path

@@ -1,8 +1,8 @@
 ### WIP - Very rough draft
 
-This is an Ansible playbook that runs `caching_replication_how_train_saes.py` and `replication_how_train_saes.py` in AWS.
+This is an Ansible playbook that runs `Cache Activations` and and `Train SAE` in AWS.
 
-Jobs are configured by the `cache_acts.yml` file.
+Jobs are configured in the `configs` directory.
 
 ### Prerequisites
 - AWS Account
@@ -44,31 +44,41 @@ ansible-galaxy collection install -r util/requirements.yml
 #### Configure a Job to Run
 ```
 cd scripts/ansible
-cp examples/config.cache_acts.yml config.cache_acts.yml
+cp -r configs_example configs
 ```
-Modify `config_cache_acts.yml` for your job. Why is this YAML and not JSON? Because YAML supports comments.
+Modify `configs/shared.yml` and set `s3_bucket_name` to something unique. Bucket names are global so they must be unique (think of them as a username on a platform).
 
-#### Run the Job
+You don't need to modify anything else to run the example job.
 
-You'll want to have the [AWS EC2 Console](https://us-east-1.console.aws.amazon.com/ec2/home?region=us-east-1) open so you can watch the instance be launched, terminate it manually in case it has any problems. By default if you kill/exit Ansible prematurely we will not stop your EC2 instance, so you'll keep getting billed for it.
+This example job runs:
+`cache_acts.yml` - Cache Activations with a `training_steps` of 2000.
+`train_sae` - Contains `sweep.yml` which just has the name of the sweep, and two `jobs`, different only in the `l1_coefficient`.
 
+#### Run the Example Job
 
-__Cache Activations__
-
-```
-cd scripts/ansible
-ansible-playbook playbookvar.yml --tags cache_acts
-```
-
-#### See All Supported Commands ("tags")
+You'll want to have the [AWS EC2 Console](https://us-east-1.console.aws.amazon.com/ec2/home?region=us-east-1) open so you can watch instances be launched, and terminate them manually in case it has any problems. By default if you exit Ansible prematurely it will not stop your EC2 instance, so you'll keep getting billed for it.
 
 ```
 cd scripts/ansible
-ansible-playbook playbook.yml -i aws_ec2.yml --list-tags
+export WANDB_API_KEY=[WANDB API key here]
+ansible-playbook run-configs.yml
 ```
-Then run specific tags with the --tags flag
+
+Briefly, this will (time estimates are for this example):
+1) Make your S3 bucket and other prerequisites. (~3 minutes)
+2) Run the Cache Activations job (~10 minutes)
+   1) Launch EC2 instance
+   2) Run `util/cache_acts.py`, saving output to your S3 bucket
+   3) Terminate the EC2 instance
+3) Run the Train SAE jobs in parallel (~10 minutes)
+   1) Launch EC2 instance
+   2) Run `util/train_sae.py`, loading the cached activations from your S3 bucket.
+   3) You can monitor progress of this by going to WANDB
+
+It currently shows an error at the end but it should still output the artifacts to WANDB correctly.
 
 ### TODO
+   - better integration with wandb ("sweep param")
     - use containers to simplify instance configuration
     - use 'typer' on `cache_acts.py` and `train_sae.py` 
     - split into different playbooks, roles

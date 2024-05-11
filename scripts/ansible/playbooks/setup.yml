@@ -5,7 +5,7 @@
   connection: local
   gather_facts: false
   vars_files:
-    - "{{ lookup('env', 'PWD') ~ '/job_configs/shared.yml' }}"
+    - "{{ lookup('env', 'PWD') ~ '/configs/shared.yml' }}"
 
   tasks:
     - name: Make Common EC2 Security Group, Key
