@@ -156,6 +156,7 @@
     ansible_python_interpreter: "/home/ubuntu/SAELens/.venv/bin/python"
     train_sae_dir: "/home/ubuntu/SAELens/scripts/ansible/jobs/train_sae"
     checkpoints_dir: "/home/ubuntu/SAELens/scripts/ansible/checkpoints"
+    temp_log: "/home/ubuntu/SAELens/scripts/ansible/{{ job_name }}.log"
     local_sweep_dir: "{{ lookup('env', 'PWD') ~ '/jobs/train_sae/' ~ sweep_name }}"
     s3_sweep_dir: "{{ local_s3_mount_path }}/{{ s3_bucket_name }}/train_sae/{{ sweep_name }}"
     s3_sweep_job_config: "{{ s3_sweep_dir }}/{{ job_name }}.yml"
@@ -176,18 +177,21 @@
         mode: '0777'
         recurse: true
     
-    - name: "Run Train SAE Job. Log: {{ s3_sweep_job_log }}"
+    - name: "Run Train SAE Job. Log: {{ temp_log }}"
       ansible.builtin.shell:
-        cmd: "poetry run python util/train_sae.py {{ s3_sweep_job_config }} } 2>&1 \
-                | tee -a {{ s3_sweep_job_log }}"
+        cmd: "poetry run python util/train_sae.py {{ s3_sweep_job_config }} 2>&1 \
+                | tee -a {{ temp_log }}"
         chdir: /home/ubuntu/SAELens/scripts/ansible
       environment:
         WANDB_API_KEY: "{{ lookup('env', 'WANDB_API_KEY') }}"
       changed_when: true
 
+    - name: Copy python log file to S3
+      ansible.builtin.shell: "cp {{ temp_log }} {{ s3_sweep_job_log }}"
+
     - name: Copy python log file to local
       ansible.builtin.fetch:
-        src: "{{ s3_sweep_job_log }}"
+        src: "{{ temp_log }}"
         dest: "{{ local_sweep_dir ~ '/' ~ job_name ~ '.log' }}"
         flat: true
     
@@ -196,7 +200,7 @@
 
     - name: Finished job, terminate the instance
       ansible.builtin.command:
-        cmd: shutdown -h +25
+        cmd: shutdown -h +1
       become: true
       become_user: root
       changed_when: true
