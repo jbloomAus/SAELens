@@ -45,7 +45,7 @@ for l1_coefficient in [0.1, 1, 2, 4, 10]:
         cfg = LanguageModelSAERunnerConfig(
             # Pick a tiny model to make this easier.
             model_name="gpt2",
-            ## MLP Layer 0 ##
+            ## MLP ##
             hook_point=f"blocks.{block}.hook_mlp_out",
             hook_point_layer=block,
             d_in=768,
@@ -57,11 +57,8 @@ for l1_coefficient in [0.1, 1, 2, 4, 10]:
             # How big do we want our SAE to be?
             expansion_factor=64,
             # Dataset / Activation Store
-            # When we do a proper test
-            # training_tokens= 820_000_000, # 200k steps * 4096 batch size ~ 820M tokens (doable overnight on an A100)
-            # For now.
             use_cached_activations=False,
-            training_tokens=total_training_tokens,  # For initial testing I think this is a good number.
+            training_tokens=total_training_tokens,
             train_batch_size_tokens=4096,
             # Loss Function
             ## Reconstruction Coefficient.
@@ -92,7 +89,7 @@ for l1_coefficient in [0.1, 1, 2, 4, 10]:
             ## adam optimizer has no weight decay by default so worry about this.
             adam_beta1=0.9,
             adam_beta2=0.999,
-            # Buffer details won't matter in we cache / shuffle our activations ahead of time.
+            # Unsure if this is enough
             n_batches_in_buffer=64,
             store_batch_size_prompts=16,
             normalize_activations=False,
@@ -101,7 +98,7 @@ for l1_coefficient in [0.1, 1, 2, 4, 10]:
             dead_feature_window=1000,
             dead_feature_threshold=1e-4,
             # WANDB
-            log_to_wandb=log_to_wandb,  # always use wandb unless you are just testing code.
+            log_to_wandb=log_to_wandb,
             wandb_project="gpt-2-sweep-12may24",
             wandb_log_frequency=50,
             eval_every_n_wandb_logs=10,
@@ -117,7 +114,6 @@ for l1_coefficient in [0.1, 1, 2, 4, 10]:
             compile_sae=True,
         )
 
-        # look at the next cell to see some instruction for what to do while this is running.
-        sparse_autoencoder_dictionary = language_model_sae_runner(cfg)
+        language_model_sae_runner(cfg)
 
         print("=" * 50)
