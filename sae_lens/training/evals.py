@@ -62,9 +62,6 @@ def run_evals(
     sae_out, _, _, _, _, _ = sparse_autoencoder(original_act)
     del cache
 
-    if "cuda" in str(model.cfg.device):
-        torch.cuda.empty_cache()
-
     l2_norm_in = torch.norm(original_act, dim=-1)
     l2_norm_out = torch.norm(sae_out, dim=-1)
     l2_norm_in_for_div = l2_norm_in.clone()
