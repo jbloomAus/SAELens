@@ -12,10 +12,10 @@ from sae_lens.training.lm_runner import language_model_sae_runner
 
 
 if len(sys.argv) > 1:
-    job_name = sys.argv[1]
-    print(f"Train SAE Job Name: {job_name}")
+    job_config_path = sys.argv[1]
+    print(f"Train SAE Job config path: {job_config_path}")
 else:
-    raise ValueError("Error: One argument required - the Train SAE Job Name")
+    raise ValueError("Error: One argument required - the Train SAE Job Config path")
 
 if torch.cuda.is_available():
     device = "cuda"
@@ -32,7 +32,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 # load the yaml file as config
 # load only the keys that are in LanguageModelSAERunnerConfig
 # TODO: this is a hacky way of importing
-with open(f"./jobs/train_sae/{job_name}/{job_name}.yml", "r") as file:
+with open(job_config_path, "r") as file:
     config_yaml = yaml.load(file, Loader=yaml.FullLoader)
 
     config_params = inspect.signature(LanguageModelSAERunnerConfig).parameters

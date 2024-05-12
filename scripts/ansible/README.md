@@ -1,17 +1,17 @@
-### WIP - Very rough draft
-
 This is an Ansible playbook that runs `Cache Activations` and and `Train SAE` in AWS.
 
-Jobs are configured in the `configs` directory.
+- The playbook looks in the `configs` directory for what jobs to run, and runs them.
+- It makes a copy of previously run jobs in the `jobs` directory.
+- Check out the `configs_example` directory and read the comments in the YAML files.
 
 ### Prerequisites
 - AWS Account
 - AWS ability to launch G instance types - you need to submit a request to enable this.
-  - [Link to submit request for G. Click "Request increase at account level".](https://us-east-1.console.aws.amazon.com/servicequotas/home/services/ec2/quotas/L-3819A6DF)
-  - [Link to increase other quotas (like P instances)](https://us-east-1.console.aws.amazon.com/servicequotas/home/services/ec2/quotas)
+  - [Submit request for G. Click "Request increase at account level".](https://us-east-1.console.aws.amazon.com/servicequotas/home/services/ec2/quotas/L-3819A6DF)
+  - [Increase other quotas (like P instances)](https://us-east-1.console.aws.amazon.com/servicequotas/home/services/ec2/quotas)
   - G and P instances are not enabled by default [docs](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-resource-limits.html)
   - What GPUs/specs are G and P instance types? [docs](https://docs.aws.amazon.com/dlami/latest/devguide/gpu.html)
-
+- Wandb API Key
 
 ### Local setup
 
@@ -50,13 +50,15 @@ Modify `configs/shared.yml` and set `s3_bucket_name` to something unique. Bucket
 
 You don't need to modify anything else to run the example job.
 
-This example job runs:
-`cache_acts.yml` - Cache Activations with a `training_steps` of 2000.
-`train_sae` - Contains `sweep.yml` which just has the name of the sweep, and two `jobs`, different only in the `l1_coefficient`.
+Explanation of the config files under `configs_example`:
+- `shared.yml` - Shared values for all jobs.
+- `cache_acts.yml` - Cache Activations with a `training_steps` of 2000.
+- `train_sae` - Contains `sweep_common.yml` which has the name of the sweep, plus all of the common config values between the sweep's jobs. There are two jobs in the `jobs` subdirectory, which defines only the values that are different, which in this case is the `l1_coefficient`.
+- It's only 2000 training steps for Cache Activations and 500 training steps for Train SAEs so the jobs themselves in the example are fast - most of the time is spend launching instances, configuring them, etc.
 
 #### Run the Example Job
 
-You'll want to have the [AWS EC2 Console](https://us-east-1.console.aws.amazon.com/ec2/home?region=us-east-1) open so you can watch instances be launched, and terminate them manually in case it has any problems. By default if you exit Ansible prematurely it will not stop your EC2 instance, so you'll keep getting billed for it.
+You should have the [AWS EC2 Console](https://us-east-1.console.aws.amazon.com/ec2/home?region=us-east-1) open so you can watch instances be launched, and terminate them manually in case it has any problems. By default if you exit Ansible prematurely it will not stop your EC2 instance, so you'll keep getting billed for it.
 
 ```
 cd scripts/ansible
@@ -64,24 +66,24 @@ export WANDB_API_KEY=[WANDB API key here]
 ansible-playbook run-configs.yml
 ```
 
-Briefly, this will (time estimates are for this example):
-1) Make your S3 bucket and other prerequisites. (~3 minutes)
-2) Run the Cache Activations job (~10 minutes)
+Briefly, this example job will (time estimates are for the example above):
+1) Create your S3 bucket and other prerequisites. (~3 minutes)
+2) Run the Cache Activations job (~15 minutes)
    1) Launch EC2 instance
    2) Run `util/cache_acts.py`, saving output to your S3 bucket
    3) Terminate the EC2 instance
-3) Run the Train SAE jobs in parallel (~10 minutes)
+3) Run the Train SAE jobs in parallel (~15 minutes)
    1) Launch EC2 instance
    2) Run `util/train_sae.py`, loading the cached activations from your S3 bucket.
-   3) You can monitor progress of this by going to WANDB
-
-It currently shows an error at the end but it should still output the artifacts to WANDB correctly.
+   3) You can monitor progress of this by going to WANDB, where it should also have your artifacts.
 
 ### TODO
+   - document how to monitor running jobs
    - better integration with wandb ("sweep param")
-    - use containers to simplify instance configuration
-    - use 'typer' on `cache_acts.py` and `train_sae.py` 
-    - split into different playbooks, roles
-    - don't use 777 permissions
+     - should we just use/repurpose wandb stuff instead of manually doing all this?
+   - use containers, possilby cloudformation to simplify instance configuration
+   - use 'typer' on `cache_acts.py` and `train_sae.py` 
+   - ansible "best practices", better use of ansible features
+   - don't use 777 permissions
 	- AWX server for GUI monitoring jobs
-    - Automatically pull the latest AMI using Ansible
+   - Automatically pull the latest AMI using Ansible
