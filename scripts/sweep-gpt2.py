@@ -40,7 +40,12 @@ print(f"l1_warmup_steps: {l1_warmup_steps}")
 log_to_wandb = True
 
 for l1_coefficient in [0.1, 1, 2, 4, 10]:
-    for lr in [1e-5, 5e-5, 1e-4, 4e-4,]:
+    for lr in [
+        1e-5,
+        5e-5,
+        1e-4,
+        4e-4,
+    ]:
 
         cfg = LanguageModelSAERunnerConfig(
             # Pick a tiny model to make this easier.
