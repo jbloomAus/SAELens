@@ -1,0 +1,4 @@
+# Name your Train SAE Sweep
+# Jobs in the same sweep will have the same sweep name
+# NO DASHES IN NAMES. Underscores are fine.
+sweep_name: gelu_1l_test_500_l1_sweep

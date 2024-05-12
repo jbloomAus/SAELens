@@ -47,6 +47,9 @@ flake8 = "7.0.0"
 isort = "5.13.2"
 pyright = "^1.1.351"
 mamba-lens = "^0.0.4"
+ansible-lint = { version = "^24.2.3", markers = "platform_system != 'Windows'" }
+botocore = "^1.34.101"
+boto3 = "^1.34.101"
 
 [tool.poetry.extras]
 mamba = ["mamba-lens"]
