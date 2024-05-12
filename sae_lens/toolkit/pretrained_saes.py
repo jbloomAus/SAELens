@@ -124,7 +124,7 @@ def convert_connor_rob_sae_to_our_saelens_format(
         expansion_factor=expansion_factor,
         context_size=config["seq_len"],  # type: ignore
         device=device,
-        store_batch_size=32,
+        store_batch_size_prompts=32,
         n_batches_in_buffer=10,
         prepend_bos=False,
         verbose=False,

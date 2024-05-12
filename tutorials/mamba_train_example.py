@@ -27,13 +27,13 @@ cfg = LanguageModelSAERunnerConfig(
     lr=0.0004,
     l1_coefficient=0.00006 * 0.2,
     lr_scheduler_name="cosineannealingwarmrestarts",
-    train_batch_size=4096,
+    train_batch_size_tokens=4096,
     context_size=128,
     lr_warm_up_steps=5000,
     # Activation Store Parameters
     n_batches_in_buffer=128,
     training_tokens=1_000_000 * 300,
-    store_batch_size=32,
+    store_batch_size_prompts=32,
     # Dead Neurons and Sparsity
     use_ghost_grads=True,
     feature_sampling_window=1000,

@@ -189,7 +189,7 @@ def train_sae_on_language_model(
     eval_every_n_wandb_logs: int = 100,
     autocast: bool = False,
     n_eval_batches: int = 10,
-    n_eval_seqs: int | None = None,
+    eval_batch_size_prompts: int | None = None,
 ) -> SparseAutoencoderDictionary:
     """
     @deprecated Use `train_sae_group_on_language_model` instead. This method is kept for backward compatibility.
@@ -206,7 +206,7 @@ def train_sae_on_language_model(
         eval_every_n_wandb_logs=eval_every_n_wandb_logs,
         autocast=autocast,
         n_eval_batches=n_eval_batches,
-        n_eval_seqs=n_eval_seqs,
+        eval_batch_size_prompts=eval_batch_size_prompts,
     ).sae_group
 
 
@@ -228,7 +228,7 @@ def train_sae_group_on_language_model(
     eval_every_n_wandb_logs: int = 100,
     autocast: bool = False,
     n_eval_batches: int = 10,
-    n_eval_seqs: int | None = None,
+    eval_batch_size_prompts: int | None = None,
 ) -> TrainSAEGroupOutput:
     total_training_tokens = get_total_training_tokens(sae_group=sae_group)
     _update_sae_lens_training_version(sae_group)
@@ -332,7 +332,7 @@ def train_sae_group_on_language_model(
                                 training_run_state.n_training_steps,
                                 suffix=wandb_suffix,
                                 n_eval_batches=n_eval_batches,
-                                n_eval_seqs=n_eval_seqs,
+                                eval_batch_size_prompts=eval_batch_size_prompts,
                             )
                             sparse_autoencoder.train()
 

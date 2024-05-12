@@ -67,6 +67,9 @@ class LMSparseAutoencoderSessionloader:
         # Todo: add check that model_name is valid
 
         model = load_model(
-            self.cfg.model_class_name, model_name, device=self.cfg.device
+            self.cfg.model_class_name,
+            model_name,
+            device=self.cfg.device,
+            model_from_pretrained_kwargs=self.cfg.model_from_pretrained_kwargs,
         )
         return model

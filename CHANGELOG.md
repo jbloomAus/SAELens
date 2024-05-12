@@ -2,6 +2,73 @@
 
 
 
+## v2.1.0 (2024-05-11)
+
+### Chore
+
+* chore: remove use_deterministic_algorithms=True since it causes cuda errors (#137) ([`1a3bedb`](https://github.com/jbloomAus/SAELens/commit/1a3bedbc3192ca919fc0716ce52d06f060ad2550))
+
+### Feature
+
+* feat: Hooked toy model (#134)
+
+* adds initial re-implementation of toy models
+
+* removes instance dimension from toy models
+
+* fixing up minor nits and adding more tests
+
+---------
+
+Co-authored-by: David Chanin &lt;chanindav@gmail.com&gt; ([`03aa25c`](https://github.com/jbloomAus/SAELens/commit/03aa25c6e8589c1eb9a6b94911e6d77187d6bef7))
+
+
+## v2.0.0 (2024-05-10)
+
+### Breaking
+
+* feat: rename batch sizes to give informative units (#133)
+
+BREAKING CHANGE: renamed batch sizing config params
+
+* renaming batch sizes to give units
+
+* changes in notebooks
+
+* missed one!
+
+---------
+
+Co-authored-by: David Chanin &lt;chanindav@gmail.com&gt; ([`cc78e27`](https://github.com/jbloomAus/SAELens/commit/cc78e277ae639f57df389e61899278919c16d993))
+
+### Chore
+
+* chore: tools to make tests more deterministic (#132) ([`2071d09`](https://github.com/jbloomAus/SAELens/commit/2071d096c46b0b532e2d99381b300c3c64071747))
+
+* chore: Make tutorial notebooks work in Google Colab (#120)
+
+Co-authored-by: David Chanin &lt;chanindav@gmail.com&gt; ([`007141e`](https://github.com/jbloomAus/SAELens/commit/007141e67a447f8dfe8d6797a6fba0fc4fce61bd))
+
+
+## v1.8.0 (2024-05-09)
+
+### Chore
+
+* chore: closing &#34; in docs (#130) ([`5154d29`](https://github.com/jbloomAus/SAELens/commit/5154d29498a480c4e7ddc9edc9effd30cecbeda7))
+
+### Feature
+
+* feat: Add model_from_pretrained_kwargs as config parameter (#122)
+
+* add model_from_pretrained_kwargs config parameter to allow full control over model used to extract activations from. Update tests to cover new cases
+
+* tweaking test style
+
+---------
+
+Co-authored-by: David Chanin &lt;chanindav@gmail.com&gt; ([`094b1e8`](https://github.com/jbloomAus/SAELens/commit/094b1e8250c1ae6cd3fc8336e09075d61ce967d1))
+
+
 ## v1.7.0 (2024-05-08)
 
 ### Feature

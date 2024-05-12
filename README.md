@@ -21,6 +21,16 @@ SAE Lens is the result of many contributors working collectively to improve huma
 
 This library is maintained by [Joseph Bloom](https://www.jbloomaus.com/) and [David Channin](https://github.com/chanind).
 
+## Tutorials
+
+- [Loading and Analysing Pre-Trained Sparse Autoencoders](tutorials/basic_loading_and_analysing.ipynb)
+ [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://githubtocolab.com/jbloomAus/SAELens/blob/main/tutorials/basic_loading_and_analysing.ipynb)
+ - [Understanding SAE Features with the Logit Lens](tutorials/logits_lens_with_features.ipynb)
+ [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://githubtocolab.com/jbloomAus/SAELens/blob/main/tutorials/logits_lens_with_features.ipynb)
+  - [Training a Sparse Autoencoder](tutorials/training_a_sparse_autoencoder.ipynb)
+ [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://githubtocolab.com/jbloomAus/SAELens/blob/main/tutorials/training_a_sparse_autoencoder.ipynb)
+
+
 ## Join the Slack!
 
 Feel free to join the [Open Source Mechanistic Interpretability Slack](https://join.slack.com/t/opensourcemechanistic/shared_invite/zt-1qosyh8g3-9bF3gamhLNJiqCL_QqLFrA) for support!

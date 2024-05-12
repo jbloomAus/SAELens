@@ -36,7 +36,7 @@ def language_model_sae_runner(cfg: LanguageModelSAERunnerConfig):
                 checkpoint_path=checkpoint_path,
                 cfg=cfg,
                 model=model,
-                batch_size=cfg.train_batch_size,
+                batch_size=cfg.train_batch_size_tokens,
             )
         # no checkpoints found, don't resume
         except FileNotFoundError:
@@ -106,7 +106,7 @@ def language_model_sae_runner(cfg: LanguageModelSAERunnerConfig):
         activation_store=activations_loader,  # pyright: ignore [reportPossiblyUnboundVariable]
         train_contexts=train_contexts,
         training_run_state=training_run_state,
-        batch_size=cfg.train_batch_size,
+        batch_size=cfg.train_batch_size_tokens,
         n_checkpoints=cfg.n_checkpoints,
         feature_sampling_window=cfg.feature_sampling_window,
         use_wandb=cfg.log_to_wandb,
@@ -114,7 +114,7 @@ def language_model_sae_runner(cfg: LanguageModelSAERunnerConfig):
         eval_every_n_wandb_logs=cfg.eval_every_n_wandb_logs,
         autocast=cfg.autocast,
         n_eval_batches=cfg.n_eval_batches,
-        n_eval_seqs=cfg.n_eval_seqs,
+        eval_batch_size_prompts=cfg.eval_batch_size_prompts,
     ).sae_group
 
     if cfg.log_to_wandb:

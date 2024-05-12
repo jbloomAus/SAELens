@@ -362,7 +362,10 @@ def test_save_load_and_resume_checkpoint(tmp_path: Path) -> None:
 
     training_run_state_2, activation_store_2, sae_group_2, train_contexts_2 = (
         load_checkpoint(
-            checkpoint_path=res, cfg=cfg, model=model, batch_size=cfg.train_batch_size
+            checkpoint_path=res,
+            cfg=cfg,
+            model=model,
+            batch_size=cfg.train_batch_size_tokens,
         )
     )
 
@@ -419,7 +422,7 @@ def test_save_load_and_resume_checkpoint(tmp_path: Path) -> None:
         activation_store=activation_store,
         train_contexts=train_contexts_2,
         training_run_state=training_run_state_2,
-        batch_size=cfg.train_batch_size,
+        batch_size=cfg.train_batch_size_tokens,
     )
     assert res.checkpoint_paths[-1] == str(checkpoint_dir / "final_258")
     assert len(res.log_feature_sparsities) == 1

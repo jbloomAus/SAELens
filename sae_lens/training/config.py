@@ -55,8 +55,8 @@ class LanguageModelSAERunnerConfig:
     n_batches_in_buffer: int = 20
     training_tokens: int = 2_000_000
     finetuning_tokens: int = 0
-    store_batch_size: int = 32
-    train_batch_size: int = 4096
+    store_batch_size_prompts: int = 32
+    train_batch_size_tokens: int = 4096
     normalize_activations: bool = False
 
     # Misc
@@ -75,7 +75,7 @@ class LanguageModelSAERunnerConfig:
     # Training Parameters
 
     ## Batch size
-    train_batch_size: int = 4096
+    train_batch_size_tokens: int = 4096
 
     ## Adam
     adam_beta1: float | list[float] = 0
@@ -114,7 +114,7 @@ class LanguageModelSAERunnerConfig:
 
     # Evals
     n_eval_batches: int = 10
-    n_eval_seqs: int | None = None  # useful if evals cause OOM
+    eval_batch_size_prompts: int | None = None  # useful if evals cause OOM
 
     # WANDB
     log_to_wandb: bool = True
@@ -133,6 +133,7 @@ class LanguageModelSAERunnerConfig:
     checkpoint_path: str = "checkpoints"
     verbose: bool = True
     model_kwargs: dict[str, Any] = field(default_factory=dict)
+    model_from_pretrained_kwargs: dict[str, Any] = field(default_factory=dict)
     sae_lens_version: str = field(default_factory=lambda: __version__)
     sae_lens_training_version: str = field(default_factory=lambda: __version__)
 
@@ -148,7 +149,7 @@ class LanguageModelSAERunnerConfig:
         if not isinstance(self.expansion_factor, list):
             self.d_sae = self.d_in * self.expansion_factor
         self.tokens_per_buffer = (
-            self.train_batch_size * self.context_size * self.n_batches_in_buffer
+            self.train_batch_size_tokens * self.context_size * self.n_batches_in_buffer
         )
 
         if self.run_name is None:
@@ -202,17 +203,21 @@ class LanguageModelSAERunnerConfig:
             )
             # Print out some useful info:
             n_tokens_per_buffer = (
-                self.store_batch_size * self.context_size * self.n_batches_in_buffer
+                self.store_batch_size_prompts
+                * self.context_size
+                * self.n_batches_in_buffer
             )
             print(f"n_tokens_per_buffer (millions): {n_tokens_per_buffer / 10 ** 6}")
-            n_contexts_per_buffer = self.store_batch_size * self.n_batches_in_buffer
+            n_contexts_per_buffer = (
+                self.store_batch_size_prompts * self.n_batches_in_buffer
+            )
             print(
                 f"Lower bound: n_contexts_per_buffer (millions): {n_contexts_per_buffer / 10 ** 6}"
             )
 
             total_training_steps = (
                 self.training_tokens + self.finetuning_tokens
-            ) // self.train_batch_size
+            ) // self.train_batch_size_tokens
             print(f"Total training steps: {total_training_steps}")
 
             total_wandb_updates = total_training_steps // self.wandb_log_frequency
@@ -224,17 +229,17 @@ class LanguageModelSAERunnerConfig:
                 total_training_steps // self.feature_sampling_window
             )
             print(
-                f"n_tokens_per_feature_sampling_window (millions): {(self.feature_sampling_window * self.context_size * self.train_batch_size) / 10 ** 6}"
+                f"n_tokens_per_feature_sampling_window (millions): {(self.feature_sampling_window * self.context_size * self.train_batch_size_tokens) / 10 ** 6}"
             )
             print(
-                f"n_tokens_per_dead_feature_window (millions): {(self.dead_feature_window * self.context_size * self.train_batch_size) / 10 ** 6}"
+                f"n_tokens_per_dead_feature_window (millions): {(self.dead_feature_window * self.context_size * self.train_batch_size_tokens) / 10 ** 6}"
             )
             print(
                 f"We will reset the sparsity calculation {n_feature_window_samples} times."
             )
-            # print("Number tokens in dead feature calculation window: ", self.dead_feature_window * self.train_batch_size)
+            # print("Number tokens in dead feature calculation window: ", self.dead_feature_window * self.train_batch_size_tokens)
             print(
-                f"Number tokens in sparsity calculation window: {self.feature_sampling_window * self.train_batch_size:.2e}"
+                f"Number tokens in sparsity calculation window: {self.feature_sampling_window * self.train_batch_size_tokens:.2e}"
             )
 
         if not isinstance(self.use_ghost_grads, list) and self.use_ghost_grads:
@@ -312,8 +317,8 @@ class CacheActivationsRunnerConfig:
     # Activation Store Parameters
     n_batches_in_buffer: int = 20
     training_tokens: int = 2_000_000
-    store_batch_size: int = 32
-    train_batch_size: int = 4096
+    store_batch_size_prompts: int = 32
+    train_batch_size_tokens: int = 4096
     normalize_activations: bool = False
 
     # Misc
@@ -328,6 +333,7 @@ class CacheActivationsRunnerConfig:
     n_shuffles_in_entire_dir: int = 10
     n_shuffles_final: int = 100
     model_kwargs: dict[str, Any] = field(default_factory=dict)
+    model_from_pretrained_kwargs: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         # Autofill cached_activations_path unless the user overrode it
@@ -338,6 +344,59 @@ class CacheActivationsRunnerConfig:
                 self.hook_point,
                 self.hook_point_head_index,
             )
+
+
+@dataclass
+class ToyModelSAERunnerConfig:
+    # ReLu Model Parameters
+    n_features: int = 5
+    n_hidden: int = 2
+    n_correlated_pairs: int = 0
+    n_anticorrelated_pairs: int = 0
+    feature_probability: float = 0.025
+    model_training_steps: int = 10_000
+
+    # SAE Parameters
+    d_sae: int = 5
+
+    # Training Parameters
+    l1_coefficient: float = 1e-3
+    lr: float = 3e-4
+    train_batch_size: int = 1024
+    b_dec_init_method: str = "geometric_median"
+
+    # Sparsity / Dead Feature Handling
+    use_ghost_grads: bool = (
+        False  # not currently implemented, but SAE class expects it.
+    )
+    feature_sampling_window: int = 100
+    dead_feature_window: int = 100  # unless this window is larger feature sampling,
+    dead_feature_threshold: float = 1e-8
+
+    # Activation Store Parameters
+    total_training_tokens: int = 25_000
+
+    # WANDB
+    log_to_wandb: bool = True
+    wandb_project: str = "mats_sae_training_toy_model"
+    wandb_entity: str | None = None
+    wandb_log_frequency: int = 50
+
+    # Misc
+    device: str | torch.device = "cuda" if torch.cuda.is_available() else "cpu"
+    seed: int = 42
+    checkpoint_path: str = "checkpoints"
+    dtype: str | torch.dtype = "float32"
+
+    def __post_init__(self):
+        self.d_in = self.n_hidden  # hidden for the ReLu model is the input for the SAE
+
+        if isinstance(self.dtype, str) and self.dtype not in DTYPE_MAP:
+            raise ValueError(
+                f"dtype must be one of {list(DTYPE_MAP.keys())}. Got {self.dtype}"
+            )
+        elif isinstance(self.dtype, str):
+            self.dtype = DTYPE_MAP[self.dtype]
 
 
 def _default_cached_activations_path(
