@@ -44,7 +44,7 @@ for l1_coefficient in [0.1, 1, 2, 4, 10]:
 
         cfg = LanguageModelSAERunnerConfig(
             # Pick a tiny model to make this easier.
-            model_name="gpt-2",
+            model_name="gpt2",
             ## MLP Layer 0 ##
             hook_point=f"blocks.{block}.hook_mlp_out",
             hook_point_layer=block,
