@@ -185,5 +185,5 @@ prof/
 
 scripts/ansible/cache_acts.yml
 scripts/ansible/jobs/
-scripts/ansible/job_configs/
+scripts/ansible/configs/
 scripts/ansible/ansible.log
