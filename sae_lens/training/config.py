@@ -93,7 +93,7 @@ class LanguageModelSAERunnerConfig:
     lr_scheduler_name: str | list[str] = (
         "constant"  # constant, cosineannealing, cosineannealingwarmrestarts
     )
-    lr_warm_up_steps: int | list[int] = 500
+    lr_warm_up_steps: int | list[int] = 0
     lr_end: float | list[float] | None = (
         None  # only used for cosine annealing, default is lr / 10
     )
