@@ -2,6 +2,51 @@
 
 
 
+## v2.1.1 (2024-05-13)
+
+### Fix
+
+* fix: hardcoded mps device in ckrk attn saes (#141) ([`eba3f4e`](https://github.com/jbloomAus/SAELens/commit/eba3f4e54ad6a02553f0ed2b575b0547df68a200))
+
+### Unknown
+
+* feature: run saelens on AWS with one command (#138)
+
+* Ansible playbook for automating caching activations and training saes
+
+* Add automation
+
+* Fix example config
+
+* Fix bugs with ansible mounting s3
+
+* Reorg, more automation, Ubuntu instead of Amazon Linux
+
+* More automation
+
+* Train SAE automation
+
+* Train SAEs and readme
+
+* fix gitignore
+
+* Fix automation config bugs, clean up paths
+
+* Fix shutdown time, logs ([`13de52a`](https://github.com/jbloomAus/SAELens/commit/13de52a5e12fd275ca8601aa22fd5ec66a5c6e9a))
+
+* Gpt 2 sweep (#140)
+
+* sweep settings for gpt2-small
+
+* get model string right
+
+* fix some comments that don&#39;t apply now
+
+* formatting fix ([`4cb270b`](https://github.com/jbloomAus/SAELens/commit/4cb270b7680585c5758910dfeafa727185ac88b9))
+
+* Remove cuda cache emptying in evals.py (#139) ([`bdef2cf`](https://github.com/jbloomAus/SAELens/commit/bdef2cf0e4ad3e3070f9be1c46a1adf13094eb13))
+
+
 ## v2.1.0 (2024-05-11)
 
 ### Chore
