@@ -2,6 +2,23 @@
 
 
 
+## v2.1.2 (2024-05-13)
+
+### Fix
+
+* fix: Fix issues with resumption testing (#144)
+
+* fix always-true comparison in train context testing
+
+* set default warmup steps to zero
+
+* remove unused type attribute from L1Scheduler
+
+* update training tests to use real context builder
+
+* add docstring for build_train_ctx ([`085d04f`](https://github.com/jbloomAus/SAELens/commit/085d04f7e57e3819810b18e12b011adc8c7f2ba1))
+
+
 ## v2.1.1 (2024-05-13)
 
 ### Fix
