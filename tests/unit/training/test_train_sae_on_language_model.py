@@ -411,7 +411,7 @@ def test_save_load_and_resume_checkpoint(tmp_path: Path) -> None:
     assert train_contexts_2.keys() == train_contexts.keys()
     for k in train_contexts.keys():
         ctx1 = train_contexts[k]
-        ctx2 = train_contexts[k]
+        ctx2 = train_contexts_2[k]
         sd1 = ctx1.state_dict()
         sd2 = ctx2.state_dict()
         assert_close(sd1, sd2)
