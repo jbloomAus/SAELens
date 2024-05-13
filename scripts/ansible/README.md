@@ -11,7 +11,7 @@ This is an Ansible playbook that runs `Cache Activations` and and `Train SAE` in
   - [Increase other quotas (like P instances)](https://us-east-1.console.aws.amazon.com/servicequotas/home/services/ec2/quotas)
   - G and P instances are not enabled by default [docs](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-resource-limits.html)
   - What GPUs/specs are G and P instance types? [docs](https://docs.aws.amazon.com/dlami/latest/devguide/gpu.html)
-- Wandb API Key
+- Wandb Account (wandb.ai)
 
 ### Local setup
 
@@ -30,6 +30,13 @@ This is an Ansible playbook that runs `Cache Activations` and and `Train SAE` in
 aws_access_key_id=AWS_ACCESS_KEY_ID
 aws_secret_access_key=AWS_SECRET_ACCESS_KEY
 region=us-east-1
+```
+
+#### Load Wandb API Key automatically
+1) Get your Wandb API key here: https://wandb.ai/settings#api
+2) Add the following to your `~/.bash_profile` (or your equivalent shell defaults file)
+```
+export WANDB_API_KEY=[Paste Wandb API Key]
 ```
 
 #### Install Ansible
