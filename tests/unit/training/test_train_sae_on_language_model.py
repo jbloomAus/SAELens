@@ -15,7 +15,7 @@ from transformer_lens import HookedTransformer
 
 from sae_lens import __version__
 from sae_lens.training.activations_store import ActivationsStore
-from sae_lens.training.optim import L1Scheduler, get_lr_scheduler
+from sae_lens.training.optim import L1Scheduler
 from sae_lens.training.sae_group import SparseAutoencoderDictionary
 from sae_lens.training.sparse_autoencoder import (
     SAE_CFG_PATH,
@@ -31,6 +31,7 @@ from sae_lens.training.train_sae_on_language_model import (
     SAETrainContext,
     SAETrainingRunState,
     TrainStepOutput,
+    _build_train_context,
     _build_train_step_log_dict,
     _log_feature_sparsity,
     _save_checkpoint,
@@ -42,46 +43,25 @@ from sae_lens.training.train_sae_on_language_model import (
 from tests.unit.helpers import build_sae_cfg, load_model_cached
 
 
-# TODO: Address why we have this code here rather than importing it.
 def build_train_ctx(
     sae: SparseAutoencoder,
     act_freq_scores: Tensor | None = None,
     n_forward_passes_since_fired: Tensor | None = None,
     n_frac_active_tokens: int = 0,
 ) -> SAETrainContext:
-    """
-    Factory helper to build a default SAETrainContext object.
-    """
-    assert sae.cfg.d_sae is not None
-    assert not isinstance(sae.cfg.lr, list)
-    optimizer = torch.optim.Adam(sae.parameters(), lr=sae.cfg.lr)
-    return SAETrainContext(
-        act_freq_scores=(
-            torch.zeros(sae.cfg.d_sae) if act_freq_scores is None else act_freq_scores
-        ),
-        n_forward_passes_since_fired=(
-            torch.zeros(sae.cfg.d_sae)
-            if n_forward_passes_since_fired is None
-            else n_forward_passes_since_fired
-        ),
-        n_frac_active_tokens=n_frac_active_tokens,
-        optimizer=optimizer,
-        lr_scheduler=get_lr_scheduler(
-            "constant",
-            lr=sae.cfg.lr,
-            optimizer=optimizer,
-            training_steps=1000,
-            lr_end=0,
-            warm_up_steps=0,
-            decay_steps=0,
-            num_cycles=1,
-        ),
-        l1_scheduler=L1Scheduler(
-            l1_warm_up_steps=0,
-            total_steps=sae.cfg.training_tokens,
-            sparse_autoencoder=sae,
-        ),
-    )
+    # Build train context
+    ctx = _build_train_context(sae, sae.cfg.training_tokens)
+    # Override attributes if required for testing
+    ctx.n_frac_active_tokens = n_frac_active_tokens
+    if n_forward_passes_since_fired is not None:
+        ctx.n_forward_passes_since_fired = n_forward_passes_since_fired
+    else:
+        ctx.n_forward_passes_since_fired = torch.zeros(sae.cfg.d_sae) # type: ignore
+    if act_freq_scores is not None:
+        ctx.act_freq_scores = act_freq_scores
+    else:
+        ctx.act_freq_scores = torch.zeros(sae.cfg.d_sae) # type: ignore
+    return ctx
 
 
 def modify_sae_output(
