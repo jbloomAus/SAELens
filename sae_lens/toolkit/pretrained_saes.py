@@ -173,18 +173,26 @@ def get_gpt2_small_ckrk_attn_out_saes() -> dict[str, SparseAutoencoder]:
     saes_weights = {}
     sae_configs = {}
     repo_files = list_repo_tree(REPO_ID)
+
+    device = "cpu"
+    if torch.cuda.is_available():
+        device = "cuda"
+    elif torch.backends.mps.is_available():
+        device = "mps"
+
     for i in tqdm(repo_files):
         file_name = i.path
         if file_name.endswith(".pt"):
             # print(f"Downloading {file_name}")
             path = hf_hub_download(REPO_ID, file_name)
             name = path.split("/")[-1].split(".pt")[0]
-            saes_weights[name] = torch.load(path, map_location="mps")
+            saes_weights[name] = torch.load(path, map_location=device)
         elif file_name.endswith(".json"):
             # print(f"Downloading {file_name}")
             config_path = hf_hub_download(REPO_ID, file_name)
             name = config_path.split("/")[-1].split("_cfg.json")[0]
             sae_configs[name] = json.load(open(config_path, "r"))
+            sae_configs[name].device = device
 
     saes = {}
     for name, config in sae_configs.items():
