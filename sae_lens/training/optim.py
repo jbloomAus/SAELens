@@ -109,7 +109,6 @@ class L1Scheduler:
         sparse_autoencoder: SparseAutoencoder,
     ):
 
-        self.type = type
         self.l1_warmup_steps = l1_warm_up_steps
         self.total_steps = total_steps
         self.sparse_autoencoder = sparse_autoencoder
