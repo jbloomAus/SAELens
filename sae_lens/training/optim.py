@@ -146,7 +146,6 @@ class L1Scheduler:
     def state_dict(self):
         """State dict for serializing as part of an SAETrainContext."""
         return {
-            "type": self.type,
             "l1_warmup_steps": self.l1_warmup_steps,
             "total_steps": self.total_steps,
             "final_l1_value": self.final_l1_value,
