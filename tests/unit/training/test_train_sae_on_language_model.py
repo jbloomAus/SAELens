@@ -49,6 +49,7 @@ def build_train_ctx(
     n_forward_passes_since_fired: Tensor | None = None,
     n_frac_active_tokens: int = 0,
 ) -> SAETrainContext:
+    """Builds a training context. We need to have this version so we can override some attributes."""
     # Build train context
     ctx = _build_train_context(sae, sae.cfg.training_tokens)
     # Override attributes if required for testing
@@ -56,11 +57,11 @@ def build_train_ctx(
     if n_forward_passes_since_fired is not None:
         ctx.n_forward_passes_since_fired = n_forward_passes_since_fired
     else:
-        ctx.n_forward_passes_since_fired = torch.zeros(sae.cfg.d_sae) # type: ignore
+        ctx.n_forward_passes_since_fired = torch.zeros(sae.cfg.d_sae)  # type: ignore
     if act_freq_scores is not None:
         ctx.act_freq_scores = act_freq_scores
     else:
-        ctx.act_freq_scores = torch.zeros(sae.cfg.d_sae) # type: ignore
+        ctx.act_freq_scores = torch.zeros(sae.cfg.d_sae)  # type: ignore
     return ctx
 
 
