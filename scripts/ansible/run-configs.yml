@@ -10,6 +10,7 @@
       when: lookup('env', 'WANDB_API_KEY') == ""
 
 - name: Run Setup
+  tags: always
   ansible.builtin.import_playbook: playbooks/setup.yml
 
 - name: Run Cache Acts

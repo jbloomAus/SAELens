@@ -84,6 +84,19 @@ Briefly, this example job will (time estimates are for the example above):
    2) Run `util/train_sae.py`, loading the cached activations from your S3 bucket.
    3) You can monitor progress of this by going to WANDB, where it should also have your artifacts.
 
+
+#### Run Cache Acts or Train SAEs Job Separately
+
+Cache Activations only
+```
+ansible-playbook run-configs.yml --tags=cache-acts
+```
+
+Train SAE only
+```
+ansible-playbook run-configs.yml --tags=train-sae
+```
+
 ### TODO
    - document how to monitor running jobs
    - better integration with wandb ("sweep param")
