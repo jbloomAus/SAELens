@@ -89,15 +89,19 @@ Briefly, this example job will (time estimates are for the example above):
 
 Cache Activations only
 ```
-ansible-playbook run-configs.yml --tags=cache-acts
+ansible-playbook playbooks/setup.yml
+ansible-playbook playbooks/cache_acts.yml
 ```
 
 Train SAE only
 ```
-ansible-playbook run-configs.yml --tags=train-sae
+ansible-playbook playbooks/setup.yml
+ansible-playbook playbooks/train_sae.yml
 ```
 
 ### TODO
+   - make config scripts that makes the config sweep files automatically
+   - should do async so that canceling ansible doesnt cancel the job
    - document how to monitor running jobs
    - better integration with wandb ("sweep param")
      - should we just use/repurpose wandb stuff instead of manually doing all this?
