@@ -1,6 +1,6 @@
 import os
 from dataclasses import dataclass, field
-from typing import Any, Optional, cast
+from typing import Any, Literal, Optional, cast
 
 import torch
 import wandb
@@ -419,11 +419,16 @@ class PretokenizeRunnerConfig:
     data_files: list[str] | None = None
     data_dir: str | None = None
     num_proc: int = 4
-    context_size: int = 123
+    context_size: int = 128
     column_name: str = "text"
     shuffle: bool = True
     seed: int | None = None
     streaming: bool = False
+
+    # special tokens
+    begin_batch_token: int | Literal["bos", "eos", "sep"] | None = "bos"
+    begin_sequence_token: int | Literal["bos", "eos", "sep"] | None = None
+    sequence_separator_token: int | Literal["bos", "eos", "sep"] | None = "eos"
 
     # if saving locally, set save_path
     save_path: str | None = None
