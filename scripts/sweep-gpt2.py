@@ -20,17 +20,10 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 block = 6
 
-total_training_steps = 200_00
+total_training_steps = 20_000
 batch_size = 4096
 total_training_tokens = total_training_steps * batch_size
 print(f"Total Training Tokens: {total_training_tokens}")
-
-# change these configs
-model_name = "gelu-1l"
-dataset_path = "NeelNanda/c4-tokenized-2b"
-new_cached_activations_path = (
-    f"./cached_activations/{model_name}/{dataset_path}/{total_training_steps}"
-)
 
 lr_warm_up_steps = 0
 lr_decay_steps = total_training_steps // 5  # 20% of training steps.
@@ -46,7 +39,6 @@ for l1_coefficient in [0.1, 1, 2, 4, 10]:
         1e-4,
         4e-4,
     ]:
-
         cfg = LanguageModelSAERunnerConfig(
             # Pick a tiny model to make this easier.
             model_name="gpt2",
@@ -54,8 +46,8 @@ for l1_coefficient in [0.1, 1, 2, 4, 10]:
             hook_point=f"blocks.{block}.hook_mlp_out",
             hook_point_layer=block,
             d_in=768,
-            dataset_path="NeelNanda/c4-tokenized-2b",
-            streaming=False,
+            dataset_path="apollo-research/Skylion007-openwebtext-tokenizer-gpt2",
+            streaming=True,
             context_size=512,
             is_dataset_tokenized=True,
             prepend_bos=True,
@@ -104,7 +96,7 @@ for l1_coefficient in [0.1, 1, 2, 4, 10]:
             dead_feature_threshold=1e-4,
             # WANDB
             log_to_wandb=log_to_wandb,
-            wandb_project="gpt-2-sweep-12may24",
+            wandb_project="gpt-2-sweep-14may24",
             wandb_log_frequency=50,
             eval_every_n_wandb_logs=10,
             # Misc
