@@ -278,6 +278,20 @@ def train_sae_group_on_language_model(
         signal.signal(signal.SIGINT, interrupt_callback)
         signal.signal(signal.SIGTERM, interrupt_callback)
 
+        # Estimate norm scaling factor if necessary
+        # TODO(tomMcGrath): this is a bodge and should be moved back inside a class
+        if activation_store.normalize_activations:
+            print('Estimating activation norm')
+            n_batches_for_norm_estimate = int(1e3)
+            norms_per_batch = []
+            for _ in tqdm(range(n_batches_for_norm_estimate)):
+                acts = activation_store.next_batch()
+                norms_per_batch.append(acts.norm(dim=-1).mean().item())
+            mean_norm = np.mean(norms_per_batch)
+            scaling_factor = np.sqrt(activation_store.d_in) / mean_norm
+            activation_store.estimated_norm_scaling_factor = scaling_factor
+
+        # Train loop
         while training_run_state.n_training_tokens < total_training_tokens:
             # Do a training step.
             layer_acts = activation_store.next_batch()

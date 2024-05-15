@@ -59,6 +59,11 @@ def run_evals(
     else:
         original_act = cache[hook_point]
 
+    # normalise if necessary
+    if activation_store.normalize_activations:
+        original_act = activation_store.apply_norm_scaling_factor(original_act)
+
+    # send the (maybe normalised) activations into the SAE
     sae_out, _, _, _, _, _ = sparse_autoencoder(original_act)
     del cache
 
@@ -106,7 +111,10 @@ def recons_loss_batched(
     for _ in range(n_batches):
         batch_tokens = activation_store.get_batch_tokens(eval_batch_size_prompts)
         score, loss, recons_loss, zero_abl_loss = get_recons_loss(
-            sparse_autoencoder, model, batch_tokens
+            sparse_autoencoder,
+            model,
+            batch_tokens,
+            activation_store,
         )
         losses.append(
             (
@@ -129,6 +137,7 @@ def get_recons_loss(
     sparse_autoencoder: SparseAutoencoder,
     model: HookedRootModule,
     batch_tokens: torch.Tensor,
+    activation_store: ActivationsStore,
 ):
     hook_point = sparse_autoencoder.cfg.hook_point
     loss = model(
@@ -136,26 +145,51 @@ def get_recons_loss(
     )
     head_index = sparse_autoencoder.cfg.hook_point_head_index
 
+    # TODO(tomMcGrath): the rescaling below is a bit of a hack and could probably be tidied up
     def standard_replacement_hook(activations: torch.Tensor, hook: Any):
+        # Handle rescaling if SAE expects it
+        if activation_store.normalize_activations:
+            activations = activation_store.apply_norm_scaling_factor(activations)
+
         activations = sparse_autoencoder.forward(activations).sae_out.to(
             activations.dtype
         )
+
+        # Unscale if activations were scaled prior to going into the SAE
+        if activation_store.normalize_activations:
+            activations = activation_store.unscale(activations)
         return activations
 
     def all_head_replacement_hook(activations: torch.Tensor, hook: Any):
+        # Handle rescaling if SAE expects it
+        if activation_store.normalize_activations:
+            activations = activation_store.apply_norm_scaling_factor(activations)
+
         new_activations = sparse_autoencoder.forward(
             activations.flatten(-2, -1)
         ).sae_out.to(activations.dtype)
         new_activations = new_activations.reshape(
             activations.shape
         )  # reshape to match original shape
+
+        # Unscale if activations were scaled prior to going into the SAE
+        if activation_store.normalize_activations:
+            new_activations = activation_store.unscale(new_activations)
         return new_activations
 
     def single_head_replacement_hook(activations: torch.Tensor, hook: Any):
+        # Handle rescaling if SAE expects it
+        if activation_store.normalize_activations:
+            activations = activation_store.apply_norm_scaling_factor(activations)
+
         new_activations = sparse_autoencoder.forward(
             activations[:, :, head_index]
         ).sae_out.to(activations.dtype)
         activations[:, :, head_index] = new_activations
+
+        # Unscale if activations were scaled prior to going into the SAE
+        if activation_store.normalize_activations:
+            activations = activation_store.unscale(activations)
         return activations
 
     has_head_dim_key_substrings = ["hook_q", "hook_k", "hook_v", "hook_z"]

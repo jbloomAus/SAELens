@@ -122,6 +122,8 @@ class ActivationsStore:
         self.n_dataset_processed = 0
         self.iterable_dataset = iter(self.dataset)
 
+        self.estimated_norm_scaling_factor = 1.
+
         # Check if dataset is tokenized
         dataset_sample = next(self.iterable_dataset)
 
@@ -174,6 +176,9 @@ class ActivationsStore:
 
     def apply_norm_scaling_factor(self, activations: torch.Tensor) -> torch.Tensor:
         return activations * self.estimated_norm_scaling_factor
+    
+    def unscale(self, activations: torch.Tensor) -> torch.Tensor:
+        return activations / self.estimated_norm_scaling_factor
 
     def get_norm_scaling_factor(self, activations: torch.Tensor) -> torch.Tensor:
         return (self.d_in**0.5) / activations.norm(dim=-1).mean()
@@ -386,18 +391,8 @@ class ActivationsStore:
 
         # every buffer should be normalized:
         if self.normalize_activations:
-            try:
-                # check if we've already estimated the norm scaling factor
-                assert self.estimated_norm_scaling_factor is not None
-            except AttributeError:
-                # if we haven't estimated it yet, do so.
-                assert (
-                    new_buffer.shape[0] > 3e5
-                ), "Warning: Storage buffer is too small to calculate norm scaling factor and expect it to be reliable."
-                self.estimated_norm_scaling_factor = self.get_norm_scaling_factor(
-                    new_buffer
-                )
-
+            if self.estimated_norm_scaling_factor == 1:
+                print('WARNING: no normalisation is being applied, scaling factor = 1')
             new_buffer = self.apply_norm_scaling_factor(new_buffer)
 
         return new_buffer
