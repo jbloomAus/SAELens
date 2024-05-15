@@ -83,7 +83,7 @@ for l1_coefficient in [3, 4, 5, 6, 7]:
             adam_beta2=0.999,
             # Unsure if this is enough
             n_batches_in_buffer=64,
-            store_batch_size_prompts=16,
+            store_batch_size_prompts=32,
             normalize_activations=True,
             # Feature Store
             feature_sampling_window=1000,
@@ -101,6 +101,7 @@ for l1_coefficient in [3, 4, 5, 6, 7]:
             checkpoint_path="checkpoints",
             dtype=torch.float32,
             eval_batch_size_prompts=2,
+            n_eval_batches=40,
             autocast=True,
             compile_llm=True,
             compile_sae=True,
