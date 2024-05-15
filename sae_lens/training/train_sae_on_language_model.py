@@ -281,7 +281,7 @@ def train_sae_group_on_language_model(
         # Estimate norm scaling factor if necessary
         # TODO(tomMcGrath): this is a bodge and should be moved back inside a class
         if activation_store.normalize_activations:
-            print('Estimating activation norm')
+            print("Estimating activation norm")
             n_batches_for_norm_estimate = int(1e3)
             norms_per_batch = []
             for _ in tqdm(range(n_batches_for_norm_estimate)):
