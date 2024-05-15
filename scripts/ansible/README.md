@@ -11,7 +11,7 @@ This is an Ansible playbook that runs `Cache Activations` and and `Train SAE` in
   - [Increase other quotas (like P instances)](https://us-east-1.console.aws.amazon.com/servicequotas/home/services/ec2/quotas)
   - G and P instances are not enabled by default [docs](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-resource-limits.html)
   - What GPUs/specs are G and P instance types? [docs](https://docs.aws.amazon.com/dlami/latest/devguide/gpu.html)
-- Wandb API Key
+- Wandb Account (wandb.ai)
 
 ### Local setup
 
@@ -30,6 +30,13 @@ This is an Ansible playbook that runs `Cache Activations` and and `Train SAE` in
 aws_access_key_id=AWS_ACCESS_KEY_ID
 aws_secret_access_key=AWS_SECRET_ACCESS_KEY
 region=us-east-1
+```
+
+#### Load Wandb API Key automatically
+1) Get your Wandb API key here: https://wandb.ai/settings#api
+2) Add the following to your `~/.bash_profile` (or your equivalent shell defaults file)
+```
+export WANDB_API_KEY=[Paste Wandb API Key]
 ```
 
 #### Install Ansible
@@ -77,7 +84,24 @@ Briefly, this example job will (time estimates are for the example above):
    2) Run `util/train_sae.py`, loading the cached activations from your S3 bucket.
    3) You can monitor progress of this by going to WANDB, where it should also have your artifacts.
 
+
+#### Run Cache Acts or Train SAEs Job Separately
+
+Cache Activations only
+```
+ansible-playbook playbooks/setup.yml
+ansible-playbook playbooks/cache_acts.yml
+```
+
+Train SAE only
+```
+ansible-playbook playbooks/setup.yml
+ansible-playbook playbooks/train_sae.yml
+```
+
 ### TODO
+   - make config scripts that makes the config sweep files automatically
+   - should do async so that canceling ansible doesnt cancel the job
    - document how to monitor running jobs
    - better integration with wandb ("sweep param")
      - should we just use/repurpose wandb stuff instead of manually doing all this?

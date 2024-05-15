@@ -10,7 +10,7 @@ job_name: gelu_1l_500
 # g6.12xlarge seems to work fine for gelu-1l, c4-tokenized-2b, 200_000 training steps, batch size 4096
 instance_type: g6.xlarge
 
-total_training_steps: 2_000
+total_training_steps: 2_100
 
 model_name: gelu-1l
 hook_point: blocks.0.hook_mlp_out
@@ -20,7 +20,6 @@ dataset_path: NeelNanda/c4-tokenized-2b
 context_size: 1024
 is_dataset_tokenized: true
 prepend_bos: true
-# training_tokens: 81920000  # this is ignored and instead calculated by total_training_steps * train_batch_size
 train_batch_size: 4096
 n_batches_in_buffer: 4
 store_batch_size: 128
@@ -29,6 +28,9 @@ shuffle_every_n_buffers: 8
 n_shuffles_with_last_section: 1
 n_shuffles_in_entire_dir: 1
 n_shuffles_final: 1
-# device: cuda # this is ignored and instead set by the python code
 seed: 42
 dtype: torch.float16
+
+############################# Values that will be set by the Ansible script
+# device: cuda # this is ignored and instead set by the python code
+# training_tokens: 81920000  # this is ignored and instead calculated by total_training_steps * train_batch_size

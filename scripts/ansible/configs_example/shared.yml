@@ -16,7 +16,7 @@
 s3_bucket_name: johnny.saes.1234
 
 # Change if you need a specific version
-saelens_version_or_branch: automation
+saelens_version_or_branch: v2.1.1
 
 #################### DON'T CHANGE THE FOLLOWING
 

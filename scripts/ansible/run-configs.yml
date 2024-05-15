@@ -2,7 +2,6 @@
 
 - name: Check that WANDB_API_KEY exists
   hosts: localhost
-  tags: always
   tasks:
     - name: Check that WANDB_API_KEY exists
       ansible.builtin.fail:
@@ -13,12 +12,9 @@
   ansible.builtin.import_playbook: playbooks/setup.yml
 
 - name: Run Cache Acts
-    - cache_acts
   ansible.builtin.import_playbook: playbooks/cache_acts.yml
 
 - name: Run Train SAE
-  tags:
-    - train_sae
   ansible.builtin.import_playbook: playbooks/train_sae.yml
 
 - name: Clear ansible.log
