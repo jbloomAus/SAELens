@@ -7,8 +7,8 @@ This is an Ansible playbook that runs `Cache Activations` and and `Train SAE` in
 ### Prerequisites
 - AWS Account
 - AWS ability to launch G instance types - you need to submit a request to enable this.
-  - [Submit request for G. Click "Request increase at account level".](https://us-east-1.console.aws.amazon.com/servicequotas/home/services/ec2/quotas/L-3819A6DF)
-  - [Increase other quotas (like P instances)](https://us-east-1.console.aws.amazon.com/servicequotas/home/services/ec2/quotas)
+  - [Submit request for G. Click "Request increase at account level".](https://us-east-1.console.aws.amazon.com/servicequotas/home/services/ec2/quotas/L-DB2E81BA)
+  - [Increase other quotas (like P instances) - Be sure to request On-Demand, not Spot"](https://us-east-1.console.aws.amazon.com/servicequotas/home/services/ec2/quotas)
   - G and P instances are not enabled by default [docs](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-resource-limits.html)
   - What GPUs/specs are G and P instance types? [docs](https://docs.aws.amazon.com/dlami/latest/devguide/gpu.html)
 - Wandb Account (wandb.ai)
