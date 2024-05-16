@@ -1,0 +1,16 @@
+---
+
+- name: Run Setup
+  ansible.builtin.import_playbook: playbooks/setup.yml
+
+- name: Run Development Instance
+  ansible.builtin.import_playbook: playbooks/dev.yml
+
+- name: Clear ansible.log
+  hosts: localhost
+  tasks:
+  - name: Clear ansible.log
+    ansible.builtin.copy:
+      content: ""
+      dest: "ansible.log"
+      mode: '0644'
