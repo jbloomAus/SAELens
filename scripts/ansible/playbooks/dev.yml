@@ -1,0 +1,30 @@
+---
+
+- name: "Launch dev instance"
+  hosts: localhost
+  vars_files:
+    - "{{ lookup('env', 'PWD') ~ '/configs/shared.yml' }}"
+  tasks:
+    - name: Launch the EC2 Instance
+      include_tasks: "{{ lookup('env', 'PWD') ~ '/tasks/launch_ec2_instance.yml' }}"
+      vars:
+        config_file: "{{ lookup('env', 'PWD') ~ '/configs/dev.yml' }}"
+        service_name: "dev"
+        job_name: "dev"
+
+- name: "Configure instance for job {{ job_name }}"
+  hosts: tag_service__dev:&tag_job__{{ job_name }}
+  gather_facts: true
+  vars:
+    ansible_user: ubuntu
+    ansible_ssh_private_key_file: "{{ ssh_key_path }}"
+    ansible_python_interpreter: auto_silent
+    instance_storage_path: "{{ instance_storage_path }}"
+    s3_local_cache_path: "{{ instance_storage_path }}/s3-local-cache"
+    service_name: "dev"
+    job_name: "dev"
+  vars_files:
+    - "{{ lookup('env', 'PWD') ~ '/configs/shared.yml' }}"
+  tasks:
+    - name: Configure the EC2 Instance
+      include_tasks: "{{ lookup('env', 'PWD') ~ '/tasks/configure_ec2_instance.yml' }}"
