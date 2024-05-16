@@ -570,7 +570,7 @@ def _train_step(
 ) -> TrainStepOutput:
     assert sparse_autoencoder.cfg.d_sae is not None  # keep pyright happy
     layer_id = all_layers.index(sparse_autoencoder.hook_point_layer)
-    sae_in = layer_acts[:, layer_id, :]
+    sae_in = layer_acts[:, layer_id, :].to(sparse_autoencoder.cfg.device)
 
     sparse_autoencoder.train()
     # Make sure the W_dec is still zero-norm

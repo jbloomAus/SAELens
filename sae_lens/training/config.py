@@ -61,6 +61,7 @@ class LanguageModelSAERunnerConfig:
 
     # Misc
     device: str | torch.device = "cpu"
+    act_store_device: str | torch.device = "with_model"  # will be set by post init if with_model
     seed: int = 42
     dtype: str | torch.dtype = "float32"  # type: ignore #
     prepend_bos: bool = True
@@ -184,6 +185,8 @@ class LanguageModelSAERunnerConfig:
             )
 
         self.device: str | torch.device = torch.device(self.device)
+        if self.act_store_device == "with_model":
+            self.act_store_device = self.device
 
         if self.lr_end is None:
             if isinstance(self.lr, list):
@@ -323,6 +326,7 @@ class CacheActivationsRunnerConfig:
 
     # Misc
     device: str | torch.device = "cpu"
+    act_store_device: str | torch.device = "with_model"  # will be set by post init if with_model
     seed: int = 42
     dtype: str | torch.dtype = "float32"
     prepend_bos: bool = True
@@ -344,6 +348,9 @@ class CacheActivationsRunnerConfig:
                 self.hook_point,
                 self.hook_point_head_index,
             )
+
+        if self.act_store_device == "with_model":
+            self.act_store_device = self.device
 
 
 @dataclass
