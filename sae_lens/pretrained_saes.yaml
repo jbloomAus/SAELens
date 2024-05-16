@@ -30,3 +30,12 @@ SAE_LOOKUP:
         path: "blocks.11.hook_resid_pre"
       - id: "blocks.11.hook_resid_post"
         path: "blocks.11.hook_resid_post"
+  gemma-2b-res-jb:
+    repo_id: "jbloom/Gemma-2b-Residual-Stream-SAEs"
+    model: "gemma-2b"
+    conversion_func: null
+    saes:
+      - id: "blocks.0.hook_resid_post"
+        path: "gemma_2b_blocks.0.hook_resid_post_16384_anthropic"
+      - id: "blocks.0.hook_resid_post"
+        path: "gemma_2b_blocks.6.hook_resid_post_16384_anthropic_fast_lr"
