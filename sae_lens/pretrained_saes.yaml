@@ -37,5 +37,5 @@ SAE_LOOKUP:
     saes:
       - id: "blocks.0.hook_resid_post"
         path: "gemma_2b_blocks.0.hook_resid_post_16384_anthropic"
-      - id: "blocks.0.hook_resid_post"
+      - id: "blocks.6.hook_resid_post"
         path: "gemma_2b_blocks.6.hook_resid_post_16384_anthropic_fast_lr"
