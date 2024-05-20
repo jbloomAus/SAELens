@@ -62,7 +62,7 @@ class LanguageModelSAERunnerConfig:
     # Misc
     device: str | torch.device = "cpu"
     seed: int = 42
-    dtype: str | torch.dtype = "float32"  # type: ignore #
+    dtype: str | torch.dtype = "torch.float32"  # type: ignore #
     prepend_bos: bool = True
 
     # Performance - see compilation section of lm_runner.py for info
@@ -134,6 +134,13 @@ class LanguageModelSAERunnerConfig:
     sae_lens_training_version: str = field(default_factory=lambda: __version__)
 
     def __post_init__(self):
+
+        if self.resume:
+            raise ValueError(
+                "Resuming is no longer supported. You can finetune a trained SAE using cfg.from_pretrained path."
+                + "If you want to load an SAE with resume=True in the config, please manually set resume=False in that config."
+            )
+
         if self.use_cached_activations and self.cached_activations_path is None:
             self.cached_activations_path = _default_cached_activations_path(
                 self.dataset_path,
@@ -318,7 +325,7 @@ class CacheActivationsRunnerConfig:
     # Misc
     device: str | torch.device = "cpu"
     seed: int = 42
-    dtype: str | torch.dtype = "float32"
+    dtype: str | torch.dtype = "torch.float32"
     prepend_bos: bool = True
 
     # Activation caching stuff
