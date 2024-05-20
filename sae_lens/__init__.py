@@ -10,7 +10,6 @@ from .training.config import (
 from .training.evals import run_evals
 from .training.lm_runner import language_model_sae_runner
 from .training.pretokenize_runner import pretokenize_runner
-from .training.sae_group import SparseAutoencoderDictionary
 from .training.session_loader import LMSparseAutoencoderSessionloader
 from .training.sparse_autoencoder import SparseAutoencoder
 from .training.train_sae_on_language_model import train_sae_group_on_language_model
@@ -21,7 +20,6 @@ __all__ = [
     "LMSparseAutoencoderSessionloader",
     "PretokenizeRunnerConfig",
     "SparseAutoencoder",
-    "SparseAutoencoderDictionary",
     "run_evals",
     "language_model_sae_runner",
     "pretokenize_runner",
