@@ -1,5 +1,3 @@
-import os
-
 import torch
 
 from sae_lens.training.config import LanguageModelSAERunnerConfig
