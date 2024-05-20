@@ -19,7 +19,6 @@ from sae_lens import __version__
 from sae_lens.training.activations_store import ActivationsStore, HfDataset
 from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.evals import run_evals
-from sae_lens.training.geometric_median import compute_geometric_median
 from sae_lens.training.optim import L1Scheduler, get_lr_scheduler
 from sae_lens.training.sparse_autoencoder import (
     SAE_CFG_PATH,
@@ -217,8 +216,6 @@ def train_sae_group_on_language_model(
     model: HookedRootModule,
     sae: SparseAutoencoder,
     activation_store: ActivationsStore,
-    train_context: Optional[SAETrainContext] = None,
-    training_run_state: Optional[SAETrainingRunState] = None,
     batch_size: int = 1024,
     n_checkpoints: int = 0,
     feature_sampling_window: int = 1000,  # how many training steps between resampling the features / considiring neurons dead
@@ -241,25 +238,8 @@ def train_sae_group_on_language_model(
 
     pbar = tqdm(total=total_training_tokens, desc="Training SAE")
 
-    # not resuming
-    if training_run_state is None and train_context is None:
-        train_context = _build_train_context(sae, total_training_steps)
-        training_run_state = SAETrainingRunState(
-            checkpoint_path=sae.cfg.checkpoint_path
-        )
-        _init_sae_group_b_decs(sae, activation_store)
-    # resuming
-    else:
-        if train_context is None:
-            raise ValueError(
-                "train_contexts is None, when resuming, pass in training_run_state and train_contexts"
-            )
-        if training_run_state is None:
-            raise ValueError(
-                "training_run_state is None, when resuming, pass in training_run_state and train_contexts"
-            )
-        pbar.update(training_run_state.n_training_tokens)
-        training_run_state.set_random_state()
+    train_context = _build_train_context(sae, total_training_steps)
+    training_run_state = SAETrainingRunState(checkpoint_path=sae.cfg.checkpoint_path)
 
     class InterruptedException(Exception):
         pass
@@ -471,27 +451,6 @@ def _build_train_context(
         lr_scheduler=lr_scheduler,
         l1_scheduler=l1_scheduler,
     )
-
-
-def _init_sae_group_b_decs(
-    sae: SparseAutoencoder,
-    activation_store: ActivationsStore,
-) -> None:
-    """
-    extract all activations at a certain layer and use for sae b_dec initialization
-    """
-
-    if sae.cfg.b_dec_init_method == "geometric_median":
-        layer_acts = activation_store.storage_buffer.detach()[:, 0, :]
-        # get geometric median of the activations if we're using those.
-        median = compute_geometric_median(
-            layer_acts,
-            maxiter=100,
-        ).median
-        sae.initialize_b_dec_with_precalculated(median)
-    elif sae.cfg.b_dec_init_method == "mean":
-        layer_acts = activation_store.storage_buffer.detach().cpu()[:, 0, :]
-        sae.initialize_b_dec_with_mean(layer_acts)
 
 
 def _update_sae_lens_training_version(sae: SparseAutoencoder) -> None:

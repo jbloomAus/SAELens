@@ -1,45 +1,27 @@
-import os
-from collections import OrderedDict
-from dataclasses import fields
 from pathlib import Path
 from typing import Any, Callable
 from unittest.mock import patch
 
-import numpy as np
 import pytest
 import torch
-import wandb
 from datasets import Dataset
 from torch import Tensor
 from transformer_lens import HookedTransformer
 
 from sae_lens import __version__
 from sae_lens.training.activations_store import ActivationsStore
-from sae_lens.training.optim import L1Scheduler
-from sae_lens.training.sparse_autoencoder import (
-    SAE_CFG_PATH,
-    SAE_WEIGHTS_PATH,
-    SPARSITY_PATH,
-    ForwardOutput,
-    SparseAutoencoder,
-)
+from sae_lens.training.sparse_autoencoder import ForwardOutput, SparseAutoencoder
 from sae_lens.training.train_sae_on_language_model import (
-    ACTIVATION_STORE_PATH,
-    SAE_CONTEXT_PATH,
-    TRAINING_RUN_STATE_PATH,
     SAETrainContext,
-    SAETrainingRunState,
     TrainStepOutput,
     _build_train_context,
     _build_train_step_log_dict,
     _log_feature_sparsity,
-    _save_checkpoint,
     _train_step,
     _update_sae_lens_training_version,
-    load_checkpoint,
     train_sae_group_on_language_model,
 )
-from tests.unit.helpers import build_sae_cfg, load_model_cached
+from tests.unit.helpers import build_sae_cfg
 
 
 def build_train_ctx(
@@ -265,129 +247,6 @@ def test_build_train_step_log_dict() -> None:
         "details/current_l1_coefficient-wandbftw": 0.01,
         "details/n_training_tokens": 123,
     }
-
-
-def test_save_load_and_resume_checkpoint(tmp_path: Path) -> None:
-
-    # set wandb mode to offline
-    os.environ["WANDB_MODE"] = "offline"
-
-    wandb.init()
-    checkpoint_dir = tmp_path / "checkpoint"
-    cfg = build_sae_cfg(
-        checkpoint_path=str(checkpoint_dir),
-        d_in=64,
-        d_sae=128,
-        log_to_wandb=True,
-        training_tokens=256,
-    )
-    sae = SparseAutoencoder(cfg)
-    ctx = build_train_ctx(
-        sae,
-        act_freq_scores=torch.rand((128,)),
-        n_forward_passes_since_fired=torch.randint(0, 128, (128,)),
-        n_frac_active_tokens=123,
-    )
-
-    dataset = Dataset.from_list(
-        [
-            {"text": "hello world1"},
-            {"text": "hello world2"},
-            {"text": "hello world3"},
-        ]
-        * 5000
-    )
-    model = load_model_cached(cfg.model_name)
-    activation_store = ActivationsStore.from_config(model, cfg, dataset=dataset)
-
-    training_run_state = SAETrainingRunState("hi", 1, 2, True)
-
-    _ = activation_store.get_batch_tokens()
-    _ = activation_store.get_batch_tokens()
-    _ = activation_store.get_batch_tokens()
-
-    res = _save_checkpoint(
-        sae=sae,
-        activation_store=activation_store,
-        train_context=ctx,
-        training_run_state=training_run_state,
-        checkpoint_name="test_checkpoint",
-    )
-    assert res == str(checkpoint_dir / "test_checkpoint")
-
-    contents = os.listdir(f"{res}")
-    assert len(contents) == 6
-    assert ACTIVATION_STORE_PATH in contents
-    assert TRAINING_RUN_STATE_PATH in contents
-    contents.remove(ACTIVATION_STORE_PATH)
-    contents.remove(TRAINING_RUN_STATE_PATH)
-
-    assert SAE_CONTEXT_PATH in contents
-    assert SAE_CFG_PATH in contents
-    assert SPARSITY_PATH in contents
-    assert SAE_WEIGHTS_PATH in contents
-    # stuff not tied to a single sae
-
-    training_run_state_2, activation_store_2, sae_2, train_context_2 = load_checkpoint(
-        checkpoint_path=res,
-        cfg=cfg,
-        model=model,
-        batch_size=cfg.train_batch_size_tokens,
-    )
-
-    # recursive handle lots of types
-    def assert_close(sd1: Any, sd2: Any):
-        assert type(sd1) == type(sd2)
-        if type(sd1) is torch.Tensor:
-            assert torch.allclose(sd1, sd2)
-        elif type(sd1) is np.ndarray:
-            assert np.allclose(sd1, sd2)
-        elif type(sd1) in [dict, OrderedDict]:
-            assert sd1.keys() == sd2.keys()
-            for k in sd1.keys():
-                assert_close(sd1[k], sd2[k])
-        elif type(sd1) is list or type(sd1) is tuple:
-            assert len(sd1) == len(sd2)
-            for v1, v2 in zip(sd1, sd2):
-                assert_close(v1, v2)
-        elif type(sd1) in [str, int, bool, float]:
-            assert sd1 == sd2
-        elif sd1 is None:
-            assert sd1 == sd2
-        else:
-            if type(sd1) != L1Scheduler:
-                raise ValueError(f"didn't handle {sd1} of type {type(sd1)}")
-
-    # compare training run states
-    for attr in fields(training_run_state):
-        f1 = getattr(training_run_state, attr.name)
-        f2 = getattr(training_run_state_2, attr.name)
-        assert_close(f1, f2)
-
-    # compare sae groups and ctxs
-    assert_close(sae.state_dict(), sae_2.state_dict())
-
-    # compare activation stores
-    assert_close(activation_store.state_dict(), activation_store_2.state_dict())
-
-    # compare loaded train context
-    sd1 = ctx.state_dict()
-    sd2 = train_context_2.state_dict()
-    assert_close(sd1, sd2)
-
-    res = train_sae_group_on_language_model(
-        model=model,
-        sae=sae,
-        activation_store=activation_store,
-        train_context=train_context_2,
-        training_run_state=training_run_state_2,
-        batch_size=cfg.train_batch_size_tokens,
-    )
-    assert res.checkpoint_path == str(checkpoint_dir / "final_258")
-    assert len(res.log_feature_sparsities) == 128
-
-    assert res.log_feature_sparsities.shape == (cfg.d_sae,)
-    assert isinstance(res.sae, SparseAutoencoder)
 
 
 def test_train_sae_group_on_language_model__runs(

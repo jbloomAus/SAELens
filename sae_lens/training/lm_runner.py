@@ -1,74 +1,41 @@
-import traceback
 from typing import Any, cast
 
 import torch
 import wandb
 
+from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.config import LanguageModelSAERunnerConfig
-from sae_lens.training.load_model import load_model
+from sae_lens.training.geometric_median import compute_geometric_median
 from sae_lens.training.session_loader import LMSparseAutoencoderSessionloader
+from sae_lens.training.sparse_autoencoder import SparseAutoencoder
 from sae_lens.training.train_sae_on_language_model import (
-    load_checkpoint,
     train_sae_group_on_language_model,
 )
 
 
 def language_model_sae_runner(cfg: LanguageModelSAERunnerConfig):
     """ """
-    training_run_state = None
-    train_context = None
-
-    if cfg.resume:
-        try:
-            checkpoint_path = cfg.get_resume_checkpoint_path()
-            model = load_model(
-                model_class_name=cfg.model_class_name,
-                model_name=cfg.model_name,
-                device=cfg.device,
-            )
-            model.to(cfg.device)
-            (
-                training_run_state,
-                activations_loader,
-                sparse_autoencoder,
-                train_context,
-            ) = load_checkpoint(
-                checkpoint_path=checkpoint_path,
-                cfg=cfg,
-                model=model,
-                batch_size=cfg.train_batch_size_tokens,
-            )
-        # no checkpoints found, don't resume
-        except FileNotFoundError:
-            print(traceback.format_exc())
-            print("failed to find checkpoint to resume from, setting resume to False")
-            cfg.resume = False
-
-    if not cfg.resume:
-        if cfg.from_pretrained_path is not None:
-            (
-                model,
-                sparse_autoencoder,
-                activations_loader,
-            ) = LMSparseAutoencoderSessionloader.load_pretrained_sae(
-                cfg.from_pretrained_path
-            )
-            cfg = sparse_autoencoder.cfg
-        else:
-            loader = LMSparseAutoencoderSessionloader(cfg)
-            model, sparse_autoencoder, activations_loader = (
-                loader.load_sae_training_group_session()
-            )
+    if cfg.from_pretrained_path is not None:
+        (
+            model,
+            sparse_autoencoder,
+            activations_loader,
+        ) = LMSparseAutoencoderSessionloader.load_pretrained_sae(
+            cfg.from_pretrained_path
+        )
+        cfg = sparse_autoencoder.cfg
+    else:
+        loader = LMSparseAutoencoderSessionloader(cfg)
+        model, sparse_autoencoder, activations_loader = (
+            loader.load_sae_training_group_session()
+        )
+        _init_sae_group_b_decs(sparse_autoencoder, activations_loader)
 
     if cfg.log_to_wandb:
-        resume = None
-        if cfg.resume:
-            resume = "allow"
         wandb.init(
             project=cfg.wandb_project,
             config=cast(Any, cfg),
             name=cfg.run_name,
-            resume=resume,
             id=cfg.wandb_id,
         )
 
@@ -104,8 +71,6 @@ def language_model_sae_runner(cfg: LanguageModelSAERunnerConfig):
         model=model,  # pyright: ignore [reportPossiblyUnboundVariable] # type: ignore
         sae=sparse_autoencoder,  # pyright: ignore [reportPossiblyUnboundVariable]
         activation_store=activations_loader,  # pyright: ignore [reportPossiblyUnboundVariable]
-        train_context=train_context,
-        training_run_state=training_run_state,
         batch_size=cfg.train_batch_size_tokens,
         n_checkpoints=cfg.n_checkpoints,
         feature_sampling_window=cfg.feature_sampling_window,
@@ -121,3 +86,24 @@ def language_model_sae_runner(cfg: LanguageModelSAERunnerConfig):
         wandb.finish()
 
     return sparse_autoencoder
+
+
+def _init_sae_group_b_decs(
+    sae: SparseAutoencoder,
+    activation_store: ActivationsStore,
+) -> None:
+    """
+    extract all activations at a certain layer and use for sae b_dec initialization
+    """
+
+    if sae.cfg.b_dec_init_method == "geometric_median":
+        layer_acts = activation_store.storage_buffer.detach()[:, 0, :]
+        # get geometric median of the activations if we're using those.
+        median = compute_geometric_median(
+            layer_acts,
+            maxiter=100,
+        ).median
+        sae.initialize_b_dec_with_precalculated(median)
+    elif sae.cfg.b_dec_init_method == "mean":
+        layer_acts = activation_store.storage_buffer.detach().cpu()[:, 0, :]
+        sae.initialize_b_dec_with_mean(layer_acts)
