@@ -8,9 +8,6 @@ from transformer_lens import HookedTransformer
 
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.config import LanguageModelSAERunnerConfig
-from sae_lens.training.sae_group import SparseAutoencoderDictionary
-
-# from sae_lens.training.sae_group import SAETrainingGroup
 from sae_lens.training.session_loader import LMSparseAutoencoderSessionloader
 from sae_lens.training.sparse_autoencoder import SparseAutoencoder
 from tests.unit.helpers import build_sae_cfg
@@ -43,10 +40,12 @@ def test_LMSparseAutoencoderSessionloader_load_session(
     cfg: LanguageModelSAERunnerConfig,
 ):
     loader = LMSparseAutoencoderSessionloader(cfg)
-    model, sae_group, activations_loader = loader.load_sae_training_group_session()
+    model, sparse_autoencoder, activations_loader = (
+        loader.load_sae_training_group_session()
+    )
 
     assert isinstance(model, HookedTransformer)
-    assert isinstance(next(iter(sae_group))[1], SparseAutoencoder)
+    assert isinstance(sparse_autoencoder, SparseAutoencoder)
     assert isinstance(activations_loader, ActivationsStore)
     assert model.cfg.checkpoint_index is None
 
@@ -61,10 +60,12 @@ def test_LMSparseAutoencoderSessionloader_load_session_can_load_model_with_kwarg
         model_from_pretrained_kwargs={"checkpoint_index": 0},
     )
     loader = LMSparseAutoencoderSessionloader(cfg)
-    model, sae_group, activations_loader = loader.load_sae_training_group_session()
+    model, sparse_autoencoder, activations_loader = (
+        loader.load_sae_training_group_session()
+    )
 
     assert isinstance(model, HookedTransformer)
-    assert isinstance(next(iter(sae_group))[1], SparseAutoencoder)
+    assert isinstance(sparse_autoencoder, SparseAutoencoder)
     assert isinstance(activations_loader, ActivationsStore)
     assert (
         model.cfg.checkpoint_index
@@ -77,10 +78,10 @@ def test_LMSparseAutoencoderSessionloader_load_sae_session_from_pretrained(
 ):
     # make a
     loader = LMSparseAutoencoderSessionloader(cfg)
-    _, sae_group, _ = loader.load_sae_training_group_session()
-    old_sparse_autoencoder = next(iter(sae_group))[1]
+    _, old_sparse_autoencoder, _ = loader.load_sae_training_group_session()
+
     with tempfile.TemporaryDirectory() as tmpdirname:
-        sae_group.save_saes(tmpdirname)
+        old_sparse_autoencoder.save_model(tmpdirname)
         (
             _,
             new_sparse_autoencoder,
@@ -123,7 +124,7 @@ def test_load_pretrained_sae_from_huggingface():
         path=folder_path
     )
     assert isinstance(model, HookedTransformer)
-    assert isinstance(sae, SparseAutoencoderDictionary)
+    assert isinstance(sae, SparseAutoencoder)
     assert isinstance(activation_store, ActivationsStore)
     assert sae.cfg.hook_point_layer == layer
     assert sae.cfg.model_name == "gpt2-small"

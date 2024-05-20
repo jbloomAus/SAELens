@@ -134,16 +134,10 @@ class DashboardRunner:
 
     def init_sae_session(self):
         (
-            model,
-            sae_group,
+            self.model,  # type: ignore
+            self.sparse_autoencoder,
             self.activation_store,
         ) = LMSparseAutoencoderSessionloader.load_pretrained_sae(self.sae_path)
-        assert isinstance(
-            model, HookedTransformer
-        )  # only HookedTransformer is allowed to be used in the dashboard
-        self.model = model
-        # TODO: handle multiple autoencoders
-        self.sparse_autoencoder = next(iter(sae_group))[1]
 
     def get_tokens(
         self, n_batches_to_sample_from: int = 2**12, n_prompts_to_select: int = 4096 * 6
