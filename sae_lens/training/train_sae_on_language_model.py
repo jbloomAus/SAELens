@@ -174,211 +174,198 @@ class TrainSAEOutput:
     log_feature_sparsities: torch.Tensor
 
 
-def train_sae_on_language_model(
-    model: HookedRootModule,
-    sae: SparseAutoencoder,
-    activation_store: ActivationsStore,
-    batch_size: int = 1024,
-    n_checkpoints: int = 0,
-    feature_sampling_window: int = 1000,  # how many training steps between resampling the features / considiring neurons dead
-    dead_feature_threshold: float = 1e-8,  # how infrequently a feature has to be active to be considered dead
-    use_wandb: bool = False,
-    wandb_log_frequency: int = 50,
-    eval_every_n_wandb_logs: int = 100,
-    autocast: bool = False,
-    n_eval_batches: int = 10,
-    eval_batch_size_prompts: int | None = None,
-) -> SparseAutoencoder:
-    """
-    @deprecated Use `train_sae_group_on_language_model` instead. This method is kept for backward compatibility.
-    """
-    return train_sae_group_on_language_model(
-        model=model,
-        sae=sae,
-        activation_store=activation_store,
-        batch_size=batch_size,
-        n_checkpoints=n_checkpoints,
-        feature_sampling_window=feature_sampling_window,
-        use_wandb=use_wandb,
-        wandb_log_frequency=wandb_log_frequency,
-        eval_every_n_wandb_logs=eval_every_n_wandb_logs,
-        autocast=autocast,
-        n_eval_batches=n_eval_batches,
-        eval_batch_size_prompts=eval_batch_size_prompts,
-    ).sae
+class SAETrainer:
+
+    def __init__(
+        self,
+        model: HookedRootModule,
+        sae: SparseAutoencoder,
+        activation_store: ActivationsStore,
+        batch_size: int = 1024,
+        n_checkpoints: int = 0,
+        feature_sampling_window: int = 1000,  # how many training steps between resampling the features / considiring neurons dead
+        dead_feature_threshold: float = 1e-8,  # how infrequently a feature has to be active to be considered dead
+        use_wandb: bool = False,
+        wandb_log_frequency: int = 50,
+        eval_every_n_wandb_logs: int = 100,
+        autocast: bool = False,
+        n_eval_batches: int = 10,
+        eval_batch_size_prompts: int | None = None,
+    ) -> None:
+
+        self.model = model
+        self.sae = sae
+        self.activation_store = activation_store
+        self.batch_size = batch_size
+        self.n_checkpoints = n_checkpoints
+        self.feature_sampling_window = feature_sampling_window
+        self.dead_feature_threshold = dead_feature_threshold
+        self.use_wandb = use_wandb
+        self.wandb_log_frequency = wandb_log_frequency
+        self.eval_every_n_wandb_logs = eval_every_n_wandb_logs
+        self.autocast = autocast
+        self.n_eval_batches = n_eval_batches
+        self.eval_batch_size_prompts = eval_batch_size_prompts
+
+        self.total_training_tokens = get_total_training_tokens(sae=sae)
+        _update_sae_lens_training_version(sae)
+        total_training_steps = self.total_training_tokens // batch_size
+
+        self.checkpoint_thresholds = []
+        if n_checkpoints > 0:
+            self.checkpoint_thresholds = list(
+                range(
+                    0,
+                    self.total_training_tokens,
+                    self.total_training_tokens // n_checkpoints,
+                )
+            )[1:]
+
+        self.train_context = _build_train_context(sae, total_training_steps)
+        self.training_run_state = SAETrainingRunState(
+            checkpoint_path=sae.cfg.checkpoint_path
+        )
+
+    def fit(self) -> SparseAutoencoder:
+
+        pbar = tqdm(total=self.total_training_tokens, desc="Training SAE")
+
+        class InterruptedException(Exception):
+            pass
+
+        def interrupt_callback(sig_num: Any, stack_frame: Any):
+            raise InterruptedException()
+
+        try:
+            # signal handlers (if preempted)
+            signal.signal(signal.SIGINT, interrupt_callback)
+            signal.signal(signal.SIGTERM, interrupt_callback)
+
+            # Estimate norm scaling factor if necessary
+            # TODO(tomMcGrath): this is a bodge and should be moved back inside a class
+            if self.activation_store.normalize_activations:
+                print("Estimating activation norm")
+                n_batches_for_norm_estimate = int(1e3)
+                norms_per_batch = []
+                for _ in tqdm(range(n_batches_for_norm_estimate)):
+                    acts = self.activation_store.next_batch()
+                    norms_per_batch.append(acts.norm(dim=-1).mean().item())
+                mean_norm = np.mean(norms_per_batch)
+                scaling_factor = np.sqrt(self.activation_store.d_in) / mean_norm
+                self.activation_store.estimated_norm_scaling_factor = scaling_factor
+
+            # Train loop
+            while (
+                self.training_run_state.n_training_tokens < self.total_training_tokens
+            ):
+                # Do a training step.
+                layer_acts = self.activation_store.next_batch()[:, 0, :]
+                self.training_run_state.n_training_tokens += self.batch_size
+
+                step_output = _train_step(
+                    sparse_autoencoder=self.sae,
+                    sae_in=layer_acts,
+                    ctx=self.train_context,
+                    feature_sampling_window=self.feature_sampling_window,
+                    use_wandb=self.use_wandb,
+                    n_training_steps=self.training_run_state.n_training_steps,
+                    batch_size=self.batch_size,
+                    wandb_suffix="",
+                    autocast=self.autocast,
+                )
+
+                if self.use_wandb:
+                    with torch.no_grad():
+                        if (
+                            self.training_run_state.n_training_steps + 1
+                        ) % self.wandb_log_frequency == 0:
+                            wandb.log(
+                                _build_train_step_log_dict(
+                                    sparse_autoencoder=self.sae,
+                                    output=step_output,
+                                    ctx=self.train_context,
+                                    wandb_suffix="",
+                                    n_training_tokens=self.training_run_state.n_training_tokens,
+                                ),
+                                step=self.training_run_state.n_training_steps,
+                            )
+
+                        # record loss frequently, but not all the time.
+                        if (self.training_run_state.n_training_steps + 1) % (
+                            self.wandb_log_frequency * self.eval_every_n_wandb_logs
+                        ) == 0:
+                            self.sae.eval()
+                            run_evals(
+                                sparse_autoencoder=self.sae,
+                                activation_store=self.activation_store,
+                                model=self.model,
+                                n_training_steps=self.training_run_state.n_training_steps,
+                                suffix="",
+                                n_eval_batches=self.n_eval_batches,
+                                eval_batch_size_prompts=self.eval_batch_size_prompts,
+                            )
+                            self.sae.train()
+
+                # checkpoint if at checkpoint frequency
+                if (
+                    self.checkpoint_thresholds
+                    and self.training_run_state.n_training_tokens
+                    > self.checkpoint_thresholds[0]
+                ):
+                    _save_checkpoint(
+                        sae=self.sae,
+                        activation_store=self.activation_store,
+                        train_context=self.train_context,
+                        training_run_state=self.training_run_state,
+                        checkpoint_name=self.training_run_state.n_training_tokens,
+                    )
+                    self.checkpoint_thresholds.pop(0)
+
+                ###############
+
+                self.training_run_state.n_training_steps += 1
+                if self.training_run_state.n_training_steps % 100 == 0:
+                    pbar.set_description(
+                        f"{self.training_run_state.n_training_steps}| MSE Loss {step_output.mse_loss.item():.3f} | L1 {step_output.l1_loss.mean().item():.3f}"
+                    )
+                pbar.update(self.batch_size)
+
+                ### If n_training_tokens > sae_group.cfg.training_tokens, then we should switch to fine-tuning (if we haven't already)
+                if (not self.training_run_state.started_fine_tuning) and (
+                    self.training_run_state.n_training_tokens
+                    > self.sae.cfg.training_tokens
+                ):
+                    self.training_run_state.started_fine_tuning = True
+                    self.train_context.begin_finetuning(self.sae)
+
+        except (KeyboardInterrupt, InterruptedException):
+            print("interrupted, saving progress")
+            checkpoint_name = self.training_run_state.n_training_tokens
+            _save_checkpoint(
+                sae=self.sae,
+                activation_store=self.activation_store,
+                train_context=self.train_context,
+                training_run_state=self.training_run_state,
+                checkpoint_name=checkpoint_name,
+            )
+            print("done saving")
+            raise
+        # save final sae group to checkpoints folder
+        _save_checkpoint(
+            sae=self.sae,
+            activation_store=self.activation_store,
+            train_context=self.train_context,
+            training_run_state=self.training_run_state,
+            checkpoint_name=f"final_{self.training_run_state.n_training_tokens}",
+            wandb_aliases=["final_model"],
+        )
+
+        pbar.close()
+        return self.sae
 
 
 def get_total_training_tokens(sae: SparseAutoencoder) -> int:
     return sae.cfg.training_tokens + sae.cfg.finetuning_tokens
-
-
-def train_sae_group_on_language_model(
-    model: HookedRootModule,
-    sae: SparseAutoencoder,
-    activation_store: ActivationsStore,
-    batch_size: int = 1024,
-    n_checkpoints: int = 0,
-    feature_sampling_window: int = 1000,  # how many training steps between resampling the features / considiring neurons dead
-    use_wandb: bool = False,
-    wandb_log_frequency: int = 50,
-    eval_every_n_wandb_logs: int = 100,
-    autocast: bool = False,
-    n_eval_batches: int = 10,
-    eval_batch_size_prompts: int | None = None,
-) -> TrainSAEOutput:
-    total_training_tokens = get_total_training_tokens(sae=sae)
-    _update_sae_lens_training_version(sae)
-    total_training_steps = total_training_tokens // batch_size
-
-    checkpoint_thresholds = []
-    if n_checkpoints > 0:
-        checkpoint_thresholds = list(
-            range(0, total_training_tokens, total_training_tokens // n_checkpoints)
-        )[1:]
-
-    pbar = tqdm(total=total_training_tokens, desc="Training SAE")
-
-    train_context = _build_train_context(sae, total_training_steps)
-    training_run_state = SAETrainingRunState(checkpoint_path=sae.cfg.checkpoint_path)
-
-    class InterruptedException(Exception):
-        pass
-
-    def interrupt_callback(sig_num: Any, stack_frame: Any):
-        raise InterruptedException()
-
-    try:
-        # signal handlers (if preempted)
-        signal.signal(signal.SIGINT, interrupt_callback)
-        signal.signal(signal.SIGTERM, interrupt_callback)
-
-        # Estimate norm scaling factor if necessary
-        # TODO(tomMcGrath): this is a bodge and should be moved back inside a class
-        if activation_store.normalize_activations:
-            print("Estimating activation norm")
-            n_batches_for_norm_estimate = int(1e3)
-            norms_per_batch = []
-            for _ in tqdm(range(n_batches_for_norm_estimate)):
-                acts = activation_store.next_batch()
-                norms_per_batch.append(acts.norm(dim=-1).mean().item())
-            mean_norm = np.mean(norms_per_batch)
-            scaling_factor = np.sqrt(activation_store.d_in) / mean_norm
-            activation_store.estimated_norm_scaling_factor = scaling_factor
-
-        # Train loop
-        while training_run_state.n_training_tokens < total_training_tokens:
-            # Do a training step.
-            layer_acts = activation_store.next_batch()[:, 0, :]
-            training_run_state.n_training_tokens += batch_size
-
-            mse_losses: list[torch.Tensor] = []
-            l1_losses: list[torch.Tensor] = []
-
-            step_output = _train_step(
-                sparse_autoencoder=sae,
-                sae_in=layer_acts,
-                ctx=train_context,
-                feature_sampling_window=feature_sampling_window,
-                use_wandb=use_wandb,
-                n_training_steps=training_run_state.n_training_steps,
-                batch_size=batch_size,
-                wandb_suffix="",
-                autocast=autocast,
-            )
-            mse_losses.append(step_output.mse_loss)
-            l1_losses.append(step_output.l1_loss)
-
-            if use_wandb:
-                with torch.no_grad():
-                    if (
-                        training_run_state.n_training_steps + 1
-                    ) % wandb_log_frequency == 0:
-                        wandb.log(
-                            _build_train_step_log_dict(
-                                sae,
-                                step_output,
-                                train_context,
-                                "",
-                                training_run_state.n_training_tokens,
-                            ),
-                            step=training_run_state.n_training_steps,
-                        )
-
-                    # record loss frequently, but not all the time.
-                    if (training_run_state.n_training_steps + 1) % (
-                        wandb_log_frequency * eval_every_n_wandb_logs
-                    ) == 0:
-                        sae.eval()
-                        run_evals(
-                            sae,
-                            activation_store,
-                            model,
-                            training_run_state.n_training_steps,
-                            suffix="",
-                            n_eval_batches=n_eval_batches,
-                            eval_batch_size_prompts=eval_batch_size_prompts,
-                        )
-                        sae.train()
-
-            # checkpoint if at checkpoint frequency
-            if (
-                checkpoint_thresholds
-                and training_run_state.n_training_tokens > checkpoint_thresholds[0]
-            ):
-                _save_checkpoint(
-                    sae,
-                    activation_store=activation_store,
-                    train_context=train_context,
-                    training_run_state=training_run_state,
-                    checkpoint_name=training_run_state.n_training_tokens,
-                )
-                checkpoint_thresholds.pop(0)
-
-            ###############
-
-            training_run_state.n_training_steps += 1
-            if training_run_state.n_training_steps % 100 == 0:
-                pbar.set_description(
-                    f"{training_run_state.n_training_steps}| MSE Loss {torch.stack(mse_losses).mean().item():.3f} | L1 {torch.stack(l1_losses).mean().item():.3f}"
-                )
-            pbar.update(batch_size)
-
-            ### If n_training_tokens > sae_group.cfg.training_tokens, then we should switch to fine-tuning (if we haven't already)
-            if (not training_run_state.started_fine_tuning) and (
-                training_run_state.n_training_tokens > sae.cfg.training_tokens
-            ):
-                training_run_state.started_fine_tuning = True
-                train_context.begin_finetuning(sae)
-
-    except (KeyboardInterrupt, InterruptedException):
-        print("interrupted, saving progress")
-        checkpoint_name = training_run_state.n_training_tokens
-        _save_checkpoint(
-            sae=sae,
-            activation_store=activation_store,
-            train_context=train_context,
-            training_run_state=training_run_state,
-            checkpoint_name=checkpoint_name,
-        )
-        print("done saving")
-        raise
-    # save final sae group to checkpoints folder
-    _save_checkpoint(
-        sae=sae,
-        activation_store=activation_store,
-        train_context=train_context,
-        training_run_state=training_run_state,
-        checkpoint_name=f"final_{training_run_state.n_training_tokens}",
-        wandb_aliases=["final_model"],
-    )
-
-    log_feature_sparsities = train_context.log_feature_sparsity
-
-    return TrainSAEOutput(
-        sae=sae,
-        checkpoint_path=training_run_state.checkpoint_path,
-        log_feature_sparsities=log_feature_sparsities,
-    )
 
 
 def _build_train_context(

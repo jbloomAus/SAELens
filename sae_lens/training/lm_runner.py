@@ -8,9 +8,7 @@ from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.geometric_median import compute_geometric_median
 from sae_lens.training.session_loader import LMSparseAutoencoderSessionloader
 from sae_lens.training.sparse_autoencoder import SparseAutoencoder
-from sae_lens.training.train_sae_on_language_model import (
-    train_sae_group_on_language_model,
-)
+from sae_lens.training.train_sae_on_language_model import SAETrainer
 
 
 class SAETrainingRunner:
@@ -71,7 +69,7 @@ class SAETrainingRunner:
             )  # type: ignore
 
         # train SAE
-        sparse_autoencoder = train_sae_group_on_language_model(
+        sparse_autoencoder = SAETrainer(
             model=self.model,  # type: ignore
             sae=self.sparse_autoencoder,  # type: ignore
             activation_store=self.activations_store,
@@ -84,7 +82,7 @@ class SAETrainingRunner:
             autocast=self.cfg.autocast,
             n_eval_batches=self.cfg.n_eval_batches,
             eval_batch_size_prompts=self.cfg.eval_batch_size_prompts,
-        ).sae
+        ).fit()
 
         if self.cfg.log_to_wandb:
             wandb.finish()

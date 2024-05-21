@@ -13,13 +13,13 @@ from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.sparse_autoencoder import ForwardOutput, SparseAutoencoder
 from sae_lens.training.train_sae_on_language_model import (
     SAETrainContext,
+    SAETrainer,
     TrainStepOutput,
     _build_train_context,
     _build_train_step_log_dict,
     _log_feature_sparsity,
     _train_step,
     _update_sae_lens_training_version,
-    train_sae_group_on_language_model,
 )
 from tests.unit.helpers import build_sae_cfg
 
@@ -264,17 +264,14 @@ def test_train_sae_group_on_language_model__runs(
     dataset = Dataset.from_list([{"text": "hello world"}] * 2000)
     activation_store = ActivationsStore.from_config(ts_model, cfg, dataset=dataset)
     sae = SparseAutoencoder(cfg)
-    res = train_sae_group_on_language_model(
+    sae = SAETrainer(
         model=ts_model,
         sae=sae,
         activation_store=activation_store,
         batch_size=32,
-    )
-    assert res.checkpoint_path == str(checkpoint_dir / "final_128")
-    assert len(res.log_feature_sparsities) == 128
+    ).fit()
 
-    assert res.log_feature_sparsities.shape == (cfg.d_sae,)
-    assert isinstance(res.sae, SparseAutoencoder)
+    assert isinstance(sae, SparseAutoencoder)
 
 
 def test_update_sae_lens_training_version_sets_the_current_version():
