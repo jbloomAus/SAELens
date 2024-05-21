@@ -1,14 +1,24 @@
+import signal
 from typing import Any, cast
 
 import torch
 import wandb
 
 from sae_lens.training.activations_store import ActivationsStore
+from sae_lens.training.checkpointing import save_checkpoint
 from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.geometric_median import compute_geometric_median
 from sae_lens.training.session_loader import LMSparseAutoencoderSessionloader
 from sae_lens.training.sparse_autoencoder import SparseAutoencoder
 from sae_lens.training.train_sae_on_language_model import SAETrainer
+
+
+class InterruptedException(Exception):
+    pass
+
+
+def interrupt_callback(sig_num: Any, stack_frame: Any):
+    raise InterruptedException()
 
 
 class SAETrainingRunner:
@@ -68,21 +78,28 @@ class SAETrainingRunner:
                 self.sparse_autoencoder, mode=self.cfg.sae_compilation_mode
             )  # type: ignore
 
-        # train SAE
-        sparse_autoencoder = SAETrainer(
+        trainer = SAETrainer(
             model=self.model,  # type: ignore
             sae=self.sparse_autoencoder,  # type: ignore
             activation_store=self.activations_store,
-            batch_size=self.cfg.train_batch_size_tokens,
-            n_checkpoints=self.cfg.n_checkpoints,
-            feature_sampling_window=self.cfg.feature_sampling_window,
-            use_wandb=self.cfg.log_to_wandb,
-            wandb_log_frequency=self.cfg.wandb_log_frequency,
-            eval_every_n_wandb_logs=self.cfg.eval_every_n_wandb_logs,
-            autocast=self.cfg.autocast,
-            n_eval_batches=self.cfg.n_eval_batches,
-            eval_batch_size_prompts=self.cfg.eval_batch_size_prompts,
-        ).fit()
+            save_checkpoint_fn=save_checkpoint,  # type: ignore
+            cfg=self.cfg,
+        )
+
+        try:
+            # signal handlers (if preempted)
+            signal.signal(signal.SIGINT, interrupt_callback)
+            signal.signal(signal.SIGTERM, interrupt_callback)
+
+            # train SAE
+            sparse_autoencoder = trainer.fit()
+
+        except (KeyboardInterrupt, InterruptedException):
+            print("interrupted, saving progress")
+            checkpoint_name = trainer.n_training_tokens
+            save_checkpoint(trainer, checkpoint_name=checkpoint_name)
+            print("done saving")
+            raise
 
         if self.cfg.log_to_wandb:
             wandb.finish()

@@ -7,8 +7,6 @@ from typing import Any
 import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
 
-from sae_lens.training.sparse_autoencoder import SparseAutoencoder
-
 
 #  Constant
 #  Cosine Annealing with Warmup
@@ -108,23 +106,25 @@ class L1Scheduler:
         self,
         l1_warm_up_steps: float,
         total_steps: int,
-        sparse_autoencoder: SparseAutoencoder,
+        final_l1_coefficient: float,
     ):
 
         self.l1_warmup_steps = l1_warm_up_steps
-        self.total_steps = total_steps
-        self.sparse_autoencoder = sparse_autoencoder
-        self.final_l1_value = sparse_autoencoder.cfg.l1_coefficient
-        self.current_step = 0
-        assert isinstance(self.final_l1_value, float | int)
-
         # assume using warm-up
         if self.l1_warmup_steps != 0:
-            sparse_autoencoder.l1_coefficient = 0.0
+            self.current_l1_coefficient = 0.0
+        else:
+            self.current_l1_coefficient = final_l1_coefficient
+
+        self.final_l1_coefficient = final_l1_coefficient
+
+        self.current_step = 0
+        self.total_steps = total_steps
+        assert isinstance(self.final_l1_coefficient, float | int)
 
     def __repr__(self) -> str:
         return (
-            f"L1Scheduler(final_l1_value={self.final_l1_value}, "
+            f"L1Scheduler(final_l1_value={self.final_l1_coefficient}, "
             f"l1_warmup_steps={self.l1_warmup_steps}, "
             f"total_steps={self.total_steps})"
         )
@@ -135,11 +135,11 @@ class L1Scheduler:
         """
         step = self.current_step
         if step < self.l1_warmup_steps:
-            self.sparse_autoencoder.l1_coefficient = self.final_l1_value * (
+            self.current_l1_coefficient = self.final_l1_coefficient * (
                 (1 + step) / self.l1_warmup_steps
             )  # type: ignore
         else:
-            self.sparse_autoencoder.l1_coefficient = self.final_l1_value  # type: ignore
+            self.current_l1_coefficient = self.final_l1_coefficient  # type: ignore
 
         self.current_step += 1
 
@@ -148,7 +148,8 @@ class L1Scheduler:
         return {
             "l1_warmup_steps": self.l1_warmup_steps,
             "total_steps": self.total_steps,
-            "final_l1_value": self.final_l1_value,
+            "current_l1_coefficient": self.current_l1_coefficient,
+            "final_l1_coefficient": self.final_l1_coefficient,
             "current_step": self.current_step,
         }
 

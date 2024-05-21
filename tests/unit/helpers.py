@@ -31,6 +31,7 @@ def build_sae_cfg(**kwargs: Any) -> LanguageModelSAERunnerConfig:
         context_size=6,
         feature_sampling_window=50,
         dead_feature_threshold=1e-7,
+        dead_feature_window=1000,
         n_batches_in_buffer=2,
         training_tokens=1_000_000,
         store_batch_size_prompts=4,
