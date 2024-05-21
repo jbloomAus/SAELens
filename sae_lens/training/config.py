@@ -243,7 +243,7 @@ class LanguageModelSAERunnerConfig:
                 f"Number tokens in sparsity calculation window: {self.feature_sampling_window * self.train_batch_size_tokens:.2e}"
             )
 
-        if not self.use_ghost_grads:
+        if self.use_ghost_grads:
             print("Using Ghost Grads.")
 
     def get_checkpoints_by_step(self) -> tuple[dict[int, str], bool]:
