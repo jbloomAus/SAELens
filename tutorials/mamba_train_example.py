@@ -9,6 +9,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 # run this as python3 tutorials/mamba_train_example.py
 # i.e. from the root directory
 from sae_lens.training.config import LanguageModelSAERunnerConfig
+from sae_lens.training.lm_runner import SAETrainingRunner
 
 cfg = LanguageModelSAERunnerConfig(
     # Data Generating Function (Model + Training Distibuion)
@@ -55,6 +56,4 @@ cfg = LanguageModelSAERunnerConfig(
     },
 )
 
-from sae_lens.training.lm_runner import language_model_sae_runner
-
-language_model_sae_runner(cfg)
+SAETrainingRunner(cfg).run()
