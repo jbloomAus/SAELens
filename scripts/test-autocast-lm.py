@@ -18,7 +18,7 @@ else:
 print("Using device:", device)
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-total_training_steps = 20_000
+total_training_steps = 2000
 batch_size = 4096
 total_training_tokens = total_training_steps * batch_size
 print(f"Total Training Tokens: {total_training_tokens}")
@@ -32,7 +32,7 @@ log_to_wandb = True
 l1_coefficient = 5
 
 for block in [11, 0]:
-    for autocast_lm in [True, False]:
+    for autocast_lm in [False, True]:
         cfg = LanguageModelSAERunnerConfig(
             # Pick a tiny model to make this easier.
             model_name="gpt2",
@@ -81,7 +81,7 @@ for block in [11, 0]:
             adam_beta1=0.9,
             adam_beta2=0.999,
             # Unsure if this is enough
-            n_batches_in_buffer=128,
+            n_batches_in_buffer=64,
             store_batch_size_prompts=16,
             normalize_activations=True,
             # Feature Store
@@ -90,7 +90,7 @@ for block in [11, 0]:
             dead_feature_threshold=1e-4,
             # WANDB
             log_to_wandb=log_to_wandb,
-            wandb_project="gpt-2-sweep-20may24-check-autocast",
+            wandb_project="gpt-2-sweep-20may24-check-autocast-2",
             wandb_log_frequency=50,
             eval_every_n_wandb_logs=10,
             # Misc
