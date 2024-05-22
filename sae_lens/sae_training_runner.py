@@ -9,7 +9,7 @@ from sae_lens.training.checkpointing import save_checkpoint
 from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.geometric_median import compute_geometric_median
 from sae_lens.training.session_loader import LMSparseAutoencoderSessionloader
-from sae_lens.training.sparse_autoencoder import SparseAutoencoder
+from sae_lens.training.sparse_autoencoder import SparseAutoencoderBase
 from sae_lens.training.train_sae_on_language_model import SAETrainer
 
 
@@ -25,7 +25,7 @@ class SAETrainingRunner:
 
     cfg: LanguageModelSAERunnerConfig
     model: torch.nn.Module
-    sparse_autoencoder: SparseAutoencoder
+    sparse_autoencoder: SparseAutoencoderBase
     activations_store: ActivationsStore
 
     def __init__(self, cfg: LanguageModelSAERunnerConfig):
@@ -86,6 +86,14 @@ class SAETrainingRunner:
             cfg=self.cfg,
         )
 
+        sparse_autoencoder = self.run_trainer_with_interruption_handling(trainer)
+
+        if self.cfg.log_to_wandb:
+            wandb.finish()
+
+        return sparse_autoencoder
+
+    def run_trainer_with_interruption_handling(self, trainer: SAETrainer):
         try:
             # signal handlers (if preempted)
             signal.signal(signal.SIGINT, interrupt_callback)
@@ -100,9 +108,6 @@ class SAETrainingRunner:
             save_checkpoint(trainer, checkpoint_name=checkpoint_name)
             print("done saving")
             raise
-
-        if self.cfg.log_to_wandb:
-            wandb.finish()
 
         return sparse_autoencoder
 

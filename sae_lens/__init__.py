@@ -11,10 +11,10 @@ from .training.config import (
 )
 from .training.evals import run_evals
 from .training.session_loader import LMSparseAutoencoderSessionloader
-from .training.sparse_autoencoder import SparseAutoencoder
+from .training.sparse_autoencoder import SparseAutoencoderBase
 
 __all__ = [
-    "SparseAutoencoder",
+    "SparseAutoencoderBase",
     "ActivationsStore",
     "LanguageModelSAERunnerConfig",
     "SAETrainingRunner",

@@ -5,7 +5,7 @@ from transformer_lens.hook_points import HookedRootModule
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.load_model import load_model
-from sae_lens.training.sparse_autoencoder import SparseAutoencoder
+from sae_lens.training.sparse_autoencoder import SparseAutoencoderBase
 
 
 class LMSparseAutoencoderSessionloader:
@@ -21,7 +21,7 @@ class LMSparseAutoencoderSessionloader:
 
     def load_sae_training_group_session(
         self,
-    ) -> Tuple[HookedRootModule, SparseAutoencoder, ActivationsStore]:
+    ) -> Tuple[HookedRootModule, SparseAutoencoderBase, ActivationsStore]:
         """
         Loads a session for training a sparse autoencoder on a language model.
         """
@@ -33,20 +33,20 @@ class LMSparseAutoencoderSessionloader:
             self.cfg,
         )
 
-        sae_group = SparseAutoencoder(self.cfg)
+        sae_group = SparseAutoencoderBase(self.cfg)
 
         return model, sae_group, activations_loader
 
     @classmethod
     def load_pretrained_sae(
         cls, path: str, device: str = "cpu"
-    ) -> Tuple[HookedRootModule, SparseAutoencoder, ActivationsStore]:
+    ) -> Tuple[HookedRootModule, SparseAutoencoderBase, ActivationsStore]:
         """
         Loads a session for analysing a pretrained sparse autoencoder.
         """
 
         # load the SAE
-        sparse_autoencoder = SparseAutoencoder.load_from_pretrained(path, device)
+        sparse_autoencoder = SparseAutoencoderBase.load_from_pretrained(path, device)
 
         # load the model, SAE and activations loader with it.
         session_loader = cls(sparse_autoencoder.cfg)

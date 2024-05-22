@@ -24,7 +24,7 @@ from transformer_lens import HookedTransformer
 
 from sae_lens.toolkit.pretrained_saes import load_sparsity
 from sae_lens.training.session_loader import LMSparseAutoencoderSessionloader
-from sae_lens.training.sparse_autoencoder import SparseAutoencoder
+from sae_lens.training.sparse_autoencoder import SparseAutoencoderBase
 
 OUT_OF_RANGE_TOKEN = "<|outofrange|>"
 
@@ -87,7 +87,7 @@ class NeuronpediaRunner:
             self.device = "cuda"
 
         self.sae_path = sae_path
-        self.sparse_autoencoder = SparseAutoencoder.load_from_pretrained(
+        self.sparse_autoencoder = SparseAutoencoderBase.load_from_pretrained(
             self.sae_path, device=self.device
         )
         loader = LMSparseAutoencoderSessionloader(self.sparse_autoencoder.cfg)

@@ -3,12 +3,12 @@ import torch
 from tqdm import tqdm
 from transformer_lens import HookedTransformer
 
-from sae_lens.training.sparse_autoencoder import SparseAutoencoder
+from sae_lens.training.sparse_autoencoder import SparseAutoencoderBase
 
 
 @torch.no_grad()
 def get_feature_property_df(
-    sparse_autoencoder: SparseAutoencoder, feature_sparsity: torch.Tensor
+    sparse_autoencoder: SparseAutoencoderBase, feature_sparsity: torch.Tensor
 ):
     """
     feature_property_df = get_feature_property_df(sparse_autoencoder, log_feature_density.cpu())
@@ -68,7 +68,9 @@ def get_stats_df(projection: torch.Tensor):
 
 @torch.no_grad()
 def get_all_stats_dfs(
-    gpt2_small_sparse_autoencoders: dict[str, SparseAutoencoder],  # [hook_point, sae]
+    gpt2_small_sparse_autoencoders: dict[
+        str, SparseAutoencoderBase
+    ],  # [hook_point, sae]
     gpt2_small_sae_sparsities: dict[str, torch.Tensor],  # [hook_point, sae]
     model: HookedTransformer,
     cosine_sim: bool = False,

@@ -9,7 +9,7 @@ from safetensors import safe_open
 from tqdm import tqdm
 
 from sae_lens.training.config import LanguageModelSAERunnerConfig
-from sae_lens.training.sparse_autoencoder import SparseAutoencoder
+from sae_lens.training.sparse_autoencoder import SparseAutoencoderBase
 
 
 def load_sparsity(path: str) -> torch.Tensor:
@@ -46,8 +46,8 @@ def download_sae_from_hf(
     return cfg_path, sae_path, sparsity_path
 
 
-def load_sae_from_local_path(path: str) -> Tuple[SparseAutoencoder, torch.Tensor]:
-    sae = SparseAutoencoder.load_from_pretrained(path)
+def load_sae_from_local_path(path: str) -> Tuple[SparseAutoencoderBase, torch.Tensor]:
+    sae = SparseAutoencoderBase.load_from_pretrained(path)
     sparsity = load_sparsity(path)
     return sae, sparsity
 
@@ -55,7 +55,7 @@ def load_sae_from_local_path(path: str) -> Tuple[SparseAutoencoder, torch.Tensor
 def get_gpt2_res_jb_saes(
     hook_point: Optional[str] = None,
     device: str = "cpu",
-) -> tuple[dict[str, SparseAutoencoder], dict[str, torch.Tensor]]:
+) -> tuple[dict[str, SparseAutoencoderBase], dict[str, torch.Tensor]]:
     """
     Download the sparse autoencoders for the GPT2-Small model with residual connections
     from the repository of jbloom. You can specify a hook_point to download only one
@@ -85,7 +85,7 @@ def get_gpt2_res_jb_saes(
 
         # Then use our function to download the files
         folder_path = os.path.dirname(sae_path)
-        sae = SparseAutoencoder.load_from_pretrained(folder_path, device=device)
+        sae = SparseAutoencoderBase.load_from_pretrained(folder_path, device=device)
         sparsity = load_sparsity(folder_path)
         sparsity = sparsity.to(device)
         saes[hook_point] = sae
@@ -131,7 +131,7 @@ def convert_connor_rob_sae_to_our_saelens_format(
         dtype=torch.float32,
     )
 
-    ae_alt = SparseAutoencoder(cfg)
+    ae_alt = SparseAutoencoderBase(cfg)
     ae_alt.load_state_dict(state_dict)
     return ae_alt
 
@@ -161,11 +161,11 @@ def convert_old_to_modern_saelens_format(
     out_f.mkdir(exist_ok=True, parents=True)
 
     # Load model & save in new format.
-    autoencoder = SparseAutoencoder.load_from_pretrained_legacy(str(file_path))
+    autoencoder = SparseAutoencoderBase.load_from_pretrained_legacy(str(file_path))
     autoencoder.save_model(str(out_f))
 
 
-def get_gpt2_small_ckrk_attn_out_saes() -> dict[str, SparseAutoencoder]:
+def get_gpt2_small_ckrk_attn_out_saes() -> dict[str, SparseAutoencoderBase]:
 
     REPO_ID = "ckkissane/attn-saes-gpt2-small-all-layers"
 

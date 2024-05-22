@@ -1,14 +1,14 @@
 import pytest
 import torch
 
-from sae_lens.training.sparse_autoencoder import SparseAutoencoder
+from sae_lens.training.sparse_autoencoder import TrainingSparseAutoencoder
 from tests.unit.helpers import build_sae_cfg
 
 
 def test_SparseAutoencoder_initialization_standard():
     cfg = build_sae_cfg()
 
-    sae = SparseAutoencoder(cfg)
+    sae = TrainingSparseAutoencoder(cfg)
     assert sae.cfg == cfg
     assert sae.W_enc.shape == (cfg.d_in, cfg.d_sae)
     assert sae.W_dec.shape == (cfg.d_sae, cfg.d_in)
@@ -36,7 +36,7 @@ def test_SparseAutoencoder_initialization_standard():
 def test_SparseAutoencoder_initialization_orthogonal_enc_dec():
     cfg = build_sae_cfg(decoder_orthogonal_init=True)
 
-    sae = SparseAutoencoder(cfg)
+    sae = TrainingSparseAutoencoder(cfg)
     projections = sae.W_dec.T @ sae.W_dec
     mask = ~torch.eye(projections.size(0), dtype=torch.bool)
 
@@ -51,7 +51,7 @@ def test_SparseAutoencoder_initialization_orthogonal_enc_dec():
 def test_SparseAutoencoder_initialization_normalize_decoder_norm():
     cfg = build_sae_cfg(normalize_sae_decoder=True)
 
-    sae = SparseAutoencoder(cfg)
+    sae = TrainingSparseAutoencoder(cfg)
 
     assert sae.cfg == cfg
 
@@ -67,7 +67,7 @@ def test_SparseAutoencoder_initialization_normalize_decoder_norm():
 def test_SparseAutoencoder_initialization_encoder_is_decoder_transpose():
     cfg = build_sae_cfg(init_encoder_as_decoder_transpose=True)
 
-    sae = SparseAutoencoder(cfg)
+    sae = TrainingSparseAutoencoder(cfg)
 
     assert sae.cfg == cfg
 
@@ -87,7 +87,7 @@ def test_SparseAutoencoder_initialization_enc_dec_T_no_unit_norm():
         normalize_sae_decoder=False,
     )
 
-    sae = SparseAutoencoder(cfg)
+    sae = TrainingSparseAutoencoder(cfg)
 
     assert sae.cfg == cfg
 
@@ -124,7 +124,7 @@ def test_SparseAutoencoder_initialization_heuristic_init():
         normalize_sae_decoder=False,
     )
 
-    sae = SparseAutoencoder(cfg)
+    sae = TrainingSparseAutoencoder(cfg)
 
     decoder_norms = sae.W_dec.norm(dim=1)
 

@@ -10,7 +10,10 @@ from transformer_lens import HookedTransformer
 from sae_lens import __version__
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.config import LanguageModelSAERunnerConfig
-from sae_lens.training.sparse_autoencoder import ForwardOutput, SparseAutoencoder
+from sae_lens.training.sparse_autoencoder import (
+    ForwardOutput,
+    TrainingSparseAutoencoder,
+)
 from sae_lens.training.train_sae_on_language_model import (
     SAETrainer,
     TrainStepOutput,
@@ -39,21 +42,21 @@ def activation_store(model: HookedTransformer, cfg: LanguageModelSAERunnerConfig
 
 
 @pytest.fixture
-def sae(cfg: LanguageModelSAERunnerConfig):
-    return SparseAutoencoder(cfg)
+def training_sae(cfg: LanguageModelSAERunnerConfig):
+    return TrainingSparseAutoencoder(cfg)
 
 
 @pytest.fixture
 def trainer(
     cfg: LanguageModelSAERunnerConfig,
-    sae: SparseAutoencoder,
+    training_sae: TrainingSparseAutoencoder,
     model: HookedTransformer,
     activation_store: ActivationsStore,
 ):
 
     trainer = SAETrainer(
         model=model,
-        sae=sae,
+        sae=training_sae,
         activation_store=activation_store,
         save_checkpoint_fn=lambda *args, **kwargs: None,
         cfg=cfg,
@@ -63,7 +66,7 @@ def trainer(
 
 
 def modify_sae_output(
-    sae: SparseAutoencoder, modifier: Callable[[ForwardOutput], ForwardOutput]
+    sae: TrainingSparseAutoencoder, modifier: Callable[[ForwardOutput], ForwardOutput]
 ):
     """
     Helper to modify the output of the SAE forward pass for use in patching, for use in patch side_effect.
@@ -71,7 +74,7 @@ def modify_sae_output(
     """
 
     def modified_forward(*args: Any, **kwargs: Any):
-        output = SparseAutoencoder.forward(sae, *args, **kwargs)
+        output = TrainingSparseAutoencoder.forward(sae, *args, **kwargs)
         return modifier(output)
 
     return modified_forward
@@ -241,7 +244,7 @@ def test_train_sae_group_on_language_model__runs(
     # just a tiny datast which will run quickly
     dataset = Dataset.from_list([{"text": "hello world"}] * 2000)
     activation_store = ActivationsStore.from_config(ts_model, cfg, dataset=dataset)
-    sae = SparseAutoencoder(cfg)
+    sae = TrainingSparseAutoencoder(cfg)
     sae = SAETrainer(
         model=ts_model,
         sae=sae,
@@ -250,11 +253,11 @@ def test_train_sae_group_on_language_model__runs(
         cfg=cfg,
     ).fit()
 
-    assert isinstance(sae, SparseAutoencoder)
+    assert isinstance(sae, TrainingSparseAutoencoder)
 
 
 def test_update_sae_lens_training_version_sets_the_current_version():
     cfg = build_sae_cfg(sae_lens_training_version="0.1.0")
-    sae = SparseAutoencoder(cfg)
+    sae = TrainingSparseAutoencoder(cfg)
     _update_sae_lens_training_version(sae)
     assert sae.cfg.sae_lens_training_version == __version__

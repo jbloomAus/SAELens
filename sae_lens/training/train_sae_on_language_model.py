@@ -14,7 +14,7 @@ from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.evals import run_evals
 from sae_lens.training.optim import L1Scheduler, get_lr_scheduler
-from sae_lens.training.sparse_autoencoder import SparseAutoencoder
+from sae_lens.training.sparse_autoencoder import TrainingSparseAutoencoder
 
 # used to map between parameters which are updated during finetuning and the config str.
 FINETUNING_PARAMETERS = {
@@ -30,7 +30,7 @@ def _log_feature_sparsity(
     return torch.log10(feature_sparsity + eps).detach().cpu()
 
 
-def _update_sae_lens_training_version(sae: SparseAutoencoder) -> None:
+def _update_sae_lens_training_version(sae: TrainingSparseAutoencoder) -> None:
     """
     Make sure we record the version of SAELens used for the training run
     """
@@ -39,7 +39,7 @@ def _update_sae_lens_training_version(sae: SparseAutoencoder) -> None:
 
 @dataclass
 class TrainSAEOutput:
-    sae: SparseAutoencoder
+    sae: TrainingSparseAutoencoder
     checkpoint_path: str
     log_feature_sparsities: torch.Tensor
 
@@ -61,7 +61,7 @@ class SAETrainer:
     def __init__(
         self,
         model: HookedRootModule,
-        sae: SparseAutoencoder,
+        sae: TrainingSparseAutoencoder,
         activation_store: ActivationsStore,
         save_checkpoint_fn,  # type: ignore
         cfg: LanguageModelSAERunnerConfig,
@@ -142,7 +142,7 @@ class SAETrainer:
     def current_l1_coefficient(self) -> float:
         return self.l1_scheduler.current_l1_coefficient
 
-    def fit(self) -> SparseAutoencoder:
+    def fit(self) -> TrainingSparseAutoencoder:
 
         pbar = tqdm(total=self.sae.cfg.total_training_tokens, desc="Training SAE")
 
@@ -221,7 +221,7 @@ class SAETrainer:
                 self.n_training_tokens > self.sae.cfg.training_tokens
             ):
 
-                self.begin_finetuning()
+                self._begin_finetuning()
 
         # save final sae group to checkpoints folder
         self.save_checkpoint(
@@ -235,7 +235,7 @@ class SAETrainer:
 
     def _train_step(
         self,
-        sparse_autoencoder: SparseAutoencoder,
+        sparse_autoencoder: TrainingSparseAutoencoder,
         sae_in: torch.Tensor,
     ) -> TrainStepOutput:
 
@@ -383,7 +383,7 @@ class SAETrainer:
             "details/n_training_tokens": n_training_tokens,
         }
 
-    def begin_finetuning(self):
+    def _begin_finetuning(self):
         self.started_fine_tuning = True
 
         # finetuning method should be set in the config

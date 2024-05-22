@@ -9,7 +9,7 @@ from transformer_lens import HookedTransformer
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.session_loader import LMSparseAutoencoderSessionloader
-from sae_lens.training.sparse_autoencoder import SparseAutoencoder
+from sae_lens.training.sparse_autoencoder import SparseAutoencoderBase
 from tests.unit.helpers import build_sae_cfg
 
 TEST_MODEL = "tiny-stories-1M"
@@ -45,7 +45,7 @@ def test_LMSparseAutoencoderSessionloader_load_session(
     )
 
     assert isinstance(model, HookedTransformer)
-    assert isinstance(sparse_autoencoder, SparseAutoencoder)
+    assert isinstance(sparse_autoencoder, SparseAutoencoderBase)
     assert isinstance(activations_loader, ActivationsStore)
     assert model.cfg.checkpoint_index is None
 
@@ -65,7 +65,7 @@ def test_LMSparseAutoencoderSessionloader_load_session_can_load_model_with_kwarg
     )
 
     assert isinstance(model, HookedTransformer)
-    assert isinstance(sparse_autoencoder, SparseAutoencoder)
+    assert isinstance(sparse_autoencoder, SparseAutoencoderBase)
     assert isinstance(activations_loader, ActivationsStore)
     assert (
         model.cfg.checkpoint_index
@@ -124,7 +124,7 @@ def test_load_pretrained_sae_from_huggingface():
         path=folder_path
     )
     assert isinstance(model, HookedTransformer)
-    assert isinstance(sae, SparseAutoencoder)
+    assert isinstance(sae, SparseAutoencoderBase)
     assert isinstance(activation_store, ActivationsStore)
     assert sae.cfg.hook_point_layer == layer
     assert sae.cfg.model_name == "gpt2-small"

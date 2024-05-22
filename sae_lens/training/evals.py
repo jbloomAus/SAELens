@@ -7,12 +7,12 @@ import wandb
 from transformer_lens.hook_points import HookedRootModule
 
 from sae_lens.training.activations_store import ActivationsStore
-from sae_lens.training.sparse_autoencoder import SparseAutoencoder
+from sae_lens.training.sparse_autoencoder import SparseAutoencoderBase
 
 
 @torch.no_grad()
 def run_evals(
-    sparse_autoencoder: SparseAutoencoder,
+    sparse_autoencoder: SparseAutoencoderBase,
     activation_store: ActivationsStore,
     model: HookedRootModule,
     n_training_steps: int,
@@ -64,7 +64,7 @@ def run_evals(
         original_act = activation_store.apply_norm_scaling_factor(original_act)
 
     # send the (maybe normalised) activations into the SAE
-    sae_out, _, _, _, _, _ = sparse_autoencoder(original_act)
+    sae_out = sparse_autoencoder(original_act).sae_out
     del cache
 
     l2_norm_in = torch.norm(original_act, dim=-1)
@@ -101,7 +101,7 @@ def run_evals(
 
 
 def recons_loss_batched(
-    sparse_autoencoder: SparseAutoencoder,
+    sparse_autoencoder: SparseAutoencoderBase,
     model: HookedRootModule,
     activation_store: ActivationsStore,
     n_batches: int = 100,
@@ -134,7 +134,7 @@ def recons_loss_batched(
 
 @torch.no_grad()
 def get_recons_loss(
-    sparse_autoencoder: SparseAutoencoder,
+    sparse_autoencoder: SparseAutoencoderBase,
     model: HookedRootModule,
     batch_tokens: torch.Tensor,
     activation_store: ActivationsStore,
@@ -151,9 +151,7 @@ def get_recons_loss(
         if activation_store.normalize_activations:
             activations = activation_store.apply_norm_scaling_factor(activations)
 
-        activations = sparse_autoencoder.forward(activations).sae_out.to(
-            activations.dtype
-        )
+        activations = sparse_autoencoder.encode(activations).to(activations.dtype)
 
         # Unscale if activations were scaled prior to going into the SAE
         if activation_store.normalize_activations:
@@ -165,9 +163,9 @@ def get_recons_loss(
         if activation_store.normalize_activations:
             activations = activation_store.apply_norm_scaling_factor(activations)
 
-        new_activations = sparse_autoencoder.forward(
-            activations.flatten(-2, -1)
-        ).sae_out.to(activations.dtype)
+        new_activations = sparse_autoencoder.encode(activations.flatten(-2, -1)).to(
+            activations.dtype
+        )
         new_activations = new_activations.reshape(
             activations.shape
         )  # reshape to match original shape
@@ -182,9 +180,9 @@ def get_recons_loss(
         if activation_store.normalize_activations:
             activations = activation_store.apply_norm_scaling_factor(activations)
 
-        new_activations = sparse_autoencoder.forward(
-            activations[:, :, head_index]
-        ).sae_out.to(activations.dtype)
+        new_activations = sparse_autoencoder.encode(activations[:, :, head_index]).to(
+            activations.dtype
+        )
         activations[:, :, head_index] = new_activations
 
         # Unscale if activations were scaled prior to going into the SAE

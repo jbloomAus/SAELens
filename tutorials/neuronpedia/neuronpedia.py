@@ -17,7 +17,7 @@ from typing_extensions import Annotated
 
 from sae_lens.analysis.neuronpedia_integration import NanAndInfReplacer
 from sae_lens.toolkit.pretrained_saes import load_sparsity
-from sae_lens.training.sparse_autoencoder import SparseAutoencoder
+from sae_lens.training.sparse_autoencoder import SparseAutoencoderBase
 
 OUTPUT_DIR_BASE = Path("../../neuronpedia_outputs")
 RUN_SETTINGS_FILE = "run_settings.json"
@@ -136,7 +136,7 @@ Enter 1 to start from the beginning. Existing batch files will not be overwritte
         device = "mps"
     elif torch.cuda.is_available():
         device = "cuda"
-    sparse_autoencoder = SparseAutoencoder.load_from_pretrained(
+    sparse_autoencoder = SparseAutoencoderBase.load_from_pretrained(
         sae_path_string, device=device
     )
     model_id = sparse_autoencoder.cfg.model_name
