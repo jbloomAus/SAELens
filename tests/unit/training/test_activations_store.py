@@ -247,6 +247,7 @@ def test_activations_store_with_model_on_gpu(ts_model: HookedTransformer):
     activations = activation_store.next_batch()
     assert activations.device == torch.device("cpu")
 
+
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="No GPU to test on.")
 def test_activations_store_moves_with_model(ts_model: HookedTransformer):
     # "with_model" resets to default so the second post_init in build_sae_cfg works

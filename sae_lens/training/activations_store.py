@@ -517,12 +517,16 @@ class ActivationsStore:
         device = self.device
         if not self.is_dataset_tokenized:
             s = next(self.iterable_dataset)[self.tokens_column]
-            tokens = self.model.to_tokens(
-                s,
-                truncate=True,
-                move_to_device=True,
-                prepend_bos=self.prepend_bos,
-            ).squeeze(0).to(device)
+            tokens = (
+                self.model.to_tokens(
+                    s,
+                    truncate=True,
+                    move_to_device=True,
+                    prepend_bos=self.prepend_bos,
+                )
+                .squeeze(0)
+                .to(device)
+            )
             assert (
                 len(tokens.shape) == 1
             ), f"tokens.shape should be 1D but was {tokens.shape}"
