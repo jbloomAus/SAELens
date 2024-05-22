@@ -124,9 +124,9 @@ Enter 1 to start from the beginning. Existing batch files will not be overwritte
     if sae_path.joinpath("sae_weights.safetensors").is_file() is not True:
         print("Error: sae_weights.safetensors file not found in SAE directory.")
         raise typer.Abort()
-    if sae_path.joinpath("sparsity.safetensors").is_file() is not True:
-        print("Error: sparsity.safetensors file not found in SAE directory.")
-        raise typer.Abort()
+    # if sae_path.joinpath("sparsity.safetensors").is_file() is not True:
+    #     print("Error: sparsity.safetensors file not found in SAE directory.")
+    #     raise typer.Abort()
 
     sae_path_string = sae_path.as_posix()
 
@@ -203,14 +203,15 @@ Enter 1 to start from the beginning. Existing batch files will not be overwritte
         with open(run_settings_path, "w") as f:
             json.dump(run_settings, f, indent=4)
 
-    sparsity = load_sparsity(sae_path_string)
-    # convert sparsity to logged sparsity if it's not
-    # TODO: standardize the sparsity file format
-    if len(sparsity) > 0 and sparsity[0] >= 0:
-        sparsity = torch.log10(sparsity + 1e-10)
-    sparsity = sparsity.to(device)
-    alive_indexes = (sparsity > log_sparsity).nonzero(as_tuple=True)[0].tolist()
-    num_alive = len(alive_indexes)
+    # sparsity = load_sparsity(sae_path_string)
+    # # convert sparsity to logged sparsity if it's not
+    # # TODO: standardize the sparsity file format
+    # if len(sparsity) > 0 and sparsity[0] >= 0:
+    #     sparsity = torch.log10(sparsity + 1e-10)
+    # sparsity = sparsity.to(device)
+    # alive_indexes = (sparsity > log_sparsity).nonzero(as_tuple=True)[0].tolist()
+    # num_alive = len(alive_indexes)
+    num_alive = sparse_autoencoder.d_sae
     num_dead = sparse_autoencoder.d_sae - num_alive
 
     print("\n")

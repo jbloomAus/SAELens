@@ -1,30 +1,32 @@
-import os
-from typing import Any, Dict, List, Optional, Union, cast
-
-# set TOKENIZERS_PARALLELISM to false to avoid warnings
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
 import json
+import os
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union, cast
 
 import numpy as np
 import torch
 from matplotlib import colors
-from sae_vis.data_config_classes import (
+from sae_vis.autoencoder import AutoEncoder, AutoEncoderConfig
+from sae_vis.components_config import (
     ActsHistogramConfig,
     Column,
     FeatureTablesConfig,
     LogitsHistogramConfig,
     LogitsTableConfig,
-    SaeVisConfig,
-    SaeVisLayoutConfig,
     SequencesConfig,
 )
-from sae_vis.data_storing_fns import SaeVisData
+from sae_vis.layout import SaeVisLayoutConfig
+from sae_vis.sae_vis_data import SaeVisConfig
+from sae_vis.sae_vis_runner import SaeVisRunner
 from tqdm import tqdm
 from transformer_lens import HookedTransformer
 
 from sae_lens.toolkit.pretrained_saes import load_sparsity
 from sae_lens.training.session_loader import LMSparseAutoencoderSessionloader
 from sae_lens.training.sparse_autoencoder import SparseAutoencoder
+
+# set TOKENIZERS_PARALLELISM to false to avoid warnings
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 OUT_OF_RANGE_TOKEN = "<|outofrange|>"
 
@@ -87,6 +89,7 @@ class NeuronpediaRunner:
             self.device = "cuda"
 
         self.sae_path = sae_path
+
         self.sparse_autoencoder = SparseAutoencoder.load_from_pretrained(
             self.sae_path, device=self.device
         )
@@ -105,6 +108,19 @@ class NeuronpediaRunner:
         self.top_acts_group_size = top_acts_group_size
         self.quantile_group_size = quantile_group_size
 
+        # TODO: refactor sae-vis to use SparseAutoencoder
+        assert set(self.sparse_autoencoder.state_dict().keys()).issuperset(
+            {"W_enc", "W_dec", "b_enc", "b_dec"}
+        ), "If encoder isn't an AutoEncoder, it should have weights 'W_enc', 'W_dec', 'b_enc', 'b_dec'"
+        d_in, d_hidden = self.sparse_autoencoder.W_enc.shape
+        encoder_cfg = AutoEncoderConfig(
+            d_in=d_in, d_hidden=d_hidden, dict_mult=d_hidden // d_in
+        )
+        self.autoencoder = AutoEncoder(encoder_cfg).to(self.device)
+        self.autoencoder.load_state_dict(
+            self.sparse_autoencoder.state_dict(), strict=False
+        )
+
         if not os.path.exists(outputs_dir):
             os.makedirs(outputs_dir)
         self.outputs_dir = outputs_dir
@@ -113,11 +129,14 @@ class NeuronpediaRunner:
         self,
         n_batches_to_sample_from: int = 2**12,
         n_prompts_to_select: int = 4096 * 6,
+        n_context_size: int | None = None,
     ):
         all_tokens_list = []
         pbar = tqdm(range(n_batches_to_sample_from))
         for _ in pbar:
-            batch_tokens = self.activation_store.get_batch_tokens()
+            batch_tokens = self.activation_store.get_batch_tokens(
+                context_size=n_context_size
+            )
             batch_tokens = batch_tokens[torch.randperm(batch_tokens.shape[0])][
                 : batch_tokens.shape[0]
             ]
@@ -163,17 +182,19 @@ class NeuronpediaRunner:
         self.n_features = self.sparse_autoencoder.cfg.d_sae
         assert self.n_features is not None
 
-        # if we have feature sparsity, then use it to only generate outputs for non-dead features
-        self.target_feature_indexes: list[int] = []
-        sparsity = load_sparsity(self.sae_path)
-        # convert sparsity to logged sparsity if it's not
-        # TODO: standardize the sparsity file format
-        if len(sparsity) > 0 and sparsity[0] >= 0:
-            sparsity = torch.log10(sparsity + 1e-10)
-        sparsity = sparsity.to(self.device)
-        self.target_feature_indexes = (
-            (sparsity > self.sparsity_threshold).nonzero(as_tuple=True)[0].tolist()
-        )
+        # # if we have feature sparsity, then use it to only generate outputs for non-dead features
+        # self.target_feature_indexes: list[int] = []
+        # sparsity = load_sparsity(self.sae_path)
+        # # convert sparsity to logged sparsity if it's not
+        # # TODO: standardize the sparsity file format
+        # if len(sparsity) > 0 and sparsity[0] >= 0:
+        #     sparsity = torch.log10(sparsity + 1e-10)
+        # sparsity = sparsity.to(self.device)
+        # self.target_feature_indexes = (
+        #     (sparsity > self.sparsity_threshold).nonzero(as_tuple=True)[0].tolist()
+        # )
+
+        self.target_feature_indexes = list(range(self.n_features))
 
         # divide into batches
         feature_idx = torch.tensor(self.target_feature_indexes)
@@ -212,7 +233,7 @@ class NeuronpediaRunner:
         else:
             print("Tokens don't exist, making them.")
             tokens = self.get_tokens(
-                self.n_batches_to_sample_from, self.n_prompts_to_select
+                self.n_batches_to_sample_from, self.n_prompts_to_select, 256
             )
             torch.save(
                 tokens,
@@ -279,12 +300,22 @@ class NeuronpediaRunner:
                     features=features_to_process,
                     verbose=True,
                     feature_centric_layout=layout,
+                    cache_dir=Path(
+                        "./cached_activations/"
+                        + self.model_id
+                        + "_"
+                        + self.sae_id
+                        + "_"
+                        + self.sparse_autoencoder.cfg.hook_point
+                    ),
+                    device=self.device,
+                    perform_ablation_experiments=False,
+                    dtype="fp16",
                 )
-                feature_data = SaeVisData.create(
-                    encoder=self.sparse_autoencoder,  # type: ignore
+                feature_data = SaeVisRunner(feature_vis_params).run(
+                    encoder=self.autoencoder,
                     model=cast(HookedTransformer, self.model),
                     tokens=tokens,
-                    cfg=feature_vis_params,
                 )
 
                 features_outputs = []
@@ -402,7 +433,6 @@ class NeuronpediaRunner:
                                 activation["binMin"] = binMin
                                 activation["binMax"] = binMax
                                 activation["binContains"] = binContains
-
                                 strs = []
                                 posContribs = []
                                 negContribs = []
@@ -413,27 +443,29 @@ class NeuronpediaRunner:
                                         )
                                     )
                                     posContrib = {}
-                                    posTokens = [
-                                        self.to_str_tokens_safe(vocab_dict, j)
-                                        for j in sd.top_token_ids[i]
-                                    ]
-                                    if len(posTokens) > 0:
-                                        posContrib["t"] = posTokens
-                                        posContrib["v"] = self.round_list(
-                                            sd.top_logits[i]
-                                        )
-                                    posContribs.append(posContrib)
+                                    if len(sd.top_token_ids) == len(sd.token_ids):
+                                        posTokens = [
+                                            self.to_str_tokens_safe(vocab_dict, j)
+                                            for j in sd.top_token_ids[i]
+                                        ]
+                                        if len(posTokens) > 0:
+                                            posContrib["t"] = posTokens
+                                            posContrib["v"] = self.round_list(
+                                                sd.top_logits[i]
+                                            )
+                                        posContribs.append(posContrib)
                                     negContrib = {}
-                                    negTokens = [
-                                        self.to_str_tokens_safe(vocab_dict, j)  # type: ignore
-                                        for j in sd.bottom_token_ids[i]
-                                    ]
-                                    if len(negTokens) > 0:
-                                        negContrib["t"] = negTokens
-                                        negContrib["v"] = self.round_list(
-                                            sd.bottom_logits[i]
-                                        )
-                                    negContribs.append(negContrib)
+                                    if len(sd.bottom_token_ids) == len(sd.token_ids):
+                                        negTokens = [
+                                            self.to_str_tokens_safe(vocab_dict, j)  # type: ignore
+                                            for j in sd.bottom_token_ids[i]
+                                        ]
+                                        if len(negTokens) > 0:
+                                            negContrib["t"] = negTokens
+                                            negContrib["v"] = self.round_list(
+                                                sd.bottom_logits[i]
+                                            )
+                                        negContribs.append(negContrib)
 
                                 activation["logitContributions"] = json.dumps(
                                     {"pos": posContribs, "neg": negContribs}
