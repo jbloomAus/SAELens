@@ -65,13 +65,6 @@ class SparseAutoencoder(HookedRootModule):
             )
         assert cfg.d_sae is not None  # keep pyright happy
         # lists are valid only for SAEGroup cfg, not SAE cfg vals
-        assert not isinstance(cfg.l1_coefficient, list)
-        assert not isinstance(cfg.lp_norm, list)
-        assert not isinstance(cfg.lr, list)
-        assert not isinstance(cfg.lr_scheduler_name, list)
-        assert not isinstance(cfg.lr_warm_up_steps, list)
-        assert not isinstance(cfg.use_ghost_grads, list)
-        assert not isinstance(cfg.hook_point_layer, list)
         assert (
             "{layer}" not in cfg.hook_point
         ), "{layer} must be replaced with the actual layer number in SAE cfg"

@@ -7,8 +7,8 @@ This is an Ansible playbook that runs `Cache Activations` and and `Train SAE` in
 ### Prerequisites
 - AWS Account
 - AWS ability to launch G instance types - you need to submit a request to enable this.
-  - [Submit request for G. Click "Request increase at account level".](https://us-east-1.console.aws.amazon.com/servicequotas/home/services/ec2/quotas/L-3819A6DF)
-  - [Increase other quotas (like P instances)](https://us-east-1.console.aws.amazon.com/servicequotas/home/services/ec2/quotas)
+  - [Submit request for G. Click "Request increase at account level".](https://us-east-1.console.aws.amazon.com/servicequotas/home/services/ec2/quotas/L-DB2E81BA)
+  - [Increase other quotas (like P instances) - Be sure to request On-Demand, not Spot"](https://us-east-1.console.aws.amazon.com/servicequotas/home/services/ec2/quotas)
   - G and P instances are not enabled by default [docs](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-resource-limits.html)
   - What GPUs/specs are G and P instance types? [docs](https://docs.aws.amazon.com/dlami/latest/devguide/gpu.html)
 - Wandb Account (wandb.ai)
@@ -45,6 +45,7 @@ export WANDB_API_KEY=[Paste Wandb API Key]
 pip install ansible
 ansible --version
 
+cd scripts/ansible
 ansible-galaxy collection install -r util/requirements.yml
 ```
 
@@ -98,6 +99,41 @@ Train SAE only
 ansible-playbook playbooks/setup.yml
 ansible-playbook playbooks/train_sae.yml
 ```
+
+#### Run Instance for Development
+
+This brings up an instance with SAELens on it that has everything configured to run a job, including mounted S3. You will need to shut down the instance yourself when you're done with it.
+1) Make sure you've copied the latest `scripts/ansible/configs-example` to `scripts/ansible/config`.
+2) Modify `scripts/ansible/config/dev.yml` with the instance type you wish to launch, then save.
+
+```
+cd scripts/ansible
+ansible-playbook run-dev.yml
+
+# wait for run-dev.yml to complete (~7 minutes)
+
+# get the IP address to ssh into
+ansible-inventory --list --yaml tag_service__dev | grep public_ip_address
+
+ssh -i ~/.ssh/saelens_ansible ubuntu@[PASTE_PUBLIC_IP_ADDRESS]
+```
+
+Once you're SSH'ed into the instance, the directories are:
+```
+# s3 mounted bucket directory, which should contain your bucket as its sole subdirectory
+cd /mnt/s3
+ls
+
+# SAELens git repo - main branch
+cd /home/ubuntu/SAELens
+```
+
+**Remember to terminate your instance when you're done.**
+You can terminate the instance from the EC2 console. Alternatively, the instance has been configured to terminate on shutdown, so from SSH you can just run:
+```
+sudo shutdown -h now
+```
+You should still double check that the instance does indeed terminate from EC2 Console, just in case shutdown failed for some reason.
 
 ### TODO
    - make config scripts that makes the config sweep files automatically

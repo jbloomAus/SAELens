@@ -18,9 +18,7 @@ else:
 print("Using device:", device)
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-block = 6
-
-total_training_steps = 20_000
+total_training_steps = 2000
 batch_size = 4096
 total_training_tokens = total_training_steps * batch_size
 print(f"Total Training Tokens: {total_training_tokens}")
@@ -31,14 +29,10 @@ print(f"lr_decay_steps: {lr_decay_steps}")
 l1_warmup_steps = total_training_steps // 20  # 5% of training steps.
 print(f"l1_warmup_steps: {l1_warmup_steps}")
 log_to_wandb = True
+l1_coefficient = 5
 
-for l1_coefficient in [0.1, 1, 2, 4, 10]:
-    for lr in [
-        1e-5,
-        5e-5,
-        1e-4,
-        4e-4,
-    ]:
+for block in [11, 0]:
+    for autocast_lm in [False, True]:
         cfg = LanguageModelSAERunnerConfig(
             # Pick a tiny model to make this easier.
             model_name="gpt2",
@@ -82,21 +76,21 @@ for l1_coefficient in [0.1, 1, 2, 4, 10]:
             decoder_heuristic_init=True,
             init_encoder_as_decoder_transpose=True,
             # Optimizer
-            lr=lr,
+            lr=1e-4,
             ## adam optimizer has no weight decay by default so worry about this.
             adam_beta1=0.9,
             adam_beta2=0.999,
             # Unsure if this is enough
             n_batches_in_buffer=64,
             store_batch_size_prompts=16,
-            normalize_activations=False,
+            normalize_activations=True,
             # Feature Store
             feature_sampling_window=1000,
             dead_feature_window=1000,
             dead_feature_threshold=1e-4,
             # WANDB
             log_to_wandb=log_to_wandb,
-            wandb_project="gpt-2-sweep-14may24",
+            wandb_project="gpt-2-sweep-20may24-check-autocast-2",
             wandb_log_frequency=50,
             eval_every_n_wandb_logs=10,
             # Misc
@@ -106,7 +100,9 @@ for l1_coefficient in [0.1, 1, 2, 4, 10]:
             checkpoint_path="checkpoints",
             dtype=torch.float32,
             eval_batch_size_prompts=2,
+            n_eval_batches=40,
             autocast=True,
+            autocast_lm=autocast_lm,
             compile_llm=True,
             compile_sae=True,
         )

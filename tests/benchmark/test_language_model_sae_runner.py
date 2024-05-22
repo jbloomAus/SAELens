@@ -1,11 +1,9 @@
-import os
-
 import torch
 
 from sae_lens.training.config import LanguageModelSAERunnerConfig
-from sae_lens.training.lm_runner import language_model_sae_runner
+from sae_lens.training.lm_runner import SAETrainingRunner
 
-os.environ["WANDB_MODE"] = "offline"  # turn this off if you want to see the output
+# os.environ["WANDB_MODE"] = "offline"  # turn this off if you want to see the output
 
 
 # The way to run this with this command:
@@ -99,7 +97,7 @@ def test_language_model_sae_runner():
     )
 
     # look at the next cell to see some instruction for what to do while this is running.
-    sparse_autoencoder_dictionary = language_model_sae_runner(cfg)
+    sparse_autoencoder_dictionary = SAETrainingRunner(cfg).run()
 
     assert sparse_autoencoder_dictionary is not None
     # know whether or not this works by looking at the dashboard!

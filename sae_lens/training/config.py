@@ -26,7 +26,7 @@ class LanguageModelSAERunnerConfig:
     model_class_name: str = "HookedTransformer"
     hook_point: str = "blocks.{layer}.hook_mlp_out"
     hook_point_eval: str = "blocks.{layer}.attn.pattern"
-    hook_point_layer: int | list[int] = 0
+    hook_point_layer: int = 0
     hook_point_head_index: Optional[int] = None
     dataset_path: str = "NeelNanda/c4-tokenized-2b"
     streaming: bool = True
@@ -41,7 +41,7 @@ class LanguageModelSAERunnerConfig:
     d_in: int = 512
     d_sae: Optional[int] = None
     b_dec_init_method: str = "geometric_median"
-    expansion_factor: int | list[int] = 4
+    expansion_factor: int = 4
     activation_fn: str = "relu"  # relu, tanh-relu
     normalize_sae_decoder: bool = True
     noise_scale: float = 0.0
@@ -65,11 +65,12 @@ class LanguageModelSAERunnerConfig:
         "with_model"  # will be set by post init if with_model
     )
     seed: int = 42
-    dtype: str | torch.dtype = "float32"  # type: ignore #
+    dtype: str | torch.dtype = "torch.float32"  # type: ignore #
     prepend_bos: bool = True
 
     # Performance - see compilation section of lm_runner.py for info
     autocast: bool = False  # autocast to autocast_dtype during training
+    autocast_lm: bool = False  # autocast lm during activation fetching
     compile_llm: bool = False  # use torch.compile on the LLM
     llm_compilation_mode: str | None = None  # which torch.compile mode to use
     compile_sae: bool = False  # use torch.compile on the SAE
@@ -81,35 +82,31 @@ class LanguageModelSAERunnerConfig:
     train_batch_size_tokens: int = 4096
 
     ## Adam
-    adam_beta1: float | list[float] = 0
-    adam_beta2: float | list[float] = 0.999
+    adam_beta1: float = 0
+    adam_beta2: float = 0.999
 
     ## Loss Function
     mse_loss_normalization: Optional[str] = None
-    l1_coefficient: float | list[float] = 1e-3
-    lp_norm: float | list[float] = 1
+    l1_coefficient: float = 1e-3
+    lp_norm: float = 1
     scale_sparsity_penalty_by_decoder_norm: bool = False
-    l1_warm_up_steps: int | list[int] = 0
+    l1_warm_up_steps: int = 0
 
     ## Learning Rate Schedule
-    lr: float | list[float] = 3e-4
-    lr_scheduler_name: str | list[str] = (
+    lr: float = 3e-4
+    lr_scheduler_name: str = (
         "constant"  # constant, cosineannealing, cosineannealingwarmrestarts
     )
-    lr_warm_up_steps: int | list[int] = 0
-    lr_end: float | list[float] | None = (
-        None  # only used for cosine annealing, default is lr / 10
-    )
-    lr_decay_steps: int | list[int] = 0
-    n_restart_cycles: int | list[int] = 1  # used only for cosineannealingwarmrestarts
+    lr_warm_up_steps: int = 0
+    lr_end: Optional[float] = None  # only used for cosine annealing, default is lr / 10
+    lr_decay_steps: int = 0
+    n_restart_cycles: int = 1  # used only for cosineannealingwarmrestarts
 
     ## FineTuning
     finetuning_method: Optional[str] = None  # scale, decoder or unrotated_decoder
 
     # Resampling protocol args
-    use_ghost_grads: bool | list[bool] = (
-        False  # want to change this to true on some timeline.
-    )
+    use_ghost_grads: bool = False  # want to change this to true on some timeline.
     feature_sampling_window: int = 2000
     dead_feature_window: int = 1000  # unless this window is larger feature sampling,
 
@@ -141,6 +138,13 @@ class LanguageModelSAERunnerConfig:
     sae_lens_training_version: str = field(default_factory=lambda: __version__)
 
     def __post_init__(self):
+
+        if self.resume:
+            raise ValueError(
+                "Resuming is no longer supported. You can finetune a trained SAE using cfg.from_pretrained path."
+                + "If you want to load an SAE with resume=True in the config, please manually set resume=False in that config."
+            )
+
         if self.use_cached_activations and self.cached_activations_path is None:
             self.cached_activations_path = _default_cached_activations_path(
                 self.dataset_path,
@@ -192,10 +196,8 @@ class LanguageModelSAERunnerConfig:
         self.act_store_device = torch.device(self.act_store_device)
 
         if self.lr_end is None:
-            if isinstance(self.lr, list):
-                self.lr_end = [lr / 10 for lr in self.lr]
-            else:
-                self.lr_end = self.lr / 10
+            self.lr_end = self.lr / 10
+
         unique_id = self.wandb_id
         if unique_id is None:
             unique_id = cast(
@@ -248,7 +250,7 @@ class LanguageModelSAERunnerConfig:
                 f"Number tokens in sparsity calculation window: {self.feature_sampling_window * self.train_batch_size_tokens:.2e}"
             )
 
-        if not isinstance(self.use_ghost_grads, list) and self.use_ghost_grads:
+        if self.use_ghost_grads:
             print("Using Ghost Grads.")
 
     def get_checkpoints_by_step(self) -> tuple[dict[int, str], bool]:
@@ -295,6 +297,14 @@ class LanguageModelSAERunnerConfig:
             print(f"resuming from step {max_step} at path {checkpoint_dir}")
             return mapped_to_steps[max_step]
 
+    @property
+    def total_training_tokens(self) -> int:
+        return self.training_tokens + self.finetuning_tokens
+
+    @property
+    def total_training_steps(self) -> int:
+        return self.total_training_tokens // self.train_batch_size_tokens
+
 
 @dataclass
 class CacheActivationsRunnerConfig:
@@ -306,7 +316,7 @@ class CacheActivationsRunnerConfig:
     model_name: str = "gelu-2l"
     model_class_name: str = "HookedTransformer"
     hook_point: str = "blocks.{layer}.hook_mlp_out"
-    hook_point_layer: int | list[int] = 0
+    hook_point_layer: int = 0
     hook_point_head_index: Optional[int] = None
     dataset_path: str = "NeelNanda/c4-tokenized-2b"
     streaming: bool = True
@@ -333,8 +343,9 @@ class CacheActivationsRunnerConfig:
         "with_model"  # will be set by post init if with_model
     )
     seed: int = 42
-    dtype: str | torch.dtype = "float32"
+    dtype: str | torch.dtype = "torch.float32"
     prepend_bos: bool = True
+    autocast_lm: bool = False  # autocast lm during activation fetching
 
     # Activation caching stuff
     shuffle_every_n_buffers: int = 10

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import os
 from typing import Any, Iterator, Literal, TypeVar, cast
 
@@ -72,6 +73,7 @@ class ActivationsStore:
             dtype=cfg.dtype,
             cached_activations_path=cached_activations_path,
             model_kwargs=cfg.model_kwargs,
+            autocast_lm=cfg.autocast_lm,
         )
 
     def __init__(
@@ -94,6 +96,7 @@ class ActivationsStore:
         dtype: str | torch.dtype,
         cached_activations_path: str | None = None,
         model_kwargs: dict[str, Any] | None = None,
+        autocast_lm: bool = False,
     ):
         self.model = model
         if model_kwargs is None:
@@ -118,6 +121,7 @@ class ActivationsStore:
         self.device = device
         self.dtype = dtype
         self.cached_activations_path = cached_activations_path
+        self.autocast_lm = autocast_lm
 
         self.n_dataset_processed = 0
         self.iterable_dataset = iter(self.dataset)
@@ -278,13 +282,24 @@ class ActivationsStore:
         act_names = [self.hook_point.format(layer=layer) for layer in layers]
         hook_point_max_layer = max(layers)
 
-        layerwise_activations = self.model.run_with_cache(
-            batch_tokens,
-            names_filter=act_names,
-            stop_at_layer=hook_point_max_layer + 1,
-            prepend_bos=self.prepend_bos,
-            **self.model_kwargs,
-        )[1]
+        # Setup autocast if using
+        if self.autocast_lm:
+            autocast_if_enabled = torch.autocast(
+                device_type="cuda",
+                dtype=torch.bfloat16,
+                enabled=self.autocast_lm,
+            )
+        else:
+            autocast_if_enabled = contextlib.nullcontext()
+
+        with autocast_if_enabled:
+            layerwise_activations = self.model.run_with_cache(
+                batch_tokens,
+                names_filter=act_names,
+                stop_at_layer=hook_point_max_layer + 1,
+                prepend_bos=self.prepend_bos,
+                **self.model_kwargs,
+            )[1]
 
         n_batches, n_context = batch_tokens.shape
 
