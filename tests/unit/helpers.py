@@ -1,3 +1,4 @@
+import copy
 from typing import Any
 
 import torch
@@ -76,4 +77,5 @@ def load_model_cached(model_name: str) -> HookedTransformer:
         MODEL_CACHE[model_name] = HookedTransformer.from_pretrained(
             model_name, device="cpu"
         )
-    return MODEL_CACHE[model_name]
+    # we copy here to prevent sharing state across tests
+    return copy.deepcopy(MODEL_CACHE[model_name])
