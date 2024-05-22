@@ -291,6 +291,14 @@ class LanguageModelSAERunnerConfig:
             print(f"resuming from step {max_step} at path {checkpoint_dir}")
             return mapped_to_steps[max_step]
 
+    @property
+    def total_training_tokens(self) -> int:
+        return self.training_tokens + self.finetuning_tokens
+
+    @property
+    def total_training_steps(self) -> int:
+        return self.total_training_tokens // self.train_batch_size_tokens
+
 
 @dataclass
 class CacheActivationsRunnerConfig:

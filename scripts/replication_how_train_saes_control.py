@@ -6,7 +6,7 @@ import torch
 sys.path.append("..")
 
 from sae_lens.training.config import LanguageModelSAERunnerConfig
-from sae_lens.training.lm_runner import language_model_sae_runner
+from sae_lens.training.lm_runner import SAETrainingRunner
 
 if torch.cuda.is_available():
     device = "cuda"
@@ -112,6 +112,6 @@ for l1_coefficient in [2, 5, 10]:
     )
 
     # look at the next cell to see some instruction for what to do while this is running.
-    sparse_autoencoder_dictionary = language_model_sae_runner(cfg)
+    sparse_autoencoder_dictionary = SAETrainingRunner(cfg).run()
 
     print("=" * 50)

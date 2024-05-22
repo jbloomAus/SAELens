@@ -47,14 +47,13 @@ nav:
   - Roadmap: roadmap.md
   - Installation: installation.md
   - Training SAEs: training_saes.md
+  - Citation: citation.md
+  - Contributing: contributing.md
   # - Analysis: usage/examples.md
   - Reference:
     - Language Models: reference/language_models.md
     - Toy Models: reference/toy_models.md
     - Misc: reference/misc.md
-  - About:
-    - Citation: about/citation.md
-    - Contributing: about/contributing.md
 
 plugins:
   - search

@@ -6,7 +6,7 @@ import torch
 sys.path.append("..")
 
 from sae_lens.training.config import LanguageModelSAERunnerConfig
-from sae_lens.training.lm_runner import language_model_sae_runner
+from sae_lens.training.lm_runner import SAETrainingRunner
 
 if torch.cuda.is_available():
     device = "cuda"
@@ -105,6 +105,6 @@ for l1_coefficient in [3, 4, 5, 6, 7]:
             compile_sae=True,
         )
 
-        language_model_sae_runner(cfg)
+        SAETrainingRunner(cfg).run()
 
         print("=" * 50)
