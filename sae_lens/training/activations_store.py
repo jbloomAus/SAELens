@@ -522,7 +522,7 @@ class ActivationsStore:
                 truncate=True,
                 move_to_device=True,
                 prepend_bos=self.prepend_bos,
-            ).squeeze(0)
+            ).squeeze(0).to(device)
             assert (
                 len(tokens.shape) == 1
             ), f"tokens.shape should be 1D but was {tokens.shape}"

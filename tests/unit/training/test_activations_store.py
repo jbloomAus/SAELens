@@ -241,8 +241,16 @@ def test_activations_store_goes_to_cpu(ts_model: HookedTransformer):
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="No GPU to test on.")
-def test_activations_store_goes_to_gpu(ts_model: HookedTransformer):
-    cfg = build_sae_cfg(act_store_device="cuda:0", device="cuda:0")
+def test_activations_store_with_model_on_gpu(ts_model: HookedTransformer):
+    cfg = build_sae_cfg(act_store_device="cpu", device="cuda:0")
+    activation_store = ActivationsStore.from_config(ts_model.to("cuda:0"), cfg)  # type: ignore
+    activations = activation_store.next_batch()
+    assert activations.device == torch.device("cpu")
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="No GPU to test on.")
+def test_activations_store_moves_with_model(ts_model: HookedTransformer):
+    # "with_model" resets to default so the second post_init works
+    cfg = build_sae_cfg(act_store_device="with_model", device="cuda:0")
     activation_store = ActivationsStore.from_config(ts_model.to("cuda:0"), cfg)  # type: ignore
     activations = activation_store.next_batch()
     assert activations.device == torch.device("cuda:0")
