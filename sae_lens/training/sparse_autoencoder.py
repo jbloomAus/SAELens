@@ -357,6 +357,7 @@ class SparseAutoencoder(HookedRootModule):
             # some args may not be serializable by default
             "dtype": str(self.cfg.dtype),
             "device": str(self.cfg.device),
+            "act_store_device": str(self.cfg.act_store_device),
         }
 
         with open(f"{path}/{SAE_CFG_PATH}", "w") as f:

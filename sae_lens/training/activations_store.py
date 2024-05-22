@@ -69,7 +69,7 @@ class ActivationsStore:
             train_batch_size_tokens=cfg.train_batch_size_tokens,
             prepend_bos=cfg.prepend_bos,
             normalize_activations=cfg.normalize_activations,
-            device=cfg.device,
+            device=cfg.act_store_device,
             dtype=cfg.dtype,
             cached_activations_path=cached_activations_path,
             model_kwargs=cfg.model_kwargs,
@@ -393,8 +393,11 @@ class ActivationsStore:
         )
 
         for refill_batch_idx_start in refill_iterator:
-            refill_batch_tokens = self.get_batch_tokens()
+            # move batch toks to gpu for model
+            refill_batch_tokens = self.get_batch_tokens().to(self.model.cfg.device)
             refill_activations = self.get_activations(refill_batch_tokens)
+            # move acts back to cpu
+            refill_activations.to(self.device)
             new_buffer[
                 refill_batch_idx_start : refill_batch_idx_start + batch_size, ...
             ] = refill_activations
@@ -406,8 +409,6 @@ class ActivationsStore:
 
         # every buffer should be normalized:
         if self.normalize_activations:
-            if self.estimated_norm_scaling_factor == 1:
-                print("WARNING: no normalisation is being applied, scaling factor = 1")
             new_buffer = self.apply_norm_scaling_factor(new_buffer)
 
         return new_buffer
@@ -516,12 +517,16 @@ class ActivationsStore:
         device = self.device
         if not self.is_dataset_tokenized:
             s = next(self.iterable_dataset)[self.tokens_column]
-            tokens = self.model.to_tokens(
-                s,
-                truncate=True,
-                move_to_device=True,
-                prepend_bos=self.prepend_bos,
-            ).squeeze(0)
+            tokens = (
+                self.model.to_tokens(
+                    s,
+                    truncate=True,
+                    move_to_device=True,
+                    prepend_bos=self.prepend_bos,
+                )
+                .squeeze(0)
+                .to(device)
+            )
             assert (
                 len(tokens.shape) == 1
             ), f"tokens.shape should be 1D but was {tokens.shape}"
