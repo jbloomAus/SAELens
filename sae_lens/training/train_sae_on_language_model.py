@@ -241,35 +241,20 @@ class SAETrainer:
 
         sparse_autoencoder.train()
         # Make sure the W_dec is still zero-norm
-        if sparse_autoencoder.normalize_sae_decoder:
+        if self.cfg.normalize_sae_decoder:
             sparse_autoencoder.set_decoder_norm_to_unit_norm()
 
         # log and then reset the feature sparsity every feature_sampling_window steps
         if (self.n_training_steps + 1) % self.cfg.feature_sampling_window == 0:
-            feature_sparsity = self.feature_sparsity
-            log_feature_sparsity = _log_feature_sparsity(feature_sparsity)
 
             if self.cfg.log_to_wandb:
-                wandb_histogram = wandb.Histogram(log_feature_sparsity.numpy())
-                wandb.log(
-                    {
-                        "metrics/mean_log10_feature_sparsity": log_feature_sparsity.mean().item(),
-                        "plots/feature_density_line_chart": wandb_histogram,
-                        "sparsity/below_1e-5": (feature_sparsity < 1e-5).sum().item(),
-                        "sparsity/below_1e-6": (feature_sparsity < 1e-6).sum().item(),
-                    },
-                    step=self.n_training_steps,
-                )
+                sparsity_log_dict = self._build_sparsity_log_dict()
+                wandb.log(sparsity_log_dict, step=self.n_training_steps)
 
-            self.act_freq_scores = torch.zeros(
-                sparse_autoencoder.cfg.d_sae,  # type: ignore
-                device=sparse_autoencoder.cfg.device,
-            )
-            self.n_frac_active_tokens = 0
+            self._reset_running_sparsity_stats()
 
         ghost_grad_neuron_mask = (
-            self.n_forward_passes_since_fired
-            > sparse_autoencoder.cfg.dead_feature_window
+            self.n_forward_passes_since_fired > self.cfg.dead_feature_window
         ).bool()
 
         # Setup autocast if using
@@ -318,7 +303,7 @@ class SAETrainer:
         scaler.step(self.optimizer)  # just ctx.optimizer.step() if not autocasting
         scaler.update()
 
-        if sparse_autoencoder.normalize_sae_decoder:
+        if self.cfg.normalize_sae_decoder:
             sparse_autoencoder.remove_gradient_parallel_to_decoder_directions()
 
         self.optimizer.zero_grad()
@@ -335,6 +320,25 @@ class SAETrainer:
             ghost_grad_loss=ghost_grad_loss,
             ghost_grad_neuron_mask=ghost_grad_neuron_mask,
         )
+
+    def _reset_running_sparsity_stats(self) -> None:
+
+        self.act_freq_scores = torch.zeros(
+            self.cfg.d_sae,  # type: ignore
+            device=self.cfg.device,
+        )
+        self.n_frac_active_tokens = 0
+
+    def _build_sparsity_log_dict(self) -> dict[str, Any]:
+
+        log_feature_sparsity = _log_feature_sparsity(self.feature_sparsity)
+        wandb_histogram = wandb.Histogram(log_feature_sparsity.numpy())
+        return {
+            "metrics/mean_log10_feature_sparsity": log_feature_sparsity.mean().item(),
+            "plots/feature_density_line_chart": wandb_histogram,
+            "sparsity/below_1e-5": (self.feature_sparsity < 1e-5).sum().item(),
+            "sparsity/below_1e-6": (self.feature_sparsity < 1e-6).sum().item(),
+        }
 
     def _build_train_step_log_dict(
         self,
