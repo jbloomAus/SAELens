@@ -379,7 +379,7 @@ class ActivationsStore:
 
         for refill_batch_idx_start in refill_iterator:
             # move batch toks to gpu for model
-            refill_batch_tokens = self.get_batch_tokens().to("cuda")
+            refill_batch_tokens = self.get_batch_tokens().to(self.model.cfg.device)
             refill_activations = self.get_activations(refill_batch_tokens)
             # move acts back to cpu
             refill_activations.to(self.device)
