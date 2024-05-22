@@ -3,7 +3,7 @@ import shutil
 
 import torch
 
-from sae_lens.training.cache_activations_runner import CacheActivationsRunner
+from sae_lens.cache_activations_runner import CacheActivationsRunner
 from sae_lens.training.config import CacheActivationsRunnerConfig
 
 os.environ["WANDB_MODE"] = "offline"  # turn this off if you want to see the output

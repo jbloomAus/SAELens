@@ -5,8 +5,8 @@ import torch
 
 sys.path.append("..")
 
+from sae_lens.sae_training_runner import SAETrainingRunner
 from sae_lens.training.config import LanguageModelSAERunnerConfig
-from sae_lens.training.lm_runner import SAETrainingRunner
 
 if torch.cuda.is_available():
     device = "cuda"

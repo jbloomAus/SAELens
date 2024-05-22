@@ -4,7 +4,7 @@ import time
 
 import torch
 
-from sae_lens.training.cache_activations_runner import CacheActivationsRunner
+from sae_lens.cache_activations_runner import CacheActivationsRunner
 
 # from pathlib import Path
 from sae_lens.training.config import CacheActivationsRunnerConfig

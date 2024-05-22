@@ -1,7 +1,7 @@
 import torch
 
+from sae_lens.sae_training_runner import SAETrainingRunner
 from sae_lens.training.config import LanguageModelSAERunnerConfig
-from sae_lens.training.lm_runner import SAETrainingRunner
 
 # os.environ["WANDB_MODE"] = "offline"  # turn this off if you want to see the output
 

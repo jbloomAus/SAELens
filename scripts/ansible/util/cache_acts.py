@@ -6,7 +6,7 @@ import time
 import torch
 import yaml
 
-from sae_lens.training.cache_activations_runner import CacheActivationsRunner
+from sae_lens.cache_activations_runner import CacheActivationsRunner
 from sae_lens.training.config import DTYPE_MAP, CacheActivationsRunnerConfig
 
 if len(sys.argv) > 1:

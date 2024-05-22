@@ -8,8 +8,8 @@ import torch
 from safetensors import safe_open
 from transformer_lens import HookedTransformer
 
+from sae_lens.cache_activations_runner import CacheActivationsRunner
 from sae_lens.training.activations_store import ActivationsStore
-from sae_lens.training.cache_activations_runner import CacheActivationsRunner
 from sae_lens.training.config import (
     CacheActivationsRunnerConfig,
     LanguageModelSAERunnerConfig,
