@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import os
-from typing import Any, Iterator, Literal, TypeVar, cast
+from typing import Any, Iterator, Literal, cast
 
 import torch
 import tqdm
@@ -59,7 +59,7 @@ class ActivationsStore:
             dataset=dataset or cfg.dataset_path,
             streaming=cfg.streaming,
             hook_point=cfg.hook_point,
-            hook_point_layers=listify(cfg.hook_point_layer),
+            hook_point_layer=cfg.hook_point_layer,
             hook_point_head_index=cfg.hook_point_head_index,
             context_size=cfg.context_size,
             d_in=cfg.d_in,
@@ -82,7 +82,7 @@ class ActivationsStore:
         dataset: HfDataset | str,
         streaming: bool,
         hook_point: str,
-        hook_point_layers: list[int],
+        hook_point_layer: int,
         hook_point_head_index: int | None,
         context_size: int,
         d_in: int,
@@ -108,7 +108,7 @@ class ActivationsStore:
             else dataset
         )
         self.hook_point = hook_point
-        self.hook_point_layers = hook_point_layers
+        self.hook_point_layer = hook_point_layer
         self.hook_point_head_index = hook_point_head_index
         self.context_size = context_size
         self.d_in = d_in
@@ -278,9 +278,6 @@ class ActivationsStore:
 
         d_in may result from a concatenated head dimension.
         """
-        layers = self.hook_point_layers
-        act_names = [self.hook_point.format(layer=layer) for layer in layers]
-        hook_point_max_layer = max(layers)
 
         # Setup autocast if using
         if self.autocast_lm:
@@ -295,32 +292,28 @@ class ActivationsStore:
         with autocast_if_enabled:
             layerwise_activations = self.model.run_with_cache(
                 batch_tokens,
-                names_filter=act_names,
-                stop_at_layer=hook_point_max_layer + 1,
+                names_filter=[self.hook_point],
+                stop_at_layer=self.hook_point_layer + 1,
                 prepend_bos=self.prepend_bos,
                 **self.model_kwargs,
             )[1]
 
         n_batches, n_context = batch_tokens.shape
 
-        stacked_activations = torch.zeros(
-            (n_batches, n_context, len(layers), self.d_in)
-        )
+        stacked_activations = torch.zeros((n_batches, n_context, 1, self.d_in))
 
-        for i, act_name in enumerate(act_names):
-
-            if self.hook_point_head_index is not None:
-                stacked_activations[:, :, i] = layerwise_activations[act_name][
-                    :, :, self.hook_point_head_index
-                ]
-            elif (
-                layerwise_activations[act_names[0]].ndim > 3
-            ):  # if we have a head dimension
-                stacked_activations[:, :, i] = layerwise_activations[act_name].view(
-                    n_batches, n_context, -1
-                )
-            else:
-                stacked_activations[:, :, i] = layerwise_activations[act_name]
+        if self.hook_point_head_index is not None:
+            stacked_activations[:, :, 0] = layerwise_activations[self.hook_point][
+                :, :, self.hook_point_head_index
+            ]
+        elif (
+            layerwise_activations[self.hook_point].ndim > 3
+        ):  # if we have a head dimension
+            stacked_activations[:, :, 0] = layerwise_activations[self.hook_point].view(
+                n_batches, n_context, -1
+            )
+        else:
+            stacked_activations[:, :, 0] = layerwise_activations[self.hook_point]
 
         return stacked_activations
 
@@ -329,7 +322,7 @@ class ActivationsStore:
         batch_size = self.store_batch_size_prompts
         d_in = self.d_in
         total_size = batch_size * n_batches_in_buffer
-        num_layers = len(self.hook_point_layers)  # Number of hook points or layers
+        num_layers = 1
 
         if self.cached_activations_path is not None:
             # Load the activations from disk
@@ -544,12 +537,3 @@ class ActivationsStore:
                 tokens = tokens[1:]
         self.n_dataset_processed += 1
         return tokens
-
-
-T = TypeVar("T")
-
-
-def listify(x: T | list[T]) -> list[T]:
-    if isinstance(x, list):
-        return x
-    return [x]
