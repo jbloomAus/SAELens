@@ -1,9 +1,6 @@
 import torch
 
-from sae_lens.training.toy_model_runner import (
-    ToyModelSAERunnerConfig,
-    toy_model_sae_runner,
-)
+from sae_lens.toy_model_runner import ToyModelSAERunnerConfig, toy_model_sae_runner
 
 
 # @pytest.mark.skip(reason="I (joseph) broke this at some point, on my to do list to fix.")
