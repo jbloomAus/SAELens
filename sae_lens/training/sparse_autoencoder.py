@@ -38,15 +38,24 @@ class ForwardOutput(NamedTuple):
 class SparseAutoencoderBase(HookedRootModule):
     """ """
 
+    # forward pass details.
+    d_in: int
     d_sae: int
-    hook_point: str
-    hook_point_layer: int
-    hook_point_head_index: Optional[int]
     activation_fn_str: str
     activation_fn: Callable[[torch.Tensor], torch.Tensor]
     apply_b_dec_to_input: bool
     uses_scaling_factor: bool
 
+    # dataset it was trained on details.
+    context_size: int
+    model_name: str
+    hook_point: str
+    hook_point_layer: int
+    hook_point_head_index: Optional[int]
+    prepend_bos: bool
+    dataset_path: str
+
+    # misc
     dtype: torch.dtype
     device: str | torch.device
     sae_lens_training_version: Optional[str]
@@ -65,6 +74,9 @@ class SparseAutoencoderBase(HookedRootModule):
         apply_b_dec_to_input: bool = True,
         uses_scaling_factor: bool = False,
         sae_lens_training_version: Optional[str] = None,
+        prepend_bos: bool = True,
+        dataset_path: str = "unknown",
+        context_size: int = 256,
     ):
         super().__init__()
 
@@ -74,14 +86,18 @@ class SparseAutoencoderBase(HookedRootModule):
         self.activation_fn = get_activation_fn(activation_fn)
         self.apply_b_dec_to_input = apply_b_dec_to_input
         self.uses_scaling_factor = uses_scaling_factor
-        self.dtype = dtype
-        self.device = device
-        self.sae_lens_training_version = sae_lens_training_version
 
         self.model_name = model_name
         self.hook_point = hook_point
         self.hook_point_layer = hook_point_layer
         self.hook_point_head_index = hook_point_head_index
+        self.dataset_name = dataset_path
+        self.prepend_bos = prepend_bos
+        self.context_size = context_size
+
+        self.dtype = dtype
+        self.device = device
+        self.sae_lens_training_version = sae_lens_training_version
 
         self.initialize_weights_basic()
 
@@ -257,6 +273,10 @@ class SparseAutoencoderBase(HookedRootModule):
             force_download=False,
         )
 
+        if "prepend_bos" not in cfg_dict:
+            # default to True for backwards compatibility
+            cfg_dict["prepend_bos"] = True
+
         sae = cls(
             d_in=cfg_dict["d_in"],
             d_sae=cfg_dict["d_sae"],
@@ -269,8 +289,10 @@ class SparseAutoencoderBase(HookedRootModule):
             activation_fn=(
                 cfg_dict["activation_fn"] if "activation_fn" in cfg_dict else "relu"
             ),
+            context_size=cfg_dict["context_size"],
+            dataset_path=cfg_dict["dataset_path"],
+            prepend_bos=cfg_dict["prepend_bos"],
         )
-
         sae.load_state_dict(state_dict)
 
         return sae
@@ -293,7 +315,12 @@ class SparseAutoencoderBase(HookedRootModule):
             "hook_point_head_index": self.hook_point_head_index,
             "activation_fn": self.activation_fn_str,  # use string for serialization
             "act_store_device": str(self.cfg.act_store_device),
-        }
+            "apply_b_dec_to_input": self.apply_b_dec_to_input,
+            "uses_scaling_factor": self.uses_scaling_factor,
+            "sae_lens_training_version": self.sae_lens_training_version,
+            "prepend_bos": self.prepend_bos,
+            "dataset_name": self.dataset_name,
+    }
 
 
 class TrainingSparseAutoencoder(SparseAutoencoderBase):
