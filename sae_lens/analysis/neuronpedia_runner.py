@@ -23,7 +23,9 @@ from tqdm import tqdm
 from transformer_lens import HookedTransformer
 
 from sae_lens.toolkit.pretrained_saes import load_sparsity
-from sae_lens.training.session_loader import LMSparseAutoencoderSessionloader
+from sae_lens.training.activations_store import ActivationsStore
+from sae_lens.training.config import LanguageModelSAERunnerConfig
+from sae_lens.training.load_model import load_model
 from sae_lens.training.sparse_autoencoder import SparseAutoencoderBase
 
 OUT_OF_RANGE_TOKEN = "<|outofrange|>"
@@ -67,6 +69,8 @@ class NeuronpediaRunner:
         sae_path: str,
         outputs_dir: str,
         sparsity_threshold: int = DEFAULT_SPARSITY_THRESHOLD,
+        # ACTIVATION STORE PARAMATERS
+        ## SAE VIS PARAMETERS
         # token pars
         n_batches_to_sample_from: int = 2**12,
         n_prompts_to_select: int = 4096 * 6,
@@ -90,8 +94,18 @@ class NeuronpediaRunner:
         self.sparse_autoencoder = SparseAutoencoderBase.load_from_pretrained(
             self.sae_path, device=self.device
         )
-        loader = LMSparseAutoencoderSessionloader(self.sparse_autoencoder.cfg)
-        self.model, _, self.activation_store = loader.load_sae_training_group_session()
+        self.model = load_model(
+            model_class_name="HookedTransformer",
+            model_name=self.sparse_autoencoder.model_name,
+            device=self.device,
+        )
+
+        # temporarily, load config seperately
+        cfg = LanguageModelSAERunnerConfig.from_json(sae_path)
+
+        # currently this script assumes we are loading an SAE trained using SAE Lens.
+        self.activation_store = ActivationsStore.from_config(model=self.model, cfg=cfg)
+
         self.model_id = self.sparse_autoencoder.cfg.model_name
         self.layer = self.sparse_autoencoder.cfg.hook_point_layer
         self.sae_id = sae_id

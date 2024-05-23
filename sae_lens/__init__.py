@@ -10,7 +10,6 @@ from .training.config import (
     PretokenizeRunnerConfig,
 )
 from .training.evals import run_evals
-from .training.session_loader import LMSparseAutoencoderSessionloader
 from .training.sparse_autoencoder import SparseAutoencoderBase
 
 __all__ = [
@@ -22,6 +21,5 @@ __all__ = [
     "CacheActivationsRunner",
     "PretokenizeRunnerConfig",
     "pretokenize_runner",
-    "LMSparseAutoencoderSessionloader",
     "run_evals",
 ]

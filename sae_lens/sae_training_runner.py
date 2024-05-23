@@ -8,7 +8,7 @@ from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.checkpointing import save_checkpoint
 from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.geometric_median import compute_geometric_median
-from sae_lens.training.session_loader import LMSparseAutoencoderSessionloader
+from sae_lens.training.load_model import load_model
 from sae_lens.training.sparse_autoencoder import SparseAutoencoderBase
 from sae_lens.training.train_sae_on_language_model import SAETrainer
 
@@ -31,21 +31,27 @@ class SAETrainingRunner:
     def __init__(self, cfg: LanguageModelSAERunnerConfig):
         self.cfg = cfg
 
+        self.model = load_model(
+            self.cfg.model_class_name,
+            self.cfg.model_name,
+            device=self.cfg.device,
+            model_from_pretrained_kwargs=self.cfg.model_from_pretrained_kwargs,
+        )
+
+        self.activations_store = ActivationsStore.from_config(
+            self.model,
+            self.cfg,
+        )
+
         if self.cfg.from_pretrained_path is not None:
-            (
-                self.model,
-                self.sparse_autoencoder,
-                self.activations_store,
-            ) = LMSparseAutoencoderSessionloader.load_pretrained_sae(
-                self.cfg.from_pretrained_path
-            )
-            self.cfg = self.sparse_autoencoder.cfg
-        else:
-            loader = LMSparseAutoencoderSessionloader(self.cfg)
-            self.model, self.sparse_autoencoder, self.activations_store = (
-                loader.load_sae_training_group_session()
+            self.sparse_autoencoder = SparseAutoencoderBase.load_from_pretrained(
+                self.cfg.from_pretrained_path, self.cfg.device  # type: ignore
             )
             self._init_sae_group_b_decs()
+        else:
+            self.sparse_autoencoder = SparseAutoencoderBase(
+                **self.cfg.get_sae_base_parameters()
+            )
 
     def run(self):
         """ """
@@ -111,6 +117,7 @@ class SAETrainingRunner:
 
         return sparse_autoencoder
 
+    # TODO: move this into the SAE trainer class.
     def _init_sae_group_b_decs(
         self,
     ) -> None:

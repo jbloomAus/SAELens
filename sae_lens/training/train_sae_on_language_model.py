@@ -34,7 +34,7 @@ def _update_sae_lens_training_version(sae: TrainingSparseAutoencoder) -> None:
     """
     Make sure we record the version of SAELens used for the training run
     """
-    sae.cfg.sae_lens_training_version = __version__
+    sae.sae_lens_training_version = __version__
 
 
 @dataclass
@@ -84,18 +84,18 @@ class SAETrainer:
             self.checkpoint_thresholds = list(
                 range(
                     0,
-                    sae.cfg.total_training_tokens,
-                    sae.cfg.total_training_tokens // self.cfg.n_checkpoints,
+                    cfg.total_training_tokens,
+                    cfg.total_training_tokens // self.cfg.n_checkpoints,
                 )
             )[1:]
 
         self.act_freq_scores = torch.zeros(
-            cast(int, sae.cfg.d_sae),
-            device=sae.cfg.device,
+            cast(int, cfg.d_sae),
+            device=cfg.device,
         )
         self.n_forward_passes_since_fired = torch.zeros(
-            cast(int, sae.cfg.d_sae),
-            device=sae.cfg.device,
+            cast(int, cfg.d_sae),
+            device=cfg.device,
         )
         self.n_frac_active_tokens = 0
         # we don't train the scaling factor (initially)
@@ -106,28 +106,28 @@ class SAETrainer:
 
         self.optimizer = Adam(
             sae.parameters(),
-            lr=sae.cfg.lr,
+            lr=cfg.lr,
             betas=(
-                sae.cfg.adam_beta1,  # type: ignore
-                sae.cfg.adam_beta2,  # type: ignore
+                cfg.adam_beta1,  # type: ignore
+                cfg.adam_beta2,  # type: ignore
             ),
         )
-        assert sae.cfg.lr_end is not None  # this is set in config post-init
+        assert cfg.lr_end is not None  # this is set in config post-init
         self.lr_scheduler = get_lr_scheduler(
-            sae.cfg.lr_scheduler_name,
-            lr=sae.cfg.lr,
+            cfg.lr_scheduler_name,
+            lr=cfg.lr,
             optimizer=self.optimizer,
-            warm_up_steps=sae.cfg.lr_warm_up_steps,
-            decay_steps=sae.cfg.lr_decay_steps,
+            warm_up_steps=cfg.lr_warm_up_steps,
+            decay_steps=cfg.lr_decay_steps,
             training_steps=self.cfg.total_training_steps,
-            lr_end=sae.cfg.lr_end,
-            num_cycles=sae.cfg.n_restart_cycles,
+            lr_end=cfg.lr_end,
+            num_cycles=cfg.n_restart_cycles,
         )
 
         self.l1_scheduler = L1Scheduler(
-            l1_warm_up_steps=sae.cfg.l1_warm_up_steps,  # type: ignore
-            total_steps=self.cfg.total_training_steps,
-            final_l1_coefficient=self.cfg.l1_coefficient,
+            l1_warm_up_steps=cfg.l1_warm_up_steps,  # type: ignore
+            total_steps=cfg.total_training_steps,
+            final_l1_coefficient=cfg.l1_coefficient,
         )
 
     @property
@@ -144,7 +144,7 @@ class SAETrainer:
 
     def fit(self) -> TrainingSparseAutoencoder:
 
-        pbar = tqdm(total=self.sae.cfg.total_training_tokens, desc="Training SAE")
+        pbar = tqdm(total=self.cfg.total_training_tokens, desc="Training SAE")
 
         # Estimate norm scaling factor if necessary
         # TODO(tomMcGrath): this is a bodge and should be moved back inside a class
@@ -160,7 +160,7 @@ class SAETrainer:
             self.activation_store.estimated_norm_scaling_factor = scaling_factor
 
         # Train loop
-        while self.n_training_tokens < self.sae.cfg.total_training_tokens:
+        while self.n_training_tokens < self.cfg.total_training_tokens:
             # Do a training step.
             layer_acts = self.activation_store.next_batch()[:, 0, :]
             self.n_training_tokens += self.cfg.train_batch_size_tokens
@@ -218,7 +218,7 @@ class SAETrainer:
 
             ### If n_training_tokens > sae_group.cfg.training_tokens, then we should switch to fine-tuning (if we haven't already)
             if (not self.started_fine_tuning) and (
-                self.n_training_tokens > self.sae.cfg.training_tokens
+                self.n_training_tokens > self.cfg.training_tokens
             ):
 
                 self._begin_finetuning()
@@ -388,11 +388,11 @@ class SAETrainer:
 
         # finetuning method should be set in the config
         # if not, then we don't finetune
-        if not isinstance(self.sae.cfg.finetuning_method, str):
+        if not isinstance(self.cfg.finetuning_method, str):
             return
 
         for name, param in self.sae.named_parameters():
-            if name in FINETUNING_PARAMETERS[self.sae.cfg.finetuning_method]:
+            if name in FINETUNING_PARAMETERS[self.cfg.finetuning_method]:
                 param.requires_grad = True
             else:
                 param.requires_grad = False

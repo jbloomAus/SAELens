@@ -260,4 +260,4 @@ def test_update_sae_lens_training_version_sets_the_current_version():
     cfg = build_sae_cfg(sae_lens_training_version="0.1.0")
     sae = TrainingSparseAutoencoder(cfg)
     _update_sae_lens_training_version(sae)
-    assert sae.cfg.sae_lens_training_version == __version__
+    assert sae.sae_lens_training_version == __version__

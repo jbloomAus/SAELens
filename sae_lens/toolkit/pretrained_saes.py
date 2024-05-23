@@ -1,6 +1,5 @@
 import json
 import os
-import pathlib
 from typing import Optional, Tuple
 
 import torch
@@ -8,7 +7,6 @@ from huggingface_hub import hf_hub_download, list_repo_tree
 from safetensors import safe_open
 from tqdm import tqdm
 
-from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.sparse_autoencoder import SparseAutoencoderBase
 
 
@@ -110,59 +108,20 @@ def convert_connor_rob_sae_to_our_saelens_format(
 
     """
 
-    expansion_factor = int(config["dict_size"]) // int(config["act_size"])
-
-    cfg = LanguageModelSAERunnerConfig(
+    ae_alt = SparseAutoencoderBase(
+        d_in=int(config["act_size"]),
+        d_sae=int(config["act_size"]),
+        dtype=torch.float32,
+        device=device,
         model_name=config["model_name"],  # type: ignore
         hook_point=config["act_name"],  # type: ignore
-        hook_point_layer=config["layer"],  # type: ignore
-        # data
-        # dataset_path = "/share/data/datasets/pile/the-eye.eu/public/AI/pile/train", # Training set of The Pile
-        dataset_path="NeelNanda/openwebtext-tokenized-9b",
-        is_dataset_tokenized=True,
-        d_in=config["act_size"],  # type: ignore
-        expansion_factor=expansion_factor,
-        context_size=config["seq_len"],  # type: ignore
-        device=device,
-        store_batch_size_prompts=32,
-        n_batches_in_buffer=10,
-        prepend_bos=False,
-        verbose=False,
-        dtype=torch.float32,
+        hook_point_layer=int(config["layer"]),
+        hook_point_head_index=None,
+        activation_fn="relu",
+        apply_b_dec_to_input=True,
     )
-
-    ae_alt = SparseAutoencoderBase(cfg)
     ae_alt.load_state_dict(state_dict)
     return ae_alt
-
-
-def convert_old_to_modern_saelens_format(
-    pytorch_file: str, out_folder: str = "", force: bool = False
-):
-    """
-    Reads a pretrained SAE from the old pickle-style SAELens .pt format, then saves a modern-format SAELens SAE.
-
-    Arguments:
-    ----------
-    pytorch_file: str
-        Path of old format file to open.
-    out_folder: str, optional
-        Path where new SAE will be stored; if None, out_folder = pytorch_file with the '.pt' removed.
-    force: bool, optional
-        If out_folder already exists, this function will not save unless force=True.
-    """
-    file_path = pathlib.Path(pytorch_file)
-    if out_folder == "":
-        out_f = file_path.parent / file_path.stem
-    else:
-        out_f = pathlib.Path(out_folder)
-    if (not force) and out_f.exists():
-        raise FileExistsError(f"{out_folder} already exists and force=False")
-    out_f.mkdir(exist_ok=True, parents=True)
-
-    # Load model & save in new format.
-    autoencoder = SparseAutoencoderBase.load_from_pretrained_legacy(str(file_path))
-    autoencoder.save_model(str(out_f))
 
 
 def get_gpt2_small_ckrk_attn_out_saes() -> dict[str, SparseAutoencoderBase]:

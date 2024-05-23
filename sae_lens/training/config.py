@@ -1,3 +1,4 @@
+import json
 import os
 from dataclasses import dataclass, field
 from typing import Any, Literal, Optional, cast
@@ -253,50 +254,6 @@ class LanguageModelSAERunnerConfig:
         if self.use_ghost_grads:
             print("Using Ghost Grads.")
 
-    def get_checkpoints_by_step(self) -> tuple[dict[int, str], bool]:
-        """
-        Returns (dict, is_done)
-        where dict is [steps] = path
-        for each checkpoint, and
-        is_done is True if there is a "final_{steps}" checkpoint
-        """
-        is_done = False
-        checkpoints = [
-            f
-            for f in os.listdir(self.checkpoint_path)
-            if os.path.isdir(os.path.join(self.checkpoint_path, f))
-        ]
-        mapped_to_steps = {}
-        for c in checkpoints:
-            try:
-                steps = int(c)
-            except ValueError:
-                if c.startswith("final"):
-                    steps = int(c.split("_")[1])
-                    is_done = True
-                else:
-                    continue  # ignore this directory
-            full_path = os.path.join(self.checkpoint_path, c)
-            mapped_to_steps[steps] = full_path
-        return mapped_to_steps, is_done
-
-    def get_resume_checkpoint_path(self) -> str:
-        """
-        Gets the checkpoint path with the most steps
-        raises StopIteration if the model is done (there is a final_{steps} directoryh
-        raises FileNotFoundError if there are no checkpoints found
-        """
-        mapped_to_steps, is_done = self.get_checkpoints_by_step()
-        if is_done:
-            raise StopIteration("Finished training model")
-        if len(mapped_to_steps) == 0:
-            raise FileNotFoundError("no checkpoints available to resume from")
-        else:
-            max_step = max(list(mapped_to_steps.keys()))
-            checkpoint_dir = mapped_to_steps[max_step]
-            print(f"resuming from step {max_step} at path {checkpoint_dir}")
-            return mapped_to_steps[max_step]
-
     @property
     def total_training_tokens(self) -> int:
         return self.training_tokens + self.finetuning_tokens
@@ -304,6 +261,34 @@ class LanguageModelSAERunnerConfig:
     @property
     def total_training_steps(self) -> int:
         return self.total_training_tokens // self.train_batch_size_tokens
+
+    def get_sae_base_parameters(self) -> dict[str, Any]:
+        return {
+            "d_in": self.d_in,
+            "d_sae": self.d_sae,
+            "dtype": self.dtype,
+            "device": self.device,
+            "model_name": self.model_name,
+            "hook_point": self.hook_point,
+            "hook_point_layer": self.hook_point_layer,
+            "hook_point_head_index": self.hook_point_head_index,
+            "activation_fn": self.activation_fn,
+            "apply_b_dec_to_input": self.apply_b_dec_to_input,
+        }
+
+    def to_json(self, path: str) -> None:
+
+        if not os.path.exists(os.path.dirname(path)):
+            os.makedirs(os.path.dirname(path))
+
+        with open(path + "cfg.json", "w") as f:
+            json.dump(self.__dict__, f, indent=2)
+
+    @classmethod
+    def from_json(cls, path: str) -> "LanguageModelSAERunnerConfig":
+        with open(path + "cfg.json", "r") as f:
+            cfg = json.load(f)
+        return cls(**cfg)
 
 
 @dataclass
@@ -420,6 +405,21 @@ class ToyModelSAERunnerConfig:
             )
         elif isinstance(self.dtype, str):
             self.dtype = DTYPE_MAP[self.dtype]
+
+    def get_sae_base_parameters(self) -> dict[str, Any]:
+        # TO DO: Have the same hyperparameters as in the main sae runner.
+        return {
+            "d_in": self.d_in,
+            "d_sae": self.d_sae,
+            "dtype": self.dtype,
+            "device": self.device,
+            "model_name": "ToyModel",
+            "hook_point": "ToyModelHookPoint",
+            "hook_point_layer": 0,
+            "hook_point_head_index": None,
+            "activation_fn": "relu",
+            "apply_b_dec_to_input": True,
+        }
 
 
 def _default_cached_activations_path(

@@ -151,7 +151,7 @@ def test_sparse_autoencoder_forward(training_sae: TrainingSparseAutoencoder):
     expected_mse_loss = (torch.pow((sae_out - x.float()), 2)).sum(dim=-1).mean()
 
     assert torch.allclose(mse_loss, expected_mse_loss)
-    if not training_sae.cfg.scale_sparsity_penalty_by_decoder_norm:
+    if not training_sae.scale_sparsity_penalty_by_decoder_norm:
         expected_l1_loss = feature_acts.sum(dim=1).mean(dim=(0,))
     else:
         expected_l1_loss = (
@@ -173,7 +173,7 @@ def test_sparse_autoencoder_forward_with_mse_loss_norm(
     batch_size = 32
     d_in = training_sae.d_in
     d_sae = training_sae.d_sae
-    training_sae.cfg.mse_loss_normalization = "dense_batch"
+    training_sae.mse_loss_normalization = "dense_batch"
 
     x = torch.randn(batch_size, d_in)
     (
@@ -204,7 +204,7 @@ def test_sparse_autoencoder_forward_with_mse_loss_norm(
         .mean()
     )
     assert torch.allclose(mse_loss, expected_mse_loss)
-    if not training_sae.cfg.scale_sparsity_penalty_by_decoder_norm:
+    if not training_sae.scale_sparsity_penalty_by_decoder_norm:
         expected_l1_loss = feature_acts.sum(dim=1).mean(dim=(0,))
     else:
         expected_l1_loss = (
@@ -227,8 +227,8 @@ def test_sparse_autoencoder_forward_with_3d_input(
     seq_length = 256
     d_in = training_sae.d_in
     d_sae = training_sae.d_sae
-    training_sae.cfg.mse_loss_normalization = "dense_batch"
-    training_sae.cfg.lp_norm = 1
+    training_sae.mse_loss_normalization = "dense_batch"
+    training_sae.lp_norm = 1
 
     x = torch.randn(batch_size, seq_length, d_in)
     (
@@ -271,7 +271,7 @@ def test_sparse_autoencoder_forward_with_3d_input(
     )
     assert torch.allclose(mse_loss, expected_mse_loss)
 
-    if training_sae.cfg.scale_sparsity_penalty_by_decoder_norm:
+    if training_sae.scale_sparsity_penalty_by_decoder_norm:
         feature_acts = feature_acts * training_sae.W_dec.norm(dim=1)
 
     expected_l1_loss = feature_acts.sum(dim=-1).mean()

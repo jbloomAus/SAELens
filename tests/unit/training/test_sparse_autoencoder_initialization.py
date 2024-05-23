@@ -9,7 +9,7 @@ def test_SparseAutoencoder_initialization_standard():
     cfg = build_sae_cfg()
 
     sae = TrainingSparseAutoencoder(cfg)
-    assert sae.cfg == cfg
+
     assert sae.W_enc.shape == (cfg.d_in, cfg.d_sae)
     assert sae.W_dec.shape == (cfg.d_sae, cfg.d_in)
     assert sae.b_enc.shape == (cfg.d_sae,)
@@ -41,7 +41,6 @@ def test_SparseAutoencoder_initialization_orthogonal_enc_dec():
     mask = ~torch.eye(projections.size(0), dtype=torch.bool)
 
     assert projections[mask].max() < 0.1
-    assert sae.cfg == cfg
 
     # initialized weights of biases are 0
     assert torch.allclose(sae.b_dec, torch.zeros_like(sae.b_dec), atol=1e-6)
@@ -52,8 +51,6 @@ def test_SparseAutoencoder_initialization_normalize_decoder_norm():
     cfg = build_sae_cfg(normalize_sae_decoder=True)
 
     sae = TrainingSparseAutoencoder(cfg)
-
-    assert sae.cfg == cfg
 
     assert torch.allclose(
         sae.W_dec.norm(dim=1), torch.ones_like(sae.W_dec.norm(dim=1)), atol=1e-6
@@ -68,8 +65,6 @@ def test_SparseAutoencoder_initialization_encoder_is_decoder_transpose():
     cfg = build_sae_cfg(init_encoder_as_decoder_transpose=True)
 
     sae = TrainingSparseAutoencoder(cfg)
-
-    assert sae.cfg == cfg
 
     # If we decoder norms are 1 we need to unit norm W_enc first.
     unit_normed_W_enc = sae.W_enc / torch.norm(sae.W_enc, dim=0)
@@ -88,8 +83,6 @@ def test_SparseAutoencoder_initialization_enc_dec_T_no_unit_norm():
     )
 
     sae = TrainingSparseAutoencoder(cfg)
-
-    assert sae.cfg == cfg
 
     assert torch.allclose(sae.W_dec, sae.W_enc.T, atol=1e-6)
 
