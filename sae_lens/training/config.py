@@ -25,8 +25,10 @@ class LanguageModelSAERunnerConfig:
     # Data Generating Function (Model + Training Distibuion)
     model_name: str = "gelu-2l"
     model_class_name: str = "HookedTransformer"
-    hook_point: str = "blocks.{layer}.hook_mlp_out"
-    hook_point_eval: str = "blocks.{layer}.attn.pattern"
+    hook_point: str = "blocks.0.hook_mlp_out"
+    hook_point_eval: str = (
+        "blocks.0.attn.pattern"  # not in use currently. Might be in the future.
+    )
     hook_point_layer: int = 0
     hook_point_head_index: Optional[int] = None
     dataset_path: str = "NeelNanda/c4-tokenized-2b"
@@ -276,13 +278,25 @@ class LanguageModelSAERunnerConfig:
             "apply_b_dec_to_input": self.apply_b_dec_to_input,
         }
 
+    def to_dict(self) -> dict[str, Any]:
+
+        cfg_dict = {
+            **self.__dict__,
+            # some args may not be serializable by default
+            "dtype": str(self.dtype),
+            "device": str(self.device),
+            # "act_store_device": str(self.act_store_device),
+        }
+
+        return cfg_dict
+
     def to_json(self, path: str) -> None:
 
         if not os.path.exists(os.path.dirname(path)):
             os.makedirs(os.path.dirname(path))
 
         with open(path + "cfg.json", "w") as f:
-            json.dump(self.__dict__, f, indent=2)
+            json.dump(self.to_dict(), f, indent=2)
 
     @classmethod
     def from_json(cls, path: str) -> "LanguageModelSAERunnerConfig":

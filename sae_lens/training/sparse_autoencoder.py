@@ -4,7 +4,7 @@ https://github.com/ArthurConmy/sae/blob/main/sae/model.py
 
 import json
 import os
-from typing import Callable, NamedTuple, Optional
+from typing import Any, Callable, NamedTuple, Optional, Tuple
 
 import einops
 import torch
@@ -18,7 +18,6 @@ from sae_lens.toolkit.pretrained_sae_loaders import (
     load_pretrained_sae_lens_sae_components,
 )
 from sae_lens.toolkit.pretrained_saes_directory import get_pretrained_saes_directory
-from sae_lens.training.activation_functions import get_activation_fn
 from sae_lens.training.config import LanguageModelSAERunnerConfig
 
 SPARSITY_PATH = "sparsity.safetensors"
@@ -233,7 +232,7 @@ class SparseAutoencoderBase(HookedRootModule):
     @classmethod
     def from_pretrained(
         cls, release: str, sae_id: str, device: str = "cpu"
-    ) -> "SparseAutoencoderBase":
+    ) -> Tuple["SparseAutoencoderBase", dict[str, Any]]:
         """
 
         Load a pretrained SAE from the Hugging Face model hub.
@@ -295,7 +294,7 @@ class SparseAutoencoderBase(HookedRootModule):
         )
         sae.load_state_dict(state_dict)
 
-        return sae
+        return sae, cfg_dict
 
     def get_name(self):
         sae_name = (
@@ -371,6 +370,21 @@ class TrainingSparseAutoencoder(SparseAutoencoderBase):
             if self.scale_sparsity_penalty_by_decoder_norm
             else self.get_sparsity_loss_term_standard
         )
+
+    @classmethod
+    def load_from_pretrained(  # type: ignore
+        cls, path: str, cfg: LanguageModelSAERunnerConfig
+    ) -> "TrainingSparseAutoencoder":
+
+        base_sae = super().load_from_pretrained(
+            path=path,
+            device=cfg.device,  # type: ignore
+            dtype=cfg.dtype,
+        )
+
+        sae = cls(cfg)
+        sae.load_state_dict(base_sae.state_dict())
+        return sae
 
     def encode(
         self, x: Float[torch.Tensor, "... d_in"]
@@ -608,3 +622,18 @@ class TrainingSparseAutoencoder(SparseAutoencoderBase):
             self.W_dec.data,
             "d_sae, d_sae d_in -> d_sae d_in",
         )
+
+
+def get_activation_fn(activation_fn: str) -> Callable[[torch.Tensor], torch.Tensor]:
+    if activation_fn == "relu":
+        return torch.nn.ReLU()
+    elif activation_fn == "tanh-relu":
+        return tanh_relu
+    else:
+        raise ValueError(f"Unknown activation function: {activation_fn}")
+
+
+def tanh_relu(input: torch.Tensor) -> torch.Tensor:
+    input = torch.relu(input)
+    input = torch.tanh(input)
+    return input

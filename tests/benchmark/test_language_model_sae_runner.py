@@ -87,7 +87,7 @@ def test_language_model_sae_runner():
         # WANDB
         log_to_wandb=True,  # always use wandb unless you are just testing code.
         wandb_project="benchmark",
-        wandb_log_frequency=50,
+        wandb_log_frequency=100,
         # Misc
         device=device,
         seed=42,

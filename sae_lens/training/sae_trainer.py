@@ -185,14 +185,34 @@ class SAETrainer:
                         self.cfg.wandb_log_frequency * self.cfg.eval_every_n_wandb_logs
                     ) == 0:
                         self.sae.eval()
-                        run_evals(
+                        eval_metrics = run_evals(
                             sparse_autoencoder=self.sae,
                             activation_store=self.activation_store,
                             model=self.model,
-                            n_training_steps=self.n_training_steps,
-                            suffix="",
                             n_eval_batches=self.cfg.n_eval_batches,
                             eval_batch_size_prompts=self.cfg.eval_batch_size_prompts,
+                            model_kwargs=self.cfg.model_kwargs,
+                        )
+
+                        W_dec_norm_dist = (
+                            self.sae.W_dec.norm(dim=1).detach().cpu().numpy()
+                        )
+                        b_e_dist = self.sae.b_enc.detach().cpu().numpy()
+
+                        # More detail on loss.
+
+                        # add weight histograms
+                        eval_metrics = {
+                            **eval_metrics,
+                            **{
+                                "weights/W_dec_norms": wandb.Histogram(W_dec_norm_dist),
+                                "weights/b_e": wandb.Histogram(b_e_dist),
+                            },
+                        }
+
+                        wandb.log(
+                            eval_metrics,
+                            step=self.n_training_steps,
                         )
                         self.sae.train()
 

@@ -10,15 +10,15 @@ from transformer_lens import HookedTransformer
 from sae_lens import __version__
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.config import LanguageModelSAERunnerConfig
-from sae_lens.training.sparse_autoencoder import (
-    ForwardOutput,
-    TrainingSparseAutoencoder,
-)
-from sae_lens.training.train_sae_on_language_model import (
+from sae_lens.training.sae_trainer import (
     SAETrainer,
     TrainStepOutput,
     _log_feature_sparsity,
     _update_sae_lens_training_version,
+)
+from sae_lens.training.sparse_autoencoder import (
+    ForwardOutput,
+    TrainingSparseAutoencoder,
 )
 from tests.unit.helpers import TINYSTORIES_MODEL, build_sae_cfg, load_model_cached
 

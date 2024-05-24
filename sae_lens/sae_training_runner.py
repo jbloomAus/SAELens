@@ -1,16 +1,23 @@
+import json
+import os
 import signal
 from typing import Any, cast
 
 import torch
 import wandb
+from safetensors.torch import save_file
 
 from sae_lens.training.activations_store import ActivationsStore
-from sae_lens.training.checkpointing import save_checkpoint
 from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.geometric_median import compute_geometric_median
 from sae_lens.training.load_model import load_model
-from sae_lens.training.sparse_autoencoder import SparseAutoencoderBase
-from sae_lens.training.train_sae_on_language_model import SAETrainer
+from sae_lens.training.sae_trainer import SAETrainer
+from sae_lens.training.sparse_autoencoder import (
+    SAE_CFG_PATH,
+    SAE_WEIGHTS_PATH,
+    SPARSITY_PATH,
+    TrainingSparseAutoencoder,
+)
 
 
 class InterruptedException(Exception):
@@ -25,7 +32,7 @@ class SAETrainingRunner:
 
     cfg: LanguageModelSAERunnerConfig
     model: torch.nn.Module
-    sparse_autoencoder: SparseAutoencoderBase
+    sae: TrainingSparseAutoencoder
     activations_store: ActivationsStore
 
     def __init__(self, cfg: LanguageModelSAERunnerConfig):
@@ -44,14 +51,12 @@ class SAETrainingRunner:
         )
 
         if self.cfg.from_pretrained_path is not None:
-            self.sparse_autoencoder = SparseAutoencoderBase.load_from_pretrained(
+            self.sae = TrainingSparseAutoencoder.load_from_pretrained(
                 self.cfg.from_pretrained_path, self.cfg.device  # type: ignore
             )
-            self._init_sae_group_b_decs()
         else:
-            self.sparse_autoencoder = SparseAutoencoderBase(
-                **self.cfg.get_sae_base_parameters()
-            )
+            self.sae = TrainingSparseAutoencoder(self.cfg)
+            self._init_sae_group_b_decs()
 
     def run(self):
         """ """
@@ -80,15 +85,15 @@ class SAETrainingRunner:
             )  # type: ignore
 
         if self.cfg.compile_sae:
-            self.sparse_autoencoder = torch.compile(
-                self.sparse_autoencoder, mode=self.cfg.sae_compilation_mode
+            self.sae = torch.compile(
+                self.sae, mode=self.cfg.sae_compilation_mode
             )  # type: ignore
 
         trainer = SAETrainer(
             model=self.model,  # type: ignore
-            sae=self.sparse_autoencoder,  # type: ignore
+            sae=self.sae,  # type: ignore
             activation_store=self.activations_store,
-            save_checkpoint_fn=save_checkpoint,  # type: ignore
+            save_checkpoint_fn=self.save_checkpoint,  # type: ignore
             cfg=self.cfg,
         )
 
@@ -111,7 +116,7 @@ class SAETrainingRunner:
         except (KeyboardInterrupt, InterruptedException):
             print("interrupted, saving progress")
             checkpoint_name = trainer.n_training_tokens
-            save_checkpoint(trainer, checkpoint_name=checkpoint_name)
+            self.save_checkpoint(trainer, checkpoint_name=checkpoint_name)
             print("done saving")
             raise
 
@@ -132,7 +137,57 @@ class SAETrainingRunner:
                 layer_acts,
                 maxiter=100,
             ).median
-            self.sparse_autoencoder.initialize_b_dec_with_precalculated(median)  # type: ignore
+            self.sae.initialize_b_dec_with_precalculated(median)  # type: ignore
         elif self.cfg.b_dec_init_method == "mean":
             layer_acts = self.activations_store.storage_buffer.detach().cpu()[:, 0, :]
-            self.sparse_autoencoder.initialize_b_dec_with_mean(layer_acts)  # type: ignore
+            self.sae.initialize_b_dec_with_mean(layer_acts)  # type: ignore
+
+    def save_checkpoint(
+        self,
+        trainer,  # type: ignore
+        checkpoint_name: int | str,
+        wandb_aliases: list[str] | None = None,
+    ) -> str:
+
+        checkpoint_path = f"{trainer.cfg.checkpoint_path}/{checkpoint_name}"
+
+        os.makedirs(checkpoint_path, exist_ok=True)
+
+        path = f"{checkpoint_path}"
+        os.makedirs(path, exist_ok=True)
+
+        if self.sae.normalize_sae_decoder:
+            self.sae.set_decoder_norm_to_unit_norm()
+        self.sae.save_model(path)
+
+        # let's over write the cfg file with the trainer cfg, which is a super set of the original cfg.
+        # and should not cause issues but give us more info about SAEs we trained in SAE Lens.
+        config = trainer.cfg.to_dict()
+        with open(f"{path}/cfg.json", "w") as f:
+            json.dump(config, f)
+
+        log_feature_sparsities = {"sparsity": trainer.log_feature_sparsity}
+
+        log_feature_sparsity_path = f"{path}/{SPARSITY_PATH}"
+        save_file(log_feature_sparsities, log_feature_sparsity_path)
+
+        if trainer.cfg.log_to_wandb and os.path.exists(log_feature_sparsity_path):
+            model_artifact = wandb.Artifact(
+                f"{self.sae.get_name()}",
+                type="model",
+                metadata=dict(trainer.cfg.__dict__),
+            )
+            model_artifact.add_file(f"{path}/{SAE_WEIGHTS_PATH}")
+            model_artifact.add_file(f"{path}/{SAE_CFG_PATH}")
+
+            wandb.log_artifact(model_artifact, aliases=wandb_aliases)
+
+            sparsity_artifact = wandb.Artifact(
+                f"{self.sae.get_name()}_log_feature_sparsity",
+                type="log_feature_sparsity",
+                metadata=dict(trainer.cfg.__dict__),
+            )
+            sparsity_artifact.add_file(log_feature_sparsity_path)
+            wandb.log_artifact(sparsity_artifact)
+
+        return checkpoint_path

@@ -8,7 +8,7 @@ from sae_lens.training.config import ToyModelSAERunnerConfig
 from sae_lens.training.sparse_autoencoder import SparseAutoencoderBase
 from sae_lens.training.toy_models import ReluOutputModel as ToyModel
 from sae_lens.training.toy_models import ToyConfig
-from sae_lens.training.train_sae_on_toy_model import train_toy_sae
+from sae_lens.training.train_toy_sae import train_toy_sae
 
 
 def toy_model_sae_runner(cfg: ToyModelSAERunnerConfig):

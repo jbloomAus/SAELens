@@ -7,7 +7,7 @@ from sae_lens.training.sparse_autoencoder import SparseAutoencoderBase
 
 
 def test_SparseAutoencoder_from_pretrained_loads_from_hugginface_using_shorthand():
-    sae = SparseAutoencoderBase.from_pretrained(
+    sae, _ = SparseAutoencoderBase.from_pretrained(
         release="gpt2-small-res-jb",
         sae_id="blocks.0.hook_resid_pre",
         device="cpu",

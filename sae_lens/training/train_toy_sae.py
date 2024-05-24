@@ -13,7 +13,6 @@ def train_toy_sae(
     activation_store: torch.Tensor,  # TODO: this type seems strange / wrong
     batch_size: int = 1024,
     feature_sampling_window: int = 100,  # how many training steps between resampling the features / considiring neurons dead
-    dead_feature_window: int = 2000,  # how many training steps before a feature is considered dead
     dead_feature_threshold: float = 1e-8,  # how infrequently a feature has to be active to be considered dead
     use_wandb: bool = False,
     wandb_log_frequency: int = 50,

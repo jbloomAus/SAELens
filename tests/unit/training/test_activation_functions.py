@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from sae_lens.training.activation_functions import get_activation_fn
+from sae_lens.training.sparse_autoencoder import get_activation_fn
 
 
 def test_get_activation_fn_tanh_relu():
