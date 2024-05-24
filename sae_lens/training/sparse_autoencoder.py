@@ -313,13 +313,12 @@ class SparseAutoencoderBase(HookedRootModule):
             "hook_point_layer": self.hook_point_layer,
             "hook_point_head_index": self.hook_point_head_index,
             "activation_fn": self.activation_fn_str,  # use string for serialization
-            "act_store_device": str(self.cfg.act_store_device),
             "apply_b_dec_to_input": self.apply_b_dec_to_input,
             "uses_scaling_factor": self.uses_scaling_factor,
             "sae_lens_training_version": self.sae_lens_training_version,
             "prepend_bos": self.prepend_bos,
             "dataset_name": self.dataset_name,
-    }
+        }
 
 
 class TrainingSparseAutoencoder(SparseAutoencoderBase):

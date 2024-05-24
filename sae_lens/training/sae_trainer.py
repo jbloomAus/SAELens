@@ -302,7 +302,7 @@ class SAETrainer:
                 l1_loss,
                 ghost_grad_loss,
             ) = sparse_autoencoder(
-                sae_in.to(sparse_autoencoder.cfg.device),
+                sae_in.to(sparse_autoencoder.device),
                 ghost_grad_neuron_mask,
             )
 
