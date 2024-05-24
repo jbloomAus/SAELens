@@ -285,7 +285,7 @@ class LanguageModelSAERunnerConfig:
             # some args may not be serializable by default
             "dtype": str(self.dtype),
             "device": str(self.device),
-            # "act_store_device": str(self.act_store_device),
+            "act_store_device": str(self.act_store_device),
         }
 
         return cfg_dict
