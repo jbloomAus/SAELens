@@ -1,8 +1,9 @@
 import einops
 import pytest
 import torch
+from transformer_lens import HookedTransformer
 
-from transformer_lens import HookedSAE, HookedSAEConfig, HookedSAETransformer
+from sae_lens import HookedSAETransformer, SparseAutoencoderBase
 
 MODEL = "solu-1l"
 prompt = "Hello World!"
@@ -12,18 +13,23 @@ class Counter:
     def __init__(self):
         self.count = 0
 
-    def inc(self, *args, **kwargs):
+    def inc(self, *args, **kwargs):  # type: ignore
         self.count += 1
 
 
 @pytest.fixture(scope="module")
 def model():
-    model = HookedSAETransformer.from_pretrained(MODEL)
+    model = HookedSAETransformer.from_pretrained(MODEL, device="cpu")
     yield model
     model.reset_saes()
 
 
-def get_sae_config(model, act_name):
+@pytest.fixture(scope="module")
+def original_logits(model: HookedTransformer):
+    return model(prompt)
+
+
+def get_hooked_sae(model: HookedTransformer, act_name: str) -> SparseAutoencoderBase:
     site_to_size = {
         "hook_z": model.cfg.d_head * model.cfg.n_heads,
         "hook_mlp_out": model.cfg.d_model,
@@ -32,23 +38,48 @@ def get_sae_config(model, act_name):
     }
     site = act_name.split(".")[-1]
     d_in = site_to_size[site]
-    return HookedSAEConfig(d_in=d_in, d_sae=d_in * 2, hook_name=act_name)
+
+    sae_cfg = dict(
+        d_in=d_in,
+        d_sae=d_in * 2,
+        dtype=torch.float32,
+        device="cpu",
+        model_name=MODEL,
+        hook_point=act_name,
+        hook_point_layer=0,
+        hook_point_head_index=None,
+        activation_fn="relu",
+    )
+
+    return SparseAutoencoderBase(**sae_cfg)  # type: ignore
 
 
-@pytest.mark.parametrize(
-    "act_name",
-    [
+@pytest.fixture(
+    scope="module",
+    params=[
+        "blocks.0.attn.hook_z",
+        "blocks.0.hook_mlp_out",
+        "blocks.0.mlp.hook_post",
+        "blocks.0.hook_resid_pre",
+    ],
+    ids=[
         "blocks.0.attn.hook_z",
         "blocks.0.hook_mlp_out",
         "blocks.0.mlp.hook_post",
         "blocks.0.hook_resid_pre",
     ],
 )
-def test_forward_reconstructs_input(model, act_name):
-    """Verfiy that the HookedSAE returns an output with the same shape as the input activations."""
-    sae_cfg = get_sae_config(model, act_name)
-    hooked_sae = HookedSAE(sae_cfg)
+def hooked_sae(
+    model: HookedTransformer,
+    request: pytest.FixtureRequest,
+) -> SparseAutoencoderBase:
+    return get_hooked_sae(model, request.param)
 
+
+def test_forward_reconstructs_input(model, hooked_sae):
+    """Verfiy that the HookedSAE returns an output with the same shape as the input activations."""
+
+    act_name = hooked_sae.hook_point
     _, cache = model.run_with_cache(prompt, names_filter=act_name)
     x = cache[act_name]
 
@@ -56,20 +87,10 @@ def test_forward_reconstructs_input(model, act_name):
     assert sae_output.shape == x.shape
 
 
-@pytest.mark.parametrize(
-    "act_name",
-    [
-        "blocks.0.attn.hook_z",
-        "blocks.0.hook_mlp_out",
-        "blocks.0.mlp.hook_post",
-        "blocks.0.hook_resid_pre",
-    ],
-)
-def test_run_with_cache(model, act_name):
+def test_run_with_cache(model, hooked_sae):
     """Verifies that run_with_cache caches SAE activations"""
-    sae_cfg = get_sae_config(model, act_name)
-    hooked_sae = HookedSAE(sae_cfg)
 
+    act_name = hooked_sae.hook_point
     _, cache = model.run_with_cache(prompt, names_filter=act_name)
     x = cache[act_name]
 
@@ -83,20 +104,11 @@ def test_run_with_cache(model, act_name):
     assert "hook_sae_output" in cache
 
 
-@pytest.mark.parametrize(
-    "act_name",
-    [
-        "blocks.0.attn.hook_z",
-        "blocks.0.hook_mlp_out",
-        "blocks.0.mlp.hook_post",
-        "blocks.0.hook_resid_pre",
-    ],
-)
-def test_run_with_hooks(model, act_name):
+def test_run_with_hooks(model, hooked_sae):
     """Verifies that run_with_hooks works with SAE activations"""
+
     c = Counter()
-    sae_cfg = get_sae_config(model, act_name)
-    hooked_sae = HookedSAE(sae_cfg)
+    act_name = hooked_sae.hook_point
 
     _, cache = model.run_with_cache(prompt, names_filter=act_name)
     x = cache[act_name]
@@ -117,20 +129,11 @@ def test_run_with_hooks(model, act_name):
     assert c.count == len(sae_hooks)
 
 
-@pytest.mark.parametrize(
-    "act_name",
-    [
-        "blocks.0.attn.hook_z",
-        "blocks.0.hook_mlp_out",
-        "blocks.0.mlp.hook_post",
-        "blocks.0.hook_resid_pre",
-    ],
-)
-def test_error_term(model, act_name):
+def test_error_term(model, hooked_sae):
     """Verifies that that if we use error_terms, HookedSAE returns an output that is equal to the input activations."""
-    sae_cfg = get_sae_config(model, act_name)
-    sae_cfg.use_error_term = True
-    hooked_sae = HookedSAE(sae_cfg)
+
+    act_name = hooked_sae.hook_point
+    hooked_sae.use_error_term = True
 
     _, cache = model.run_with_cache(prompt, names_filter=act_name)
     x = cache[act_name]
@@ -140,23 +143,11 @@ def test_error_term(model, act_name):
     assert torch.allclose(sae_output, x, atol=1e-6)
 
 
-# %%
-@pytest.mark.parametrize(
-    "act_name",
-    [
-        "blocks.0.attn.hook_z",
-        "blocks.0.hook_mlp_out",
-        "blocks.0.mlp.hook_post",
-        "blocks.0.hook_resid_pre",
-    ],
-)
-def test_feature_grads_with_error_term(model, act_name):
+def test_feature_grads_with_error_term(model, hooked_sae):
     """Verifies that pytorch backward computes the correct feature gradients when using error_terms. Motivated by the need to compute feature gradients for attribution patching."""
 
-    # Load SAE
-    sae_cfg = get_sae_config(model, act_name)
-    sae_cfg.use_error_term = True
-    hooked_sae = HookedSAE(sae_cfg)
+    act_name = hooked_sae.hook_point
+    hooked_sae.use_error_term = True
 
     # Get input activations
     _, cache = model.run_with_cache(prompt, names_filter=act_name)

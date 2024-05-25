@@ -18,7 +18,7 @@ from sae_lens.toolkit.pretrained_sae_loaders import (
     load_pretrained_sae_lens_sae_components,
 )
 from sae_lens.toolkit.pretrained_saes_directory import get_pretrained_saes_directory
-from sae_lens.training.config import LanguageModelSAERunnerConfig
+from sae_lens.training.config import DTYPE_MAP, LanguageModelSAERunnerConfig
 
 SPARSITY_PATH = "sparsity.safetensors"
 SAE_WEIGHTS_PATH = "sae_weights.safetensors"
@@ -59,11 +59,14 @@ class SparseAutoencoderBase(HookedRootModule):
     device: str | torch.device
     sae_lens_training_version: Optional[str]
 
+    # analysis
+    use_error_term = False
+
     def __init__(
         self,
         d_in: int,
         d_sae: int,
-        dtype: torch.dtype,
+        dtype: str | torch.dtype,
         device: str | torch.device,
         model_name: str,
         hook_point: str,
@@ -90,11 +93,11 @@ class SparseAutoencoderBase(HookedRootModule):
         self.hook_point = hook_point
         self.hook_point_layer = hook_point_layer
         self.hook_point_head_index = hook_point_head_index
-        self.dataset_name = dataset_path
+        self.dataset_path = dataset_path
         self.prepend_bos = prepend_bos
         self.context_size = context_size
 
-        self.dtype = dtype
+        self.dtype = dtype if isinstance(dtype, torch.dtype) else DTYPE_MAP[dtype]
         self.device = device
         self.sae_lens_training_version = sae_lens_training_version
 
@@ -107,10 +110,36 @@ class SparseAutoencoderBase(HookedRootModule):
             self.apply_scaling_factor = lambda x: x
 
         # set up hooks
-        self.hook_sae_in = HookPoint()
-        self.hook_hidden_pre = HookPoint()
-        self.hook_hidden_post = HookPoint()
-        self.hook_sae_out = HookPoint()
+        self.hook_sae_input = HookPoint()
+        self.hook_sae_acts_pre = HookPoint()
+        self.hook_sae_acts_post = HookPoint()
+        self.hook_sae_output = HookPoint()
+        self.hook_sae_recons = HookPoint()
+        self.hook_sae_error = HookPoint()
+
+        # handle hook_z reshaping if needed.
+        # this is very cursed and should be refactored. it exists so that we can reshape out
+        # the z activations for hook_z SAEs. but don't know d_head if we split up the forward pass
+        # into a separate encode and decode function.
+        # this will cause errors if we call decode before encode.
+        self.reshape_fn_in = lambda x: x
+        self.reshape_fn_out = lambda x, d_head: x
+        self.d_head = None
+        if self.hook_point.endswith("_z"):
+
+            def reshape_fn_in(x: torch.Tensor):
+                self.d_head = x.shape[-1]  # type: ignore
+                self.reshape_fn_in = lambda x: einops.rearrange(
+                    x, "... n_heads d_head -> ... (n_heads d_head)"
+                )
+                return einops.rearrange(x, "... n_heads d_head -> ... (n_heads d_head)")
+
+            self.reshape_fn_in = reshape_fn_in
+
+        if self.hook_point.endswith("_z"):
+            self.reshape_fn_out = lambda x, d_head: einops.rearrange(
+                x, "... (n_heads d_head) -> ... n_heads d_head", d_head=d_head
+            )
 
         self.setup()  # Required for `HookedRootModule`s
 
@@ -164,12 +193,15 @@ class SparseAutoencoderBase(HookedRootModule):
         # move x to correct dtype
         x = x.to(self.dtype)
 
+        # handle hook z reshaping if needed.
+        x = self.reshape_fn_in(x)  # type: ignore
+
         # apply b_dec_to_input if using that method.
-        sae_in = self.hook_sae_in(x - (self.b_dec * self.apply_b_dec_to_input))
+        sae_in = self.hook_sae_input(x - (self.b_dec * self.apply_b_dec_to_input))
 
         # "... d_in, d_in d_sae -> ... d_sae",
-        hidden_pre = self.hook_hidden_pre(sae_in @ self.W_enc + self.b_enc)
-        feature_acts = self.hook_hidden_post(self.activation_fn(hidden_pre))
+        hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
+        feature_acts = self.hook_sae_acts_post(self.activation_fn(hidden_pre))
 
         return feature_acts
 
@@ -178,9 +210,13 @@ class SparseAutoencoderBase(HookedRootModule):
     ) -> Float[torch.Tensor, "... d_in"]:
         """Decodes SAE feature activation tensor into a reconstructed input activation tensor."""
         # "... d_sae, d_sae d_in -> ... d_in",
-        sae_out = self.hook_sae_out(
+        sae_out = self.hook_sae_output(
             self.apply_scaling_factor(feature_acts) @ self.W_dec + self.b_dec
         )
+
+        # handle hook z reshaping if needed.
+        sae_out = self.reshape_fn_out(sae_out, self.d_head)  # type: ignore
+
         return sae_out
 
     def save_model(self, path: str, sparsity: Optional[torch.Tensor] = None):
@@ -223,6 +259,11 @@ class SparseAutoencoderBase(HookedRootModule):
             hook_point_layer=cfg_dict["hook_point_layer"],
             hook_point_head_index=cfg_dict["hook_point_head_index"],
             activation_fn=cfg_dict["activation_fn"],
+            apply_b_dec_to_input=cfg_dict["apply_b_dec_to_input"],
+            uses_scaling_factor=cfg_dict["uses_scaling_factor"],
+            prepend_bos=cfg_dict["prepend_bos"],
+            dataset_path=cfg_dict["dataset_path"],
+            context_size=cfg_dict["context_size"],
         )
 
         sae.load_state_dict(state_dict)
@@ -317,7 +358,8 @@ class SparseAutoencoderBase(HookedRootModule):
             "uses_scaling_factor": self.uses_scaling_factor,
             "sae_lens_training_version": self.sae_lens_training_version,
             "prepend_bos": self.prepend_bos,
-            "dataset_name": self.dataset_name,
+            "dataset_path": self.dataset_path,
+            "context_size": self.context_size,
         }
 
 
@@ -399,19 +441,19 @@ class TrainingSparseAutoencoder(SparseAutoencoderBase):
 
         # move x to correct dtype
         x = x.to(self.dtype)
-        sae_in = self.hook_sae_in(
+        sae_in = self.hook_sae_input(
             x - (self.b_dec * self.apply_b_dec_to_input)
         )  # Remove decoder bias as per Anthropic
 
         # "... d_in, d_in d_sae -> ... d_sae",
-        hidden_pre = self.hook_hidden_pre(sae_in @ self.W_enc + self.b_enc)
+        hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
 
         # Key difference for training SAE.
         noisy_hidden_pre = hidden_pre + (
             torch.randn_like(hidden_pre) * self.noise_scale * self.training
         )  # noise scale will be 0 by default, and should be 0 if not in training.
 
-        feature_acts = self.hook_hidden_post(self.activation_fn(noisy_hidden_pre))
+        feature_acts = self.hook_sae_acts_post(self.activation_fn(noisy_hidden_pre))
 
         return feature_acts, hidden_pre
 
@@ -627,12 +669,12 @@ def get_activation_fn(activation_fn: str) -> Callable[[torch.Tensor], torch.Tens
     if activation_fn == "relu":
         return torch.nn.ReLU()
     elif activation_fn == "tanh-relu":
+
+        def tanh_relu(input: torch.Tensor) -> torch.Tensor:
+            input = torch.relu(input)
+            input = torch.tanh(input)
+            return input
+
         return tanh_relu
     else:
         raise ValueError(f"Unknown activation function: {activation_fn}")
-
-
-def tanh_relu(input: torch.Tensor) -> torch.Tensor:
-    input = torch.relu(input)
-    input = torch.tanh(input)
-    return input

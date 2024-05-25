@@ -177,6 +177,7 @@ class SAETrainingRunner:
                 type="model",
                 metadata=dict(trainer.cfg.__dict__),
             )
+
             model_artifact.add_file(f"{path}/{SAE_WEIGHTS_PATH}")
             model_artifact.add_file(f"{path}/{SAE_CFG_PATH}")
 
