@@ -122,6 +122,7 @@ def test_train_step__output_looks_reasonable(trainer: SAETrainer) -> None:
         trainer.act_freq_scores, (output.feature_acts.abs() > 0).float().sum(0)
     )
 
+
 def test_train_step__sparsity_updates_based_on_feature_act_sparsity(
     trainer: SAETrainer,
 ) -> None:

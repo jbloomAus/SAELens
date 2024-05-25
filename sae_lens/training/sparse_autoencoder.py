@@ -397,6 +397,17 @@ class TrainingSparseAutoencoder(SparseAutoencoderBase):
 
         self.initialize_weights_complex()
 
+        # The training SAE will assume that the activation store handles
+        # reshaping.
+        self.reshape_fn_in = lambda x: x
+        self.reshape_fn_out = lambda x, d_head: x
+
+    def encode(
+        self, x: Float[torch.Tensor, "... d_in"]
+    ) -> Float[torch.Tensor, "... d_sae"]:
+        feature_acts, _ = self.encode_with_hidden_pre(x)
+        return feature_acts
+
     def encode_with_hidden_pre(
         self, x: Float[torch.Tensor, "... d_in"]
     ) -> tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
@@ -412,7 +423,7 @@ class TrainingSparseAutoencoder(SparseAutoencoderBase):
 
         # "... d_in, d_in d_sae -> ... d_sae",
         hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
-        hidden_pre_noised = (
+        hidden_pre_noised = hidden_pre + (
             torch.randn_like(hidden_pre) * self.noise_scale * self.training
         )
         feature_acts = self.hook_sae_acts_post(self.activation_fn(hidden_pre_noised))

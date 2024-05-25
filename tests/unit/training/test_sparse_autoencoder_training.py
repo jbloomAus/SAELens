@@ -48,14 +48,14 @@ from tests.unit.helpers import build_sae_cfg
             "tokenized": False,
             "hook_point": "blocks.1.attn.hook_z",
             "hook_point_layer": 1,
-            "d_in": 64,
+            "d_in": 2048,
         },
     ],
     ids=[
         "tiny-stories-1M-resid-pre",
         "tiny-stories-1M-resid-pre-L1-W-dec-Norm",
         "tiny-stories-1M-resid-pre-pretokenized",
-        "tiny-stories-1M-attn-out",
+        "tiny-stories-1M-hook-z",
     ],
 )
 def cfg(request: pytest.FixtureRequest):
@@ -147,7 +147,7 @@ def test_sparse_autoencoder_forward(trainer: SAETrainer):
 
     assert train_step_output.sae_out.shape == (batch_size, d_in)
     assert train_step_output.feature_acts.shape == (batch_size, d_sae)
-    assert pytest.approx(train_step_output.loss, rel=1e-3) == (
+    assert pytest.approx(train_step_output.loss.detach(), rel=1e-3) == (
         train_step_output.mse_loss
         + train_step_output.l1_loss
         + train_step_output.ghost_grad_loss
@@ -211,7 +211,7 @@ def test_sparse_autoencoder_forward_with_mse_loss_norm(
 
     assert pytest.approx(train_step_output.mse_loss) == expected_mse_loss
 
-    assert pytest.approx(train_step_output.loss, rel=1e-3) == (
+    assert pytest.approx(train_step_output.loss.detach(), rel=1e-3) == (
         train_step_output.mse_loss
         + train_step_output.l1_loss
         + train_step_output.ghost_grad_loss
@@ -253,6 +253,8 @@ def test_calculate_ghost_grad_loss(
     batch_size = 32
     d_in = trainer.cfg.d_in
     x = torch.randn(batch_size, d_in)
+
+    trainer.sae.train()
 
     # set n_forward passes since fired to < dead feature window for all neurons
     trainer.n_forward_passes_since_fired = torch.ones_like(trainer.n_forward_passes_since_fired) * 3 * trainer.cfg.dead_feature_window  # type: ignore

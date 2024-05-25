@@ -256,7 +256,7 @@ class SAETrainer:
 
         # do a forward pass to get SAE out, but we also need the
         # hidden pre.
-        feature_acts = self.sae.encode(sae_in)
+        feature_acts, _ = self.sae.encode_with_hidden_pre(sae_in)
         sae_out = self.sae.decode(feature_acts)
 
         # MSE LOSS
@@ -317,13 +317,6 @@ class SAETrainer:
                 else ghost_grad_loss
             ),
         )
-
-    def _sae_forward_with_feature_acts(
-        self, sae_in: torch.Tensor
-    ) -> tuple[torch.Tensor, torch.Tensor]:
-        feature_acts = self.sae.encode(sae_in)
-        sae_out = self.sae.decode(feature_acts)
-        return sae_out, feature_acts
 
     def calculate_ghost_grad_loss(
         self,
