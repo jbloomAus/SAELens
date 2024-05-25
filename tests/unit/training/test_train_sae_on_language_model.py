@@ -1,6 +1,5 @@
 from pathlib import Path
 from typing import Any, Callable
-from unittest.mock import patch
 
 import pytest
 import torch

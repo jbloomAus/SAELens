@@ -2,6 +2,7 @@ import einops
 import pytest
 import torch
 from transformer_lens import HookedTransformer
+from transformer_lens.hook_points import HookPoint
 
 from sae_lens import HookedSAETransformer, SparseAutoencoderBase
 
@@ -76,7 +77,9 @@ def hooked_sae(
     return get_hooked_sae(model, request.param)
 
 
-def test_forward_reconstructs_input(model, hooked_sae):
+def test_forward_reconstructs_input(
+    model: HookedTransformer, hooked_sae: SparseAutoencoderBase
+):
     """Verfiy that the HookedSAE returns an output with the same shape as the input activations."""
 
     act_name = hooked_sae.hook_point
@@ -87,7 +90,7 @@ def test_forward_reconstructs_input(model, hooked_sae):
     assert sae_output.shape == x.shape
 
 
-def test_run_with_cache(model, hooked_sae):
+def test_run_with_cache(model: HookedTransformer, hooked_sae: SparseAutoencoderBase):
     """Verifies that run_with_cache caches SAE activations"""
 
     act_name = hooked_sae.hook_point
@@ -104,7 +107,7 @@ def test_run_with_cache(model, hooked_sae):
     assert "hook_sae_output" in cache
 
 
-def test_run_with_hooks(model, hooked_sae):
+def test_run_with_hooks(model: HookedTransformer, hooked_sae: SparseAutoencoderBase):
     """Verifies that run_with_hooks works with SAE activations"""
 
     c = Counter()
@@ -129,8 +132,9 @@ def test_run_with_hooks(model, hooked_sae):
     assert c.count == len(sae_hooks)
 
 
-def test_error_term(model, hooked_sae):
-    """Verifies that that if we use error_terms, HookedSAE returns an output that is equal to the input activations."""
+def test_error_term(model: HookedTransformer, hooked_sae: SparseAutoencoderBase):
+    """Verifies that that if we use error_terms, HookedSAE returns an output that is equal tdef test_feature_grads_with_error_term(model: HookedTransformer, hooked_sae: SparseAutoencoderBase):
+    o the input activations."""
 
     act_name = hooked_sae.hook_point
     hooked_sae.use_error_term = True
@@ -142,8 +146,6 @@ def test_error_term(model, hooked_sae):
     assert sae_output.shape == x.shape
     assert torch.allclose(sae_output, x, atol=1e-6)
 
-
-def test_feature_grads_with_error_term(model, hooked_sae):
     """Verifies that pytorch backward computes the correct feature gradients when using error_terms. Motivated by the need to compute feature gradients for attribution patching."""
 
     act_name = hooked_sae.hook_point
@@ -157,7 +159,7 @@ def test_feature_grads_with_error_term(model, hooked_sae):
     hooked_sae.reset_hooks()
     grad_cache = {}
 
-    def backward_cache_hook(act, hook):
+    def backward_cache_hook(act: torch.Tensor, hook: HookPoint):
         grad_cache[hook.name] = act.detach()
 
     hooked_sae.add_hook("hook_sae_acts_post", backward_cache_hook, "bwd")
