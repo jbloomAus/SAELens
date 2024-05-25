@@ -1,6 +1,6 @@
 import contextlib
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import Any, Optional, cast
 
 import numpy as np
 import torch
@@ -49,11 +49,10 @@ class TrainStepOutput:
     sae_in: torch.Tensor
     sae_out: torch.Tensor
     feature_acts: torch.Tensor
-    loss: torch.Tensor
-    mse_loss: torch.Tensor
-    l1_loss: torch.Tensor
-    ghost_grad_loss: torch.Tensor
-    ghost_grad_neuron_mask: torch.Tensor
+    loss: torch.Tensor  # we need to call backwards on this
+    mse_loss: float
+    l1_loss: float
+    ghost_grad_loss: float
 
 
 class SAETrainer:
@@ -123,12 +122,13 @@ class SAETrainer:
             lr_end=cfg.lr_end,
             num_cycles=cfg.n_restart_cycles,
         )
-
         self.l1_scheduler = L1Scheduler(
             l1_warm_up_steps=cfg.l1_warm_up_steps,  # type: ignore
             total_steps=cfg.total_training_steps,
             final_l1_coefficient=cfg.l1_coefficient,
         )
+
+        self.mse_loss_fn = self._get_mse_loss_fn()
 
     @property
     def feature_sparsity(self) -> torch.Tensor:
@@ -142,22 +142,17 @@ class SAETrainer:
     def current_l1_coefficient(self) -> float:
         return self.l1_scheduler.current_l1_coefficient
 
+    @property
+    def dead_neurons(self) -> torch.Tensor:
+        return (self.n_forward_passes_since_fired > self.cfg.dead_feature_window).bool()
+
     def fit(self) -> TrainingSparseAutoencoder:
 
         pbar = tqdm(total=self.cfg.total_training_tokens, desc="Training SAE")
 
         # Estimate norm scaling factor if necessary
         # TODO(tomMcGrath): this is a bodge and should be moved back inside a class
-        if self.activation_store.normalize_activations:
-            print("Estimating activation norm")
-            n_batches_for_norm_estimate = int(1e3)
-            norms_per_batch = []
-            for _ in tqdm(range(n_batches_for_norm_estimate)):
-                acts = self.activation_store.next_batch()
-                norms_per_batch.append(acts.norm(dim=-1).mean().item())
-            mean_norm = np.mean(norms_per_batch)
-            scaling_factor = np.sqrt(self.activation_store.d_in) / mean_norm
-            self.activation_store.estimated_norm_scaling_factor = scaling_factor
+        self._estimate_norm_scaling_factor_if_needed()
 
         # Train loop
         while self.n_training_tokens < self.cfg.total_training_tokens:
@@ -170,78 +165,14 @@ class SAETrainer:
             )
 
             if self.cfg.log_to_wandb:
-                with torch.no_grad():
-                    if (self.n_training_steps + 1) % self.cfg.wandb_log_frequency == 0:
-                        wandb.log(
-                            self._build_train_step_log_dict(
-                                output=step_output,
-                                n_training_tokens=self.n_training_tokens,
-                            ),
-                            step=self.n_training_steps,
-                        )
+                self._log_train_step(step_output)
+                self._run_and_log_evals()
 
-                    # record loss frequently, but not all the time.
-                    if (self.n_training_steps + 1) % (
-                        self.cfg.wandb_log_frequency * self.cfg.eval_every_n_wandb_logs
-                    ) == 0:
-                        self.sae.eval()
-                        eval_metrics = run_evals(
-                            sparse_autoencoder=self.sae,
-                            activation_store=self.activation_store,
-                            model=self.model,
-                            n_eval_batches=self.cfg.n_eval_batches,
-                            eval_batch_size_prompts=self.cfg.eval_batch_size_prompts,
-                            model_kwargs=self.cfg.model_kwargs,
-                        )
-
-                        W_dec_norm_dist = (
-                            self.sae.W_dec.norm(dim=1).detach().cpu().numpy()
-                        )
-                        b_e_dist = self.sae.b_enc.detach().cpu().numpy()
-
-                        # More detail on loss.
-
-                        # add weight histograms
-                        eval_metrics = {
-                            **eval_metrics,
-                            **{
-                                "weights/W_dec_norms": wandb.Histogram(W_dec_norm_dist),
-                                "weights/b_e": wandb.Histogram(b_e_dist),
-                            },
-                        }
-
-                        wandb.log(
-                            eval_metrics,
-                            step=self.n_training_steps,
-                        )
-                        self.sae.train()
-
-            # checkpoint if at checkpoint frequency
-            if (
-                self.checkpoint_thresholds
-                and self.n_training_tokens > self.checkpoint_thresholds[0]
-            ):
-                self.save_checkpoint(
-                    trainer=self,
-                    checkpoint_name=self.n_training_tokens,
-                )
-                self.checkpoint_thresholds.pop(0)
-
-            ###############
-
+            self._checkpoint_if_needed()
             self.n_training_steps += 1
-            if self.n_training_steps % 100 == 0:
-                pbar.set_description(
-                    f"{self.n_training_steps}| MSE Loss {step_output.mse_loss.item():.3f} | L1 {step_output.l1_loss.mean().item():.3f}"
-                )
-            pbar.update(self.cfg.train_batch_size_tokens)
 
             ### If n_training_tokens > sae_group.cfg.training_tokens, then we should switch to fine-tuning (if we haven't already)
-            if (not self.started_fine_tuning) and (
-                self.n_training_tokens > self.cfg.training_tokens
-            ):
-
-                self._begin_finetuning()
+            self._begin_finetuning_if_needed()
 
         # save final sae group to checkpoints folder
         self.save_checkpoint(
@@ -252,6 +183,19 @@ class SAETrainer:
 
         pbar.close()
         return self.sae
+
+    @torch.no_grad()
+    def _estimate_norm_scaling_factor_if_needed(self) -> None:
+        if self.activation_store.normalize_activations:
+            print("Estimating activation norm")
+            n_batches_for_norm_estimate = int(1e3)
+            norms_per_batch = []
+            for _ in tqdm(range(n_batches_for_norm_estimate)):
+                acts = self.activation_store.next_batch()
+                norms_per_batch.append(acts.norm(dim=-1).mean().item())
+            mean_norm = np.mean(norms_per_batch)
+            scaling_factor = np.sqrt(self.activation_store.d_in) / mean_norm
+            self.activation_store.estimated_norm_scaling_factor = scaling_factor
 
     def _train_step(
         self,
@@ -273,10 +217,6 @@ class SAETrainer:
 
             self._reset_running_sparsity_stats()
 
-        ghost_grad_neuron_mask = (
-            self.n_forward_passes_since_fired > self.cfg.dead_feature_window
-        ).bool()
-
         # Setup autocast if using
         scaler = torch.cuda.amp.GradScaler(enabled=self.cfg.autocast)
         if self.cfg.autocast:
@@ -288,35 +228,15 @@ class SAETrainer:
         else:
             autocast_if_enabled = contextlib.nullcontext()
 
-        # temporary hack until we move this out of the SAE.
-        sparse_autoencoder.l1_coefficient = self.l1_scheduler.current_l1_coefficient
-        # Forward and Backward Passes
         # for documentation on autocasting see:
         # https://pytorch.org/tutorials/recipes/recipes/amp_recipe.html
         with autocast_if_enabled:
-            (
-                sae_out,
-                feature_acts,
-                loss,
-                mse_loss,
-                l1_loss,
-                ghost_grad_loss,
-            ) = sparse_autoencoder(
-                sae_in.to(sparse_autoencoder.device),
-                ghost_grad_neuron_mask,
-            )
-
-        did_fire = (feature_acts > 0).float().sum(-2) > 0
-        self.n_forward_passes_since_fired += 1
-        self.n_forward_passes_since_fired[did_fire] = 0
-
-        with torch.no_grad():
-            # Calculate the sparsities, and add it to a list, calculate sparsity metrics
-            self.act_freq_scores += (feature_acts.abs() > 0).float().sum(0)
-            self.n_frac_active_tokens += self.cfg.train_batch_size_tokens
+            train_step_output = self._training_forward_pass(sae_in)
 
         # Scaler will rescale gradients if autocast is enabled
-        scaler.scale(loss).backward()  # loss.backward() if not autocasting
+        scaler.scale(
+            train_step_output.loss
+        ).backward()  # loss.backward() if not autocasting
         scaler.unscale_(self.optimizer)  # needed to clip correctly
         # TODO: Work out if grad norm clipping should be in config / how to test it.
         torch.nn.utils.clip_grad_norm_(sparse_autoencoder.parameters(), 1.0)
@@ -330,36 +250,153 @@ class SAETrainer:
         self.lr_scheduler.step()
         self.l1_scheduler.step()
 
+        return train_step_output
+
+    def _training_forward_pass(self, sae_in, dead_neuron_mask: Optional[torch.Tensor] = None) -> TrainStepOutput:  # type: ignore
+
+        # do a forward pass to get SAE out, but we also need the
+        # hidden pre.
+        feature_acts = self.sae.encode(sae_in)
+        sae_out = self.sae.decode(feature_acts)
+
+        # MSE LOSS
+        per_item_mse_loss = self.mse_loss_fn(sae_out, sae_in)
+        mse_loss = per_item_mse_loss.sum(dim=-1).mean()
+
+        # GHOST GRADS
+        dead_neuron_mask = self.dead_neurons
+        if (
+            self.cfg.use_ghost_grads
+            and self.sae.training
+            and dead_neuron_mask is not None
+        ):
+
+            # first half of second forward pass
+            _, hidden_pre = self.sae.encode_with_hidden_pre(sae_in)
+            ghost_grad_loss = self.calculate_ghost_grad_loss(
+                x=sae_in,
+                sae_out=sae_out,
+                per_item_mse_loss=per_item_mse_loss,
+                hidden_pre=hidden_pre,
+                dead_neuron_mask=dead_neuron_mask,
+            )
+        else:
+            ghost_grad_loss = 0
+
+        # SPARSITY LOSS
+        # either the W_dec norms are 1 and this won't do anything or they are not 1
+        # and we're using their norm in the loss function.
+        weighted_feature_acts = feature_acts * self.sae.W_dec.norm(dim=1)
+        sparsity = weighted_feature_acts.norm(
+            p=self.cfg.lp_norm, dim=-1
+        )  # sum over the feature dimension
+
+        l1_loss = (self.current_l1_coefficient * sparsity).mean()
+
+        loss = mse_loss + l1_loss + ghost_grad_loss
+
+        did_fire = (feature_acts > 0).float().sum(-2) > 0
+        self.n_forward_passes_since_fired += 1
+        self.n_forward_passes_since_fired[did_fire] = 0
+
+        with torch.no_grad():
+            # Calculate the sparsities, and add it to a list, calculate sparsity metrics
+            self.act_freq_scores += (feature_acts.abs() > 0).float().sum(0)
+            self.n_frac_active_tokens += self.cfg.train_batch_size_tokens
+
         return TrainStepOutput(
             sae_in=sae_in,
             sae_out=sae_out,
             feature_acts=feature_acts,
             loss=loss,
-            mse_loss=mse_loss,
-            l1_loss=l1_loss,
-            ghost_grad_loss=ghost_grad_loss,
-            ghost_grad_neuron_mask=ghost_grad_neuron_mask,
+            mse_loss=mse_loss.item(),
+            l1_loss=l1_loss.item(),
+            ghost_grad_loss=(
+                ghost_grad_loss.item()
+                if isinstance(ghost_grad_loss, torch.Tensor)
+                else ghost_grad_loss
+            ),
         )
 
-    def _reset_running_sparsity_stats(self) -> None:
+    def _sae_forward_with_feature_acts(
+        self, sae_in: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        feature_acts = self.sae.encode(sae_in)
+        sae_out = self.sae.decode(feature_acts)
+        return sae_out, feature_acts
 
-        self.act_freq_scores = torch.zeros(
-            self.cfg.d_sae,  # type: ignore
-            device=self.cfg.device,
+    def calculate_ghost_grad_loss(
+        self,
+        x: torch.Tensor,
+        sae_out: torch.Tensor,
+        per_item_mse_loss: torch.Tensor,
+        hidden_pre: torch.Tensor,
+        dead_neuron_mask: torch.Tensor,
+    ) -> torch.Tensor:
+
+        # 1.
+        residual = x - sae_out
+        l2_norm_residual = torch.norm(residual, dim=-1)
+
+        # 2.
+        # ghost grads use an exponentional activation function, ignoring whatever
+        # the activation function is in the SAE. The forward pass uses the dead neurons only.
+        feature_acts_dead_neurons_only = torch.exp(hidden_pre[:, dead_neuron_mask])
+        ghost_out = feature_acts_dead_neurons_only @ self.sae.W_dec[dead_neuron_mask, :]
+        l2_norm_ghost_out = torch.norm(ghost_out, dim=-1)
+        norm_scaling_factor = l2_norm_residual / (1e-6 + l2_norm_ghost_out * 2)
+        ghost_out = ghost_out * norm_scaling_factor[:, None].detach()
+
+        # 3. There is some fairly complex rescaling here to make sure that the loss
+        # is comparable to the original loss. This is because the ghost grads are
+        # only calculated for the dead neurons, so we need to rescale the loss to
+        # make sure that the loss is comparable to the original loss.
+        # There have been methodological improvements that are not implemented here yet
+        # see here: https://www.lesswrong.com/posts/C5KAZQib3bzzpeyrg/full-post-progress-update-1-from-the-gdm-mech-interp-team#Improving_ghost_grads
+        per_item_mse_loss_ghost_resid = self.mse_loss_fn(ghost_out, residual.detach())
+        mse_rescaling_factor = (
+            per_item_mse_loss / (per_item_mse_loss_ghost_resid + 1e-6)
+        ).detach()
+        per_item_mse_loss_ghost_resid = (
+            mse_rescaling_factor * per_item_mse_loss_ghost_resid
         )
-        self.n_frac_active_tokens = 0
 
-    def _build_sparsity_log_dict(self) -> dict[str, Any]:
+        return per_item_mse_loss_ghost_resid.mean()
 
-        log_feature_sparsity = _log_feature_sparsity(self.feature_sparsity)
-        wandb_histogram = wandb.Histogram(log_feature_sparsity.numpy())
-        return {
-            "metrics/mean_log10_feature_sparsity": log_feature_sparsity.mean().item(),
-            "plots/feature_density_line_chart": wandb_histogram,
-            "sparsity/below_1e-5": (self.feature_sparsity < 1e-5).sum().item(),
-            "sparsity/below_1e-6": (self.feature_sparsity < 1e-6).sum().item(),
-        }
+    @torch.no_grad()
+    def _get_mse_loss_fn(self) -> Any:
 
+        def standard_mse_loss_fn(
+            preds: torch.Tensor, target: torch.Tensor
+        ) -> torch.Tensor:
+            return torch.nn.functional.mse_loss(preds, target, reduction="none")
+
+        def batch_norm_mse_loss_fn(
+            preds: torch.Tensor, target: torch.Tensor
+        ) -> torch.Tensor:
+            target_centered = target - target.mean(dim=0, keepdim=True)
+            normalization = target_centered.norm(dim=-1, keepdim=True)
+            return torch.nn.functional.mse_loss(preds, target, reduction="none") / (
+                normalization + 1e-6
+            )
+
+        if self.cfg.mse_loss_normalization == "dense_batch":
+            return batch_norm_mse_loss_fn
+        else:
+            return standard_mse_loss_fn
+
+    @torch.no_grad()
+    def _log_train_step(self, step_output: TrainStepOutput):
+        if (self.n_training_steps + 1) % self.cfg.wandb_log_frequency == 0:
+            wandb.log(
+                self._build_train_step_log_dict(
+                    output=step_output,
+                    n_training_tokens=self.n_training_tokens,
+                ),
+                step=self.n_training_steps,
+            )
+
+    @torch.no_grad()
     def _build_train_step_log_dict(
         self,
         output: TrainStepOutput,
@@ -371,8 +408,7 @@ class SAETrainer:
         mse_loss = output.mse_loss
         l1_loss = output.l1_loss
         ghost_grad_loss = output.ghost_grad_loss
-        loss = output.loss
-        ghost_grad_neuron_mask = output.ghost_grad_neuron_mask
+        loss = output.loss.item()
 
         # metrics for currents acts
         l0 = (feature_acts > 0).float().sum(-1).mean()
@@ -386,35 +422,116 @@ class SAETrainer:
             ghost_grad_loss = ghost_grad_loss.item()
         return {
             # losses
-            "losses/mse_loss": mse_loss.item(),
-            "losses/l1_loss": l1_loss.item()
+            "losses/mse_loss": mse_loss,
+            "losses/l1_loss": l1_loss
             / self.current_l1_coefficient,  # normalize by l1 coefficient
             "losses/ghost_grad_loss": ghost_grad_loss,
-            "losses/overall_loss": loss.item(),
+            "losses/overall_loss": loss,
             # variance explained
             "metrics/explained_variance": explained_variance.mean().item(),
             "metrics/explained_variance_std": explained_variance.std().item(),
             "metrics/l0": l0.item(),
             # sparsity
             "sparsity/mean_passes_since_fired": self.n_forward_passes_since_fired.mean().item(),
-            "sparsity/dead_features": ghost_grad_neuron_mask.sum().item(),
+            "sparsity/dead_features": self.dead_neurons.sum().item(),
             "details/current_learning_rate": current_learning_rate,
             "details/current_l1_coefficient": self.current_l1_coefficient,
             "details/n_training_tokens": n_training_tokens,
         }
 
-    def _begin_finetuning(self):
-        self.started_fine_tuning = True
+    @torch.no_grad()
+    def _run_and_log_evals(self):
+        # record loss frequently, but not all the time.
+        if (self.n_training_steps + 1) % (
+            self.cfg.wandb_log_frequency * self.cfg.eval_every_n_wandb_logs
+        ) == 0:
+            self.sae.eval()
+            eval_metrics = run_evals(
+                sparse_autoencoder=self.sae,
+                activation_store=self.activation_store,
+                model=self.model,
+                n_eval_batches=self.cfg.n_eval_batches,
+                eval_batch_size_prompts=self.cfg.eval_batch_size_prompts,
+                model_kwargs=self.cfg.model_kwargs,
+            )
 
-        # finetuning method should be set in the config
-        # if not, then we don't finetune
-        if not isinstance(self.cfg.finetuning_method, str):
-            return
+            W_dec_norm_dist = self.sae.W_dec.norm(dim=1).detach().cpu().numpy()
+            b_e_dist = self.sae.b_enc.detach().cpu().numpy()
 
-        for name, param in self.sae.named_parameters():
-            if name in FINETUNING_PARAMETERS[self.cfg.finetuning_method]:
-                param.requires_grad = True
-            else:
-                param.requires_grad = False
+            # More detail on loss.
 
-        self.finetuning = True
+            # add weight histograms
+            eval_metrics = {
+                **eval_metrics,
+                **{
+                    "weights/W_dec_norms": wandb.Histogram(W_dec_norm_dist),
+                    "weights/b_e": wandb.Histogram(b_e_dist),
+                },
+            }
+
+            wandb.log(
+                eval_metrics,
+                step=self.n_training_steps,
+            )
+            self.sae.train()
+
+    @torch.no_grad()
+    def _build_sparsity_log_dict(self) -> dict[str, Any]:
+
+        log_feature_sparsity = _log_feature_sparsity(self.feature_sparsity)
+        wandb_histogram = wandb.Histogram(log_feature_sparsity.numpy())
+        return {
+            "metrics/mean_log10_feature_sparsity": log_feature_sparsity.mean().item(),
+            "plots/feature_density_line_chart": wandb_histogram,
+            "sparsity/below_1e-5": (self.feature_sparsity < 1e-5).sum().item(),
+            "sparsity/below_1e-6": (self.feature_sparsity < 1e-6).sum().item(),
+        }
+
+    @torch.no_grad()
+    def _reset_running_sparsity_stats(self) -> None:
+
+        self.act_freq_scores = torch.zeros(
+            self.cfg.d_sae,  # type: ignore
+            device=self.cfg.device,
+        )
+        self.n_frac_active_tokens = 0
+
+    @torch.no_grad()
+    def _checkpoint_if_needed(self):
+        if (
+            self.checkpoint_thresholds
+            and self.n_training_tokens > self.checkpoint_thresholds[0]
+        ):
+            self.save_checkpoint(
+                trainer=self,
+                checkpoint_name=self.n_training_tokens,
+            )
+            self.checkpoint_thresholds.pop(0)
+
+    @torch.no_grad()
+    def _update_pbar(self, step_output: TrainStepOutput, pbar: tqdm):  # type: ignore
+
+        if self.n_training_steps % 100 == 0:
+            pbar.set_description(
+                f"{self.n_training_steps}| MSE Loss {step_output.mse_loss:.3f} | L1 {step_output.l1_loss:.3f}"
+            )
+            pbar.update(self.cfg.train_batch_size_tokens)
+
+    def _begin_finetuning_if_needed(self):
+        if (not self.started_fine_tuning) and (
+            self.n_training_tokens > self.cfg.training_tokens
+        ):
+            self.started_fine_tuning = True
+
+            # finetuning method should be set in the config
+            # if not, then we don't finetune
+            if not isinstance(self.cfg.finetuning_method, str):
+                return
+
+            for name, param in self.sae.named_parameters():
+                if name in FINETUNING_PARAMETERS[self.cfg.finetuning_method]:
+                    param.requires_grad = True
+                else:
+                    param.requires_grad = False
+
+            self.finetuning = True

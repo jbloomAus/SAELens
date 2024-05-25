@@ -16,10 +16,7 @@ from sae_lens.training.sae_trainer import (
     _log_feature_sparsity,
     _update_sae_lens_training_version,
 )
-from sae_lens.training.sparse_autoencoder import (
-    ForwardOutput,
-    TrainingSparseAutoencoder,
-)
+from sae_lens.training.sparse_autoencoder import TrainingSparseAutoencoder
 from tests.unit.helpers import TINYSTORIES_MODEL, build_sae_cfg, load_model_cached
 
 
@@ -66,14 +63,14 @@ def trainer(
 
 
 def modify_sae_output(
-    sae: TrainingSparseAutoencoder, modifier: Callable[[ForwardOutput], ForwardOutput]
+    sae: TrainingSparseAutoencoder, modifier: Callable[[torch.Tensor], Any]
 ):
     """
     Helper to modify the output of the SAE forward pass for use in patching, for use in patch side_effect.
     We need real grads during training, so we can't just mock the whole forward pass directly.
     """
 
-    def modified_forward(*args: Any, **kwargs: Any):
+    def modified_forward(*args: Any, **kwargs: Any) -> torch.Tensor:
         output = TrainingSparseAutoencoder.forward(sae, *args, **kwargs)
         return modifier(output)
 
@@ -117,12 +114,7 @@ def test_train_step__output_looks_reasonable(trainer: SAETrainer) -> None:
     assert torch.allclose(output.sae_in, layer_acts[:, 0, :])
     assert output.sae_out.shape == output.sae_in.shape
     assert output.feature_acts.shape == (4, 128)  # batch_size, d_sae
-    assert output.ghost_grad_neuron_mask.shape == (128,)
-    assert output.loss.shape == ()
-    assert output.mse_loss.shape == ()
-    assert output.ghost_grad_loss == 0
     # ghots grads shouldn't trigger until dead_feature_window, which hasn't been reached yet
-    assert torch.all(output.ghost_grad_neuron_mask == False)  # noqa
     assert output.ghost_grad_loss == 0
     assert trainer.n_frac_active_tokens == 4
     assert trainer.act_freq_scores.sum() > 0  # at least SOME acts should have fired
@@ -130,55 +122,33 @@ def test_train_step__output_looks_reasonable(trainer: SAETrainer) -> None:
         trainer.act_freq_scores, (output.feature_acts.abs() > 0).float().sum(0)
     )
 
-
-def test_train_step__ghost_grads_mask(trainer: SAETrainer) -> None:
-
-    layer_acts = trainer.activation_store.next_batch()
-
-    trainer.n_forward_passes_since_fired = (
-        torch.ones(trainer.cfg.d_sae).float() * 3 * trainer.cfg.dead_feature_window  # type: ignore
-    )
-
-    output = trainer._train_step(
-        sparse_autoencoder=trainer.sae,
-        sae_in=layer_acts[:, 0, :],
-    )
-
-    assert torch.all(
-        output.ghost_grad_neuron_mask == torch.ones_like(output.ghost_grad_neuron_mask)
-    )
-
-
 def test_train_step__sparsity_updates_based_on_feature_act_sparsity(
     trainer: SAETrainer,
 ) -> None:
 
+    trainer._reset_running_sparsity_stats()
     layer_acts = trainer.activation_store.next_batch()
-    trainer.n_forward_passes_since_fired = (
-        torch.ones(trainer.cfg.d_sae).float() * 3 * trainer.cfg.dead_feature_window  # type: ignore
-    )
-    feature_acts = torch.zeros((4, 128))
-    feature_acts[:, :12] = 1
 
-    with patch.object(
-        trainer.sae,
-        "forward",
-        side_effect=modify_sae_output(
-            trainer.sae, lambda out: out._replace(feature_acts=feature_acts)
-        ),
-    ):
-        train_output = trainer._train_step(
-            sparse_autoencoder=trainer.sae,
-            sae_in=layer_acts[:, 0, :],
-        )
+    train_output = trainer._train_step(
+        sparse_autoencoder=trainer.sae,
+        sae_in=layer_acts[:, 0, :],
+    )
+    feature_acts = train_output.feature_acts
 
     # should increase by batch_size
     assert trainer.n_frac_active_tokens == 4
     # add freq scores for all non-zero feature acts
-    assert torch.allclose(trainer.act_freq_scores[:12], 4 * torch.ones(12).float())
-    assert torch.allclose(trainer.n_forward_passes_since_fired[:12], torch.zeros(12))
+    assert torch.allclose(
+        trainer.act_freq_scores, (feature_acts > 0).float().sum(dim=0)
+    )
 
-    # the outputs from the SAE should be included in the train output
+    # check that features that just fired have n_forward_passes_since_fired = 0
+    assert (
+        trainer.n_forward_passes_since_fired[
+            ((feature_acts > 0).float()[-1] == 1)
+        ].max()
+        == 0
+    )
     assert train_output.feature_acts is feature_acts
 
 
@@ -201,10 +171,9 @@ def test_build_train_step_log_dict(trainer: SAETrainer) -> None:
         sae_out=torch.tensor([[0, 0], [0, 2], [0.5, 1]]).float(),
         feature_acts=torch.tensor([[0, 0, 0, 1], [1, 0, 0, 1], [1, 0, 1, 1]]).float(),
         loss=torch.tensor(0.5),
-        mse_loss=torch.tensor(0.25),
-        l1_loss=torch.tensor(0.1),
-        ghost_grad_loss=torch.tensor(0.15),
-        ghost_grad_neuron_mask=torch.tensor([False, True, False, True]),
+        mse_loss=0.25,
+        l1_loss=0.1,
+        ghost_grad_loss=0.15,
     )
 
     # we're relying on the trainer only for some of the metrics here
@@ -216,14 +185,14 @@ def test_build_train_step_log_dict(trainer: SAETrainer) -> None:
     assert log_dict == {
         "losses/mse_loss": 0.25,
         # l1 loss is scaled by l1_coefficient
-        "losses/l1_loss": train_output.l1_loss.item() / trainer.sae.l1_coefficient,
+        "losses/l1_loss": train_output.l1_loss / trainer.sae.l1_coefficient,
         "losses/ghost_grad_loss": pytest.approx(0.15),
         "losses/overall_loss": 0.5,
         "metrics/explained_variance": 0.75,
         "metrics/explained_variance_std": 0.25,
         "metrics/l0": 2.0,
         "sparsity/mean_passes_since_fired": trainer.n_forward_passes_since_fired.mean().item(),
-        "sparsity/dead_features": 2,
+        "sparsity/dead_features": trainer.dead_neurons.sum().item(),
         "details/current_learning_rate": 2e-4,
         "details/current_l1_coefficient": trainer.cfg.l1_coefficient,
         "details/n_training_tokens": 123,

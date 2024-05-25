@@ -3,9 +3,12 @@ from typing import Any
 import einops
 import pytest
 import torch
+from datasets import Dataset
 from transformer_lens import HookedTransformer
 
+from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.config import LanguageModelSAERunnerConfig
+from sae_lens.training.sae_trainer import SAETrainer
 from sae_lens.training.sparse_autoencoder import TrainingSparseAutoencoder
 from tests.unit.helpers import build_sae_cfg
 
@@ -72,263 +75,225 @@ def training_sae(cfg: Any):
 
 
 @pytest.fixture
+def activation_store(model: HookedTransformer, cfg: LanguageModelSAERunnerConfig):
+    return ActivationsStore.from_config(
+        model, cfg, dataset=Dataset.from_list([{"text": "hello world"}] * 2000)
+    )
+
+
+@pytest.fixture
 def model(cfg: LanguageModelSAERunnerConfig):
     return HookedTransformer.from_pretrained(cfg.model_name, device="cpu")
 
 
-def test_sparse_autoencoder_encode(training_sae: TrainingSparseAutoencoder):
-    batch_size = 32
-    d_in = training_sae.d_in
-    d_sae = training_sae.d_sae
+@pytest.fixture
+def trainer(
+    cfg: LanguageModelSAERunnerConfig,
+    training_sae: TrainingSparseAutoencoder,
+    model: HookedTransformer,
+    activation_store: ActivationsStore,
+):
 
-    x = torch.randn(batch_size, d_in)
-    feature_acts1 = training_sae.encode(x)
-    (
-        _,
-        feature_acts2,
-        _,
-        _,
-        _,
-        _,
-    ) = training_sae.forward(
-        x,
+    trainer = SAETrainer(
+        model=model,
+        sae=training_sae,
+        activation_store=activation_store,
+        save_checkpoint_fn=lambda *args, **kwargs: None,
+        cfg=cfg,
     )
 
-    # Check shape
-    assert feature_acts1.shape == (batch_size, d_sae)
-
-    # Check values
-    assert torch.allclose(feature_acts1, feature_acts2)
+    return trainer
 
 
-def test_sparse_autoencoder_decode(training_sae: TrainingSparseAutoencoder):
+# TODO: DECIDE IF WE ARE KEEPING ENCODE AND DECODE METHODS
+
+# def test_sparse_autoencoder_encode(training_sae: TrainingSparseAutoencoder):
+#     batch_size = 32
+#     d_in = training_sae.d_in
+#     d_sae = training_sae.d_sae
+
+#     x = torch.randn(batch_size, d_in)
+#     feature_acts1 = training_sae.encode(x)
+#     _, cache = training_sae.run_with_cache(x, names_filter="hook_sae_acts_post")
+#     feature_acts2 = cache["hook_sae_acts_post"]
+
+#     # Check shape
+#     assert feature_acts2.shape == (batch_size, d_sae)
+
+#     # Check values
+#     assert torch.allclose(feature_acts1, feature_acts2)
+
+
+# def test_sparse_autoencoder_decode(training_sae: TrainingSparseAutoencoder):
+#     batch_size = 32
+#     d_in = training_sae.d_in
+
+#     x = torch.randn(batch_size, d_in)
+#     sae_out1 = training_sae(x)
+
+#     assert sae_out1.shape == x.shape
+#     assert torch.allclose(sae_out1, sae_out2)
+
+
+def test_sparse_autoencoder_forward(trainer: SAETrainer):
     batch_size = 32
-    d_in = training_sae.d_in
+    d_in = trainer.cfg.d_in
+    d_sae = trainer.cfg.d_sae
 
     x = torch.randn(batch_size, d_in)
-    feature_acts = training_sae.encode(x)
-    sae_out1 = training_sae.decode(feature_acts)
-
-    (
-        sae_out2,
-        _,
-        _,
-        _,
-        _,
-        _,
-    ) = training_sae.forward(
-        x,
+    train_step_output = trainer._training_forward_pass(
+        sae_in=x,
     )
 
-    assert sae_out1.shape == x.shape
-    assert torch.allclose(sae_out1, sae_out2)
-
-
-def test_sparse_autoencoder_forward(training_sae: TrainingSparseAutoencoder):
-    batch_size = 32
-    d_in = training_sae.d_in
-    d_sae = training_sae.d_sae
-
-    x = torch.randn(batch_size, d_in)
-    (
-        sae_out,
-        feature_acts,
-        loss,
-        mse_loss,
-        l1_loss,
-        _ghost_grad_loss,
-    ) = training_sae.forward(
-        x,
+    assert train_step_output.sae_out.shape == (batch_size, d_in)
+    assert train_step_output.feature_acts.shape == (batch_size, d_sae)
+    assert pytest.approx(train_step_output.loss, rel=1e-3) == (
+        train_step_output.mse_loss
+        + train_step_output.l1_loss
+        + train_step_output.ghost_grad_loss
     )
 
-    assert sae_out.shape == (batch_size, d_in)
-    assert feature_acts.shape == (batch_size, d_sae)
-    assert loss.shape == ()
-    assert mse_loss.shape == ()
-    assert l1_loss.shape == ()
-    assert torch.allclose(loss, mse_loss + l1_loss)
+    expected_mse_loss = (
+        (torch.pow((train_step_output.sae_out - x.float()), 2))
+        .sum(dim=-1)
+        .mean()
+        .detach()
+        .float()
+    )
 
-    expected_mse_loss = (torch.pow((sae_out - x.float()), 2)).sum(dim=-1).mean()
+    assert pytest.approx(train_step_output.mse_loss) == expected_mse_loss
 
-    assert torch.allclose(mse_loss, expected_mse_loss)
-    if not training_sae.scale_sparsity_penalty_by_decoder_norm:
-        expected_l1_loss = feature_acts.sum(dim=1).mean(dim=(0,))
+    if not trainer.cfg.scale_sparsity_penalty_by_decoder_norm:
+        expected_l1_loss = train_step_output.feature_acts.sum(dim=1).mean(dim=(0,))
     else:
         expected_l1_loss = (
-            (feature_acts * training_sae.W_dec.norm(dim=1)).norm(dim=1, p=1).mean()
+            (train_step_output.feature_acts * trainer.sae.W_dec.norm(dim=1))
+            .norm(dim=1, p=1)
+            .mean()
         )
-    assert torch.allclose(l1_loss, training_sae.l1_coefficient * expected_l1_loss)
-
-    # check everything has the right dtype
-    assert sae_out.dtype == training_sae.dtype
-    assert feature_acts.dtype == training_sae.dtype
-    assert loss.dtype == training_sae.dtype
-    assert mse_loss.dtype == training_sae.dtype
-    assert l1_loss.dtype == training_sae.dtype
+    assert (
+        pytest.approx(train_step_output.l1_loss, rel=1e-3)
+        == trainer.cfg.l1_coefficient * expected_l1_loss.detach().float()
+    )
 
 
 def test_sparse_autoencoder_forward_with_mse_loss_norm(
-    training_sae: TrainingSparseAutoencoder,
+    trainer: SAETrainer,
 ):
+    # change the confgi and ensure the mse loss is calculated correctly
+    trainer.cfg.mse_loss_normalization = "dense_batch"
+    trainer.mse_loss_fn = trainer._get_mse_loss_fn()
+
     batch_size = 32
-    d_in = training_sae.d_in
-    d_sae = training_sae.d_sae
-    training_sae.mse_loss_normalization = "dense_batch"
+    d_in = trainer.cfg.d_in
+    d_sae = trainer.cfg.d_sae
 
     x = torch.randn(batch_size, d_in)
-    (
-        sae_out,
-        feature_acts,
-        loss,
-        mse_loss,
-        l1_loss,
-        _ghost_grad_loss,
-    ) = training_sae.forward(
-        x,
+    train_step_output = trainer._training_forward_pass(
+        sae_in=x,
     )
 
-    assert sae_out.shape == (batch_size, d_in)
-    assert feature_acts.shape == (batch_size, d_sae)
-    assert loss.shape == ()
-    assert mse_loss.shape == ()
-    assert l1_loss.shape == ()
-    assert torch.allclose(loss, mse_loss + l1_loss)
+    assert train_step_output.sae_out.shape == (batch_size, d_in)
+    assert train_step_output.feature_acts.shape == (batch_size, d_sae)
+    assert train_step_output.ghost_grad_loss == 0.0
 
     x_centred = x - x.mean(dim=0, keepdim=True)
     expected_mse_loss = (
         (
-            torch.pow((sae_out - x.float()), 2)
-            / (x_centred**2).sum(dim=-1, keepdim=True).sqrt()
+            torch.nn.functional.mse_loss(train_step_output.sae_out, x, reduction="none")
+            / (1e-6 + x_centred.norm(dim=-1, keepdim=True))
         )
         .sum(dim=-1)
         .mean()
+        .detach()
+        .item()
     )
-    assert torch.allclose(mse_loss, expected_mse_loss)
-    if not training_sae.scale_sparsity_penalty_by_decoder_norm:
-        expected_l1_loss = feature_acts.sum(dim=1).mean(dim=(0,))
+
+    assert pytest.approx(train_step_output.mse_loss) == expected_mse_loss
+
+    assert pytest.approx(train_step_output.loss, rel=1e-3) == (
+        train_step_output.mse_loss
+        + train_step_output.l1_loss
+        + train_step_output.ghost_grad_loss
+    )
+
+    if not trainer.cfg.scale_sparsity_penalty_by_decoder_norm:
+        expected_l1_loss = train_step_output.feature_acts.sum(dim=1).mean(dim=(0,))
     else:
         expected_l1_loss = (
-            (feature_acts * training_sae.W_dec.norm(dim=1)).norm(dim=1, p=1).mean()
+            (train_step_output.feature_acts * trainer.sae.W_dec.norm(dim=1))
+            .norm(dim=1, p=1)
+            .mean()
         )
-    assert torch.allclose(l1_loss, training_sae.l1_coefficient * expected_l1_loss)
-
-    # check everything has the right dtype
-    assert sae_out.dtype == training_sae.dtype
-    assert feature_acts.dtype == training_sae.dtype
-    assert loss.dtype == training_sae.dtype
-    assert mse_loss.dtype == training_sae.dtype
-    assert l1_loss.dtype == training_sae.dtype
+    assert (
+        pytest.approx(train_step_output.l1_loss, rel=1e-3)
+        == trainer.cfg.l1_coefficient * expected_l1_loss.detach().float()
+    )
 
 
-def test_sparse_autoencoder_forward_with_3d_input(
-    training_sae: TrainingSparseAutoencoder,
+def test_SparseAutoencoder_forward_ghost_grad_loss_non_zero(
+    trainer: SAETrainer,
 ):
+
+    trainer.cfg.use_ghost_grads = True
     batch_size = 32
-    seq_length = 256
-    d_in = training_sae.d_in
-    d_sae = training_sae.d_sae
-    training_sae.mse_loss_normalization = "dense_batch"
-    training_sae.lp_norm = 1
-
-    x = torch.randn(batch_size, seq_length, d_in)
-    (
-        sae_out,
-        feature_acts,
-        loss,
-        mse_loss,
-        l1_loss,
-        _,
-    ) = training_sae.forward(
-        x,
-    )
-    training_sae.lp_norm = 2
-    (
-        _,
-        _,
-        _,
-        _,
-        l2_loss,
-        _,
-    ) = training_sae.forward(
-        x,
+    d_in = trainer.cfg.d_in
+    x = torch.randn(batch_size, d_in)
+    train_step_output = trainer._training_forward_pass(
+        sae_in=x,
     )
 
-    assert sae_out.shape == (batch_size, seq_length, d_in)
-    assert feature_acts.shape == (batch_size, seq_length, d_sae)
-    assert loss.shape == ()
-    assert mse_loss.shape == ()
-    assert l1_loss.shape == ()
-    assert torch.allclose(loss, mse_loss + l1_loss)
+    assert train_step_output.ghost_grad_loss != 0.0
 
-    x_centred = x - x.mean(dim=0, keepdim=True)
-    expected_mse_loss = (
-        (
-            torch.pow((sae_out - x.float()), 2)
-            / (x_centred**2).sum(dim=-1, keepdim=True).sqrt()
-        )
-        .sum(dim=-1)
-        .mean()
+
+def test_calculate_ghost_grad_loss(
+    trainer: SAETrainer,
+):
+    trainer.cfg.use_ghost_grads = True
+    batch_size = 32
+    d_in = trainer.cfg.d_in
+    x = torch.randn(batch_size, d_in)
+
+    # set n_forward passes since fired to < dead feature window for all neurons
+    trainer.n_forward_passes_since_fired = torch.ones_like(trainer.n_forward_passes_since_fired) * 3 * trainer.cfg.dead_feature_window  # type: ignore
+    # then set the first 10 neurons to have fired recently
+    trainer.n_forward_passes_since_fired[:10] = 0
+
+    feature_acts = trainer.sae.encode(x)
+    sae_out = trainer.sae.decode(feature_acts)
+
+    _, hidden_pre = trainer.sae.encode_with_hidden_pre(x)
+    ghost_grad_loss = trainer.calculate_ghost_grad_loss(
+        x=x,
+        sae_out=sae_out,
+        per_item_mse_loss=trainer.mse_loss_fn(sae_out, x),
+        hidden_pre=hidden_pre,
+        dead_neuron_mask=trainer.dead_neurons,
     )
-    assert torch.allclose(mse_loss, expected_mse_loss)
+    ghost_grad_loss.backward()  # type: ignore
 
-    if training_sae.scale_sparsity_penalty_by_decoder_norm:
-        feature_acts = feature_acts * training_sae.W_dec.norm(dim=1)
-
-    expected_l1_loss = feature_acts.sum(dim=-1).mean()
-    assert torch.allclose(l1_loss, training_sae.l1_coefficient * expected_l1_loss)
-
-    expected_l2_loss = feature_acts.norm(p=2, dim=-1).mean()
-    assert torch.allclose(l2_loss, training_sae.l1_coefficient * expected_l2_loss)
-
-    # check everything has the right dtype
-    assert sae_out.dtype == training_sae.dtype
-    assert feature_acts.dtype == training_sae.dtype
-    assert loss.dtype == training_sae.dtype
-    assert mse_loss.dtype == training_sae.dtype
-    assert l1_loss.dtype == training_sae.dtype
-
-
-def test_SparseAutoencoder_forward_ghost_grad_loss_returns_0_if_no_dead_neurons():
-    cfg = build_sae_cfg(d_in=2, d_sae=4, use_ghost_grads=True)
-    sae = TrainingSparseAutoencoder(cfg)
-    sae.train()
-    dead_neuron_mask = torch.tensor([False, False, False, False])
-    ghost_grad_loss = sae.forward(
-        x=torch.randn(3, 2),
-        dead_neuron_mask=dead_neuron_mask,
-    ).ghost_grad_loss
-    assert ghost_grad_loss == 0.0
-
-
-def test_SparseAutoencoder_forward_ghost_grad_loss_only_adds_gradients_to_dead_neurons():
-    cfg = build_sae_cfg(d_in=2, d_sae=4, use_ghost_grads=True)
-    sae = TrainingSparseAutoencoder(cfg)
-    sae.train()
-    dead_neuron_mask = torch.tensor([False, True, False, True])
-    forward_out = sae.forward(
-        x=torch.randn(3, 2),
-        dead_neuron_mask=dead_neuron_mask,
+    # W_enc grad
+    assert trainer.sae.W_enc.grad is not None
+    assert torch.allclose(
+        trainer.sae.W_enc.grad[:, :10], torch.zeros_like(trainer.sae.W_enc[:, :10])
     )
-    forward_out.ghost_grad_loss.backward()  # type: ignore
-
-    # only features 1 and 3 should have non-zero gradients on the encoder weights
-    assert sae.W_enc.grad is not None
-    assert torch.allclose(sae.W_enc.grad[:, 0], torch.zeros_like(sae.W_enc[:, 0]))
-    assert sae.W_enc.grad[:, 1].abs().sum() > 0.001
-    assert torch.allclose(sae.W_enc.grad[:, 2], torch.zeros_like(sae.W_enc[:, 2]))
-    assert sae.W_enc.grad[:, 3].abs().sum() > 0.001
+    assert trainer.sae.W_enc.grad[:, 10:].abs().sum() > 0.001
 
     # only features 1 and 3 should have non-zero gradients on the decoder weights
-    assert sae.W_dec.grad is not None
-    assert torch.allclose(sae.W_dec.grad[0, :], torch.zeros_like(sae.W_dec[0, :]))
-    assert sae.W_dec.grad[1, :].abs().sum() > 0.001
-    assert torch.allclose(sae.W_dec.grad[2, :], torch.zeros_like(sae.W_dec[2, :]))
-    assert sae.W_dec.grad[3, :].abs().sum() > 0.001
+    assert trainer.sae.W_dec.grad is not None
+    assert torch.allclose(
+        trainer.sae.W_dec.grad[:10, :], torch.zeros_like(trainer.sae.W_dec[:10, :])
+    )
+    assert trainer.sae.W_dec.grad[10:, :].abs().sum() > 0.001
 
 
 def test_per_item_mse_loss_with_norm_matches_original_implementation(
-    training_sae: TrainingSparseAutoencoder,
+    trainer: SAETrainer,
 ) -> None:
+
+    trainer.cfg.mse_loss_normalization = "dense_batch"
+    trainer.mse_loss_fn = trainer._get_mse_loss_fn()
+
     input = torch.randn(3, 2)
     target = torch.randn(3, 2)
     target_centered = target - target.mean(dim=0, keepdim=True)
@@ -336,8 +301,9 @@ def test_per_item_mse_loss_with_norm_matches_original_implementation(
         torch.pow((input - target.float()), 2)
         / (target_centered**2).sum(dim=-1, keepdim=True).sqrt()
     )
-    sae_res = training_sae._per_item_mse_loss_with_target_norm(
-        input, target, mse_loss_normalization="dense_batch"
+    sae_res = trainer.mse_loss_fn(
+        input,
+        target,
     )
     assert torch.allclose(orig_impl_res, sae_res, atol=1e-5)
 
@@ -350,10 +316,10 @@ def test_SparseAutoencoder_forward_can_add_noise_to_hidden_pre() -> None:
 
     input = torch.randn(3, 2)
 
-    clean_output1 = clean_sae.forward(input).sae_out
-    clean_output2 = clean_sae.forward(input).sae_out
-    noisy_output1 = noisy_sae.forward(input).sae_out
-    noisy_output2 = noisy_sae.forward(input).sae_out
+    clean_output1 = clean_sae.forward(input)
+    clean_output2 = clean_sae.forward(input)
+    noisy_output1 = noisy_sae.forward(input)
+    noisy_output2 = noisy_sae.forward(input)
 
     # with no noise, the outputs should be identical
     assert torch.allclose(clean_output1, clean_output2)
@@ -362,9 +328,13 @@ def test_SparseAutoencoder_forward_can_add_noise_to_hidden_pre() -> None:
     assert not torch.allclose(clean_output1, noisy_output1)
 
 
-def test_SparseAutoencoder_remove_gradient_parallel_to_decoder_directions() -> None:
-    cfg = build_sae_cfg(normalize_sae_decoder=True)
-    sae = TrainingSparseAutoencoder(cfg)
+def test_SparseAutoencoder_remove_gradient_parallel_to_decoder_directions(
+    trainer: SAETrainer,
+) -> None:
+
+    if not trainer.cfg.normalize_sae_decoder:
+        pytest.skip("Test only applies when decoder is not normalized")
+    sae = trainer.sae
     orig_grad = torch.randn_like(sae.W_dec)
     orig_W_dec = sae.W_dec.clone()
     sae.W_dec.grad = orig_grad.clone()
@@ -390,9 +360,14 @@ def test_SparseAutoencoder_remove_gradient_parallel_to_decoder_directions() -> N
     ).abs() == pytest.approx(1.0, abs=1e-3)
 
 
-def test_SparseAutoencoder_set_decoder_norm_to_unit_norm() -> None:
-    cfg = build_sae_cfg(normalize_sae_decoder=True)
-    sae = TrainingSparseAutoencoder(cfg)
+def test_SparseAutoencoder_set_decoder_norm_to_unit_norm(
+    trainer: SAETrainer,
+) -> None:
+
+    if not trainer.cfg.normalize_sae_decoder:
+        pytest.skip("Test only applies when decoder is not normalized")
+
+    sae = trainer.sae
     sae.W_dec.data = 20 * torch.randn_like(sae.W_dec)
     sae.set_decoder_norm_to_unit_norm()
     assert torch.allclose(

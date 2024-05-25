@@ -4,7 +4,7 @@ https://github.com/ArthurConmy/sae/blob/main/sae/model.py
 
 import json
 import os
-from typing import Any, Callable, NamedTuple, Optional, Tuple
+from typing import Any, Callable, Optional, Tuple
 
 import einops
 import torch
@@ -23,15 +23,6 @@ from sae_lens.training.config import DTYPE_MAP, LanguageModelSAERunnerConfig
 SPARSITY_PATH = "sparsity.safetensors"
 SAE_WEIGHTS_PATH = "sae_weights.safetensors"
 SAE_CFG_PATH = "cfg.json"
-
-
-class ForwardOutput(NamedTuple):
-    sae_out: torch.Tensor
-    feature_acts: torch.Tensor
-    loss: torch.Tensor
-    mse_loss: torch.Tensor
-    l1_loss: torch.Tensor
-    ghost_grad_loss: torch.Tensor | float
 
 
 class SparseAutoencoderBase(HookedRootModule):
@@ -406,11 +397,37 @@ class TrainingSparseAutoencoder(SparseAutoencoderBase):
 
         self.initialize_weights_complex()
 
-        self.get_sparsity_loss_term = (
-            self.get_sparsity_loss_term_decoder_norm
-            if self.scale_sparsity_penalty_by_decoder_norm
-            else self.get_sparsity_loss_term_standard
+    def encode_with_hidden_pre(
+        self, x: Float[torch.Tensor, "... d_in"]
+    ) -> tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
+
+        # move x to correct dtype
+        x = x.to(self.dtype)
+
+        # handle hook z reshaping if needed.
+        x = self.reshape_fn_in(x)  # type: ignore
+
+        # apply b_dec_to_input if using that method.
+        sae_in = self.hook_sae_input(x - (self.b_dec * self.apply_b_dec_to_input))
+
+        # "... d_in, d_in d_sae -> ... d_sae",
+        hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
+        hidden_pre_noised = (
+            torch.randn_like(hidden_pre) * self.noise_scale * self.training
         )
+        feature_acts = self.hook_sae_acts_post(self.activation_fn(hidden_pre_noised))
+
+        return feature_acts, hidden_pre_noised
+
+    def forward(
+        self,
+        x: Float[torch.Tensor, "... d_in"],
+    ) -> Float[torch.Tensor, "... d_in"]:
+
+        feature_acts, _ = self.encode_with_hidden_pre(x)
+        sae_out = self.decode(feature_acts)
+
+        return sae_out
 
     @classmethod
     def load_from_pretrained(  # type: ignore
@@ -426,79 +443,6 @@ class TrainingSparseAutoencoder(SparseAutoencoderBase):
         sae = cls(cfg)
         sae.load_state_dict(base_sae.state_dict())
         return sae
-
-    def encode(
-        self, x: Float[torch.Tensor, "... d_in"]
-    ) -> Float[torch.Tensor, "... d_sae"]:
-        feature_acts, _ = self._encode_with_hidden_pre(x)
-        return feature_acts
-
-    # needed for ghost grads.
-    def _encode_with_hidden_pre(
-        self, x: Float[torch.Tensor, "... d_in"]
-    ) -> tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
-        """Encodes input activation tensor x into an SAE feature activation tensor."""
-
-        # move x to correct dtype
-        x = x.to(self.dtype)
-        sae_in = self.hook_sae_input(
-            x - (self.b_dec * self.apply_b_dec_to_input)
-        )  # Remove decoder bias as per Anthropic
-
-        # "... d_in, d_in d_sae -> ... d_sae",
-        hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
-
-        # Key difference for training SAE.
-        noisy_hidden_pre = hidden_pre + (
-            torch.randn_like(hidden_pre) * self.noise_scale * self.training
-        )  # noise scale will be 0 by default, and should be 0 if not in training.
-
-        feature_acts = self.hook_sae_acts_post(self.activation_fn(noisy_hidden_pre))
-
-        return feature_acts, hidden_pre
-
-    def forward(  # type: ignore (override intentionally) since we want different training / inference behavior)
-        self, x: torch.Tensor, dead_neuron_mask: torch.Tensor | None = None
-    ) -> ForwardOutput:
-
-        feature_acts, hidden_pre = self._encode_with_hidden_pre(x)
-        sae_out = self.decode(feature_acts)
-
-        # add config for whether l2 is normalized:
-        per_item_mse_loss = self._per_item_mse_loss_with_target_norm(
-            sae_out, x, self.mse_loss_normalization
-        )
-
-        # gate on config and training so evals is not slowed down.
-        if (
-            self.use_ghost_grads
-            and self.training
-            and dead_neuron_mask is not None
-            and dead_neuron_mask.sum() > 0
-        ):
-            ghost_grad_loss = self.calculate_ghost_grad_loss(
-                x=x,
-                sae_out=sae_out,
-                per_item_mse_loss=per_item_mse_loss,
-                hidden_pre=hidden_pre,
-                dead_neuron_mask=dead_neuron_mask,
-            )
-        else:
-            ghost_grad_loss = 0
-
-        mse_loss = per_item_mse_loss.sum(dim=-1).mean()
-        sparsity = self.get_sparsity_loss_term(feature_acts)
-        l1_loss = (self.l1_coefficient * sparsity).mean()
-        loss = mse_loss + l1_loss + ghost_grad_loss
-
-        return ForwardOutput(
-            sae_out=sae_out,
-            feature_acts=feature_acts,
-            loss=loss,
-            mse_loss=mse_loss,
-            l1_loss=l1_loss,
-            ghost_grad_loss=ghost_grad_loss,
-        )
 
     def initialize_weights_complex(self):
         """ """
@@ -531,80 +475,6 @@ class TrainingSparseAutoencoder(SparseAutoencoderBase):
             with torch.no_grad():
                 # Anthropic normalize this to have unit columns
                 self.set_decoder_norm_to_unit_norm()
-
-    ## Loss Function Utils
-    def get_sparsity_loss_term_standard(
-        self, feature_acts: torch.Tensor
-    ) -> torch.Tensor:
-        """
-        Sparsity loss term calculated as the L1 norm of the feature activations.
-        """
-        sparsity = feature_acts.norm(p=self.lp_norm, dim=-1)
-        return sparsity
-
-    def get_sparsity_loss_term_decoder_norm(
-        self, feature_acts: torch.Tensor
-    ) -> torch.Tensor:
-        """
-        Sparsity loss term for decoder norm regularization.
-        """
-        weighted_feature_acts = feature_acts * self.W_dec.norm(dim=1)
-        sparsity = weighted_feature_acts.norm(
-            p=self.lp_norm, dim=-1
-        )  # sum over the feature dimension
-        return sparsity
-
-    def _per_item_mse_loss_with_target_norm(
-        self,
-        preds: torch.Tensor,
-        target: torch.Tensor,
-        mse_loss_normalization: Optional[str] = None,
-    ) -> torch.Tensor:
-        """
-        Calculate MSE loss per item in the batch, without taking a mean.
-        Then, optionally, normalizes by the L2 norm of the centered target.
-        This normalization seems to improve performance.
-        """
-        if mse_loss_normalization == "dense_batch":
-            target_centered = target - target.mean(dim=0, keepdim=True)
-            normalization = target_centered.norm(dim=-1, keepdim=True)
-            return torch.nn.functional.mse_loss(preds, target, reduction="none") / (
-                normalization + 1e-6
-            )
-        else:
-            return torch.nn.functional.mse_loss(preds, target, reduction="none")
-
-    def calculate_ghost_grad_loss(
-        self,
-        x: torch.Tensor,
-        sae_out: torch.Tensor,
-        per_item_mse_loss: torch.Tensor,
-        hidden_pre: torch.Tensor,
-        dead_neuron_mask: torch.Tensor,
-    ) -> torch.Tensor:
-        # 1.
-        residual = x - sae_out
-        l2_norm_residual = torch.norm(residual, dim=-1)
-
-        # 2.
-        feature_acts_dead_neurons_only = torch.exp(hidden_pre[:, dead_neuron_mask])
-        ghost_out = feature_acts_dead_neurons_only @ self.W_dec[dead_neuron_mask, :]
-        l2_norm_ghost_out = torch.norm(ghost_out, dim=-1)
-        norm_scaling_factor = l2_norm_residual / (1e-6 + l2_norm_ghost_out * 2)
-        ghost_out = ghost_out * norm_scaling_factor[:, None].detach()
-
-        # 3.
-        per_item_mse_loss_ghost_resid = self._per_item_mse_loss_with_target_norm(
-            ghost_out, residual.detach(), self.mse_loss_normalization
-        )
-        mse_rescaling_factor = (
-            per_item_mse_loss / (per_item_mse_loss_ghost_resid + 1e-6)
-        ).detach()
-        per_item_mse_loss_ghost_resid = (
-            mse_rescaling_factor * per_item_mse_loss_ghost_resid
-        )
-
-        return per_item_mse_loss_ghost_resid.mean()
 
     ## Initialization Methods
     @torch.no_grad()
