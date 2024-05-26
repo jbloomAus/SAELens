@@ -98,7 +98,7 @@ for block in [11, 0]:
             seed=42,
             n_checkpoints=0,
             checkpoint_path="checkpoints",
-            dtype=torch.float32,
+            dtype="float32",
             eval_batch_size_prompts=2,
             n_eval_batches=40,
             autocast=True,

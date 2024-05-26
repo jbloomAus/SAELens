@@ -32,12 +32,12 @@ def activation_store(model: HookedTransformer, cfg: LanguageModelSAERunnerConfig
 
 @pytest.fixture
 def base_sae(cfg: LanguageModelSAERunnerConfig):
-    return SparseAutoencoderBase(**cfg.get_sae_base_parameters())
+    return SparseAutoencoderBase.from_dict(cfg.get_base_sae_cfg_dict())
 
 
 @pytest.fixture
 def training_sae(cfg: LanguageModelSAERunnerConfig):
-    return TrainingSparseAutoencoder(cfg)
+    return TrainingSparseAutoencoder.from_dict(cfg.get_training_sae_cfg_dict())
 
 
 def test_run_evals_base_sae(

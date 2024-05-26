@@ -16,6 +16,7 @@ from sae_lens.training.sparse_autoencoder import (
     SAE_CFG_PATH,
     SAE_WEIGHTS_PATH,
     SPARSITY_PATH,
+    TrainingSAEConfig,
     TrainingSparseAutoencoder,
 )
 
@@ -55,7 +56,11 @@ class SAETrainingRunner:
                 self.cfg.from_pretrained_path, self.cfg.device  # type: ignore
             )
         else:
-            self.sae = TrainingSparseAutoencoder(self.cfg)
+            self.sae = TrainingSparseAutoencoder(
+                TrainingSAEConfig.from_dict(
+                    self.cfg.get_training_sae_cfg_dict(),
+                )
+            )
             self._init_sae_group_b_decs()
 
     def run(self):
@@ -69,8 +74,26 @@ class SAETrainingRunner:
                 id=self.cfg.wandb_id,
             )
 
+        trainer = SAETrainer(
+            model=self.model,  # type: ignore
+            sae=self.sae,  # type: ignore
+            activation_store=self.activations_store,
+            save_checkpoint_fn=self.save_checkpoint,  # type: ignore
+            cfg=self.cfg,
+        )
+
+        self._compile_if_needed()
+        sparse_autoencoder = self.run_trainer_with_interruption_handling(trainer)
+
+        if self.cfg.log_to_wandb:
+            wandb.finish()
+
+        return sparse_autoencoder
+
+    def _compile_if_needed(self):
+
         # Compile model and SAE
-        # torch.compile can provide significant speedups (10-20% in testing)
+        #  torch.compile can provide significant speedups (10-20% in testing)
         # using max-autotune gives the best speedups but:
         # (a) increases VRAM usage,
         # (b) can't be used on both SAE and LM (some issue with cudagraphs), and
@@ -85,24 +108,9 @@ class SAETrainingRunner:
             )  # type: ignore
 
         if self.cfg.compile_sae:
-            self.sae = torch.compile(
-                self.sae, mode=self.cfg.sae_compilation_mode
+            self.sae._training_forward_pass = torch.compile(  # type: ignore
+                self.sae._training_forward_pass, mode=self.cfg.sae_compilation_mode
             )  # type: ignore
-
-        trainer = SAETrainer(
-            model=self.model,  # type: ignore
-            sae=self.sae,  # type: ignore
-            activation_store=self.activations_store,
-            save_checkpoint_fn=self.save_checkpoint,  # type: ignore
-            cfg=self.cfg,
-        )
-
-        sparse_autoencoder = self.run_trainer_with_interruption_handling(trainer)
-
-        if self.cfg.log_to_wandb:
-            wandb.finish()
-
-        return sparse_autoencoder
 
     def run_trainer_with_interruption_handling(self, trainer: SAETrainer):
         try:
@@ -122,7 +130,7 @@ class SAETrainingRunner:
 
         return sparse_autoencoder
 
-    # TODO: move this into the SAE trainer class.
+    # TODO: move this into the SAE trainer or Training SAE class
     def _init_sae_group_b_decs(
         self,
     ) -> None:

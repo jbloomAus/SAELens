@@ -39,7 +39,7 @@ def activation_store(model: HookedTransformer, cfg: LanguageModelSAERunnerConfig
 
 @pytest.fixture
 def training_sae(cfg: LanguageModelSAERunnerConfig):
-    return TrainingSparseAutoencoder(cfg)
+    return TrainingSparseAutoencoder.from_dict(cfg.get_training_sae_cfg_dict())
 
 
 @pytest.fixture
@@ -185,7 +185,7 @@ def test_build_train_step_log_dict(trainer: SAETrainer) -> None:
     assert log_dict == {
         "losses/mse_loss": 0.25,
         # l1 loss is scaled by l1_coefficient
-        "losses/l1_loss": train_output.l1_loss / trainer.sae.l1_coefficient,
+        "losses/l1_loss": train_output.l1_loss / trainer.cfg.l1_coefficient,
         "losses/ghost_grad_loss": pytest.approx(0.15),
         "losses/overall_loss": 0.5,
         "metrics/explained_variance": 0.75,
@@ -213,7 +213,7 @@ def test_train_sae_group_on_language_model__runs(
     # just a tiny datast which will run quickly
     dataset = Dataset.from_list([{"text": "hello world"}] * 2000)
     activation_store = ActivationsStore.from_config(ts_model, cfg, dataset=dataset)
-    sae = TrainingSparseAutoencoder(cfg)
+    sae = TrainingSparseAutoencoder.from_dict(cfg.get_training_sae_cfg_dict())
     sae = SAETrainer(
         model=ts_model,
         sae=sae,
@@ -227,6 +227,6 @@ def test_train_sae_group_on_language_model__runs(
 
 def test_update_sae_lens_training_version_sets_the_current_version():
     cfg = build_sae_cfg(sae_lens_training_version="0.1.0")
-    sae = TrainingSparseAutoencoder(cfg)
+    sae = TrainingSparseAutoencoder.from_dict(cfg.get_training_sae_cfg_dict())
     _update_sae_lens_training_version(sae)
-    assert sae.sae_lens_training_version == __version__
+    assert sae.cfg.sae_lens_training_version == str(__version__)

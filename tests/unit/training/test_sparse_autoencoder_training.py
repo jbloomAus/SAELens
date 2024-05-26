@@ -313,8 +313,12 @@ def test_per_item_mse_loss_with_norm_matches_original_implementation(
 def test_SparseAutoencoder_forward_can_add_noise_to_hidden_pre() -> None:
     clean_cfg = build_sae_cfg(d_in=2, d_sae=4, noise_scale=0)
     noisy_cfg = build_sae_cfg(d_in=2, d_sae=4, noise_scale=100)
-    clean_sae = TrainingSparseAutoencoder(clean_cfg)
-    noisy_sae = TrainingSparseAutoencoder(noisy_cfg)
+    clean_sae = TrainingSparseAutoencoder.from_dict(
+        clean_cfg.get_training_sae_cfg_dict()
+    )
+    noisy_sae = TrainingSparseAutoencoder.from_dict(
+        noisy_cfg.get_training_sae_cfg_dict()
+    )
 
     input = torch.randn(3, 2)
 

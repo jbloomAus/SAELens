@@ -1,10 +1,10 @@
 import os
 from pathlib import Path
-from typing import Any
 
 import pytest
 import torch
 
+from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.sparse_autoencoder import SparseAutoencoderBase
 from tests.unit.helpers import build_sae_cfg
 
@@ -62,8 +62,8 @@ def cfg(request: pytest.FixtureRequest):
     return build_sae_cfg(**params)
 
 
-def test_sparse_autoencoder_init(cfg: Any):
-    sparse_autoencoder = SparseAutoencoderBase(**cfg.get_sae_base_parameters())
+def test_sparse_autoencoder_init(cfg: LanguageModelSAERunnerConfig):
+    sparse_autoencoder = SparseAutoencoderBase.from_dict(cfg.get_base_sae_cfg_dict())
 
     assert isinstance(sparse_autoencoder, SparseAutoencoderBase)
 
@@ -76,7 +76,7 @@ def test_sparse_autoencoder_init(cfg: Any):
 def test_SparseAutoencoder_save_and_load_from_pretrained(tmp_path: Path) -> None:
     cfg = build_sae_cfg(device="cpu")
     model_path = str(tmp_path)
-    sparse_autoencoder = SparseAutoencoderBase(**cfg.get_sae_base_parameters())
+    sparse_autoencoder = SparseAutoencoderBase.from_dict(cfg.get_base_sae_cfg_dict())
     sparse_autoencoder_state_dict = sparse_autoencoder.state_dict()
     sparse_autoencoder.save_model(model_path)
 
@@ -141,5 +141,5 @@ def test_SparseAutoencoder_get_name_returns_correct_name_from_cfg_vals() -> None
     cfg = build_sae_cfg(
         model_name="test_model", hook_point="test_hook_point", d_sae=128
     )
-    sae = SparseAutoencoderBase(**cfg.get_sae_base_parameters())
+    sae = SparseAutoencoderBase.from_dict(cfg.get_base_sae_cfg_dict())
     assert sae.get_name() == "sparse_autoencoder_test_model_test_hook_point_128"

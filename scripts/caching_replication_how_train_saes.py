@@ -80,7 +80,7 @@ cfg = CacheActivationsRunnerConfig(
     # Misc
     device=device,
     seed=42,
-    dtype=torch.float16,
+    dtype="float16",
 )
 # look at the next cell to see some instruction for what to do while this is running.
 

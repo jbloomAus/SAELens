@@ -1,7 +1,6 @@
 import copy
 from typing import Any
 
-import torch
 from transformer_lens import HookedTransformer
 
 from sae_lens.training.config import LanguageModelSAERunnerConfig
@@ -40,10 +39,10 @@ def build_sae_cfg(**kwargs: Any) -> LanguageModelSAERunnerConfig:
         wandb_project="test_project",
         wandb_entity="test_entity",
         wandb_log_frequency=10,
-        device=torch.device("cpu"),
+        device="cpu",
         seed=24,
         checkpoint_path="test/checkpoints",
-        dtype=torch.float32,
+        dtype="float32",
         prepend_bos=True,
     )
 

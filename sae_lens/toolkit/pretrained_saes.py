@@ -108,18 +108,7 @@ def convert_connor_rob_sae_to_our_saelens_format(
 
     """
 
-    ae_alt = SparseAutoencoderBase(
-        d_in=int(config["act_size"]),
-        d_sae=int(config["act_size"]),
-        dtype=torch.float32,
-        device=device,
-        model_name=config["model_name"],  # type: ignore
-        hook_point=config["act_name"],  # type: ignore
-        hook_point_layer=int(config["layer"]),
-        hook_point_head_index=None,
-        activation_fn="relu",
-        apply_b_dec_to_input=True,
-    )
+    ae_alt = SparseAutoencoderBase.from_dict(config)
     ae_alt.load_state_dict(state_dict)
     return ae_alt
 

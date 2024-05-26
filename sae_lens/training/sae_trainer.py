@@ -34,7 +34,7 @@ def _update_sae_lens_training_version(sae: TrainingSparseAutoencoder) -> None:
     """
     Make sure we record the version of SAELens used for the training run
     """
-    sae.sae_lens_training_version = __version__
+    sae.cfg.sae_lens_training_version = str(__version__)
 
 
 @dataclass
@@ -128,7 +128,19 @@ class SAETrainer:
             final_l1_coefficient=cfg.l1_coefficient,
         )
 
+        # Setup autocast if using
+        self.scaler = torch.cuda.amp.GradScaler(enabled=self.cfg.autocast)
+
         self.mse_loss_fn = self._get_mse_loss_fn()
+
+        if self.cfg.autocast:
+            self.autocast_if_enabled = torch.autocast(
+                device_type="cuda",
+                dtype=torch.bfloat16,
+                enabled=self.cfg.autocast,
+            )
+        else:
+            self.autocast_if_enabled = contextlib.nullcontext()
 
     @property
     def feature_sparsity(self) -> torch.Tensor:
@@ -210,38 +222,25 @@ class SAETrainer:
 
         # log and then reset the feature sparsity every feature_sampling_window steps
         if (self.n_training_steps + 1) % self.cfg.feature_sampling_window == 0:
-
             if self.cfg.log_to_wandb:
                 sparsity_log_dict = self._build_sparsity_log_dict()
                 wandb.log(sparsity_log_dict, step=self.n_training_steps)
-
             self._reset_running_sparsity_stats()
-
-        # Setup autocast if using
-        scaler = torch.cuda.amp.GradScaler(enabled=self.cfg.autocast)
-        if self.cfg.autocast:
-            autocast_if_enabled = torch.autocast(
-                device_type="cuda",
-                dtype=torch.bfloat16,
-                enabled=self.cfg.autocast,
-            )
-        else:
-            autocast_if_enabled = contextlib.nullcontext()
 
         # for documentation on autocasting see:
         # https://pytorch.org/tutorials/recipes/recipes/amp_recipe.html
-        with autocast_if_enabled:
+        with self.autocast_if_enabled:
             train_step_output = self._training_forward_pass(sae_in)
 
         # Scaler will rescale gradients if autocast is enabled
-        scaler.scale(
+        self.scaler.scale(
             train_step_output.loss
         ).backward()  # loss.backward() if not autocasting
-        scaler.unscale_(self.optimizer)  # needed to clip correctly
+        self.scaler.unscale_(self.optimizer)  # needed to clip correctly
         # TODO: Work out if grad norm clipping should be in config / how to test it.
         torch.nn.utils.clip_grad_norm_(sparse_autoencoder.parameters(), 1.0)
-        scaler.step(self.optimizer)  # just ctx.optimizer.step() if not autocasting
-        scaler.update()
+        self.scaler.step(self.optimizer)  # just ctx.optimizer.step() if not autocasting
+        self.scaler.update()
 
         if self.cfg.normalize_sae_decoder:
             sparse_autoencoder.remove_gradient_parallel_to_decoder_directions()

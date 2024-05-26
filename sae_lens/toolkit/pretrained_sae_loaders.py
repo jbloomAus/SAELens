@@ -1,5 +1,5 @@
 import json
-from typing import Any, Protocol
+from typing import Any, Optional, Protocol
 
 import torch
 from huggingface_hub import hf_hub_download
@@ -21,7 +21,7 @@ class PretrainedSaeLoader(Protocol):
 def sae_lens_loader(
     repo_id: str,
     folder_name: str,
-    device: str | torch.device | None = None,
+    device: Optional[str] = None,
     force_download: bool = False,
 ) -> tuple[dict[str, Any], dict[str, torch.Tensor]]:
     cfg_filename = f"{folder_name}/cfg.json"
@@ -33,6 +33,8 @@ def sae_lens_loader(
     sae_path = hf_hub_download(
         repo_id=repo_id, filename=weights_filename, force_download=force_download
     )
+    if device is None:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
 
     return load_pretrained_sae_lens_sae_components(cfg_path, sae_path, device)
 
@@ -40,8 +42,8 @@ def sae_lens_loader(
 def load_pretrained_sae_lens_sae_components(
     cfg_path: str,
     weight_path: str,
-    device: str | torch.device | None = None,
-    dtype: torch.dtype = torch.float32,
+    device: str = "cpu",
+    dtype: str = "float32",
 ) -> tuple[dict[str, Any], dict[str, torch.Tensor]]:
     with open(cfg_path, "r") as f:
         config = json.load(f)
@@ -70,5 +72,5 @@ def load_pretrained_sae_lens_sae_components(
 # TODO: add more loaders for other SAEs not trained by us
 
 NAMED_PRETRAINED_SAE_LOADERS: dict[str, PretrainedSaeLoader] = {
-    "sae_lens": sae_lens_loader,
+    "sae_lens": sae_lens_loader,  # type: ignore
 }

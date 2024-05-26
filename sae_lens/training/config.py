@@ -9,6 +9,10 @@ import wandb
 from sae_lens import __version__
 
 DTYPE_MAP = {
+    "float32": torch.float32,
+    "float64": torch.float64,
+    "float16": torch.float16,
+    "bfloat16": torch.bfloat16,
     "torch.float32": torch.float32,
     "torch.float64": torch.float64,
     "torch.float16": torch.float16,
@@ -63,12 +67,10 @@ class LanguageModelSAERunnerConfig:
     normalize_activations: bool = False
 
     # Misc
-    device: str | torch.device = "cpu"
-    act_store_device: str | torch.device = (
-        "with_model"  # will be set by post init if with_model
-    )
+    device: str = "cpu"
+    act_store_device: str = "with_model"  # will be set by post init if with_model
     seed: int = 42
-    dtype: str | torch.dtype = "torch.float32"  # type: ignore #
+    dtype: str = "float32"  # type: ignore #
     prepend_bos: bool = True
 
     # Performance - see compilation section of lm_runner.py for info
@@ -180,23 +182,14 @@ class LanguageModelSAERunnerConfig:
                 "Weighting loss by decoder norm makes no sense if you are normalizing the decoder weight norms to 1"
             )
 
-        if isinstance(self.dtype, str) and self.dtype not in DTYPE_MAP:
-            raise ValueError(
-                f"dtype must be one of {list(DTYPE_MAP.keys())}. Got {self.dtype}"
-            )
-        elif isinstance(self.dtype, str):
-            self.dtype: torch.dtype = DTYPE_MAP[self.dtype]
-
         # if we use decoder fine tuning, we can't be applying b_dec to the input
         if (self.finetuning_method == "decoder") and (self.apply_b_dec_to_input):
             raise ValueError(
                 "If we are fine tuning the decoder, we can't be applying b_dec to the input.\nSet apply_b_dec_to_input to False."
             )
 
-        self.device: str | torch.device = torch.device(self.device)
         if self.act_store_device == "with_model":
             self.act_store_device = self.device
-        self.act_store_device = torch.device(self.act_store_device)
 
         if self.lr_end is None:
             self.lr_end = self.lr / 10
@@ -264,7 +257,7 @@ class LanguageModelSAERunnerConfig:
     def total_training_steps(self) -> int:
         return self.total_training_tokens // self.train_batch_size_tokens
 
-    def get_sae_base_parameters(self) -> dict[str, Any]:
+    def get_base_sae_cfg_dict(self) -> dict[str, Any]:
         return {
             "d_in": self.d_in,
             "d_sae": self.d_sae,
@@ -274,8 +267,27 @@ class LanguageModelSAERunnerConfig:
             "hook_point": self.hook_point,
             "hook_point_layer": self.hook_point_layer,
             "hook_point_head_index": self.hook_point_head_index,
-            "activation_fn": self.activation_fn,
+            "activation_fn_str": self.activation_fn,
             "apply_b_dec_to_input": self.apply_b_dec_to_input,
+            "context_size": self.context_size,
+            "prepend_bos": self.prepend_bos,
+            "dataset_path": self.dataset_path,
+            "uses_scaling_factor": self.finetuning_method is not None,
+            "sae_lens_training_version": self.sae_lens_training_version,
+        }
+
+    def get_training_sae_cfg_dict(self) -> dict[str, Any]:
+        return {
+            **self.get_base_sae_cfg_dict(),
+            "l1_coefficient": self.l1_coefficient,
+            "lp_norm": self.lp_norm,
+            "use_ghost_grads": self.use_ghost_grads,
+            "normalize_sae_decoder": self.normalize_sae_decoder,
+            "noise_scale": self.noise_scale,
+            "decoder_orthogonal_init": self.decoder_orthogonal_init,
+            "mse_loss_normalization": self.mse_loss_normalization,
+            "decoder_heuristic_init": self.decoder_heuristic_init,
+            "init_encoder_as_decoder_transpose": self.init_encoder_as_decoder_transpose,
         }
 
     def to_dict(self) -> dict[str, Any]:
@@ -337,12 +349,10 @@ class CacheActivationsRunnerConfig:
     normalize_activations: bool = False
 
     # Misc
-    device: str | torch.device = "cpu"
-    act_store_device: str | torch.device = (
-        "with_model"  # will be set by post init if with_model
-    )
+    device: str = "cpu"
+    act_store_device: str = "with_model"  # will be set by post init if with_model
     seed: int = 42
-    dtype: str | torch.dtype = "torch.float32"
+    dtype: str = "float32"
     prepend_bos: bool = True
     autocast_lm: bool = False  # autocast lm during activation fetching
 
@@ -405,7 +415,7 @@ class ToyModelSAERunnerConfig:
     wandb_log_frequency: int = 50
 
     # Misc
-    device: str | torch.device = "cuda" if torch.cuda.is_available() else "cpu"
+    device: str = "cuda" if torch.cuda.is_available() else "cpu"
     seed: int = 42
     checkpoint_path: str = "checkpoints"
     dtype: str | torch.dtype = "float32"
@@ -420,7 +430,7 @@ class ToyModelSAERunnerConfig:
         elif isinstance(self.dtype, str):
             self.dtype = DTYPE_MAP[self.dtype]
 
-    def get_sae_base_parameters(self) -> dict[str, Any]:
+    def get_base_sae_cfg_dict(self) -> dict[str, Any]:
         # TO DO: Have the same hyperparameters as in the main sae runner.
         return {
             "d_in": self.d_in,

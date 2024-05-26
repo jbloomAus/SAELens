@@ -1,6 +1,6 @@
 import pytest
-import torch
 
+from sae_lens import __version__
 from sae_lens.training.config import LanguageModelSAERunnerConfig
 
 TINYSTORIES_MODEL = "tiny-stories-1M"
@@ -45,18 +45,23 @@ def test_sae_training_runner_config_get_sae_base_parameters():
     cfg = LanguageModelSAERunnerConfig()
 
     expected_config = {
-        "activation_fn": "relu",
-        "apply_b_dec_to_input": True,
         "d_in": 512,
         "d_sae": 2048,
-        "dtype": torch.float32,
+        "activation_fn_str": "relu",
+        "apply_b_dec_to_input": True,
+        "dtype": "float32",
+        "model_name": "gelu-2l",
         "hook_point": "blocks.0.hook_mlp_out",
         "hook_point_head_index": None,
         "hook_point_layer": 0,
-        "model_name": "gelu-2l",
-        "device": torch.device("cpu"),
+        "device": "cpu",
+        "context_size": 128,
+        "prepend_bos": True,
+        "uses_scaling_factor": False,
+        "dataset_path": "NeelNanda/c4-tokenized-2b",
+        "sae_lens_training_version": str(__version__),
     }
-    assert expected_config == cfg.get_sae_base_parameters()
+    assert expected_config == cfg.get_base_sae_cfg_dict()
 
 
 def test_sae_training_runner_config_raises_error_if_resume_true():

@@ -2,8 +2,6 @@
 import os
 import sys
 
-import torch
-
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
 from sae_lens.sae_training_runner import SAETrainingRunner
@@ -50,7 +48,7 @@ cfg = LanguageModelSAERunnerConfig(
     device="cuda",
     seed=42,
     checkpoint_path="checkpoints",
-    dtype=torch.float32,
+    dtype="float32",
     model_kwargs={
         "fast_ssm": True,
         "fast_conv": True,

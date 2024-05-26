@@ -4,7 +4,8 @@ import torch
 from transformer_lens import HookedTransformer
 from transformer_lens.hook_points import HookPoint
 
-from sae_lens import HookedSAETransformer, SparseAutoencoderBase
+from sae_lens import HookedSAETransformer
+from sae_lens.training.sparse_autoencoder import SAEConfig, SparseAutoencoderBase
 
 MODEL = "solu-1l"
 prompt = "Hello World!"
@@ -40,19 +41,25 @@ def get_hooked_sae(model: HookedTransformer, act_name: str) -> SparseAutoencoder
     site = act_name.split(".")[-1]
     d_in = site_to_size[site]
 
-    sae_cfg = dict(
+    sae_cfg = SAEConfig(
         d_in=d_in,
         d_sae=d_in * 2,
-        dtype=torch.float32,
+        dtype="float32",
         device="cpu",
         model_name=MODEL,
         hook_point=act_name,
         hook_point_layer=0,
         hook_point_head_index=None,
-        activation_fn="relu",
+        activation_fn_str="relu",
+        prepend_bos=True,
+        context_size=128,
+        dataset_path="test",
+        apply_b_dec_to_input=False,
+        uses_scaling_factor=False,
+        sae_lens_training_version=None,
     )
 
-    return SparseAutoencoderBase(**sae_cfg)  # type: ignore
+    return SparseAutoencoderBase(sae_cfg)
 
 
 @pytest.fixture(
@@ -82,7 +89,7 @@ def test_forward_reconstructs_input(
 ):
     """Verfiy that the HookedSAE returns an output with the same shape as the input activations."""
 
-    act_name = hooked_sae.hook_point
+    act_name = hooked_sae.cfg.hook_point
     _, cache = model.run_with_cache(prompt, names_filter=act_name)
     x = cache[act_name]
 
@@ -93,7 +100,7 @@ def test_forward_reconstructs_input(
 def test_run_with_cache(model: HookedTransformer, hooked_sae: SparseAutoencoderBase):
     """Verifies that run_with_cache caches SAE activations"""
 
-    act_name = hooked_sae.hook_point
+    act_name = hooked_sae.cfg.hook_point
     _, cache = model.run_with_cache(prompt, names_filter=act_name)
     x = cache[act_name]
 
@@ -111,7 +118,7 @@ def test_run_with_hooks(model: HookedTransformer, hooked_sae: SparseAutoencoderB
     """Verifies that run_with_hooks works with SAE activations"""
 
     c = Counter()
-    act_name = hooked_sae.hook_point
+    act_name = hooked_sae.cfg.hook_point
 
     _, cache = model.run_with_cache(prompt, names_filter=act_name)
     x = cache[act_name]
@@ -136,7 +143,7 @@ def test_error_term(model: HookedTransformer, hooked_sae: SparseAutoencoderBase)
     """Verifies that that if we use error_terms, HookedSAE returns an output that is equal tdef test_feature_grads_with_error_term(model: HookedTransformer, hooked_sae: SparseAutoencoderBase):
     o the input activations."""
 
-    act_name = hooked_sae.hook_point
+    act_name = hooked_sae.cfg.hook_point
     hooked_sae.use_error_term = True
 
     _, cache = model.run_with_cache(prompt, names_filter=act_name)
@@ -148,7 +155,7 @@ def test_error_term(model: HookedTransformer, hooked_sae: SparseAutoencoderBase)
 
     """Verifies that pytorch backward computes the correct feature gradients when using error_terms. Motivated by the need to compute feature gradients for attribution patching."""
 
-    act_name = hooked_sae.hook_point
+    act_name = hooked_sae.cfg.hook_point
     hooked_sae.use_error_term = True
 
     # Get input activations

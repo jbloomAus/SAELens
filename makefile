@@ -15,10 +15,10 @@ test:
 	make acceptance-test
 
 unit-test:
-	poetry run pytest -v --cov=sae_lens/training/ --cov-report=term-missing --cov-branch tests/unit
+	poetry run pytest -v --cov=sae_lens/ --cov-report=term-missing --cov-branch tests/unit
 
 acceptance-test:
-	poetry run pytest -v --cov=sae_lens/training/ --cov-report=term-missing --cov-branch tests/acceptance
+	poetry run pytest -v --cov=sae_lens/ --cov-report=term-missing --cov-branch tests/acceptance
 
 check-ci:
 	make check-format

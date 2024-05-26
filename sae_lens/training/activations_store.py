@@ -19,6 +19,7 @@ from torch.utils.data import DataLoader
 from transformer_lens.hook_points import HookedRootModule
 
 from sae_lens.training.config import (
+    DTYPE_MAP,
     CacheActivationsRunnerConfig,
     LanguageModelSAERunnerConfig,
 )
@@ -39,6 +40,7 @@ class ActivationsStore:
     hook_point_head_index: int | None
     _dataloader: Iterator[Any] | None = None
     _storage_buffer: torch.Tensor | None = None
+    device: torch.device
 
     @classmethod
     def from_config(
@@ -69,7 +71,7 @@ class ActivationsStore:
             train_batch_size_tokens=cfg.train_batch_size_tokens,
             prepend_bos=cfg.prepend_bos,
             normalize_activations=cfg.normalize_activations,
-            device=cfg.act_store_device,
+            device=torch.device(cfg.act_store_device),
             dtype=cfg.dtype,
             cached_activations_path=cached_activations_path,
             model_kwargs=cfg.model_kwargs,
@@ -92,8 +94,8 @@ class ActivationsStore:
         train_batch_size_tokens: int,
         prepend_bos: bool,
         normalize_activations: bool,
-        device: str | torch.device,
-        dtype: str | torch.dtype,
+        device: torch.device,
+        dtype: str,
         cached_activations_path: str | None = None,
         model_kwargs: dict[str, Any] | None = None,
         autocast_lm: bool = False,
@@ -118,8 +120,8 @@ class ActivationsStore:
         self.train_batch_size_tokens = train_batch_size_tokens
         self.prepend_bos = prepend_bos
         self.normalize_activations = normalize_activations
-        self.device = device
-        self.dtype = dtype
+        self.device = torch.device(device)
+        self.dtype = DTYPE_MAP[dtype]
         self.cached_activations_path = cached_activations_path
         self.autocast_lm = autocast_lm
 

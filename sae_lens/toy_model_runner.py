@@ -42,7 +42,7 @@ def toy_model_sae_runner(cfg: ToyModelSAERunnerConfig):
     )
 
     sparse_autoencoder = SparseAutoencoderBase(
-        **cfg.get_sae_base_parameters(),
+        **cfg.get_base_sae_cfg_dict(),
     )  # config has the hyperparameters for the SAE
 
     if cfg.log_to_wandb:

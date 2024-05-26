@@ -108,7 +108,7 @@ for l1_coefficient in [2, 5, 10]:
         seed=42,
         n_checkpoints=0,
         checkpoint_path="checkpoints",
-        dtype=torch.float32,
+        dtype="float32",
     )
 
     # look at the next cell to see some instruction for what to do while this is running.

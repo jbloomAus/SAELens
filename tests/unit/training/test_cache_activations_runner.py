@@ -74,7 +74,7 @@ def test_cache_activations_runner(tmp_path: Path):
         # Misc
         device=device,
         seed=42,
-        dtype=torch.float16,
+        dtype="float16",
     )
 
     # look at the next cell to see some instruction for what to do while this is running.
@@ -151,7 +151,7 @@ def test_load_cached_activations():
         # Misc
         device=device,
         seed=42,
-        dtype=torch.float16,
+        dtype="float16",
     )
 
     model = HookedTransformer.from_pretrained(cfg.model_name)

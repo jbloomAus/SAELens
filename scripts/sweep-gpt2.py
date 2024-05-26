@@ -104,7 +104,7 @@ for l1_coefficient in [0.1, 1, 2, 4, 10]:
             seed=42,
             n_checkpoints=0,
             checkpoint_path="checkpoints",
-            dtype=torch.float32,
+            dtype="float32",
             eval_batch_size_prompts=2,
             autocast=True,
             compile_llm=True,

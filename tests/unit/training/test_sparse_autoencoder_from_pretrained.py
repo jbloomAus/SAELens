@@ -24,8 +24,8 @@ def test_SparseAutoencoder_from_pretrained_loads_from_hugginface_using_shorthand
             state_dict[k] = f.get_tensor(k)
 
     assert isinstance(sae, SparseAutoencoderBase)
-    assert sae.model_name == "gpt2-small"
-    assert sae.hook_point == "blocks.0.hook_resid_pre"
+    assert sae.cfg.model_name == "gpt2-small"
+    assert sae.cfg.hook_point == "blocks.0.hook_resid_pre"
 
     for k in sae.state_dict().keys():
         if k == "scaling_factor":

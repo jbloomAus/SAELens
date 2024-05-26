@@ -18,8 +18,8 @@ def run_evals(
     eval_batch_size_prompts: int | None = None,
     model_kwargs: Mapping[str, Any] = {},
 ) -> Mapping[str, Any]:
-    hook_point = sparse_autoencoder.hook_point
-    hook_point_head_index = sparse_autoencoder.hook_point_head_index
+    hook_point = sparse_autoencoder.cfg.hook_point
+    hook_point_head_index = sparse_autoencoder.cfg.hook_point_head_index
     ### Evals
     eval_tokens = activation_store.get_batch_tokens(eval_batch_size_prompts)
 
@@ -122,8 +122,8 @@ def get_recons_loss(
     activation_store: ActivationsStore,
     model_kwargs: Mapping[str, Any] = {},
 ):
-    hook_point = sparse_autoencoder.hook_point
-    head_index = sparse_autoencoder.hook_point_head_index
+    hook_point = sparse_autoencoder.cfg.hook_point
+    head_index = sparse_autoencoder.cfg.hook_point_head_index
 
     loss = model(batch_tokens, return_type="loss", **model_kwargs)
 

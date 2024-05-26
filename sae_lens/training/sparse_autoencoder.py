@@ -4,6 +4,7 @@ https://github.com/ArthurConmy/sae/blob/main/sae/model.py
 
 import json
 import os
+from dataclasses import dataclass
 from typing import Any, Callable, Optional, Tuple
 
 import einops
@@ -25,14 +26,13 @@ SAE_WEIGHTS_PATH = "sae_weights.safetensors"
 SAE_CFG_PATH = "cfg.json"
 
 
-class SparseAutoencoderBase(HookedRootModule):
-    """ """
+@dataclass
+class SAEConfig:
 
     # forward pass details.
     d_in: int
     d_sae: int
     activation_fn_str: str
-    activation_fn: Callable[[torch.Tensor], torch.Tensor]
     apply_b_dec_to_input: bool
     uses_scaling_factor: bool
 
@@ -46,56 +46,159 @@ class SparseAutoencoderBase(HookedRootModule):
     dataset_path: str
 
     # misc
-    dtype: torch.dtype
-    device: str | torch.device
+    dtype: str
+    device: str
     sae_lens_training_version: Optional[str]
 
+    @classmethod
+    def from_dict(cls, config_dict: dict[str, Any]) -> "SAEConfig":
+
+        # rename dict:
+        rename_dict = {
+            "activation_fn": "activation_fn_str",
+        }
+        config_dict = {rename_dict.get(k, k): v for k, v in config_dict.items()}
+
+        # use only config terms that are in the dataclass
+        config_dict = {
+            k: v for k, v in config_dict.items() if k in cls.__dataclass_fields__
+        }
+        return cls(**config_dict)
+
+    # def __post_init__(self):
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "d_in": self.d_in,
+            "d_sae": self.d_sae,
+            "dtype": self.dtype,
+            "device": self.device,
+            "model_name": self.model_name,
+            "hook_point": self.hook_point,
+            "hook_point_layer": self.hook_point_layer,
+            "hook_point_head_index": self.hook_point_head_index,
+            "activation_fn_str": self.activation_fn_str,  # use string for serialization
+            "apply_b_dec_to_input": self.apply_b_dec_to_input,
+            "uses_scaling_factor": self.uses_scaling_factor,
+            "sae_lens_training_version": self.sae_lens_training_version,
+            "prepend_bos": self.prepend_bos,
+            "dataset_path": self.dataset_path,
+            "context_size": self.context_size,
+        }
+
+
+@dataclass
+class TrainingSAEConfig(SAEConfig):
+
+    # Sparsity Loss Calculations
+    l1_coefficient: float
+    lp_norm: float
+    use_ghost_grads: bool
+    normalize_sae_decoder: bool
+    noise_scale: float
+    decoder_orthogonal_init: bool
+    mse_loss_normalization: Optional[str]
+    decoder_heuristic_init: bool = False
+    init_encoder_as_decoder_transpose: bool = False
+
+    @classmethod
+    def from_sae_runner_config(
+        cls, cfg: LanguageModelSAERunnerConfig
+    ) -> "TrainingSAEConfig":
+
+        return cls(
+            # base confg
+            d_in=cfg.d_in,
+            d_sae=cfg.d_sae,  # type: ignore
+            dtype=cfg.dtype,
+            device=cfg.device,
+            model_name=cfg.model_name,
+            hook_point=cfg.hook_point,
+            hook_point_layer=cfg.hook_point_layer,
+            hook_point_head_index=cfg.hook_point_head_index,
+            activation_fn_str=cfg.activation_fn,
+            apply_b_dec_to_input=cfg.apply_b_dec_to_input,
+            uses_scaling_factor=cfg.finetuning_method is not None,
+            sae_lens_training_version=cfg.sae_lens_training_version,
+            context_size=cfg.context_size,
+            dataset_path=cfg.dataset_path,
+            prepend_bos=cfg.prepend_bos,
+            # Training cfg
+            l1_coefficient=cfg.l1_coefficient,
+            lp_norm=cfg.lp_norm,
+            use_ghost_grads=cfg.use_ghost_grads,
+            normalize_sae_decoder=cfg.normalize_sae_decoder,
+            noise_scale=cfg.noise_scale,
+            decoder_orthogonal_init=cfg.decoder_orthogonal_init,
+            mse_loss_normalization=cfg.mse_loss_normalization,
+        )
+
+    @classmethod
+    def from_dict(cls, config_dict: dict[str, Any]) -> "TrainingSAEConfig":
+        return TrainingSAEConfig(**config_dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "l1_coefficient": self.l1_coefficient,
+            "lp_norm": self.lp_norm,
+            "use_ghost_grads": self.use_ghost_grads,
+            "normalize_sae_decoder": self.normalize_sae_decoder,
+            "noise_scale": self.noise_scale,
+            "decoder_orthogonal_init": self.decoder_orthogonal_init,
+            "init_encoder_as_decoder_transpose": self.init_encoder_as_decoder_transpose,
+            "mse_loss_normalization": self.mse_loss_normalization,
+        }
+
+    # this needs to exist so we can initialize the parent sae cfg without the training specific
+    # parameters. Maybe there's a cleaner way to do this
+    def get_base_sae_cfg_dict(self) -> dict[str, Any]:
+        return {
+            "d_in": self.d_in,
+            "d_sae": self.d_sae,
+            "activation_fn_str": self.activation_fn_str,
+            "apply_b_dec_to_input": self.apply_b_dec_to_input,
+            "dtype": self.dtype,
+            "model_name": self.model_name,
+            "hook_point": self.hook_point,
+            "hook_point_layer": self.hook_point_layer,
+            "hook_point_head_index": self.hook_point_head_index,
+            "device": self.device,
+            "context_size": self.context_size,
+            "prepend_bos": self.prepend_bos,
+            "uses_scaling_factor": self.uses_scaling_factor,
+            "dataset_path": self.dataset_path,
+            "sae_lens_training_version": self.sae_lens_training_version,
+        }
+
+
+class SparseAutoencoderBase(HookedRootModule):
+    """ """
+
+    cfg: SAEConfig
+    dtype: torch.dtype
+    device: torch.device
+
     # analysis
-    use_error_term = False
+    use_error_term: bool
 
     def __init__(
         self,
-        d_in: int,
-        d_sae: int,
-        dtype: str | torch.dtype,
-        device: str | torch.device,
-        model_name: str,
-        hook_point: str,
-        hook_point_layer: int,
-        hook_point_head_index: Optional[int] = None,
-        activation_fn: str = "relu",
-        apply_b_dec_to_input: bool = True,
-        uses_scaling_factor: bool = False,
-        sae_lens_training_version: Optional[str] = None,
-        prepend_bos: bool = True,
-        dataset_path: str = "unknown",
-        context_size: int = 256,
+        cfg: SAEConfig,
+        use_error_term: bool = False,
     ):
         super().__init__()
 
-        self.d_in = d_in
-        self.d_sae = d_sae  # type: ignore
-        self.activation_fn_str = activation_fn
-        self.activation_fn = get_activation_fn(activation_fn)
-        self.apply_b_dec_to_input = apply_b_dec_to_input
-        self.uses_scaling_factor = uses_scaling_factor
-
-        self.model_name = model_name
-        self.hook_point = hook_point
-        self.hook_point_layer = hook_point_layer
-        self.hook_point_head_index = hook_point_head_index
-        self.dataset_path = dataset_path
-        self.prepend_bos = prepend_bos
-        self.context_size = context_size
-
-        self.dtype = dtype if isinstance(dtype, torch.dtype) else DTYPE_MAP[dtype]
-        self.device = device
-        self.sae_lens_training_version = sae_lens_training_version
+        self.cfg = cfg
+        self.activation_fn = get_activation_fn(cfg.activation_fn_str)
+        self.dtype = DTYPE_MAP[cfg.dtype]
+        self.device = torch.device(cfg.device)
+        self.use_error_term = use_error_term
 
         self.initialize_weights_basic()
 
         # handle presence / absence of scaling factor.
-        if self.uses_scaling_factor:
+        if self.cfg.uses_scaling_factor:
             self.apply_scaling_factor = lambda x: x * self.scaling_factor
         else:
             self.apply_scaling_factor = lambda x: x
@@ -116,7 +219,7 @@ class SparseAutoencoderBase(HookedRootModule):
         self.reshape_fn_in = lambda x: x
         self.reshape_fn_out = lambda x, d_head: x
         self.d_head = None
-        if self.hook_point.endswith("_z"):
+        if self.cfg.hook_point.endswith("_z"):
 
             def reshape_fn_in(x: torch.Tensor):
                 self.d_head = x.shape[-1]  # type: ignore
@@ -127,7 +230,7 @@ class SparseAutoencoderBase(HookedRootModule):
 
             self.reshape_fn_in = reshape_fn_in
 
-        if self.hook_point.endswith("_z"):
+        if self.cfg.hook_point.endswith("_z"):
             self.reshape_fn_out = lambda x, d_head: einops.rearrange(
                 x, "... (n_heads d_head) -> ... n_heads d_head", d_head=d_head
             )
@@ -138,32 +241,36 @@ class SparseAutoencoderBase(HookedRootModule):
 
         # no config changes encoder bias init for now.
         self.b_enc = nn.Parameter(
-            torch.zeros(self.d_sae, dtype=self.dtype, device=self.device)
+            torch.zeros(self.cfg.d_sae, dtype=self.dtype, device=self.device)
         )
 
         # Start with the default init strategy:
         self.W_dec = nn.Parameter(
             torch.nn.init.kaiming_uniform_(
-                torch.empty(self.d_sae, self.d_in, dtype=self.dtype, device=self.device)
+                torch.empty(
+                    self.cfg.d_sae, self.cfg.d_in, dtype=self.dtype, device=self.device
+                )
             )
         )
 
         self.W_enc = nn.Parameter(
             torch.nn.init.kaiming_uniform_(
-                torch.empty(self.d_in, self.d_sae, dtype=self.dtype, device=self.device)
+                torch.empty(
+                    self.cfg.d_in, self.cfg.d_sae, dtype=self.dtype, device=self.device
+                )
             )
         )
 
         # methdods which change b_dec as a function of the dataset are implemented after init.
         self.b_dec = nn.Parameter(
-            torch.zeros(self.d_in, dtype=self.dtype, device=self.device)
+            torch.zeros(self.cfg.d_in, dtype=self.dtype, device=self.device)
         )
 
         # scaling factor for fine-tuning (not to be used in initial training)
         # TODO: Make this optional and not included with all SAEs by default (but maintain backwards compatibility)
-        if self.uses_scaling_factor:
+        if self.cfg.uses_scaling_factor:
             self.scaling_factor = nn.Parameter(
-                torch.ones(self.d_sae, dtype=self.dtype, device=self.device)
+                torch.ones(self.cfg.d_sae, dtype=self.dtype, device=self.device)
             )
 
     # Basic Forward Pass Functionality.
@@ -189,7 +296,7 @@ class SparseAutoencoderBase(HookedRootModule):
                 sae_in = self.reshape_fn_in(x)  # type: ignore
 
                 # apply b_dec_to_input if using that method.
-                sae_in_cent = sae_in - (self.b_dec * self.apply_b_dec_to_input)
+                sae_in_cent = sae_in - (self.b_dec * self.cfg.apply_b_dec_to_input)
 
                 # "... d_in, d_in d_sae -> ... d_sae",
                 hidden_pre = sae_in_cent @ self.W_enc + self.b_enc
@@ -216,7 +323,7 @@ class SparseAutoencoderBase(HookedRootModule):
         x = self.reshape_fn_in(x)  # type: ignore
 
         # apply b_dec_to_input if using that method.
-        sae_in = self.hook_sae_input(x - (self.b_dec * self.apply_b_dec_to_input))
+        sae_in = self.hook_sae_input(x - (self.b_dec * self.cfg.apply_b_dec_to_input))
 
         # "... d_in, d_in d_sae -> ... d_sae",
         hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
@@ -247,7 +354,7 @@ class SparseAutoencoderBase(HookedRootModule):
         save_file(self.state_dict(), f"{path}/{SAE_WEIGHTS_PATH}")
 
         # save the config
-        config = self.get_config_dict()
+        config = self.cfg.to_dict()
 
         with open(f"{path}/{SAE_CFG_PATH}", "w") as f:
             json.dump(config, f)
@@ -258,7 +365,7 @@ class SparseAutoencoderBase(HookedRootModule):
 
     @classmethod
     def load_from_pretrained(
-        cls, path: str, device: str = "cpu", dtype: torch.dtype = torch.float32
+        cls, path: str, device: str = "cpu", dtype: str = "float32"
     ) -> "SparseAutoencoderBase":
 
         config_path = os.path.join(path, "cfg.json")
@@ -268,23 +375,9 @@ class SparseAutoencoderBase(HookedRootModule):
             config_path, weight_path, device, dtype
         )
 
-        sae = cls(
-            d_in=cfg_dict["d_in"],
-            d_sae=cfg_dict["d_sae"],
-            dtype=cfg_dict["dtype"],
-            device=cfg_dict["device"],
-            model_name=cfg_dict["model_name"],
-            hook_point=cfg_dict["hook_point"],
-            hook_point_layer=cfg_dict["hook_point_layer"],
-            hook_point_head_index=cfg_dict["hook_point_head_index"],
-            activation_fn=cfg_dict["activation_fn"],
-            apply_b_dec_to_input=cfg_dict["apply_b_dec_to_input"],
-            uses_scaling_factor=cfg_dict["uses_scaling_factor"],
-            prepend_bos=cfg_dict["prepend_bos"],
-            dataset_path=cfg_dict["dataset_path"],
-            context_size=cfg_dict["context_size"],
-        )
+        sae_cfg = SAEConfig.from_dict(cfg_dict)
 
+        sae = cls(sae_cfg)
         sae.load_state_dict(state_dict)
 
         return sae
@@ -336,92 +429,61 @@ class SparseAutoencoderBase(HookedRootModule):
             # default to True for backwards compatibility
             cfg_dict["prepend_bos"] = True
 
-        sae = cls(
-            d_in=cfg_dict["d_in"],
-            d_sae=cfg_dict["d_sae"],
-            dtype=cfg_dict["dtype"],
-            device=cfg_dict["device"],
-            model_name=cfg_dict["model_name"],
-            hook_point=cfg_dict["hook_point"],
-            hook_point_layer=cfg_dict["hook_point_layer"],
-            hook_point_head_index=cfg_dict["hook_point_head_index"],
-            activation_fn=(
-                cfg_dict["activation_fn"] if "activation_fn" in cfg_dict else "relu"
-            ),
-            context_size=cfg_dict["context_size"],
-            dataset_path=cfg_dict["dataset_path"],
-            prepend_bos=cfg_dict["prepend_bos"],
-        )
+        if "apply_b_dec_to_input" not in cfg_dict:
+            # default to False for backwards compatibility
+            cfg_dict["apply_b_dec_to_input"] = False
+
+        if "uses_scaling_factor" not in cfg_dict:
+            # default to False for backwards compatibility
+            cfg_dict["uses_scaling_factor"] = False
+
+        if "sae_lens_training_version" not in cfg_dict:
+            cfg_dict["sae_lens_training_version"] = None
+
+        if "activation_fn" not in cfg_dict:
+            cfg_dict["activation_fn_str"] = "relu"
+
+        sae = cls(SAEConfig.from_dict(cfg_dict))
         sae.load_state_dict(state_dict)
 
         return sae, cfg_dict
 
     def get_name(self):
-        sae_name = (
-            f"sparse_autoencoder_{self.model_name}_{self.hook_point}_{self.d_sae}"
-        )
+        sae_name = f"sparse_autoencoder_{self.cfg.model_name}_{self.cfg.hook_point}_{self.cfg.d_sae}"
         return sae_name
 
-    def get_config_dict(self):
-        return {
-            "d_in": self.d_in,
-            "d_sae": self.d_sae,
-            "dtype": str(self.dtype),
-            "device": str(self.device),
-            "model_name": self.model_name,
-            "hook_point": self.hook_point,
-            "hook_point_layer": self.hook_point_layer,
-            "hook_point_head_index": self.hook_point_head_index,
-            "activation_fn": self.activation_fn_str,  # use string for serialization
-            "apply_b_dec_to_input": self.apply_b_dec_to_input,
-            "uses_scaling_factor": self.uses_scaling_factor,
-            "sae_lens_training_version": self.sae_lens_training_version,
-            "prepend_bos": self.prepend_bos,
-            "dataset_path": self.dataset_path,
-            "context_size": self.context_size,
-        }
+    @classmethod
+    def from_dict(cls, config_dict: dict[str, Any]) -> "SparseAutoencoderBase":
+        return cls(SAEConfig.from_dict(config_dict))
 
 
 class TrainingSparseAutoencoder(SparseAutoencoderBase):
 
-    l1_coefficient: float
-    lp_norm: float
-    use_ghost_grads: bool
-    normalize_sae_decoder: bool
-    noise_scale: float
-    decoder_orthogonal_init: bool
-    mse_loss_normalization: Optional[str]
+    cfg: TrainingSAEConfig  # type: ignore
+    use_error_term: bool
+    dtype: torch.dtype
+    device: torch.device
 
-    def __init__(self, cfg: LanguageModelSAERunnerConfig):
+    def __init__(self, cfg: TrainingSAEConfig, use_error_term: bool = False):
 
-        super().__init__(
-            d_in=cfg.d_in,
-            d_sae=cfg.d_sae,  # type: ignore
-            dtype=cfg.dtype,
-            device=cfg.device,
-            model_name=cfg.model_name,
-            hook_point=cfg.hook_point,
-            hook_point_layer=cfg.hook_point_layer,
-            hook_point_head_index=cfg.hook_point_head_index,
-            activation_fn=cfg.activation_fn,
-            apply_b_dec_to_input=cfg.apply_b_dec_to_input,
-            uses_scaling_factor=cfg.finetuning_method is not None,
-            sae_lens_training_version=cfg.sae_lens_training_version,
-        )
+        base_sae_cfg = SAEConfig.from_dict(cfg.get_base_sae_cfg_dict())
+        super().__init__(base_sae_cfg)
+        self.cfg = cfg  # type: ignore
+        self.use_error_term = use_error_term
 
-        self.mse_loss_normalization = cfg.mse_loss_normalization
-        self.l1_coefficient = cfg.l1_coefficient
-        self.lp_norm = cfg.lp_norm
-        self.scale_sparsity_penalty_by_decoder_norm = (
-            cfg.scale_sparsity_penalty_by_decoder_norm
-        )
-        self.use_ghost_grads = cfg.use_ghost_grads
-        self.noise_scale = cfg.noise_scale
+        # self.mse_loss_normalization = cfg.mse_loss_normalization
+        # self.l1_coefficient = cfg.l1_coefficient
+        # self.lp_norm = cfg.lp_norm
+        # self.scale_sparsity_penalty_by_decoder_norm = (
+        #     cfg.scale_sparsity_penalty_by_decoder_norm
+        # )
+        # self.use_ghost_grads = cfg.use_ghost_grads
+        # self.noise_scale = cfg.noise_scale
 
-        self.normalize_sae_decoder = cfg.normalize_sae_decoder
-        self.decoder_orthogonal_init = cfg.decoder_orthogonal_init
-        self.decoder_heuristic_init = cfg.decoder_heuristic_init
-        self.init_encoder_as_decoder_transpose = cfg.init_encoder_as_decoder_transpose
+        # self.normalize_sae_decoder = cfg.normalize_sae_decoder
+        # self.decoder_orthogonal_init = cfg.decoder_orthogonal_init
+        # self.decoder_heuristic_init = cfg.decoder_heuristic_init
+        # self.init_encoder_as_decoder_transpose = cfg.init_encoder_as_decoder_transpose
 
         self.initialize_weights_complex()
 
@@ -429,6 +491,10 @@ class TrainingSparseAutoencoder(SparseAutoencoderBase):
         # reshaping.
         self.reshape_fn_in = lambda x: x
         self.reshape_fn_out = lambda x, d_head: x
+
+    @classmethod
+    def from_dict(cls, config_dict: dict[str, Any]) -> "TrainingSparseAutoencoder":
+        return cls(TrainingSAEConfig.from_dict(config_dict))
 
     def encode(
         self, x: Float[torch.Tensor, "... d_in"]
@@ -447,12 +513,12 @@ class TrainingSparseAutoencoder(SparseAutoencoderBase):
         x = self.reshape_fn_in(x)  # type: ignore
 
         # apply b_dec_to_input if using that method.
-        sae_in = self.hook_sae_input(x - (self.b_dec * self.apply_b_dec_to_input))
+        sae_in = self.hook_sae_input(x - (self.b_dec * self.cfg.apply_b_dec_to_input))
 
         # "... d_in, d_in d_sae -> ... d_sae",
         hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
         hidden_pre_noised = hidden_pre + (
-            torch.randn_like(hidden_pre) * self.noise_scale * self.training
+            torch.randn_like(hidden_pre) * self.cfg.noise_scale * self.training
         )
         feature_acts = self.hook_sae_acts_post(self.activation_fn(hidden_pre_noised))
 
@@ -470,47 +536,59 @@ class TrainingSparseAutoencoder(SparseAutoencoderBase):
 
     @classmethod
     def load_from_pretrained(  # type: ignore
-        cls, path: str, cfg: LanguageModelSAERunnerConfig
+        cls,
+        path: str,
+        device: str = "cpu",
+        dtype: str = "float32",
     ) -> "TrainingSparseAutoencoder":
 
-        base_sae = super().load_from_pretrained(
-            path=path,
-            device=cfg.device,  # type: ignore
-            dtype=cfg.dtype,
+        config_path = os.path.join(path, "cfg.json")
+        weight_path = os.path.join(path, "sae_weights.safetensors")
+
+        cfg_dict, state_dict = load_pretrained_sae_lens_sae_components(
+            config_path, weight_path, device, dtype
         )
 
-        sae = cls(cfg)
-        sae.load_state_dict(base_sae.state_dict())
+        sae_cfg = TrainingSAEConfig.from_dict(cfg_dict)
+
+        sae = cls(sae_cfg)
+        sae.load_state_dict(state_dict)
+
         return sae
 
     def initialize_weights_complex(self):
         """ """
 
-        if self.decoder_orthogonal_init:
+        if self.cfg.decoder_orthogonal_init:
             self.W_dec.data = nn.init.orthogonal_(self.W_dec.data.T).T
 
-        elif self.decoder_heuristic_init:
+        elif self.cfg.decoder_heuristic_init:
             self.W_dec = nn.Parameter(
-                torch.rand(self.d_sae, self.d_in, dtype=self.dtype, device=self.device)
+                torch.rand(
+                    self.cfg.d_sae, self.cfg.d_in, dtype=self.dtype, device=self.device
+                )
             )
             self.initialize_decoder_norm_constant_norm()
 
-        elif self.normalize_sae_decoder:
+        elif self.cfg.normalize_sae_decoder:
             self.set_decoder_norm_to_unit_norm()
 
         # Then we intialize the encoder weights (either as the transpose of decoder or not)
-        if self.init_encoder_as_decoder_transpose:
+        if self.cfg.init_encoder_as_decoder_transpose:
             self.W_enc.data = self.W_dec.data.T.clone().contiguous()
         else:
             self.W_enc = nn.Parameter(
                 torch.nn.init.kaiming_uniform_(
                     torch.empty(
-                        self.d_in, self.d_sae, dtype=self.dtype, device=self.device
+                        self.cfg.d_in,
+                        self.cfg.d_sae,
+                        dtype=self.dtype,
+                        device=self.device,
                     )
                 )
             )
 
-        if self.normalize_sae_decoder:
+        if self.cfg.normalize_sae_decoder:
             with torch.no_grad():
                 # Anthropic normalize this to have unit columns
                 self.set_decoder_norm_to_unit_norm()
