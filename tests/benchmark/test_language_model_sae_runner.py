@@ -84,6 +84,8 @@ def test_language_model_sae_runner():
         feature_sampling_window=1000,
         dead_feature_window=1000,
         dead_feature_threshold=1e-4,
+        # performance enhancement:
+        compile_sae=True,
         # WANDB
         log_to_wandb=True,  # always use wandb unless you are just testing code.
         wandb_project="benchmark",

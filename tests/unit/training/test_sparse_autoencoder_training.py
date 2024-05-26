@@ -86,6 +86,7 @@ def model(cfg: LanguageModelSAERunnerConfig):
     return HookedTransformer.from_pretrained(cfg.model_name, device="cpu")
 
 
+# todo: remove the need for this fixture
 @pytest.fixture
 def trainer(
     cfg: LanguageModelSAERunnerConfig,
@@ -135,14 +136,15 @@ def trainer(
 #     assert torch.allclose(sae_out1, sae_out2)
 
 
-def test_sparse_autoencoder_forward(trainer: SAETrainer):
+def test_sparse_autoencoder_forward(training_sae: TrainingSparseAutoencoder):
     batch_size = 32
-    d_in = trainer.cfg.d_in
-    d_sae = trainer.cfg.d_sae
+    d_in = training_sae.cfg.d_in
+    d_sae = training_sae.cfg.d_sae
 
     x = torch.randn(batch_size, d_in)
-    train_step_output = trainer._training_forward_pass(
+    train_step_output = training_sae.training_forward_pass(
         sae_in=x,
+        current_l1_coefficient=training_sae.cfg.l1_coefficient,
     )
 
     assert train_step_output.sae_out.shape == (batch_size, d_in)
@@ -163,34 +165,35 @@ def test_sparse_autoencoder_forward(trainer: SAETrainer):
 
     assert pytest.approx(train_step_output.mse_loss) == expected_mse_loss
 
-    if not trainer.cfg.scale_sparsity_penalty_by_decoder_norm:
+    if not training_sae.cfg.scale_sparsity_penalty_by_decoder_norm:
         expected_l1_loss = train_step_output.feature_acts.sum(dim=1).mean(dim=(0,))
     else:
         expected_l1_loss = (
-            (train_step_output.feature_acts * trainer.sae.W_dec.norm(dim=1))
+            (train_step_output.feature_acts * training_sae.W_dec.norm(dim=1))
             .norm(dim=1, p=1)
             .mean()
         )
     assert (
         pytest.approx(train_step_output.l1_loss, rel=1e-3)
-        == trainer.cfg.l1_coefficient * expected_l1_loss.detach().float()
+        == training_sae.cfg.l1_coefficient * expected_l1_loss.detach().float()
     )
 
 
 def test_sparse_autoencoder_forward_with_mse_loss_norm(
-    trainer: SAETrainer,
+    training_sae: TrainingSparseAutoencoder,
 ):
     # change the confgi and ensure the mse loss is calculated correctly
-    trainer.cfg.mse_loss_normalization = "dense_batch"
-    trainer.mse_loss_fn = trainer._get_mse_loss_fn()
+    training_sae.cfg.mse_loss_normalization = "dense_batch"
+    training_sae.mse_loss_fn = training_sae._get_mse_loss_fn()
 
     batch_size = 32
-    d_in = trainer.cfg.d_in
-    d_sae = trainer.cfg.d_sae
+    d_in = training_sae.cfg.d_in
+    d_sae = training_sae.cfg.d_sae
 
     x = torch.randn(batch_size, d_in)
-    train_step_output = trainer._training_forward_pass(
+    train_step_output = training_sae.training_forward_pass(
         sae_in=x,
+        current_l1_coefficient=training_sae.cfg.l1_coefficient,
     )
 
     assert train_step_output.sae_out.shape == (batch_size, d_in)
@@ -217,30 +220,34 @@ def test_sparse_autoencoder_forward_with_mse_loss_norm(
         + train_step_output.ghost_grad_loss
     )
 
-    if not trainer.cfg.scale_sparsity_penalty_by_decoder_norm:
+    if not training_sae.cfg.scale_sparsity_penalty_by_decoder_norm:
         expected_l1_loss = train_step_output.feature_acts.sum(dim=1).mean(dim=(0,))
     else:
         expected_l1_loss = (
-            (train_step_output.feature_acts * trainer.sae.W_dec.norm(dim=1))
+            (train_step_output.feature_acts * training_sae.W_dec.norm(dim=1))
             .norm(dim=1, p=1)
             .mean()
         )
     assert (
         pytest.approx(train_step_output.l1_loss, rel=1e-3)
-        == trainer.cfg.l1_coefficient * expected_l1_loss.detach().float()
+        == training_sae.cfg.l1_coefficient * expected_l1_loss.detach().float()
     )
 
 
 def test_SparseAutoencoder_forward_ghost_grad_loss_non_zero(
-    trainer: SAETrainer,
+    training_sae: TrainingSparseAutoencoder,
 ):
 
-    trainer.cfg.use_ghost_grads = True
+    training_sae.cfg.use_ghost_grads = True
     batch_size = 32
-    d_in = trainer.cfg.d_in
+    d_in = training_sae.cfg.d_in
     x = torch.randn(batch_size, d_in)
-    train_step_output = trainer._training_forward_pass(
+    train_step_output = training_sae.training_forward_pass(
         sae_in=x,
+        current_l1_coefficient=training_sae.cfg.l1_coefficient,
+        dead_neuron_mask=torch.ones_like(
+            training_sae.b_enc
+        ).bool(),  # all neurons are dead.
     )
 
     assert train_step_output.ghost_grad_loss != 0.0
@@ -249,6 +256,7 @@ def test_SparseAutoencoder_forward_ghost_grad_loss_non_zero(
 def test_calculate_ghost_grad_loss(
     trainer: SAETrainer,
 ):
+    training_sae = trainer.sae
     trainer.cfg.use_ghost_grads = True
     batch_size = 32
     d_in = trainer.cfg.d_in
@@ -261,14 +269,14 @@ def test_calculate_ghost_grad_loss(
     # then set the first 10 neurons to have fired recently
     trainer.n_forward_passes_since_fired[:10] = 0
 
-    feature_acts = trainer.sae.encode(x)
-    sae_out = trainer.sae.decode(feature_acts)
+    feature_acts = training_sae.encode(x)
+    sae_out = training_sae.decode(feature_acts)
 
-    _, hidden_pre = trainer.sae.encode_with_hidden_pre(x)
-    ghost_grad_loss = trainer.calculate_ghost_grad_loss(
+    _, hidden_pre = training_sae.encode_with_hidden_pre(x)
+    ghost_grad_loss = training_sae.calculate_ghost_grad_loss(
         x=x,
         sae_out=sae_out,
-        per_item_mse_loss=trainer.mse_loss_fn(sae_out, x),
+        per_item_mse_loss=training_sae.mse_loss_fn(sae_out, x),
         hidden_pre=hidden_pre,
         dead_neuron_mask=trainer.dead_neurons,
     )
@@ -290,11 +298,11 @@ def test_calculate_ghost_grad_loss(
 
 
 def test_per_item_mse_loss_with_norm_matches_original_implementation(
-    trainer: SAETrainer,
+    training_sae: TrainingSparseAutoencoder,
 ) -> None:
 
-    trainer.cfg.mse_loss_normalization = "dense_batch"
-    trainer.mse_loss_fn = trainer._get_mse_loss_fn()
+    training_sae.cfg.mse_loss_normalization = "dense_batch"
+    training_sae.mse_loss_fn = training_sae._get_mse_loss_fn()
 
     input = torch.randn(3, 2)
     target = torch.randn(3, 2)
@@ -303,7 +311,7 @@ def test_per_item_mse_loss_with_norm_matches_original_implementation(
         torch.pow((input - target.float()), 2)
         / (target_centered**2).sum(dim=-1, keepdim=True).sqrt()
     )
-    sae_res = trainer.mse_loss_fn(
+    sae_res = training_sae.mse_loss_fn(
         input,
         target,
     )
@@ -335,12 +343,12 @@ def test_SparseAutoencoder_forward_can_add_noise_to_hidden_pre() -> None:
 
 
 def test_SparseAutoencoder_remove_gradient_parallel_to_decoder_directions(
-    trainer: SAETrainer,
+    training_sae: TrainingSparseAutoencoder,
 ) -> None:
 
-    if not trainer.cfg.normalize_sae_decoder:
+    if not training_sae.cfg.normalize_sae_decoder:
         pytest.skip("Test only applies when decoder is not normalized")
-    sae = trainer.sae
+    sae = training_sae
     orig_grad = torch.randn_like(sae.W_dec)
     orig_W_dec = sae.W_dec.clone()
     sae.W_dec.grad = orig_grad.clone()

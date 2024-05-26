@@ -108,8 +108,15 @@ class SAETrainingRunner:
             )  # type: ignore
 
         if self.cfg.compile_sae:
-            self.sae._training_forward_pass = torch.compile(  # type: ignore
-                self.sae._training_forward_pass, mode=self.cfg.sae_compilation_mode
+            if self.cfg.device == "mps":
+                backend = "aot_eager"
+            else:
+                backend = "inductor"
+
+            self.sae.training_forward_pass = torch.compile(  # type: ignore
+                self.sae.training_forward_pass,
+                mode=self.cfg.sae_compilation_mode,
+                backend=backend,
             )  # type: ignore
 
     def run_trainer_with_interruption_handling(self, trainer: SAETrainer):
@@ -164,7 +171,7 @@ class SAETrainingRunner:
         path = f"{checkpoint_path}"
         os.makedirs(path, exist_ok=True)
 
-        if self.sae.normalize_sae_decoder:
+        if self.sae.cfg.normalize_sae_decoder:
             self.sae.set_decoder_norm_to_unit_norm()
         self.sae.save_model(path)
 

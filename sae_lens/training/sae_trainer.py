@@ -1,6 +1,6 @@
 import contextlib
 from dataclasses import dataclass
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 import numpy as np
 import torch
@@ -14,7 +14,10 @@ from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.evals import run_evals
 from sae_lens.training.optim import L1Scheduler, get_lr_scheduler
-from sae_lens.training.sparse_autoencoder import TrainingSparseAutoencoder
+from sae_lens.training.sparse_autoencoder import (
+    TrainingSparseAutoencoder,
+    TrainStepOutput,
+)
 
 # used to map between parameters which are updated during finetuning and the config str.
 FINETUNING_PARAMETERS = {
@@ -42,17 +45,6 @@ class TrainSAEOutput:
     sae: TrainingSparseAutoencoder
     checkpoint_path: str
     log_feature_sparsities: torch.Tensor
-
-
-@dataclass
-class TrainStepOutput:
-    sae_in: torch.Tensor
-    sae_out: torch.Tensor
-    feature_acts: torch.Tensor
-    loss: torch.Tensor  # we need to call backwards on this
-    mse_loss: float
-    l1_loss: float
-    ghost_grad_loss: float
 
 
 class SAETrainer:
@@ -130,8 +122,6 @@ class SAETrainer:
 
         # Setup autocast if using
         self.scaler = torch.cuda.amp.GradScaler(enabled=self.cfg.autocast)
-
-        self.mse_loss_fn = self._get_mse_loss_fn()
 
         if self.cfg.autocast:
             self.autocast_if_enabled = torch.autocast(
@@ -230,7 +220,21 @@ class SAETrainer:
         # for documentation on autocasting see:
         # https://pytorch.org/tutorials/recipes/recipes/amp_recipe.html
         with self.autocast_if_enabled:
-            train_step_output = self._training_forward_pass(sae_in)
+
+            train_step_output = self.sae.training_forward_pass(
+                sae_in=sae_in,
+                dead_neuron_mask=self.dead_neurons,
+                current_l1_coefficient=self.current_l1_coefficient,
+            )
+
+            with torch.no_grad():
+                did_fire = (train_step_output.feature_acts > 0).float().sum(-2) > 0
+                self.n_forward_passes_since_fired += 1
+                self.n_forward_passes_since_fired[did_fire] = 0
+                self.act_freq_scores += (
+                    (train_step_output.feature_acts.abs() > 0).float().sum(0)
+                )
+                self.n_frac_active_tokens += self.cfg.train_batch_size_tokens
 
         # Scaler will rescale gradients if autocast is enabled
         self.scaler.scale(
@@ -250,132 +254,6 @@ class SAETrainer:
         self.l1_scheduler.step()
 
         return train_step_output
-
-    def _training_forward_pass(self, sae_in, dead_neuron_mask: Optional[torch.Tensor] = None) -> TrainStepOutput:  # type: ignore
-
-        # do a forward pass to get SAE out, but we also need the
-        # hidden pre.
-        feature_acts, _ = self.sae.encode_with_hidden_pre(sae_in)
-        sae_out = self.sae.decode(feature_acts)
-
-        # MSE LOSS
-        per_item_mse_loss = self.mse_loss_fn(sae_out, sae_in)
-        mse_loss = per_item_mse_loss.sum(dim=-1).mean()
-
-        # GHOST GRADS
-        dead_neuron_mask = self.dead_neurons
-        if (
-            self.cfg.use_ghost_grads
-            and self.sae.training
-            and dead_neuron_mask is not None
-        ):
-
-            # first half of second forward pass
-            _, hidden_pre = self.sae.encode_with_hidden_pre(sae_in)
-            ghost_grad_loss = self.calculate_ghost_grad_loss(
-                x=sae_in,
-                sae_out=sae_out,
-                per_item_mse_loss=per_item_mse_loss,
-                hidden_pre=hidden_pre,
-                dead_neuron_mask=dead_neuron_mask,
-            )
-        else:
-            ghost_grad_loss = 0
-
-        # SPARSITY LOSS
-        # either the W_dec norms are 1 and this won't do anything or they are not 1
-        # and we're using their norm in the loss function.
-        weighted_feature_acts = feature_acts * self.sae.W_dec.norm(dim=1)
-        sparsity = weighted_feature_acts.norm(
-            p=self.cfg.lp_norm, dim=-1
-        )  # sum over the feature dimension
-
-        l1_loss = (self.current_l1_coefficient * sparsity).mean()
-
-        loss = mse_loss + l1_loss + ghost_grad_loss
-
-        did_fire = (feature_acts > 0).float().sum(-2) > 0
-        self.n_forward_passes_since_fired += 1
-        self.n_forward_passes_since_fired[did_fire] = 0
-
-        with torch.no_grad():
-            # Calculate the sparsities, and add it to a list, calculate sparsity metrics
-            self.act_freq_scores += (feature_acts.abs() > 0).float().sum(0)
-            self.n_frac_active_tokens += self.cfg.train_batch_size_tokens
-
-        return TrainStepOutput(
-            sae_in=sae_in,
-            sae_out=sae_out,
-            feature_acts=feature_acts,
-            loss=loss,
-            mse_loss=mse_loss.item(),
-            l1_loss=l1_loss.item(),
-            ghost_grad_loss=(
-                ghost_grad_loss.item()
-                if isinstance(ghost_grad_loss, torch.Tensor)
-                else ghost_grad_loss
-            ),
-        )
-
-    def calculate_ghost_grad_loss(
-        self,
-        x: torch.Tensor,
-        sae_out: torch.Tensor,
-        per_item_mse_loss: torch.Tensor,
-        hidden_pre: torch.Tensor,
-        dead_neuron_mask: torch.Tensor,
-    ) -> torch.Tensor:
-
-        # 1.
-        residual = x - sae_out
-        l2_norm_residual = torch.norm(residual, dim=-1)
-
-        # 2.
-        # ghost grads use an exponentional activation function, ignoring whatever
-        # the activation function is in the SAE. The forward pass uses the dead neurons only.
-        feature_acts_dead_neurons_only = torch.exp(hidden_pre[:, dead_neuron_mask])
-        ghost_out = feature_acts_dead_neurons_only @ self.sae.W_dec[dead_neuron_mask, :]
-        l2_norm_ghost_out = torch.norm(ghost_out, dim=-1)
-        norm_scaling_factor = l2_norm_residual / (1e-6 + l2_norm_ghost_out * 2)
-        ghost_out = ghost_out * norm_scaling_factor[:, None].detach()
-
-        # 3. There is some fairly complex rescaling here to make sure that the loss
-        # is comparable to the original loss. This is because the ghost grads are
-        # only calculated for the dead neurons, so we need to rescale the loss to
-        # make sure that the loss is comparable to the original loss.
-        # There have been methodological improvements that are not implemented here yet
-        # see here: https://www.lesswrong.com/posts/C5KAZQib3bzzpeyrg/full-post-progress-update-1-from-the-gdm-mech-interp-team#Improving_ghost_grads
-        per_item_mse_loss_ghost_resid = self.mse_loss_fn(ghost_out, residual.detach())
-        mse_rescaling_factor = (
-            per_item_mse_loss / (per_item_mse_loss_ghost_resid + 1e-6)
-        ).detach()
-        per_item_mse_loss_ghost_resid = (
-            mse_rescaling_factor * per_item_mse_loss_ghost_resid
-        )
-
-        return per_item_mse_loss_ghost_resid.mean()
-
-    @torch.no_grad()
-    def _get_mse_loss_fn(self) -> Any:
-
-        def standard_mse_loss_fn(
-            preds: torch.Tensor, target: torch.Tensor
-        ) -> torch.Tensor:
-            return torch.nn.functional.mse_loss(preds, target, reduction="none")
-
-        def batch_norm_mse_loss_fn(
-            preds: torch.Tensor, target: torch.Tensor
-        ) -> torch.Tensor:
-            target_centered = target - target.mean(dim=0, keepdim=True)
-            normalization = target_centered.norm(dim=-1, keepdim=True)
-            return torch.nn.functional.mse_loss(preds, target, reduction="none") / (
-                normalization + 1e-6
-            )
-
-        if self.cfg.mse_loss_normalization == "dense_batch":
-            return batch_norm_mse_loss_fn
-        else:
-            return standard_mse_loss_fn
 
     @torch.no_grad()
     def _log_train_step(self, step_output: TrainStepOutput):
