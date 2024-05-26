@@ -274,6 +274,7 @@ class LanguageModelSAERunnerConfig:
             "dataset_path": self.dataset_path,
             "uses_scaling_factor": self.finetuning_method is not None,
             "sae_lens_training_version": self.sae_lens_training_version,
+            "normalize_activations": self.normalize_activations,
         }
 
     def get_training_sae_cfg_dict(self) -> dict[str, Any]:
@@ -288,6 +289,7 @@ class LanguageModelSAERunnerConfig:
             "mse_loss_normalization": self.mse_loss_normalization,
             "decoder_heuristic_init": self.decoder_heuristic_init,
             "init_encoder_as_decoder_transpose": self.init_encoder_as_decoder_transpose,
+            "normalize_activations": self.normalize_activations,
         }
 
     def to_dict(self) -> dict[str, Any]:

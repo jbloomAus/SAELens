@@ -23,6 +23,7 @@ from sae_lens.training.config import (
     CacheActivationsRunnerConfig,
     LanguageModelSAERunnerConfig,
 )
+from sae_lens.training.sparse_autoencoder import SparseAutoencoderBase
 
 HfDataset = DatasetDict | Dataset | IterableDatasetDict | IterableDataset
 
@@ -76,6 +77,38 @@ class ActivationsStore:
             cached_activations_path=cached_activations_path,
             model_kwargs=cfg.model_kwargs,
             autocast_lm=cfg.autocast_lm,
+        )
+
+    @classmethod
+    def from_sae(
+        cls,
+        model: HookedRootModule,
+        sae: SparseAutoencoderBase,
+        streaming: bool = True,
+        store_batch_size_prompts: int = 8,
+        n_batches_in_buffer: int = 8,
+        train_batch_size_tokens: int = 4096,
+        total_tokens: int = 10**9,
+        device: str = "cpu",
+    ) -> "ActivationsStore":
+
+        return cls(
+            model=model,
+            dataset=sae.cfg.dataset_path,
+            d_in=sae.cfg.d_in,
+            hook_point=sae.cfg.hook_point,
+            hook_point_layer=sae.cfg.hook_point_layer,
+            hook_point_head_index=sae.cfg.hook_point_head_index,
+            context_size=sae.cfg.context_size,
+            prepend_bos=sae.cfg.prepend_bos,
+            streaming=streaming,
+            store_batch_size_prompts=store_batch_size_prompts,
+            train_batch_size_tokens=train_batch_size_tokens,
+            n_batches_in_buffer=n_batches_in_buffer,
+            total_training_tokens=total_tokens,
+            normalize_activations=sae.cfg.normalize_activations,
+            dtype=sae.cfg.dtype,
+            device=torch.device(device),
         )
 
     def __init__(

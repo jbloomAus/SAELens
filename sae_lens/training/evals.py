@@ -45,7 +45,9 @@ def run_evals(
         **model_kwargs,
     )
 
-    has_head_dim_key_substrings = ["hook_q", "hook_k", "hook_v", "hook_z"]
+    # we would include hook z, except that we now have base SAE's
+    # which will do their own reshaping for hook z.
+    has_head_dim_key_substrings = ["hook_q", "hook_k", "hook_v"]
     if hook_point_head_index is not None:
         original_act = cache[hook_point][:, :, hook_point_head_index]
     elif any(substring in hook_point for substring in has_head_dim_key_substrings):
@@ -181,7 +183,9 @@ def get_recons_loss(
         activations = torch.zeros_like(activations)
         return activations
 
-    has_head_dim_key_substrings = ["hook_q", "hook_k", "hook_v", "hook_z"]
+    # we would include hook z, except that we now have base SAE's
+    # which will do their own reshaping for hook z.
+    has_head_dim_key_substrings = ["hook_q", "hook_k", "hook_v"]
     if any(substring in hook_point for substring in has_head_dim_key_substrings):
         if head_index is None:
             replacement_hook = all_head_replacement_hook

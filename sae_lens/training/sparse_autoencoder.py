@@ -55,6 +55,7 @@ class SAEConfig:
     hook_point_head_index: Optional[int]
     prepend_bos: bool
     dataset_path: str
+    normalize_activations: bool
 
     # misc
     dtype: str
@@ -95,6 +96,7 @@ class SAEConfig:
             "prepend_bos": self.prepend_bos,
             "dataset_path": self.dataset_path,
             "context_size": self.context_size,
+            "normalize_activations": self.normalize_activations,
         }
 
 
@@ -146,6 +148,7 @@ class TrainingSAEConfig(SAEConfig):
             decoder_heuristic_init=cfg.decoder_heuristic_init,
             init_encoder_as_decoder_transpose=cfg.init_encoder_as_decoder_transpose,
             scale_sparsity_penalty_by_decoder_norm=cfg.scale_sparsity_penalty_by_decoder_norm,
+            normalize_activations=cfg.normalize_activations,
         )
 
     @classmethod
@@ -164,8 +167,8 @@ class TrainingSAEConfig(SAEConfig):
             "init_encoder_as_decoder_transpose": self.init_encoder_as_decoder_transpose,
             "mse_loss_normalization": self.mse_loss_normalization,
             "decoder_heuristic_init": self.decoder_heuristic_init,
-            "init_encoder_as_decoder_transpose": self.init_encoder_as_decoder_transpose,
             "scale_sparsity_penalty_by_decoder_norm": self.scale_sparsity_penalty_by_decoder_norm,
+            "normalize_activations": self.normalize_activations,
         }
 
     # this needs to exist so we can initialize the parent sae cfg without the training specific
@@ -185,6 +188,7 @@ class TrainingSAEConfig(SAEConfig):
             "context_size": self.context_size,
             "prepend_bos": self.prepend_bos,
             "uses_scaling_factor": self.uses_scaling_factor,
+            "normalize_activations": self.normalize_activations,
             "dataset_path": self.dataset_path,
             "sae_lens_training_version": self.sae_lens_training_version,
         }
@@ -460,6 +464,26 @@ class SparseAutoencoderBase(HookedRootModule):
 
         if "activation_fn" not in cfg_dict:
             cfg_dict["activation_fn_str"] = "relu"
+
+        if "normalize_activations" not in cfg_dict:
+            cfg_dict["normalize_activations"] = False
+
+        if "scaling_factor" in state_dict:
+            # we were adding it anyway for a period of time but are no longer doing so.
+            # so we should delete it if
+            if torch.allclose(
+                state_dict["scaling_factor"],
+                torch.ones_like(state_dict["scaling_factor"]),
+            ):
+                del state_dict["scaling_factor"]
+                cfg_dict["uses_scaling_factor"] = False
+            else:
+                assert cfg_dict[
+                    "uses_scaling_factor"
+                ], "Scaling factor is present but uses_scaling_factor is False."
+        else:
+            # it's there and it's not all 1's, we should use it.
+            cfg_dict["uses_scaling_factor"] = False
 
         sae = cls(SAEConfig.from_dict(cfg_dict))
         sae.load_state_dict(state_dict)

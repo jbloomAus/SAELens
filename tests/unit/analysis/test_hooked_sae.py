@@ -57,6 +57,7 @@ def get_hooked_sae(model: HookedTransformer, act_name: str) -> SparseAutoencoder
         apply_b_dec_to_input=False,
         uses_scaling_factor=False,
         sae_lens_training_version=None,
+        normalize_activations=False,
     )
 
     return SparseAutoencoderBase(sae_cfg)
