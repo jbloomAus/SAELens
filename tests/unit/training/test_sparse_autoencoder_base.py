@@ -4,8 +4,8 @@ from pathlib import Path
 import pytest
 import torch
 
-from sae_lens.training.config import LanguageModelSAERunnerConfig
-from sae_lens.training.sae import SAE
+from sae_lens.config import LanguageModelSAERunnerConfig
+from sae_lens.sae import SAE
 from tests.unit.helpers import build_sae_cfg
 
 

@@ -3,7 +3,7 @@ import torch
 from huggingface_hub import hf_hub_download
 from safetensors import safe_open
 
-from sae_lens.training.sae import SAE
+from sae_lens.sae import SAE
 
 
 def test_SparseAutoencoder_from_pretrained_loads_from_hugginface_using_shorthand():

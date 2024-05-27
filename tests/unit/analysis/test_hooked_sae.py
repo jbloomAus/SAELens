@@ -5,7 +5,7 @@ from transformer_lens import HookedTransformer
 from transformer_lens.hook_points import HookPoint
 
 from sae_lens import HookedSAETransformer
-from sae_lens.training.sae import SAE, SAEConfig
+from sae_lens.sae import SAE, SAEConfig
 
 MODEL = "solu-1l"
 prompt = "Hello World!"

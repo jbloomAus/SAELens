@@ -7,7 +7,7 @@ import torch
 import yaml
 
 from sae_lens.cache_activations_runner import CacheActivationsRunner
-from sae_lens.training.config import DTYPE_MAP, CacheActivationsRunnerConfig
+from sae_lens.config import DTYPE_MAP, CacheActivationsRunnerConfig
 
 if len(sys.argv) > 1:
     job_name = sys.argv[1]

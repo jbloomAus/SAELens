@@ -5,8 +5,8 @@ import pandas as pd
 import torch
 from transformer_lens.hook_points import HookedRootModule
 
+from sae_lens.sae import SAE
 from sae_lens.training.activations_store import ActivationsStore
-from sae_lens.training.sae import SAE
 
 
 @torch.no_grad()

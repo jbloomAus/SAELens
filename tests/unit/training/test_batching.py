@@ -1,6 +1,6 @@
 import torch
 
-from sae_lens.training.batching import _add_tokens_to_batch, concat_and_batch_sequences
+from sae_lens.batching import _add_tokens_to_batch, concat_and_batch_sequences
 
 
 def test_add_tokens_to_batch_can_start_a_new_batch():

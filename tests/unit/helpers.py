@@ -3,7 +3,7 @@ from typing import Any
 
 from transformer_lens import HookedTransformer
 
-from sae_lens.training.config import LanguageModelSAERunnerConfig
+from sae_lens.config import LanguageModelSAERunnerConfig
 
 TINYSTORIES_MODEL = "tiny-stories-1M"
 TINYSTORIES_DATASET = "roneneldan/TinyStories"

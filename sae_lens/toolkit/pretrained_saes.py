@@ -7,7 +7,7 @@ from huggingface_hub import hf_hub_download, list_repo_tree
 from safetensors import safe_open
 from tqdm import tqdm
 
-from sae_lens.training.sae import SAE
+from sae_lens.sae import SAE
 
 
 def load_sparsity(path: str) -> torch.Tensor:

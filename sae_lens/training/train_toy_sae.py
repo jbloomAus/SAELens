@@ -5,7 +5,7 @@ import wandb
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from sae_lens.training.sae import SAE
+from sae_lens.sae import SAE
 
 
 def train_toy_sae(

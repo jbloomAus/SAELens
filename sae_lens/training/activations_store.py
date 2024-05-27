@@ -18,16 +18,17 @@ from safetensors.torch import load_file, save_file
 from torch.utils.data import DataLoader
 from transformer_lens.hook_points import HookedRootModule
 
-from sae_lens.training.config import (
+from sae_lens.config import (
     DTYPE_MAP,
     CacheActivationsRunnerConfig,
     LanguageModelSAERunnerConfig,
 )
-from sae_lens.training.sae import SAE
+from sae_lens.sae import SAE
 
 HfDataset = DatasetDict | Dataset | IterableDatasetDict | IterableDataset
 
 
+# TODO: Make an activation store config class to be consistent with the rest of the code.
 class ActivationsStore:
     """
     Class for streaming tokens and generating and storing activations

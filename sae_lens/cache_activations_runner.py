@@ -5,9 +5,9 @@ from typing import Tuple
 import torch
 from tqdm import tqdm
 
+from sae_lens.config import DTYPE_MAP, CacheActivationsRunnerConfig
+from sae_lens.load_model import load_model
 from sae_lens.training.activations_store import ActivationsStore
-from sae_lens.training.config import DTYPE_MAP, CacheActivationsRunnerConfig
-from sae_lens.training.load_model import load_model
 
 
 class CacheActivationsRunner:

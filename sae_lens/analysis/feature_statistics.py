@@ -3,7 +3,7 @@ import torch
 from tqdm import tqdm
 from transformer_lens import HookedTransformer
 
-from sae_lens.training.sae import SAE
+from sae_lens.sae import SAE
 
 
 @torch.no_grad()

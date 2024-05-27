@@ -10,11 +10,11 @@ from tqdm import tqdm
 from transformer_lens.hook_points import HookedRootModule
 
 from sae_lens import __version__
+from sae_lens.config import LanguageModelSAERunnerConfig
+from sae_lens.evals import run_evals
 from sae_lens.training.activations_store import ActivationsStore
-from sae_lens.training.config import LanguageModelSAERunnerConfig
-from sae_lens.training.evals import run_evals
 from sae_lens.training.optim import L1Scheduler, get_lr_scheduler
-from sae_lens.training.sae import TrainingSAE, TrainStepOutput
+from sae_lens.training.training_sae import TrainingSAE, TrainStepOutput
 
 # used to map between parameters which are updated during finetuning and the config str.
 FINETUNING_PARAMETERS = {

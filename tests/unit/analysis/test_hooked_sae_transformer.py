@@ -5,7 +5,7 @@ from transformer_lens.ActivationCache import ActivationCache
 from transformer_lens.hook_points import HookPoint  # Hooking utilities
 
 from sae_lens.analysis.hooked_sae_transformer import HookedSAETransformer, get_deep_attr
-from sae_lens.training.sae import SAE, SAEConfig
+from sae_lens.sae import SAE, SAEConfig
 
 MODEL = "solu-1l"
 prompt = "Hello World!"

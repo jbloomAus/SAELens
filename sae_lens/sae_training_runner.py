@@ -7,18 +7,13 @@ import torch
 import wandb
 from safetensors.torch import save_file
 
+from sae_lens.config import LanguageModelSAERunnerConfig
+from sae_lens.load_model import load_model
+from sae_lens.sae import SAE_CFG_PATH, SAE_WEIGHTS_PATH, SPARSITY_PATH
 from sae_lens.training.activations_store import ActivationsStore
-from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.geometric_median import compute_geometric_median
-from sae_lens.training.load_model import load_model
-from sae_lens.training.sae import (
-    SAE_CFG_PATH,
-    SAE_WEIGHTS_PATH,
-    SPARSITY_PATH,
-    TrainingSAE,
-    TrainingSAEConfig,
-)
 from sae_lens.training.sae_trainer import SAETrainer
+from sae_lens.training.training_sae import TrainingSAE, TrainingSAEConfig
 
 
 class InterruptedException(Exception):

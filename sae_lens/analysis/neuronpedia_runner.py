@@ -22,11 +22,11 @@ from sae_vis.data_storing_fns import SaeVisData
 from tqdm import tqdm
 from transformer_lens import HookedTransformer
 
+from sae_lens.config import LanguageModelSAERunnerConfig
+from sae_lens.load_model import load_model
+from sae_lens.sae import SAE
 from sae_lens.toolkit.pretrained_saes import load_sparsity
 from sae_lens.training.activations_store import ActivationsStore
-from sae_lens.training.config import LanguageModelSAERunnerConfig
-from sae_lens.training.load_model import load_model
-from sae_lens.training.sae import SAE
 
 OUT_OF_RANGE_TOKEN = "<|outofrange|>"
 

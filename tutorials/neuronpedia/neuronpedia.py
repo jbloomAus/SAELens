@@ -16,8 +16,8 @@ from rich.panel import Panel
 from typing_extensions import Annotated
 
 from sae_lens.analysis.neuronpedia_integration import NanAndInfReplacer
+from sae_lens.sae import SAE
 from sae_lens.toolkit.pretrained_saes import load_sparsity
-from sae_lens.training.sae import SAE
 
 OUTPUT_DIR_BASE = Path("../../neuronpedia_outputs")
 RUN_SETTINGS_FILE = "run_settings.json"

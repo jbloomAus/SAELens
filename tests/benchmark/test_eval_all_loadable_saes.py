@@ -4,11 +4,10 @@
 import torch
 from tqdm import tqdm
 
-from sae_lens.toolkit.pretrained_saes_directory import get_pretrained_saes_directory
-
 # from sae_lens.training.activations_store import ActivationsStore
 # from sae_lens.training.evals import run_evals
-from sae_lens.training.sae import SAE
+from sae_lens.sae import SAE
+from sae_lens.toolkit.pretrained_saes_directory import get_pretrained_saes_directory
 
 # from transformer_lens import HookedTransformer
 

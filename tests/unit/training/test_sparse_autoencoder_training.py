@@ -6,10 +6,10 @@ import torch
 from datasets import Dataset
 from transformer_lens import HookedTransformer
 
+from sae_lens.config import LanguageModelSAERunnerConfig
 from sae_lens.training.activations_store import ActivationsStore
-from sae_lens.training.config import LanguageModelSAERunnerConfig
-from sae_lens.training.sae import TrainingSAE
 from sae_lens.training.sae_trainer import SAETrainer
+from sae_lens.training.training_sae import TrainingSAE
 from tests.unit.helpers import build_sae_cfg
 
 

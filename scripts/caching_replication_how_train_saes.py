@@ -7,7 +7,7 @@ import torch
 from sae_lens.cache_activations_runner import CacheActivationsRunner
 
 # from pathlib import Path
-from sae_lens.training.config import CacheActivationsRunnerConfig
+from sae_lens.config import CacheActivationsRunnerConfig
 
 if torch.cuda.is_available():
     device = "cuda"

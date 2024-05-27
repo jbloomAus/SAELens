@@ -11,8 +11,8 @@ from huggingface_hub import HfApi
 from transformers import AutoTokenizer, PreTrainedTokenizerBase
 
 from sae_lens import __version__
-from sae_lens.training.batching import concat_and_batch_sequences
-from sae_lens.training.config import PretokenizeRunnerConfig
+from sae_lens.batching import concat_and_batch_sequences
+from sae_lens.config import PretokenizeRunnerConfig
 
 
 @dataclass

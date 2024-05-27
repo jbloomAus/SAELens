@@ -4,8 +4,8 @@ import einops
 import torch
 import wandb
 
-from sae_lens.training.config import ToyModelSAERunnerConfig
-from sae_lens.training.sae import SAE
+from sae_lens.config import ToyModelSAERunnerConfig
+from sae_lens.sae import SAE
 from sae_lens.training.toy_models import ReluOutputModel as ToyModel
 from sae_lens.training.toy_models import ToyConfig
 from sae_lens.training.train_toy_sae import train_toy_sae
