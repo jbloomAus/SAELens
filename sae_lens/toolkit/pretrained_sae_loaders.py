@@ -3,6 +3,7 @@ from typing import Any, Optional, Protocol
 
 import torch
 from huggingface_hub import hf_hub_download
+from huggingface_hub.utils._errors import EntryNotFoundError
 from safetensors import safe_open
 
 
@@ -15,7 +16,7 @@ class PretrainedSaeLoader(Protocol):
         folder_name: str,
         device: str | torch.device | None = None,
         force_download: bool = False,
-    ) -> tuple[dict[str, Any], dict[str, torch.Tensor]]: ...
+    ) -> tuple[dict[str, Any], dict[str, torch.Tensor], Optional[torch.Tensor]]: ...
 
 
 def sae_lens_loader(
@@ -23,7 +24,7 @@ def sae_lens_loader(
     folder_name: str,
     device: Optional[str] = None,
     force_download: bool = False,
-) -> tuple[dict[str, Any], dict[str, torch.Tensor]]:
+) -> tuple[dict[str, Any], dict[str, torch.Tensor], Optional[torch.Tensor]]:
     cfg_filename = f"{folder_name}/cfg.json"
     cfg_path = hf_hub_download(
         repo_id=repo_id, filename=cfg_filename, force_download=force_download
@@ -33,10 +34,22 @@ def sae_lens_loader(
     sae_path = hf_hub_download(
         repo_id=repo_id, filename=weights_filename, force_download=force_download
     )
+
+    # TODO: Make this cleaner. I hate try except statements.
+    try:
+        sparsity_filename = f"{folder_name}/sparsity.safetensors"
+        log_sparsity_path = hf_hub_download(
+            repo_id=repo_id, filename=sparsity_filename, force_download=force_download
+        )
+    except EntryNotFoundError:
+        log_sparsity_path = None  # no sparsity file
+
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    return load_pretrained_sae_lens_sae_components(cfg_path, sae_path, device)
+    return load_pretrained_sae_lens_sae_components(
+        cfg_path, sae_path, device, log_sparsity_path=log_sparsity_path
+    )
 
 
 def connor_rob_hook_z_loader(
@@ -44,7 +57,7 @@ def connor_rob_hook_z_loader(
     folder_name: str,
     device: Optional[str] = None,
     force_download: bool = False,
-) -> tuple[dict[str, Any], dict[str, torch.Tensor]]:
+) -> tuple[dict[str, Any], dict[str, torch.Tensor], None]:
 
     file_path = hf_hub_download(
         repo_id=repo_id, filename=folder_name, force_download=force_download
@@ -128,7 +141,7 @@ def connor_rob_hook_z_loader(
         "normalize_activations": False,
     }
 
-    return cfg_dict, weights
+    return cfg_dict, weights, None
 
 
 def load_pretrained_sae_lens_sae_components(
@@ -136,7 +149,8 @@ def load_pretrained_sae_lens_sae_components(
     weight_path: str,
     device: str = "cpu",
     dtype: str = "float32",
-) -> tuple[dict[str, Any], dict[str, torch.Tensor]]:
+    log_sparsity_path: Optional[str] = None,
+) -> tuple[dict[str, Any], dict[str, torch.Tensor], Optional[torch.Tensor]]:
     with open(cfg_path, "r") as f:
         config = json.load(f)
 
@@ -158,7 +172,14 @@ def load_pretrained_sae_lens_sae_components(
         for k in f.keys():
             tensors[k] = f.get_tensor(k)
 
-    return config, tensors
+    # get sparsity tensor if it exists
+    if log_sparsity_path is not None:
+        with safe_open(log_sparsity_path, framework="pt", device=device) as f:  # type: ignore
+            log_sparsity = f.get_tensor("sparsity")
+    else:
+        log_sparsity = None
+
+    return config, tensors, log_sparsity
 
 
 # TODO: add more loaders for other SAEs not trained by us

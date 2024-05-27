@@ -55,7 +55,7 @@ class SAEConfig:
     def from_dict(cls, config_dict: dict[str, Any]) -> "SAEConfig":
 
         # rename dict:
-        rename_dict = {
+        rename_dict = {  # old : new
             "hook_point": "hook_name",
             "hook_point_head_index": "hook_head_index",
             "hook_point_layer": "hook_layer",
@@ -294,7 +294,7 @@ class SAE(HookedRootModule):
         config_path = os.path.join(path, "cfg.json")
         weight_path = os.path.join(path, "sae_weights.safetensors")
 
-        cfg_dict, state_dict = load_pretrained_sae_lens_sae_components(
+        cfg_dict, state_dict, _ = load_pretrained_sae_lens_sae_components(
             config_path, weight_path, device, dtype
         )
 
@@ -307,8 +307,11 @@ class SAE(HookedRootModule):
 
     @classmethod
     def from_pretrained(
-        cls, release: str, sae_id: str, device: str = "cpu"
-    ) -> Tuple["SAE", dict[str, Any]]:
+        cls,
+        release: str,
+        sae_id: str,
+        device: str = "cpu",
+    ) -> Tuple["SAE", dict[str, Any], Optional[torch.Tensor]]:
         """
 
         Load a pretrained SAE from the Hugging Face model hub.
@@ -317,7 +320,7 @@ class SAE(HookedRootModule):
             release: The release name. This will be mapped to a huggingface repo id based on the pretrained_saes.yaml file.
             id: The id of the SAE to load. This will be mapped to a path in the huggingface repo.
             device: The device to load the SAE on.
-
+            return_sparsity_if_present: If True, will return the log sparsity tensor if it is present in the model directory in the Hugging Face model hub.
         """
 
         # get sae directory
@@ -341,7 +344,7 @@ class SAE(HookedRootModule):
             )
         conversion_loader = NAMED_PRETRAINED_SAE_LOADERS[conversion_loader_name]
 
-        cfg_dict, state_dict = conversion_loader(
+        cfg_dict, state_dict, log_sparsities = conversion_loader(
             repo_id=hf_repo_id,
             folder_name=hf_path,
             device=device,
@@ -353,8 +356,8 @@ class SAE(HookedRootModule):
             cfg_dict["prepend_bos"] = True
 
         if "apply_b_dec_to_input" not in cfg_dict:
-            # default to False for backwards compatibility
-            cfg_dict["apply_b_dec_to_input"] = False
+            # default to True for backwards compatibility
+            cfg_dict["apply_b_dec_to_input"] = True
 
         if "finetuning_scaling_factor" not in cfg_dict:
             # default to False for backwards compatibility
@@ -391,7 +394,7 @@ class SAE(HookedRootModule):
         sae = cls(SAEConfig.from_dict(cfg_dict))
         sae.load_state_dict(state_dict)
 
-        return sae, cfg_dict
+        return sae, cfg_dict, log_sparsities
 
     def get_name(self):
         sae_name = f"sae_{self.cfg.model_name}_{self.cfg.hook_name}_{self.cfg.d_sae}"

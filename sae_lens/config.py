@@ -104,6 +104,7 @@ class LanguageModelSAERunnerConfig:
         model_kwargs (dict[str, Any]): Additional keyword arguments for the model.
         model_from_pretrained_kwargs (dict[str, Any]): Additional keyword arguments for the model from pretrained.
     """
+
     # Data Generating Function (Model + Training Distibuion)
     model_name: str = "gelu-2l"
     model_class_name: str = "HookedTransformer"

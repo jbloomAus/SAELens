@@ -7,7 +7,7 @@ from sae_lens.sae import SAE
 
 
 def test_SparseAutoencoder_from_pretrained_loads_from_hugginface_using_shorthand():
-    sae, _ = SAE.from_pretrained(
+    sae, original_cfg_dict, sparsity = SAE.from_pretrained(
         release="gpt2-small-res-jb",
         sae_id="blocks.0.hook_resid_pre",
         device="cpu",
@@ -26,6 +26,12 @@ def test_SparseAutoencoder_from_pretrained_loads_from_hugginface_using_shorthand
     assert isinstance(sae, SAE)
     assert sae.cfg.model_name == "gpt2-small"
     assert sae.cfg.hook_name == "blocks.0.hook_resid_pre"
+
+    assert isinstance(original_cfg_dict, dict)
+
+    assert isinstance(sparsity, torch.Tensor)
+    assert sparsity.shape == (sae.cfg.d_sae,)
+    assert sparsity.max() < 0.0
 
     for k in sae.state_dict().keys():
         if k == "finetuning_scaling_factor":
