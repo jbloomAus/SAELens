@@ -194,7 +194,7 @@ class TrainingSAEConfig(SAEConfig):
         }
 
 
-class SparseAutoencoderBase(HookedRootModule):
+class SAE(HookedRootModule):
     """ """
 
     cfg: SAEConfig
@@ -388,7 +388,7 @@ class SparseAutoencoderBase(HookedRootModule):
     @classmethod
     def load_from_pretrained(
         cls, path: str, device: str = "cpu", dtype: str = "float32"
-    ) -> "SparseAutoencoderBase":
+    ) -> "SAE":
 
         config_path = os.path.join(path, "cfg.json")
         weight_path = os.path.join(path, "sae_weights.safetensors")
@@ -407,7 +407,7 @@ class SparseAutoencoderBase(HookedRootModule):
     @classmethod
     def from_pretrained(
         cls, release: str, sae_id: str, device: str = "cpu"
-    ) -> Tuple["SparseAutoencoderBase", dict[str, Any]]:
+    ) -> Tuple["SAE", dict[str, Any]]:
         """
 
         Load a pretrained SAE from the Hugging Face model hub.
@@ -491,15 +491,15 @@ class SparseAutoencoderBase(HookedRootModule):
         return sae, cfg_dict
 
     def get_name(self):
-        sae_name = f"sparse_autoencoder_{self.cfg.model_name}_{self.cfg.hook_point}_{self.cfg.d_sae}"
+        sae_name = f"sae_{self.cfg.model_name}_{self.cfg.hook_point}_{self.cfg.d_sae}"
         return sae_name
 
     @classmethod
-    def from_dict(cls, config_dict: dict[str, Any]) -> "SparseAutoencoderBase":
+    def from_dict(cls, config_dict: dict[str, Any]) -> "SAE":
         return cls(SAEConfig.from_dict(config_dict))
 
 
-class TrainingSparseAutoencoder(SparseAutoencoderBase):
+class TrainingSAE(SAE):
 
     cfg: TrainingSAEConfig  # type: ignore
     use_error_term: bool
@@ -523,7 +523,7 @@ class TrainingSparseAutoencoder(SparseAutoencoderBase):
         self.mse_loss_fn = self._get_mse_loss_fn()
 
     @classmethod
-    def from_dict(cls, config_dict: dict[str, Any]) -> "TrainingSparseAutoencoder":
+    def from_dict(cls, config_dict: dict[str, Any]) -> "TrainingSAE":
         return cls(TrainingSAEConfig.from_dict(config_dict))
 
     def encode(
@@ -687,7 +687,7 @@ class TrainingSparseAutoencoder(SparseAutoencoderBase):
         path: str,
         device: str = "cpu",
         dtype: str = "float32",
-    ) -> "TrainingSparseAutoencoder":
+    ) -> "TrainingSAE":
 
         config_path = os.path.join(path, "cfg.json")
         weight_path = os.path.join(path, "sae_weights.safetensors")

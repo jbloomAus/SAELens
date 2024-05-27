@@ -11,14 +11,14 @@ from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.geometric_median import compute_geometric_median
 from sae_lens.training.load_model import load_model
-from sae_lens.training.sae_trainer import SAETrainer
-from sae_lens.training.sparse_autoencoder import (
+from sae_lens.training.sae import (
     SAE_CFG_PATH,
     SAE_WEIGHTS_PATH,
     SPARSITY_PATH,
+    TrainingSAE,
     TrainingSAEConfig,
-    TrainingSparseAutoencoder,
 )
+from sae_lens.training.sae_trainer import SAETrainer
 
 
 class InterruptedException(Exception):
@@ -33,7 +33,7 @@ class SAETrainingRunner:
 
     cfg: LanguageModelSAERunnerConfig
     model: torch.nn.Module
-    sae: TrainingSparseAutoencoder
+    sae: TrainingSAE
     activations_store: ActivationsStore
 
     def __init__(self, cfg: LanguageModelSAERunnerConfig):
@@ -52,11 +52,11 @@ class SAETrainingRunner:
         )
 
         if self.cfg.from_pretrained_path is not None:
-            self.sae = TrainingSparseAutoencoder.load_from_pretrained(
+            self.sae = TrainingSAE.load_from_pretrained(
                 self.cfg.from_pretrained_path, self.cfg.device  # type: ignore
             )
         else:
-            self.sae = TrainingSparseAutoencoder(
+            self.sae = TrainingSAE(
                 TrainingSAEConfig.from_dict(
                     self.cfg.get_training_sae_cfg_dict(),
                 )
@@ -83,12 +83,12 @@ class SAETrainingRunner:
         )
 
         self._compile_if_needed()
-        sparse_autoencoder = self.run_trainer_with_interruption_handling(trainer)
+        sae = self.run_trainer_with_interruption_handling(trainer)
 
         if self.cfg.log_to_wandb:
             wandb.finish()
 
-        return sparse_autoencoder
+        return sae
 
     def _compile_if_needed(self):
 
@@ -126,7 +126,7 @@ class SAETrainingRunner:
             signal.signal(signal.SIGTERM, interrupt_callback)
 
             # train SAE
-            sparse_autoencoder = trainer.fit()
+            sae = trainer.fit()
 
         except (KeyboardInterrupt, InterruptedException):
             print("interrupted, saving progress")
@@ -135,7 +135,7 @@ class SAETrainingRunner:
             print("done saving")
             raise
 
-        return sparse_autoencoder
+        return sae
 
     # TODO: move this into the SAE trainer or Training SAE class
     def _init_sae_group_b_decs(

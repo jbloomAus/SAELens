@@ -14,10 +14,7 @@ from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.evals import run_evals
 from sae_lens.training.optim import L1Scheduler, get_lr_scheduler
-from sae_lens.training.sparse_autoencoder import (
-    TrainingSparseAutoencoder,
-    TrainStepOutput,
-)
+from sae_lens.training.sae import TrainingSAE, TrainStepOutput
 
 # used to map between parameters which are updated during finetuning and the config str.
 FINETUNING_PARAMETERS = {
@@ -33,7 +30,7 @@ def _log_feature_sparsity(
     return torch.log10(feature_sparsity + eps).detach().cpu()
 
 
-def _update_sae_lens_training_version(sae: TrainingSparseAutoencoder) -> None:
+def _update_sae_lens_training_version(sae: TrainingSAE) -> None:
     """
     Make sure we record the version of SAELens used for the training run
     """
@@ -42,7 +39,7 @@ def _update_sae_lens_training_version(sae: TrainingSparseAutoencoder) -> None:
 
 @dataclass
 class TrainSAEOutput:
-    sae: TrainingSparseAutoencoder
+    sae: TrainingSAE
     checkpoint_path: str
     log_feature_sparsities: torch.Tensor
 
@@ -52,7 +49,7 @@ class SAETrainer:
     def __init__(
         self,
         model: HookedRootModule,
-        sae: TrainingSparseAutoencoder,
+        sae: TrainingSAE,
         activation_store: ActivationsStore,
         save_checkpoint_fn,  # type: ignore
         cfg: LanguageModelSAERunnerConfig,
@@ -148,7 +145,7 @@ class SAETrainer:
     def dead_neurons(self) -> torch.Tensor:
         return (self.n_forward_passes_since_fired > self.cfg.dead_feature_window).bool()
 
-    def fit(self) -> TrainingSparseAutoencoder:
+    def fit(self) -> TrainingSAE:
 
         pbar = tqdm(total=self.cfg.total_training_tokens, desc="Training SAE")
 
@@ -162,9 +159,7 @@ class SAETrainer:
             layer_acts = self.activation_store.next_batch()[:, 0, :]
             self.n_training_tokens += self.cfg.train_batch_size_tokens
 
-            step_output = self._train_step(
-                sparse_autoencoder=self.sae, sae_in=layer_acts
-            )
+            step_output = self._train_step(sae=self.sae, sae_in=layer_acts)
 
             if self.cfg.log_to_wandb:
                 self._log_train_step(step_output)
@@ -202,14 +197,14 @@ class SAETrainer:
 
     def _train_step(
         self,
-        sparse_autoencoder: TrainingSparseAutoencoder,
+        sae: TrainingSAE,
         sae_in: torch.Tensor,
     ) -> TrainStepOutput:
 
-        sparse_autoencoder.train()
+        sae.train()
         # Make sure the W_dec is still zero-norm
         if self.cfg.normalize_sae_decoder:
-            sparse_autoencoder.set_decoder_norm_to_unit_norm()
+            sae.set_decoder_norm_to_unit_norm()
 
         # log and then reset the feature sparsity every feature_sampling_window steps
         if (self.n_training_steps + 1) % self.cfg.feature_sampling_window == 0:
@@ -243,12 +238,12 @@ class SAETrainer:
         ).backward()  # loss.backward() if not autocasting
         self.scaler.unscale_(self.optimizer)  # needed to clip correctly
         # TODO: Work out if grad norm clipping should be in config / how to test it.
-        torch.nn.utils.clip_grad_norm_(sparse_autoencoder.parameters(), 1.0)
+        torch.nn.utils.clip_grad_norm_(sae.parameters(), 1.0)
         self.scaler.step(self.optimizer)  # just ctx.optimizer.step() if not autocasting
         self.scaler.update()
 
         if self.cfg.normalize_sae_decoder:
-            sparse_autoencoder.remove_gradient_parallel_to_decoder_directions()
+            sae.remove_gradient_parallel_to_decoder_directions()
 
         self.optimizer.zero_grad()
         self.lr_scheduler.step()
@@ -318,7 +313,7 @@ class SAETrainer:
         ) == 0:
             self.sae.eval()
             eval_metrics = run_evals(
-                sparse_autoencoder=self.sae,
+                sae=self.sae,
                 activation_store=self.activation_store,
                 model=self.model,
                 n_eval_batches=self.cfg.n_eval_batches,

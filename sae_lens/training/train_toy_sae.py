@@ -5,11 +5,11 @@ import wandb
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from sae_lens.training.sparse_autoencoder import SparseAutoencoderBase
+from sae_lens.training.sae import SAE
 
 
 def train_toy_sae(
-    sparse_autoencoder: SparseAutoencoderBase,
+    sparse_autoencoder: SAE,
     activation_store: torch.Tensor,  # TODO: this type seems strange / wrong
     batch_size: int = 1024,
     feature_sampling_window: int = 100,  # how many training steps between resampling the features / considiring neurons dead

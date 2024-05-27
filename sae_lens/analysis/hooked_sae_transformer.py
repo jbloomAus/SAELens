@@ -8,7 +8,7 @@ from transformer_lens.ActivationCache import ActivationCache
 from transformer_lens.hook_points import HookPoint  # Hooking utilities
 from transformer_lens.HookedTransformer import HookedTransformer
 
-from sae_lens.training.sparse_autoencoder import SparseAutoencoderBase
+from sae_lens.training.sae import SAE
 
 SingleLoss = Float[torch.Tensor, ""]  # Type alias for a single element tensor
 LossPerToken = Float[torch.Tensor, "batch pos-1"]
@@ -73,9 +73,9 @@ class HookedSAETransformer(HookedTransformer):
             **model_kwargs: Keyword arguments for HookedTransformer initialization
         """
         super().__init__(*model_args, **model_kwargs)
-        self.acts_to_saes: Dict[str, SparseAutoencoderBase] = {}
+        self.acts_to_saes: Dict[str, SAE] = {}
 
-    def add_sae(self, sae: SparseAutoencoderBase):
+    def add_sae(self, sae: SAE):
         """Attaches an SAE to the model
 
         WARNING: This sae will be permanantly attached until you remove it with reset_saes. This function will also overwrite any existing SAE attached to the same hook point.
@@ -94,9 +94,7 @@ class HookedSAETransformer(HookedTransformer):
         set_deep_attr(self, act_name, sae)
         self.setup()
 
-    def _reset_sae(
-        self, act_name: str, prev_sae: Optional[SparseAutoencoderBase] = None
-    ):
+    def _reset_sae(self, act_name: str, prev_sae: Optional[SAE] = None):
         """Resets an SAE that was attached to the model
 
         By default will remove the SAE from that hook_point.
@@ -123,7 +121,7 @@ class HookedSAETransformer(HookedTransformer):
     def reset_saes(
         self,
         act_names: Optional[Union[str, List[str]]] = None,
-        prev_saes: Optional[List[Union[SparseAutoencoderBase, None]]] = None,
+        prev_saes: Optional[List[Union[SAE, None]]] = None,
     ):
         """Reset the SAEs attached to the model
 
@@ -154,7 +152,7 @@ class HookedSAETransformer(HookedTransformer):
     def run_with_saes(
         self,
         *model_args: Any,
-        saes: Union[SparseAutoencoderBase, List[SparseAutoencoderBase]] = [],
+        saes: Union[SAE, List[SAE]] = [],
         reset_saes_end: bool = True,
         **model_kwargs: Any,
     ) -> Union[
@@ -179,7 +177,7 @@ class HookedSAETransformer(HookedTransformer):
     def run_with_cache_with_saes(
         self,
         *model_args: Any,
-        saes: Union[SparseAutoencoderBase, List[SparseAutoencoderBase]] = [],
+        saes: Union[SAE, List[SAE]] = [],
         reset_saes_end: bool = True,
         return_cache_object: bool = True,
         remove_batch_dim: bool = False,
@@ -219,7 +217,7 @@ class HookedSAETransformer(HookedTransformer):
     def run_with_hooks_with_saes(
         self,
         *model_args: Any,
-        saes: Union[SparseAutoencoderBase, List[SparseAutoencoderBase]] = [],
+        saes: Union[SAE, List[SAE]] = [],
         reset_saes_end: bool = True,
         fwd_hooks: List[Tuple[Union[str, Callable], Callable]] = [],  # type: ignore
         bwd_hooks: List[Tuple[Union[str, Callable], Callable]] = [],  # type: ignore
@@ -255,7 +253,7 @@ class HookedSAETransformer(HookedTransformer):
     @contextmanager
     def saes(
         self,
-        saes: Union[SparseAutoencoderBase, List[SparseAutoencoderBase]] = [],
+        saes: Union[SAE, List[SAE]] = [],
         reset_saes_end: bool = True,
     ):
         """
@@ -282,7 +280,7 @@ class HookedSAETransformer(HookedTransformer):
         """
         act_names_to_reset = []
         prev_saes = []
-        if isinstance(saes, SparseAutoencoderBase):
+        if isinstance(saes, SAE):
             saes = [saes]
         try:
             for sae in saes:

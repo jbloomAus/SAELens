@@ -3,11 +3,11 @@ import torch
 from huggingface_hub import hf_hub_download
 from safetensors import safe_open
 
-from sae_lens.training.sparse_autoencoder import SparseAutoencoderBase
+from sae_lens.training.sae import SAE
 
 
 def test_SparseAutoencoder_from_pretrained_loads_from_hugginface_using_shorthand():
-    sae, _ = SparseAutoencoderBase.from_pretrained(
+    sae, _ = SAE.from_pretrained(
         release="gpt2-small-res-jb",
         sae_id="blocks.0.hook_resid_pre",
         device="cpu",
@@ -23,7 +23,7 @@ def test_SparseAutoencoder_from_pretrained_loads_from_hugginface_using_shorthand
         for k in f.keys():
             state_dict[k] = f.get_tensor(k)
 
-    assert isinstance(sae, SparseAutoencoderBase)
+    assert isinstance(sae, SAE)
     assert sae.cfg.model_name == "gpt2-small"
     assert sae.cfg.hook_point == "blocks.0.hook_resid_pre"
 
@@ -35,7 +35,7 @@ def test_SparseAutoencoder_from_pretrained_loads_from_hugginface_using_shorthand
 
 def test_SparseAutoencoder_from_pretrained_errors_for_invalid_releases():
     with pytest.raises(ValueError):
-        SparseAutoencoderBase.from_pretrained(
+        SAE.from_pretrained(
             release="wrong",
             sae_id="blocks.0.hook_resid_pre",
             device="cpu",
@@ -44,7 +44,7 @@ def test_SparseAutoencoder_from_pretrained_errors_for_invalid_releases():
 
 def test_SparseAutoencoder_from_pretrained_errors_for_invalid_sae_ids():
     with pytest.raises(ValueError):
-        SparseAutoencoderBase.from_pretrained(
+        SAE.from_pretrained(
             release="gpt2-small-res-jb",
             sae_id="wrong",
             device="cpu",

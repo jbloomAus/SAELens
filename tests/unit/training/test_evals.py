@@ -5,10 +5,7 @@ from transformer_lens import HookedTransformer
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.evals import run_evals
-from sae_lens.training.sparse_autoencoder import (
-    SparseAutoencoderBase,
-    TrainingSparseAutoencoder,
-)
+from sae_lens.training.sae import SAE, TrainingSAE
 from tests.unit.helpers import TINYSTORIES_MODEL, build_sae_cfg, load_model_cached
 
 
@@ -32,22 +29,22 @@ def activation_store(model: HookedTransformer, cfg: LanguageModelSAERunnerConfig
 
 @pytest.fixture
 def base_sae(cfg: LanguageModelSAERunnerConfig):
-    return SparseAutoencoderBase.from_dict(cfg.get_base_sae_cfg_dict())
+    return SAE.from_dict(cfg.get_base_sae_cfg_dict())
 
 
 @pytest.fixture
 def training_sae(cfg: LanguageModelSAERunnerConfig):
-    return TrainingSparseAutoencoder.from_dict(cfg.get_training_sae_cfg_dict())
+    return TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
 
 
 def test_run_evals_base_sae(
-    base_sae: SparseAutoencoderBase,
+    base_sae: SAE,
     activation_store: ActivationsStore,
     model: HookedTransformer,
 ):
 
     eval_metrics = run_evals(
-        sparse_autoencoder=base_sae,
+        sae=base_sae,
         activation_store=activation_store,
         model=model,
         n_eval_batches=2,
@@ -70,13 +67,13 @@ def test_run_evals_base_sae(
 
 
 def test_run_evals_training_sae(
-    training_sae: TrainingSparseAutoencoder,
+    training_sae: TrainingSAE,
     activation_store: ActivationsStore,
     model: HookedTransformer,
 ):
 
     eval_metrics = run_evals(
-        sparse_autoencoder=training_sae,
+        sae=training_sae,
         activation_store=activation_store,
         model=model,
         n_eval_batches=10,

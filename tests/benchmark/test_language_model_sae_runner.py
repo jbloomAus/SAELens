@@ -87,7 +87,7 @@ def test_language_model_sae_runner():
         # performance enhancement:
         compile_sae=True,
         # WANDB
-        log_to_wandb=True,  # always use wandb unless you are just testing code.
+        log_to_wandb=False,  # always use wandb unless you are just testing code.
         wandb_project="benchmark",
         wandb_log_frequency=100,
         # Misc
@@ -99,7 +99,7 @@ def test_language_model_sae_runner():
     )
 
     # look at the next cell to see some instruction for what to do while this is running.
-    sparse_autoencoder_dictionary = SAETrainingRunner(cfg).run()
+    sae = SAETrainingRunner(cfg).run()
 
-    assert sparse_autoencoder_dictionary is not None
+    assert sae is not None
     # know whether or not this works by looking at the dashboard!

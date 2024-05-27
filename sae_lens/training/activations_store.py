@@ -23,7 +23,7 @@ from sae_lens.training.config import (
     CacheActivationsRunnerConfig,
     LanguageModelSAERunnerConfig,
 )
-from sae_lens.training.sparse_autoencoder import SparseAutoencoderBase
+from sae_lens.training.sae import SAE
 
 HfDataset = DatasetDict | Dataset | IterableDatasetDict | IterableDataset
 
@@ -83,7 +83,7 @@ class ActivationsStore:
     def from_sae(
         cls,
         model: HookedRootModule,
-        sae: SparseAutoencoderBase,
+        sae: SAE,
         streaming: bool = True,
         store_batch_size_prompts: int = 8,
         n_batches_in_buffer: int = 8,

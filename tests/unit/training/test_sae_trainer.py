@@ -9,13 +9,13 @@ from transformer_lens import HookedTransformer
 from sae_lens import __version__
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.config import LanguageModelSAERunnerConfig
+from sae_lens.training.sae import TrainingSAE
 from sae_lens.training.sae_trainer import (
     SAETrainer,
     TrainStepOutput,
     _log_feature_sparsity,
     _update_sae_lens_training_version,
 )
-from sae_lens.training.sparse_autoencoder import TrainingSparseAutoencoder
 from tests.unit.helpers import TINYSTORIES_MODEL, build_sae_cfg, load_model_cached
 
 
@@ -39,13 +39,13 @@ def activation_store(model: HookedTransformer, cfg: LanguageModelSAERunnerConfig
 
 @pytest.fixture
 def training_sae(cfg: LanguageModelSAERunnerConfig):
-    return TrainingSparseAutoencoder.from_dict(cfg.get_training_sae_cfg_dict())
+    return TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
 
 
 @pytest.fixture
 def trainer(
     cfg: LanguageModelSAERunnerConfig,
-    training_sae: TrainingSparseAutoencoder,
+    training_sae: TrainingSAE,
     model: HookedTransformer,
     activation_store: ActivationsStore,
 ):
@@ -61,16 +61,14 @@ def trainer(
     return trainer
 
 
-def modify_sae_output(
-    sae: TrainingSparseAutoencoder, modifier: Callable[[torch.Tensor], Any]
-):
+def modify_sae_output(sae: TrainingSAE, modifier: Callable[[torch.Tensor], Any]):
     """
     Helper to modify the output of the SAE forward pass for use in patching, for use in patch side_effect.
     We need real grads during training, so we can't just mock the whole forward pass directly.
     """
 
     def modified_forward(*args: Any, **kwargs: Any) -> torch.Tensor:
-        output = TrainingSparseAutoencoder.forward(sae, *args, **kwargs)
+        output = TrainingSAE.forward(sae, *args, **kwargs)
         return modifier(output)
 
     return modified_forward
@@ -85,7 +83,7 @@ def test_train_step__reduces_loss_when_called_repeatedly_on_same_acts(
     # intentionally train on the same activations 5 times to ensure loss decreases
     train_outputs = [
         trainer._train_step(
-            sparse_autoencoder=trainer.sae,
+            sae=trainer.sae,
             sae_in=layer_acts[:, 0, :],
         )
         for _ in range(5)
@@ -104,7 +102,7 @@ def test_train_step__output_looks_reasonable(trainer: SAETrainer) -> None:
     layer_acts = trainer.activation_store.next_batch()
 
     output = trainer._train_step(
-        sparse_autoencoder=trainer.sae,
+        sae=trainer.sae,
         sae_in=layer_acts[:, 0, :],
     )
 
@@ -130,7 +128,7 @@ def test_train_step__sparsity_updates_based_on_feature_act_sparsity(
     layer_acts = trainer.activation_store.next_batch()
 
     train_output = trainer._train_step(
-        sparse_autoencoder=trainer.sae,
+        sae=trainer.sae,
         sae_in=layer_acts[:, 0, :],
     )
     feature_acts = train_output.feature_acts
@@ -213,7 +211,7 @@ def test_train_sae_group_on_language_model__runs(
     # just a tiny datast which will run quickly
     dataset = Dataset.from_list([{"text": "hello world"}] * 2000)
     activation_store = ActivationsStore.from_config(ts_model, cfg, dataset=dataset)
-    sae = TrainingSparseAutoencoder.from_dict(cfg.get_training_sae_cfg_dict())
+    sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
     sae = SAETrainer(
         model=ts_model,
         sae=sae,
@@ -222,11 +220,11 @@ def test_train_sae_group_on_language_model__runs(
         cfg=cfg,
     ).fit()
 
-    assert isinstance(sae, TrainingSparseAutoencoder)
+    assert isinstance(sae, TrainingSAE)
 
 
 def test_update_sae_lens_training_version_sets_the_current_version():
     cfg = build_sae_cfg(sae_lens_training_version="0.1.0")
-    sae = TrainingSparseAutoencoder.from_dict(cfg.get_training_sae_cfg_dict())
+    sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
     _update_sae_lens_training_version(sae)
     assert sae.cfg.sae_lens_training_version == str(__version__)

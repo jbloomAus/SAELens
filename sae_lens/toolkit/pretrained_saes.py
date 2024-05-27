@@ -7,7 +7,7 @@ from huggingface_hub import hf_hub_download, list_repo_tree
 from safetensors import safe_open
 from tqdm import tqdm
 
-from sae_lens.training.sparse_autoencoder import SparseAutoencoderBase
+from sae_lens.training.sae import SAE
 
 
 def load_sparsity(path: str) -> torch.Tensor:
@@ -44,8 +44,8 @@ def download_sae_from_hf(
     return cfg_path, sae_path, sparsity_path
 
 
-def load_sae_from_local_path(path: str) -> Tuple[SparseAutoencoderBase, torch.Tensor]:
-    sae = SparseAutoencoderBase.load_from_pretrained(path)
+def load_sae_from_local_path(path: str) -> Tuple[SAE, torch.Tensor]:
+    sae = SAE.load_from_pretrained(path)
     sparsity = load_sparsity(path)
     return sae, sparsity
 
@@ -53,7 +53,7 @@ def load_sae_from_local_path(path: str) -> Tuple[SparseAutoencoderBase, torch.Te
 def get_gpt2_res_jb_saes(
     hook_point: Optional[str] = None,
     device: str = "cpu",
-) -> tuple[dict[str, SparseAutoencoderBase], dict[str, torch.Tensor]]:
+) -> tuple[dict[str, SAE], dict[str, torch.Tensor]]:
     """
     Download the sparse autoencoders for the GPT2-Small model with residual connections
     from the repository of jbloom. You can specify a hook_point to download only one
@@ -83,7 +83,7 @@ def get_gpt2_res_jb_saes(
 
         # Then use our function to download the files
         folder_path = os.path.dirname(sae_path)
-        sae = SparseAutoencoderBase.load_from_pretrained(folder_path, device=device)
+        sae = SAE.load_from_pretrained(folder_path, device=device)
         sparsity = load_sparsity(folder_path)
         sparsity = sparsity.to(device)
         saes[hook_point] = sae
@@ -108,12 +108,12 @@ def convert_connor_rob_sae_to_our_saelens_format(
 
     """
 
-    ae_alt = SparseAutoencoderBase.from_dict(config)
+    ae_alt = SAE.from_dict(config)
     ae_alt.load_state_dict(state_dict)
     return ae_alt
 
 
-def get_gpt2_small_ckrk_attn_out_saes() -> dict[str, SparseAutoencoderBase]:
+def get_gpt2_small_ckrk_attn_out_saes() -> dict[str, SAE]:
 
     REPO_ID = "ckkissane/attn-saes-gpt2-small-all-layers"
 

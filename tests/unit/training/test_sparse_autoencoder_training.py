@@ -8,8 +8,8 @@ from transformer_lens import HookedTransformer
 
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.config import LanguageModelSAERunnerConfig
+from sae_lens.training.sae import TrainingSAE
 from sae_lens.training.sae_trainer import SAETrainer
-from sae_lens.training.sparse_autoencoder import TrainingSparseAutoencoder
 from tests.unit.helpers import build_sae_cfg
 
 
@@ -71,7 +71,7 @@ def training_sae(cfg: Any):
     """
     Pytest fixture to create a mock instance of SparseAutoencoder.
     """
-    return TrainingSparseAutoencoder(cfg)
+    return TrainingSAE(cfg)
 
 
 @pytest.fixture
@@ -90,7 +90,7 @@ def model(cfg: LanguageModelSAERunnerConfig):
 @pytest.fixture
 def trainer(
     cfg: LanguageModelSAERunnerConfig,
-    training_sae: TrainingSparseAutoencoder,
+    training_sae: TrainingSAE,
     model: HookedTransformer,
     activation_store: ActivationsStore,
 ):
@@ -136,7 +136,7 @@ def trainer(
 #     assert torch.allclose(sae_out1, sae_out2)
 
 
-def test_sparse_autoencoder_forward(training_sae: TrainingSparseAutoencoder):
+def test_sae_forward(training_sae: TrainingSAE):
     batch_size = 32
     d_in = training_sae.cfg.d_in
     d_sae = training_sae.cfg.d_sae
@@ -179,8 +179,8 @@ def test_sparse_autoencoder_forward(training_sae: TrainingSparseAutoencoder):
     )
 
 
-def test_sparse_autoencoder_forward_with_mse_loss_norm(
-    training_sae: TrainingSparseAutoencoder,
+def test_sae_forward_with_mse_loss_norm(
+    training_sae: TrainingSAE,
 ):
     # change the confgi and ensure the mse loss is calculated correctly
     training_sae.cfg.mse_loss_normalization = "dense_batch"
@@ -235,7 +235,7 @@ def test_sparse_autoencoder_forward_with_mse_loss_norm(
 
 
 def test_SparseAutoencoder_forward_ghost_grad_loss_non_zero(
-    training_sae: TrainingSparseAutoencoder,
+    training_sae: TrainingSAE,
 ):
 
     training_sae.cfg.use_ghost_grads = True
@@ -298,7 +298,7 @@ def test_calculate_ghost_grad_loss(
 
 
 def test_per_item_mse_loss_with_norm_matches_original_implementation(
-    training_sae: TrainingSparseAutoencoder,
+    training_sae: TrainingSAE,
 ) -> None:
 
     training_sae.cfg.mse_loss_normalization = "dense_batch"
@@ -321,12 +321,8 @@ def test_per_item_mse_loss_with_norm_matches_original_implementation(
 def test_SparseAutoencoder_forward_can_add_noise_to_hidden_pre() -> None:
     clean_cfg = build_sae_cfg(d_in=2, d_sae=4, noise_scale=0)
     noisy_cfg = build_sae_cfg(d_in=2, d_sae=4, noise_scale=100)
-    clean_sae = TrainingSparseAutoencoder.from_dict(
-        clean_cfg.get_training_sae_cfg_dict()
-    )
-    noisy_sae = TrainingSparseAutoencoder.from_dict(
-        noisy_cfg.get_training_sae_cfg_dict()
-    )
+    clean_sae = TrainingSAE.from_dict(clean_cfg.get_training_sae_cfg_dict())
+    noisy_sae = TrainingSAE.from_dict(noisy_cfg.get_training_sae_cfg_dict())
 
     input = torch.randn(3, 2)
 
@@ -343,7 +339,7 @@ def test_SparseAutoencoder_forward_can_add_noise_to_hidden_pre() -> None:
 
 
 def test_SparseAutoencoder_remove_gradient_parallel_to_decoder_directions(
-    training_sae: TrainingSparseAutoencoder,
+    training_sae: TrainingSAE,
 ) -> None:
 
     if not training_sae.cfg.normalize_sae_decoder:

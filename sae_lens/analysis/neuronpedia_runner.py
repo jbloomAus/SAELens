@@ -26,7 +26,7 @@ from sae_lens.toolkit.pretrained_saes import load_sparsity
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.config import LanguageModelSAERunnerConfig
 from sae_lens.training.load_model import load_model
-from sae_lens.training.sparse_autoencoder import SparseAutoencoderBase
+from sae_lens.training.sae import SAE
 
 OUT_OF_RANGE_TOKEN = "<|outofrange|>"
 
@@ -91,12 +91,10 @@ class NeuronpediaRunner:
             self.device = "cuda"
 
         self.sae_path = sae_path
-        self.sparse_autoencoder = SparseAutoencoderBase.load_from_pretrained(
-            self.sae_path, device=self.device
-        )
+        self.sae = SAE.load_from_pretrained(self.sae_path, device=self.device)
         self.model = load_model(
             model_class_name="HookedTransformer",
-            model_name=self.sparse_autoencoder.model_name,
+            model_name=self.sae.model_name,
             device=self.device,
         )
 
@@ -106,8 +104,8 @@ class NeuronpediaRunner:
         # currently this script assumes we are loading an SAE trained using SAE Lens.
         self.activation_store = ActivationsStore.from_config(model=self.model, cfg=cfg)
 
-        self.model_id = self.sparse_autoencoder.cfg.model_name
-        self.layer = self.sparse_autoencoder.cfg.hook_point_layer
+        self.model_id = self.sae.cfg.model_name
+        self.layer = self.sae.cfg.hook_point_layer
         self.sae_id = sae_id
         self.sparsity_threshold = sparsity_threshold
         self.n_features_at_a_time = n_features_at_a_time
@@ -174,7 +172,7 @@ class NeuronpediaRunner:
         return np.reshape(str_tokens, tokens.shape).tolist()
 
     def run(self):
-        self.n_features = self.sparse_autoencoder.cfg.d_sae
+        self.n_features = self.sae.cfg.d_sae
         assert self.n_features is not None
 
         # if we have feature sparsity, then use it to only generate outputs for non-dead features
@@ -287,7 +285,7 @@ class NeuronpediaRunner:
                     ]
                 )
                 feature_vis_params = SaeVisConfig(
-                    hook_point=self.sparse_autoencoder.cfg.hook_point,
+                    hook_point=self.sae.cfg.hook_point,
                     minibatch_size_features=128,
                     minibatch_size_tokens=64,
                     features=features_to_process,
@@ -295,7 +293,7 @@ class NeuronpediaRunner:
                     feature_centric_layout=layout,
                 )
                 feature_data = SaeVisData.create(
-                    encoder=self.sparse_autoencoder,  # type: ignore
+                    encoder=self.sae,  # type: ignore
                     model=cast(HookedTransformer, self.model),
                     tokens=tokens,
                     cfg=feature_vis_params,

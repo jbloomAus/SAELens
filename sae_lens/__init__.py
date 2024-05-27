@@ -1,7 +1,7 @@
 __version__ = "2.1.3"
 
 
-from .analysis.HookedSAETransformer import HookedSAETransformer
+from .analysis.hooked_sae_transformer import HookedSAETransformer
 from .cache_activations_runner import CacheActivationsRunner
 from .pretokenize_runner import pretokenize_runner
 from .sae_training_runner import SAETrainingRunner
@@ -12,14 +12,11 @@ from .training.config import (
     PretokenizeRunnerConfig,
 )
 from .training.evals import run_evals
-from .training.sparse_autoencoder import (
-    SparseAutoencoderBase,
-    TrainingSparseAutoencoder,
-)
+from .training.sae import SAE, TrainingSAE
 
 __all__ = [
-    "SparseAutoencoderBase",
-    "TrainingSparseAutoencoder",
+    "SAE",
+    "TrainingSAE",
     "HookedSAETransformer",
     "ActivationsStore",
     "LanguageModelSAERunnerConfig",

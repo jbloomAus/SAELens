@@ -5,7 +5,7 @@ from transformer_lens import HookedTransformer
 from transformer_lens.hook_points import HookPoint
 
 from sae_lens import HookedSAETransformer
-from sae_lens.training.sparse_autoencoder import SAEConfig, SparseAutoencoderBase
+from sae_lens.training.sae import SAE, SAEConfig
 
 MODEL = "solu-1l"
 prompt = "Hello World!"
@@ -31,7 +31,7 @@ def original_logits(model: HookedTransformer):
     return model(prompt)
 
 
-def get_hooked_sae(model: HookedTransformer, act_name: str) -> SparseAutoencoderBase:
+def get_hooked_sae(model: HookedTransformer, act_name: str) -> SAE:
     site_to_size = {
         "hook_z": model.cfg.d_head * model.cfg.n_heads,
         "hook_mlp_out": model.cfg.d_model,
@@ -60,7 +60,7 @@ def get_hooked_sae(model: HookedTransformer, act_name: str) -> SparseAutoencoder
         normalize_activations=False,
     )
 
-    return SparseAutoencoderBase(sae_cfg)
+    return SAE(sae_cfg)
 
 
 @pytest.fixture(
@@ -81,13 +81,11 @@ def get_hooked_sae(model: HookedTransformer, act_name: str) -> SparseAutoencoder
 def hooked_sae(
     model: HookedTransformer,
     request: pytest.FixtureRequest,
-) -> SparseAutoencoderBase:
+) -> SAE:
     return get_hooked_sae(model, request.param)
 
 
-def test_forward_reconstructs_input(
-    model: HookedTransformer, hooked_sae: SparseAutoencoderBase
-):
+def test_forward_reconstructs_input(model: HookedTransformer, hooked_sae: SAE):
     """Verfiy that the HookedSAE returns an output with the same shape as the input activations."""
 
     act_name = hooked_sae.cfg.hook_point
@@ -98,7 +96,7 @@ def test_forward_reconstructs_input(
     assert sae_output.shape == x.shape
 
 
-def test_run_with_cache(model: HookedTransformer, hooked_sae: SparseAutoencoderBase):
+def test_run_with_cache(model: HookedTransformer, hooked_sae: SAE):
     """Verifies that run_with_cache caches SAE activations"""
 
     act_name = hooked_sae.cfg.hook_point
@@ -115,7 +113,7 @@ def test_run_with_cache(model: HookedTransformer, hooked_sae: SparseAutoencoderB
     assert "hook_sae_output" in cache
 
 
-def test_run_with_hooks(model: HookedTransformer, hooked_sae: SparseAutoencoderBase):
+def test_run_with_hooks(model: HookedTransformer, hooked_sae: SAE):
     """Verifies that run_with_hooks works with SAE activations"""
 
     c = Counter()
@@ -140,7 +138,7 @@ def test_run_with_hooks(model: HookedTransformer, hooked_sae: SparseAutoencoderB
     assert c.count == len(sae_hooks)
 
 
-def test_error_term(model: HookedTransformer, hooked_sae: SparseAutoencoderBase):
+def test_error_term(model: HookedTransformer, hooked_sae: SAE):
     """Verifies that that if we use error_terms, HookedSAE returns an output that is equal tdef test_feature_grads_with_error_term(model: HookedTransformer, hooked_sae: SparseAutoencoderBase):
     o the input activations."""
 

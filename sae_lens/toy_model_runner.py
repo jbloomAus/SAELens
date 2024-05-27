@@ -5,7 +5,7 @@ import torch
 import wandb
 
 from sae_lens.training.config import ToyModelSAERunnerConfig
-from sae_lens.training.sparse_autoencoder import SparseAutoencoderBase
+from sae_lens.training.sae import SAE
 from sae_lens.training.toy_models import ReluOutputModel as ToyModel
 from sae_lens.training.toy_models import ToyConfig
 from sae_lens.training.train_toy_sae import train_toy_sae
@@ -41,15 +41,15 @@ def toy_model_sae_runner(cfg: ToyModelSAERunnerConfig):
         "batch_size features, hidden features -> batch_size hidden",
     )
 
-    sparse_autoencoder = SparseAutoencoderBase(
+    sae = SAE(
         **cfg.get_base_sae_cfg_dict(),
     )  # config has the hyperparameters for the SAE
 
     if cfg.log_to_wandb:
         wandb.init(project=cfg.wandb_project, config=cast(Any, cfg))
 
-    sparse_autoencoder = train_toy_sae(
-        sparse_autoencoder,
+    sae = train_toy_sae(
+        sae,
         activation_store=hidden.detach().squeeze(),
         batch_size=cfg.train_batch_size,
         feature_sampling_window=cfg.feature_sampling_window,
@@ -61,4 +61,4 @@ def toy_model_sae_runner(cfg: ToyModelSAERunnerConfig):
     if cfg.log_to_wandb:
         wandb.finish()
 
-    return sparse_autoencoder
+    return sae

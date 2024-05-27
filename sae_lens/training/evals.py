@@ -6,26 +6,26 @@ import torch
 from transformer_lens.hook_points import HookedRootModule
 
 from sae_lens.training.activations_store import ActivationsStore
-from sae_lens.training.sparse_autoencoder import SparseAutoencoderBase
+from sae_lens.training.sae import SAE
 
 
 @torch.no_grad()
 def run_evals(
-    sparse_autoencoder: SparseAutoencoderBase,
+    sae: SAE,
     activation_store: ActivationsStore,
     model: HookedRootModule,
     n_eval_batches: int = 10,
     eval_batch_size_prompts: int | None = None,
     model_kwargs: Mapping[str, Any] = {},
 ) -> Mapping[str, Any]:
-    hook_point = sparse_autoencoder.cfg.hook_point
-    hook_point_head_index = sparse_autoencoder.cfg.hook_point_head_index
+    hook_point = sae.cfg.hook_point
+    hook_point_head_index = sae.cfg.hook_point_head_index
     ### Evals
     eval_tokens = activation_store.get_batch_tokens(eval_batch_size_prompts)
 
     # Get Reconstruction Score
     losses_df = recons_loss_batched(
-        sparse_autoencoder,
+        sae,
         model,
         activation_store,
         n_batches=n_eval_batches,
@@ -60,7 +60,7 @@ def run_evals(
         original_act = activation_store.apply_norm_scaling_factor(original_act)
 
     # send the (maybe normalised) activations into the SAE
-    sae_out = sparse_autoencoder.decode(sparse_autoencoder.encode(original_act))
+    sae_out = sae.decode(sae.encode(original_act))
     del cache
 
     l2_norm_in = torch.norm(original_act, dim=-1)
@@ -85,7 +85,7 @@ def run_evals(
 
 
 def recons_loss_batched(
-    sparse_autoencoder: SparseAutoencoderBase,
+    sae: SAE,
     model: HookedRootModule,
     activation_store: ActivationsStore,
     n_batches: int = 100,
@@ -95,7 +95,7 @@ def recons_loss_batched(
     for _ in range(n_batches):
         batch_tokens = activation_store.get_batch_tokens(eval_batch_size_prompts)
         score, loss, recons_loss, zero_abl_loss = get_recons_loss(
-            sparse_autoencoder,
+            sae,
             model,
             batch_tokens,
             activation_store,
@@ -118,14 +118,14 @@ def recons_loss_batched(
 
 @torch.no_grad()
 def get_recons_loss(
-    sparse_autoencoder: SparseAutoencoderBase,
+    sae: SAE,
     model: HookedRootModule,
     batch_tokens: torch.Tensor,
     activation_store: ActivationsStore,
     model_kwargs: Mapping[str, Any] = {},
 ):
-    hook_point = sparse_autoencoder.cfg.hook_point
-    head_index = sparse_autoencoder.cfg.hook_point_head_index
+    hook_point = sae.cfg.hook_point
+    head_index = sae.cfg.hook_point_head_index
 
     loss = model(batch_tokens, return_type="loss", **model_kwargs)
 
@@ -136,9 +136,7 @@ def get_recons_loss(
             activations = activation_store.apply_norm_scaling_factor(activations)
 
         # SAE class agnost forward forward pass.
-        activations = sparse_autoencoder.decode(
-            sparse_autoencoder.encode(activations)
-        ).to(activations.dtype)
+        activations = sae.decode(sae.encode(activations)).to(activations.dtype)
 
         # Unscale if activations were scaled prior to going into the SAE
         if activation_store.normalize_activations:
@@ -151,9 +149,9 @@ def get_recons_loss(
             activations = activation_store.apply_norm_scaling_factor(activations)
 
         # SAE class agnost forward forward pass.
-        new_activations = sparse_autoencoder.decode(
-            sparse_autoencoder.encode(activations.flatten(-2, -1))
-        ).to(activations.dtype)
+        new_activations = sae.decode(sae.encode(activations.flatten(-2, -1))).to(
+            activations.dtype
+        )
 
         new_activations = new_activations.reshape(
             activations.shape
@@ -169,9 +167,9 @@ def get_recons_loss(
         if activation_store.normalize_activations:
             activations = activation_store.apply_norm_scaling_factor(activations)
 
-        new_activations = sparse_autoencoder.decoder(
-            sparse_autoencoder.encode(activations[:, :, head_index])
-        ).to(activations.dtype)
+        new_activations = sae.decoder(sae.encode(activations[:, :, head_index])).to(
+            activations.dtype
+        )
         activations[:, :, head_index] = new_activations
 
         # Unscale if activations were scaled prior to going into the SAE

@@ -8,7 +8,7 @@ from sae_lens.toolkit.pretrained_saes_directory import get_pretrained_saes_direc
 
 # from sae_lens.training.activations_store import ActivationsStore
 # from sae_lens.training.evals import run_evals
-from sae_lens.training.sparse_autoencoder import SparseAutoencoderBase
+from sae_lens.training.sae import SAE
 
 # from transformer_lens import HookedTransformer
 
@@ -28,8 +28,6 @@ def test_eval_all_loadable_saes():
         for sae_name, sae_info in lookup.saes_map.items():
             print(f"Loading {sae_name} from {release}")
             print(sae_info)
-            sae, cfg_dict = SparseAutoencoderBase.from_pretrained(
-                release, sae_name, device=device
-            )
+            sae, cfg_dict = SAE.from_pretrained(release, sae_name, device=device)
             print(sae)
             print(cfg_dict)

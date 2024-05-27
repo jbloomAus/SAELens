@@ -57,8 +57,8 @@ for l1_coefficient in [2, 5, 10]:
         # When we do a proper test
         # training_tokens= 820_000_000, # 200k steps * 4096 batch size ~ 820M tokens (doable overnight on an A100)
         # For now.
-        use_cached_activations=True,
-        cached_activations_path="/home/paperspace/shared_volumes/activations_volume_1/gelu-1l",
+        use_cached_activations=False,
+        # cached_activations_path="/home/paperspace/shared_volumes/activations_volume_1/gelu-1l",
         training_tokens=total_training_tokens,  # For initial testing I think this is a good number.
         train_batch_size_tokens=4096,
         # Loss Function
@@ -112,6 +112,6 @@ for l1_coefficient in [2, 5, 10]:
     )
 
     # look at the next cell to see some instruction for what to do while this is running.
-    sparse_autoencoder_dictionary = SAETrainingRunner(cfg).run()
+    sae = SAETrainingRunner(cfg).run()
 
     print("=" * 50)

@@ -4,8 +4,8 @@ from transformer_lens import HookedTransformer
 from transformer_lens.ActivationCache import ActivationCache
 from transformer_lens.hook_points import HookPoint  # Hooking utilities
 
-from sae_lens.analysis.HookedSAETransformer import HookedSAETransformer, get_deep_attr
-from sae_lens.training.sparse_autoencoder import SAEConfig, SparseAutoencoderBase
+from sae_lens.analysis.hooked_sae_transformer import HookedSAETransformer, get_deep_attr
+from sae_lens.training.sae import SAE, SAEConfig
 
 MODEL = "solu-1l"
 prompt = "Hello World!"
@@ -31,7 +31,7 @@ def original_logits(model: HookedTransformer):
     return model(prompt)
 
 
-def get_hooked_sae(model: HookedTransformer, act_name: str) -> SparseAutoencoderBase:
+def get_hooked_sae(model: HookedTransformer, act_name: str) -> SAE:
     site_to_size = {
         "hook_z": model.cfg.d_head * model.cfg.n_heads,
         "hook_mlp_out": model.cfg.d_model,
@@ -60,7 +60,7 @@ def get_hooked_sae(model: HookedTransformer, act_name: str) -> SparseAutoencoder
         normalize_activations=False,
     )
 
-    return SparseAutoencoderBase(sae_cfg)  # type: ignore
+    return SAE(sae_cfg)  # type: ignore
 
 
 @pytest.fixture(
@@ -81,7 +81,7 @@ def get_hooked_sae(model: HookedTransformer, act_name: str) -> SparseAutoencoder
 def hooked_sae(
     model: HookedTransformer,
     request: pytest.FixtureRequest,
-) -> SparseAutoencoderBase:
+) -> SAE:
     return get_hooked_sae(model, request.param)
 
 
@@ -111,7 +111,7 @@ def test_model_with_no_saes_matches_original_model(
 
 def test_model_with_saes_does_not_match_original_model(
     model: HookedTransformer,
-    hooked_sae: SparseAutoencoderBase,
+    hooked_sae: SAE,
     original_logits: torch.Tensor,
 ):
     """Verifies that the attached (and turned on) SAEs actually affect the models output logits"""
@@ -123,7 +123,7 @@ def test_model_with_saes_does_not_match_original_model(
     model.reset_saes()
 
 
-def test_add_sae(model: HookedTransformer, hooked_sae: SparseAutoencoderBase):
+def test_add_sae(model: HookedTransformer, hooked_sae: SAE):
     """Verifies that add_sae correctly updates the model's acts_to_saes dictionary and replaces the HookPoint."""
     act_name = hooked_sae.cfg.hook_point
     model.add_sae(hooked_sae)
@@ -133,9 +133,7 @@ def test_add_sae(model: HookedTransformer, hooked_sae: SparseAutoencoderBase):
     model.reset_saes()
 
 
-def test_add_sae_overwrites_prev_sae(
-    model: HookedTransformer, hooked_sae: SparseAutoencoderBase
-):
+def test_add_sae_overwrites_prev_sae(model: HookedTransformer, hooked_sae: SAE):
     """Verifies that add_sae correctly updates the model's acts_to_saes dictionary and replaces the HookPoint."""
 
     act_name = hooked_sae.cfg.hook_point
@@ -145,7 +143,7 @@ def test_add_sae_overwrites_prev_sae(
     assert model.acts_to_saes[act_name] == hooked_sae
     assert get_deep_attr(model, act_name) == hooked_sae
 
-    second_hooked_sae = SparseAutoencoderBase.from_dict(hooked_sae.cfg.to_dict())  # type: ignore
+    second_hooked_sae = SAE.from_dict(hooked_sae.cfg.to_dict())  # type: ignore
     model.add_sae(second_hooked_sae)
     assert len(model.acts_to_saes) == 1
     assert model.acts_to_saes[act_name] == second_hooked_sae
@@ -153,9 +151,7 @@ def test_add_sae_overwrites_prev_sae(
     model.reset_saes()
 
 
-def test_reset_sae_removes_sae_by_default(
-    model: HookedTransformer, hooked_sae: SparseAutoencoderBase
-):
+def test_reset_sae_removes_sae_by_default(model: HookedTransformer, hooked_sae: SAE):
     """Verifies that reset_sae correctly removes the SAE from the model's acts_to_saes dictionary and replaces the HookedSAE with a HookPoint."""
 
     act_name = hooked_sae.cfg.hook_point
@@ -169,13 +165,11 @@ def test_reset_sae_removes_sae_by_default(
     model.reset_saes()
 
 
-def test_reset_sae_replaces_sae(
-    model: HookedTransformer, hooked_sae: SparseAutoencoderBase
-):
+def test_reset_sae_replaces_sae(model: HookedTransformer, hooked_sae: SAE):
     """Verifies that reset_sae correctly removes the SAE from the model's acts_to_saes dictionary and replaces the HookedSAE with a HookPoint."""
 
     act_name = hooked_sae.cfg.hook_point
-    second_hooked_sae = SparseAutoencoderBase.from_dict(hooked_sae.cfg.to_dict())  # type: ignore
+    second_hooked_sae = SAE.from_dict(hooked_sae.cfg.to_dict())  # type: ignore
 
     model.add_sae(hooked_sae)
     assert len(model.acts_to_saes) == 1
@@ -188,7 +182,7 @@ def test_reset_sae_replaces_sae(
 
 
 def test_reset_saes_removes_all_saes_by_default(
-    model: HookedTransformer, list_of_hooked_saes: list[SparseAutoencoderBase]
+    model: HookedTransformer, list_of_hooked_saes: list[SAE]
 ):
     """Verifies that reset_saes correctly removes all SAEs from the model's acts_to_saes dictionary and replaces the HookedSAEs with HookPoints."""
 
@@ -207,7 +201,7 @@ def test_reset_saes_removes_all_saes_by_default(
 
 
 def test_reset_saes_replaces_saes(
-    model: HookedTransformer, list_of_hooked_saes: list[SparseAutoencoderBase]
+    model: HookedTransformer, list_of_hooked_saes: list[SAE]
 ):
     """Verifies that reset_saes correctly removes all SAEs from the model's acts_to_saes dictionary and replaces the HookedSAEs with HookPoints."""
 
@@ -230,7 +224,7 @@ def test_reset_saes_replaces_saes(
 
 
 def test_saes_context_manager_removes_saes_after(
-    model: HookedTransformer, list_of_hooked_saes: list[SparseAutoencoderBase]
+    model: HookedTransformer, list_of_hooked_saes: list[SAE]
 ):
     """Verifies that the model.saes context manager successfully adds the SAEs for the specified activation name in the context manager and resets off after the context manager exits."""
 
@@ -242,7 +236,7 @@ def test_saes_context_manager_removes_saes_after(
     with model.saes(saes=list_of_hooked_saes):
         for act_name, hooked_sae in zip(act_names, list_of_hooked_saes):
             assert model.acts_to_saes[act_name] == hooked_sae
-            assert isinstance(get_deep_attr(model, act_name), SparseAutoencoderBase)
+            assert isinstance(get_deep_attr(model, act_name), SAE)
             assert get_deep_attr(model, act_name) == hooked_sae
         model.forward(prompt)  # type: ignore
     assert len(model.acts_to_saes) == 0
@@ -252,7 +246,7 @@ def test_saes_context_manager_removes_saes_after(
 
 
 def test_saes_context_manager_restores_previous_sae_state(
-    model: HookedTransformer, list_of_hooked_saes: list[SparseAutoencoderBase]
+    model: HookedTransformer, list_of_hooked_saes: list[SAE]
 ):
     """Verifies that the model.saes context manager successfully adds the SAEs for the specified activation name in the context manager and resets off after the context manager exits."""
 
@@ -270,20 +264,20 @@ def test_saes_context_manager_restores_previous_sae_state(
     with model.saes(saes=hooked_saes):
         for act_name, hooked_sae in zip(act_names, hooked_saes):
             assert model.acts_to_saes[act_name] == hooked_sae
-            assert isinstance(get_deep_attr(model, act_name), SparseAutoencoderBase)
+            assert isinstance(get_deep_attr(model, act_name), SAE)
             assert get_deep_attr(model, act_name) == hooked_sae
         model.forward(prompt)  # type: ignore
 
     # Check that the previously attached SAEs have been restored
     assert len(model.acts_to_saes) == len(prev_hooked_saes)
     for act_name, prev_hooked_sae in zip(act_names, prev_hooked_saes):
-        assert isinstance(get_deep_attr(model, act_name), SparseAutoencoderBase)
+        assert isinstance(get_deep_attr(model, act_name), SAE)
         assert get_deep_attr(model, act_name) == prev_hooked_sae
     model.reset_saes()
 
 
 def test_saes_context_manager_run_with_cache(
-    model: HookedTransformer, list_of_hooked_saes: list[SparseAutoencoderBase]
+    model: HookedTransformer, list_of_hooked_saes: list[SAE]
 ):
     """Verifies that the model.run_with_cache method works correctly in the context manager."""
 
@@ -294,7 +288,7 @@ def test_saes_context_manager_run_with_cache(
     with model.saes(saes=list_of_hooked_saes):
         for act_name, hooked_sae in zip(act_names, list_of_hooked_saes):
             assert model.acts_to_saes[act_name] == hooked_sae
-            assert isinstance(get_deep_attr(model, act_name), SparseAutoencoderBase)
+            assert isinstance(get_deep_attr(model, act_name), SAE)
             assert get_deep_attr(model, act_name) == hooked_sae
         model.run_with_cache(prompt)
     assert len(model.acts_to_saes) == 0
@@ -305,7 +299,7 @@ def test_saes_context_manager_run_with_cache(
 
 def test_run_with_saes(
     model: HookedTransformer,
-    list_of_hooked_saes: list[SparseAutoencoderBase],
+    list_of_hooked_saes: list[SAE],
     original_logits: torch.Tensor,
 ):
     """Verifies that the model.run_with_saes method works correctly. The logits with SAEs should be different from the original logits, but the SAE should be removed immediately after the forward pass."""
@@ -322,7 +316,7 @@ def test_run_with_saes(
 
 def test_run_with_cache(
     model: HookedTransformer,
-    list_of_hooked_saes: list[SparseAutoencoderBase],
+    list_of_hooked_saes: list[SAE],
     original_logits: torch.Tensor,
 ):
     """Verifies that the model.run_with_cache method works correctly. The logits with SAEs should be different from the original logits and the cache should contain SAE activations for the attached SAE."""
@@ -335,14 +329,14 @@ def test_run_with_cache(
     assert isinstance(cache, ActivationCache)
     for act_name, hooked_sae in zip(act_names, list_of_hooked_saes):
         assert act_name + ".hook_sae_acts_post" in cache
-        assert isinstance(get_deep_attr(model, act_name), SparseAutoencoderBase)
+        assert isinstance(get_deep_attr(model, act_name), SAE)
         assert get_deep_attr(model, act_name) == hooked_sae
     model.reset_saes()
 
 
 def test_run_with_cache_with_saes(
     model: HookedTransformer,
-    list_of_hooked_saes: list[SparseAutoencoderBase],
+    list_of_hooked_saes: list[SAE],
     original_logits: torch.Tensor,
 ):
     """Verifies that the model.run_with_cache_with_saes method works correctly. The logits with SAEs should be different from the original logits and the cache should contain SAE activations for the attached SAE."""
@@ -363,7 +357,7 @@ def test_run_with_cache_with_saes(
 
 def test_run_with_hooks(
     model: HookedTransformer,
-    list_of_hooked_saes: list[SparseAutoencoderBase],
+    list_of_hooked_saes: list[SAE],
     original_logits: torch.Tensor,
 ):
     """Verifies that the model.run_with_hooks method works correctly when SAEs are attached. The count should be incremented by 1 when the hooked SAE is called, and the SAE should stay attached after the forward pass"""
@@ -381,7 +375,7 @@ def test_run_with_hooks(
     assert not torch.allclose(logits_with_saes, original_logits)
 
     for act_name, hooked_sae in zip(act_names, list_of_hooked_saes):
-        assert isinstance(get_deep_attr(model, act_name), SparseAutoencoderBase)
+        assert isinstance(get_deep_attr(model, act_name), SAE)
         assert get_deep_attr(model, act_name) == hooked_sae
     assert c.count == len(act_names)
     model.reset_saes()
@@ -390,7 +384,7 @@ def test_run_with_hooks(
 
 def test_run_with_hooks_with_saes(
     model: HookedTransformer,
-    list_of_hooked_saes: list[SparseAutoencoderBase],
+    list_of_hooked_saes: list[SAE],
     original_logits: torch.Tensor,
 ):
     """Verifies that the model.run_with_hooks_with_saes method works correctly when SAEs are attached. The count should be incremented by 1 when the hooked SAE is called, but the SAE should be removed immediately after the forward pass."""
