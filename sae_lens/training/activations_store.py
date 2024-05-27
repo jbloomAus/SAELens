@@ -39,7 +39,9 @@ class ActivationsStore:
     dataset: HfDataset
     cached_activations_path: str | None
     tokens_column: Literal["tokens", "input_ids", "text"]
-    hook_point_head_index: int | None
+    hook_name: str
+    hook_layer: int
+    hook_head_index: int | None
     _dataloader: Iterator[Any] | None = None
     _storage_buffer: torch.Tensor | None = None
     device: torch.device
@@ -62,9 +64,9 @@ class ActivationsStore:
             model=model,
             dataset=dataset or cfg.dataset_path,
             streaming=cfg.streaming,
-            hook_point=cfg.hook_point,
-            hook_point_layer=cfg.hook_point_layer,
-            hook_point_head_index=cfg.hook_point_head_index,
+            hook_name=cfg.hook_name,
+            hook_layer=cfg.hook_layer,
+            hook_head_index=cfg.hook_head_index,
             context_size=cfg.context_size,
             d_in=cfg.d_in,
             n_batches_in_buffer=cfg.n_batches_in_buffer,
@@ -97,9 +99,9 @@ class ActivationsStore:
             model=model,
             dataset=sae.cfg.dataset_path,
             d_in=sae.cfg.d_in,
-            hook_point=sae.cfg.hook_point,
-            hook_point_layer=sae.cfg.hook_point_layer,
-            hook_point_head_index=sae.cfg.hook_point_head_index,
+            hook_name=sae.cfg.hook_name,
+            hook_layer=sae.cfg.hook_layer,
+            hook_head_index=sae.cfg.hook_head_index,
             context_size=sae.cfg.context_size,
             prepend_bos=sae.cfg.prepend_bos,
             streaming=streaming,
@@ -117,9 +119,9 @@ class ActivationsStore:
         model: HookedRootModule,
         dataset: HfDataset | str,
         streaming: bool,
-        hook_point: str,
-        hook_point_layer: int,
-        hook_point_head_index: int | None,
+        hook_name: str,
+        hook_layer: int,
+        hook_head_index: int | None,
         context_size: int,
         d_in: int,
         n_batches_in_buffer: int,
@@ -143,9 +145,9 @@ class ActivationsStore:
             if isinstance(dataset, str)
             else dataset
         )
-        self.hook_point = hook_point
-        self.hook_point_layer = hook_point_layer
-        self.hook_point_head_index = hook_point_head_index
+        self.hook_name = hook_name
+        self.hook_layer = hook_layer
+        self.hook_head_index = hook_head_index
         self.context_size = context_size
         self.d_in = d_in
         self.n_batches_in_buffer = n_batches_in_buffer
@@ -328,8 +330,8 @@ class ActivationsStore:
         with autocast_if_enabled:
             layerwise_activations = self.model.run_with_cache(
                 batch_tokens,
-                names_filter=[self.hook_point],
-                stop_at_layer=self.hook_point_layer + 1,
+                names_filter=[self.hook_name],
+                stop_at_layer=self.hook_layer + 1,
                 prepend_bos=self.prepend_bos,
                 **self.model_kwargs,
             )[1]
@@ -338,18 +340,18 @@ class ActivationsStore:
 
         stacked_activations = torch.zeros((n_batches, n_context, 1, self.d_in))
 
-        if self.hook_point_head_index is not None:
-            stacked_activations[:, :, 0] = layerwise_activations[self.hook_point][
-                :, :, self.hook_point_head_index
+        if self.hook_head_index is not None:
+            stacked_activations[:, :, 0] = layerwise_activations[self.hook_name][
+                :, :, self.hook_head_index
             ]
         elif (
-            layerwise_activations[self.hook_point].ndim > 3
+            layerwise_activations[self.hook_name].ndim > 3
         ):  # if we have a head dimension
-            stacked_activations[:, :, 0] = layerwise_activations[self.hook_point].view(
+            stacked_activations[:, :, 0] = layerwise_activations[self.hook_name].view(
                 n_batches, n_context, -1
             )
         else:
-            stacked_activations[:, :, 0] = layerwise_activations[self.hook_point]
+            stacked_activations[:, :, 0] = layerwise_activations[self.hook_name]
 
         return stacked_activations
 

@@ -43,8 +43,8 @@ for l1_coefficient in [2, 5, 10]:
         # Pick a tiny model to make this easier.
         model_name="gelu-1l",
         ## MLP Layer 0 ##
-        hook_point="blocks.0.hook_mlp_out",
-        hook_point_layer=0,
+        hook_name="blocks.0.hook_mlp_out",
+        hook_layer=0,
         d_in=512,
         dataset_path="NeelNanda/c4-tokenized-2b",
         streaming=False,

@@ -18,8 +18,8 @@ def run_evals(
     eval_batch_size_prompts: int | None = None,
     model_kwargs: Mapping[str, Any] = {},
 ) -> Mapping[str, Any]:
-    hook_point = sae.cfg.hook_point
-    hook_point_head_index = sae.cfg.hook_point_head_index
+    hook_name = sae.cfg.hook_name
+    hook_head_index = sae.cfg.hook_head_index
     ### Evals
     eval_tokens = activation_store.get_batch_tokens(eval_batch_size_prompts)
 
@@ -41,19 +41,19 @@ def run_evals(
     _, cache = model.run_with_cache(
         eval_tokens,
         prepend_bos=False,
-        names_filter=[hook_point],
+        names_filter=[hook_name],
         **model_kwargs,
     )
 
     # we would include hook z, except that we now have base SAE's
     # which will do their own reshaping for hook z.
     has_head_dim_key_substrings = ["hook_q", "hook_k", "hook_v"]
-    if hook_point_head_index is not None:
-        original_act = cache[hook_point][:, :, hook_point_head_index]
-    elif any(substring in hook_point for substring in has_head_dim_key_substrings):
-        original_act = cache[hook_point].flatten(-2, -1)
+    if hook_head_index is not None:
+        original_act = cache[hook_name][:, :, hook_head_index]
+    elif any(substring in hook_name for substring in has_head_dim_key_substrings):
+        original_act = cache[hook_name].flatten(-2, -1)
     else:
-        original_act = cache[hook_point]
+        original_act = cache[hook_name]
 
     # normalise if necessary
     if activation_store.normalize_activations:
@@ -124,8 +124,8 @@ def get_recons_loss(
     activation_store: ActivationsStore,
     model_kwargs: Mapping[str, Any] = {},
 ):
-    hook_point = sae.cfg.hook_point
-    head_index = sae.cfg.hook_point_head_index
+    hook_name = sae.cfg.hook_name
+    head_index = sae.cfg.hook_head_index
 
     loss = model(batch_tokens, return_type="loss", **model_kwargs)
 
@@ -184,7 +184,7 @@ def get_recons_loss(
     # we would include hook z, except that we now have base SAE's
     # which will do their own reshaping for hook z.
     has_head_dim_key_substrings = ["hook_q", "hook_k", "hook_v"]
-    if any(substring in hook_point for substring in has_head_dim_key_substrings):
+    if any(substring in hook_name for substring in has_head_dim_key_substrings):
         if head_index is None:
             replacement_hook = all_head_replacement_hook
         else:
@@ -195,14 +195,14 @@ def get_recons_loss(
     recons_loss = model.run_with_hooks(
         batch_tokens,
         return_type="loss",
-        fwd_hooks=[(hook_point, partial(replacement_hook))],
+        fwd_hooks=[(hook_name, partial(replacement_hook))],
         **model_kwargs,
     )
 
     zero_abl_loss = model.run_with_hooks(
         batch_tokens,
         return_type="loss",
-        fwd_hooks=[(hook_point, zero_ablate_hook)],
+        fwd_hooks=[(hook_name, zero_ablate_hook)],
         **model_kwargs,
     )
 

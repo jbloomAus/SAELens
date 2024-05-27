@@ -73,7 +73,7 @@ def get_all_stats_dfs(
     for key in pbar:
         layer = int(key.split(".")[1])
         sparse_autoencoder = gpt2_small_sparse_autoencoders[key]
-        pbar.set_description(f"Processing layer {sparse_autoencoder.cfg.hook_point}")
+        pbar.set_description(f"Processing layer {sparse_autoencoder.cfg.hook_name}")
         W_U_stats_df_dec, _ = get_W_U_W_dec_stats_df(
             sparse_autoencoder.W_dec.cpu(), model, cosine_sim
         )

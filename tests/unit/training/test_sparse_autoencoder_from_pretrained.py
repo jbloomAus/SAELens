@@ -25,10 +25,10 @@ def test_SparseAutoencoder_from_pretrained_loads_from_hugginface_using_shorthand
 
     assert isinstance(sae, SAE)
     assert sae.cfg.model_name == "gpt2-small"
-    assert sae.cfg.hook_point == "blocks.0.hook_resid_pre"
+    assert sae.cfg.hook_name == "blocks.0.hook_resid_pre"
 
     for k in sae.state_dict().keys():
-        if k == "scaling_factor":
+        if k == "finetuning_scaling_factor":
             continue
         assert torch.allclose(sae.state_dict()[k], state_dict[k])
 

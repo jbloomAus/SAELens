@@ -105,7 +105,7 @@ class NeuronpediaRunner:
         self.activation_store = ActivationsStore.from_config(model=self.model, cfg=cfg)
 
         self.model_id = self.sae.cfg.model_name
-        self.layer = self.sae.cfg.hook_point_layer
+        self.layer = self.sae.cfg.hook_layer
         self.sae_id = sae_id
         self.sparsity_threshold = sparsity_threshold
         self.n_features_at_a_time = n_features_at_a_time
@@ -285,7 +285,7 @@ class NeuronpediaRunner:
                     ]
                 )
                 feature_vis_params = SaeVisConfig(
-                    hook_point=self.sae.cfg.hook_point,
+                    hook_point=self.sae.cfg.hook_name,
                     minibatch_size_features=128,
                     minibatch_size_tokens=64,
                     features=features_to_process,

@@ -16,16 +16,16 @@ from tests.unit.helpers import build_sae_cfg
             "model_name": "tiny-stories-1M",
             "dataset_path": "roneneldan/TinyStories",
             "tokenized": False,
-            "hook_point": "blocks.1.hook_resid_pre",
-            "hook_point_layer": 1,
+            "hook_name": "blocks.1.hook_resid_pre",
+            "hook_layer": 1,
             "d_in": 64,
         },
         {
             "model_name": "tiny-stories-1M",
             "dataset_path": "roneneldan/TinyStories",
             "tokenized": False,
-            "hook_point": "blocks.1.hook_resid_pre",
-            "hook_point_layer": 1,
+            "hook_name": "blocks.1.hook_resid_pre",
+            "hook_layer": 1,
             "d_in": 64,
             "normalize_sae_decoder": False,
             "scale_sparsity_penalty_by_decoder_norm": True,
@@ -34,16 +34,16 @@ from tests.unit.helpers import build_sae_cfg
             "model_name": "tiny-stories-1M",
             "dataset_path": "apollo-research/roneneldan-TinyStories-tokenizer-gpt2",
             "tokenized": False,
-            "hook_point": "blocks.1.hook_resid_pre",
-            "hook_point_layer": 1,
+            "hook_name": "blocks.1.hook_resid_pre",
+            "hook_layer": 1,
             "d_in": 64,
         },
         {
             "model_name": "tiny-stories-1M",
             "dataset_path": "roneneldan/TinyStories",
             "tokenized": False,
-            "hook_point": "blocks.1.attn.hook_z",
-            "hook_point_layer": 1,
+            "hook_name": "blocks.1.attn.hook_z",
+            "hook_layer": 1,
             "d_in": 64,
         },
     ],
@@ -136,8 +136,6 @@ def test_sae_save_and_load_from_pretrained(tmp_path: Path) -> None:
 
 
 def test_sae_get_name_returns_correct_name_from_cfg_vals() -> None:
-    cfg = build_sae_cfg(
-        model_name="test_model", hook_point="test_hook_point", d_sae=128
-    )
+    cfg = build_sae_cfg(model_name="test_model", hook_name="test_hook_name", d_sae=128)
     sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
-    assert sae.get_name() == "sae_test_model_test_hook_point_128"
+    assert sae.get_name() == "sae_test_model_test_hook_name_128"

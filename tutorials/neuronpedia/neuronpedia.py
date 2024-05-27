@@ -140,7 +140,7 @@ Enter 1 to start from the beginning. Existing batch files will not be overwritte
     model_id = sparse_autoencoder.cfg.model_name
 
     # make the outputs subdirectory if it doesn't exist, ensure it's not a file
-    outputs_subdir = f"{model_id}_{sae_id}_{sparse_autoencoder.cfg.hook_point}"
+    outputs_subdir = f"{model_id}_{sae_id}_{sparse_autoencoder.cfg.hook_name}"
     outputs_dir = OUTPUT_DIR_BASE.joinpath(outputs_subdir)
     if outputs_dir.exists() and outputs_dir.is_file():
         print(f"Error: Output directory {outputs_dir.as_posix()} exists and is a file.")
@@ -218,7 +218,7 @@ Enter 1 to start from the beginning. Existing batch files will not be overwritte
                 f"""
 [white]SAE Path: [green]{sae_path.as_posix()}
 [white]Model ID: [green]{model_id}
-[white]Hook Point: [green]{sparse_autoencoder.cfg.hook_point}
+[white]Hook Point: [green]{sparse_autoencoder.cfg.hook_name}
 [white]Using Device: [green]{device}
 """,
                 title="SAE Info",

@@ -16,9 +16,9 @@ def build_sae_cfg(**kwargs: Any) -> LanguageModelSAERunnerConfig:
     # Create a mock object with the necessary attributes
     mock_config = LanguageModelSAERunnerConfig(
         model_name=TINYSTORIES_MODEL,
-        hook_point="blocks.0.hook_mlp_out",
-        hook_point_layer=0,
-        hook_point_head_index=None,
+        hook_name="blocks.0.hook_mlp_out",
+        hook_layer=0,
+        hook_head_index=None,
         dataset_path=TINYSTORIES_DATASET,
         is_dataset_tokenized=False,
         use_cached_activations=False,

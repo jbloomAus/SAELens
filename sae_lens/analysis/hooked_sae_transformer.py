@@ -83,7 +83,7 @@ class HookedSAETransformer(HookedTransformer):
         Args:
             sae: SparseAutoencoderBase. The SAE to attach to the model
         """
-        act_name = sae.cfg.hook_point
+        act_name = sae.cfg.hook_name
         if (act_name not in self.acts_to_saes) and (act_name not in self.hook_dict):
             logging.warning(
                 f"No hook found for {act_name}. Skipping. Check model.hook_dict for available hooks."
@@ -284,8 +284,8 @@ class HookedSAETransformer(HookedTransformer):
             saes = [saes]
         try:
             for sae in saes:
-                act_names_to_reset.append(sae.cfg.hook_point)
-                prev_saes.append(self.acts_to_saes.get(sae.cfg.hook_point, None))
+                act_names_to_reset.append(sae.cfg.hook_name)
+                prev_saes.append(self.acts_to_saes.get(sae.cfg.hook_name, None))
                 self.add_sae(sae)
             yield self
         finally:

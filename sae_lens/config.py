@@ -29,19 +29,17 @@ class LanguageModelSAERunnerConfig:
     # Data Generating Function (Model + Training Distibuion)
     model_name: str = "gelu-2l"
     model_class_name: str = "HookedTransformer"
-    hook_point: str = "blocks.0.hook_mlp_out"
-    hook_point_eval: str = (
-        "blocks.0.attn.pattern"  # not in use currently. Might be in the future.
-    )
-    hook_point_layer: int = 0
-    hook_point_head_index: Optional[int] = None
+    hook_name: str = "blocks.0.hook_mlp_out"
+    hook_eval: str = "NOT_IN_USE"
+    hook_layer: int = 0
+    hook_head_index: Optional[int] = None
     dataset_path: str = "NeelNanda/c4-tokenized-2b"
     streaming: bool = True
     is_dataset_tokenized: bool = True
     context_size: int = 128
     use_cached_activations: bool = False
     cached_activations_path: Optional[str] = (
-        None  # Defaults to "activations/{dataset}/{model}/{full_hook_name}_{hook_point_head_index}"
+        None  # Defaults to "activations/{dataset}/{model}/{full_hook_name}_{hook_head_index}"
     )
 
     # SAE Parameters
@@ -154,8 +152,8 @@ class LanguageModelSAERunnerConfig:
             self.cached_activations_path = _default_cached_activations_path(
                 self.dataset_path,
                 self.model_name,
-                self.hook_point,
-                self.hook_point_head_index,
+                self.hook_name,
+                self.hook_head_index,
             )
 
         if not isinstance(self.expansion_factor, list):
@@ -264,15 +262,15 @@ class LanguageModelSAERunnerConfig:
             "dtype": self.dtype,
             "device": self.device,
             "model_name": self.model_name,
-            "hook_point": self.hook_point,
-            "hook_point_layer": self.hook_point_layer,
-            "hook_point_head_index": self.hook_point_head_index,
+            "hook_name": self.hook_name,
+            "hook_layer": self.hook_layer,
+            "hook_head_index": self.hook_head_index,
             "activation_fn_str": self.activation_fn,
             "apply_b_dec_to_input": self.apply_b_dec_to_input,
             "context_size": self.context_size,
             "prepend_bos": self.prepend_bos,
             "dataset_path": self.dataset_path,
-            "uses_scaling_factor": self.finetuning_method is not None,
+            "finetuning_scaling_factor": self.finetuning_method is not None,
             "sae_lens_training_version": self.sae_lens_training_version,
             "normalize_activations": self.normalize_activations,
         }
@@ -328,15 +326,15 @@ class CacheActivationsRunnerConfig:
     # Data Generating Function (Model + Training Distibuion)
     model_name: str = "gelu-2l"
     model_class_name: str = "HookedTransformer"
-    hook_point: str = "blocks.{layer}.hook_mlp_out"
-    hook_point_layer: int = 0
-    hook_point_head_index: Optional[int] = None
+    hook_name: str = "blocks.{layer}.hook_mlp_out"
+    hook_layer: int = 0
+    hook_head_index: Optional[int] = None
     dataset_path: str = "NeelNanda/c4-tokenized-2b"
     streaming: bool = True
     is_dataset_tokenized: bool = True
     context_size: int = 128
     new_cached_activations_path: Optional[str] = (
-        None  # Defaults to "activations/{dataset}/{model}/{full_hook_name}_{hook_point_head_index}"
+        None  # Defaults to "activations/{dataset}/{model}/{full_hook_name}_{hook_head_index}"
     )
     # dont' specify this since you don't want to load from disk with the cache runner.
     cached_activations_path: Optional[str] = None
@@ -372,8 +370,8 @@ class CacheActivationsRunnerConfig:
             self.new_cached_activations_path = _default_cached_activations_path(
                 self.dataset_path,
                 self.model_name,
-                self.hook_point,
-                self.hook_point_head_index,
+                self.hook_name,
+                self.hook_head_index,
             )
 
         if self.act_store_device == "with_model":
@@ -440,9 +438,9 @@ class ToyModelSAERunnerConfig:
             "dtype": self.dtype,
             "device": self.device,
             "model_name": "ToyModel",
-            "hook_point": "ToyModelHookPoint",
-            "hook_point_layer": 0,
-            "hook_point_head_index": None,
+            "hook_name": "ToyModelHookPoint",
+            "hook_layer": 0,
+            "hook_head_index": None,
             "activation_fn": "relu",
             "apply_b_dec_to_input": True,
         }
@@ -451,12 +449,12 @@ class ToyModelSAERunnerConfig:
 def _default_cached_activations_path(
     dataset_path: str,
     model_name: str,
-    hook_point: str,
-    hook_point_head_index: int | None,
+    hook_name: str,
+    hook_head_index: int | None,
 ) -> str:
-    path = f"activations/{dataset_path.replace('/', '_')}/{model_name.replace('/', '_')}/{hook_point}"
-    if hook_point_head_index is not None:
-        path += f"_{hook_point_head_index}"
+    path = f"activations/{dataset_path.replace('/', '_')}/{model_name.replace('/', '_')}/{hook_name}"
+    if hook_head_index is not None:
+        path += f"_{hook_head_index}"
     return path
 
 

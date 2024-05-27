@@ -59,8 +59,8 @@ cfg = CacheActivationsRunnerConfig(
     # Pick a tiny model to make this easier.
     model_name=model_name,
     ## MLP Layer 0 ##
-    hook_point="blocks.0.hook_mlp_out",
-    hook_point_layer=0,
+    hook_name="blocks.0.hook_mlp_out",
+    hook_layer=0,
     d_in=512,
     dataset_path=dataset_path,
     context_size=1024,

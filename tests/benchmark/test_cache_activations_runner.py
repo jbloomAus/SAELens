@@ -45,8 +45,8 @@ def test_cache_activations_runner():
         model_name="gelu-1l",
         # model_name="gpt2-xl",
         ## MLP Layer 0 ##
-        hook_point="blocks.0.hook_mlp_out",
-        hook_point_layer=0,
+        hook_name="blocks.0.hook_mlp_out",
+        hook_layer=0,
         d_in=512,
         # d_in=1600,
         dataset_path="NeelNanda/c4-tokenized-2b",

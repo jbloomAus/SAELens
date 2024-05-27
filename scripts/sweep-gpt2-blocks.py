@@ -36,8 +36,8 @@ for l1_coefficient in [3, 4, 5, 6, 7]:
             # Pick a tiny model to make this easier.
             model_name="gpt2",
             ## MLP ##
-            hook_point=f"blocks.{block}.hook_mlp_out",
-            hook_point_layer=block,
+            hook_name=f"blocks.{block}.hook_mlp_out",
+            hook_layer=block,
             d_in=768,
             dataset_path="apollo-research/Skylion007-openwebtext-tokenizer-gpt2",
             streaming=True,

@@ -21,7 +21,7 @@ from tests.unit.helpers import TINYSTORIES_MODEL, build_sae_cfg, load_model_cach
 
 @pytest.fixture
 def cfg():
-    cfg = build_sae_cfg(d_in=64, d_sae=128, hook_point_layer=0)
+    cfg = build_sae_cfg(d_in=64, d_sae=128, hook_layer=0)
     return cfg
 
 

@@ -13,9 +13,9 @@ cfg = LanguageModelSAERunnerConfig(
     # Data Generating Function (Model + Training Distibuion)
     model_name="state-spaces/mamba-370m",
     model_class_name="HookedMamba",
-    hook_point="blocks.39.hook_ssm_input",
-    hook_point_layer=39,
-    hook_point_eval="blocks.39.hook_ssm_output",  # we compare this when replace hook_point activations with autoencode.decode(autoencoder.encode( hook_point activations))
+    hook_name="blocks.39.hook_ssm_input",
+    hook_layer=39,
+    hook_eval="blocks.39.hook_ssm_output",  # we compare this when replace hook_point activations with autoencode.decode(autoencoder.encode( hook_point activations))
     d_in=2048,
     dataset_path="NeelNanda/openwebtext-tokenized-9b",
     is_dataset_tokenized=True,

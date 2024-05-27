@@ -34,14 +34,14 @@ class SAEConfig:
     d_sae: int
     activation_fn_str: str
     apply_b_dec_to_input: bool
-    uses_scaling_factor: bool
+    finetuning_scaling_factor: bool
 
     # dataset it was trained on details.
     context_size: int
     model_name: str
-    hook_point: str
-    hook_point_layer: int
-    hook_point_head_index: Optional[int]
+    hook_name: str
+    hook_layer: int
+    hook_head_index: Optional[int]
     prepend_bos: bool
     dataset_path: str
     normalize_activations: bool
@@ -56,6 +56,9 @@ class SAEConfig:
 
         # rename dict:
         rename_dict = {
+            "hook_point": "hook_name",
+            "hook_point_head_index": "hook_head_index",
+            "hook_point_layer": "hook_layer",
             "activation_fn": "activation_fn_str",
         }
         config_dict = {rename_dict.get(k, k): v for k, v in config_dict.items()}
@@ -75,12 +78,12 @@ class SAEConfig:
             "dtype": self.dtype,
             "device": self.device,
             "model_name": self.model_name,
-            "hook_point": self.hook_point,
-            "hook_point_layer": self.hook_point_layer,
-            "hook_point_head_index": self.hook_point_head_index,
+            "hook_name": self.hook_name,
+            "hook_layer": self.hook_layer,
+            "hook_head_index": self.hook_head_index,
             "activation_fn_str": self.activation_fn_str,  # use string for serialization
             "apply_b_dec_to_input": self.apply_b_dec_to_input,
-            "uses_scaling_factor": self.uses_scaling_factor,
+            "finetuning_scaling_factor": self.finetuning_scaling_factor,
             "sae_lens_training_version": self.sae_lens_training_version,
             "prepend_bos": self.prepend_bos,
             "dataset_path": self.dataset_path,
@@ -115,10 +118,12 @@ class SAE(HookedRootModule):
         self.initialize_weights_basic()
 
         # handle presence / absence of scaling factor.
-        if self.cfg.uses_scaling_factor:
-            self.apply_scaling_factor = lambda x: x * self.scaling_factor
+        if self.cfg.finetuning_scaling_factor:
+            self.apply_finetuning_scaling_factor = (
+                lambda x: x * self.finetuning_scaling_factor
+            )
         else:
-            self.apply_scaling_factor = lambda x: x
+            self.apply_finetuning_scaling_factor = lambda x: x
 
         # set up hooks
         self.hook_sae_input = HookPoint()
@@ -136,7 +141,7 @@ class SAE(HookedRootModule):
         self.reshape_fn_in = lambda x: x
         self.reshape_fn_out = lambda x, d_head: x
         self.d_head = None
-        if self.cfg.hook_point.endswith("_z"):
+        if self.cfg.hook_name.endswith("_z"):
 
             def reshape_fn_in(x: torch.Tensor):
                 self.d_head = x.shape[-1]  # type: ignore
@@ -147,7 +152,7 @@ class SAE(HookedRootModule):
 
             self.reshape_fn_in = reshape_fn_in
 
-        if self.cfg.hook_point.endswith("_z"):
+        if self.cfg.hook_name.endswith("_z"):
             self.reshape_fn_out = lambda x, d_head: einops.rearrange(
                 x, "... (n_heads d_head) -> ... n_heads d_head", d_head=d_head
             )
@@ -185,8 +190,8 @@ class SAE(HookedRootModule):
 
         # scaling factor for fine-tuning (not to be used in initial training)
         # TODO: Make this optional and not included with all SAEs by default (but maintain backwards compatibility)
-        if self.cfg.uses_scaling_factor:
-            self.scaling_factor = nn.Parameter(
+        if self.cfg.finetuning_scaling_factor:
+            self.finetuning_scaling_factor = nn.Parameter(
                 torch.ones(self.cfg.d_sae, dtype=self.dtype, device=self.device)
             )
 
@@ -219,7 +224,8 @@ class SAE(HookedRootModule):
                 hidden_pre = sae_in_cent @ self.W_enc + self.b_enc
                 feature_acts = self.activation_fn(hidden_pre)
                 x_reconstruct_clean = self.reshape_fn_out(
-                    self.apply_scaling_factor(feature_acts) @ self.W_dec + self.b_dec,
+                    self.apply_finetuning_scaling_factor(feature_acts) @ self.W_dec
+                    + self.b_dec,
                     d_head=self.d_head,
                 )
 
@@ -254,7 +260,7 @@ class SAE(HookedRootModule):
         """Decodes SAE feature activation tensor into a reconstructed input activation tensor."""
         # "... d_sae, d_sae d_in -> ... d_in",
         sae_out = self.hook_sae_recons(
-            self.apply_scaling_factor(feature_acts) @ self.W_dec + self.b_dec
+            self.apply_finetuning_scaling_factor(feature_acts) @ self.W_dec + self.b_dec
         )
 
         # handle hook z reshaping if needed.
@@ -350,9 +356,9 @@ class SAE(HookedRootModule):
             # default to False for backwards compatibility
             cfg_dict["apply_b_dec_to_input"] = False
 
-        if "uses_scaling_factor" not in cfg_dict:
+        if "finetuning_scaling_factor" not in cfg_dict:
             # default to False for backwards compatibility
-            cfg_dict["uses_scaling_factor"] = False
+            cfg_dict["finetuning_scaling_factor"] = False
 
         if "sae_lens_training_version" not in cfg_dict:
             cfg_dict["sae_lens_training_version"] = None
@@ -371,14 +377,16 @@ class SAE(HookedRootModule):
                 torch.ones_like(state_dict["scaling_factor"]),
             ):
                 del state_dict["scaling_factor"]
-                cfg_dict["uses_scaling_factor"] = False
+                cfg_dict["finetuning_scaling_factor"] = False
             else:
                 assert cfg_dict[
-                    "uses_scaling_factor"
-                ], "Scaling factor is present but uses_scaling_factor is False."
+                    "finetuning_scaling_factor"
+                ], "Scaling factor is present but finetuning_scaling_factor is False."
+                state_dict["finetuning_scaling_factor"] = state_dict["scaling_factor"]
+                del state_dict["scaling_factor"]
         else:
             # it's there and it's not all 1's, we should use it.
-            cfg_dict["uses_scaling_factor"] = False
+            cfg_dict["finetuning_scaling_factor"] = False
 
         sae = cls(SAEConfig.from_dict(cfg_dict))
         sae.load_state_dict(state_dict)
@@ -386,7 +394,7 @@ class SAE(HookedRootModule):
         return sae, cfg_dict
 
     def get_name(self):
-        sae_name = f"sae_{self.cfg.model_name}_{self.cfg.hook_point}_{self.cfg.d_sae}"
+        sae_name = f"sae_{self.cfg.model_name}_{self.cfg.hook_name}_{self.cfg.d_sae}"
         return sae_name
 
     @classmethod
