@@ -25,5 +25,8 @@ check-ci:
 	make check-type
 	make unit-test
 
+docstring-coverage:
+	poetry run docstr-coverage sae_lens --skip-file-doc
+
 docs-serve:
 	poetry run mkdocs serve
