@@ -5,8 +5,8 @@ import torch
 
 sys.path.append("..")
 
-from sae_lens.training.config import LanguageModelSAERunnerConfig
-from sae_lens.training.lm_runner import SAETrainingRunner
+from sae_lens.config import LanguageModelSAERunnerConfig
+from sae_lens.sae_training_runner import SAETrainingRunner
 
 if torch.cuda.is_available():
     device = "cuda"
@@ -43,8 +43,8 @@ for l1_coefficient in [2, 5, 10]:
         # Pick a tiny model to make this easier.
         model_name="gelu-1l",
         ## MLP Layer 0 ##
-        hook_point="blocks.0.hook_mlp_out",
-        hook_point_layer=0,
+        hook_name="blocks.0.hook_mlp_out",
+        hook_layer=0,
         d_in=512,
         dataset_path="NeelNanda/c4-tokenized-2b",
         streaming=False,
@@ -57,8 +57,8 @@ for l1_coefficient in [2, 5, 10]:
         # When we do a proper test
         # training_tokens= 820_000_000, # 200k steps * 4096 batch size ~ 820M tokens (doable overnight on an A100)
         # For now.
-        use_cached_activations=True,
-        cached_activations_path="/home/paperspace/shared_volumes/activations_volume_1/gelu-1l",
+        use_cached_activations=False,
+        # cached_activations_path="/home/paperspace/shared_volumes/activations_volume_1/gelu-1l",
         training_tokens=total_training_tokens,  # For initial testing I think this is a good number.
         train_batch_size_tokens=4096,
         # Loss Function
@@ -108,10 +108,10 @@ for l1_coefficient in [2, 5, 10]:
         seed=42,
         n_checkpoints=0,
         checkpoint_path="checkpoints",
-        dtype=torch.float32,
+        dtype="float32",
     )
 
     # look at the next cell to see some instruction for what to do while this is running.
-    sparse_autoencoder_dictionary = SAETrainingRunner(cfg).run()
+    sae = SAETrainingRunner(cfg).run()
 
     print("=" * 50)

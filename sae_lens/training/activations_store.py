@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import os
-from typing import Any, Iterator, Literal, TypeVar, cast
+from typing import Any, Iterator, Literal, cast
 
 import torch
 import tqdm
@@ -18,14 +18,17 @@ from safetensors.torch import load_file, save_file
 from torch.utils.data import DataLoader
 from transformer_lens.hook_points import HookedRootModule
 
-from sae_lens.training.config import (
+from sae_lens.config import (
+    DTYPE_MAP,
     CacheActivationsRunnerConfig,
     LanguageModelSAERunnerConfig,
 )
+from sae_lens.sae import SAE
 
 HfDataset = DatasetDict | Dataset | IterableDatasetDict | IterableDataset
 
 
+# TODO: Make an activation store config class to be consistent with the rest of the code.
 class ActivationsStore:
     """
     Class for streaming tokens and generating and storing activations
@@ -36,9 +39,12 @@ class ActivationsStore:
     dataset: HfDataset
     cached_activations_path: str | None
     tokens_column: Literal["tokens", "input_ids", "text"]
-    hook_point_head_index: int | None
+    hook_name: str
+    hook_layer: int
+    hook_head_index: int | None
     _dataloader: Iterator[Any] | None = None
     _storage_buffer: torch.Tensor | None = None
+    device: torch.device
 
     @classmethod
     def from_config(
@@ -58,9 +64,9 @@ class ActivationsStore:
             model=model,
             dataset=dataset or cfg.dataset_path,
             streaming=cfg.streaming,
-            hook_point=cfg.hook_point,
-            hook_point_layers=listify(cfg.hook_point_layer),
-            hook_point_head_index=cfg.hook_point_head_index,
+            hook_name=cfg.hook_name,
+            hook_layer=cfg.hook_layer,
+            hook_head_index=cfg.hook_head_index,
             context_size=cfg.context_size,
             d_in=cfg.d_in,
             n_batches_in_buffer=cfg.n_batches_in_buffer,
@@ -69,11 +75,43 @@ class ActivationsStore:
             train_batch_size_tokens=cfg.train_batch_size_tokens,
             prepend_bos=cfg.prepend_bos,
             normalize_activations=cfg.normalize_activations,
-            device=cfg.act_store_device,
+            device=torch.device(cfg.act_store_device),
             dtype=cfg.dtype,
             cached_activations_path=cached_activations_path,
             model_kwargs=cfg.model_kwargs,
             autocast_lm=cfg.autocast_lm,
+        )
+
+    @classmethod
+    def from_sae(
+        cls,
+        model: HookedRootModule,
+        sae: SAE,
+        streaming: bool = True,
+        store_batch_size_prompts: int = 8,
+        n_batches_in_buffer: int = 8,
+        train_batch_size_tokens: int = 4096,
+        total_tokens: int = 10**9,
+        device: str = "cpu",
+    ) -> "ActivationsStore":
+
+        return cls(
+            model=model,
+            dataset=sae.cfg.dataset_path,
+            d_in=sae.cfg.d_in,
+            hook_name=sae.cfg.hook_name,
+            hook_layer=sae.cfg.hook_layer,
+            hook_head_index=sae.cfg.hook_head_index,
+            context_size=sae.cfg.context_size,
+            prepend_bos=sae.cfg.prepend_bos,
+            streaming=streaming,
+            store_batch_size_prompts=store_batch_size_prompts,
+            train_batch_size_tokens=train_batch_size_tokens,
+            n_batches_in_buffer=n_batches_in_buffer,
+            total_training_tokens=total_tokens,
+            normalize_activations=sae.cfg.normalize_activations,
+            dtype=sae.cfg.dtype,
+            device=torch.device(device),
         )
 
     def __init__(
@@ -81,9 +119,9 @@ class ActivationsStore:
         model: HookedRootModule,
         dataset: HfDataset | str,
         streaming: bool,
-        hook_point: str,
-        hook_point_layers: list[int],
-        hook_point_head_index: int | None,
+        hook_name: str,
+        hook_layer: int,
+        hook_head_index: int | None,
         context_size: int,
         d_in: int,
         n_batches_in_buffer: int,
@@ -92,8 +130,8 @@ class ActivationsStore:
         train_batch_size_tokens: int,
         prepend_bos: bool,
         normalize_activations: bool,
-        device: str | torch.device,
-        dtype: str | torch.dtype,
+        device: torch.device,
+        dtype: str,
         cached_activations_path: str | None = None,
         model_kwargs: dict[str, Any] | None = None,
         autocast_lm: bool = False,
@@ -107,9 +145,9 @@ class ActivationsStore:
             if isinstance(dataset, str)
             else dataset
         )
-        self.hook_point = hook_point
-        self.hook_point_layers = hook_point_layers
-        self.hook_point_head_index = hook_point_head_index
+        self.hook_name = hook_name
+        self.hook_layer = hook_layer
+        self.hook_head_index = hook_head_index
         self.context_size = context_size
         self.d_in = d_in
         self.n_batches_in_buffer = n_batches_in_buffer
@@ -118,8 +156,8 @@ class ActivationsStore:
         self.train_batch_size_tokens = train_batch_size_tokens
         self.prepend_bos = prepend_bos
         self.normalize_activations = normalize_activations
-        self.device = device
-        self.dtype = dtype
+        self.device = torch.device(device)
+        self.dtype = DTYPE_MAP[dtype]
         self.cached_activations_path = cached_activations_path
         self.autocast_lm = autocast_lm
 
@@ -278,9 +316,6 @@ class ActivationsStore:
 
         d_in may result from a concatenated head dimension.
         """
-        layers = self.hook_point_layers
-        act_names = [self.hook_point.format(layer=layer) for layer in layers]
-        hook_point_max_layer = max(layers)
 
         # Setup autocast if using
         if self.autocast_lm:
@@ -295,32 +330,28 @@ class ActivationsStore:
         with autocast_if_enabled:
             layerwise_activations = self.model.run_with_cache(
                 batch_tokens,
-                names_filter=act_names,
-                stop_at_layer=hook_point_max_layer + 1,
+                names_filter=[self.hook_name],
+                stop_at_layer=self.hook_layer + 1,
                 prepend_bos=self.prepend_bos,
                 **self.model_kwargs,
             )[1]
 
         n_batches, n_context = batch_tokens.shape
 
-        stacked_activations = torch.zeros(
-            (n_batches, n_context, len(layers), self.d_in)
-        )
+        stacked_activations = torch.zeros((n_batches, n_context, 1, self.d_in))
 
-        for i, act_name in enumerate(act_names):
-
-            if self.hook_point_head_index is not None:
-                stacked_activations[:, :, i] = layerwise_activations[act_name][
-                    :, :, self.hook_point_head_index
-                ]
-            elif (
-                layerwise_activations[act_names[0]].ndim > 3
-            ):  # if we have a head dimension
-                stacked_activations[:, :, i] = layerwise_activations[act_name].view(
-                    n_batches, n_context, -1
-                )
-            else:
-                stacked_activations[:, :, i] = layerwise_activations[act_name]
+        if self.hook_head_index is not None:
+            stacked_activations[:, :, 0] = layerwise_activations[self.hook_name][
+                :, :, self.hook_head_index
+            ]
+        elif (
+            layerwise_activations[self.hook_name].ndim > 3
+        ):  # if we have a head dimension
+            stacked_activations[:, :, 0] = layerwise_activations[self.hook_name].view(
+                n_batches, n_context, -1
+            )
+        else:
+            stacked_activations[:, :, 0] = layerwise_activations[self.hook_name]
 
         return stacked_activations
 
@@ -329,7 +360,7 @@ class ActivationsStore:
         batch_size = self.store_batch_size_prompts
         d_in = self.d_in
         total_size = batch_size * n_batches_in_buffer
-        num_layers = len(self.hook_point_layers)  # Number of hook points or layers
+        num_layers = 1
 
         if self.cached_activations_path is not None:
             # Load the activations from disk
@@ -544,12 +575,3 @@ class ActivationsStore:
                 tokens = tokens[1:]
         self.n_dataset_processed += 1
         return tokens
-
-
-T = TypeVar("T")
-
-
-def listify(x: T | list[T]) -> list[T]:
-    if isinstance(x, list):
-        return x
-    return [x]

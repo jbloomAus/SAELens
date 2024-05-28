@@ -3,35 +3,29 @@ from typing import Any, Mapping, cast
 
 import pandas as pd
 import torch
-import wandb
 from transformer_lens.hook_points import HookedRootModule
 
+from sae_lens.sae import SAE
 from sae_lens.training.activations_store import ActivationsStore
-from sae_lens.training.sparse_autoencoder import SparseAutoencoder
 
 
 @torch.no_grad()
 def run_evals(
-    sparse_autoencoder: SparseAutoencoder,
+    sae: SAE,
     activation_store: ActivationsStore,
     model: HookedRootModule,
-    n_training_steps: int,
-    suffix: str = "",
     n_eval_batches: int = 10,
     eval_batch_size_prompts: int | None = None,
+    model_kwargs: Mapping[str, Any] = {},
 ) -> Mapping[str, Any]:
-    hook_point = sparse_autoencoder.cfg.hook_point
-    hook_point_layer = sparse_autoencoder.hook_point_layer
-    hook_point_head_index = sparse_autoencoder.cfg.hook_point_head_index
-    hook_point_eval = sparse_autoencoder.cfg.hook_point_eval.format(
-        layer=hook_point_layer
-    )
+    hook_name = sae.cfg.hook_name
+    hook_head_index = sae.cfg.hook_head_index
     ### Evals
     eval_tokens = activation_store.get_batch_tokens(eval_batch_size_prompts)
 
     # Get Reconstruction Score
     losses_df = recons_loss_batched(
-        sparse_autoencoder,
+        sae,
         model,
         activation_store,
         n_batches=n_eval_batches,
@@ -47,24 +41,26 @@ def run_evals(
     _, cache = model.run_with_cache(
         eval_tokens,
         prepend_bos=False,
-        names_filter=[hook_point_eval, hook_point],
-        **sparse_autoencoder.cfg.model_kwargs,
+        names_filter=[hook_name],
+        **model_kwargs,
     )
 
-    has_head_dim_key_substrings = ["hook_q", "hook_k", "hook_v", "hook_z"]
-    if hook_point_head_index is not None:
-        original_act = cache[hook_point][:, :, hook_point_head_index]
-    elif any(substring in hook_point for substring in has_head_dim_key_substrings):
-        original_act = cache[hook_point].flatten(-2, -1)
+    # we would include hook z, except that we now have base SAE's
+    # which will do their own reshaping for hook z.
+    has_head_dim_key_substrings = ["hook_q", "hook_k", "hook_v"]
+    if hook_head_index is not None:
+        original_act = cache[hook_name][:, :, hook_head_index]
+    elif any(substring in hook_name for substring in has_head_dim_key_substrings):
+        original_act = cache[hook_name].flatten(-2, -1)
     else:
-        original_act = cache[hook_point]
+        original_act = cache[hook_name]
 
     # normalise if necessary
     if activation_store.normalize_activations:
         original_act = activation_store.apply_norm_scaling_factor(original_act)
 
     # send the (maybe normalised) activations into the SAE
-    sae_out, _, _, _, _, _ = sparse_autoencoder(original_act)
+    sae_out = sae.decode(sae.encode(original_act))
     del cache
 
     l2_norm_in = torch.norm(original_act, dim=-1)
@@ -73,35 +69,23 @@ def run_evals(
     l2_norm_in_for_div[torch.abs(l2_norm_in_for_div) < 0.0001] = 1
     l2_norm_ratio = l2_norm_out / l2_norm_in_for_div
 
-    W_dec_norm_dist = sparse_autoencoder.W_dec.norm(dim=1).detach().cpu().numpy()
-    b_e_dist = sparse_autoencoder.b_enc.detach().cpu().numpy()
-
     metrics = {
         # l2 norms
-        f"metrics/l2_norm{suffix}": l2_norm_out.mean().item(),
-        f"metrics/l2_ratio{suffix}": l2_norm_ratio.mean().item(),
-        f"metrics/l2_norm_in{suffix}": l2_norm_in.mean().item(),
-        # More detail on loss.
-        f"weights/W_dec_norms{suffix}": wandb.Histogram(W_dec_norm_dist),
-        f"weights/b_e{suffix}": wandb.Histogram(b_e_dist),
+        "metrics/l2_norm": l2_norm_out.mean().item(),
+        "metrics/l2_ratio": l2_norm_ratio.mean().item(),
+        "metrics/l2_norm_in": l2_norm_in.mean().item(),
         # CE Loss
-        f"metrics/CE_loss_score{suffix}": recons_score,
-        f"metrics/ce_loss_without_sae{suffix}": ntp_loss,
-        f"metrics/ce_loss_with_sae{suffix}": recons_loss,
-        f"metrics/ce_loss_with_ablation{suffix}": zero_abl_loss,
+        "metrics/CE_loss_score": recons_score,
+        "metrics/ce_loss_without_sae": ntp_loss,
+        "metrics/ce_loss_with_sae": recons_loss,
+        "metrics/ce_loss_with_ablation": zero_abl_loss,
     }
-
-    if wandb.run is not None:
-        wandb.log(
-            metrics,
-            step=n_training_steps,
-        )
 
     return metrics
 
 
 def recons_loss_batched(
-    sparse_autoencoder: SparseAutoencoder,
+    sae: SAE,
     model: HookedRootModule,
     activation_store: ActivationsStore,
     n_batches: int = 100,
@@ -111,7 +95,7 @@ def recons_loss_batched(
     for _ in range(n_batches):
         batch_tokens = activation_store.get_batch_tokens(eval_batch_size_prompts)
         score, loss, recons_loss, zero_abl_loss = get_recons_loss(
-            sparse_autoencoder,
+            sae,
             model,
             batch_tokens,
             activation_store,
@@ -134,16 +118,16 @@ def recons_loss_batched(
 
 @torch.no_grad()
 def get_recons_loss(
-    sparse_autoencoder: SparseAutoencoder,
+    sae: SAE,
     model: HookedRootModule,
     batch_tokens: torch.Tensor,
     activation_store: ActivationsStore,
+    model_kwargs: Mapping[str, Any] = {},
 ):
-    hook_point = sparse_autoencoder.cfg.hook_point
-    loss = model(
-        batch_tokens, return_type="loss", **sparse_autoencoder.cfg.model_kwargs
-    )
-    head_index = sparse_autoencoder.cfg.hook_point_head_index
+    hook_name = sae.cfg.hook_name
+    head_index = sae.cfg.hook_head_index
+
+    loss = model(batch_tokens, return_type="loss", **model_kwargs)
 
     # TODO(tomMcGrath): the rescaling below is a bit of a hack and could probably be tidied up
     def standard_replacement_hook(activations: torch.Tensor, hook: Any):
@@ -151,9 +135,8 @@ def get_recons_loss(
         if activation_store.normalize_activations:
             activations = activation_store.apply_norm_scaling_factor(activations)
 
-        activations = sparse_autoencoder.forward(activations).sae_out.to(
-            activations.dtype
-        )
+        # SAE class agnost forward forward pass.
+        activations = sae.decode(sae.encode(activations)).to(activations.dtype)
 
         # Unscale if activations were scaled prior to going into the SAE
         if activation_store.normalize_activations:
@@ -165,9 +148,11 @@ def get_recons_loss(
         if activation_store.normalize_activations:
             activations = activation_store.apply_norm_scaling_factor(activations)
 
-        new_activations = sparse_autoencoder.forward(
-            activations.flatten(-2, -1)
-        ).sae_out.to(activations.dtype)
+        # SAE class agnost forward forward pass.
+        new_activations = sae.decode(sae.encode(activations.flatten(-2, -1))).to(
+            activations.dtype
+        )
+
         new_activations = new_activations.reshape(
             activations.shape
         )  # reshape to match original shape
@@ -182,9 +167,9 @@ def get_recons_loss(
         if activation_store.normalize_activations:
             activations = activation_store.apply_norm_scaling_factor(activations)
 
-        new_activations = sparse_autoencoder.forward(
-            activations[:, :, head_index]
-        ).sae_out.to(activations.dtype)
+        new_activations = sae.decoder(sae.encode(activations[:, :, head_index])).to(
+            activations.dtype
+        )
         activations[:, :, head_index] = new_activations
 
         # Unscale if activations were scaled prior to going into the SAE
@@ -192,8 +177,14 @@ def get_recons_loss(
             activations = activation_store.unscale(activations)
         return activations
 
-    has_head_dim_key_substrings = ["hook_q", "hook_k", "hook_v", "hook_z"]
-    if any(substring in hook_point for substring in has_head_dim_key_substrings):
+    def zero_ablate_hook(activations: torch.Tensor, hook: Any):
+        activations = torch.zeros_like(activations)
+        return activations
+
+    # we would include hook z, except that we now have base SAE's
+    # which will do their own reshaping for hook z.
+    has_head_dim_key_substrings = ["hook_q", "hook_k", "hook_v"]
+    if any(substring in hook_name for substring in has_head_dim_key_substrings):
         if head_index is None:
             replacement_hook = all_head_replacement_hook
         else:
@@ -204,15 +195,15 @@ def get_recons_loss(
     recons_loss = model.run_with_hooks(
         batch_tokens,
         return_type="loss",
-        fwd_hooks=[(hook_point, partial(replacement_hook))],
-        **sparse_autoencoder.cfg.model_kwargs,
+        fwd_hooks=[(hook_name, partial(replacement_hook))],
+        **model_kwargs,
     )
 
     zero_abl_loss = model.run_with_hooks(
         batch_tokens,
         return_type="loss",
-        fwd_hooks=[(hook_point, zero_ablate_hook)],
-        **sparse_autoencoder.cfg.model_kwargs,
+        fwd_hooks=[(hook_name, zero_ablate_hook)],
+        **model_kwargs,
     )
 
     div_val = zero_abl_loss - loss
@@ -221,16 +212,3 @@ def get_recons_loss(
     score = (zero_abl_loss - recons_loss) / div_val
 
     return score, loss, recons_loss, zero_abl_loss
-
-
-def zero_ablate_hook(activations: torch.Tensor, hook: Any):
-    activations = torch.zeros_like(activations)
-    return activations
-
-
-def kl_divergence_attention(y_true: torch.Tensor, y_pred: torch.Tensor):
-    # Compute log probabilities for KL divergence
-    log_y_true = torch.log2(y_true + 1e-10)
-    log_y_pred = torch.log2(y_pred + 1e-10)
-
-    return y_true * (log_y_true - log_y_pred)

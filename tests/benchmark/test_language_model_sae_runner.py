@@ -1,7 +1,7 @@
 import torch
 
-from sae_lens.training.config import LanguageModelSAERunnerConfig
-from sae_lens.training.lm_runner import SAETrainingRunner
+from sae_lens.config import LanguageModelSAERunnerConfig
+from sae_lens.sae_training_runner import SAETrainingRunner
 
 # os.environ["WANDB_MODE"] = "offline"  # turn this off if you want to see the output
 
@@ -32,8 +32,8 @@ def test_language_model_sae_runner():
         # Pick a tiny model to make this easier.
         model_name="gelu-1l",
         ## MLP Layer 0 ##
-        hook_point="blocks.0.hook_mlp_out",
-        hook_point_layer=0,
+        hook_name="blocks.0.hook_mlp_out",
+        hook_layer=0,
         d_in=512,
         dataset_path="NeelNanda/c4-tokenized-2b",
         context_size=256,
@@ -84,20 +84,22 @@ def test_language_model_sae_runner():
         feature_sampling_window=1000,
         dead_feature_window=1000,
         dead_feature_threshold=1e-4,
+        # performance enhancement:
+        compile_sae=True,
         # WANDB
-        log_to_wandb=True,  # always use wandb unless you are just testing code.
+        log_to_wandb=False,  # always use wandb unless you are just testing code.
         wandb_project="benchmark",
-        wandb_log_frequency=50,
+        wandb_log_frequency=100,
         # Misc
         device=device,
         seed=42,
         n_checkpoints=0,
         checkpoint_path="checkpoints",
-        dtype=torch.float32,
+        dtype="float32",
     )
 
     # look at the next cell to see some instruction for what to do while this is running.
-    sparse_autoencoder_dictionary = SAETrainingRunner(cfg).run()
+    sae = SAETrainingRunner(cfg).run()
 
-    assert sparse_autoencoder_dictionary is not None
+    assert sae is not None
     # know whether or not this works by looking at the dashboard!

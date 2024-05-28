@@ -7,7 +7,10 @@ Contributions are welcome! To get setup for development, follow the instructions
 Make sure you have [poetry](https://python-poetry.org/) installed, clone the repository, and install dependencies with:
 
 ```bash
-poetry install
+git clone https://github.com/jbloomAus/SAELens.git # we recommend you make a fork for submitting PR's and clone that!
+poetry lock # can take a while.
+poetry install 
+make check-ci # validate the install
 ```
 
 ## Testing, Linting, and Formatting

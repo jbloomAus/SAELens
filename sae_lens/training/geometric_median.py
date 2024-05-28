@@ -15,7 +15,7 @@ def geometric_median_objective(
     median: torch.Tensor, points: torch.Tensor, weights: torch.Tensor
 ) -> torch.Tensor:
 
-    norms = torch.linalg.norm(points - median.view(1, -1), dim=1)
+    norms = torch.linalg.norm(points - median.view(1, -1), dim=1)  # type: ignore
 
     return (norms * weights).sum()
 
@@ -60,7 +60,7 @@ def compute_geometric_median(
         for _ in pbar:
             prev_obj_value = objective_value
 
-            norms = torch.linalg.norm(points - median.view(1, -1), dim=1)
+            norms = torch.linalg.norm(points - median.view(1, -1), dim=1)  # type: ignore
             new_weights = weights / torch.clamp(norms, min=eps)
             median = weighted_average(points, new_weights)
             objective_value = geometric_median_objective(median, points, weights)

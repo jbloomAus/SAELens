@@ -1,7 +1,7 @@
 from mamba_lens import HookedMamba
 from transformer_lens import HookedTransformer
 
-from sae_lens.training.load_model import load_model
+from sae_lens.load_model import load_model
 
 
 def test_load_model_works_with_mamba():

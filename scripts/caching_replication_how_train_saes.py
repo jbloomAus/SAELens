@@ -4,10 +4,10 @@ import time
 
 import torch
 
-from sae_lens.training.cache_activations_runner import CacheActivationsRunner
+from sae_lens.cache_activations_runner import CacheActivationsRunner
 
 # from pathlib import Path
-from sae_lens.training.config import CacheActivationsRunnerConfig
+from sae_lens.config import CacheActivationsRunnerConfig
 
 if torch.cuda.is_available():
     device = "cuda"
@@ -59,8 +59,8 @@ cfg = CacheActivationsRunnerConfig(
     # Pick a tiny model to make this easier.
     model_name=model_name,
     ## MLP Layer 0 ##
-    hook_point="blocks.0.hook_mlp_out",
-    hook_point_layer=0,
+    hook_name="blocks.0.hook_mlp_out",
+    hook_layer=0,
     d_in=512,
     dataset_path=dataset_path,
     context_size=1024,
@@ -80,7 +80,7 @@ cfg = CacheActivationsRunnerConfig(
     # Misc
     device=device,
     seed=42,
-    dtype=torch.float16,
+    dtype="float16",
 )
 # look at the next cell to see some instruction for what to do while this is running.
 

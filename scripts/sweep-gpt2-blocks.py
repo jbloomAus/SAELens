@@ -5,8 +5,8 @@ import torch
 
 sys.path.append("..")
 
-from sae_lens.training.config import LanguageModelSAERunnerConfig
-from sae_lens.training.lm_runner import SAETrainingRunner
+from sae_lens.config import LanguageModelSAERunnerConfig
+from sae_lens.sae_training_runner import SAETrainingRunner
 
 if torch.cuda.is_available():
     device = "cuda"
@@ -36,8 +36,8 @@ for l1_coefficient in [3, 4, 5, 6, 7]:
             # Pick a tiny model to make this easier.
             model_name="gpt2",
             ## MLP ##
-            hook_point=f"blocks.{block}.hook_mlp_out",
-            hook_point_layer=block,
+            hook_name=f"blocks.{block}.hook_mlp_out",
+            hook_layer=block,
             d_in=768,
             dataset_path="apollo-research/Skylion007-openwebtext-tokenizer-gpt2",
             streaming=True,
@@ -97,7 +97,7 @@ for l1_coefficient in [3, 4, 5, 6, 7]:
             seed=42,
             n_checkpoints=0,
             checkpoint_path="checkpoints",
-            dtype=torch.float32,
+            dtype="float32",
             eval_batch_size_prompts=2,
             n_eval_batches=40,
             autocast=True,

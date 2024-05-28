@@ -1,9 +1,6 @@
 import torch
 
-from sae_lens.training.toy_model_runner import (
-    ToyModelSAERunnerConfig,
-    toy_model_sae_runner,
-)
+from sae_lens.toy_model_runner import ToyModelSAERunnerConfig, toy_model_sae_runner
 
 
 # @pytest.mark.skip(reason="I (joseph) broke this at some point, on my to do list to fix.")
@@ -38,7 +35,7 @@ def test_toy_model_sae_runner():
         log_to_wandb=True,
         wandb_project="mats_sae_training_benchmarks_toy",
         wandb_log_frequency=5,
-        device=torch.device(device),
+        device=device,
     )
 
     trained_sae = toy_model_sae_runner(cfg)

@@ -1,10 +1,9 @@
 import copy
 from typing import Any
 
-import torch
 from transformer_lens import HookedTransformer
 
-from sae_lens.training.config import LanguageModelSAERunnerConfig
+from sae_lens.config import LanguageModelSAERunnerConfig
 
 TINYSTORIES_MODEL = "tiny-stories-1M"
 TINYSTORIES_DATASET = "roneneldan/TinyStories"
@@ -17,9 +16,9 @@ def build_sae_cfg(**kwargs: Any) -> LanguageModelSAERunnerConfig:
     # Create a mock object with the necessary attributes
     mock_config = LanguageModelSAERunnerConfig(
         model_name=TINYSTORIES_MODEL,
-        hook_point="blocks.0.hook_mlp_out",
-        hook_point_layer=0,
-        hook_point_head_index=None,
+        hook_name="blocks.0.hook_mlp_out",
+        hook_layer=0,
+        hook_head_index=None,
         dataset_path=TINYSTORIES_DATASET,
         is_dataset_tokenized=False,
         use_cached_activations=False,
@@ -40,10 +39,10 @@ def build_sae_cfg(**kwargs: Any) -> LanguageModelSAERunnerConfig:
         wandb_project="test_project",
         wandb_entity="test_entity",
         wandb_log_frequency=10,
-        device=torch.device("cpu"),
+        device="cpu",
         seed=24,
         checkpoint_path="test/checkpoints",
-        dtype=torch.float32,
+        dtype="float32",
         prepend_bos=True,
     )
 

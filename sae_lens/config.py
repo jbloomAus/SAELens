@@ -1,3 +1,4 @@
+import json
 import os
 from dataclasses import dataclass, field
 from typing import Any, Literal, Optional, cast
@@ -8,6 +9,10 @@ import wandb
 from sae_lens import __version__
 
 DTYPE_MAP = {
+    "float32": torch.float32,
+    "float64": torch.float64,
+    "float16": torch.float16,
+    "bfloat16": torch.bfloat16,
     "torch.float32": torch.float32,
     "torch.float64": torch.float64,
     "torch.float16": torch.float16,
@@ -19,22 +24,101 @@ DTYPE_MAP = {
 class LanguageModelSAERunnerConfig:
     """
     Configuration for training a sparse autoencoder on a language model.
+
+    Args:
+        model_name (str): The name of the model to use. This should be the name of the model in the Hugging Face model hub.
+        model_class_name (str): The name of the class of the model to use. This should be either `HookedTransformer` or `HookedMamba`.
+        hook_name (str): The name of the hook to use. This should be a valid TransformerLens hook.
+        hook_eval (str): NOT CURRENTLY IN USE. The name of the hook to use for evaluation.
+        hook_layer (int): The index of the layer to hook. Used to stop forward passes early and speed up processing.
+        hook_head_index (int, optional): When the hook if for an activatio with a head index, we can specify a specific head to use here.
+        dataset_path (str): A Hugging Face dataset path.
+        streaming (bool): Whether to stream the dataset. Streaming large datasets is usually practical.
+        is_dataset_tokenized (bool): NOT IN USE. We used to use this but now automatically detect if the dataset is tokenized.
+        context_size (int): The context size to use when generating activations on which to train the SAE.
+        use_cached_activations (bool): Whether to use cached activations. This is useful when doing sweeps over the same activations.
+        cached_activations_path (str, optional): The path to the cached activations.
+        d_in (int): The input dimension of the SAE.
+        d_sae (int, optional): The output dimension of the SAE. If None, defaults to `d_in * expansion_factor`.
+        b_dec_init_method (str): The method to use to initialize the decoder bias. Zeros is likely fine.
+        expansion_factor (int): The expansion factor. Larger is better but more computationally expensive.
+        activation_fn (str): The activation function to use. Relu is standard.
+        normalize_sae_decoder (bool): Whether to normalize the SAE decoder. Unit normed decoder weights used to be preferred.
+        noise_scale (float): Using noise to induce sparsity is supported but not recommended.
+        from_pretrained_path (str, optional): The path to a pretrained SAE. We can finetune an existing SAE if needed.
+        apply_b_dec_to_input (bool): Whether to apply the decoder bias to the input. Not currently advised.
+        decoder_orthogonal_init (bool): Whether to use orthogonal initialization for the decoder. Not currently advised.
+        decoder_heuristic_init (bool): Whether to use heuristic initialization for the decoder. See Anthropic April Update.
+        init_encoder_as_decoder_transpose (bool): Whether to initialize the encoder as the transpose of the decoder. See Anthropic April Update.
+        n_batches_in_buffer (int): The number of batches in the buffer. When not using cached activations, a buffer in ram is used. The larger it is, the better shuffled the activations will be.
+        training_tokens (int): The number of training tokens.
+        finetuning_tokens (int): The number of finetuning tokens. See [here](https://www.lesswrong.com/posts/3JuSjTZyMzaSeTxKk/addressing-feature-suppression-in-saes)
+        store_batch_size_prompts (int): The batch size for storing activations. This controls how many prompts are in the batch of the language model when generating actiations.
+        train_batch_size_tokens (int): The batch size for training. This controls the batch size of the SAE Training loop.
+        normalize_activations (bool): Whether to normalize activations. See Anthropic April update.
+        device (str): The device to use. Usually cuda.
+        act_store_device (str): The device to use for the activation store. CPU is advised in order to save vram.
+        seed (int): The seed to use.
+        dtype (str): The data type to use.
+        prepend_bos (bool): Whether to prepend the beginning of sequence token. You should use whatever the model was trained with.
+        autocast (bool): Whether to use autocast during training. Saves vram.
+        autocast_lm (bool): Whether to use autocast during activation fetching.
+        compile_llm (bool): Whether to compile the LLM.
+        llm_compilation_mode (str): The compilation mode to use for the LLM.
+        compile_sae (bool): Whether to compile the SAE.
+        sae_compilation_mode (str): The compilation mode to use for the SAE.
+        train_batch_size_tokens (int): The batch size for training.
+        adam_beta1 (float): The beta1 parameter for Adam.
+        adam_beta2 (float): The beta2 parameter for Adam.
+        mse_loss_normalization (str): The normalization to use for the MSE loss.
+        l1_coefficient (float): The L1 coefficient.
+        lp_norm (float): The Lp norm.
+        scale_sparsity_penalty_by_decoder_norm (bool): Whether to scale the sparsity penalty by the decoder norm.
+        l1_warm_up_steps (int): The number of warm-up steps for the L1 loss.
+        lr (float): The learning rate.
+        lr_scheduler_name (str): The name of the learning rate scheduler to use.
+        lr_warm_up_steps (int): The number of warm-up steps for the learning rate.
+        lr_end (float): The end learning rate for the cosine annealing scheduler.
+        lr_decay_steps (int): The number of decay steps for the learning rate.
+        n_restart_cycles (int): The number of restart cycles for the cosine annealing warm restarts scheduler.
+        finetuning_method (str): The method to use for finetuning.
+        use_ghost_grads (bool): Whether to use ghost gradients.
+        feature_sampling_window (int): The feature sampling window.
+        dead_feature_window (int): The dead feature window.
+        dead_feature_threshold (float): The dead feature threshold.
+        n_eval_batches (int): The number of evaluation batches.
+        eval_batch_size_prompts (int): The batch size for evaluation.
+        log_to_wandb (bool): Whether to log to Weights & Biases.
+        log_activations_store_to_wandb (bool): NOT CURRENTLY USED. Whether to log the activations store to Weights & Biases.
+        log_optimizer_state_to_wandb (bool): NOT CURRENTLY USED. Whether to log the optimizer state to Weights & Biases.
+        wandb_project (str): The Weights & Biases project to log to.
+        wandb_id (str): The Weights & Biases ID.
+        run_name (str): The name of the run.
+        wandb_entity (str): The Weights & Biases entity.
+        wandb_log_frequency (int): The frequency to log to Weights & Biases.
+        eval_every_n_wandb_logs (int): The frequency to evaluate.
+        resume (bool): Whether to resume training.
+        n_checkpoints (int): The number of checkpoints.
+        checkpoint_path (str): The path to save checkpoints.
+        verbose (bool): Whether to print verbose output.
+        model_kwargs (dict[str, Any]): Additional keyword arguments for the model.
+        model_from_pretrained_kwargs (dict[str, Any]): Additional keyword arguments for the model from pretrained.
     """
 
     # Data Generating Function (Model + Training Distibuion)
     model_name: str = "gelu-2l"
     model_class_name: str = "HookedTransformer"
-    hook_point: str = "blocks.{layer}.hook_mlp_out"
-    hook_point_eval: str = "blocks.{layer}.attn.pattern"
-    hook_point_layer: int = 0
-    hook_point_head_index: Optional[int] = None
+    hook_name: str = "blocks.0.hook_mlp_out"
+    hook_eval: str = "NOT_IN_USE"
+    hook_layer: int = 0
+    hook_head_index: Optional[int] = None
     dataset_path: str = "NeelNanda/c4-tokenized-2b"
     streaming: bool = True
     is_dataset_tokenized: bool = True
     context_size: int = 128
     use_cached_activations: bool = False
     cached_activations_path: Optional[str] = (
-        None  # Defaults to "activations/{dataset}/{model}/{full_hook_name}_{hook_point_head_index}"
+        None  # Defaults to "activations/{dataset}/{model}/{full_hook_name}_{hook_head_index}"
     )
 
     # SAE Parameters
@@ -60,12 +144,10 @@ class LanguageModelSAERunnerConfig:
     normalize_activations: bool = False
 
     # Misc
-    device: str | torch.device = "cpu"
-    act_store_device: str | torch.device = (
-        "with_model"  # will be set by post init if with_model
-    )
+    device: str = "cpu"
+    act_store_device: str = "with_model"  # will be set by post init if with_model
     seed: int = 42
-    dtype: str | torch.dtype = "torch.float32"  # type: ignore #
+    dtype: str = "float32"  # type: ignore #
     prepend_bos: bool = True
 
     # Performance - see compilation section of lm_runner.py for info
@@ -149,8 +231,8 @@ class LanguageModelSAERunnerConfig:
             self.cached_activations_path = _default_cached_activations_path(
                 self.dataset_path,
                 self.model_name,
-                self.hook_point,
-                self.hook_point_head_index,
+                self.hook_name,
+                self.hook_head_index,
             )
 
         if not isinstance(self.expansion_factor, list):
@@ -177,23 +259,14 @@ class LanguageModelSAERunnerConfig:
                 "Weighting loss by decoder norm makes no sense if you are normalizing the decoder weight norms to 1"
             )
 
-        if isinstance(self.dtype, str) and self.dtype not in DTYPE_MAP:
-            raise ValueError(
-                f"dtype must be one of {list(DTYPE_MAP.keys())}. Got {self.dtype}"
-            )
-        elif isinstance(self.dtype, str):
-            self.dtype: torch.dtype = DTYPE_MAP[self.dtype]
-
         # if we use decoder fine tuning, we can't be applying b_dec to the input
         if (self.finetuning_method == "decoder") and (self.apply_b_dec_to_input):
             raise ValueError(
                 "If we are fine tuning the decoder, we can't be applying b_dec to the input.\nSet apply_b_dec_to_input to False."
             )
 
-        self.device: str | torch.device = torch.device(self.device)
         if self.act_store_device == "with_model":
             self.act_store_device = self.device
-        self.act_store_device = torch.device(self.act_store_device)
 
         if self.lr_end is None:
             self.lr_end = self.lr / 10
@@ -253,50 +326,6 @@ class LanguageModelSAERunnerConfig:
         if self.use_ghost_grads:
             print("Using Ghost Grads.")
 
-    def get_checkpoints_by_step(self) -> tuple[dict[int, str], bool]:
-        """
-        Returns (dict, is_done)
-        where dict is [steps] = path
-        for each checkpoint, and
-        is_done is True if there is a "final_{steps}" checkpoint
-        """
-        is_done = False
-        checkpoints = [
-            f
-            for f in os.listdir(self.checkpoint_path)
-            if os.path.isdir(os.path.join(self.checkpoint_path, f))
-        ]
-        mapped_to_steps = {}
-        for c in checkpoints:
-            try:
-                steps = int(c)
-            except ValueError:
-                if c.startswith("final"):
-                    steps = int(c.split("_")[1])
-                    is_done = True
-                else:
-                    continue  # ignore this directory
-            full_path = os.path.join(self.checkpoint_path, c)
-            mapped_to_steps[steps] = full_path
-        return mapped_to_steps, is_done
-
-    def get_resume_checkpoint_path(self) -> str:
-        """
-        Gets the checkpoint path with the most steps
-        raises StopIteration if the model is done (there is a final_{steps} directoryh
-        raises FileNotFoundError if there are no checkpoints found
-        """
-        mapped_to_steps, is_done = self.get_checkpoints_by_step()
-        if is_done:
-            raise StopIteration("Finished training model")
-        if len(mapped_to_steps) == 0:
-            raise FileNotFoundError("no checkpoints available to resume from")
-        else:
-            max_step = max(list(mapped_to_steps.keys()))
-            checkpoint_dir = mapped_to_steps[max_step]
-            print(f"resuming from step {max_step} at path {checkpoint_dir}")
-            return mapped_to_steps[max_step]
-
     @property
     def total_training_tokens(self) -> int:
         return self.training_tokens + self.finetuning_tokens
@@ -304,6 +333,67 @@ class LanguageModelSAERunnerConfig:
     @property
     def total_training_steps(self) -> int:
         return self.total_training_tokens // self.train_batch_size_tokens
+
+    def get_base_sae_cfg_dict(self) -> dict[str, Any]:
+        return {
+            "d_in": self.d_in,
+            "d_sae": self.d_sae,
+            "dtype": self.dtype,
+            "device": self.device,
+            "model_name": self.model_name,
+            "hook_name": self.hook_name,
+            "hook_layer": self.hook_layer,
+            "hook_head_index": self.hook_head_index,
+            "activation_fn_str": self.activation_fn,
+            "apply_b_dec_to_input": self.apply_b_dec_to_input,
+            "context_size": self.context_size,
+            "prepend_bos": self.prepend_bos,
+            "dataset_path": self.dataset_path,
+            "finetuning_scaling_factor": self.finetuning_method is not None,
+            "sae_lens_training_version": self.sae_lens_training_version,
+            "normalize_activations": self.normalize_activations,
+        }
+
+    def get_training_sae_cfg_dict(self) -> dict[str, Any]:
+        return {
+            **self.get_base_sae_cfg_dict(),
+            "l1_coefficient": self.l1_coefficient,
+            "lp_norm": self.lp_norm,
+            "use_ghost_grads": self.use_ghost_grads,
+            "normalize_sae_decoder": self.normalize_sae_decoder,
+            "noise_scale": self.noise_scale,
+            "decoder_orthogonal_init": self.decoder_orthogonal_init,
+            "mse_loss_normalization": self.mse_loss_normalization,
+            "decoder_heuristic_init": self.decoder_heuristic_init,
+            "init_encoder_as_decoder_transpose": self.init_encoder_as_decoder_transpose,
+            "normalize_activations": self.normalize_activations,
+        }
+
+    def to_dict(self) -> dict[str, Any]:
+
+        cfg_dict = {
+            **self.__dict__,
+            # some args may not be serializable by default
+            "dtype": str(self.dtype),
+            "device": str(self.device),
+            "act_store_device": str(self.act_store_device),
+        }
+
+        return cfg_dict
+
+    def to_json(self, path: str) -> None:
+
+        if not os.path.exists(os.path.dirname(path)):
+            os.makedirs(os.path.dirname(path))
+
+        with open(path + "cfg.json", "w") as f:
+            json.dump(self.to_dict(), f, indent=2)
+
+    @classmethod
+    def from_json(cls, path: str) -> "LanguageModelSAERunnerConfig":
+        with open(path + "cfg.json", "r") as f:
+            cfg = json.load(f)
+        return cls(**cfg)
 
 
 @dataclass
@@ -315,15 +405,15 @@ class CacheActivationsRunnerConfig:
     # Data Generating Function (Model + Training Distibuion)
     model_name: str = "gelu-2l"
     model_class_name: str = "HookedTransformer"
-    hook_point: str = "blocks.{layer}.hook_mlp_out"
-    hook_point_layer: int = 0
-    hook_point_head_index: Optional[int] = None
+    hook_name: str = "blocks.{layer}.hook_mlp_out"
+    hook_layer: int = 0
+    hook_head_index: Optional[int] = None
     dataset_path: str = "NeelNanda/c4-tokenized-2b"
     streaming: bool = True
     is_dataset_tokenized: bool = True
     context_size: int = 128
     new_cached_activations_path: Optional[str] = (
-        None  # Defaults to "activations/{dataset}/{model}/{full_hook_name}_{hook_point_head_index}"
+        None  # Defaults to "activations/{dataset}/{model}/{full_hook_name}_{hook_head_index}"
     )
     # dont' specify this since you don't want to load from disk with the cache runner.
     cached_activations_path: Optional[str] = None
@@ -338,12 +428,10 @@ class CacheActivationsRunnerConfig:
     normalize_activations: bool = False
 
     # Misc
-    device: str | torch.device = "cpu"
-    act_store_device: str | torch.device = (
-        "with_model"  # will be set by post init if with_model
-    )
+    device: str = "cpu"
+    act_store_device: str = "with_model"  # will be set by post init if with_model
     seed: int = 42
-    dtype: str | torch.dtype = "torch.float32"
+    dtype: str = "float32"
     prepend_bos: bool = True
     autocast_lm: bool = False  # autocast lm during activation fetching
 
@@ -361,8 +449,8 @@ class CacheActivationsRunnerConfig:
             self.new_cached_activations_path = _default_cached_activations_path(
                 self.dataset_path,
                 self.model_name,
-                self.hook_point,
-                self.hook_point_head_index,
+                self.hook_name,
+                self.hook_head_index,
             )
 
         if self.act_store_device == "with_model":
@@ -406,7 +494,7 @@ class ToyModelSAERunnerConfig:
     wandb_log_frequency: int = 50
 
     # Misc
-    device: str | torch.device = "cuda" if torch.cuda.is_available() else "cpu"
+    device: str = "cuda" if torch.cuda.is_available() else "cpu"
     seed: int = 42
     checkpoint_path: str = "checkpoints"
     dtype: str | torch.dtype = "float32"
@@ -421,16 +509,31 @@ class ToyModelSAERunnerConfig:
         elif isinstance(self.dtype, str):
             self.dtype = DTYPE_MAP[self.dtype]
 
+    def get_base_sae_cfg_dict(self) -> dict[str, Any]:
+        # TO DO: Have the same hyperparameters as in the main sae runner.
+        return {
+            "d_in": self.d_in,
+            "d_sae": self.d_sae,
+            "dtype": self.dtype,
+            "device": self.device,
+            "model_name": "ToyModel",
+            "hook_name": "ToyModelHookPoint",
+            "hook_layer": 0,
+            "hook_head_index": None,
+            "activation_fn": "relu",
+            "apply_b_dec_to_input": True,
+        }
+
 
 def _default_cached_activations_path(
     dataset_path: str,
     model_name: str,
-    hook_point: str,
-    hook_point_head_index: int | None,
+    hook_name: str,
+    hook_head_index: int | None,
 ) -> str:
-    path = f"activations/{dataset_path.replace('/', '_')}/{model_name.replace('/', '_')}/{hook_point}"
-    if hook_point_head_index is not None:
-        path += f"_{hook_point_head_index}"
+    path = f"activations/{dataset_path.replace('/', '_')}/{model_name.replace('/', '_')}/{hook_name}"
+    if hook_head_index is not None:
+        path += f"_{hook_head_index}"
     return path
 
 

@@ -20,7 +20,7 @@ def load_model(
     elif model_class_name == "HookedMamba":
         try:
             from mamba_lens import HookedMamba
-        except ImportError:
+        except ImportError:  # pragma: no cover
             raise ValueError(
                 "mamba-lens must be installed to work with mamba models. This can be added with `pip install sae-lens[mamba]`"
             )
@@ -31,5 +31,5 @@ def load_model(
                 model_name, device=cast(Any, device), **model_from_pretrained_kwargs
             ),
         )
-    else:
+    else:  # pragma: no cover
         raise ValueError(f"Unknown model class: {model_class_name}")

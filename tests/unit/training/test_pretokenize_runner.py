@@ -7,8 +7,8 @@ from datasets import Dataset
 from transformers import AutoTokenizer, PreTrainedTokenizerBase
 
 from sae_lens import __version__
-from sae_lens.training.config import PretokenizeRunnerConfig
-from sae_lens.training.pretokenize_runner import pretokenize_dataset, pretokenize_runner
+from sae_lens.config import PretokenizeRunnerConfig
+from sae_lens.pretokenize_runner import pretokenize_dataset, pretokenize_runner
 
 
 @pytest.fixture
