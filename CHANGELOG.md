@@ -2,6 +2,171 @@
 
 
 
+## v3.0.0 (2024-05-28)
+
+### Breaking
+
+* feat: refactor SAE code
+
+BREAKING CHANGE: renamed and re-implemented paths ([`3c67666`](https://github.com/jbloomAus/SAELens/commit/3c6766604f5b2079206e0c073e75a72c67a76f43))
+
+### Unknown
+
+* major: trigger release
+
+BREAKING CHANGE: https://python-semantic-release.readthedocs.io/en/latest/commit-parsing.html#commit-parser-angular
+
+BREAKING CHANGE: ([`fac8533`](https://github.com/jbloomAus/SAELens/commit/fac8533be338dcacbae0045ab0d7a7396c630aa8))
+
+* major: trigger release
+
+BREAKING CHANGE: trigger release (apparently we need a newline) ([`90ed2c2`](https://github.com/jbloomAus/SAELens/commit/90ed2c296fb65b6e1935435690d8cddb007ce04b))
+
+* BREAKING CHANGE: Quality of Life Refactor of SAE Lens adding SAE Analysis with HookedSAETransformer and some other breaking changes. (#162)
+
+* move HookedSAETransformer from TL
+
+* add tests
+
+* move runners one level up
+
+* fix docs name
+
+* trainer clean up
+
+* create training sae, not fully seperate yet
+
+* remove accidentally commited notebook
+
+* commit working code in the middle of refactor, more work to do
+
+* don&#39;t use act layers plural
+
+* make tutorial not use the activation store
+
+* moved this file
+
+* move import of toy model runner
+
+* saes need to store at least enough information to run them
+
+* further refactor and add tests
+
+* finish act store device rebase
+
+* fix config type not caught by test
+
+* partial progress, not yet handling error term for hooked sae transformer
+
+* bring tests in line with trainer doing more work
+
+* revert some of the simplification to preserve various features, ghost grads, noising
+
+* hooked sae transformer is working
+
+* homogenize configs
+
+* re-enable sae compilation
+
+* remove old file that doesn&#39;t belong
+
+* include normalize activations in base sae config
+
+* make sure tutorial works
+
+* don&#39;t forget to update pbar
+
+* rename sparse autoencoder to sae for brevity
+
+* move non-training specific modules out of training
+
+* rename to remove _point
+
+* first steps towards better docs
+
+* final cleanup
+
+* have ci use same test coverage total as make check-ci
+
+* clean up docs a bit
+
+---------
+
+Co-authored-by: ckkissane &lt;67170576+ckkissane@users.noreply.github.com&gt; ([`e4eaccc`](https://github.com/jbloomAus/SAELens/commit/e4eaccc87b277a42d463624656a3548ead0db359))
+
+* Move activation store to cpu (#159)
+
+* add act store device to config
+
+* fix serialisation issue with device
+
+* fix accidental hardcoding of a device
+
+* test activations get moved correctly
+
+* fix issue with test cacher that shared state
+
+* add split store &amp; model test + fix failure
+
+* clarify comment
+
+* formatting fixes ([`eb9489a`](https://github.com/jbloomAus/SAELens/commit/eb9489a2dd11fe4841857309dcc369e98a6b9360))
+
+* Refactor training (#158)
+
+* turn training runner into a class
+
+* make a trainer class
+
+* further refactor
+
+* update runner call
+
+* update docs ([`72179c8`](https://github.com/jbloomAus/SAELens/commit/72179c8336fcdb5e159ddca930af99700362e377))
+
+* Enable autocast for LM activation creation (#157)
+
+* add LM autocasting
+
+* add script to test autocast performance
+
+* format fix
+
+* update autocast demo script ([`cf94845`](https://github.com/jbloomAus/SAELens/commit/cf94845129f0e2d0bbe5135d90797a03611e983c))
+
+* gemma 2b sae resid post 12. fix ghost grad print ([`2a676b2`](https://github.com/jbloomAus/SAELens/commit/2a676b210832e789dbb80f33b2d8f747a7209e0f))
+
+* don&#39;t hardcode hook ([`a10283d`](https://github.com/jbloomAus/SAELens/commit/a10283de5b402cbac9c2afbd6263b9e5798f9e1c))
+
+* add mlp out SAEs to from pretrained ([`ee9291e`](https://github.com/jbloomAus/SAELens/commit/ee9291eae91908c398377b199bb9e3b33a5a2622))
+
+* remove resuming ability, keep resume config but complain if true (#156) ([`64e4dcd`](https://github.com/jbloomAus/SAELens/commit/64e4dcd3fe142cee751a348f9ed581edf2a6e3f0))
+
+* Add notebook to transfer W&amp;B models to HF (#154)
+
+hard to check this works quickly but assuming it does. ([`91239c1`](https://github.com/jbloomAus/SAELens/commit/91239c1c6e0abd06aea3aa7669fc5b56adc6e792))
+
+* Remove sae parallel training, simplify code (#155)
+
+* remove sae parallel training, simplify code
+* remove unused import
+* remove accidental inclusion of file
+
+(not tagging this as breaking since we&#39;re do a new major release this week and I don&#39;t want to keep bumping the major version) ([`f445fdf`](https://github.com/jbloomAus/SAELens/commit/f445fdfc823cb6be8b1910a28a89c8bd20661be8))
+
+* Update pretrained_saes.yaml ([`37fb150`](https://github.com/jbloomAus/SAELens/commit/37fb15083a5427894b65de9654272e99291ce46a))
+
+* Ansible: update incorrect EC2 quota request link ([`432c7e1`](https://github.com/jbloomAus/SAELens/commit/432c7e1fd7e0ea64fcba5941e36d9740c2c58a07))
+
+* Merge pull request #153 from jbloomAus/ansible_dev
+
+Ansible: dev only mode ([`51d2175`](https://github.com/jbloomAus/SAELens/commit/51d2175d05ce99a83da7b29210e725163a578c1a))
+
+* Ansible: dev only mode ([`027460f`](https://github.com/jbloomAus/SAELens/commit/027460f48819f7953754406f5cc0499a08ed4ebc))
+
+* feature: add gemma-2b bootleg saes (#152) ([`b9b7e32`](https://github.com/jbloomAus/SAELens/commit/b9b7e32562a1c48003671464f0ed5084d3541e97))
+
+
 ## v2.1.3 (2024-05-15)
 
 ### Fix
