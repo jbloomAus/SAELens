@@ -45,7 +45,6 @@ extra_javascript:
 nav:
   - Home: index.md
   - Roadmap: roadmap.md
-  - Installation: installation.md
   - Training SAEs: training_saes.md
   - Citation: citation.md
   - Contributing: contributing.md
