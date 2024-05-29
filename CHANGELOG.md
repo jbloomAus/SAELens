@@ -2,6 +2,13 @@
 
 
 
+## v3.1.1 (2024-05-29)
+
+### Fix
+
+* fix: share config defaulting between hf and local loading (#169) ([`7df479c`](https://github.com/jbloomAus/SAELens/commit/7df479c3a1e4d2ed187090ef65c5059f6fa8bf24))
+
+
 ## v3.1.0 (2024-05-29)
 
 ### Feature
