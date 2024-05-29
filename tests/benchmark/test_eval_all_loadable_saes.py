@@ -33,6 +33,19 @@ def all_loadable_saes() -> list[tuple[str, str]]:
 
 
 @pytest.mark.parametrize("release, sae_name", all_loadable_saes())
+def test_loading_pretrained_saes(release: str, sae_name: str):
+    if torch.cuda.is_available():
+        device = "cuda"
+    elif torch.backends.mps.is_available():
+        device = "mps"
+    else:
+        device = "cpu"
+
+    sae, _, _ = SAE.from_pretrained(release, sae_name, device=device)
+    assert isinstance(sae, SAE)
+
+
+@pytest.mark.parametrize("release, sae_name", all_loadable_saes())
 def test_eval_all_loadable_saes(release: str, sae_name: str):
     """This test is currently only passing for a subset of SAEs because we need to
     have the normalization factors on hand to normalize the activations. We should

@@ -345,46 +345,6 @@ class SAE(HookedRootModule):
             force_download=False,
         )
 
-        if "prepend_bos" not in cfg_dict:
-            # default to True for backwards compatibility
-            cfg_dict["prepend_bos"] = True
-
-        if "apply_b_dec_to_input" not in cfg_dict:
-            # default to True for backwards compatibility
-            cfg_dict["apply_b_dec_to_input"] = True
-
-        if "finetuning_scaling_factor" not in cfg_dict:
-            # default to False for backwards compatibility
-            cfg_dict["finetuning_scaling_factor"] = False
-
-        if "sae_lens_training_version" not in cfg_dict:
-            cfg_dict["sae_lens_training_version"] = None
-
-        if "activation_fn" not in cfg_dict:
-            cfg_dict["activation_fn_str"] = "relu"
-
-        if "normalize_activations" not in cfg_dict:
-            cfg_dict["normalize_activations"] = False
-
-        if "scaling_factor" in state_dict:
-            # we were adding it anyway for a period of time but are no longer doing so.
-            # so we should delete it if
-            if torch.allclose(
-                state_dict["scaling_factor"],
-                torch.ones_like(state_dict["scaling_factor"]),
-            ):
-                del state_dict["scaling_factor"]
-                cfg_dict["finetuning_scaling_factor"] = False
-            else:
-                assert cfg_dict[
-                    "finetuning_scaling_factor"
-                ], "Scaling factor is present but finetuning_scaling_factor is False."
-                state_dict["finetuning_scaling_factor"] = state_dict["scaling_factor"]
-                del state_dict["scaling_factor"]
-        else:
-            # it's there and it's not all 1's, we should use it.
-            cfg_dict["finetuning_scaling_factor"] = False
-
         sae = cls(SAEConfig.from_dict(cfg_dict))
         sae.load_state_dict(state_dict)
 
