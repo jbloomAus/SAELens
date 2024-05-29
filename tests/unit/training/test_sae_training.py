@@ -48,7 +48,7 @@ from tests.unit.helpers import build_sae_cfg
             "tokenized": False,
             "hook_name": "blocks.1.attn.hook_z",
             "hook_layer": 1,
-            "d_in": 2048,
+            "d_in": 64,
         },
     ],
     ids=[
