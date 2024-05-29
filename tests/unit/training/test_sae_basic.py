@@ -1,4 +1,5 @@
 import os
+from copy import deepcopy
 from pathlib import Path
 
 import pytest
@@ -71,6 +72,41 @@ def test_sae_init(cfg: LanguageModelSAERunnerConfig):
     assert sae.W_dec.shape == (cfg.d_sae, cfg.d_in)
     assert sae.b_enc.shape == (cfg.d_sae,)
     assert sae.b_dec.shape == (cfg.d_in,)
+
+
+def test_sae_fold_w_dec_norm(cfg: LanguageModelSAERunnerConfig):
+    sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
+    sae.turn_off_forward_pass_hook_z_reshaping()  # hook z reshaping not needed here.
+    assert sae.W_dec.norm(dim=-1).mean().item() != pytest.approx(1.0, abs=1e-6)
+    sae2 = deepcopy(sae)
+    sae2.fold_W_dec_norm()
+
+    W_dec_norms = sae.W_dec.norm(dim=-1).unsqueeze(1)
+    assert torch.allclose(sae2.W_dec.data, sae.W_dec.data / W_dec_norms)
+    assert torch.allclose(sae2.W_enc.data, sae.W_enc.data * W_dec_norms.T)
+    assert torch.allclose(sae2.b_enc.data, sae.b_enc.data * W_dec_norms.squeeze())
+
+    # fold_W_dec_norm should normalize W_dec to have unit norm.
+    assert sae2.W_dec.norm(dim=-1).mean().item() == pytest.approx(1.0, abs=1e-6)
+
+    # we expect activations of features to differ by W_dec norm weights.
+    activations = torch.randn(10, 4, cfg.d_in, device=cfg.device)
+    feature_activations_1 = sae.encode(activations)
+    feature_activations_2 = sae2.encode(activations)
+
+    assert torch.allclose(
+        feature_activations_1.nonzero(),
+        feature_activations_2.nonzero(),
+    )
+
+    expected_feature_activations_2 = feature_activations_1 * sae.W_dec.norm(dim=-1)
+    torch.testing.assert_close(feature_activations_2, expected_feature_activations_2)
+
+    sae_out_1 = sae.decode(feature_activations_1)
+    sae_out_2 = sae2.decode(feature_activations_2)
+
+    # but actual outputs should be the same
+    torch.testing.assert_close(sae_out_1, sae_out_2)
 
 
 def test_sae_save_and_load_from_pretrained(tmp_path: Path) -> None:
