@@ -424,6 +424,7 @@ class SAE(HookedRootModule):
         self.d_head = None
         self.hook_z_reshaping_mode = False
 
+
 def get_activation_fn(activation_fn: str) -> Callable[[torch.Tensor], torch.Tensor]:
     if activation_fn == "relu":
         return torch.nn.ReLU()
