@@ -18,10 +18,19 @@ def run_evals(
     eval_batch_size_prompts: int | None = None,
     model_kwargs: Mapping[str, Any] = {},
 ) -> Mapping[str, Any]:
+
     hook_name = sae.cfg.hook_name
     hook_head_index = sae.cfg.hook_head_index
     ### Evals
     eval_tokens = activation_store.get_batch_tokens(eval_batch_size_prompts)
+
+    # TODO: Come up with a cleaner long term strategy here for SAEs that do reshaping.
+    # turn off hook_z reshaping mode if it's on, and restore it after evals
+    if "hook_z" in hook_name:
+        previous_hook_z_reshaping_mode = sae.hook_z_reshaping_mode
+        sae.turn_off_forward_pass_hook_z_reshaping()
+    else:
+        previous_hook_z_reshaping_mode = None
 
     # Get Reconstruction Score
     losses_df = recons_loss_batched(
@@ -47,7 +56,7 @@ def run_evals(
 
     # we would include hook z, except that we now have base SAE's
     # which will do their own reshaping for hook z.
-    has_head_dim_key_substrings = ["hook_q", "hook_k", "hook_v"]
+    has_head_dim_key_substrings = ["hook_q", "hook_k", "hook_v", "hook_z"]
     if hook_head_index is not None:
         original_act = cache[hook_name][:, :, hook_head_index]
     elif any(substring in hook_name for substring in has_head_dim_key_substrings):
@@ -80,6 +89,13 @@ def run_evals(
         "metrics/ce_loss_with_sae": recons_loss,
         "metrics/ce_loss_with_ablation": zero_abl_loss,
     }
+
+    # restore previous hook z reshaping mode if necessary
+    if "hook_z" in hook_name:
+        if previous_hook_z_reshaping_mode and not sae.hook_z_reshaping_mode:
+            sae.turn_on_forward_pass_hook_z_reshaping()
+        elif not previous_hook_z_reshaping_mode and sae.hook_z_reshaping_mode:
+            sae.turn_off_forward_pass_hook_z_reshaping()
 
     return metrics
 
@@ -160,6 +176,7 @@ def get_recons_loss(
         # Unscale if activations were scaled prior to going into the SAE
         if activation_store.normalize_activations:
             new_activations = activation_store.unscale(new_activations)
+
         return new_activations
 
     def single_head_replacement_hook(activations: torch.Tensor, hook: Any):
@@ -183,7 +200,7 @@ def get_recons_loss(
 
     # we would include hook z, except that we now have base SAE's
     # which will do their own reshaping for hook z.
-    has_head_dim_key_substrings = ["hook_q", "hook_k", "hook_v"]
+    has_head_dim_key_substrings = ["hook_q", "hook_k", "hook_v", "hook_z"]
     if any(substring in hook_name for substring in has_head_dim_key_substrings):
         if head_index is None:
             replacement_hook = all_head_replacement_hook

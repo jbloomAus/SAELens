@@ -141,8 +141,7 @@ class TrainingSAE(SAE):
 
         # The training SAE will assume that the activation store handles
         # reshaping.
-        self.reshape_fn_in = lambda x: x
-        self.reshape_fn_out = lambda x, d_head: x
+        self.turn_off_forward_pass_hook_z_reshaping()
 
         self.mse_loss_fn = self._get_mse_loss_fn()
 

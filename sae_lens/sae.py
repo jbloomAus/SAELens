@@ -138,24 +138,11 @@ class SAE(HookedRootModule):
         # the z activations for hook_z SAEs. but don't know d_head if we split up the forward pass
         # into a separate encode and decode function.
         # this will cause errors if we call decode before encode.
-        self.reshape_fn_in = lambda x: x
-        self.reshape_fn_out = lambda x, d_head: x
-        self.d_head = None
         if self.cfg.hook_name.endswith("_z"):
-
-            def reshape_fn_in(x: torch.Tensor):
-                self.d_head = x.shape[-1]  # type: ignore
-                self.reshape_fn_in = lambda x: einops.rearrange(
-                    x, "... n_heads d_head -> ... (n_heads d_head)"
-                )
-                return einops.rearrange(x, "... n_heads d_head -> ... (n_heads d_head)")
-
-            self.reshape_fn_in = reshape_fn_in
-
-        if self.cfg.hook_name.endswith("_z"):
-            self.reshape_fn_out = lambda x, d_head: einops.rearrange(
-                x, "... (n_heads d_head) -> ... n_heads d_head", d_head=d_head
-            )
+            self.turn_on_forward_pass_hook_z_reshaping()
+        else:
+            # need to default the reshape fns
+            self.turn_off_forward_pass_hook_z_reshaping()
 
         self.setup()  # Required for `HookedRootModule`s
 
@@ -403,6 +390,32 @@ class SAE(HookedRootModule):
     @classmethod
     def from_dict(cls, config_dict: dict[str, Any]) -> "SAE":
         return cls(SAEConfig.from_dict(config_dict))
+
+    def turn_on_forward_pass_hook_z_reshaping(self):
+
+        assert self.cfg.hook_name.endswith(
+            "_z"
+        ), "This method should only be called for hook_z SAEs."
+
+        def reshape_fn_in(x: torch.Tensor):
+            self.d_head = x.shape[-1]  # type: ignore
+            self.reshape_fn_in = lambda x: einops.rearrange(
+                x, "... n_heads d_head -> ... (n_heads d_head)"
+            )
+            return einops.rearrange(x, "... n_heads d_head -> ... (n_heads d_head)")
+
+        self.reshape_fn_in = reshape_fn_in
+
+        self.reshape_fn_out = lambda x, d_head: einops.rearrange(
+            x, "... (n_heads d_head) -> ... n_heads d_head", d_head=d_head
+        )
+        self.hook_z_reshaping_mode = True
+
+    def turn_off_forward_pass_hook_z_reshaping(self):
+        self.reshape_fn_in = lambda x: x
+        self.reshape_fn_out = lambda x, d_head: x
+        self.d_head = None
+        self.hook_z_reshaping_mode = False
 
 
 def get_activation_fn(activation_fn: str) -> Callable[[torch.Tensor], torch.Tensor]:
