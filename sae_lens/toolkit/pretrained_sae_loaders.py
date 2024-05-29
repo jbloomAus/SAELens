@@ -152,11 +152,11 @@ def load_pretrained_sae_lens_sae_components(
     log_sparsity_path: Optional[str] = None,
 ) -> tuple[dict[str, Any], dict[str, torch.Tensor], Optional[torch.Tensor]]:
     with open(cfg_path, "r") as f:
-        config = json.load(f)
+        cfg_dict = json.load(f)
 
     # filter config for varnames
-    config["device"] = device
-    config["dtype"] = dtype
+    cfg_dict["device"] = device
+    cfg_dict["dtype"] = dtype
 
     # # # Removing this since we should add it during instantiation of the SAE, not the SAE config.
     # # TODO: if we change our SAE implementation such that old versions need conversion to be
@@ -165,12 +165,12 @@ def load_pretrained_sae_lens_sae_components(
 
     # check that the config is valid
     for key in ["d_sae", "d_in", "dtype"]:
-        assert key in config, f"config missing key {key}"
+        assert key in cfg_dict, f"config missing key {key}"
 
-    tensors = {}
+    state_dict = {}
     with safe_open(weight_path, framework="pt", device=device) as f:  # type: ignore
         for k in f.keys():
-            tensors[k] = f.get_tensor(k)
+            state_dict[k] = f.get_tensor(k)
 
     # get sparsity tensor if it exists
     if log_sparsity_path is not None:
@@ -179,7 +179,47 @@ def load_pretrained_sae_lens_sae_components(
     else:
         log_sparsity = None
 
-    return config, tensors, log_sparsity
+    if "prepend_bos" not in cfg_dict:
+        # default to True for backwards compatibility
+        cfg_dict["prepend_bos"] = True
+
+    if "apply_b_dec_to_input" not in cfg_dict:
+        # default to True for backwards compatibility
+        cfg_dict["apply_b_dec_to_input"] = True
+
+    if "finetuning_scaling_factor" not in cfg_dict:
+        # default to False for backwards compatibility
+        cfg_dict["finetuning_scaling_factor"] = False
+
+    if "sae_lens_training_version" not in cfg_dict:
+        cfg_dict["sae_lens_training_version"] = None
+
+    if "activation_fn" not in cfg_dict:
+        cfg_dict["activation_fn_str"] = "relu"
+
+    if "normalize_activations" not in cfg_dict:
+        cfg_dict["normalize_activations"] = False
+
+    if "scaling_factor" in state_dict:
+        # we were adding it anyway for a period of time but are no longer doing so.
+        # so we should delete it if
+        if torch.allclose(
+            state_dict["scaling_factor"],
+            torch.ones_like(state_dict["scaling_factor"]),
+        ):
+            del state_dict["scaling_factor"]
+            cfg_dict["finetuning_scaling_factor"] = False
+        else:
+            assert cfg_dict[
+                "finetuning_scaling_factor"
+            ], "Scaling factor is present but finetuning_scaling_factor is False."
+            state_dict["finetuning_scaling_factor"] = state_dict["scaling_factor"]
+            del state_dict["scaling_factor"]
+    else:
+        # it's there and it's not all 1's, we should use it.
+        cfg_dict["finetuning_scaling_factor"] = False
+
+    return cfg_dict, state_dict, log_sparsity
 
 
 # TODO: add more loaders for other SAEs not trained by us
