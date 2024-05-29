@@ -255,6 +255,13 @@ class SAE(HookedRootModule):
 
         return sae_out
 
+    @torch.no_grad()
+    def fold_W_dec_norm(self):
+        W_dec_norms = self.W_dec.norm(dim=-1).unsqueeze(1)
+        self.W_dec.data = self.W_dec.data / W_dec_norms
+        self.W_enc.data = self.W_enc.data * W_dec_norms.T
+        self.b_enc.data = self.b_enc.data * W_dec_norms.squeeze()
+
     def save_model(self, path: str, sparsity: Optional[torch.Tensor] = None):
 
         if not os.path.exists(path):
