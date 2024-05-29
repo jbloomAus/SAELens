@@ -2,6 +2,29 @@
 
 
 
+## v3.1.0 (2024-05-29)
+
+### Feature
+
+* feat: add w_dec_norm folding (#167)
+
+* feat: add w_dec_norm folding
+
+* format ([`f1908a3`](https://github.com/jbloomAus/SAELens/commit/f1908a39b3d78a03288ca721aa18fc5bfbf9b83e))
+
+### Unknown
+
+* Fixed typo in Hooked_SAE_Transformer_Demo.ipynb preventing Open in Colab badge from working (#166)
+
+Minor typo in file name was preventing Hooked_SAE_Transformer_Demo.ipynb &#34;Open in Colab&#34; badge from working. ([`4850b16`](https://github.com/jbloomAus/SAELens/commit/4850b16a17c08ef39a8df74a5f4df5074395474b))
+
+* Fix hook z training reshape bug (#165)
+
+* remove file duplicate
+
+* fix: hook-z evals working, and reshaping mode more explicit ([`0550ae3`](https://github.com/jbloomAus/SAELens/commit/0550ae3defe778e08a050faff5e1345aee6de1a4))
+
+
 ## v3.0.0 (2024-05-28)
 
 ### Breaking
