@@ -2,7 +2,6 @@ import contextlib
 from dataclasses import dataclass
 from typing import Any, cast
 
-import numpy as np
 import torch
 import wandb
 from torch.optim import Adam
@@ -149,8 +148,6 @@ class SAETrainer:
 
         pbar = tqdm(total=self.cfg.total_training_tokens, desc="Training SAE")
 
-        # Estimate norm scaling factor if necessary
-        # TODO(tomMcGrath): this is a bodge and should be moved back inside a class
         self._estimate_norm_scaling_factor_if_needed()
 
         # Train loop
@@ -184,16 +181,12 @@ class SAETrainer:
 
     @torch.no_grad()
     def _estimate_norm_scaling_factor_if_needed(self) -> None:
-        if self.activation_store.normalize_activations:
-            print("Estimating activation norm")
-            n_batches_for_norm_estimate = int(1e3)
-            norms_per_batch = []
-            for _ in tqdm(range(n_batches_for_norm_estimate)):
-                acts = self.activation_store.next_batch()
-                norms_per_batch.append(acts.norm(dim=-1).mean().item())
-            mean_norm = np.mean(norms_per_batch)
-            scaling_factor = np.sqrt(self.activation_store.d_in) / mean_norm
-            self.activation_store.estimated_norm_scaling_factor = scaling_factor
+        if self.cfg.normalize_activations:
+            self.activation_store.estimated_norm_scaling_factor = (
+                self.activation_store.estimate_norm_scaling_factor()
+            )
+        else:
+            self.activation_store.estimated_norm_scaling_factor = 1.0
 
     def _train_step(
         self,

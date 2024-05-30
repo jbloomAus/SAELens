@@ -4,8 +4,8 @@ import contextlib
 import os
 from typing import Any, Iterator, Literal, cast
 
+import numpy as np
 import torch
-import tqdm
 from datasets import (
     Dataset,
     DatasetDict,
@@ -14,8 +14,9 @@ from datasets import (
     load_dataset,
 )
 from safetensors import safe_open
-from safetensors.torch import load_file, save_file
+from safetensors.torch import save_file
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 from transformer_lens.hook_points import HookedRootModule
 
 from sae_lens.config import (
@@ -225,6 +226,20 @@ class ActivationsStore:
     def get_norm_scaling_factor(self, activations: torch.Tensor) -> torch.Tensor:
         return (self.d_in**0.5) / activations.norm(dim=-1).mean()
 
+    @torch.no_grad()
+    def estimate_norm_scaling_factor(self, n_batches_for_norm_estimate: int = int(1e3)):
+
+        norms_per_batch = []
+        for _ in tqdm(
+            range(n_batches_for_norm_estimate), desc="Estimating norm scaling factor"
+        ):
+            acts = self.next_batch()
+            norms_per_batch.append(acts.norm(dim=-1).mean().item())
+        mean_norm = np.mean(norms_per_batch)
+        scaling_factor = np.sqrt(self.d_in) / mean_norm
+
+        return scaling_factor
+
     @property
     def storage_buffer(self) -> torch.Tensor:
         if self._storage_buffer is None:
@@ -254,7 +269,6 @@ class ActivationsStore:
         current_batch = []
         current_length = 0
 
-        # pbar = tqdm(total=batch_size, desc="Filling batches")
         while batch_tokens.shape[0] < batch_size:
             tokens = self._get_next_dataset_tokens()
             token_len = tokens.shape[0]
@@ -505,33 +519,6 @@ class ActivationsStore:
             # If the DataLoader is exhausted, create a new one
             self._dataloader = self.get_data_loader()
             return next(self.dataloader)
-
-    @classmethod
-    def load(
-        cls,
-        file_path: str,
-        model: HookedRootModule,
-        cfg: LanguageModelSAERunnerConfig | CacheActivationsRunnerConfig,
-        dataset: HfDataset | None = None,
-    ):
-        activation_store = cls.from_config(model=model, cfg=cfg, dataset=dataset)
-
-        state_dict = load_file(file_path)
-        if "storage_buffer" in state_dict.keys():
-            activation_store._storage_buffer = state_dict["storage_buffer"].to(
-                cfg.device
-            )
-        n_dataset_processed = state_dict["n_dataset_processed"].item()
-        # fastforward data
-        pbar = tqdm.tqdm(
-            total=n_dataset_processed - activation_store.n_dataset_processed,
-            desc="Fast forwarding data",
-        )
-        while activation_store.n_dataset_processed < n_dataset_processed:
-            next(activation_store.iterable_dataset)
-            pbar.update(1)
-            activation_store.n_dataset_processed += 1
-        return activation_store
 
     def state_dict(self) -> dict[str, torch.Tensor]:
         result = {

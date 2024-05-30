@@ -1,6 +1,7 @@
 from collections.abc import Iterable
 from math import ceil
 
+import numpy as np
 import pytest
 import torch
 from datasets import Dataset, IterableDataset
@@ -255,3 +256,23 @@ def test_activations_store_moves_with_model(ts_model: HookedTransformer):
     activation_store = ActivationsStore.from_config(ts_model.to("cuda:0"), cfg)  # type: ignore
     activations = activation_store.next_batch()
     assert activations.device == torch.device("cuda:0")
+
+
+def test_activations_store_estimate_norm_scaling_factor(
+    cfg: LanguageModelSAERunnerConfig, model: HookedTransformer
+):
+    # --- first, test initialisation ---
+
+    # config if you want to benchmark this:
+    #
+    # cfg.context_size = 1024
+    # cfg.n_batches_in_buffer = 64
+    # cfg.store_batch_size_prompts = 16
+
+    store = ActivationsStore.from_config(model, cfg)
+
+    factor = store.estimate_norm_scaling_factor(n_batches_for_norm_estimate=10)
+    assert isinstance(factor, float)
+
+    scaled_norm = store._storage_buffer.norm(dim=-1).mean() * factor  # type: ignore
+    assert scaled_norm == pytest.approx(np.sqrt(store.d_in), abs=5)

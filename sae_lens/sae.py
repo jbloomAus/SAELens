@@ -262,6 +262,12 @@ class SAE(HookedRootModule):
         self.W_enc.data = self.W_enc.data * W_dec_norms.T
         self.b_enc.data = self.b_enc.data * W_dec_norms.squeeze()
 
+    @torch.no_grad()
+    def fold_activation_norm_scaling_factor(
+        self, activation_norm_scaling_factor: float
+    ):
+        self.W_enc.data = self.W_enc.data * activation_norm_scaling_factor
+
     def save_model(self, path: str, sparsity: Optional[torch.Tensor] = None):
 
         if not os.path.exists(path):
