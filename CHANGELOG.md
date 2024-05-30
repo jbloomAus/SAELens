@@ -2,6 +2,17 @@
 
 
 
+## v3.2.0 (2024-05-30)
+
+### Feature
+
+* feat: activation norm scaling factor folding (#170)
+
+* feat: add convenience function for folding scaling factor
+
+* keep playing around with benchmark ([`773e308`](https://github.com/jbloomAus/SAELens/commit/773e30898bb0957d4c9bd79343776ff3e225d13c))
+
+
 ## v3.1.1 (2024-05-29)
 
 ### Fix
