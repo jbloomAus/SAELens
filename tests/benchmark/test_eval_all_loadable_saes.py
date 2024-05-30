@@ -1,6 +1,6 @@
 # import pandas as pd
 # import plotly.express as px
-import numpy as np
+# import numpy as np
 import pytest
 import torch
 from tqdm import tqdm
