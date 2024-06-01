@@ -368,13 +368,13 @@ class SAETrainer:
             self.checkpoint_thresholds.pop(0)
 
     @torch.no_grad()
-    def _update_pbar(self, step_output: TrainStepOutput, pbar: tqdm):  # type: ignore
+    def _update_pbar(self, step_output: TrainStepOutput, pbar: tqdm, update_interval: int = 100):  # type: ignore
 
-        if self.n_training_steps % 100 == 0:
+        if self.n_training_steps % update_interval == 0:
             pbar.set_description(
                 f"{self.n_training_steps}| MSE Loss {step_output.mse_loss:.3f} | L1 {step_output.l1_loss:.3f}"
             )
-            pbar.update(self.cfg.train_batch_size_tokens)
+            pbar.update(update_interval * self.cfg.train_batch_size_tokens)
 
     def _begin_finetuning_if_needed(self):
         if (not self.started_fine_tuning) and (
