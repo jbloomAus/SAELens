@@ -2,6 +2,13 @@
 
 
 
+## v3.2.2 (2024-06-02)
+
+### Fix
+
+* fix: removing truncation in activations store data loading (#62) ([`43c93e2`](https://github.com/jbloomAus/SAELens/commit/43c93e2c3e19e9e9d81b48d3a472d894dac83d65))
+
+
 ## v3.2.1 (2024-06-02)
 
 ### Fix
