@@ -1,0 +1,8 @@
+# Name your Train SAE Job
+# This job name should match the file name.
+# Job are tagged on AWS by names, which allows you to run multiple jobs.
+# NO DASHES IN JOB NAMES. Underscores are fine.
+job_name: gelu_l1_coeff_5
+
+########################### Values that changed in this sweep job
+l1_coefficient: 5

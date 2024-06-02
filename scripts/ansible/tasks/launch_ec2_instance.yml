@@ -1,0 +1,64 @@
+---
+
+- name: "Load config for service {{ service_name }} job {{ job_name }}"
+  include_vars:
+    file: "{{ config_file }}"
+
+- name: "Get EC2 instances for job {{ job_name }}"
+  amazon.aws.ec2_instance_info:
+    filters:
+      "tag:service": "{{ service_name }}"
+      "tag:sweep": "{{ sweep_name | default(omit) }}"
+      "tag:job": "{{ job_name }}"
+      instance-state-name: running
+  register: result
+
+- name: Start instance and wait for it
+  amazon.aws.ec2_instance:
+    name: "{{ service_name }} {{ job_name }}"
+    key_name: "{{ ssh_key_filename }}"
+    iam_instance_profile: "{{ iam_role_name }}"
+    instance_type: "{{ instance_type }}"
+    security_group: "{{ sec_group }}"
+    wait: true
+    state: running
+    volumes:
+      - device_name: /dev/sda1
+        ebs:
+          volume_size: 100
+          delete_on_termination: true
+    count: 1
+    instance_initiated_shutdown_behavior: terminate
+    network:
+      assign_public_ip: true
+    image_id: "{{ ec2_image }}"
+    tags:
+      service: "{{ service_name }}"
+      sweep: "{{ sweep_name | default(omit) }}"
+      job: "{{ job_name }}"
+  register: instances
+
+- name: Refresh EC2 instance information
+  amazon.aws.ec2_instance_info:
+    filters:
+      "tag:service": "{{ service_name }}"
+      "tag:sweep": "{{ sweep_name | default(omit) }}"
+      "tag:job": "{{ job_name }}"
+      instance-state-name: running
+  register: instances
+
+- name: Wait for SSH to come up
+  ansible.builtin.wait_for:
+    port: 22
+    host: "{{ instances.instances[0].network_interfaces[0].association.public_dns_name }}"
+    delay: 10
+    sleep: 10
+    timeout: 720
+    state: started
+  loop: "{{ instances.instances }}"
+  loop_control:
+    loop_var: instance
+
+- name: Refresh inventory to detect the new instance
+  ansible.builtin.meta: refresh_inventory
+

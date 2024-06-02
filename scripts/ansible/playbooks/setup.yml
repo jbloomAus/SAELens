@@ -1,0 +1,80 @@
+---
+
+- name: Set up AWS security group, key, IAM role, S3 bucket
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - "{{ lookup('env', 'PWD') ~ '/configs/shared.yml' }}"
+
+  tasks:
+    - name: Make Common EC2 Security Group, Key
+      block:
+
+        - name: "Generate SSH key {{ ssh_key_path }}"
+          community.crypto.openssh_keypair:
+            path: "{{ ssh_key_path }}"
+            type: rsa
+            size: 4096
+            state: present
+            force: false
+
+        - name: Get security groups
+          amazon.aws.ec2_security_group_info:
+            filters:
+              group-name: "{{ sec_group }}"
+          register: ec2_security_group_infos
+
+        - name: Create security group
+          amazon.aws.ec2_security_group:
+            name: "{{ sec_group }}"
+            description: "SSH only"
+            rules:
+              - proto: tcp
+                ports:
+                  - 22
+                cidr_ip: 0.0.0.0/0
+                rule_desc: allow all on ssh port
+          when: ec2_security_group_infos.security_groups == []
+
+        - name: Get the ssh key info
+          amazon.aws.ec2_key_info:
+            names:
+              - "{{ ssh_key_filename }}"
+          register: ec2_key_infos
+
+        - name: Create Key Pair for SSH if not exists
+          amazon.aws.ec2_key:
+            name: "{{ ssh_key_filename }}"
+            key_material: "{{ item }}"
+          with_file: "~/.ssh/{{ ssh_key_filename }}.pub"
+          when: ec2_key_infos.keypairs == []
+          no_log: true
+
+        - name: Get the IAM role info
+          amazon.aws.iam_role_info:
+            name: "{{ iam_role_name }}"
+          register: iam_roles
+
+        - name: "Create a role and attach the S3 access policy"
+          amazon.aws.iam_role:
+            name: "{{ iam_role_name }}"
+            create_instance_profile: true
+            assume_role_policy_document: "{{ lookup('file', '../util/aws_s3_access_doc.json') }}"
+            managed_policy:
+              - arn:aws:iam::aws:policy/AmazonS3FullAccess
+          when: iam_roles.iam_roles == []
+
+    - name: Make S3 Bucket
+      block:
+
+        - name: Look for existing S3 bucket
+          amazon.aws.s3_bucket_info:
+            name: "{{ s3_bucket_name }}"
+          register: s3_bucket
+
+        - name: Create S3 bucket
+          amazon.aws.s3_bucket:
+            name: "{{ s3_bucket_name }}"
+          when: s3_bucket.buckets == []
+

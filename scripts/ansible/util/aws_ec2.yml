@@ -1,0 +1,19 @@
+plugin: amazon.aws.aws_ec2
+
+regions:
+  - us-east-1
+keyed_groups:
+  - key: tags.service
+    prefix: tag_service_
+  - key: tags.sweep
+    prefix: tag_sweep_
+  - key: tags.job
+    prefix: tag_job_
+  - key: instance-state-name
+    prefix: instance-state
+filters:
+  instance-state-name: running
+  tag:service:
+    - cache_acts
+    - train_sae
+    - dev

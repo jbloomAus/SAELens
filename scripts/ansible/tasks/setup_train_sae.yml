@@ -1,0 +1,73 @@
+---
+
+- name: Ensure the activation cache exists on S3
+  amazon.aws.s3_object:
+    bucket: "{{ s3_bucket_name }}"
+    prefix: "cached_activations/{{ cache_acts_job_name }}"
+    mode: list
+  register: s3_list
+
+- name: Fail the playbook if the directory doesn't exist
+  ansible.builtin.fail:
+    msg: "Error: The directory 'cached_activations/{{ cache_acts_job_name }}' doesn't exist \
+            in the bucket '{{ s3_bucket_name }}'. Check your cache_acts_job_name."
+  when: s3_list.s3_keys | length < 1
+
+# - name: Load the config for this train_sae job
+#   include_vars:
+#     file: "{{ config_file }}"
+
+- name: Load the sweep file to use as a base to modify
+  ansible.builtin.slurp:
+    path: "{{ lookup('env', 'PWD') ~ '/configs/train_sae/sweep_common.yml' }}"
+  register: sweep_yaml_file
+
+- name: Read sweep yaml to dictionary
+  ansible.builtin.set_fact:
+    sweep_yaml_content: "{{ sweep_yaml_file['content'] | b64decode | from_yaml }}"
+
+- name: Load the config file into a variable for modification
+  ansible.builtin.slurp:
+    path: "{{ input_yaml_path }}"
+  register: config_yaml_file
+
+- name: Read config yaml to dictionary
+  ansible.builtin.set_fact:
+    config_yaml_content: "{{ config_yaml_file['content'] | b64decode | from_yaml }}"
+
+- name: Overwrite the values in sweep with the values from combine
+  ansible.builtin.set_fact:
+    updated_sweep_yaml_content: >-
+      {{
+        sweep_yaml_content | combine(config_yaml_content)
+      }}
+
+- name: Add the training tokens and cache activations path values
+  ansible.builtin.set_fact:
+    final_yaml_content: >-
+      {{
+        updated_sweep_yaml_content | combine({
+          training_tokens_key: training_token_value | int,
+          cached_activations_path_key: cached_activations_path_value
+        })
+      }}
+
+- name: Create the job history directory
+  ansible.builtin.file:
+    path: "{{ output_yaml_dir_path }}"
+    state: directory
+    recurse: true
+    mode: '0766'
+
+- name: Write back the modified YAML to a new file
+  ansible.builtin.copy:
+    content: "{{ final_yaml_content | to_nice_yaml }}"
+    dest: "{{ output_yaml_path }}"
+    mode: '0644'
+
+- name: Upload the YAML to AWS too
+  amazon.aws.s3_object:
+    bucket: "{{ s3_bucket_name }}"
+    object: "train_sae/{{ sweep_name }}/{{ config_file | basename }}"
+    src: "{{ output_yaml_path }}"
+    mode: "put"

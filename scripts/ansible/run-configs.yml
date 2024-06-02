@@ -1,0 +1,27 @@
+---
+
+- name: Check that WANDB_API_KEY exists
+  hosts: localhost
+  tasks:
+    - name: Check that WANDB_API_KEY exists
+      ansible.builtin.fail:
+        msg: "WANDB_API_KEY environment variable not set. Please set it in your local environment."
+      when: lookup('env', 'WANDB_API_KEY') == ""
+
+- name: Run Setup
+  ansible.builtin.import_playbook: playbooks/setup.yml
+
+- name: Run Cache Acts
+  ansible.builtin.import_playbook: playbooks/cache_acts.yml
+
+- name: Run Train SAE
+  ansible.builtin.import_playbook: playbooks/train_sae.yml
+
+- name: Clear ansible.log
+  hosts: localhost
+  tasks:
+  - name: Clear ansible.log
+    ansible.builtin.copy:
+      content: ""
+      dest: "ansible.log"
+      mode: '0644'

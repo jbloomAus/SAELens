@@ -1,0 +1,34 @@
+########## Common Parameters
+#
+# This is the bucket where the activation caches and checkpoints will be stored.
+# It will automatically be created if it doesn't exist.
+# Choose a unique name - bucket names must be globally unique across all AWS accounts.
+# 
+# Paths
+# - Activation Caches: {bucket_root}/cached_activations/{model_name}/{dataset_path}/{total_training_steps}
+# - Checkpoints: {bucket_root}/checkpoints/{checkpoint_id}
+#
+# Keep the bucket name the same if you want to use the same activation cache.
+# Note that AWS has a limit on the number of buckets per account.
+# 
+# Allows: lowercase letters, numbers, dashes, and dots
+# Example: johnny.saes.1234
+s3_bucket_name: johnny.saes.1234
+
+# Change if you need a specific version
+saelens_version_or_branch: main
+
+#################### DON'T CHANGE THE FOLLOWING
+
+# This image is only for us-east-1. You do not need to update it frequently.
+# Deep Learning OSS Nvidia Driver AMI GPU PyTorch 2.2.0 (Ubuntu 20.04) 20240507
+ec2_image: ami-02a07d31009cc8717
+# This path may change depending on your instance type and/or AMI
+instance_storage_path: /opt/dlami/nvme
+
+# You should keep the following the same
+ssh_key_filename: "saelens_ansible"
+ssh_key_path: "~/.ssh/{{ ssh_key_filename }}"
+iam_role_name: "saelens-iam-role"
+sec_group: "ssh-only"
+local_s3_mount_path: "/mnt/s3"

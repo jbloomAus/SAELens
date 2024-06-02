@@ -1,13 +1,14 @@
 from collections.abc import Iterable
 from math import ceil
 
+import numpy as np
 import pytest
 import torch
 from datasets import Dataset, IterableDataset
 from transformer_lens import HookedTransformer
 
+from sae_lens.config import LanguageModelSAERunnerConfig
 from sae_lens.training.activations_store import ActivationsStore
-from sae_lens.training.config import LanguageModelSAERunnerConfig
 from tests.unit.helpers import build_sae_cfg, load_model_cached
 
 
@@ -24,8 +25,8 @@ def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
             "model_name": "tiny-stories-1M",
             "dataset_path": "roneneldan/TinyStories",
             "tokenized": False,
-            "hook_point": "blocks.1.hook_resid_pre",
-            "hook_point_layer": 1,
+            "hook_name": "blocks.1.hook_resid_pre",
+            "hook_layer": 1,
             "d_in": 64,
             "prepend_bos": True,
         },
@@ -33,8 +34,8 @@ def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
             "model_name": "tiny-stories-1M",
             "dataset_path": "roneneldan/TinyStories",
             "tokenized": False,
-            "hook_point": "blocks.1.attn.hook_z",
-            "hook_point_layer": 1,
+            "hook_name": "blocks.1.attn.hook_z",
+            "hook_layer": 1,
             "d_in": 64,
             "prepend_bos": True,
         },
@@ -42,8 +43,8 @@ def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
             "model_name": "gelu-2l",
             "dataset_path": "NeelNanda/c4-tokenized-2b",
             "tokenized": True,
-            "hook_point": "blocks.1.hook_resid_pre",
-            "hook_point_layer": 1,
+            "hook_name": "blocks.1.hook_resid_pre",
+            "hook_layer": 1,
             "d_in": 512,
             "prepend_bos": True,
         },
@@ -51,8 +52,8 @@ def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
             "model_name": "gpt2",
             "dataset_path": "apollo-research/sae-monology-pile-uncopyrighted-tokenizer-gpt2",
             "tokenized": True,
-            "hook_point": "blocks.1.hook_resid_pre",
-            "hook_point_layer": 1,
+            "hook_name": "blocks.1.hook_resid_pre",
+            "hook_layer": 1,
             "d_in": 768,
             "prepend_bos": True,
         },
@@ -60,8 +61,8 @@ def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
             "model_name": "gpt2",
             "dataset_path": "Skylion007/openwebtext",
             "tokenized": False,
-            "hook_point": "blocks.1.hook_resid_pre",
-            "hook_point_layer": 1,
+            "hook_name": "blocks.1.hook_resid_pre",
+            "hook_layer": 1,
             "d_in": 768,
             "prepend_bos": True,
         },
@@ -87,10 +88,17 @@ def model(cfg: LanguageModelSAERunnerConfig):
 
 # tests involving loading real models / real datasets are very slow
 # so do lots of stuff in this one test to make each load of model / data count
+# poetry run py.test tests/unit/training/test_activations_store.py -k 'test_activations_store__shapes_look_correct_with_real_models_and_datasets' --profile-svg -s
 def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
     cfg: LanguageModelSAERunnerConfig, model: HookedTransformer
 ):
     # --- first, test initialisation ---
+
+    # config if you want to benchmark this:
+    #
+    # cfg.context_size = 1024
+    # cfg.n_batches_in_buffer = 64
+    # cfg.store_batch_size_prompts = 16
 
     store = ActivationsStore.from_config(model, cfg)
 
@@ -101,7 +109,7 @@ def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
 
     # the rest is in the dataloader.
     expected_size = (
-        cfg.store_batch_size * cfg.context_size * cfg.n_batches_in_buffer // 2
+        cfg.store_batch_size_prompts * cfg.context_size * cfg.n_batches_in_buffer // 2
     )
     assert store.storage_buffer.shape == (expected_size, 1, cfg.d_in)
 
@@ -111,7 +119,7 @@ def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
 
     assert isinstance(batch, torch.Tensor)
     assert batch.shape == (
-        store.store_batch_size,
+        store.store_batch_size_prompts,
         store.context_size,
     )
     assert batch.device == store.device
@@ -122,7 +130,7 @@ def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
 
     assert isinstance(activations, torch.Tensor)
     assert activations.shape == (
-        store.store_batch_size,
+        store.store_batch_size_prompts,
         store.context_size,
         1,
         store.d_in,
@@ -136,18 +144,24 @@ def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
 
     assert isinstance(buffer, torch.Tensor)
     buffer_size_expected = (
-        store.store_batch_size * store.context_size * n_batches_in_buffer
+        store.store_batch_size_prompts * store.context_size * n_batches_in_buffer
     )
 
     assert buffer.shape == (buffer_size_expected, 1, store.d_in)
     assert buffer.device == store.device
 
+    # # check the buffer norm
+    # if cfg.normalize_activations:
+    #     assert torch.allclose(
+    #         buffer.norm(dim=-1), torch.ones_like(buffer.norm(dim=-1)), atol=1e-6
+    #     )
+
 
 def test_activations_store__get_activations_head_hook(ts_model: HookedTransformer):
     cfg = build_sae_cfg(
-        hook_point="blocks.0.attn.hook_q",
-        hook_point_head_index=2,
-        hook_point_layer=1,
+        hook_name="blocks.0.attn.hook_q",
+        hook_head_index=2,
+        hook_layer=1,
         d_in=4,
     )
     activation_store_head_hook = ActivationsStore.from_config(ts_model, cfg)
@@ -156,7 +170,7 @@ def test_activations_store__get_activations_head_hook(ts_model: HookedTransforme
 
     assert isinstance(activations, torch.Tensor)
     assert activations.shape == (
-        activation_store_head_hook.store_batch_size,
+        activation_store_head_hook.store_batch_size_prompts,
         activation_store_head_hook.context_size,
         1,
         activation_store_head_hook.d_in,
@@ -177,7 +191,7 @@ def test_activations_store__get_batch_tokens__fills_the_context_separated_by_bos
         * 100
     )
     cfg = build_sae_cfg(
-        store_batch_size=2,
+        store_batch_size_prompts=2,
         context_size=context_size,
     )
 
@@ -232,3 +246,47 @@ def test_activations_store__get_next_dataset_tokens__can_handle_long_examples(
     activation_store = ActivationsStore.from_config(ts_model, cfg, dataset=dataset)
 
     assert len(activation_store._get_next_dataset_tokens().tolist()) == 3001
+
+
+def test_activations_store_goes_to_cpu(ts_model: HookedTransformer):
+    cfg = build_sae_cfg(act_store_device="cpu")
+    activation_store = ActivationsStore.from_config(ts_model, cfg)
+    activations = activation_store.next_batch()
+    assert activations.device == torch.device("cpu")
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="No GPU to test on.")
+def test_activations_store_with_model_on_gpu(ts_model: HookedTransformer):
+    cfg = build_sae_cfg(act_store_device="cpu", device="cuda:0")
+    activation_store = ActivationsStore.from_config(ts_model.to("cuda:0"), cfg)  # type: ignore
+    activations = activation_store.next_batch()
+    assert activations.device == torch.device("cpu")
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="No GPU to test on.")
+def test_activations_store_moves_with_model(ts_model: HookedTransformer):
+    # "with_model" resets to default so the second post_init in build_sae_cfg works
+    cfg = build_sae_cfg(act_store_device="with_model", device="cuda:0")
+    activation_store = ActivationsStore.from_config(ts_model.to("cuda:0"), cfg)  # type: ignore
+    activations = activation_store.next_batch()
+    assert activations.device == torch.device("cuda:0")
+
+
+def test_activations_store_estimate_norm_scaling_factor(
+    cfg: LanguageModelSAERunnerConfig, model: HookedTransformer
+):
+    # --- first, test initialisation ---
+
+    # config if you want to benchmark this:
+    #
+    # cfg.context_size = 1024
+    # cfg.n_batches_in_buffer = 64
+    # cfg.store_batch_size_prompts = 16
+
+    store = ActivationsStore.from_config(model, cfg)
+
+    factor = store.estimate_norm_scaling_factor(n_batches_for_norm_estimate=10)
+    assert isinstance(factor, float)
+
+    scaled_norm = store._storage_buffer.norm(dim=-1).mean() * factor  # type: ignore
+    assert scaled_norm == pytest.approx(np.sqrt(store.d_in), abs=5)

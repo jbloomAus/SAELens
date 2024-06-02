@@ -1,9 +1,9 @@
+import copy
 from typing import Any
 
-import torch
 from transformer_lens import HookedTransformer
 
-from sae_lens.training.config import LanguageModelSAERunnerConfig
+from sae_lens.config import LanguageModelSAERunnerConfig
 
 TINYSTORIES_MODEL = "tiny-stories-1M"
 TINYSTORIES_DATASET = "roneneldan/TinyStories"
@@ -16,9 +16,9 @@ def build_sae_cfg(**kwargs: Any) -> LanguageModelSAERunnerConfig:
     # Create a mock object with the necessary attributes
     mock_config = LanguageModelSAERunnerConfig(
         model_name=TINYSTORIES_MODEL,
-        hook_point="blocks.0.hook_mlp_out",
-        hook_point_layer=0,
-        hook_point_head_index=None,
+        hook_name="blocks.0.hook_mlp_out",
+        hook_layer=0,
+        hook_head_index=None,
         dataset_path=TINYSTORIES_DATASET,
         is_dataset_tokenized=False,
         use_cached_activations=False,
@@ -27,26 +27,39 @@ def build_sae_cfg(**kwargs: Any) -> LanguageModelSAERunnerConfig:
         l1_coefficient=2e-3,
         lp_norm=1,
         lr=2e-4,
-        train_batch_size=4,
+        train_batch_size_tokens=4,
         context_size=6,
         feature_sampling_window=50,
         dead_feature_threshold=1e-7,
+        dead_feature_window=1000,
         n_batches_in_buffer=2,
         training_tokens=1_000_000,
-        store_batch_size=4,
+        store_batch_size_prompts=4,
         log_to_wandb=False,
         wandb_project="test_project",
         wandb_entity="test_entity",
         wandb_log_frequency=10,
-        device=torch.device("cpu"),
+        device="cpu",
         seed=24,
         checkpoint_path="test/checkpoints",
-        dtype=torch.float32,
+        dtype="float32",
         prepend_bos=True,
     )
 
     for key, val in kwargs.items():
         setattr(mock_config, key, val)
+
+    # Call the post-init method to set any derived attributes
+    # useful for checking the correctness of the configuration
+    # in the tests.
+    mock_config.__post_init__()
+
+    # reset checkpoint path (as we add an id to each each time)
+    mock_config.checkpoint_path = (
+        "test/checkpoints"
+        if "checkpoint_path" not in kwargs
+        else kwargs["checkpoint_path"]
+    )
 
     return mock_config
 
@@ -63,4 +76,5 @@ def load_model_cached(model_name: str) -> HookedTransformer:
         MODEL_CACHE[model_name] = HookedTransformer.from_pretrained(
             model_name, device="cpu"
         )
-    return MODEL_CACHE[model_name]
+    # we copy here to prevent sharing state across tests
+    return copy.deepcopy(MODEL_CACHE[model_name])

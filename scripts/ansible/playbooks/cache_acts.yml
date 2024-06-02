@@ -1,0 +1,161 @@
+---
+
+- name: "Cache Activations: Initialize - Update config file and save it under jobs"
+  hosts: localhost
+  gather_facts: false
+  vars:
+    input_yaml_path: "{{ lookup('env', 'PWD') ~ '/configs/cache_acts.yml' }}"
+    output_yaml_dir_path: "{{ lookup('env', 'PWD') ~ '/jobs/cache_acts/' ~ job_name }}"
+    output_yaml_path: "{{ output_yaml_dir_path }}/cache_acts.yml"
+    new_cached_activations_path_key: "new_cached_activations_path"
+    new_cached_activations_path_value: "{{ local_s3_mount_path }}/{{ s3_bucket_name }}/cached_activations/{{ job_name }}"
+    training_tokens_key: "training_tokens"
+    training_token_value: "{{ (total_training_steps | int * train_batch_size | int) | int }}"
+  vars_files:
+    - "{{ lookup('env', 'PWD') ~ '/configs/cache_acts.yml' }}"
+    - "{{ lookup('env', 'PWD') ~ '/configs/shared.yml' }}"
+
+  tasks:
+
+    - name: Check that the activation cache doesn't already exist on S3
+      amazon.aws.s3_object:
+        bucket: "{{ s3_bucket_name }}"
+        prefix: "cached_activations/{{ job_name }}"
+        mode: list
+      register: s3_list
+
+    # - name: Fail the playbook if the directory already exists
+    #   ansible.builtin.fail:
+    #     msg: "Error: The directory 'cached_activations/{{ job_name }}' already exists \
+    #             in the bucket '{{ s3_bucket_name }}'. Specify a different job name or move/delete the existing directory on S3."
+    #   when: s3_list.s3_keys | length > 0
+
+    - name: Load the YAML file into a variable for modification
+      ansible.builtin.slurp:
+        path: "{{ input_yaml_path }}"
+      register: config_yaml_file
+
+    - name: Read yaml to dictionary
+      ansible.builtin.set_fact:
+        config_yaml_content: "{{ config_yaml_file['content'] | b64decode | from_yaml }}"
+
+    - name: Update the values
+      ansible.builtin.set_fact:
+        updated_config_yaml_content: >-
+          {{
+            config_yaml_content | combine({
+              training_tokens_key: training_token_value | int,
+              new_cached_activations_path_key: new_cached_activations_path_value
+            })
+          }}
+
+    - name: Create the job history directory
+      ansible.builtin.file:
+        path: "{{ output_yaml_dir_path }}"
+        state: directory
+        recurse: true
+        mode: '0766'
+
+    - name: Write back the modified YAML to a new file
+      ansible.builtin.copy:
+        content: "{{ updated_config_yaml_content | to_nice_yaml }}"
+        dest: "{{ output_yaml_path }}"
+        mode: '0644'
+
+    - name: Upload the YAML to AWS too
+      amazon.aws.s3_object:
+        bucket: "{{ s3_bucket_name }}"
+        object: "cached_activations/{{ job_name }}.yml"
+        src: "{{ output_yaml_path }}"
+        mode: "put"
+
+- name: "Launch instance for job {{ job_name }}"
+  hosts: localhost
+  vars_files:
+    - "{{ lookup('env', 'PWD') ~ '/configs/shared.yml' }}"
+  tasks:
+    - name: Launch the EC2 Instance
+      include_tasks: "{{ lookup('env', 'PWD') ~ '/tasks/launch_ec2_instance.yml' }}"
+      vars:
+        config_file: "{{ lookup('env', 'PWD') ~ '/configs/cache_acts.yml' }}"
+        service_name: "cache_acts"
+
+- name: "Configure instance for job {{ job_name }}"
+  hosts: tag_service__cache_acts:&tag_job__{{ job_name }}
+  gather_facts: true
+  vars:
+    ansible_user: ubuntu
+    ansible_ssh_private_key_file: "{{ ssh_key_path }}"
+    ansible_python_interpreter: auto_silent
+    instance_storage_path: "{{ instance_storage_path }}"
+    s3_local_cache_path: "{{ instance_storage_path }}/s3-local-cache"
+  vars_files:
+    - "{{ lookup('env', 'PWD') ~ '/configs/cache_acts.yml' }}"
+    - "{{ lookup('env', 'PWD') ~ '/configs/shared.yml' }}"
+  tasks:
+    - name: Configure the EC2 Instance
+      include_tasks: "{{ lookup('env', 'PWD') ~ '/tasks/configure_ec2_instance.yml' }}"
+
+- name: Run Cache Activations Job
+  hosts: tag_service__cache_acts:&tag_job__{{ job_name }}
+  gather_facts: true
+  vars:
+    ansible_user: ubuntu
+    ansible_ssh_private_key_file: "{{ ssh_key_path }}"
+    ansible_python_interpreter: "/home/ubuntu/SAELens/.venv/bin/python"
+    cache_acts_dir: "/home/ubuntu/SAELens/scripts/ansible/jobs/cache_acts"
+    local_job_dir: "{{ lookup('env', 'PWD') ~ '/jobs/cache_acts/' ~ job_name }}"
+  vars_files:
+    - "{{ lookup('env', 'PWD') ~ '/configs/cache_acts.yml' }}"
+    - "{{ lookup('env', 'PWD') ~ '/configs/shared.yml' }}"
+
+  tasks:
+    - name: Make the job directory
+      ansible.builtin.file:
+        path: "{{ cache_acts_dir }}/{{ job_name }}"
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0777'
+        recurse: true
+
+    - name: Copy job config to the instance
+      ansible.builtin.copy:
+        src: "{{ local_job_dir ~ '/cache_acts.yml' }}"
+        dest: "{{ cache_acts_dir }}/{{ job_name }}/cache_acts.yml"
+        owner: ubuntu
+        group: ubuntu
+        mode: '0777'
+    
+    - name: "Run Cache Activations Job. Log: {{ s3_bucket_name }}/cached_activations/{{ job_name }}.log"
+      ansible.builtin.shell:
+        cmd: "poetry run python util/cache_acts.py {{ job_name }} } 2>&1 \
+                | tee -a {{ local_s3_mount_path }}/{{ s3_bucket_name }}/cached_activations/{{ job_name }}.log"
+        chdir: /home/ubuntu/SAELens/scripts/ansible
+      changed_when: true
+
+    - name: Copy python log file to local
+      ansible.builtin.fetch:
+        src: "{{ local_s3_mount_path }}/{{ s3_bucket_name }}/cached_activations/{{ job_name }}.log"
+        dest: "{{ local_job_dir ~ '/python.log' }}"
+        flat: true
+    
+    - name: Finished job, terminate the instance
+      ansible.builtin.command:
+        cmd: shutdown -h +1
+      become: true
+      become_user: root
+      changed_when: true
+
+- name: Copy ansible.log file to job path, clear it
+  hosts: localhost
+  connection: local
+  vars_files:
+    - "{{ lookup('env', 'PWD') ~ '/configs/cache_acts.yml' }}"
+  
+  tasks:
+    - name: Copy ansible.log file to job path
+      ansible.builtin.copy:
+        src: "{{ lookup('env', 'PWD') ~ '/ansible.log' }}"
+        dest: "{{ lookup('env', 'PWD') ~ '/jobs/cache_acts/' ~ job_name }}/ansible.log"
+        mode: '0777'

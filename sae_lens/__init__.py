@@ -1,24 +1,32 @@
-__version__ = "0.6.0"
+__version__ = "3.2.1"
 
+
+from .analysis.hooked_sae_transformer import HookedSAETransformer
+from .cache_activations_runner import CacheActivationsRunner
+from .config import (
+    CacheActivationsRunnerConfig,
+    LanguageModelSAERunnerConfig,
+    PretokenizeRunnerConfig,
+)
+from .evals import run_evals
+from .pretokenize_runner import pretokenize_runner
+from .sae import SAE, SAEConfig
+from .sae_training_runner import SAETrainingRunner
 from .training.activations_store import ActivationsStore
-from .training.cache_activations_runner import cache_activations_runner
-from .training.config import CacheActivationsRunnerConfig, LanguageModelSAERunnerConfig
-from .training.evals import run_evals
-from .training.lm_runner import language_model_sae_runner
-from .training.sae_group import SparseAutoencoderDictionary
-from .training.session_loader import LMSparseAutoencoderSessionloader
-from .training.sparse_autoencoder import SparseAutoencoder
-from .training.train_sae_on_language_model import train_sae_group_on_language_model
+from .training.training_sae import TrainingSAE, TrainingSAEConfig
 
 __all__ = [
-    "LanguageModelSAERunnerConfig",
-    "CacheActivationsRunnerConfig",
-    "LMSparseAutoencoderSessionloader",
-    "SparseAutoencoder",
-    "SparseAutoencoderDictionary",
-    "run_evals",
-    "language_model_sae_runner",
-    "cache_activations_runner",
+    "SAE",
+    "SAEConfig",
+    "TrainingSAE",
+    "TrainingSAEConfig",
+    "HookedSAETransformer",
     "ActivationsStore",
-    "train_sae_group_on_language_model",
+    "LanguageModelSAERunnerConfig",
+    "SAETrainingRunner",
+    "CacheActivationsRunnerConfig",
+    "CacheActivationsRunner",
+    "PretokenizeRunnerConfig",
+    "pretokenize_runner",
+    "run_evals",
 ]

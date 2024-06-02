@@ -172,6 +172,18 @@ activations/
 feature_dashboards/
 research/
 
+cached_activations/
 
 # neuronpedia outputs
 neuronpedia_outputs/
+
+# test fixtures
+tests/benchmark/fixtures/
+
+# ignore prof
+prof/
+
+scripts/ansible/cache_acts.yml
+scripts/ansible/jobs/
+scripts/ansible/configs/
+scripts/ansible/ansible.log

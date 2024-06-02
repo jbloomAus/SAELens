@@ -1,15 +1,13 @@
 import json
 import os
-import pathlib
 from typing import Optional, Tuple
 
 import torch
-from huggingface_hub import hf_hub_download, list_files_info
+from huggingface_hub import hf_hub_download, list_repo_tree
 from safetensors import safe_open
 from tqdm import tqdm
 
-from sae_lens.training.config import LanguageModelSAERunnerConfig
-from sae_lens.training.sparse_autoencoder import SparseAutoencoder
+from sae_lens.sae import SAE
 
 
 def load_sparsity(path: str) -> torch.Tensor:
@@ -46,8 +44,8 @@ def download_sae_from_hf(
     return cfg_path, sae_path, sparsity_path
 
 
-def load_sae_from_local_path(path: str) -> Tuple[SparseAutoencoder, torch.Tensor]:
-    sae = SparseAutoencoder.load_from_pretrained(path)
+def load_sae_from_local_path(path: str) -> Tuple[SAE, torch.Tensor]:
+    sae = SAE.load_from_pretrained(path)
     sparsity = load_sparsity(path)
     return sae, sparsity
 
@@ -55,7 +53,7 @@ def load_sae_from_local_path(path: str) -> Tuple[SparseAutoencoder, torch.Tensor
 def get_gpt2_res_jb_saes(
     hook_point: Optional[str] = None,
     device: str = "cpu",
-) -> tuple[dict[str, SparseAutoencoder], dict[str, torch.Tensor]]:
+) -> tuple[dict[str, SAE], dict[str, torch.Tensor]]:
     """
     Download the sparse autoencoders for the GPT2-Small model with residual connections
     from the repository of jbloom. You can specify a hook_point to download only one
@@ -85,7 +83,7 @@ def get_gpt2_res_jb_saes(
 
         # Then use our function to download the files
         folder_path = os.path.dirname(sae_path)
-        sae = SparseAutoencoder.load_from_pretrained(folder_path, device=device)
+        sae = SAE.load_from_pretrained(folder_path, device=device)
         sparsity = load_sparsity(folder_path)
         sparsity = sparsity.to(device)
         saes[hook_point] = sae
@@ -110,81 +108,39 @@ def convert_connor_rob_sae_to_our_saelens_format(
 
     """
 
-    expansion_factor = int(config["dict_size"]) // int(config["act_size"])
-
-    cfg = LanguageModelSAERunnerConfig(
-        model_name=config["model_name"],  # type: ignore
-        hook_point=config["act_name"],  # type: ignore
-        hook_point_layer=config["layer"],  # type: ignore
-        # data
-        # dataset_path = "/share/data/datasets/pile/the-eye.eu/public/AI/pile/train", # Training set of The Pile
-        dataset_path="NeelNanda/openwebtext-tokenized-9b",
-        is_dataset_tokenized=True,
-        d_in=config["act_size"],  # type: ignore
-        expansion_factor=expansion_factor,
-        context_size=config["seq_len"],  # type: ignore
-        device=device,
-        store_batch_size=32,
-        n_batches_in_buffer=10,
-        prepend_bos=False,
-        verbose=False,
-        dtype=torch.float32,
-    )
-
-    ae_alt = SparseAutoencoder(cfg)
+    ae_alt = SAE.from_dict(config)
     ae_alt.load_state_dict(state_dict)
     return ae_alt
 
 
-def convert_old_to_modern_saelens_format(
-    pytorch_file: str, out_folder: str = "", force: bool = False
-):
-    """
-    Reads a pretrained SAE from the old pickle-style SAELens .pt format, then saves a modern-format SAELens SAE.
-
-    Arguments:
-    ----------
-    pytorch_file: str
-        Path of old format file to open.
-    out_folder: str, optional
-        Path where new SAE will be stored; if None, out_folder = pytorch_file with the '.pt' removed.
-    force: bool, optional
-        If out_folder already exists, this function will not save unless force=True.
-    """
-    file_path = pathlib.Path(pytorch_file)
-    if out_folder == "":
-        out_f = file_path.parent / file_path.stem
-    else:
-        out_f = pathlib.Path(out_folder)
-    if (not force) and out_f.exists():
-        raise FileExistsError(f"{out_folder} already exists and force=False")
-    out_f.mkdir(exist_ok=True, parents=True)
-
-    # Load model & save in new format.
-    autoencoder = SparseAutoencoder.load_from_pretrained_legacy(str(file_path))
-    autoencoder.save_model(str(out_f))
-
-
-def get_gpt2_small_ckrk_attn_out_saes() -> dict[str, SparseAutoencoder]:
+def get_gpt2_small_ckrk_attn_out_saes() -> dict[str, SAE]:
 
     REPO_ID = "ckkissane/attn-saes-gpt2-small-all-layers"
 
     # list all files in repo
     saes_weights = {}
     sae_configs = {}
-    repo_files = list_files_info(REPO_ID)
+    repo_files = list_repo_tree(REPO_ID)
+
+    device = "cpu"
+    if torch.cuda.is_available():
+        device = "cuda"
+    elif torch.backends.mps.is_available():
+        device = "mps"
+
     for i in tqdm(repo_files):
         file_name = i.path
         if file_name.endswith(".pt"):
             # print(f"Downloading {file_name}")
             path = hf_hub_download(REPO_ID, file_name)
             name = path.split("/")[-1].split(".pt")[0]
-            saes_weights[name] = torch.load(path, map_location="mps")
+            saes_weights[name] = torch.load(path, map_location=device)
         elif file_name.endswith(".json"):
             # print(f"Downloading {file_name}")
             config_path = hf_hub_download(REPO_ID, file_name)
             name = config_path.split("/")[-1].split("_cfg.json")[0]
             sae_configs[name] = json.load(open(config_path, "r"))
+            sae_configs[name].device = device
 
     saes = {}
     for name, config in sae_configs.items():

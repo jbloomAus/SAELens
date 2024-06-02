@@ -25,92 +25,50 @@ pip install sae-lens
 
 ### Loading Sparse Autoencoders from Huggingface
 
-[Previously trained sparse autoencoders](https://huggingface.co/jbloom/GPT2-Small-SAEs) can be loaded from huggingface with close to single line of code. For more details and performance metrics for these sparse autoencoder, read my [blog post](https://www.alignmentforum.org/posts/f9EgfLSurAiqRJySD/open-source-sparse-autoencoders-for-all-residual-stream). 
+To load a pretrained sparse autoencoder, you can use `SAE.from_pretrained()` as below. Note that we return the *original cfg dict* from the huggingface repo so that it's easy to debug older configs that are being handled when we import an SAe. We also return a sparsity tensor if it is present in the repo. For an example repo structure, see [here](https://huggingface.co/jbloom/Gemma-2b-Residual-Stream-SAEs). 
 
 ```python
-import torch 
-from sae_lens import LMSparseAutoencoderSessionloader
-from huggingface_hub import hf_hub_download
+from sae_lens import SAE
 
-layer = 8 # pick a layer you want.
-REPO_ID = "jbloom/GPT2-Small-SAEs"
-FILENAME = f"final_sparse_autoencoder_gpt2-small_blocks.{layer}.hook_resid_pre_24576.pt"
-path = hf_hub_download(repo_id=REPO_ID, filename=FILENAME)
-model, sparse_autoencoder, activation_store = LMSparseAutoencoderSessionloader.load_session_from_pretrained(
-    path = path
+sae, cfg_dict, sparsity = SAE.from_pretrained(
+    release = "gpt2-small-res-jb", # see other options in sae_lens/pretrained_saes.yaml
+    sae_id = "blocks.8.hook_resid_pre", # won't always be a hook point
+    device = device
 )
-sparse_autoencoder.eval()
 ```
 
-You can also load the feature sparsity from huggingface. 
+You can see other importable SAEs in   `sae_lens/pretrained_saes.yaml`.
 
-```python
-FILENAME = f"final_sparse_autoencoder_gpt2-small_blocks.{layer}.hook_resid_pre_24576_log_feature_sparsity.pt"
-path = hf_hub_download(repo_id=REPO_ID, filename=FILENAME)
-log_feature_sparsity = torch.load(path, map_location=sparse_autoencoder.cfg.device)
+(We'd accept a PR that converts this yaml to a nice table in the docs!)
 
-```
-### Background
+### Background and further Readings
 
 We highly recommend this [tutorial](https://www.lesswrong.com/posts/LnHowHgmrMbWtpkxx/intro-to-superposition-and-sparse-autoencoders-colab).
 
+For recent progress in SAEs, we recommend the LessWrong forum's [Sparse Autoencoder tag](https://www.lesswrong.com/tag/sparse-autoencoders-saes)
 
-
-## Code Overview
-
-The codebase contains 2 folders worth caring about:
-
-- training: The main body of the code is here. Everything required for training SAEs. 
-- analysis: This code is mainly house the feature visualizer code we use to generate dashboards. It was written by Callum McDougal but I've ported it here with permission and edited it to work with a few different activation types. 
-
-Some other folders:
-
-- tutorials: These aren't well maintained but I'll aim to clean them up soon. 
-- tests: When first developing the codebase, I was writing more tests. I have no idea whether they are currently working!
-
-
-## Loading a Pretrained Language Model 
-
-Once your SAE is trained, the final SAE weights will be saved to wandb and are loadable via the session loader. The session loader will return:
-- The model your SAE was trained on (presumably you're interested in studying this. It's always a HookedTransformer)
-- Your SAE.
-- An activations loader: from which you can get randomly sampled activations or batches of tokens from the dataset you used to train the SAE. (more on this in the tutorial)
-
-```python
-from sae_lens import LMSparseAutoencoderSessionloader
-
-path ="path/to/sparse_autoencoder.pt"
-model, sparse_autoencoder, activations_loader = LMSparseAutoencoderSessionloader.load_session_from_pretrained(
-    path
-)
-
-```
 ## Tutorials
 
 I wrote a tutorial to show users how to do some basic exploration of their SAE:
 
-- `evaluating_your_sae.ipynb`: A quick/dirty notebook showing how to check L0 and Prediction loss with your SAE, as well as showing how to generate interactive dashboards using Callum's reporduction of [Anthropics interface](https://transformer-circuits.pub/2023/monosemantic-features#setup-interface).
-- `logits_lens_with_features.ipynb`: A notebook showing how to reproduce the analysis from this [LessWrong post](https://www.lesswrong.com/posts/qykrYY6rXXM7EEs8Q/understanding-sae-features-with-the-logit-lens).
+- Loading and Analysing Pre-Trained Sparse Autoencoders [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://githubtocolab.com/jbloomAus/SAELens/blob/main/tutorials/basic_loading_and_analysing.ipynb)
+ - Understanding SAE Features with the Logit Lens [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://githubtocolab.com/jbloomAus/SAELens/blob/main/tutorials/logits_lens_with_features.ipynb)
+  - Training a Sparse Autoencoder [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://githubtocolab.com/jbloomAus/SAELens/blob/main/tutorials/training_a_sparse_autoencoder.ipynb)
 
-## Example Dashboard
+
+## Example WandB Dashboard
 
 WandB Dashboards provide lots of useful insights while training SAE's. Here's a screenshot from one training run. 
 
 ![screenshot](dashboard_screenshot.png)
 
+## Citation
 
-
-
-## Citations and References:
-
-Research:
-- [Towards Monosemanticy](https://transformer-circuits.pub/2023/monosemantic-features)
-- [Sparse Autoencoders Find Highly Interpretable Features in Language Model](https://arxiv.org/abs/2309.08600)
-
-
-
-Reference Implementations:
-- [Neel Nanda](https://github.com/neelnanda-io/1L-Sparse-Autoencoder)
-- [AI-Safety-Foundation](https://github.com/ai-safety-foundation/sparse_autoencoder).
-- [Arthur Conmy](https://github.com/ArthurConmy/sae).
-- [Callum McDougall](https://github.com/callummcdougall/sae-exercises-mats/tree/main)
+```
+@misc{bloom2024saetrainingcodebase,
+   title = {SAELens Training
+   author = {Joseph Bloom, David Channin},
+   year = {2024},
+   howpublished = {\url{}},
+}}
+```

@@ -1,8 +1,8 @@
-site_name: SAELens Training
-site_description: Docs for Sparse Autoencoder Training Library
+site_name: SAE Lens 
+site_description: Docs for Sparse Autoencoder Training and Analysis Library
 site_author: Joseph Bloom
-repo_url: http://github.com/jbloomAus/mats_sae_training/
-repo_name: jbloomAus/mats_sae_training
+repo_url: http://github.com/jbloomAus/SAELens
+repo_name: jbloomAus/SAELens
 edit_uri: ""
 
 theme:
@@ -45,16 +45,11 @@ extra_javascript:
 nav:
   - Home: index.md
   - Roadmap: roadmap.md
-  - Installation: installation.md
   - Training SAEs: training_saes.md
+  - Citation: citation.md
+  - Contributing: contributing.md
   # - Analysis: usage/examples.md
-  - Reference:
-    - Language Models: reference/language_models.md
-    - Toy Models: reference/toy_models.md
-    - Misc: reference/misc.md
-  - About:
-    - Citation: about/citation.md
-    - Contributing: about/contributing.md
+  - API: api.md
 
 plugins:
   - search

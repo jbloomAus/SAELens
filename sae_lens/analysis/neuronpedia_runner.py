@@ -22,9 +22,11 @@ from sae_vis.data_storing_fns import SaeVisData
 from tqdm import tqdm
 from transformer_lens import HookedTransformer
 
+from sae_lens.config import LanguageModelSAERunnerConfig
+from sae_lens.load_model import load_model
+from sae_lens.sae import SAE
 from sae_lens.toolkit.pretrained_saes import load_sparsity
-from sae_lens.training.session_loader import LMSparseAutoencoderSessionloader
-from sae_lens.training.sparse_autoencoder import SparseAutoencoder
+from sae_lens.training.activations_store import ActivationsStore
 
 OUT_OF_RANGE_TOKEN = "<|outofrange|>"
 
@@ -67,6 +69,8 @@ class NeuronpediaRunner:
         sae_path: str,
         outputs_dir: str,
         sparsity_threshold: int = DEFAULT_SPARSITY_THRESHOLD,
+        # ACTIVATION STORE PARAMATERS
+        ## SAE VIS PARAMETERS
         # token pars
         n_batches_to_sample_from: int = 2**12,
         n_prompts_to_select: int = 4096 * 6,
@@ -74,6 +78,10 @@ class NeuronpediaRunner:
         n_features_at_a_time: int = 128,
         start_batch_inclusive: int = 0,
         end_batch_inclusive: Optional[int] = None,
+        # quantiles
+        n_quantiles: int = 5,
+        top_acts_group_size: int = 20,
+        quantile_group_size: int = 5,
     ):
 
         self.device = "cpu"
@@ -83,13 +91,21 @@ class NeuronpediaRunner:
             self.device = "cuda"
 
         self.sae_path = sae_path
-        self.sparse_autoencoder = SparseAutoencoder.load_from_pretrained(
-            self.sae_path, device=self.device
+        self.sae = SAE.load_from_pretrained(self.sae_path, device=self.device)
+        self.model = load_model(
+            model_class_name="HookedTransformer",
+            model_name=self.sae.model_name,
+            device=self.device,
         )
-        loader = LMSparseAutoencoderSessionloader(self.sparse_autoencoder.cfg)
-        self.model, _, self.activation_store = loader.load_sae_training_group_session()
-        self.model_id = self.sparse_autoencoder.cfg.model_name
-        self.layer = self.sparse_autoencoder.cfg.hook_point_layer
+
+        # temporarily, load config seperately
+        cfg = LanguageModelSAERunnerConfig.from_json(sae_path)
+
+        # currently this script assumes we are loading an SAE trained using SAE Lens.
+        self.activation_store = ActivationsStore.from_config(model=self.model, cfg=cfg)
+
+        self.model_id = self.sae.cfg.model_name
+        self.layer = self.sae.cfg.hook_layer
         self.sae_id = sae_id
         self.sparsity_threshold = sparsity_threshold
         self.n_features_at_a_time = n_features_at_a_time
@@ -97,6 +113,9 @@ class NeuronpediaRunner:
         self.n_prompts_to_select = n_prompts_to_select
         self.start_batch = start_batch_inclusive
         self.end_batch = end_batch_inclusive
+        self.n_quantiles = n_quantiles
+        self.top_acts_group_size = top_acts_group_size
+        self.quantile_group_size = quantile_group_size
 
         if not os.path.exists(outputs_dir):
             os.makedirs(outputs_dir)
@@ -153,7 +172,7 @@ class NeuronpediaRunner:
         return np.reshape(str_tokens, tokens.shape).tolist()
 
     def run(self):
-        self.n_features = self.sparse_autoencoder.cfg.d_sae
+        self.n_features = self.sae.cfg.d_sae
         assert self.n_features is not None
 
         # if we have feature sparsity, then use it to only generate outputs for non-dead features
@@ -191,6 +210,7 @@ class NeuronpediaRunner:
                 "model_id": self.model_id,
                 "layer": str(self.layer),
                 "sae_id": self.sae_id,
+                "log_sparsity": self.sparsity_threshold,
                 "skipped_indexes": list(skipped_indexes),
             }
         )
@@ -237,6 +257,13 @@ class NeuronpediaRunner:
                     # print(f"Skipping batch - it's after end_batch: {feature_batch_count}")
                     continue
 
+                output_file = f"{self.outputs_dir}/batch-{feature_batch_count}.json"
+                # if output_file exists, skip
+                if os.path.isfile(output_file):
+                    logline = f"\n++++++++++ Skipping Batch #{feature_batch_count} output. File exists: {output_file} ++++++++++\n"
+                    print(logline)
+                    continue
+
                 print(f"========== Running Batch #{feature_batch_count} ==========")
 
                 layout = SaeVisLayoutConfig(
@@ -246,9 +273,9 @@ class NeuronpediaRunner:
                                 stack_mode="stack-all",
                                 buffer=None,  # type: ignore
                                 compute_buffer=True,
-                                n_quantiles=5,
-                                top_acts_group_size=20,
-                                quantile_group_size=5,
+                                n_quantiles=self.n_quantiles,
+                                top_acts_group_size=self.top_acts_group_size,
+                                quantile_group_size=self.quantile_group_size,
                             ),
                             ActsHistogramConfig(),
                             LogitsHistogramConfig(),
@@ -258,7 +285,7 @@ class NeuronpediaRunner:
                     ]
                 )
                 feature_vis_params = SaeVisConfig(
-                    hook_point=self.sparse_autoencoder.cfg.hook_point,
+                    hook_point=self.sae.cfg.hook_name,
                     minibatch_size_features=128,
                     minibatch_size_tokens=64,
                     features=features_to_process,
@@ -266,7 +293,7 @@ class NeuronpediaRunner:
                     feature_centric_layout=layout,
                 )
                 feature_data = SaeVisData.create(
-                    encoder=self.sparse_autoencoder,  # type: ignore
+                    encoder=self.sae,  # type: ignore
                     model=cast(HookedTransformer, self.model),
                     tokens=tokens,
                     cfg=feature_vis_params,
@@ -355,6 +382,27 @@ class NeuronpediaRunner:
                     activations = []
                     sdbs = feature.sequence_data
                     for sgd in sdbs.seq_group_data:
+                        binMin = 0
+                        binMax = 0
+                        binContains = 0
+                        if "TOP ACTIVATIONS" in sgd.title:
+                            binMin = -1
+                            try:
+                                binMax = float(sgd.title.split(" = ")[-1])
+                            except ValueError:
+                                print(f"Error parsing top acts: {sgd.title}")
+                                binMax = 99
+                            binContains = -1
+                        elif "INTERVAL" in sgd.title:
+                            try:
+                                split = sgd.title.split("<br>")
+                                firstSplit = split[0].split(" ")
+                                binMin = float(firstSplit[1])
+                                binMax = float(firstSplit[-1])
+                                secondSplit = split[1].split(" ")
+                                binContains = float(secondSplit[-1].rstrip("%")) / 100
+                            except ValueError:
+                                print(f"Error parsing interval: {sgd.title}")
                         for sd in sgd.seq_data:
                             if (
                                 sd.top_token_ids is not None
@@ -363,6 +411,10 @@ class NeuronpediaRunner:
                                 and sd.bottom_logits is not None
                             ):
                                 activation = {}
+                                activation["binMin"] = binMin
+                                activation["binMax"] = binMax
+                                activation["binContains"] = binContains
+
                                 strs = []
                                 posContribs = []
                                 negContribs = []
@@ -421,9 +473,11 @@ class NeuronpediaRunner:
                 json_object = json.dumps(to_write, cls=NpEncoder)
 
                 with open(
-                    f"{self.outputs_dir}/batch-{feature_batch_count}.json",
+                    output_file,
                     "w",
                 ) as f:
                     f.write(json_object)
+
+                logline = f"\n========== Completed Batch #{feature_batch_count} output: {output_file} ==========\n"
 
         return

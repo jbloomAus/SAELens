@@ -1,0 +1,206 @@
+---
+
+- name: Check that WANDB_API_KEY exists
+  hosts: localhost
+  tags: always
+  tasks:
+    - name: Check that WANDB_API_KEY exists
+      ansible.builtin.fail:
+        msg: "WANDB_API_KEY environment variable not set. Please set it in your local environment."
+      when: lookup('env', 'WANDB_API_KEY') == ""
+
+- name: "Get config file paths and store as config_paths"
+  hosts: localhost
+  tasks:
+    - name: "Get all train_sae job configs in the configs/train_sae/jobs directory."
+      ansible.builtin.find:
+        paths: "{{ lookup('env', 'PWD') ~ '/configs/train_sae/jobs/' }}"
+        patterns: "*.yml"
+        recurse: false
+        file_type: file
+      register: config_files
+
+    - name: "Exit if no train_sae job configs found."
+      ansible.builtin.fail:
+        msg: "No train_sae job configs found in the configs/train_sae directory."
+      when: config_files == []
+
+    - name: Get full path of each file
+      ansible.builtin.set_fact:
+        config_paths: "{{ config_files.files | map(attribute='path') | list }}"
+
+    - name: Print message with how many files were found
+      ansible.builtin.debug:
+        msg: "{{ config_paths | length }} train_sae jobs found."
+
+- name: "Process YAML files for each train_sae job. This copies all values from sweep, then adds/replaces values from the job itself, and adds the correct training tokens, cached activations path, and copies to the /jobs directory"
+  hosts: localhost
+  vars:
+    output_yaml_dir_path: "{{ lookup('env', 'PWD') ~ '/jobs/train_sae/' ~ sweep_name }}"
+    output_yaml_path: "{{ output_yaml_dir_path }}/{{ item | basename }}"
+  vars_files:
+    - "{{ lookup('env', 'PWD') ~ '/configs/shared.yml' }}"
+    - "{{ lookup('env', 'PWD') ~ '/configs/train_sae/sweep_common.yml' }}"
+  tasks:
+    - name: Process each YAML file to set up the train_sae job
+      ansible.builtin.include_tasks: "{{ lookup('env', 'PWD') ~ '/tasks/setup_train_sae.yml' }}"
+      vars:
+        config_file: "{{ item }}"
+        input_yaml_path: "{{ item }}"
+        cached_activations_path_key: "cached_activations_path"
+        cached_activations_path_value: "{{ local_s3_mount_path }}/{{ s3_bucket_name }}/cached_activations/{{ cache_acts_job_name }}"
+        training_tokens_key: "training_tokens"
+        training_token_value: "{{ (total_training_steps | int * train_batch_size | int) | int }}"
+      loop: "{{ config_paths }}"
+
+    - name: "The new yaml files are now in output_yaml_dir_path. Get the files."
+      ansible.builtin.find:
+        paths: "{{ output_yaml_dir_path }}"
+        patterns: "*.yml"
+        recurse: false
+        file_type: file
+      register: config_files
+
+    - name: Get full path of each file
+      ansible.builtin.set_fact:
+        config_paths: "{{ config_files.files | map(attribute='path') | list }}"
+    
+    - name: Initialize empty list for configs
+      ansible.builtin.set_fact:
+        configs: []
+
+    - name: Iterate through them, read the yaml config files and put into config
+      ansible.builtin.set_fact:
+        configs:  "{{ configs + [lookup('file', item) | from_yaml] }}"
+      loop: "{{ config_paths }}"
+
+- name: For each config, start an instance asynchronously
+  hosts: localhost
+  vars:
+    service_name: "train_sae"
+  vars_files:
+    - "{{ lookup('env', 'PWD') ~ '/configs/train_sae/sweep_common.yml' }}"
+    - "{{ lookup('env', 'PWD') ~ '/configs/shared.yml' }}"
+  tasks:
+    - name: "Start instances for sweep {{ sweep_name }}"
+      amazon.aws.ec2_instance:
+        name: "{{ service_name }} {{ item.job_name }}"
+        key_name: "{{ ssh_key_filename }}"
+        iam_instance_profile: "{{ iam_role_name }}"
+        instance_type: "{{ item.instance_type }}"
+        security_group: "{{ sec_group }}"
+        wait: true
+        state: running
+        volumes:
+          - device_name: /dev/sda1
+            ebs:
+              volume_size: 100
+              delete_on_termination: true
+        count: 1
+        instance_initiated_shutdown_behavior: terminate
+        network:
+          assign_public_ip: true
+        image_id: "{{ ec2_image }}"
+        tags:
+          service: "{{ service_name }}"
+          sweep: "{{ sweep_name | default(omit) }}"
+          job: "{{ item.job_name }}"
+      loop: "{{ configs }}"
+
+    - name: Refresh EC2 instance information
+      amazon.aws.ec2_instance_info:
+        filters:
+          "tag:service": "{{ service_name }}"
+          "tag:sweep": "{{ sweep_name | default(omit) }}"
+          instance-state-name: running
+      register: instances
+
+    - name: Wait for SSH to come up
+      ansible.builtin.wait_for:
+        port: 22
+        host: "{{ instances.instances[0].network_interfaces[0].association.public_dns_name }}"
+        delay: 10
+        sleep: 10
+        timeout: 720
+        state: started
+      loop: "{{ instances.instances }}"
+      loop_control:
+        loop_var: instance
+
+    - name: Refresh inventory to detect the new instances
+      ansible.builtin.meta: refresh_inventory
+
+- name: Configure instances for sweep's jobs
+  hosts: tag_service__train_sae:&tag_sweep__{{ sweep_name }}
+  gather_facts: true
+  vars:
+    ansible_user: ubuntu
+    ansible_ssh_private_key_file: "{{ ssh_key_path }}"
+    ansible_python_interpreter: auto_silent
+    instance_storage_path: "{{ instance_storage_path }}"
+    s3_local_cache_path: "{{ instance_storage_path }}/s3-local-cache"
+  vars_files:
+    - "{{ lookup('env', 'PWD') ~ '/configs/train_sae/sweep_common.yml' }}"
+    - "{{ lookup('env', 'PWD') ~ '/configs/shared.yml' }}"
+  tasks:
+    - name: Configure the EC2 Instance
+      include_tasks: "{{ lookup('env', 'PWD') ~ '/tasks/configure_ec2_instance.yml' }}"
+
+- name: Run Train SAE Job
+  hosts: tag_service__train_sae:&tag_sweep__{{ sweep_name }}
+  gather_facts: true
+  vars:
+    job_name: "{{ hostvars[inventory_hostname]['tags']['job'] }}"
+    ansible_user: ubuntu
+    ansible_ssh_private_key_file: "{{ ssh_key_path }}"
+    ansible_python_interpreter: "/home/ubuntu/SAELens/.venv/bin/python"
+    train_sae_dir: "/home/ubuntu/SAELens/scripts/ansible/jobs/train_sae"
+    checkpoints_dir: "/home/ubuntu/SAELens/scripts/ansible/checkpoints"
+    temp_log: "/home/ubuntu/SAELens/scripts/ansible/{{ job_name }}.log"
+    local_sweep_dir: "{{ lookup('env', 'PWD') ~ '/jobs/train_sae/' ~ sweep_name }}"
+    s3_sweep_dir: "{{ local_s3_mount_path }}/{{ s3_bucket_name }}/train_sae/{{ sweep_name }}"
+    s3_sweep_job_config: "{{ s3_sweep_dir }}/{{ job_name }}.yml"
+    s3_sweep_job_dir: "{{ s3_sweep_dir }}/{{ job_name }}"
+    s3_sweep_job_log: "{{ s3_sweep_dir }}/{{ job_name }}.log"
+  vars_files:
+    - "{{ lookup('env', 'PWD') ~ '/configs/train_sae/sweep_common.yml' }}"
+    - "{{ lookup('env', 'PWD') ~ '/configs/shared.yml' }}"
+
+  tasks:
+
+    - name: Make the job directory (for putting checkpoints in)
+      ansible.builtin.file:
+        path: "{{ s3_sweep_job_dir }}"
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0777'
+        recurse: true
+    
+    - name: "Run Train SAE Job. Log: {{ temp_log }}"
+      ansible.builtin.shell:
+        cmd: "poetry run python util/train_sae.py {{ s3_sweep_job_config }} 2>&1 \
+                | tee -a {{ temp_log }}"
+        chdir: /home/ubuntu/SAELens/scripts/ansible
+      environment:
+        WANDB_API_KEY: "{{ lookup('env', 'WANDB_API_KEY') }}"
+      changed_when: true
+
+    - name: Copy python log file to S3
+      ansible.builtin.shell: "cp {{ temp_log }} {{ s3_sweep_job_log }}"
+
+    - name: Copy python log file to local
+      ansible.builtin.fetch:
+        src: "{{ temp_log }}"
+        dest: "{{ local_sweep_dir ~ '/' ~ job_name ~ '.log' }}"
+        flat: true
+    
+    - name: Copy checkpoints to S3
+      ansible.builtin.shell: "cp -r {{ checkpoints_dir }} {{ s3_sweep_job_dir }}"
+
+    - name: Finished job, terminate the instance
+      ansible.builtin.command:
+        cmd: shutdown -h +1
+      become: true
+      become_user: root
+      changed_when: true

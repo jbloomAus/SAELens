@@ -13,5 +13,6 @@
     }
   },
   "isort.args": ["--profile", "black"],
-  "editor.defaultFormatter": "mikoz.black-py"
+"editor.defaultFormatter": "mikoz.black-py",
+"liveServer.settings.port": 5501
 }
