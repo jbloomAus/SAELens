@@ -2,6 +2,13 @@
 
 
 
+## v3.2.1 (2024-06-02)
+
+### Fix
+
+* fix: moving non-essential deps to dev (#121) ([`1a2cde0`](https://github.com/jbloomAus/SAELens/commit/1a2cde04d306061e7765a61e44d77ad1f3f8a1d4))
+
+
 ## v3.2.0 (2024-05-30)
 
 ### Feature
