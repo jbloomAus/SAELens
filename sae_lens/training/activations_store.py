@@ -538,7 +538,7 @@ class ActivationsStore:
             tokens = (
                 self.model.to_tokens(
                     s,
-                    truncate=True,
+                    truncate=False,
                     move_to_device=True,
                     prepend_bos=self.prepend_bos,
                 )

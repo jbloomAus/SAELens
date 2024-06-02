@@ -234,6 +234,20 @@ def test_activations_store__get_next_dataset_tokens__tokenizes_each_example_in_o
     )
 
 
+def test_activations_store__get_next_dataset_tokens__can_handle_long_examples(
+    ts_model: HookedTransformer,
+):
+    cfg = build_sae_cfg()
+    dataset = Dataset.from_list(
+        [
+            {"text": " France" * 3000},
+        ]
+    )
+    activation_store = ActivationsStore.from_config(ts_model, cfg, dataset=dataset)
+
+    assert len(activation_store._get_next_dataset_tokens().tolist()) == 3001
+
+
 def test_activations_store_goes_to_cpu(ts_model: HookedTransformer):
     cfg = build_sae_cfg(act_store_device="cpu")
     activation_store = ActivationsStore.from_config(ts_model, cfg)
