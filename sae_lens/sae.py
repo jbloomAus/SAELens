@@ -93,7 +93,9 @@ class SAEConfig:
 
 
 class SAE(HookedRootModule):
-    """ """
+    """
+    Core Sparse Autoencoder (SAE) class used for inference. For training, see `TrainingSAE`.
+    """
 
     cfg: SAEConfig
     dtype: torch.dtype
@@ -225,6 +227,9 @@ class SAE(HookedRootModule):
     def encode(
         self, x: Float[torch.Tensor, "... d_in"]
     ) -> Float[torch.Tensor, "... d_sae"]:
+        """
+        Calcuate SAE features from inputs
+        """
 
         # move x to correct dtype
         x = x.to(self.dtype)

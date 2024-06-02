@@ -124,8 +124,12 @@ class TrainingSAEConfig(SAEConfig):
 
 
 class TrainingSAE(SAE):
+    """
+    A SAE used for training. This class provides a `training_forward_pass` method which calculates
+    losses used for training.
+    """
 
-    cfg: TrainingSAEConfig  # type: ignore
+    cfg: TrainingSAEConfig
     use_error_term: bool
     dtype: torch.dtype
     device: torch.device
@@ -152,6 +156,9 @@ class TrainingSAE(SAE):
     def encode(
         self, x: Float[torch.Tensor, "... d_in"]
     ) -> Float[torch.Tensor, "... d_sae"]:
+        """
+        Calcuate SAE features from inputs
+        """
         feature_acts, _ = self.encode_with_hidden_pre(x)
         return feature_acts
 
@@ -192,7 +199,7 @@ class TrainingSAE(SAE):
         sae_in: torch.Tensor,
         current_l1_coefficient: float,
         dead_neuron_mask: Optional[torch.Tensor] = None,
-    ) -> TrainStepOutput:  # type: ignore
+    ) -> TrainStepOutput:
 
         # do a forward pass to get SAE out, but we also need the
         # hidden pre.
@@ -305,7 +312,7 @@ class TrainingSAE(SAE):
             return standard_mse_loss_fn
 
     @classmethod
-    def load_from_pretrained(  # type: ignore
+    def load_from_pretrained(
         cls,
         path: str,
         device: str = "cpu",
