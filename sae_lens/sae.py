@@ -35,6 +35,7 @@ class SAEConfig:
     activation_fn_str: str
     apply_b_dec_to_input: bool
     finetuning_scaling_factor: bool
+    architecture: str
 
     # dataset it was trained on details.
     context_size: int
@@ -75,6 +76,7 @@ class SAEConfig:
         return {
             "d_in": self.d_in,
             "d_sae": self.d_sae,
+            "architecture": self.architecture,
             "dtype": self.dtype,
             "device": self.device,
             "model_name": self.model_name,
@@ -182,6 +184,16 @@ class SAE(HookedRootModule):
                 torch.ones(self.cfg.d_sae, dtype=self.dtype, device=self.device)
             )
 
+        if self.cfg.architecture == "gated":
+            # W_mag = torch.exp(r_mag) * W_gate # We will use W_enc as W_gate however.
+            self.r_mag = nn.Parameter(
+                torch.zeros(self.cfg.d_sae, dtype=self.dtype, device=self.device)
+            )
+
+            self.b_mag = nn.Parameter(
+                torch.zeros(self.cfg.d_sae, dtype=self.dtype, device=self.device)
+            )
+
     # Basic Forward Pass Functionality.
     def forward(
         self,
@@ -235,8 +247,20 @@ class SAE(HookedRootModule):
         # apply b_dec_to_input if using that method.
         sae_in = self.hook_sae_input(x - (self.b_dec * self.cfg.apply_b_dec_to_input))
 
-        # "... d_in, d_in d_sae -> ... d_sae",
-        hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
+        if self.cfg.architecture == "gated":
+
+            # using tied weights.
+            W_mag = torch.exp(self.r_mag) * self.W_enc
+
+            # Note that _enc is actually _gate in the gated architecture.
+            active_features = (sae_in @ self.W_enc + self.b_enc) > 0
+            feature_magnitudes = sae_in @ W_mag + self.b_mag
+            hidden_pre = self.hook_sae_acts_pre(active_features * feature_magnitudes)
+
+        else:
+            # "... d_in, d_in d_sae -> ... d_sae",
+            hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
+
         feature_acts = self.hook_sae_acts_post(self.activation_fn(hidden_pre))
 
         return feature_acts

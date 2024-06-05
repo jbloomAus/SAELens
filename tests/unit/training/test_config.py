@@ -47,6 +47,7 @@ def test_sae_training_runner_config_get_sae_base_parameters():
     expected_config = {
         "d_in": 512,
         "d_sae": 2048,
+        "architecture": "standard",
         "activation_fn_str": "relu",
         "apply_b_dec_to_input": True,
         "dtype": "float32",

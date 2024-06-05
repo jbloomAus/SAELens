@@ -47,12 +47,22 @@ from tests.unit.helpers import build_sae_cfg
             "hook_layer": 1,
             "d_in": 64,
         },
+        {
+            "model_name": "tiny-stories-1M",
+            "dataset_path": "roneneldan/TinyStories",
+            "tokenized": False,
+            "hook_name": "blocks.1.hook_resid_pre",
+            "hook_layer": 1,
+            "d_in": 64,
+            "architecture": "gated",
+        },
     ],
     ids=[
         "tiny-stories-1M-resid-pre",
         "tiny-stories-1M-resid-pre-L1-W-dec-Norm",
         "tiny-stories-1M-resid-pre-pretokenized",
         "tiny-stories-1M-attn-out",
+        "tiny-stories-1M-gated-SAE",
     ],
 )
 def cfg(request: pytest.FixtureRequest):

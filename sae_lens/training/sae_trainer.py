@@ -146,7 +146,7 @@ class SAETrainer:
 
     def fit(self) -> TrainingSAE:
 
-        pbar = tqdm(total=self.cfg.total_training_tokens, desc="Training SAE")
+        pbar = tqdm(total=self.cfg.total_training_steps, desc="Training SAE")
 
         self._estimate_norm_scaling_factor_if_needed()
 
@@ -157,6 +157,7 @@ class SAETrainer:
             self.n_training_tokens += self.cfg.train_batch_size_tokens
 
             step_output = self._train_step(sae=self.sae, sae_in=layer_acts)
+            pbar.update(1)
 
             if self.cfg.log_to_wandb:
                 self._log_train_step(step_output)
@@ -211,7 +212,7 @@ class SAETrainer:
         with self.autocast_if_enabled:
 
             train_step_output = self.sae.training_forward_pass(
-                sae_in=sae_in,
+                sae_in=sae_in.to(sae.device),
                 dead_neuron_mask=self.dead_neurons,
                 current_l1_coefficient=self.current_l1_coefficient,
             )
@@ -285,6 +286,7 @@ class SAETrainer:
             "losses/l1_loss": l1_loss
             / self.current_l1_coefficient,  # normalize by l1 coefficient
             "losses/ghost_grad_loss": ghost_grad_loss,
+            "losses/gated_aux_loss": output.gated_aux_loss,
             "losses/overall_loss": loss,
             # variance explained
             "metrics/explained_variance": explained_variance.mean().item(),
@@ -374,7 +376,6 @@ class SAETrainer:
             pbar.set_description(
                 f"{self.n_training_steps}| MSE Loss {step_output.mse_loss:.3f} | L1 {step_output.l1_loss:.3f}"
             )
-            pbar.update(self.cfg.train_batch_size_tokens)
 
     def _begin_finetuning_if_needed(self):
         if (not self.started_fine_tuning) and (

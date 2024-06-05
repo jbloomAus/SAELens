@@ -27,6 +27,7 @@ class TrainStepOutput:
     mse_loss: float
     l1_loss: float
     ghost_grad_loss: float
+    gated_aux_loss: float
 
 
 @dataclass
@@ -53,6 +54,7 @@ class TrainingSAEConfig(SAEConfig):
             # base confg
             d_in=cfg.d_in,
             d_sae=cfg.d_sae,  # type: ignore
+            architecture=cfg.architecture,
             dtype=cfg.dtype,
             device=cfg.device,
             model_name=cfg.model_name,
@@ -106,6 +108,7 @@ class TrainingSAEConfig(SAEConfig):
         return {
             "d_in": self.d_in,
             "d_sae": self.d_sae,
+            "architecture": self.architecture,
             "activation_fn_str": self.activation_fn_str,
             "apply_b_dec_to_input": self.apply_b_dec_to_input,
             "dtype": self.dtype,
@@ -169,7 +172,16 @@ class TrainingSAE(SAE):
         sae_in = self.hook_sae_input(x - (self.b_dec * self.cfg.apply_b_dec_to_input))
 
         # "... d_in, d_in d_sae -> ... d_sae",
-        hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
+        if self.cfg.architecture == "gated":
+            # using tied weights.
+            W_mag = self.W_enc * torch.exp(self.r_mag)
+            # Note that _enc is actually _gate in the gated architecture.
+            active_features = (sae_in @ self.W_enc + self.b_enc) > 0
+            feature_magnitudes = sae_in @ W_mag + self.b_mag
+            hidden_pre = self.hook_sae_acts_pre(active_features * feature_magnitudes)
+        else:
+            hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
+
         hidden_pre_noised = hidden_pre + (
             torch.randn_like(hidden_pre) * self.cfg.noise_scale * self.training
         )
@@ -205,7 +217,6 @@ class TrainingSAE(SAE):
 
         # GHOST GRADS
         if self.cfg.use_ghost_grads and self.training and dead_neuron_mask is not None:
-
             # first half of second forward pass
             _, hidden_pre = self.encode_with_hidden_pre(sae_in)
             ghost_grad_loss = self.calculate_ghost_grad_loss(
@@ -217,6 +228,26 @@ class TrainingSAE(SAE):
             )
         else:
             ghost_grad_loss = 0.0
+
+        # Get Auxilliary loss if we're using gated architecture:
+        if self.cfg.architecture == "gated":
+            hidden_pre_gate = sae_in @ self.W_enc + self.b_enc
+
+            # Decode but detach.
+            sae_out_aux = (
+                self.apply_finetuning_scaling_factor(
+                    self.activation_fn(hidden_pre_gate)
+                )
+                @ self.W_dec
+                + self.b_dec
+            )
+            sae_out_aux = self.reshape_fn_out(sae_out, self.d_head)
+
+            # get the Aux loss
+            per_item_mse_loss_aux = self.mse_loss_fn(sae_out_aux, sae_in)
+            aux_loss = per_item_mse_loss_aux.sum(dim=-1).mean()
+        else:
+            aux_loss = 0.0
 
         # SPARSITY LOSS
         # either the W_dec norms are 1 and this won't do anything or they are not 1
@@ -241,6 +272,9 @@ class TrainingSAE(SAE):
                 ghost_grad_loss.item()
                 if isinstance(ghost_grad_loss, torch.Tensor)
                 else ghost_grad_loss
+            ),
+            gated_aux_loss=(
+                aux_loss.item() if isinstance(aux_loss, torch.Tensor) else aux_loss
             ),
         )
 

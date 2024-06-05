@@ -179,6 +179,10 @@ def load_pretrained_sae_lens_sae_components(
     else:
         log_sparsity = None
 
+    if "architecture" not in cfg_dict:
+        # default to "standard" for backwards compatibility
+        cfg_dict["architecture"] = "standard"
+
     if "prepend_bos" not in cfg_dict:
         # default to True for backwards compatibility
         cfg_dict["prepend_bos"] = True

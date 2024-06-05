@@ -127,6 +127,7 @@ class LanguageModelSAERunnerConfig:
     b_dec_init_method: str = "geometric_median"
     expansion_factor: int = 4
     activation_fn: str = "relu"  # relu, tanh-relu
+    architecture: str = "standard"  # standard, gated
     normalize_sae_decoder: bool = True
     noise_scale: float = 0.0
     from_pretrained_path: Optional[str] = None
@@ -244,6 +245,11 @@ class LanguageModelSAERunnerConfig:
         if self.run_name is None:
             self.run_name = f"{self.d_sae}-L1-{self.l1_coefficient}-LR-{self.lr}-Tokens-{self.training_tokens:3.3e}"
 
+        if self.architecture not in ["standard", "gated"]:
+            raise ValueError(
+                f"Architecture must be standard or gated. Got {self.architecture}"
+            )
+
         if self.b_dec_init_method not in ["geometric_median", "mean", "zeros"]:
             raise ValueError(
                 f"b_dec_init_method must be geometric_median, mean, or zeros. Got {self.b_dec_init_method}"
@@ -338,6 +344,7 @@ class LanguageModelSAERunnerConfig:
         return {
             "d_in": self.d_in,
             "d_sae": self.d_sae,
+            "architecture": self.architecture,
             "dtype": self.dtype,
             "device": self.device,
             "model_name": self.model_name,

@@ -44,6 +44,7 @@ def get_hooked_sae(model: HookedTransformer, act_name: str) -> SAE:
     sae_cfg = SAEConfig(
         d_in=d_in,
         d_sae=d_in * 2,
+        architecture="standard",
         dtype="float32",
         device="cpu",
         model_name=MODEL,
