@@ -2,6 +2,19 @@
 
 
 
+## v3.2.3 (2024-06-05)
+
+### Fix
+
+* fix: allow tutorial packages for colab install to use latest version (#173)
+
+fix: allow tutorial packages for colab install to use latest version (#173) ([`f73cb73`](https://github.com/jbloomAus/SAELens/commit/f73cb73072e006f6dda0984e05e8accda014a2d8))
+
+### Unknown
+
+* fix pip install in HookedSAETransformer Demo (#172) ([`5d0faed`](https://github.com/jbloomAus/SAELens/commit/5d0faedf868d6e68035527a52ba718807e8ed196))
+
+
 ## v3.2.2 (2024-06-02)
 
 ### Fix
