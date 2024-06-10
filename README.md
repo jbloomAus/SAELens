@@ -19,7 +19,7 @@ Please refer to the [documentation](https://jbloomaus.github.io/SAELens/) for in
 
 SAE Lens is the result of many contributors working collectively to improve humanities understanding of neural networks, many of whom are motivated by a desire to [safeguard humanity from risks posed by artificial intelligence](https://80000hours.org/problem-profiles/artificial-intelligence/).
 
-This library is maintained by [Joseph Bloom](https://www.jbloomaus.com/) and [David Channin](https://github.com/chanind).
+This library is maintained by [Joseph Bloom](https://www.jbloomaus.com/) and [David Chanin](https://github.com/chanind).
 
 ## Tutorials
 

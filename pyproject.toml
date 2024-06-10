@@ -36,7 +36,7 @@ pytest-cov = "^4.1.0"
 pre-commit = "^3.6.2"
 flake8 = "7.0.0"
 isort = "5.13.2"
-pyright = "^1.1.351"
+pyright = "1.1.365"
 mamba-lens = "^0.0.4"
 ansible-lint = { version = "^24.2.3", markers = "platform_system != 'Windows'" }
 botocore = "^1.34.101"
@@ -69,6 +69,7 @@ reportUnnecessaryComparison = "none"
 reportConstantRedefinition = "none"
 reportUnknownLambdaType = "none"
 reportPrivateUsage = "none"
+reportDeprecated = "none"
 
 
 [build-system]

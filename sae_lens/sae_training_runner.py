@@ -6,6 +6,7 @@ from typing import Any, cast
 import torch
 import wandb
 from safetensors.torch import save_file
+from transformer_lens.hook_points import HookedRootModule
 
 from sae_lens.config import LanguageModelSAERunnerConfig
 from sae_lens.load_model import load_model
@@ -25,9 +26,12 @@ def interrupt_callback(sig_num: Any, stack_frame: Any):
 
 
 class SAETrainingRunner:
+    """
+    Class to run the training of a Sparse Autoencoder (SAE) on a TransformerLens model.
+    """
 
     cfg: LanguageModelSAERunnerConfig
-    model: torch.nn.Module
+    model: HookedRootModule
     sae: TrainingSAE
     activations_store: ActivationsStore
 
@@ -48,7 +52,7 @@ class SAETrainingRunner:
 
         if self.cfg.from_pretrained_path is not None:
             self.sae = TrainingSAE.load_from_pretrained(
-                self.cfg.from_pretrained_path, self.cfg.device  # type: ignore
+                self.cfg.from_pretrained_path, self.cfg.device
             )
         else:
             self.sae = TrainingSAE(
@@ -59,7 +63,9 @@ class SAETrainingRunner:
             self._init_sae_group_b_decs()
 
     def run(self):
-        """ """
+        """
+        Run the training of the SAE.
+        """
 
         if self.cfg.log_to_wandb:
             wandb.init(
@@ -70,10 +76,10 @@ class SAETrainingRunner:
             )
 
         trainer = SAETrainer(
-            model=self.model,  # type: ignore
-            sae=self.sae,  # type: ignore
+            model=self.model,
+            sae=self.sae,
             activation_store=self.activations_store,
-            save_checkpoint_fn=self.save_checkpoint,  # type: ignore
+            save_checkpoint_fn=self.save_checkpoint,
             cfg=self.cfg,
         )
 
@@ -154,7 +160,7 @@ class SAETrainingRunner:
 
     def save_checkpoint(
         self,
-        trainer,  # type: ignore
+        trainer: SAETrainer,
         checkpoint_name: int | str,
         wandb_aliases: list[str] | None = None,
     ) -> str:

@@ -44,6 +44,9 @@ class TrainSAEOutput:
 
 
 class SAETrainer:
+    """
+    Core SAE class used for inference. For training, see TrainingSAE.
+    """
 
     def __init__(
         self,
@@ -95,8 +98,8 @@ class SAETrainer:
             sae.parameters(),
             lr=cfg.lr,
             betas=(
-                cfg.adam_beta1,  # type: ignore
-                cfg.adam_beta2,  # type: ignore
+                cfg.adam_beta1,
+                cfg.adam_beta2,
             ),
         )
         assert cfg.lr_end is not None  # this is set in config post-init

@@ -9,6 +9,7 @@ import torch
 from datasets import Dataset, DatasetDict, load_dataset
 from huggingface_hub import HfApi
 from transformers import AutoTokenizer, PreTrainedTokenizerBase
+from typing_extensions import deprecated
 
 from sae_lens import __version__
 from sae_lens.batching import concat_and_batch_sequences
@@ -140,30 +141,51 @@ def push_to_hugging_face_hub(
     )
 
 
+@deprecated("Use PretokenizeRunner instead")
 def pretokenize_runner(
     cfg: PretokenizeRunnerConfig,
 ):
-    dataset = load_dataset(
-        cfg.dataset_path,
-        data_dir=cfg.data_dir,
-        data_files=cfg.data_files,
-        split=cfg.split,
-        streaming=cfg.streaming,
-    )
-    if isinstance(dataset, DatasetDict):
-        raise ValueError("Dataset has multiple splits. Must provide a 'split' param.")
-    tokenizer = AutoTokenizer.from_pretrained(cfg.tokenizer_name)
-    tokenizer.model_max_length = sys.maxsize
-    tokenized_dataset = pretokenize_dataset(cast(Dataset, dataset), tokenizer, cfg)
+    runner = PretokenizeRunner(cfg)
+    return runner.run()
 
-    if cfg.save_path is not None:
-        tokenized_dataset.save_to_disk(cfg.save_path)
-        metadata = metadata_from_config(cfg)
-        metadata_path = Path(cfg.save_path) / "sae_lens.json"
-        with open(metadata_path, "w") as f:
-            json.dump(metadata.__dict__, f, indent=2, ensure_ascii=False)
 
-    if cfg.hf_repo_id is not None:
-        push_to_hugging_face_hub(tokenized_dataset, cfg)
+class PretokenizeRunner:
+    """
+    Runner to pretokenize a dataset using a given tokenizer, and optionally upload to Huggingface.
+    """
 
-    return tokenized_dataset
+    def __init__(self, cfg: PretokenizeRunnerConfig):
+        self.cfg = cfg
+
+    def run(self):
+        """
+        Load the dataset, tokenize it, and save it to disk and/or upload to Huggingface.
+        """
+        dataset = load_dataset(
+            self.cfg.dataset_path,
+            data_dir=self.cfg.data_dir,
+            data_files=self.cfg.data_files,
+            split=self.cfg.split,
+            streaming=self.cfg.streaming,
+        )
+        if isinstance(dataset, DatasetDict):
+            raise ValueError(
+                "Dataset has multiple splits. Must provide a 'split' param."
+            )
+        tokenizer = AutoTokenizer.from_pretrained(self.cfg.tokenizer_name)
+        tokenizer.model_max_length = sys.maxsize
+        tokenized_dataset = pretokenize_dataset(
+            cast(Dataset, dataset), tokenizer, self.cfg
+        )
+
+        if self.cfg.save_path is not None:
+            tokenized_dataset.save_to_disk(self.cfg.save_path)
+            metadata = metadata_from_config(self.cfg)
+            metadata_path = Path(self.cfg.save_path) / "sae_lens.json"
+            with open(metadata_path, "w") as f:
+                json.dump(metadata.__dict__, f, indent=2, ensure_ascii=False)
+
+        if self.cfg.hf_repo_id is not None:
+            push_to_hugging_face_hub(tokenized_dataset, self.cfg)
+
+        return tokenized_dataset
