@@ -177,11 +177,8 @@ SAE_LOOKUP:
         l0: 56.0
       - id: "blocks.12.hook_resid_post"
         path: "gemma_2b_blocks.12.hook_resid_post_16384"
-<<<<<<< HEAD
         variance_explained: -3.6
         l0: 62.0
-=======
->>>>>>> e7dd45c (Adding code to load mistral saes)
   mistral-7b-res-wg:
     repo_id: "JoshEngels/Mistral-7B-Residual-Stream-SAEs"
     model: "mistral-7b"
@@ -189,7 +186,6 @@ SAE_LOOKUP:
     saes:
       - id: "blocks.8.hook_resid_pre"
         path: "mistral_7b_layer_8"
-<<<<<<< HEAD
         variance_explained: 0.74
         l0: 82
       - id: "blocks.16.hook_resid_pre"
@@ -200,9 +196,3 @@ SAE_LOOKUP:
         path: "mistral_7b_layer_24"
         variance_explained: 0.72
         l0: 75
-=======
-      - id: "blocks.16.hook_resid_pre"
-        path: "mistral_7b_layer_16"
-      - id: "blocks.24.hook_resid_pre"
-        path: "mistral_7b_layer_24"
->>>>>>> e7dd45c (Adding code to load mistral saes)
