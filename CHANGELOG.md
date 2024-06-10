@@ -2,6 +2,17 @@
 
 
 
+## v3.3.0 (2024-06-10)
+
+### Feature
+
+* feat: updating docs and standardizing PretokenizeRunner export (#176) ([`03f071b`](https://github.com/jbloomAus/SAELens/commit/03f071b41e77ef07c8f8b892e52969337f5e94aa))
+
+### Unknown
+
+* add tutorial (#175) ([`8c67c23`](https://github.com/jbloomAus/SAELens/commit/8c67c2355211910bc5054ba9bc140e98424fa026))
+
+
 ## v3.2.3 (2024-06-05)
 
 ### Fix
