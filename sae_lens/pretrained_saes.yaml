@@ -99,3 +99,14 @@ SAE_LOOKUP:
         path: "gemma_2b_blocks.6.hook_resid_post_16384_anthropic_fast_lr"
       - id: "blocks.12.hook_resid_post"
         path: "gemma_2b_blocks.12.hook_resid_post_16384"
+  mistral-7b-res-wg:
+    repo_id: "JoshEngels/Mistral-7B-Residual-Stream-SAEs"
+    model: "mistral-7b"
+    conversion_func: null
+    saes:
+      - id: "blocks.8.hook_resid_pre"
+        path: "mistral_7b_layer_8"
+      - id: "blocks.16.hook_resid_pre"
+        path: "mistral_7b_layer_16"
+      - id: "blocks.24.hook_resid_pre"
+        path: "mistral_7b_layer_24"
