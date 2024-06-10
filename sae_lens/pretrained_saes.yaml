@@ -99,6 +99,8 @@ SAE_LOOKUP:
         path: "gemma_2b_blocks.6.hook_resid_post_16384_anthropic_fast_lr"
       - id: "blocks.12.hook_resid_post"
         path: "gemma_2b_blocks.12.hook_resid_post_16384"
+  # Important: when using this mistral SAE, make sure to normalize activations to sqrt(d_model)
+  # before passing them in, and then unnormalize the reconstructions afterwards.
   mistral-7b-res-wg:
     repo_id: "JoshEngels/Mistral-7B-Residual-Stream-SAEs"
     model: "mistral-7b"

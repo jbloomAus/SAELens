@@ -116,7 +116,6 @@ class SAE(HookedRootModule):
         self.dtype = DTYPE_MAP[cfg.dtype]
         self.device = torch.device(cfg.device)
         self.use_error_term = use_error_term
-        self.unit_normalize_in_forward = False
 
         self.initialize_weights_basic()
 
@@ -191,15 +190,8 @@ class SAE(HookedRootModule):
         x: torch.Tensor,
     ) -> torch.Tensor:
 
-        if self.unit_normalize_in_forward:
-            x_norm_coeff = (x.shape[-1] ** 0.5) / x.norm(dim=-1, keepdim=True)
-            x = x * x_norm_coeff
-
         feature_acts = self.encode(x)
         sae_out = self.decode(feature_acts)
-
-        if self.unit_normalize_in_forward:
-            sae_out = sae_out / x_norm_coeff
 
         if self.use_error_term:
             with torch.no_grad():
@@ -402,14 +394,6 @@ class SAE(HookedRootModule):
         self.reshape_fn_out = lambda x, d_head: x
         self.d_head = None
         self.hook_z_reshaping_mode = False
-
-    # These two methods are a bit hacky; they are neccesary to load the current Mistral 7B SAEs.
-    # Ideally they would be in a config, but this would invalidate the current pretrained SAEs.
-    def turn_on_forward_pass_unit_normalization(self):
-        self.unit_normalize_in_forward = True
-
-    def turn_off_forward_pass_unit_normalization(self):
-        self.unit_normalize_in_forward = False
 
 
 def get_activation_fn(activation_fn: str) -> Callable[[torch.Tensor], torch.Tensor]:
