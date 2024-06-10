@@ -274,7 +274,7 @@ class ActivationsStore:
             token_len = tokens.shape[0]
 
             # TODO: Fix this so that we are limiting how many tokens we get from the same context.
-            assert self.model.tokenizer is not None  # keep pyright happy
+            # assert self.model.tokenizer is not None  # keep pyright happy
             while token_len > 0 and batch_tokens.shape[0] < batch_size:
                 # Space left in the current batch
                 space_left = context_size - current_length
@@ -557,7 +557,7 @@ class ActivationsStore:
             )
             if (
                 not self.prepend_bos
-                and tokens[0] == self.model.tokenizer.bos_token_id  # type: ignore
+                # and tokens[0] == self.model.tokenizer.bos_token_id  # type: ignore
             ):
                 tokens = tokens[1:]
         self.n_dataset_processed += 1
