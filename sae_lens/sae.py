@@ -403,7 +403,7 @@ class SAE(HookedRootModule):
         self.d_head = None
         self.hook_z_reshaping_mode = False
 
-    # These two methods are a bit hacky; they are neccesary to load the current Mistral 7B SAEs. 
+    # These two methods are a bit hacky; they are neccesary to load the current Mistral 7B SAEs.
     # Ideally they would be in a config, but this would invalidate the current pretrained SAEs.
     def turn_on_forward_pass_unit_normalization(self):
         self.unit_normalize_in_forward = True
