@@ -124,7 +124,7 @@ class LanguageModelSAERunnerConfig:
     )
 
     # SAE Parameters
-    variant: str = "baseline"
+    architecture: Literal["standard", "gated"] = "standard"
     d_in: int = 512
     d_sae: Optional[int] = None
     b_dec_init_method: str = "geometric_median"
@@ -351,7 +351,7 @@ class LanguageModelSAERunnerConfig:
     def get_base_sae_cfg_dict(self) -> dict[str, Any]:
         return {
             # TEMP
-            "variant": self.variant,
+            "architecture": self.architecture,
             "d_in": self.d_in,
             "d_sae": self.d_sae,
             "dtype": self.dtype,
@@ -477,6 +477,9 @@ class CacheActivationsRunnerConfig:
 
 @dataclass
 class ToyModelSAERunnerConfig:
+    
+    architecture: Literal["standard", "gated"] = "standard"
+    
     # ReLu Model Parameters
     n_features: int = 5
     n_hidden: int = 2
@@ -530,6 +533,7 @@ class ToyModelSAERunnerConfig:
     def get_base_sae_cfg_dict(self) -> dict[str, Any]:
         # TO DO: Have the same hyperparameters as in the main sae runner.
         return {
+            "architecture": self.architecture,
             "d_in": self.d_in,
             "d_sae": self.d_sae,
             "dtype": self.dtype,

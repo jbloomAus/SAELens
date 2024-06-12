@@ -28,9 +28,8 @@ SAE_CFG_PATH = "cfg.json"
 
 @dataclass
 class SAEConfig:
-    
     # architecture details
-    variant: Literal["baseline", "gated"]
+    architecture: Literal["standard", "gated"]
 
     # forward pass details.
     d_in: int
@@ -79,7 +78,7 @@ class SAEConfig:
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "variant": self.variant,
+            "architecture": self.architecture,
             "d_in": self.d_in,
             "d_sae": self.d_sae,
             "dtype": self.dtype,
@@ -125,11 +124,12 @@ class SAE(HookedRootModule):
         self.device = torch.device(cfg.device)
         self.use_error_term = use_error_term
 
-        
-        if self.cfg.variant == "baseline":
+        if self.cfg.architecture == "standard":
             self.initialize_weights_basic()
-        elif self.cfg.variant == "gated":
+            self.encode_fn = self.encode
+        elif self.cfg.architecture == "gated":
             self.initialize_weights_gated()
+            self.encode_fn = self.encode_gated
 
         # handle presence / absence of scaling factor.
         if self.cfg.finetuning_scaling_factor:
@@ -216,7 +216,7 @@ class SAE(HookedRootModule):
             self.finetuning_scaling_factor = nn.Parameter(
                 torch.ones(self.cfg.d_sae, dtype=self.dtype, device=self.device)
             )
-            
+
     def initialize_weights_gated(self):
         # Initialize the weights and biases for the gated encoder
         self.b_enc = nn.Parameter(
@@ -255,21 +255,16 @@ class SAE(HookedRootModule):
             torch.zeros(self.cfg.d_in, dtype=self.dtype, device=self.device)
         )
 
-
     # Basic Forward Pass Functionality.
     def forward(
         self,
         x: torch.Tensor,
     ) -> torch.Tensor:
-        if self.cfg.variant == "gated":
-            feature_acts = self.encode_gated(x)
-        else:
-            feature_acts = self.encode(x)
-        
+        feature_acts = self.encode_fn(x)
         sae_out = self.decode(feature_acts)
 
         # TEMP
-        if self.use_error_term and self.cfg.variant != "gated":
+        if self.use_error_term and self.cfg.architecture != "gated":
             with torch.no_grad():
                 # Recompute everything without hooks to get true error term
                 # Otherwise, the output with error term will always equal input, even for causal interventions that affect x_reconstruct
@@ -369,9 +364,12 @@ class SAE(HookedRootModule):
         W_dec_norms = self.W_dec.norm(dim=-1).unsqueeze(1)
         self.W_dec.data = self.W_dec.data / W_dec_norms
         self.W_enc.data = self.W_enc.data * W_dec_norms.T
-        self.r_mag.data = self.r_mag.data * W_dec_norms.squeeze()
-        self.b_gate.data = self.b_gate.data * W_dec_norms.squeeze()
-        self.b_mag.data = self.b_mag.data * W_dec_norms.squeeze()
+        if self.cfg.architecture == "gated":
+            self.r_mag.data = self.r_mag.data * W_dec_norms.squeeze()
+            self.b_gate.data = self.b_gate.data * W_dec_norms.squeeze()
+            self.b_mag.data = self.b_mag.data * W_dec_norms.squeeze()
+        else:
+            self.b_enc.data = self.b_enc.data * W_dec_norms.squeeze()
 
     @torch.no_grad()
     def fold_activation_norm_scaling_factor(

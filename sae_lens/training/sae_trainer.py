@@ -287,6 +287,8 @@ class SAETrainer:
             "losses/mse_loss": mse_loss,
             "losses/l1_loss": l1_loss
             / self.current_l1_coefficient,  # normalize by l1 coefficient
+            "losses/rectified_pre_activation_loss": output.rectified_pre_activation_loss,
+            "losses/auxiliary_reconstruction_loss": output.auxiliary_reconstruction_loss,
             "losses/ghost_grad_loss": ghost_grad_loss,
             "losses/overall_loss": loss,
             # variance explained
