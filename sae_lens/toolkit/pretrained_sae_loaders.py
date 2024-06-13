@@ -194,9 +194,21 @@ def load_pretrained_sae_lens_sae_components(
     else:
         log_sparsity = None
 
-    if "prepend_bos" not in cfg_dict:
-        # default to True for backwards compatibility
-        cfg_dict["prepend_bos"] = True
+    # handle old prepend_bos if it's present
+    if "prepend_bos" in cfg_dict:
+        cfg_dict["begin_sequence_token"] = None
+        if cfg_dict["prepend_bos"]:
+            cfg_dict["begin_batch_token"] = "bos"
+            cfg_dict["sequence_separator_token"] = "bos"
+        else:
+            cfg_dict["begin_batch_token"] = None
+            cfg_dict["sequence_separator_token"] = None
+
+    # handle old versions before any prepend_bos was present
+    if "begin_batch_token" not in cfg_dict:
+        cfg_dict["begin_sequence_token"] = None
+        cfg_dict["begin_batch_token"] = "bos"
+        cfg_dict["sequence_separator_token"] = "bos"
 
     if "apply_b_dec_to_input" not in cfg_dict:
         # default to True for backwards compatibility

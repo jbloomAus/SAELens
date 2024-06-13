@@ -150,7 +150,11 @@ class LanguageModelSAERunnerConfig:
     act_store_device: str = "with_model"  # will be set by post init if with_model
     seed: int = 42
     dtype: str = "float32"  # type: ignore #
-    prepend_bos: bool = True
+
+    # special tokens
+    begin_batch_token: int | Literal["bos", "eos", "sep"] | None = "bos"
+    begin_sequence_token: int | Literal["bos", "eos", "sep"] | None = None
+    sequence_separator_token: int | Literal["bos", "eos", "sep"] | None = "bos"
 
     # Performance - see compilation section of lm_runner.py for info
     autocast: bool = False  # autocast to autocast_dtype during training
@@ -358,7 +362,9 @@ class LanguageModelSAERunnerConfig:
             "activation_fn_str": self.activation_fn,
             "apply_b_dec_to_input": self.apply_b_dec_to_input,
             "context_size": self.context_size,
-            "prepend_bos": self.prepend_bos,
+            "begin_batch_token": self.begin_batch_token,
+            "begin_sequence_token": self.begin_sequence_token,
+            "sequence_separator_token": self.sequence_separator_token,
             "dataset_path": self.dataset_path,
             "finetuning_scaling_factor": self.finetuning_method is not None,
             "sae_lens_training_version": self.sae_lens_training_version,
@@ -443,8 +449,12 @@ class CacheActivationsRunnerConfig:
     act_store_device: str = "with_model"  # will be set by post init if with_model
     seed: int = 42
     dtype: str = "float32"
-    prepend_bos: bool = True
     autocast_lm: bool = False  # autocast lm during activation fetching
+
+    # special tokens
+    begin_batch_token: int | Literal["bos", "eos", "sep"] | None = "bos"
+    begin_sequence_token: int | Literal["bos", "eos", "sep"] | None = None
+    sequence_separator_token: int | Literal["bos", "eos", "sep"] | None = "bos"
 
     # Activation caching stuff
     shuffle_every_n_buffers: int = 10
@@ -565,7 +575,7 @@ class PretokenizeRunnerConfig:
     # special tokens
     begin_batch_token: int | Literal["bos", "eos", "sep"] | None = "bos"
     begin_sequence_token: int | Literal["bos", "eos", "sep"] | None = None
-    sequence_separator_token: int | Literal["bos", "eos", "sep"] | None = "eos"
+    sequence_separator_token: int | Literal["bos", "eos", "sep"] | None = "bos"
 
     # if saving locally, set save_path
     save_path: str | None = None

@@ -38,7 +38,8 @@ def test_language_model_sae_runner():
         dataset_path="NeelNanda/c4-tokenized-2b",
         context_size=256,
         is_dataset_tokenized=True,
-        prepend_bos=True,  # I used to train GPT2 SAEs with a prepended-bos but no longer think we should do this.
+        begin_sequence_token="bos",  # I used to train GPT2 SAEs with a prepended-bos but no longer think we should do this.
+        sequence_separator_token="bos",
         # How big do we want our SAE to be?
         expansion_factor=16,
         # Dataset / Activation Store
