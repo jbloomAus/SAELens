@@ -33,7 +33,7 @@ This library is maintained by [Joseph Bloom](https://www.jbloomaus.com/) and [Da
 
 ## Join the Slack!
 
-Feel free to join the [Open Source Mechanistic Interpretability Slack](https://join.slack.com/t/opensourcemechanistic/shared_invite/zt-1qosyh8g3-9bF3gamhLNJiqCL_QqLFrA) for support!
+Feel free to join the [Open Source Mechanistic Interpretability Slack](https://join.slack.com/t/opensourcemechanistic/shared_invite/zt-2k0id7mv8-CsIgPLmmHd03RPJmLUcapw) for support!
 
 
 ## Citations and References
