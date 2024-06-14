@@ -62,7 +62,7 @@ def test_cache_activations_runner(tmp_path: Path):
         # Buffer details won't matter in we cache / shuffle our activations ahead of time.
         n_batches_in_buffer=n_batches_in_buffer,
         store_batch_size_prompts=store_batch_size,
-        normalize_activations=False,
+        normalize_activations="none",
         #
         shuffle_every_n_buffers=2,
         n_shuffles_with_last_section=1,
@@ -140,7 +140,7 @@ def test_load_cached_activations():
         # Buffer details won't matter in we cache / shuffle our activations ahead of time.
         n_batches_in_buffer=n_batches_in_buffer,
         store_batch_size_prompts=store_batch_size,
-        normalize_activations=False,
+        normalize_activations="none",
         # shuffle_every_n_buffers=2,
         # n_shuffles_with_last_section=1,
         # n_shuffles_in_entire_dir=1,

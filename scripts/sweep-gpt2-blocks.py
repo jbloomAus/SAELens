@@ -82,7 +82,7 @@ for l1_coefficient in [3, 4, 5, 6, 7]:
             # Unsure if this is enough
             n_batches_in_buffer=64,
             store_batch_size_prompts=32,
-            normalize_activations=True,
+            normalize_activations="none",
             # Feature Store
             feature_sampling_window=1000,
             dead_feature_window=1000,
