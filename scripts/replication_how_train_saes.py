@@ -93,7 +93,7 @@ for l1_coefficient in [2, 5, 10]:
         # Buffer details won't matter in we cache / shuffle our activations ahead of time.
         n_batches_in_buffer=64,
         store_batch_size_prompts=16,
-        normalize_activations=False,
+        normalize_activations="none",
         # Feature Store
         feature_sampling_window=1000,
         dead_feature_window=1000,

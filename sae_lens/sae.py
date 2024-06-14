@@ -44,7 +44,7 @@ class SAEConfig:
     hook_head_index: Optional[int]
     prepend_bos: bool
     dataset_path: str
-    normalize_activations: bool
+    normalize_activations: str
 
     # misc
     dtype: str
@@ -65,7 +65,9 @@ class SAEConfig:
 
         # use only config terms that are in the dataclass
         config_dict = {
-            k: v for k, v in config_dict.items() if k in cls.__dataclass_fields__  # type: ignore
+            k: v
+            for k, v in config_dict.items()
+            if k in cls.__dataclass_fields__  # pylint: disable=no-member
         }
         return cls(**config_dict)
 
@@ -146,6 +148,27 @@ class SAE(HookedRootModule):
             # need to default the reshape fns
             self.turn_off_forward_pass_hook_z_reshaping()
 
+        # handle run time activation normalization if needed:
+        if self.cfg.normalize_activations == "constant_norm_rescale":
+
+            #  we need to scale the norm of the input and store the scaling factor
+            def run_time_activation_norm_fn_in(x: torch.Tensor) -> torch.Tensor:
+                self.x_norm_coeff = (self.cfg.d_in**0.5) / x.norm(dim=-1, keepdim=True)
+                x = x * self.x_norm_coeff
+                return x
+
+            def run_time_activation_norm_fn_out(x: torch.Tensor) -> torch.Tensor:
+                x = x / self.x_norm_coeff
+                del self.x_norm_coeff  # prevents reusing
+                return x
+
+            self.run_time_activation_norm_fn_in = run_time_activation_norm_fn_in
+            self.run_time_activation_norm_fn_out = run_time_activation_norm_fn_out
+
+        else:
+            self.run_time_activation_norm_fn_in = lambda x: x
+            self.run_time_activation_norm_fn_out = lambda x: x
+
         self.setup()  # Required for `HookedRootModule`s
 
     def initialize_weights_basic(self):
@@ -206,6 +229,9 @@ class SAE(HookedRootModule):
                 # handle hook z reshaping if needed.
                 sae_in = self.reshape_fn_in(x)  # type: ignore
 
+                # handle run time activation normalization if needed
+                sae_in = self.run_time_activation_norm_fn_in(sae_in)
+
                 # apply b_dec_to_input if using that method.
                 sae_in_cent = sae_in - (self.b_dec * self.cfg.apply_b_dec_to_input)
 
@@ -218,6 +244,7 @@ class SAE(HookedRootModule):
                     d_head=self.d_head,
                 )
 
+                sae_out = self.run_time_activation_norm_fn_out(sae_out)
                 sae_error = self.hook_sae_error(x - x_reconstruct_clean)
 
             return self.hook_sae_output(sae_out + sae_error)
@@ -237,6 +264,9 @@ class SAE(HookedRootModule):
         # handle hook z reshaping if needed.
         x = self.reshape_fn_in(x)  # type: ignore
 
+        # handle run time activation normalization if needed
+        x = self.run_time_activation_norm_fn_in(x)
+
         # apply b_dec_to_input if using that method.
         sae_in = self.hook_sae_input(x - (self.b_dec * self.cfg.apply_b_dec_to_input))
 
@@ -254,6 +284,10 @@ class SAE(HookedRootModule):
         sae_out = self.hook_sae_recons(
             self.apply_finetuning_scaling_factor(feature_acts) @ self.W_dec + self.b_dec
         )
+
+        # handle run time activation normalization if needed
+        # will fail if you call this twice without calling encode in between.
+        sae_out = self.run_time_activation_norm_fn_out(sae_out)
 
         # handle hook z reshaping if needed.
         sae_out = self.reshape_fn_out(sae_out, self.d_head)  # type: ignore

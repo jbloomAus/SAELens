@@ -59,7 +59,7 @@ def test_cache_activations_runner():
         # buffer details
         n_batches_in_buffer=32,
         store_batch_size_prompts=16,
-        normalize_activations=False,
+        normalize_activations="none",
         #
         shuffle_every_n_buffers=8,
         n_shuffles_with_last_section=1,

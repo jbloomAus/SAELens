@@ -93,12 +93,12 @@ def test_eval_all_loadable_saes(
         device=device,
     )
 
-    if sae.cfg.normalize_activations:
+    if sae.cfg.normalize_activations == "expected_average_only_in":
         norm_scaling_factor = activation_store.estimate_norm_scaling_factor(
             n_batches_for_norm_estimate=100
         )
         sae.fold_activation_norm_scaling_factor(norm_scaling_factor)
-        activation_store.normalize_activations = False
+        activation_store.normalize_activations = "none"
 
     metrics = {}
     # eval_metrics = run_evals(

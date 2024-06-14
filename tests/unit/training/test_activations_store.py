@@ -29,6 +29,7 @@ def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
             "hook_layer": 1,
             "d_in": 64,
             "prepend_bos": True,
+            "normalize_activations": "expected_average_only_in",
         },
         {
             "model_name": "tiny-stories-1M",
@@ -102,6 +103,9 @@ def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
 
     store = ActivationsStore.from_config(model, cfg)
 
+    if cfg.normalize_activations == "expected_average_only_in":
+        store.estimated_norm_scaling_factor = 10.399
+
     assert store.model == model
 
     assert isinstance(store.dataset, IterableDataset)
@@ -150,11 +154,13 @@ def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
     assert buffer.shape == (buffer_size_expected, 1, store.d_in)
     assert buffer.device == store.device
 
-    # # check the buffer norm
-    # if cfg.normalize_activations:
-    #     assert torch.allclose(
-    #         buffer.norm(dim=-1), torch.ones_like(buffer.norm(dim=-1)), atol=1e-6
-    #     )
+    # check the buffer norm
+    if cfg.normalize_activations == "expected_average_only_in":
+        assert torch.allclose(
+            buffer.norm(dim=-1),
+            np.sqrt(store.d_in) * torch.ones_like(buffer.norm(dim=-1)),
+            atol=2,
+        )
 
 
 def test_activations_store__get_activations_head_hook(ts_model: HookedTransformer):

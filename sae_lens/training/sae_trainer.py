@@ -184,7 +184,7 @@ class SAETrainer:
 
     @torch.no_grad()
     def _estimate_norm_scaling_factor_if_needed(self) -> None:
-        if self.cfg.normalize_activations:
+        if self.cfg.normalize_activations == "expected_average_only_in":
             self.activation_store.estimated_norm_scaling_factor = (
                 self.activation_store.estimate_norm_scaling_factor()
             )

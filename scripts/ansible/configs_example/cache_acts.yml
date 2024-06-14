@@ -23,7 +23,7 @@ prepend_bos: true
 train_batch_size: 4096
 n_batches_in_buffer: 4
 store_batch_size: 128
-normalize_activations: false
+normalize_activations: none
 shuffle_every_n_buffers: 8
 n_shuffles_with_last_section: 1
 n_shuffles_in_entire_dir: 1

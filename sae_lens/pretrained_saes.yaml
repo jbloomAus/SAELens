@@ -182,7 +182,7 @@ SAE_LOOKUP:
   mistral-7b-res-wg:
     repo_id: "JoshEngels/Mistral-7B-Residual-Stream-SAEs"
     model: "mistral-7b"
-    conversion_func: null
+    conversion_func: "mistral_7b_josh_engels_loader"
     saes:
       - id: "blocks.8.hook_resid_pre"
         path: "mistral_7b_layer_8"
