@@ -175,6 +175,9 @@ class TrainingSAE(SAE):
         # apply b_dec_to_input if using that method.
         sae_in = self.hook_sae_input(x - (self.b_dec * self.cfg.apply_b_dec_to_input))
 
+        # handle run time activation normalization if needed
+        x = self.run_time_activation_norm_fn_in(x)
+
         # "... d_in, d_in d_sae -> ... d_sae",
         hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
         hidden_pre_noised = hidden_pre + (

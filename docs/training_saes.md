@@ -52,7 +52,7 @@ cfg = LanguageModelSAERunnerConfig(
     scale_sparsity_penalty_by_decoder_norm=True,
     decoder_heuristic_init=True,
     init_encoder_as_decoder_transpose=True,
-    normalize_activations=True,
+    normalize_activations="expected_average_only_in",
     # Training Parameters
     lr=5e-5,
     adam_beta1=0.9,  # adam params (default, but once upon a time we experimented with these.)

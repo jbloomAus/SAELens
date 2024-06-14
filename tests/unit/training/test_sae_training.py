@@ -44,6 +44,15 @@ from tests.unit.helpers import build_sae_cfg
         },
         {
             "model_name": "tiny-stories-1M",
+            "dataset_path": "apollo-research/roneneldan-TinyStories-tokenizer-gpt2",
+            "tokenized": False,
+            "hook_name": "blocks.1.hook_resid_pre",
+            "hook_layer": 1,
+            "d_in": 64,
+            "normalize_activations": "constant_norm_rescale",
+        },
+        {
+            "model_name": "tiny-stories-1M",
             "dataset_path": "roneneldan/TinyStories",
             "tokenized": False,
             "hook_name": "blocks.1.attn.hook_z",
@@ -55,6 +64,7 @@ from tests.unit.helpers import build_sae_cfg
         "tiny-stories-1M-resid-pre",
         "tiny-stories-1M-resid-pre-L1-W-dec-Norm",
         "tiny-stories-1M-resid-pre-pretokenized",
+        "tiny-stories-1M-resid-pre-pretokenized-norm-rescale",
         "tiny-stories-1M-hook-z",
     ],
 )
