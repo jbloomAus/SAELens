@@ -6,30 +6,56 @@ SAE_LOOKUP:
     saes:
       - id: "blocks.0.hook_resid_pre"
         path: "blocks.0.hook_resid_pre"
+        variance_explained: 0.999
+        l0: 10.0
       - id: "blocks.1.hook_resid_pre"
         path: "blocks.1.hook_resid_pre"
+        variance_explained: 0.999
+        l0: 10.0
       - id: "blocks.2.hook_resid_pre"
         path: "blocks.2.hook_resid_pre"
+        variance_explained: 0.999
+        l0: 18.0
       - id: "blocks.3.hook_resid_pre"
         path: "blocks.3.hook_resid_pre"
+        variance_explained: 0.999
+        l0: 23.0
       - id: "blocks.4.hook_resid_pre"
         path: "blocks.4.hook_resid_pre"
+        variance_explained: 0.900
+        l0: 31.0
       - id: "blocks.5.hook_resid_pre"
         path: "blocks.5.hook_resid_pre"
+        variance_explained: 0.900
+        l0: 41.0
       - id: "blocks.6.hook_resid_pre"
         path: "blocks.6.hook_resid_pre"
+        variance_explained: 0.900
+        l0: 51.0
       - id: "blocks.7.hook_resid_pre"
         path: "blocks.7.hook_resid_pre"
+        variance_explained: 0.900
+        l0: 54.0
       - id: "blocks.8.hook_resid_pre"
         path: "blocks.8.hook_resid_pre"
+        variance_explained: 0.900
+        l0: 60.0
       - id: "blocks.9.hook_resid_pre"
         path: "blocks.9.hook_resid_pre"
+        variance_explained: 0.77
+        l0: 70.0
       - id: "blocks.10.hook_resid_pre"
         path: "blocks.10.hook_resid_pre"
+        variance_explained: 0.77
+        l0: 52.0
       - id: "blocks.11.hook_resid_pre"
         path: "blocks.11.hook_resid_pre"
+        variance_explained: 0.77
+        l0: 56.0
       - id: "blocks.11.hook_resid_post"
         path: "blocks.11.hook_resid_post"
+        variance_explained: 0.77
+        l0: 70.0
   gpt2-small-hook-z-kk:
     repo_id: "ckkissane/attn-saes-gpt2-small-all-layers"
     model: "gpt2-small"
@@ -37,28 +63,52 @@ SAE_LOOKUP:
     saes:
       - id: "blocks.0.hook_z"
         path: "gpt2-small_L0_Hcat_z_lr1.20e-03_l11.80e+00_ds24576_bs4096_dc1.00e-06_rsanthropic_rie25000_nr4_v9.pt"
+        variance_explained: 0.13
+        l0: 3.0
       - id: "blocks.1.hook_z"
         path: "gpt2-small_L1_Hcat_z_lr1.20e-03_l18.00e-01_ds24576_bs4096_dc1.00e-06_rsanthropic_rie25000_nr4_v5.pt"
+        variance_explained: 0.42
+        l0: 23.0
       - id: "blocks.2.hook_z"
         path: "gpt2-small_L2_Hcat_z_lr1.20e-03_l11.00e+00_ds24576_bs4096_dc1.00e-06_rsanthropic_rie25000_nr4_v4.pt"
+        variance_explained: 0.40
+        l0: 16.0
       - id: "blocks.3.hook_z"
         path: "gpt2-small_L3_Hcat_z_lr1.20e-03_l19.00e-01_ds24576_bs4096_dc1.00e-06_rsanthropic_rie25000_nr4_v9.pt"
+        variance_explained: 0.43
+        l0: 15.0
       - id: "blocks.4.hook_z"
         path: "gpt2-small_L4_Hcat_z_lr1.20e-03_l11.10e+00_ds24576_bs4096_dc1.00e-06_rsanthropic_rie25000_nr4_v7.pt"
+        variance_explained: 0.27
+        l0: 14.0
       - id: "blocks.5.hook_z"
         path: "gpt2-small_L5_Hcat_z_lr1.20e-03_l11.00e+00_ds49152_bs4096_dc1.00e-06_rsanthropic_rie25000_nr4_v9.pt"
+        variance_explained: 0.13
+        l0: 17.0
       - id: "blocks.6.hook_z"
         path: "gpt2-small_L6_Hcat_z_lr1.20e-03_l11.10e+00_ds24576_bs4096_dc1.00e-06_rsanthropic_rie25000_nr4_v9.pt"
+        variance_explained: 0.0
+        l0: 17.0
       - id: "blocks.7.hook_z"
         path: "gpt2-small_L7_Hcat_z_lr1.20e-03_l11.10e+00_ds49152_bs4096_dc1.00e-06_rsanthropic_rie25000_nr4_v9.pt"
+        variance_explained: -7.55
+        l0: 19.0
       - id: "blocks.8.hook_z"
         path: "gpt2-small_L8_Hcat_z_lr1.20e-03_l11.30e+00_ds24576_bs4096_dc1.00e-05_rsanthropic_rie25000_nr4_v6.pt"
+        variance_explained: -0.22
+        l0: 23.0
       - id: "blocks.9.hook_z"
         path: "gpt2-small_L9_Hcat_z_lr1.20e-03_l11.20e+00_ds24576_bs4096_dc1.00e-06_rsanthropic_rie25000_nr4_v9.pt"
+        variance_explained: -0.54
+        l0: 23.0
       - id: "blocks.10.hook_z"
         path: "gpt2-small_L10_Hcat_z_lr1.20e-03_l11.30e+00_ds24576_bs4096_dc1.00e-05_rsanthropic_rie25000_nr4_v9.pt"
+        variance_explained: -0.27
+        l0: 14.0
       - id: "blocks.11.hook_z"
         path: "gpt2-small_L11_Hcat_z_lr1.20e-03_l13.00e+00_ds24576_bs4096_dc3.16e-06_rsanthropic_rie25000_nr4_v9.pt"
+        variance_explained: -0.7
+        l0: 9.4
   gpt2-small-mlp-tm:
     repo_id: "tommmcgrath/gpt2-small-mlp-out-saes"
     model: "gpt2-small"
@@ -66,28 +116,52 @@ SAE_LOOKUP:
     saes:
       - id: "blocks.0.hook_mlp_out"
         path: "sae_group_gpt2_blocks.0.hook_mlp_out_24576:v1"
+        variance_explained: 0.999
+        l0: 15.0
       - id: "blocks.1.hook_mlp_out"
         path: "sae_group_gpt2_blocks.1.hook_mlp_out_24576:v0"
+        variance_explained: -0.20
+        l0: 21.0
       - id: "blocks.2.hook_mlp_out"
         path: "sae_group_gpt2_blocks.2.hook_mlp_out_24576:v0"
+        variance_explained: 0.55
+        l0: 137.0
       - id: "blocks.3.hook_mlp_out"
         path: "sae_group_gpt2_blocks.3.hook_mlp_out_24576:v0"
+        variance_explained: 0.41
+        l0: 54.0
       - id: "blocks.4.hook_mlp_out"
         path: "sae_group_gpt2_blocks.4.hook_mlp_out_24576:v0"
+        variance_explained: 0.44
+        l0: 74.0
       - id: "blocks.5.hook_mlp_out"
         path: "sae_group_gpt2_blocks.5.hook_mlp_out_24576:v0"
+        variance_explained: 0.52
+        l0: 76.0
       - id: "blocks.6.hook_mlp_out"
         path: "sae_group_gpt2_blocks.6.hook_mlp_out_24576:v0"
+        variance_explained: 0.508
+        l0: 40.0
       - id: "blocks.7.hook_mlp_out"
         path: "sae_group_gpt2_blocks.7.hook_mlp_out_24576:v0"
+        variance_explained: 0.53
+        l0: 52.0
       - id: "blocks.8.hook_mlp_out"
         path: "sae_group_gpt2_blocks.8.hook_mlp_out_24576:v1"
+        variance_explained: 0.46
+        l0: 36.0
       - id: "blocks.9.hook_mlp_out"
         path: "sae_group_gpt2_blocks.9.hook_mlp_out_24576:v0"
+        variance_explained: 0.37
+        l0: 49.0
       - id: "blocks.10.hook_mlp_out"
         path: "sae_group_gpt2_blocks.10.hook_mlp_out_24576:v0"
+        variance_explained: -0.44
+        l0: 167.0
       - id: "blocks.11.hook_mlp_out"
         path: "sae_group_gpt2_blocks.11.hook_mlp_out_24576:v2"
+        variance_explained: 0.05
+        l0: 170.0
   gemma-2b-res-jb:
     repo_id: "jbloom/Gemma-2b-Residual-Stream-SAEs"
     model: "gemma-2b"
@@ -95,7 +169,30 @@ SAE_LOOKUP:
     saes:
       - id: "blocks.0.hook_resid_post"
         path: "gemma_2b_blocks.0.hook_resid_post_16384_anthropic"
+        variance_explained: 0.999
+        l0: 47.0
       - id: "blocks.6.hook_resid_post"
         path: "gemma_2b_blocks.6.hook_resid_post_16384_anthropic_fast_lr"
+        variance_explained: 0.71
+        l0: 56.0
       - id: "blocks.12.hook_resid_post"
         path: "gemma_2b_blocks.12.hook_resid_post_16384"
+        variance_explained: -3.6
+        l0: 62.0
+  mistral-7b-res-wg:
+    repo_id: "JoshEngels/Mistral-7B-Residual-Stream-SAEs"
+    model: "mistral-7b"
+    conversion_func: "mistral_7b_josh_engels_loader"
+    saes:
+      - id: "blocks.8.hook_resid_pre"
+        path: "mistral_7b_layer_8"
+        variance_explained: 0.74
+        l0: 82
+      - id: "blocks.16.hook_resid_pre"
+        path: "mistral_7b_layer_16"
+        variance_explained: 0.85
+        l0: 74
+      - id: "blocks.24.hook_resid_pre"
+        path: "mistral_7b_layer_24"
+        variance_explained: 0.72
+        l0: 75

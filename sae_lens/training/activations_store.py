@@ -130,7 +130,7 @@ class ActivationsStore:
         store_batch_size_prompts: int,
         train_batch_size_tokens: int,
         prepend_bos: bool,
-        normalize_activations: bool,
+        normalize_activations: str,
         device: torch.device,
         dtype: str,
         cached_activations_path: str | None = None,
@@ -453,7 +453,7 @@ class ActivationsStore:
         new_buffer = new_buffer[torch.randperm(new_buffer.shape[0])]
 
         # every buffer should be normalized:
-        if self.normalize_activations:
+        if self.normalize_activations == "expected_average_only_in":
             new_buffer = self.apply_norm_scaling_factor(new_buffer)
 
         return new_buffer

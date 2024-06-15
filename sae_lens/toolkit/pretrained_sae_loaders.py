@@ -47,6 +47,7 @@ def sae_lens_loader(
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "cpu"
 
+    # TODO: don't call a function at the end of another like this. Poor form.
     return load_pretrained_sae_lens_sae_components(
         cfg_path, sae_path, device, log_sparsity_path=log_sparsity_path
     )
@@ -138,10 +139,24 @@ def connor_rob_hook_z_loader(
         "prepend_bos": True,
         "dataset_path": "apollo-research/Skylion007-openwebtext-tokenizer-gpt2",
         "context_size": 128,
-        "normalize_activations": False,
+        "normalize_activations": "none",
     }
 
     return cfg_dict, weights, None
+
+
+def mistral_7b_josh_engels_loader(
+    repo_id: str,
+    folder_name: str,
+    device: Optional[str] = None,
+    force_download: bool = False,
+) -> tuple[dict[str, Any], dict[str, torch.Tensor], Optional[torch.Tensor]]:
+
+    cfg_dict, state_dict, log_sparsity = sae_lens_loader(
+        repo_id, folder_name, device, force_download
+    )
+    cfg_dict["normalize_activations"] = "constant_norm_rescale"
+    return cfg_dict, state_dict, log_sparsity
 
 
 def load_pretrained_sae_lens_sae_components(
@@ -197,8 +212,19 @@ def load_pretrained_sae_lens_sae_components(
     if "activation_fn" not in cfg_dict:
         cfg_dict["activation_fn_str"] = "relu"
 
+    # if missing then none.
     if "normalize_activations" not in cfg_dict:
-        cfg_dict["normalize_activations"] = False
+        cfg_dict["normalize_activations"] = "none"
+    # if bool and True, then it's the April update method of normalizing activations and hasn't been folded in.
+    if "normalize_activations" in cfg_dict and isinstance(
+        cfg_dict["normalize_activations"], bool
+    ):
+        # backwards compatibility
+        cfg_dict["normalize_activations"] = (
+            "none"
+            if not cfg_dict["normalize_activations"]
+            else "expected_average_only_in"
+        )
 
     if "scaling_factor" in state_dict:
         # we were adding it anyway for a period of time but are no longer doing so.
@@ -227,4 +253,5 @@ def load_pretrained_sae_lens_sae_components(
 NAMED_PRETRAINED_SAE_LOADERS: dict[str, PretrainedSaeLoader] = {
     "sae_lens": sae_lens_loader,  # type: ignore
     "connor_rob_hook_z": connor_rob_hook_z_loader,  # type: ignore
+    "mistral_7b_josh_engels_loader": mistral_7b_josh_engels_loader,  # type: ignore
 }

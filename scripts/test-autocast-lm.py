@@ -83,7 +83,7 @@ for block in [11, 0]:
             # Unsure if this is enough
             n_batches_in_buffer=64,
             store_batch_size_prompts=16,
-            normalize_activations=True,
+            normalize_activations="expected_average_only_in",
             # Feature Store
             feature_sampling_window=1000,
             dead_feature_window=1000,

@@ -55,7 +55,7 @@ class LanguageModelSAERunnerConfig:
         finetuning_tokens (int): The number of finetuning tokens. See [here](https://www.lesswrong.com/posts/3JuSjTZyMzaSeTxKk/addressing-feature-suppression-in-saes)
         store_batch_size_prompts (int): The batch size for storing activations. This controls how many prompts are in the batch of the language model when generating actiations.
         train_batch_size_tokens (int): The batch size for training. This controls the batch size of the SAE Training loop.
-        normalize_activations (bool): Whether to normalize activations. See Anthropic April update.
+        normalize_activations (str): Activation Normalization Strategy. Either none, expected_average_only_in (estimate the average activation norm and divide activations by it -> this can be folded post training and set to None), or constant_norm_rescale (at runtime set activation norm to sqrt(d_in) and then scale up the SAE output).
         device (str): The device to use. Usually cuda.
         act_store_device (str): The device to use for the activation store. CPU is advised in order to save vram.
         seed (int): The seed to use.
@@ -141,7 +141,9 @@ class LanguageModelSAERunnerConfig:
     finetuning_tokens: int = 0
     store_batch_size_prompts: int = 32
     train_batch_size_tokens: int = 4096
-    normalize_activations: bool = False
+    normalize_activations: str = (
+        "none"  # none, expected_average_only_in (Anthropic April Update), constant_norm_rescale (Anthropic Feb Update)
+    )
 
     # Misc
     device: str = "cpu"
@@ -263,6 +265,15 @@ class LanguageModelSAERunnerConfig:
         if (self.finetuning_method == "decoder") and (self.apply_b_dec_to_input):
             raise ValueError(
                 "If we are fine tuning the decoder, we can't be applying b_dec to the input.\nSet apply_b_dec_to_input to False."
+            )
+
+        if self.normalize_activations not in [
+            "none",
+            "expected_average_only_in",
+            "constant_norm_rescale",
+        ]:
+            raise ValueError(
+                f"normalize_activations must be none, expected_average_only_in, or constant_norm_rescale. Got {self.normalize_activations}"
             )
 
         if self.act_store_device == "with_model":
@@ -425,7 +436,7 @@ class CacheActivationsRunnerConfig:
     training_tokens: int = 2_000_000
     store_batch_size_prompts: int = 32
     train_batch_size_tokens: int = 4096
-    normalize_activations: bool = False
+    normalize_activations: str = "none"  # should always be none for activation caching
 
     # Misc
     device: str = "cpu"
