@@ -216,43 +216,23 @@ class SAE(HookedRootModule):
         feature_acts = self.encode(x)
         sae_out = self.decode(feature_acts)
 
-        if self.use_error_term:
-            with torch.no_grad():
-                # Recompute everything without hooks to get true error term
-                # Otherwise, the output with error term will always equal input, even for causal interventions that affect x_reconstruct
-                # This is in a no_grad context to detach the error, so we can compute SAE feature gradients (eg for attribution patching). See A.3 in https://arxiv.org/pdf/2403.19647.pdf for more detail
-                # NOTE: we can't just use `sae_error = input - x_reconstruct.detach()` or something simpler, since this would mean intervening on features would mean ablating features still results in perfect reconstruction.
+        if not self.use_error_term:
+            return self.hook_sae_output(sae_out)
 
-                # move x to correct dtype
-                x = x.to(self.dtype)
-
-                # handle hook z reshaping if needed.
-                sae_in = self.reshape_fn_in(x)  # type: ignore
-
-                # handle run time activation normalization if needed
-                sae_in = self.run_time_activation_norm_fn_in(sae_in)
-
-                # apply b_dec_to_input if using that method.
-                sae_in_cent = sae_in - (self.b_dec * self.cfg.apply_b_dec_to_input)
-
-                # "... d_in, d_in d_sae -> ... d_sae",
-                hidden_pre = sae_in_cent @ self.W_enc + self.b_enc
-                feature_acts = self.activation_fn(hidden_pre)
-                x_reconstruct_clean = self.reshape_fn_out(
-                    self.apply_finetuning_scaling_factor(feature_acts) @ self.W_dec
-                    + self.b_dec,
-                    d_head=self.d_head,
-                )
-
-                sae_out = self.run_time_activation_norm_fn_out(sae_out)
-                sae_error = self.hook_sae_error(x - x_reconstruct_clean)
-
+        # If using error term, compute the error term and add it to the output
+        with torch.no_grad():
+            # Recompute everything without hooks to get true error term
+            # Otherwise, the output with error term will always equal input, even for causal interventions that affect x_reconstruct
+            # This is in a no_grad context to detach the error, so we can compute SAE feature gradients (eg for attribution patching). See A.3 in https://arxiv.org/pdf/2403.19647.pdf for more detail
+            # NOTE: we can't just use `sae_error = input - x_reconstruct.detach()` or something simpler, since this would mean intervening on features would mean ablating features still results in perfect reconstruction.
+            feature_acts_clean = self.encode(x, apply_hooks=False)
+            x_reconstruct_clean = self.decode(feature_acts_clean, apply_hooks=False)
+            sae_error = self.hook_sae_error(x - x_reconstruct_clean)
             return self.hook_sae_output(sae_out + sae_error)
 
-        return self.hook_sae_output(sae_out)
-
     def encode(
-        self, x: Float[torch.Tensor, "... d_in"]
+        self, x: Float[torch.Tensor, "... d_in"],
+        apply_hooks: bool = True
     ) -> Float[torch.Tensor, "... d_sae"]:
         """
         Calcuate SAE features from inputs
@@ -268,22 +248,29 @@ class SAE(HookedRootModule):
         x = self.run_time_activation_norm_fn_in(x)
 
         # apply b_dec_to_input if using that method.
-        sae_in = self.hook_sae_input(x - (self.b_dec * self.cfg.apply_b_dec_to_input))
+        sae_in = x - (self.b_dec * self.cfg.apply_b_dec_to_input)
+        if apply_hooks:
+            sae_in = self.hook_sae_input(sae_in)
 
         # "... d_in, d_in d_sae -> ... d_sae",
-        hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
-        feature_acts = self.hook_sae_acts_post(self.activation_fn(hidden_pre))
+        hidden_pre = sae_in @ self.W_enc + self.b_enc
+        if apply_hooks:
+            hidden_pre = self.hook_sae_acts_pre(hidden_pre)
+
+        feature_acts = self.activation_fn(hidden_pre)
+        if apply_hooks:
+            feature_acts = self.hook_sae_acts_post(feature_acts)
 
         return feature_acts
 
     def decode(
-        self, feature_acts: Float[torch.Tensor, "... d_sae"]
+        self, feature_acts: Float[torch.Tensor, "... d_sae"], apply_hooks: bool = True
     ) -> Float[torch.Tensor, "... d_in"]:
         """Decodes SAE feature activation tensor into a reconstructed input activation tensor."""
         # "... d_sae, d_sae d_in -> ... d_in",
-        sae_out = self.hook_sae_recons(
-            self.apply_finetuning_scaling_factor(feature_acts) @ self.W_dec + self.b_dec
-        )
+        sae_out = self.apply_finetuning_scaling_factor(feature_acts) @ self.W_dec + self.b_dec
+        if apply_hooks:
+            sae_out = self.hook_sae_recons(sae_out)
 
         # handle run time activation normalization if needed
         # will fail if you call this twice without calling encode in between.
