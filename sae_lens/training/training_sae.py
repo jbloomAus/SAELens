@@ -12,7 +12,7 @@ from jaxtyping import Float
 from torch import nn
 
 from sae_lens.config import LanguageModelSAERunnerConfig
-from sae_lens.sae import SAE, SAEConfig
+from sae_lens.sae import SAE, SAEConfig, Transcoder, TranscoderConfig
 from sae_lens.toolkit.pretrained_sae_loaders import (
     load_pretrained_sae_lens_sae_components,
 )
@@ -124,7 +124,7 @@ class TrainingSAEConfig(SAEConfig):
 
 
 @dataclass
-class TrainingTranscoderConfig(TrainingSAEConfig):
+class TrainingTranscoderConfig(TrainingSAEConfig, TranscoderConfig):
     d_out: int = 512
     hook_name_out: str = "blocks.0.hook_mlp_out"
     hook_layer_out: int = 0
@@ -161,8 +161,10 @@ class TrainingSAE(SAE):
     def from_dict(cls, config_dict: dict[str, Any]) -> "TrainingSAE":
         return cls(TrainingSAEConfig.from_dict(config_dict))
 
-    def encode(
-        self, x: Float[torch.Tensor, "... d_in"]
+    # NOTE: The following type: ignore statement is because the parent class
+    # has additional kwargs for the encode() method.
+    def encode(  # type: ignore
+        self, x: Float[torch.Tensor, "... d_in"], apply_hooks: bool = False
     ) -> Float[torch.Tensor, "... d_sae"]:
         """
         Calcuate SAE features from inputs
@@ -335,7 +337,9 @@ class TrainingSAE(SAE):
         return sae
 
     def initialize_weights_complex(self):
-        """ """
+        """Re-initialize the weights of the SAE."""
+        # NOTE: initialize_weights_basic has been called in the parent class constructor
+        # so there's no need to re-initialize everything here.
 
         if self.cfg.decoder_orthogonal_init:
             self.W_dec.data = nn.init.orthogonal_(self.W_dec.data.T).T
@@ -348,6 +352,7 @@ class TrainingSAE(SAE):
             )
             self.initialize_decoder_norm_constant_norm()
 
+        # NOTE(dtch1997): This seems like it's duplicated at the end of the method. Should it be removed?
         elif self.cfg.normalize_sae_decoder:
             self.set_decoder_norm_to_unit_norm()
 
@@ -427,4 +432,75 @@ class TrainingSAE(SAE):
             parallel_component,
             self.W_dec.data,
             "d_sae, d_sae d_in -> d_sae d_in",
+        )
+
+
+class TrainingTranscoder(TrainingSAE, Transcoder):
+    """
+    A transcoder used for training. This class provides a `training_forward_pass` method which calculates
+    losses used for training.
+    """
+
+    cfg: TrainingTranscoderConfig  # type: ignore
+    use_error_term: bool
+    dtype: torch.dtype
+    device: torch.device
+
+    def training_forward_pass(  # type: ignore
+        self,
+        sae_in: torch.Tensor,
+        sae_target: torch.Tensor,
+        current_l1_coefficient: float,
+        dead_neuron_mask: Optional[torch.Tensor] = None,
+    ) -> TrainStepOutput:
+        # NOTE: This is exactly the same as the TrainingSAE class except that we use sae_target as target
+
+        # do a forward pass to get SAE out, but we also need the
+        # hidden pre.
+        feature_acts, _ = self.encode_with_hidden_pre(sae_in)
+        sae_out = self.decode(feature_acts)
+
+        # MSE LOSS
+        per_item_mse_loss = self.mse_loss_fn(sae_out, sae_target)
+        mse_loss = per_item_mse_loss.sum(dim=-1).mean()
+
+        # GHOST GRADS
+        if self.cfg.use_ghost_grads and self.training and dead_neuron_mask is not None:
+
+            # first half of second forward pass
+            _, hidden_pre = self.encode_with_hidden_pre(sae_in)
+            ghost_grad_loss = self.calculate_ghost_grad_loss(
+                x=sae_in,
+                sae_out=sae_out,
+                per_item_mse_loss=per_item_mse_loss,
+                hidden_pre=hidden_pre,
+                dead_neuron_mask=dead_neuron_mask,
+            )
+        else:
+            ghost_grad_loss = 0.0
+
+        # SPARSITY LOSS
+        # either the W_dec norms are 1 and this won't do anything or they are not 1
+        # and we're using their norm in the loss function.
+        weighted_feature_acts = feature_acts * self.W_dec.norm(dim=1)
+        sparsity = weighted_feature_acts.norm(
+            p=self.cfg.lp_norm, dim=-1
+        )  # sum over the feature dimension
+
+        l1_loss = (current_l1_coefficient * sparsity).mean()
+
+        loss = mse_loss + l1_loss + ghost_grad_loss
+
+        return TrainStepOutput(
+            sae_in=sae_in,
+            sae_out=sae_out,
+            feature_acts=feature_acts,
+            loss=loss,
+            mse_loss=mse_loss.item(),
+            l1_loss=l1_loss.item(),
+            ghost_grad_loss=(
+                ghost_grad_loss.item()
+                if isinstance(ghost_grad_loss, torch.Tensor)
+                else ghost_grad_loss
+            ),
         )

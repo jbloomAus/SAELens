@@ -9,11 +9,18 @@ from tqdm import tqdm
 from transformer_lens.hook_points import HookedRootModule
 
 from sae_lens import __version__
-from sae_lens.config import LanguageModelSAERunnerConfig
+from sae_lens.config import (
+    LanguageModelSAERunnerConfig,
+    LanguageModelTranscoderRunnerConfig,
+)
 from sae_lens.evals import run_evals
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.optim import L1Scheduler, get_lr_scheduler
-from sae_lens.training.training_sae import TrainingSAE, TrainStepOutput
+from sae_lens.training.training_sae import (
+    TrainingSAE,
+    TrainingTranscoder,
+    TrainStepOutput,
+)
 
 # used to map between parameters which are updated during finetuning and the config str.
 FINETUNING_PARAMETERS = {
@@ -198,7 +205,7 @@ class SAETrainer:
     ) -> TrainStepOutput:
 
         sae.train()
-        # Make sure the W_dec is still zero-norm
+        # Make sure the W_dec is still unit-norm
         if self.cfg.normalize_sae_decoder:
             sae.set_decoder_norm_to_unit_norm()
 
@@ -397,3 +404,117 @@ class SAETrainer:
                     param.requires_grad = False
 
             self.finetuning = True
+
+
+class TranscoderTrainer(SAETrainer):
+    def __init__(
+        self,
+        model: HookedRootModule,
+        sae: TrainingTranscoder,
+        activation_store: ActivationsStore,
+        activation_store_out: ActivationsStore,
+        save_checkpoint_fn,  # type: ignore
+        cfg: LanguageModelTranscoderRunnerConfig,
+    ) -> None:
+        super().__init__(model, sae, activation_store, save_checkpoint_fn, cfg)
+        self.activation_store_out = activation_store_out
+
+    def _train_step(  # type: ignore
+        self,
+        sae: TrainingSAE,
+        sae_in: torch.Tensor,
+        sae_target: torch.Tensor,
+    ) -> TrainStepOutput:
+        # NOTE: This is the same as the SAETrainer _train_step method, but with the sae_target added.
+
+        sae.train()
+        # Make sure the W_dec is still unit-norm
+        if self.cfg.normalize_sae_decoder:
+            sae.set_decoder_norm_to_unit_norm()
+
+        # log and then reset the feature sparsity every feature_sampling_window steps
+        if (self.n_training_steps + 1) % self.cfg.feature_sampling_window == 0:
+            if self.cfg.log_to_wandb:
+                sparsity_log_dict = self._build_sparsity_log_dict()
+                wandb.log(sparsity_log_dict, step=self.n_training_steps)
+            self._reset_running_sparsity_stats()
+
+        # for documentation on autocasting see:
+        # https://pytorch.org/tutorials/recipes/recipes/amp_recipe.html
+        with self.autocast_if_enabled:
+            assert isinstance(
+                self.sae, TrainingTranscoder
+            ), "sae should be a TrainingTranscoder"
+            train_step_output = self.sae.training_forward_pass(
+                sae_in=sae_in,
+                sae_target=sae_target,
+                dead_neuron_mask=self.dead_neurons,
+                current_l1_coefficient=self.current_l1_coefficient,
+            )
+
+            with torch.no_grad():
+                did_fire = (train_step_output.feature_acts > 0).float().sum(-2) > 0
+                self.n_forward_passes_since_fired += 1
+                self.n_forward_passes_since_fired[did_fire] = 0
+                self.act_freq_scores += (
+                    (train_step_output.feature_acts.abs() > 0).float().sum(0)
+                )
+                self.n_frac_active_tokens += self.cfg.train_batch_size_tokens
+
+        # Scaler will rescale gradients if autocast is enabled
+        self.scaler.scale(
+            train_step_output.loss
+        ).backward()  # loss.backward() if not autocasting
+        self.scaler.unscale_(self.optimizer)  # needed to clip correctly
+        # TODO: Work out if grad norm clipping should be in config / how to test it.
+        torch.nn.utils.clip_grad_norm_(sae.parameters(), 1.0)
+        self.scaler.step(self.optimizer)  # just ctx.optimizer.step() if not autocasting
+        self.scaler.update()
+
+        if self.cfg.normalize_sae_decoder:
+            sae.remove_gradient_parallel_to_decoder_directions()
+
+        self.optimizer.zero_grad()
+        self.lr_scheduler.step()
+        self.l1_scheduler.step()
+
+        return train_step_output
+
+    def fit(self) -> TrainingSAE:
+        # NOTE: This is the same as the SAETrainer fit method, but with the sae_target added.
+
+        pbar = tqdm(total=self.cfg.total_training_tokens, desc="Training SAE")
+
+        self._estimate_norm_scaling_factor_if_needed()
+
+        # Train loop
+        while self.n_training_tokens < self.cfg.total_training_tokens:
+            # Do a training step.
+            layer_acts = self.activation_store.next_batch()[:, 0, :]
+            layer_acts_out = self.activation_store_out.next_batch()[:, 0, :]
+            self.n_training_tokens += self.cfg.train_batch_size_tokens
+
+            step_output = self._train_step(
+                sae=self.sae, sae_in=layer_acts, sae_target=layer_acts_out
+            )
+
+            if self.cfg.log_to_wandb:
+                self._log_train_step(step_output)
+                self._run_and_log_evals()
+
+            self._checkpoint_if_needed()
+            self.n_training_steps += 1
+            self._update_pbar(step_output, pbar)
+
+            ### If n_training_tokens > sae_group.cfg.training_tokens, then we should switch to fine-tuning (if we haven't already)
+            self._begin_finetuning_if_needed()
+
+        # save final sae group to checkpoints folder
+        self.save_checkpoint(
+            trainer=self,
+            checkpoint_name=f"final_{self.n_training_tokens}",
+            wandb_aliases=["final_model"],
+        )
+
+        pbar.close()
+        return self.sae
