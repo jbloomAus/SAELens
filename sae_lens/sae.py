@@ -93,6 +93,7 @@ class SAEConfig:
             "normalize_activations": self.normalize_activations,
         }
 
+
 @dataclass
 class TranscoderConfig(SAEConfig):
     # transcoder-specific forward pass details
@@ -102,6 +103,7 @@ class TranscoderConfig(SAEConfig):
     hook_name_out: str
     hook_layer_out: int
     hook_head_index_out: Optional[int]
+
 
 class SAE(HookedRootModule):
     """
@@ -240,8 +242,7 @@ class SAE(HookedRootModule):
         return self.hook_sae_output(sae_out + sae_error)
 
     def encode(
-        self, x: Float[torch.Tensor, "... d_in"],
-        apply_hooks: bool = True
+        self, x: Float[torch.Tensor, "... d_in"], apply_hooks: bool = True
     ) -> Float[torch.Tensor, "... d_sae"]:
         """
         Calcuate SAE features from inputs
@@ -277,18 +278,25 @@ class SAE(HookedRootModule):
     ) -> Float[torch.Tensor, "... d_in"]:
         """Decodes SAE feature activation tensor into a reconstructed input activation tensor."""
         # "... d_sae, d_sae d_in -> ... d_in",
-        sae_out = self.apply_finetuning_scaling_factor(feature_acts) @ self.W_dec + self.b_dec
+        sae_recons = self.get_sae_recons(feature_acts)
         if apply_hooks:
-            sae_out = self.hook_sae_recons(sae_out)
+            sae_recons = self.hook_sae_recons(sae_recons)
 
         # handle run time activation normalization if needed
         # will fail if you call this twice without calling encode in between.
-        sae_out = self.run_time_activation_norm_fn_out(sae_out)
+        sae_recons = self.run_time_activation_norm_fn_out(sae_recons)
 
         # handle hook z reshaping if needed.
-        sae_out = self.reshape_fn_out(sae_out, self.d_head)  # type: ignore
+        sae_recons = self.reshape_fn_out(sae_recons, self.d_head)  # type: ignore
 
-        return sae_out
+        return sae_recons
+
+    def get_sae_recons(
+        self, feature_acts: Float[torch.Tensor, "... d_sae"]
+    ) -> Float[torch.Tensor, "... d_in"]:
+        return (
+            self.apply_finetuning_scaling_factor(feature_acts) @ self.W_dec + self.b_dec
+        )
 
     @torch.no_grad()
     def fold_W_dec_norm(self):
@@ -440,7 +448,14 @@ def get_activation_fn(activation_fn: str) -> Callable[[torch.Tensor], torch.Tens
     else:
         raise ValueError(f"Unknown activation function: {activation_fn}")
 
+
 class Transcoder(SAE):
+    """A variant of sparse autoencoders that have different input and output hook points."""
+
+    cfg: TranscoderConfig  # type: ignore
+    dtype: torch.dtype
+    device: torch.device
+
     def __init__(
         self,
         cfg: TranscoderConfig,
@@ -451,37 +466,19 @@ class Transcoder(SAE):
         super().__init__(cfg, use_error_term)
 
     def initialize_weights_basic(self):
+        super().initialize_weights_basic()
 
-        # no config changes encoder bias init for now.
-        self.b_enc = nn.Parameter(
-            torch.zeros(self.cfg.d_sae, dtype=self.dtype, device=self.device)
+        # NOTE: Transcoders have an additional b_dec_out parameter.
+        # Reference: https://github.com/jacobdunefsky/transcoder_circuits/blob/7b44d870a5a301ef29eddfd77cb1f4dca854760a/sae_training/sparse_autoencoder.py#L93C1-L97C14
+        self.b_dec_out = nn.Parameter(
+            torch.zeros(self.cfg.d_out, dtype=self.dtype, device=self.device)
         )
 
-        # Start with the default init strategy:
-        self.W_dec = nn.Parameter(
-            torch.nn.init.kaiming_uniform_(
-                torch.empty(
-                    self.cfg.d_sae, self.cfg.d_in, dtype=self.dtype, device=self.device
-                )
-            )
+    def get_sae_recons(
+        self, feature_acts: Float[torch.Tensor, "... d_sae"]
+    ) -> Float[torch.Tensor, "... d_out"]:
+        # NOTE: b_dec_out instead of b_dec
+        return (
+            self.apply_finetuning_scaling_factor(feature_acts) @ self.W_dec
+            + self.b_dec_out
         )
-
-        self.W_enc = nn.Parameter(
-            torch.nn.init.kaiming_uniform_(
-                torch.empty(
-                    self.cfg.d_in, self.cfg.d_sae, dtype=self.dtype, device=self.device
-                )
-            )
-        )
-
-        # methdods which change b_dec as a function of the dataset are implemented after init.
-        self.b_dec = nn.Parameter(
-            torch.zeros(self.cfg.d_in, dtype=self.dtype, device=self.device)
-        )
-
-        # scaling factor for fine-tuning (not to be used in initial training)
-        # TODO: Make this optional and not included with all SAEs by default (but maintain backwards compatibility)
-        if self.cfg.finetuning_scaling_factor:
-            self.finetuning_scaling_factor = nn.Parameter(
-                torch.ones(self.cfg.d_sae, dtype=self.dtype, device=self.device)
-            )
