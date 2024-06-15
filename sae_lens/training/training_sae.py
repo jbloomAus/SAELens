@@ -12,7 +12,7 @@ from jaxtyping import Float
 from torch import nn
 
 from sae_lens.config import LanguageModelSAERunnerConfig
-from sae_lens.sae import SAE, SAEConfig, Transcoder, TranscoderConfig
+from sae_lens.sae import SAE, SAEConfig, Transcoder
 from sae_lens.toolkit.pretrained_sae_loaders import (
     load_pretrained_sae_lens_sae_components,
 )
@@ -124,7 +124,7 @@ class TrainingSAEConfig(SAEConfig):
 
 
 @dataclass
-class TrainingTranscoderConfig(TrainingSAEConfig, TranscoderConfig):
+class TrainingTranscoderConfig(TrainingSAEConfig):
     d_out: int = 512
     hook_name_out: str = "blocks.0.hook_mlp_out"
     hook_layer_out: int = 0
