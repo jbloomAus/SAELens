@@ -408,6 +408,14 @@ class LanguageModelSAERunnerConfig:
 
 
 @dataclass
+class LanguageModelTranscoderRunnerConfig(LanguageModelSAERunnerConfig):
+    d_out: int = 512
+    hook_name_out: str = "blocks.0.hook_mlp_out"
+    hook_layer_out: int = 0
+    hook_head_index_out: Optional[int] = None
+
+
+@dataclass
 class CacheActivationsRunnerConfig:
     """
     Configuration for caching activations of an LLM.

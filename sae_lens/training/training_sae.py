@@ -123,6 +123,14 @@ class TrainingSAEConfig(SAEConfig):
         }
 
 
+@dataclass
+class TrainingTranscoderConfig(TrainingSAEConfig):
+    d_out: int = 512
+    hook_name_out: str = "blocks.0.hook_mlp_out"
+    hook_layer_out: int = 0
+    hook_head_index_out: Optional[int] = None
+
+
 class TrainingSAE(SAE):
     """
     A SAE used for training. This class provides a `training_forward_pass` method which calculates
@@ -166,17 +174,7 @@ class TrainingSAE(SAE):
         self, x: Float[torch.Tensor, "... d_in"]
     ) -> tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
 
-        # move x to correct dtype
-        x = x.to(self.dtype)
-
-        # handle hook z reshaping if needed.
-        x = self.reshape_fn_in(x)  # type: ignore
-
-        # apply b_dec_to_input if using that method.
-        sae_in = self.hook_sae_input(x - (self.b_dec * self.cfg.apply_b_dec_to_input))
-
-        # handle run time activation normalization if needed
-        x = self.run_time_activation_norm_fn_in(x)
+        sae_in = self.get_sae_in(x)
 
         # "... d_in, d_in d_sae -> ... d_sae",
         hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)

@@ -247,18 +247,7 @@ class SAE(HookedRootModule):
         """
         Calcuate SAE features from inputs
         """
-
-        # move x to correct dtype
-        x = x.to(self.dtype)
-
-        # handle hook z reshaping if needed.
-        x = self.reshape_fn_in(x)  # type: ignore
-
-        # handle run time activation normalization if needed
-        x = self.run_time_activation_norm_fn_in(x)
-
-        # apply b_dec_to_input if using that method.
-        sae_in = x - (self.b_dec * self.cfg.apply_b_dec_to_input)
+        sae_in = self.get_sae_in(x)
         if apply_hooks:
             sae_in = self.hook_sae_input(sae_in)
 
@@ -272,6 +261,26 @@ class SAE(HookedRootModule):
             feature_acts = self.hook_sae_acts_post(feature_acts)
 
         return feature_acts
+
+    def get_sae_in(
+        self, x: Float[torch.Tensor, "... d_in"]
+    ) -> Float[torch.Tensor, "... d_in_reshaped"]:
+        """Get the input to the SAE.
+
+        Fixes dtype, reshapes, normalizes, and applies b_dec if necessary.
+        """
+        # move x to correct dtype
+        x = x.to(self.dtype)
+
+        # handle hook z reshaping if needed.
+        x = self.reshape_fn_in(x)  # type: ignore
+
+        # handle run time activation normalization if needed
+        x = self.run_time_activation_norm_fn_in(x)
+
+        # apply b_dec_to_input if using that method.
+        sae_in = x - (self.b_dec * self.cfg.apply_b_dec_to_input)
+        return sae_in
 
     def decode(
         self, feature_acts: Float[torch.Tensor, "... d_sae"], apply_hooks: bool = True
