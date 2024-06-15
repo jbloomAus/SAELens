@@ -414,6 +414,16 @@ class LanguageModelTranscoderRunnerConfig(LanguageModelSAERunnerConfig):
     hook_layer_out: int = 0
     hook_head_index_out: Optional[int] = None
 
+    def get_base_sae_cfg_dict(self) -> dict[str, Any]:
+        """Returns the config for the base Transcoder."""
+        return {
+            **super().get_base_sae_cfg_dict(),
+            "d_out": self.d_out,
+            "hook_name_out": self.hook_name_out,
+            "hook_layer_out": self.hook_layer_out,
+            "hook_head_index_out": self.hook_head_index_out,
+        }
+
 
 @dataclass
 class CacheActivationsRunnerConfig:

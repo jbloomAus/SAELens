@@ -21,6 +21,7 @@ from sae_lens.training.training_sae import (
     TrainingSAE,
     TrainingSAEConfig,
     TrainingTranscoder,
+    TrainingTranscoderConfig,
 )
 
 
@@ -223,7 +224,22 @@ class TranscoderTrainingRunner(SAETrainingRunner):
     activations_store_out: ActivationsStore
 
     def __init__(self, cfg: LanguageModelTranscoderRunnerConfig):
-        super().__init__(cfg)
+        assert isinstance(
+            cfg, LanguageModelTranscoderRunnerConfig
+        ), "cfg must be of type LanguageModelTranscoderRunnerConfig"
+        self.cfg = cfg  # type: ignore
+
+        self.model = load_model(
+            self.cfg.model_class_name,
+            self.cfg.model_name,
+            device=self.cfg.device,
+            model_from_pretrained_kwargs=self.cfg.model_from_pretrained_kwargs,
+        )
+
+        self.activations_store = ActivationsStore.from_config(
+            self.model,
+            self.cfg,
+        )
 
         self.activations_store_out = ActivationsStore(
             model=self.model,
@@ -248,6 +264,16 @@ class TranscoderTrainingRunner(SAETrainingRunner):
             model_kwargs=cfg.model_kwargs,
             autocast_lm=cfg.autocast_lm,
         )
+
+        if self.cfg.from_pretrained_path is not None:
+            raise NotImplementedError()
+        else:
+            self.sae = TrainingTranscoder(  # type: ignore
+                TrainingTranscoderConfig.from_dict(
+                    self.cfg.get_training_sae_cfg_dict(),
+                )
+            )
+            self._init_sae_group_b_decs()
 
     def run(self):
         """

@@ -12,7 +12,7 @@ from jaxtyping import Float
 from torch import nn
 
 from sae_lens.config import LanguageModelSAERunnerConfig
-from sae_lens.sae import SAE, SAEConfig, Transcoder
+from sae_lens.sae import SAE, SAEConfig, Transcoder, TranscoderConfig
 from sae_lens.toolkit.pretrained_sae_loaders import (
     load_pretrained_sae_lens_sae_components,
 )
@@ -82,7 +82,7 @@ class TrainingSAEConfig(SAEConfig):
 
     @classmethod
     def from_dict(cls, config_dict: dict[str, Any]) -> "TrainingSAEConfig":
-        return TrainingSAEConfig(**config_dict)
+        return cls(**config_dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -129,6 +129,19 @@ class TrainingTranscoderConfig(TrainingSAEConfig):
     hook_name_out: str = "blocks.0.hook_mlp_out"
     hook_layer_out: int = 0
     hook_head_index_out: Optional[int] = None
+
+    @classmethod
+    def from_dict(cls, config_dict: dict[str, Any]) -> "TrainingTranscoderConfig":
+        return cls(**config_dict)
+
+    def get_base_sae_cfg_dict(self) -> dict[str, Any]:
+        return {
+            **super().get_base_sae_cfg_dict(),
+            "d_out": self.d_out,
+            "hook_name_out": self.hook_name_out,
+            "hook_layer_out": self.hook_layer_out,
+            "hook_head_index_out": self.hook_head_index_out,
+        }
 
 
 class TrainingSAE(SAE):
@@ -445,6 +458,21 @@ class TrainingTranscoder(TrainingSAE, Transcoder):
     use_error_term: bool
     dtype: torch.dtype
     device: torch.device
+
+    def __init__(self, cfg: TrainingTranscoderConfig, use_error_term: bool = False):
+
+        base_sae_cfg = TranscoderConfig.from_dict(cfg.get_base_sae_cfg_dict())
+        Transcoder.__init__(self, base_sae_cfg)  # type: ignore
+        self.cfg = cfg  # type: ignore
+        self.use_error_term = use_error_term
+
+        self.initialize_weights_complex()
+
+        # The training SAE will assume that the activation store handles
+        # reshaping.
+        self.turn_off_forward_pass_hook_z_reshaping()
+
+        self.mse_loss_fn = self._get_mse_loss_fn()
 
     def training_forward_pass(  # type: ignore
         self,

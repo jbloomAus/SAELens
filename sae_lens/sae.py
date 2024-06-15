@@ -470,6 +470,9 @@ class Transcoder(SAE):
         cfg: TranscoderConfig,
         use_error_term: bool = False,
     ):
+        assert isinstance(
+            cfg, TranscoderConfig
+        ), f"Expected TranscoderConfig, got {cfg}"
         if use_error_term:
             raise NotImplementedError("Error term not yet supported for Transcoder")
         super().__init__(cfg, use_error_term)
