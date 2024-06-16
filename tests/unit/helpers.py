@@ -20,6 +20,7 @@ def build_sae_cfg(**kwargs: Any) -> LanguageModelSAERunnerConfig:
         hook_layer=0,
         hook_head_index=None,
         dataset_path=TINYSTORIES_DATASET,
+        dataset_trust_remote_code=True,
         is_dataset_tokenized=False,
         use_cached_activations=False,
         d_in=64,

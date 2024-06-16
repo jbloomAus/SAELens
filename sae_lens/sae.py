@@ -44,6 +44,7 @@ class SAEConfig:
     hook_head_index: Optional[int]
     prepend_bos: bool
     dataset_path: str
+    dataset_trust_remote_code: bool
     normalize_activations: str
 
     # misc
@@ -89,6 +90,7 @@ class SAEConfig:
             "sae_lens_training_version": self.sae_lens_training_version,
             "prepend_bos": self.prepend_bos,
             "dataset_path": self.dataset_path,
+            "dataset_trust_remote_code": self.dataset_trust_remote_code,
             "context_size": self.context_size,
             "normalize_activations": self.normalize_activations,
         }
