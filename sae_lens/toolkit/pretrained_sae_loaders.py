@@ -198,6 +198,10 @@ def load_pretrained_sae_lens_sae_components(
         # default to True for backwards compatibility
         cfg_dict["prepend_bos"] = True
 
+    if "dataset_trust_remote_code" not in cfg_dict:
+        # default to True for backwards compatibility
+        cfg_dict["dataset_trust_remote_code"] = True
+
     if "apply_b_dec_to_input" not in cfg_dict:
         # default to True for backwards compatibility
         cfg_dict["apply_b_dec_to_input"] = True

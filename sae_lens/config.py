@@ -33,6 +33,7 @@ class LanguageModelSAERunnerConfig:
         hook_layer (int): The index of the layer to hook. Used to stop forward passes early and speed up processing.
         hook_head_index (int, optional): When the hook if for an activatio with a head index, we can specify a specific head to use here.
         dataset_path (str): A Hugging Face dataset path.
+        dataset_trust_remote_code (bool): Whether to trust remote code when loading datasets from Huggingface.
         streaming (bool): Whether to stream the dataset. Streaming large datasets is usually practical.
         is_dataset_tokenized (bool): NOT IN USE. We used to use this but now automatically detect if the dataset is tokenized.
         context_size (int): The context size to use when generating activations on which to train the SAE.
@@ -113,6 +114,7 @@ class LanguageModelSAERunnerConfig:
     hook_layer: int = 0
     hook_head_index: Optional[int] = None
     dataset_path: str = "NeelNanda/c4-tokenized-2b"
+    dataset_trust_remote_code: bool | None = None
     streaming: bool = True
     is_dataset_tokenized: bool = True
     context_size: int = 128
@@ -360,6 +362,7 @@ class LanguageModelSAERunnerConfig:
             "context_size": self.context_size,
             "prepend_bos": self.prepend_bos,
             "dataset_path": self.dataset_path,
+            "dataset_trust_remote_code": self.dataset_trust_remote_code,
             "finetuning_scaling_factor": self.finetuning_method is not None,
             "sae_lens_training_version": self.sae_lens_training_version,
             "normalize_activations": self.normalize_activations,
@@ -420,6 +423,7 @@ class CacheActivationsRunnerConfig:
     hook_layer: int = 0
     hook_head_index: Optional[int] = None
     dataset_path: str = "NeelNanda/c4-tokenized-2b"
+    dataset_trust_remote_code: bool | None = None
     streaming: bool = True
     is_dataset_tokenized: bool = True
     context_size: int = 128
@@ -552,6 +556,7 @@ def _default_cached_activations_path(
 class PretokenizeRunnerConfig:
     tokenizer_name: str = "gpt2"
     dataset_path: str = "NeelNanda/c4-10k"
+    dataset_trust_remote_code: bool | None = None
     split: str | None = "train"
     data_files: list[str] | None = None
     data_dir: str | None = None

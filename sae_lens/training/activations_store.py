@@ -81,6 +81,7 @@ class ActivationsStore:
             cached_activations_path=cached_activations_path,
             model_kwargs=cfg.model_kwargs,
             autocast_lm=cfg.autocast_lm,
+            dataset_trust_remote_code=cfg.dataset_trust_remote_code,
         )
 
     @classmethod
@@ -111,6 +112,7 @@ class ActivationsStore:
             n_batches_in_buffer=n_batches_in_buffer,
             total_training_tokens=total_tokens,
             normalize_activations=sae.cfg.normalize_activations,
+            dataset_trust_remote_code=sae.cfg.dataset_trust_remote_code,
             dtype=sae.cfg.dtype,
             device=torch.device(device),
         )
@@ -136,13 +138,19 @@ class ActivationsStore:
         cached_activations_path: str | None = None,
         model_kwargs: dict[str, Any] | None = None,
         autocast_lm: bool = False,
+        dataset_trust_remote_code: bool | None = None,
     ):
         self.model = model
         if model_kwargs is None:
             model_kwargs = {}
         self.model_kwargs = model_kwargs
         self.dataset = (
-            load_dataset(dataset, split="train", streaming=streaming)
+            load_dataset(
+                dataset,
+                split="train",
+                streaming=streaming,
+                trust_remote_code=dataset_trust_remote_code,  # type: ignore
+            )
             if isinstance(dataset, str)
             else dataset
         )
