@@ -30,6 +30,7 @@ def test_gated_sae_initialization():
         sae.W_dec.norm(dim=1), torch.ones_like(sae.W_dec.norm(dim=1)), atol=1e-6
     )
 
+
 def test_gated_sae_encoding():
     cfg = build_sae_cfg()
     setattr(cfg, "architecture", "gated")
@@ -54,6 +55,7 @@ def test_gated_sae_encoding():
     expected_feature_acts = active_features * feature_magnitudes
     assert torch.allclose(feature_acts, expected_feature_acts, atol=1e-6)
 
+
 def test_gated_sae_loss():
     cfg = build_sae_cfg()
     setattr(cfg, "architecture", "gated")
@@ -73,15 +75,24 @@ def test_gated_sae_loss():
 
     sae_in_centered = x - sae.b_dec
     via_gate_feature_magnitudes = torch.relu(sae_in_centered @ sae.W_enc + sae.b_gate)
-    preactivation_l1_loss = sae.cfg.l1_coefficient * torch.sum(via_gate_feature_magnitudes, dim=-1).mean()
+    preactivation_l1_loss = (
+        sae.cfg.l1_coefficient * torch.sum(via_gate_feature_magnitudes, dim=-1).mean()
+    )
 
     via_gate_reconstruction = (
         via_gate_feature_magnitudes @ sae.W_dec.detach() + sae.b_dec.detach()
     )
-    aux_reconstruction_loss = torch.sum((via_gate_reconstruction - x) ** 2, dim=-1).mean()
+    aux_reconstruction_loss = torch.sum(
+        (via_gate_reconstruction - x) ** 2, dim=-1
+    ).mean()
 
-    expected_loss = train_step_output.mse_loss + preactivation_l1_loss + aux_reconstruction_loss
-    assert pytest.approx(train_step_output.loss.item(), rel=1e-3) == expected_loss.item()
+    expected_loss = (
+        train_step_output.mse_loss + preactivation_l1_loss + aux_reconstruction_loss
+    )
+    assert (
+        pytest.approx(train_step_output.loss.item(), rel=1e-3) == expected_loss.item()
+    )
+
 
 def test_gated_sae_forward_pass():
     cfg = build_sae_cfg()
@@ -95,6 +106,7 @@ def test_gated_sae_forward_pass():
     sae_out = sae(x)
 
     assert sae_out.shape == (batch_size, d_in)
+
 
 def test_gated_sae_training_forward_pass():
     cfg = build_sae_cfg()
@@ -116,9 +128,14 @@ def test_gated_sae_training_forward_pass():
     # Detach the loss tensor and convert to numpy for comparison
     detached_loss = train_step_output.loss.detach().cpu().numpy()
     expected_loss = (
-        train_step_output.mse_loss
-        + train_step_output.rectified_pre_activation_loss
-        + train_step_output.auxiliary_reconstruction_loss
-    ).detach().cpu().numpy()
-    
+        (
+            train_step_output.mse_loss
+            + train_step_output.sfn_sparsity_loss
+            + train_step_output.auxiliary_reconstruction_loss
+        )
+        .detach()
+        .cpu()
+        .numpy()
+    )
+
     assert pytest.approx(detached_loss, rel=1e-3) == expected_loss

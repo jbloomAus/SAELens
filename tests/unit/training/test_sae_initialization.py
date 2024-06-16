@@ -31,7 +31,8 @@ def test_SparseAutoencoder_initialization_standard():
     unit_normed_W_enc = sae.W_enc / torch.norm(sae.W_enc, dim=0)
     unit_normed_W_dec = sae.W_dec.T
     assert not torch.allclose(unit_normed_W_enc, unit_normed_W_dec, atol=1e-6)
-    
+
+
 def test_SparseAutoencoder_initialization_gated():
     cfg = build_sae_cfg()
     setattr(cfg, "architecture", "gated")

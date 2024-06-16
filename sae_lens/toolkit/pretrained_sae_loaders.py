@@ -170,7 +170,9 @@ def load_pretrained_sae_lens_sae_components(
     with open(cfg_path, "r") as f:
         cfg_dict = json.load(f)
 
-    cfg_dict["architecture"] = "standard"  # TODO: modify this when we add support for loading more architectures
+    cfg_dict["architecture"] = (
+        "standard"  # TODO: modify this when we add support for loading more architectures
+    )
 
     # filter config for varnames
     cfg_dict["device"] = device

@@ -27,7 +27,7 @@ class TrainStepOutput:
     mse_loss: float
     l1_loss: float
     ghost_grad_loss: float
-    rectified_pre_activation_loss: float = 0.0
+    sfn_sparsity_loss: float = 0.0
     auxiliary_reconstruction_loss: float = 0.0
 
 
@@ -144,8 +144,12 @@ class TrainingSAE(SAE):
         base_sae_cfg = SAEConfig.from_dict(cfg.get_base_sae_cfg_dict())
         super().__init__(base_sae_cfg)
         self.cfg = cfg  # type: ignore
-        
-        self.encode_with_hidden_pre_fn = self.encode_with_hidden_pre if cfg.architecture != "gated" else self.encode_with_hidden_pre_gated
+
+        self.encode_with_hidden_pre_fn = (
+            self.encode_with_hidden_pre
+            if cfg.architecture != "gated"
+            else self.encode_with_hidden_pre_gated
+        )
 
         self.check_cfg_compatibility()
 
@@ -165,7 +169,9 @@ class TrainingSAE(SAE):
 
     def check_cfg_compatibility(self):
         if self.cfg.architecture == "gated":
-            assert self.cfg.use_ghost_grads is False, "Gated SAEs do not support ghost grads"
+            assert (
+                self.cfg.use_ghost_grads is False
+            ), "Gated SAEs do not support ghost grads"
             assert self.use_error_term is False, "Gated SAEs do not support error terms"
 
     def encode(
@@ -224,10 +230,15 @@ class TrainingSAE(SAE):
         # magnitude_pre_activation_noised = magnitude_pre_activation + (
         #     torch.randn_like(magnitude_pre_activation) * self.cfg.noise_scale * self.training
         # )
-        feature_magnitudes = self.activation_fn(magnitude_pre_activation) #magnitude_pre_activation_noised)
+        feature_magnitudes = self.activation_fn(
+            magnitude_pre_activation
+        )  # magnitude_pre_activation_noised)
 
         # Return both the gated feature activations and the magnitude pre-activations
-        return active_features * feature_magnitudes, magnitude_pre_activation #magnitude_pre_activation_noised
+        return (
+            active_features * feature_magnitudes,
+            magnitude_pre_activation,
+        )  # magnitude_pre_activation_noised
 
     def forward(
         self,
@@ -273,20 +284,36 @@ class TrainingSAE(SAE):
         if self.cfg.architecture == "gated":
             # Gated SAE Loss Calculation
 
-            # apply a L1 penalty on the gated encoder activations (before step function, post-ReLU) to incentivize 
-            # them to be sparse
+            # original, deprecated gated SAE L1 loss calculation            
+            # via_gate_feature_magnitudes = torch.relu(
+            #     sae_in_centered @ self.W_enc + self.b_gate
+            # )
+            # preactivation_l1_loss = (
+            #     current_l1_coefficient
+            #     * torch.sum(via_gate_feature_magnitudes, dim=-1).mean()
+            # )
+            
+            # Shared variables
             sae_in_centered = sae_in - self.b_dec
-            via_gate_feature_magnitudes = torch.relu(sae_in_centered @ self.W_enc + self.b_gate)
-            preactivation_l1_loss = current_l1_coefficient * torch.sum(via_gate_feature_magnitudes, dim=-1).mean()
+            pi_gate = sae_in_centered @ self.W_enc + self.b_gate
+            
+            # SFN Sparsity Loss
+            sfn_sparsity_loss = current_l1_coefficient * torch.sum(
+                torch.abs(pi_gate) * self.W_dec.norm(dim=1), dim=-1
+            ).mean()
+            
 
-            # compute "via gate" reconstruction, without sending gradients to the decoder parameters as we don’t want 
+            # compute "via gate" reconstruction, without sending gradients to the decoder parameters as we don’t want
             # these to be influenced by this auxiliary task.
+            pi_gate_act = torch.relu(pi_gate)
             via_gate_reconstruction = (
-                via_gate_feature_magnitudes @ self.W_dec.detach() + self.b_dec.detach()
+                pi_gate_act @ self.W_dec + self.b_dec
             )
-            aux_reconstruction_loss = torch.sum((via_gate_reconstruction - sae_in) ** 2, dim=-1).mean()
+            aux_reconstruction_loss = torch.sum(
+                (via_gate_reconstruction - sae_in) ** 2, dim=-1
+            ).mean()
 
-            loss = mse_loss + preactivation_l1_loss + aux_reconstruction_loss
+            loss = mse_loss + sfn_sparsity_loss + aux_reconstruction_loss
             l1_loss = torch.tensor(0.0)
         else:
             # default SAE sparsity loss
@@ -297,8 +324,8 @@ class TrainingSAE(SAE):
 
             l1_loss = (current_l1_coefficient * sparsity).mean()
             loss = mse_loss + l1_loss + ghost_grad_loss
-            
-            preactivation_l1_loss = torch.tensor(0.0)
+
+            sfn_sparsity_loss = torch.tensor(0.0)
             aux_reconstruction_loss = torch.tensor(0.0)
 
         return TrainStepOutput(
@@ -313,7 +340,7 @@ class TrainingSAE(SAE):
                 if isinstance(ghost_grad_loss, torch.Tensor)
                 else ghost_grad_loss
             ),
-            rectified_pre_activation_loss=preactivation_l1_loss,
+            sfn_sparsity_loss=sfn_sparsity_loss,
             auxiliary_reconstruction_loss=aux_reconstruction_loss,
         )
 

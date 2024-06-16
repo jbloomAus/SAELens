@@ -477,9 +477,9 @@ class CacheActivationsRunnerConfig:
 
 @dataclass
 class ToyModelSAERunnerConfig:
-    
+
     architecture: Literal["standard", "gated"] = "standard"
-    
+
     # ReLu Model Parameters
     n_features: int = 5
     n_hidden: int = 2
