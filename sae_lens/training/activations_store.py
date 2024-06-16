@@ -25,10 +25,7 @@ from sae_lens.config import (
     LanguageModelSAERunnerConfig,
 )
 from sae_lens.sae import SAE
-from sae_lens.tokenization_and_batching import (
-    concat_and_batch_sequences,
-    get_special_token_from_cfg,
-)
+from sae_lens.tokenization_and_batching import concat_and_batch_sequences
 
 HfDataset = DatasetDict | Dataset | IterableDatasetDict | IterableDataset
 
@@ -78,9 +75,7 @@ class ActivationsStore:
             total_training_tokens=cfg.training_tokens,
             store_batch_size_prompts=cfg.store_batch_size_prompts,
             train_batch_size_tokens=cfg.train_batch_size_tokens,
-            begin_batch_token=cfg.begin_batch_token,
-            begin_sequence_token=cfg.begin_sequence_token,
-            sequence_separator_token=cfg.sequence_separator_token,
+            prepend_bos=cfg.prepend_bos,
             normalize_activations=cfg.normalize_activations,
             device=torch.device(cfg.act_store_device),
             dtype=cfg.dtype,
@@ -110,9 +105,7 @@ class ActivationsStore:
             hook_layer=sae.cfg.hook_layer,
             hook_head_index=sae.cfg.hook_head_index,
             context_size=sae.cfg.context_size,
-            begin_batch_token=sae.cfg.begin_batch_token,
-            begin_sequence_token=sae.cfg.begin_sequence_token,
-            sequence_separator_token=sae.cfg.sequence_separator_token,
+            prepend_bos=sae.cfg.prepend_bos,
             streaming=streaming,
             store_batch_size_prompts=store_batch_size_prompts,
             train_batch_size_tokens=train_batch_size_tokens,
@@ -137,10 +130,8 @@ class ActivationsStore:
         total_training_tokens: int,
         store_batch_size_prompts: int,
         train_batch_size_tokens: int,
+        prepend_bos: bool,
         normalize_activations: str,
-        begin_batch_token: int | Literal["bos", "eos", "sep"] | None,
-        begin_sequence_token: int | Literal["bos", "eos", "sep"] | None,
-        sequence_separator_token: int | Literal["bos", "eos", "sep"] | None,
         device: torch.device,
         dtype: str,
         cached_activations_path: str | None = None,
@@ -148,8 +139,6 @@ class ActivationsStore:
         autocast_lm: bool = False,
     ):
         self.model = model
-        tokenizer = self.model.tokenizer
-        assert tokenizer is not None
         if model_kwargs is None:
             model_kwargs = {}
         self.model_kwargs = model_kwargs
@@ -167,15 +156,7 @@ class ActivationsStore:
         self.total_training_tokens = total_training_tokens
         self.store_batch_size_prompts = store_batch_size_prompts
         self.train_batch_size_tokens = train_batch_size_tokens
-        self.begin_batch_token_id = get_special_token_from_cfg(
-            begin_batch_token, tokenizer
-        )
-        self.begin_sequence_token_id = get_special_token_from_cfg(
-            begin_sequence_token, tokenizer
-        )
-        self.sequence_separator_token_id = get_special_token_from_cfg(
-            sequence_separator_token, tokenizer
-        )
+        self.prepend_bos = prepend_bos
         self.normalize_activations = normalize_activations
         self.device = torch.device(device)
         self.dtype = DTYPE_MAP[dtype]
@@ -266,12 +247,16 @@ class ActivationsStore:
                 )
         # If the dataset isn't tokenized, we'll tokenize, concat, and batch on the fly
         else:
+            tokenizer = getattr(self.model, "tokenizer", None)
+            bos_token_id = None if tokenizer is None else tokenizer.bos_token_id
             yield from concat_and_batch_sequences(
                 tokens_iterator=self._iterate_raw_dataset_tokens(),
                 context_size=self.context_size,
-                begin_batch_token_id=self.begin_batch_token_id,
-                begin_sequence_token_id=self.begin_sequence_token_id,
-                sequence_separator_token_id=self.sequence_separator_token_id,
+                begin_batch_token_id=(bos_token_id if self.prepend_bos else None),
+                begin_sequence_token_id=None,
+                sequence_separator_token_id=(
+                    bos_token_id if self.prepend_bos else None
+                ),
             )
 
     def check_cached_activations_against_config(self):

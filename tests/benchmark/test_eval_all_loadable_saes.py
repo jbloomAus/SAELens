@@ -117,9 +117,7 @@ def test_eval_all_loadable_saes(
 
     # CE Loss Difference
     _, cache = model.run_with_cache(
-        example_text,
-        names_filter=[sae.cfg.hook_name],
-        prepend_bos=sae.cfg.begin_batch_token == "bos",
+        example_text, names_filter=[sae.cfg.hook_name], prepend_bos=sae.cfg.prepend_bos
     )
 
     # Use the SAE

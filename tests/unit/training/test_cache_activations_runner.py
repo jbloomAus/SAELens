@@ -54,9 +54,7 @@ def test_cache_activations_runner(tmp_path: Path):
         dataset_path="NeelNanda/c4-tokenized-2b",
         context_size=context_size,  # Speed things up.
         is_dataset_tokenized=True,
-        begin_batch_token="bos",  # I used to train GPT2 SAEs with a prepended-bos but no longer think we should do this.
-        begin_sequence_token=None,
-        sequence_separator_token="bos",
+        prepend_bos=True,  # I used to train GPT2 SAEs with a prepended-bos but no longer think we should do this.
         training_tokens=total_training_tokens,  # For initial testing I think this is a good number.
         train_batch_size_tokens=4096,
         # Loss Function
@@ -134,9 +132,7 @@ def test_load_cached_activations():
         dataset_path="NeelNanda/c4-10k",
         context_size=context_size,
         is_dataset_tokenized=True,
-        begin_batch_token="bos",  # I used to train GPT2 SAEs with a prepended-bos but no longer think we should do this.
-        begin_sequence_token=None,
-        sequence_separator_token="bos",
+        prepend_bos=True,  # I used to train GPT2 SAEs with a prepended-bos but no longer think we should do this.
         training_tokens=total_training_tokens,  # For initial testing I think this is a good number.
         train_batch_size_tokens=4096,
         # Loss Function

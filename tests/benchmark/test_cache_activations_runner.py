@@ -53,6 +53,7 @@ def test_cache_activations_runner():
         streaming=False,
         context_size=1024,
         is_dataset_tokenized=True,
+        prepend_bos=True,
         training_tokens=total_training_tokens,  # For initial testing I think this is a good number.
         train_batch_size_tokens=4096,
         # buffer details

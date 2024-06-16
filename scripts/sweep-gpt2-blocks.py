@@ -43,6 +43,7 @@ for l1_coefficient in [3, 4, 5, 6, 7]:
             streaming=True,
             context_size=512,
             is_dataset_tokenized=True,
+            prepend_bos=True,
             # How big do we want our SAE to be?
             expansion_factor=64,
             # Dataset / Activation Store

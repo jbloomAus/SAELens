@@ -13,7 +13,6 @@ from jaxtyping import Float
 from safetensors.torch import save_file
 from torch import nn
 from transformer_lens.hook_points import HookedRootModule, HookPoint
-from typing_extensions import Literal
 
 from sae_lens.config import DTYPE_MAP
 from sae_lens.toolkit.pretrained_sae_loaders import (
@@ -43,9 +42,7 @@ class SAEConfig:
     hook_name: str
     hook_layer: int
     hook_head_index: Optional[int]
-    begin_batch_token: int | Literal["bos", "eos", "sep"] | None
-    begin_sequence_token: int | Literal["bos", "eos", "sep"] | None
-    sequence_separator_token: int | Literal["bos", "eos", "sep"] | None
+    prepend_bos: bool
     dataset_path: str
     normalize_activations: str
 
@@ -90,9 +87,7 @@ class SAEConfig:
             "apply_b_dec_to_input": self.apply_b_dec_to_input,
             "finetuning_scaling_factor": self.finetuning_scaling_factor,
             "sae_lens_training_version": self.sae_lens_training_version,
-            "begin_batch_token": self.begin_batch_token,
-            "begin_sequence_token": self.begin_sequence_token,
-            "sequence_separator_token": self.sequence_separator_token,
+            "prepend_bos": self.prepend_bos,
             "dataset_path": self.dataset_path,
             "context_size": self.context_size,
             "normalize_activations": self.normalize_activations,

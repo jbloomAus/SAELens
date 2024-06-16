@@ -299,9 +299,7 @@ def test_activations_store___iterate_tokenized_sequences__yields_concat_and_batc
 ):
     tokenizer = ts_model.tokenizer
     assert tokenizer is not None
-    cfg = build_sae_cfg(
-        begin_batch_token="bos", sequence_separator_token="bos", context_size=5
-    )
+    cfg = build_sae_cfg(prepend_bos=True, context_size=5)
     dataset = Dataset.from_list(
         [
             {"text": "hello world1"},
@@ -315,9 +313,9 @@ def test_activations_store___iterate_tokenized_sequences__yields_concat_and_batc
     expected = [
         tokenizer.bos_token_id,
         *tokenizer.encode("hello world1"),
-        tokenizer.eos_token_id,
+        tokenizer.bos_token_id,
         *tokenizer.encode("hello world2"),
-        tokenizer.eos_token_id,
+        tokenizer.bos_token_id,
         *tokenizer.encode("hello world3"),
     ]
     assert next(iterator).tolist() == expected[:5]
@@ -328,9 +326,7 @@ def test_activations_store___iterate_tokenized_sequences__yields_sequences_of_co
 ):
     tokenizer = ts_model.tokenizer
     assert tokenizer is not None
-    cfg = build_sae_cfg(
-        begin_batch_token="bos", sequence_separator_token="bos", context_size=5
-    )
+    cfg = build_sae_cfg(prepend_bos=True, context_size=5)
     dataset = Dataset.from_list(
         [
             {"text": "hello world1"},
@@ -349,9 +345,7 @@ def test_activations_store___iterate_tokenized_sequences__yields_identical_resul
 ):
     tokenizer = ts_model.tokenizer
     assert tokenizer is not None
-    cfg = build_sae_cfg(
-        begin_batch_token="bos", sequence_separator_token="bos", context_size=5
-    )
+    cfg = build_sae_cfg(prepend_bos=True, context_size=5)
     dataset = Dataset.from_list(
         [
             {"text": "hello world1"},

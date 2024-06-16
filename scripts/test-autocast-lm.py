@@ -44,6 +44,7 @@ for block in [11, 0]:
             streaming=True,
             context_size=512,
             is_dataset_tokenized=True,
+            prepend_bos=True,
             # How big do we want our SAE to be?
             expansion_factor=64,
             # Dataset / Activation Store

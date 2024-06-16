@@ -1,8 +1,6 @@
 from typing import Generator, Iterator
 
 import torch
-from transformers import PreTrainedTokenizerBase
-from typing_extensions import Literal
 
 
 def _add_tokens_to_batch(
@@ -92,20 +90,3 @@ def concat_and_batch_sequences(
             if batch.shape[0] == context_size:
                 yield batch
                 batch = None
-
-
-def get_special_token_from_cfg(
-    cfg_token: int | Literal["bos", "eos", "sep"] | None,
-    tokenizer: PreTrainedTokenizerBase,
-) -> int | None:
-    if cfg_token is None:
-        return None
-    if isinstance(cfg_token, int):
-        return cfg_token
-    if cfg_token == "bos":
-        return tokenizer.bos_token_id
-    if cfg_token == "eos":
-        return tokenizer.eos_token_id
-    if cfg_token == "sep":
-        return tokenizer.sep_token_id
-    raise ValueError(f"Invalid token type: {cfg_token}")

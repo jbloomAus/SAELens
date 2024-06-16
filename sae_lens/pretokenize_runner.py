@@ -13,10 +13,7 @@ from typing_extensions import deprecated
 
 from sae_lens import __version__
 from sae_lens.config import PretokenizeRunnerConfig
-from sae_lens.tokenization_and_batching import (
-    concat_and_batch_sequences,
-    get_special_token_from_cfg,
-)
+from sae_lens.tokenization_and_batching import concat_and_batch_sequences
 
 
 @dataclass
@@ -52,6 +49,23 @@ def metadata_from_config(cfg: PretokenizeRunnerConfig) -> PretokenizedDatasetMet
         begin_sequence_token=cfg.begin_sequence_token,
         sequence_separator_token=cfg.sequence_separator_token,
     )
+
+
+def get_special_token_from_cfg(
+    cfg_token: int | Literal["bos", "eos", "sep"] | None,
+    tokenizer: PreTrainedTokenizerBase,
+) -> int | None:
+    if cfg_token is None:
+        return None
+    if isinstance(cfg_token, int):
+        return cfg_token
+    if cfg_token == "bos":
+        return tokenizer.bos_token_id
+    if cfg_token == "eos":
+        return tokenizer.eos_token_id
+    if cfg_token == "sep":
+        return tokenizer.sep_token_id
+    raise ValueError(f"Invalid token type: {cfg_token}")
 
 
 def pretokenize_dataset(
