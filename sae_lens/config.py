@@ -114,7 +114,7 @@ class LanguageModelSAERunnerConfig:
     hook_layer: int = 0
     hook_head_index: Optional[int] = None
     dataset_path: str = "NeelNanda/c4-tokenized-2b"
-    dataset_trust_remote_code: bool | None = None
+    dataset_trust_remote_code: bool = True
     streaming: bool = True
     is_dataset_tokenized: bool = True
     context_size: int = 128
