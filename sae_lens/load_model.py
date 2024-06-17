@@ -12,6 +12,15 @@ def load_model(
     model_from_pretrained_kwargs: dict[str, Any] | None = None,
 ) -> HookedRootModule:
     model_from_pretrained_kwargs = model_from_pretrained_kwargs or {}
+    
+    if "n_devices" in model_from_pretrained_kwargs:
+        n_devices = model_from_pretrained_kwargs["n_devices"]
+        if n_devices > 1:
+            print("MODEL LOADING:")
+            print("Setting model device to cuda for d_devices")
+            print(f"Will use cuda:0 to cuda:{n_devices-1}")
+            device = "cuda"
+            print("-------------")
 
     if model_class_name == "HookedTransformer":
         return HookedTransformer.from_pretrained(
