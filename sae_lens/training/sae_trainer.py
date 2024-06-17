@@ -156,7 +156,7 @@ class SAETrainer:
         # Train loop
         while self.n_training_tokens < self.cfg.total_training_tokens:
             # Do a training step.
-            layer_acts = self.activation_store.next_batch()[:, 0, :]
+            layer_acts = self.activation_store.next_batch()[:, 0, :].to(self.sae.device)
             self.n_training_tokens += self.cfg.train_batch_size_tokens
 
             step_output = self._train_step(sae=self.sae, sae_in=layer_acts)
@@ -317,8 +317,8 @@ class SAETrainer:
                 model_kwargs=self.cfg.model_kwargs,
             )
 
-            W_dec_norm_dist = self.sae.W_dec.norm(dim=1).detach().cpu().numpy()
-            b_e_dist = self.sae.b_enc.detach().cpu().numpy()
+            W_dec_norm_dist = self.sae.W_dec.norm(dim=1).detach().float().cpu().numpy()
+            b_e_dist = self.sae.b_enc.detach().float().cpu().numpy()
 
             # More detail on loss.
 

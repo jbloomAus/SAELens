@@ -330,8 +330,9 @@ class ActivationsStore:
 
             # pbar.n = batch_tokens.shape[0]
             # pbar.refresh()
-        return batch_tokens[:batch_size]
+        return batch_tokens[:batch_size].to(self.model.W_E.device)
 
+    @torch.no_grad()
     def get_activations(self, batch_tokens: torch.Tensor):
         """
         Returns activations of shape (batches, context, num_layers, d_in)
@@ -377,6 +378,7 @@ class ActivationsStore:
 
         return stacked_activations
 
+    @torch.no_grad()
     def get_buffer(self, n_batches_in_buffer: int) -> torch.Tensor:
         context_size = self.context_size
         batch_size = self.store_batch_size_prompts
