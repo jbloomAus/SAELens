@@ -74,9 +74,11 @@ BASE_CFG = dict(
     adam_beta1=0.9,
     adam_beta2=0.999,
     # Buffer details won't matter in we cache / shuffle our activations ahead of time.
-    n_batches_in_buffer=64,
-    store_batch_size_prompts=16,
+    n_batches_in_buffer=16,
+    store_batch_size_prompts=4,
     normalize_activations="constant_norm_rescale",
+    n_eval_batches=3,
+    eval_batch_size_prompts=4,
     # Feature Store
     feature_sampling_window=1000,
     dead_feature_window=1000,
@@ -106,6 +108,7 @@ def test_sae_runner_multiple_devices():
     cfg_dict["model_from_pretrained_kwargs"] = {"n_devices": torch.cuda.device_count() - 1}  # type: ignore
     cfg_dict["act_store_device"] = "cpu"
     cfg_dict["dtype"] = "torch.bfloat16"
+    cfg_dict["eval_every_n_wandb_logs"] = 3
     cfg = LanguageModelSAERunnerConfig(**cfg_dict)  # type: ignore
 
     # look at the next cell to see some instruction for what to do while this is running.
@@ -124,6 +127,7 @@ def test_sae_runner_multiple_devices_sae_act_store_on_gpus():
     cfg_dict["model_from_pretrained_kwargs"] = {"n_devices": torch.cuda.device_count() - 2}  # type: ignore
     cfg_dict["act_store_device"] = "cuda:3"
     cfg_dict["dtype"] = "torch.bfloat16"
+    cfg_dict["eval_every_n_wandb_logs"] = 3
     cfg = LanguageModelSAERunnerConfig(**cfg_dict)  # type: ignore
 
     # look at the next cell to see some instruction for what to do while this is running.

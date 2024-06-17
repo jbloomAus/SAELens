@@ -330,7 +330,7 @@ class ActivationsStore:
 
             # pbar.n = batch_tokens.shape[0]
             # pbar.refresh()
-        return batch_tokens[:batch_size]
+        return batch_tokens[:batch_size].to(self.model.W_E.device)
 
     @torch.no_grad()
     def get_activations(self, batch_tokens: torch.Tensor):

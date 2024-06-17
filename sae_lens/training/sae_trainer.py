@@ -317,8 +317,8 @@ class SAETrainer:
                 model_kwargs=self.cfg.model_kwargs,
             )
 
-            W_dec_norm_dist = self.sae.W_dec.norm(dim=1).detach().cpu().numpy()
-            b_e_dist = self.sae.b_enc.detach().cpu().numpy()
+            W_dec_norm_dist = self.sae.W_dec.norm(dim=1).detach().float().cpu().numpy()
+            b_e_dist = self.sae.b_enc.detach().float().cpu().numpy()
 
             # More detail on loss.
 
