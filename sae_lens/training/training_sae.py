@@ -297,14 +297,13 @@ class TrainingSAE(SAE):
             sae_in_centered = sae_in - self.b_dec
             pi_gate = sae_in_centered @ self.W_enc + self.b_gate
             
-            # SFN Sparsity Loss
+            # SFN sparsity loss - summed over the feature dimension and averaged over the batch
             sfn_sparsity_loss = current_l1_coefficient * torch.sum(
                 torch.abs(pi_gate) * self.W_dec.norm(dim=1), dim=-1
             ).mean()
             
 
-            # compute "via gate" reconstruction, without sending gradients to the decoder parameters as we don’t want
-            # these to be influenced by this auxiliary task.
+            # Auxiliary reconstruction loss - summed over the feature dimension and averaged over the batch
             pi_gate_act = torch.relu(pi_gate)
             via_gate_reconstruction = (
                 pi_gate_act @ self.W_dec + self.b_dec
