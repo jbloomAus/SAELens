@@ -2,6 +2,21 @@
 
 
 
+## v3.4.1 (2024-06-17)
+
+### Fix
+
+* fix: allow settings trust_remote_code for new huggingface version (#187)
+
+* fix: allow settings trust_remote_code for new huggingface version
+
+* default to True, not none
+
+---------
+
+Co-authored-by: jbloomAus &lt;jbloomaus@gmail.com&gt; ([`33a612d`](https://github.com/jbloomAus/SAELens/commit/33a612d7f694390a5a4596f7e15e0c51657634ba))
+
+
 ## v3.4.0 (2024-06-14)
 
 ### Feature
