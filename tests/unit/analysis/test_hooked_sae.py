@@ -169,8 +169,8 @@ def test_error_term(model: HookedTransformer, hooked_sae: SAE):
     def backward_cache_hook(act: torch.Tensor, hook: HookPoint):
         grad_cache[hook.name] = act.detach()
 
-    hooked_sae.add_hook("hook_sae_acts_post", backward_cache_hook, "bwd")
-    hooked_sae.add_hook("hook_sae_output", backward_cache_hook, "bwd")
+    hooked_sae.add_hook("hook_sae_acts_post", backward_cache_hook, "bwd")  # type: ignore
+    hooked_sae.add_hook("hook_sae_output", backward_cache_hook, "bwd")  # type: ignore
 
     sae_output = hooked_sae(x)
     assert torch.allclose(sae_output, x, atol=1e-6)
