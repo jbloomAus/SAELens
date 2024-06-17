@@ -79,13 +79,13 @@ def test_language_model_sae_runner():
         # Buffer details won't matter in we cache / shuffle our activations ahead of time.
         n_batches_in_buffer=64,
         store_batch_size_prompts=16,
-        normalize_activations="constant_norm_rescale",
+        normalize_activations="none",
         # Feature Store
         feature_sampling_window=1000,
         dead_feature_window=1000,
         dead_feature_threshold=1e-4,
         # performance enhancement:
-        compile_sae=True,
+        compile_sae=False,
         # WANDB
         log_to_wandb=True,  # always use wandb unless you are just testing code.
         wandb_project="benchmark",
