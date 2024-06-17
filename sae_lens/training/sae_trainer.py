@@ -156,7 +156,7 @@ class SAETrainer:
         # Train loop
         while self.n_training_tokens < self.cfg.total_training_tokens:
             # Do a training step.
-            layer_acts = self.activation_store.next_batch()[:, 0, :]
+            layer_acts = self.activation_store.next_batch()[:, 0, :].to(self.sae.device)
             self.n_training_tokens += self.cfg.train_batch_size_tokens
 
             step_output = self._train_step(sae=self.sae, sae_in=layer_acts)
