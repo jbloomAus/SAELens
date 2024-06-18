@@ -340,6 +340,26 @@ def test_activations_store___iterate_tokenized_sequences__yields_sequences_of_co
         assert toks.shape == (5,)
 
 
+def test_activations_store__errors_if_pretokenized_context_size_doesnt_match_cfg(
+    ts_model: HookedTransformer,
+):
+    tokenizer = ts_model.tokenizer
+    assert tokenizer is not None
+    cfg = build_sae_cfg(prepend_bos=True, context_size=5)
+    dataset = Dataset.from_list(
+        [
+            {"text": "hello world1"},
+            {"text": "hello world2"},
+            {"text": "hello world3"},
+        ]
+        * 20
+    )
+    pretokenize_cfg = PretokenizeRunnerConfig(context_size=10)
+    tokenized_dataset = pretokenize_dataset(dataset, tokenizer, cfg=pretokenize_cfg)
+    with pytest.raises(ValueError):
+        ActivationsStore.from_config(ts_model, cfg, dataset=tokenized_dataset)
+
+
 def test_activations_store___iterate_tokenized_sequences__yields_identical_results_with_and_without_pretokenizing(
     ts_model: HookedTransformer,
 ):
