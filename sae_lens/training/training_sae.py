@@ -119,6 +119,7 @@ class TrainingSAEConfig(SAEConfig):
             "finetuning_scaling_factor": self.finetuning_scaling_factor,
             "normalize_activations": self.normalize_activations,
             "dataset_path": self.dataset_path,
+            "dataset_trust_remote_code": self.dataset_trust_remote_code,
             "sae_lens_training_version": self.sae_lens_training_version,
         }
 
