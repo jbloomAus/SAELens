@@ -102,6 +102,7 @@ def pretokenize_dataset(
     tokenized_dataset = dataset.map(
         process_examples,
         batched=True,
+        batch_size=cfg.pretokenize_batch_size,
         num_proc=cfg.num_proc,
         remove_columns=dataset.column_names,
     )

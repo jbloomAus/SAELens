@@ -566,6 +566,7 @@ class PretokenizeRunnerConfig:
     shuffle: bool = True
     seed: int | None = None
     streaming: bool = False
+    pretokenize_batch_size: int | None = 1000
 
     # special tokens
     begin_batch_token: int | Literal["bos", "eos", "sep"] | None = "bos"
