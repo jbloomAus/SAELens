@@ -2,6 +2,29 @@
 
 
 
+## v3.5.0 (2024-06-20)
+
+### Feature
+
+* feat: trigger release ([`1a4663b`](https://github.com/jbloomAus/SAELens/commit/1a4663b7eadb42682586697e72192346c66cf430))
+
+### Unknown
+
+*  Performance improvements + using multiple GPUs.  (#189)
+
+* fix: no grads when filling cache
+
+* trainer should put activations on sae device
+
+* hack to allow sae device to be specific gpu when model is on multiple devices
+
+* add some tests (not in CI, which check multiple GPU performance
+
+* make formatter typer happy
+
+* make sure SAE calls move data between devices as needed ([`400474e`](https://github.com/jbloomAus/SAELens/commit/400474eaf758d57ea4090fd08e84cbdd91d55cc4))
+
+
 ## v3.4.1 (2024-06-17)
 
 ### Fix
