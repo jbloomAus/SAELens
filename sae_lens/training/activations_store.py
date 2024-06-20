@@ -555,10 +555,10 @@ class ActivationsStore:
                 device=device,
                 requires_grad=False,
             )
-            if (
-                not self.prepend_bos
-                # and tokens[0] == self.model.tokenizer.bos_token_id  # type: ignore
-            ):
-                tokens = tokens[1:]
+            # if (
+            #     not self.prepend_bos
+            #     # and tokens[0] == self.model.tokenizer.bos_token_id  # type: ignore
+            # ):
+            #     tokens = tokens[1:]
         self.n_dataset_processed += 1
         return tokens
