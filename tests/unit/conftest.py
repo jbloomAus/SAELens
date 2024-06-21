@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 import torch
 
-from tests.unit.helpers import TINYSTORIES_MODEL, load_model_cached
+from .helpers import TINYSTORIES_MODEL, load_model_cached
 
 
 @pytest.fixture(autouse=True)

@@ -96,6 +96,17 @@ class SAEConfig:
         }
 
 
+@dataclass
+class TranscoderConfig(SAEConfig):
+    # transcoder-specific forward pass details
+    d_out: int
+
+    # transcoder-specific dataset details
+    hook_name_out: str
+    hook_layer_out: int
+    hook_head_index_out: Optional[int]
+
+
 class SAE(HookedRootModule):
     """
     Core Sparse Autoencoder (SAE) class used for inference. For training, see `TrainingSAE`.
@@ -218,48 +229,48 @@ class SAE(HookedRootModule):
         feature_acts = self.encode(x)
         sae_out = self.decode(feature_acts)
 
-        if self.use_error_term:
-            with torch.no_grad():
-                # Recompute everything without hooks to get true error term
-                # Otherwise, the output with error term will always equal input, even for causal interventions that affect x_reconstruct
-                # This is in a no_grad context to detach the error, so we can compute SAE feature gradients (eg for attribution patching). See A.3 in https://arxiv.org/pdf/2403.19647.pdf for more detail
-                # NOTE: we can't just use `sae_error = input - x_reconstruct.detach()` or something simpler, since this would mean intervening on features would mean ablating features still results in perfect reconstruction.
+        if not self.use_error_term:
+            return self.hook_sae_output(sae_out)
 
-                # move x to correct dtype
-                x = x.to(self.dtype)
-
-                # handle hook z reshaping if needed.
-                sae_in = self.reshape_fn_in(x)  # type: ignore
-
-                # handle run time activation normalization if needed
-                sae_in = self.run_time_activation_norm_fn_in(sae_in)
-
-                # apply b_dec_to_input if using that method.
-                sae_in_cent = sae_in - (self.b_dec * self.cfg.apply_b_dec_to_input)
-
-                # "... d_in, d_in d_sae -> ... d_sae",
-                hidden_pre = sae_in_cent @ self.W_enc + self.b_enc
-                feature_acts = self.activation_fn(hidden_pre)
-                x_reconstruct_clean = self.reshape_fn_out(
-                    self.apply_finetuning_scaling_factor(feature_acts) @ self.W_dec
-                    + self.b_dec,
-                    d_head=self.d_head,
-                )
-
-                sae_out = self.run_time_activation_norm_fn_out(sae_out)
-                sae_error = self.hook_sae_error(x - x_reconstruct_clean)
-
-            return self.hook_sae_output(sae_out + sae_error)
-
-        return self.hook_sae_output(sae_out)
+        # If using error term, compute the error term and add it to the output
+        with torch.no_grad():
+            # Recompute everything without hooks to get true error term
+            # Otherwise, the output with error term will always equal input, even for causal interventions that affect x_reconstruct
+            # This is in a no_grad context to detach the error, so we can compute SAE feature gradients (eg for attribution patching). See A.3 in https://arxiv.org/pdf/2403.19647.pdf for more detail
+            # NOTE: we can't just use `sae_error = input - x_reconstruct.detach()` or something simpler, since this would mean intervening on features would mean ablating features still results in perfect reconstruction.
+            feature_acts_clean = self.encode(x, apply_hooks=False)
+            x_reconstruct_clean = self.decode(feature_acts_clean, apply_hooks=False)
+            sae_error = self.hook_sae_error(x - x_reconstruct_clean)
+        return self.hook_sae_output(sae_out + sae_error)
 
     def encode(
-        self, x: Float[torch.Tensor, "... d_in"]
+        self, x: Float[torch.Tensor, "... d_in"], apply_hooks: bool = True
     ) -> Float[torch.Tensor, "... d_sae"]:
         """
         Calcuate SAE features from inputs
         """
+        sae_in = self.get_sae_in(x)
+        if apply_hooks:
+            sae_in = self.hook_sae_input(sae_in)
 
+        # "... d_in, d_in d_sae -> ... d_sae",
+        hidden_pre = sae_in @ self.W_enc + self.b_enc
+        if apply_hooks:
+            hidden_pre = self.hook_sae_acts_pre(hidden_pre)
+
+        feature_acts = self.activation_fn(hidden_pre)
+        if apply_hooks:
+            feature_acts = self.hook_sae_acts_post(feature_acts)
+
+        return feature_acts
+
+    def get_sae_in(
+        self, x: Float[torch.Tensor, "... d_in"]
+    ) -> Float[torch.Tensor, "... d_in_reshaped"]:
+        """Get the input to the SAE.
+
+        Fixes dtype, reshapes, normalizes, and applies b_dec if necessary.
+        """
         # move x to correct dtype
         x = x.to(self.dtype)
 
@@ -270,31 +281,33 @@ class SAE(HookedRootModule):
         x = self.run_time_activation_norm_fn_in(x)
 
         # apply b_dec_to_input if using that method.
-        sae_in = self.hook_sae_input(x - (self.b_dec * self.cfg.apply_b_dec_to_input))
-
-        # "... d_in, d_in d_sae -> ... d_sae",
-        hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
-        feature_acts = self.hook_sae_acts_post(self.activation_fn(hidden_pre))
-
-        return feature_acts
+        sae_in = x - (self.b_dec * self.cfg.apply_b_dec_to_input)
+        return sae_in
 
     def decode(
-        self, feature_acts: Float[torch.Tensor, "... d_sae"]
+        self, feature_acts: Float[torch.Tensor, "... d_sae"], apply_hooks: bool = True
     ) -> Float[torch.Tensor, "... d_in"]:
         """Decodes SAE feature activation tensor into a reconstructed input activation tensor."""
         # "... d_sae, d_sae d_in -> ... d_in",
-        sae_out = self.hook_sae_recons(
-            self.apply_finetuning_scaling_factor(feature_acts) @ self.W_dec + self.b_dec
-        )
+        sae_recons = self.get_sae_recons(feature_acts)
+        if apply_hooks:
+            sae_recons = self.hook_sae_recons(sae_recons)
 
         # handle run time activation normalization if needed
         # will fail if you call this twice without calling encode in between.
-        sae_out = self.run_time_activation_norm_fn_out(sae_out)
+        sae_recons = self.run_time_activation_norm_fn_out(sae_recons)
 
         # handle hook z reshaping if needed.
-        sae_out = self.reshape_fn_out(sae_out, self.d_head)  # type: ignore
+        sae_recons = self.reshape_fn_out(sae_recons, self.d_head)  # type: ignore
 
-        return sae_out
+        return sae_recons
+
+    def get_sae_recons(
+        self, feature_acts: Float[torch.Tensor, "... d_sae"]
+    ) -> Float[torch.Tensor, "... d_in"]:
+        return (
+            self.apply_finetuning_scaling_factor(feature_acts) @ self.W_dec + self.b_dec
+        )
 
     @torch.no_grad()
     def fold_W_dec_norm(self):
@@ -445,3 +458,41 @@ def get_activation_fn(activation_fn: str) -> Callable[[torch.Tensor], torch.Tens
         return tanh_relu
     else:
         raise ValueError(f"Unknown activation function: {activation_fn}")
+
+
+class Transcoder(SAE):
+    """A variant of sparse autoencoders that have different input and output hook points."""
+
+    cfg: TranscoderConfig  # type: ignore
+    dtype: torch.dtype
+    device: torch.device
+
+    def __init__(
+        self,
+        cfg: TranscoderConfig,
+        use_error_term: bool = False,
+    ):
+        assert isinstance(
+            cfg, TranscoderConfig
+        ), f"Expected TranscoderConfig, got {cfg}"
+        if use_error_term:
+            raise NotImplementedError("Error term not yet supported for Transcoder")
+        super().__init__(cfg, use_error_term)
+
+    def initialize_weights_basic(self):
+        super().initialize_weights_basic()
+
+        # NOTE: Transcoders have an additional b_dec_out parameter.
+        # Reference: https://github.com/jacobdunefsky/transcoder_circuits/blob/7b44d870a5a301ef29eddfd77cb1f4dca854760a/sae_training/sparse_autoencoder.py#L93C1-L97C14
+        self.b_dec_out = nn.Parameter(
+            torch.zeros(self.cfg.d_out, dtype=self.dtype, device=self.device)
+        )
+
+    def get_sae_recons(
+        self, feature_acts: Float[torch.Tensor, "... d_sae"]
+    ) -> Float[torch.Tensor, "... d_out"]:
+        # NOTE: b_dec_out instead of b_dec
+        return (
+            self.apply_finetuning_scaling_factor(feature_acts) @ self.W_dec
+            + self.b_dec_out
+        )

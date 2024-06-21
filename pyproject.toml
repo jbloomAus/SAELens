@@ -50,6 +50,10 @@ mkdocs-section-index = "^0.3.8"
 mkdocstrings = "^0.24.1"
 mkdocstrings-python = "^1.9.0"
 
+
+[tool.poetry.group.tutorials.dependencies]
+ipykernel = "^6.29.4"
+
 [tool.poetry.extras]
 mamba = ["mamba-lens"]
 

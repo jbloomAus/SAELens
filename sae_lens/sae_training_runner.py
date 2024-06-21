@@ -8,13 +8,21 @@ import wandb
 from safetensors.torch import save_file
 from transformer_lens.hook_points import HookedRootModule
 
-from sae_lens.config import LanguageModelSAERunnerConfig
+from sae_lens.config import (
+    LanguageModelSAERunnerConfig,
+    LanguageModelTranscoderRunnerConfig,
+)
 from sae_lens.load_model import load_model
 from sae_lens.sae import SAE_CFG_PATH, SAE_WEIGHTS_PATH, SPARSITY_PATH
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.geometric_median import compute_geometric_median
-from sae_lens.training.sae_trainer import SAETrainer
-from sae_lens.training.training_sae import TrainingSAE, TrainingSAEConfig
+from sae_lens.training.sae_trainer import SAETrainer, TranscoderTrainer
+from sae_lens.training.training_sae import (
+    TrainingSAE,
+    TrainingSAEConfig,
+    TrainingTranscoder,
+    TrainingTranscoderConfig,
+)
 
 
 class InterruptedException(Exception):
@@ -208,3 +216,91 @@ class SAETrainingRunner:
             wandb.log_artifact(sparsity_artifact)
 
         return checkpoint_path
+
+
+class TranscoderTrainingRunner(SAETrainingRunner):
+    cfg: LanguageModelTranscoderRunnerConfig  # type: ignore
+    sae: TrainingTranscoder  # type: ignore
+    activations_store_out: ActivationsStore
+
+    def __init__(self, cfg: LanguageModelTranscoderRunnerConfig):
+        assert isinstance(
+            cfg, LanguageModelTranscoderRunnerConfig
+        ), "cfg must be of type LanguageModelTranscoderRunnerConfig"
+        self.cfg = cfg  # type: ignore
+
+        self.model = load_model(
+            self.cfg.model_class_name,
+            self.cfg.model_name,
+            device=self.cfg.device,
+            model_from_pretrained_kwargs=self.cfg.model_from_pretrained_kwargs,
+        )
+
+        self.activations_store = ActivationsStore.from_config(
+            self.model,
+            self.cfg,
+        )
+
+        self.activations_store_out = ActivationsStore(
+            model=self.model,
+            dataset=cfg.dataset_path,
+            streaming=cfg.streaming,
+            # NOTE: this part is different!
+            d_in=cfg.d_out,
+            hook_name=cfg.hook_name_out,
+            hook_layer=cfg.hook_layer_out,
+            hook_head_index=cfg.hook_head_index_out,
+            # NOTE: end different part
+            context_size=cfg.context_size,
+            n_batches_in_buffer=cfg.n_batches_in_buffer,
+            total_training_tokens=cfg.training_tokens,
+            store_batch_size_prompts=cfg.store_batch_size_prompts,
+            train_batch_size_tokens=cfg.train_batch_size_tokens,
+            prepend_bos=cfg.prepend_bos,
+            normalize_activations=cfg.normalize_activations,
+            device=torch.device(cfg.act_store_device),
+            dtype=cfg.dtype,
+            cached_activations_path=cfg.cached_activations_path,
+            model_kwargs=cfg.model_kwargs,
+            autocast_lm=cfg.autocast_lm,
+        )
+
+        if self.cfg.from_pretrained_path is not None:
+            raise NotImplementedError()
+        else:
+            self.sae = TrainingTranscoder(  # type: ignore
+                TrainingTranscoderConfig.from_dict(
+                    self.cfg.get_training_sae_cfg_dict(),
+                )
+            )
+            self._init_sae_group_b_decs()
+
+    def run(self):
+        """
+        Run the training of the SAE.
+        """
+
+        if self.cfg.log_to_wandb:
+            wandb.init(
+                project=self.cfg.wandb_project,
+                config=cast(Any, self.cfg),
+                name=self.cfg.run_name,
+                id=self.cfg.wandb_id,
+            )
+
+        trainer = TranscoderTrainer(
+            model=self.model,
+            sae=self.sae,
+            activation_store=self.activations_store,
+            activation_store_out=self.activations_store_out,
+            save_checkpoint_fn=self.save_checkpoint,
+            cfg=self.cfg,
+        )
+
+        self._compile_if_needed()
+        sae = self.run_trainer_with_interruption_handling(trainer)
+
+        if self.cfg.log_to_wandb:
+            wandb.finish()
+
+        return sae
