@@ -27,7 +27,6 @@ class TrainStepOutput:
     mse_loss: float
     l1_loss: float
     ghost_grad_loss: float
-    sfn_sparsity_loss: float = 0.0
     auxiliary_reconstruction_loss: float = 0.0
 
 
@@ -284,36 +283,24 @@ class TrainingSAE(SAE):
         if self.cfg.architecture == "gated":
             # Gated SAE Loss Calculation
 
-            # original, deprecated gated SAE L1 loss calculation            
-            # via_gate_feature_magnitudes = torch.relu(
-            #     sae_in_centered @ self.W_enc + self.b_gate
-            # )
-            # preactivation_l1_loss = (
-            #     current_l1_coefficient
-            #     * torch.sum(via_gate_feature_magnitudes, dim=-1).mean()
-            # )
-            
             # Shared variables
             sae_in_centered = sae_in - self.b_dec * self.cfg.apply_b_dec_to_input
             pi_gate = sae_in_centered @ self.W_enc + self.b_gate
-            
+            pi_gate_act = torch.relu(pi_gate)
+
             # SFN sparsity loss - summed over the feature dimension and averaged over the batch
-            sfn_sparsity_loss = current_l1_coefficient * torch.sum(
-                torch.abs(pi_gate) * self.W_dec.norm(dim=1), dim=-1
-            ).mean()
-            
+            l1_loss = (
+                current_l1_coefficient
+                * torch.sum(pi_gate_act * self.W_dec.norm(dim=1), dim=-1).mean()
+            )
 
             # Auxiliary reconstruction loss - summed over the feature dimension and averaged over the batch
-            pi_gate_act = torch.relu(pi_gate)
-            via_gate_reconstruction = (
-                pi_gate_act @ self.W_dec + self.b_dec
-            )
+            via_gate_reconstruction = pi_gate_act @ self.W_dec + self.b_dec
             aux_reconstruction_loss = torch.sum(
                 (via_gate_reconstruction - sae_in) ** 2, dim=-1
             ).mean()
 
-            loss = mse_loss + sfn_sparsity_loss + aux_reconstruction_loss
-            l1_loss = torch.tensor(0.0)
+            loss = mse_loss + l1_loss + aux_reconstruction_loss
         else:
             # default SAE sparsity loss
             weighted_feature_acts = feature_acts * self.W_dec.norm(dim=1)
@@ -324,7 +311,6 @@ class TrainingSAE(SAE):
             l1_loss = (current_l1_coefficient * sparsity).mean()
             loss = mse_loss + l1_loss + ghost_grad_loss
 
-            sfn_sparsity_loss = torch.tensor(0.0)
             aux_reconstruction_loss = torch.tensor(0.0)
 
         return TrainStepOutput(
@@ -339,8 +325,7 @@ class TrainingSAE(SAE):
                 if isinstance(ghost_grad_loss, torch.Tensor)
                 else ghost_grad_loss
             ),
-            sfn_sparsity_loss=sfn_sparsity_loss,
-            auxiliary_reconstruction_loss=aux_reconstruction_loss,
+            auxiliary_reconstruction_loss=aux_reconstruction_loss.item(),
         )
 
     def calculate_ghost_grad_loss(

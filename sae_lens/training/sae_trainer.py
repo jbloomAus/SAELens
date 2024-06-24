@@ -287,7 +287,6 @@ class SAETrainer:
             "losses/mse_loss": mse_loss,
             "losses/l1_loss": l1_loss
             / self.current_l1_coefficient,  # normalize by l1 coefficient
-            "losses/sfn_sparsity_loss": output.sfn_sparsity_loss,
             "losses/auxiliary_reconstruction_loss": output.auxiliary_reconstruction_loss,
             "losses/ghost_grad_loss": ghost_grad_loss,
             "losses/overall_loss": loss,

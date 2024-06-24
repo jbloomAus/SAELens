@@ -128,14 +128,9 @@ def test_gated_sae_training_forward_pass():
     # Detach the loss tensor and convert to numpy for comparison
     detached_loss = train_step_output.loss.detach().cpu().numpy()
     expected_loss = (
-        (
-            train_step_output.mse_loss
-            + train_step_output.sfn_sparsity_loss
-            + train_step_output.auxiliary_reconstruction_loss
-        )
-        .detach()
-        .cpu()
-        .numpy()
+        train_step_output.mse_loss
+        + train_step_output.l1_loss
+        + train_step_output.auxiliary_reconstruction_loss
     )
 
     assert pytest.approx(detached_loss, rel=1e-3) == expected_loss
