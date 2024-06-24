@@ -294,7 +294,7 @@ class TrainingSAE(SAE):
             # )
             
             # Shared variables
-            sae_in_centered = sae_in - self.b_dec
+            sae_in_centered = sae_in - self.b_dec * self.cfg.apply_b_dec_to_input
             pi_gate = sae_in_centered @ self.W_enc + self.b_gate
             
             # SFN sparsity loss - summed over the feature dimension and averaged over the batch
