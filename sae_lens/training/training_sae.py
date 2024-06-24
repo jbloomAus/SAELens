@@ -244,7 +244,7 @@ class TrainingSAE(SAE):
         x: Float[torch.Tensor, "... d_in"],
     ) -> Float[torch.Tensor, "... d_in"]:
 
-        feature_acts, _ = self.encode_with_hidden_pre(x)
+        feature_acts, _ = self.encode_with_hidden_pre_fn(x)
         sae_out = self.decode(feature_acts)
 
         return sae_out
@@ -284,7 +284,9 @@ class TrainingSAE(SAE):
             # Gated SAE Loss Calculation
 
             # Shared variables
-            sae_in_centered = self.reshape_fn_in(sae_in) - self.b_dec * self.cfg.apply_b_dec_to_input
+            sae_in_centered = (
+                self.reshape_fn_in(sae_in) - self.b_dec * self.cfg.apply_b_dec_to_input
+            )
             pi_gate = sae_in_centered @ self.W_enc + self.b_gate
             pi_gate_act = torch.relu(pi_gate)
 

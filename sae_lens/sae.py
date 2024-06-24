@@ -219,10 +219,6 @@ class SAE(HookedRootModule):
 
     def initialize_weights_gated(self):
         # Initialize the weights and biases for the gated encoder
-        self.b_enc = nn.Parameter(
-            torch.zeros(self.cfg.d_sae, dtype=self.dtype, device=self.device)
-        )
-
         self.W_enc = nn.Parameter(
             torch.nn.init.kaiming_uniform_(
                 torch.empty(
@@ -294,8 +290,33 @@ class SAE(HookedRootModule):
 
                 sae_out = self.run_time_activation_norm_fn_out(sae_out)
                 sae_error = self.hook_sae_error(x - x_reconstruct_clean)
+                return self.hook_sae_output(sae_out + sae_error)
 
-            return self.hook_sae_output(sae_out + sae_error)
+        # # TODO: Add tests
+        # elif self.cfg.architecture == "gated":
+        #     with torch.no_grad():
+        #         x = x.to(self.dtype)
+        #         sae_in = self.reshape_fn_in(x)  # type: ignore
+        #         gating_pre_activation = sae_in @ self.W_enc + self.b_gate
+        #         active_features = (gating_pre_activation > 0).float()
+
+        #         # Magnitude path with weight sharing
+        #         magnitude_pre_activation = self.hook_sae_acts_pre(
+        #             sae_in @ (self.W_enc * self.r_mag.exp()) + self.b_mag
+        #         )
+        #         feature_magnitudes = self.hook_sae_acts_post(
+        #             self.activation_fn(magnitude_pre_activation)
+        #         )
+        #         feature_acts_clean = active_features * feature_magnitudes
+        #         x_reconstruct_clean = self.reshape_fn_out(
+        #             self.apply_finetuning_scaling_factor(feature_acts_clean)
+        #             @ self.W_dec
+        #             + self.b_dec,
+        #             d_head=self.d_head,
+        #         )
+
+        #         sae_error = self.hook_sae_error(x - x_reconstruct_clean)
+        #         return self.hook_sae_output(sae_out + sae_error)
 
         return self.hook_sae_output(sae_out)
 
@@ -311,8 +332,12 @@ class SAE(HookedRootModule):
         active_features = (gating_pre_activation > 0).float()
 
         # Magnitude path with weight sharing
-        magnitude_pre_activation = self.hook_sae_acts_pre(sae_in @ (self.W_enc * self.r_mag.exp()) + self.b_mag)
-        feature_magnitudes = self.hook_sae_acts_post(self.activation_fn(magnitude_pre_activation))
+        magnitude_pre_activation = self.hook_sae_acts_pre(
+            sae_in @ (self.W_enc * self.r_mag.exp()) + self.b_mag
+        )
+        feature_magnitudes = self.hook_sae_acts_post(
+            self.activation_fn(magnitude_pre_activation)
+        )
 
         return active_features * feature_magnitudes
 
