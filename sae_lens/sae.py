@@ -311,8 +311,8 @@ class SAE(HookedRootModule):
         active_features = (gating_pre_activation > 0).float()
 
         # Magnitude path with weight sharing
-        magnitude_pre_activation = sae_in @ (self.W_enc * self.r_mag.exp()) + self.b_mag
-        feature_magnitudes = self.activation_fn(magnitude_pre_activation)
+        magnitude_pre_activation = self.hook_sae_acts_pre(sae_in @ (self.W_enc * self.r_mag.exp()) + self.b_mag)
+        feature_magnitudes = self.hook_sae_acts_post(self.activation_fn(magnitude_pre_activation))
 
         return active_features * feature_magnitudes
 
