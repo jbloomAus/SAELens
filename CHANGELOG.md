@@ -2,6 +2,41 @@
 
 
 
+## v3.6.0 (2024-06-25)
+
+### Feature
+
+* feat: Support Gated-SAEs (#188)
+
+* Initial draft of encoder
+
+* Second draft of Gated SAE implementation
+
+* Added SFN loss implementation
+
+* Latest modification of SFN loss training setup
+
+* fix missing config use
+
+* dont have special sfn loss
+
+* add hooks and reshape
+
+* sae error term not working, WIP
+
+* make tests  pass
+
+* add benchmark for gated
+
+---------
+
+Co-authored-by: Joseph Bloom &lt;jbloomaus@gmail.com&gt; ([`232c39c`](https://github.com/jbloomAus/SAELens/commit/232c39cea709ae9c4b68b204cf027fbaab385f64))
+
+### Unknown
+
+* fix hook z loader (#194) ([`cb30996`](https://github.com/jbloomAus/SAELens/commit/cb30996cf36c80bbf6f0fd529bd27262bbce13ce))
+
+
 ## v3.5.0 (2024-06-20)
 
 ### Feature
