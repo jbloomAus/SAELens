@@ -42,6 +42,7 @@ def get_hooked_sae(model: HookedTransformer, act_name: str) -> SAE:
     d_in = site_to_size[site]
 
     sae_cfg = SAEConfig(
+        architecture="standard",
         d_in=d_in,
         d_sae=d_in * 2,
         dtype="float32",

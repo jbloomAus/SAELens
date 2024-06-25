@@ -124,6 +124,7 @@ def connor_rob_hook_z_loader(
     # }
 
     cfg_dict = {
+        "architecture": "standard",
         "d_in": old_cfg_dict["act_size"],
         "d_sae": old_cfg_dict["dict_size"],
         "dtype": "float32",
@@ -168,6 +169,10 @@ def load_pretrained_sae_lens_sae_components(
 ) -> tuple[dict[str, Any], dict[str, torch.Tensor], Optional[torch.Tensor]]:
     with open(cfg_path, "r") as f:
         cfg_dict = json.load(f)
+
+    cfg_dict["architecture"] = (
+        "standard"  # TODO: modify this when we add support for loading more architectures
+    )
 
     # filter config for varnames
     cfg_dict["device"] = device

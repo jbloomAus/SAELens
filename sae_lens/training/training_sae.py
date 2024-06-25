@@ -27,6 +27,7 @@ class TrainStepOutput:
     mse_loss: float
     l1_loss: float
     ghost_grad_loss: float
+    auxiliary_reconstruction_loss: float = 0.0
 
 
 @dataclass
@@ -50,7 +51,8 @@ class TrainingSAEConfig(SAEConfig):
     ) -> "TrainingSAEConfig":
 
         return cls(
-            # base confg
+            # base config
+            architecture=cfg.architecture,
             d_in=cfg.d_in,
             d_sae=cfg.d_sae,  # type: ignore
             dtype=cfg.dtype,
@@ -104,6 +106,7 @@ class TrainingSAEConfig(SAEConfig):
     # parameters. Maybe there's a cleaner way to do this
     def get_base_sae_cfg_dict(self) -> dict[str, Any]:
         return {
+            "architecture": self.architecture,
             "d_in": self.d_in,
             "d_sae": self.d_sae,
             "activation_fn_str": self.activation_fn_str,
@@ -140,6 +143,15 @@ class TrainingSAE(SAE):
         base_sae_cfg = SAEConfig.from_dict(cfg.get_base_sae_cfg_dict())
         super().__init__(base_sae_cfg)
         self.cfg = cfg  # type: ignore
+
+        self.encode_with_hidden_pre_fn = (
+            self.encode_with_hidden_pre
+            if cfg.architecture != "gated"
+            else self.encode_with_hidden_pre_gated
+        )
+
+        self.check_cfg_compatibility()
+
         self.use_error_term = use_error_term
 
         self.initialize_weights_complex()
@@ -154,13 +166,20 @@ class TrainingSAE(SAE):
     def from_dict(cls, config_dict: dict[str, Any]) -> "TrainingSAE":
         return cls(TrainingSAEConfig.from_dict(config_dict))
 
+    def check_cfg_compatibility(self):
+        if self.cfg.architecture == "gated":
+            assert (
+                self.cfg.use_ghost_grads is False
+            ), "Gated SAEs do not support ghost grads"
+            assert self.use_error_term is False, "Gated SAEs do not support error terms"
+
     def encode(
         self, x: Float[torch.Tensor, "... d_in"]
     ) -> Float[torch.Tensor, "... d_sae"]:
         """
         Calcuate SAE features from inputs
         """
-        feature_acts, _ = self.encode_with_hidden_pre(x)
+        feature_acts, _ = self.encode_with_hidden_pre_fn(x)
         return feature_acts
 
     def encode_with_hidden_pre(
@@ -188,12 +207,44 @@ class TrainingSAE(SAE):
 
         return feature_acts, hidden_pre_noised
 
+    def encode_with_hidden_pre_gated(
+        self, x: Float[torch.Tensor, "... d_in"]
+    ) -> tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
+
+        # move x to correct dtype
+        x = x.to(self.dtype)
+
+        # handle hook z reshaping if needed.
+        x = self.reshape_fn_in(x)  # type: ignore
+
+        # apply b_dec_to_input if using that method.
+        sae_in = self.hook_sae_input(x - (self.b_dec * self.cfg.apply_b_dec_to_input))
+
+        # Gating path with Heaviside step function
+        gating_pre_activation = sae_in @ self.W_enc + self.b_gate
+        active_features = (gating_pre_activation > 0).float()
+
+        # Magnitude path with weight sharing
+        magnitude_pre_activation = sae_in @ (self.W_enc * self.r_mag.exp()) + self.b_mag
+        # magnitude_pre_activation_noised = magnitude_pre_activation + (
+        #     torch.randn_like(magnitude_pre_activation) * self.cfg.noise_scale * self.training
+        # )
+        feature_magnitudes = self.activation_fn(
+            magnitude_pre_activation
+        )  # magnitude_pre_activation_noised)
+
+        # Return both the gated feature activations and the magnitude pre-activations
+        return (
+            active_features * feature_magnitudes,
+            magnitude_pre_activation,
+        )  # magnitude_pre_activation_noised
+
     def forward(
         self,
         x: Float[torch.Tensor, "... d_in"],
     ) -> Float[torch.Tensor, "... d_in"]:
 
-        feature_acts, _ = self.encode_with_hidden_pre(x)
+        feature_acts, _ = self.encode_with_hidden_pre_fn(x)
         sae_out = self.decode(feature_acts)
 
         return sae_out
@@ -207,7 +258,7 @@ class TrainingSAE(SAE):
 
         # do a forward pass to get SAE out, but we also need the
         # hidden pre.
-        feature_acts, _ = self.encode_with_hidden_pre(sae_in)
+        feature_acts, _ = self.encode_with_hidden_pre_fn(sae_in)
         sae_out = self.decode(feature_acts)
 
         # MSE LOSS
@@ -218,7 +269,7 @@ class TrainingSAE(SAE):
         if self.cfg.use_ghost_grads and self.training and dead_neuron_mask is not None:
 
             # first half of second forward pass
-            _, hidden_pre = self.encode_with_hidden_pre(sae_in)
+            _, hidden_pre = self.encode_with_hidden_pre_fn(sae_in)
             ghost_grad_loss = self.calculate_ghost_grad_loss(
                 x=sae_in,
                 sae_out=sae_out,
@@ -229,17 +280,40 @@ class TrainingSAE(SAE):
         else:
             ghost_grad_loss = 0.0
 
-        # SPARSITY LOSS
-        # either the W_dec norms are 1 and this won't do anything or they are not 1
-        # and we're using their norm in the loss function.
-        weighted_feature_acts = feature_acts * self.W_dec.norm(dim=1)
-        sparsity = weighted_feature_acts.norm(
-            p=self.cfg.lp_norm, dim=-1
-        )  # sum over the feature dimension
+        if self.cfg.architecture == "gated":
+            # Gated SAE Loss Calculation
 
-        l1_loss = (current_l1_coefficient * sparsity).mean()
+            # Shared variables
+            sae_in_centered = (
+                self.reshape_fn_in(sae_in) - self.b_dec * self.cfg.apply_b_dec_to_input
+            )
+            pi_gate = sae_in_centered @ self.W_enc + self.b_gate
+            pi_gate_act = torch.relu(pi_gate)
 
-        loss = mse_loss + l1_loss + ghost_grad_loss
+            # SFN sparsity loss - summed over the feature dimension and averaged over the batch
+            l1_loss = (
+                current_l1_coefficient
+                * torch.sum(pi_gate_act * self.W_dec.norm(dim=1), dim=-1).mean()
+            )
+
+            # Auxiliary reconstruction loss - summed over the feature dimension and averaged over the batch
+            via_gate_reconstruction = pi_gate_act @ self.W_dec + self.b_dec
+            aux_reconstruction_loss = torch.sum(
+                (via_gate_reconstruction - sae_in) ** 2, dim=-1
+            ).mean()
+
+            loss = mse_loss + l1_loss + aux_reconstruction_loss
+        else:
+            # default SAE sparsity loss
+            weighted_feature_acts = feature_acts * self.W_dec.norm(dim=1)
+            sparsity = weighted_feature_acts.norm(
+                p=self.cfg.lp_norm, dim=-1
+            )  # sum over the feature dimension
+
+            l1_loss = (current_l1_coefficient * sparsity).mean()
+            loss = mse_loss + l1_loss + ghost_grad_loss
+
+            aux_reconstruction_loss = torch.tensor(0.0)
 
         return TrainStepOutput(
             sae_in=sae_in,
@@ -253,6 +327,7 @@ class TrainingSAE(SAE):
                 if isinstance(ghost_grad_loss, torch.Tensor)
                 else ghost_grad_loss
             ),
+            auxiliary_reconstruction_loss=aux_reconstruction_loss.item(),
         )
 
     def calculate_ghost_grad_loss(
@@ -354,7 +429,7 @@ class TrainingSAE(SAE):
         elif self.cfg.normalize_sae_decoder:
             self.set_decoder_norm_to_unit_norm()
 
-        # Then we intialize the encoder weights (either as the transpose of decoder or not)
+        # Then we initialize the encoder weights (either as the transpose of decoder or not)
         if self.cfg.init_encoder_as_decoder_transpose:
             self.W_enc.data = self.W_dec.data.T.clone().contiguous()
         else:

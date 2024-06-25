@@ -185,6 +185,7 @@ def test_build_train_step_log_dict(trainer: SAETrainer) -> None:
         # l1 loss is scaled by l1_coefficient
         "losses/l1_loss": train_output.l1_loss / trainer.cfg.l1_coefficient,
         "losses/ghost_grad_loss": pytest.approx(0.15),
+        "losses/auxiliary_reconstruction_loss": 0.0,
         "losses/overall_loss": 0.5,
         "metrics/explained_variance": 0.75,
         "metrics/explained_variance_std": 0.25,

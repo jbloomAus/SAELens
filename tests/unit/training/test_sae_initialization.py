@@ -33,6 +33,37 @@ def test_SparseAutoencoder_initialization_standard():
     assert not torch.allclose(unit_normed_W_enc, unit_normed_W_dec, atol=1e-6)
 
 
+def test_SparseAutoencoder_initialization_gated():
+    cfg = build_sae_cfg()
+    setattr(cfg, "architecture", "gated")
+    sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+
+    assert sae.W_enc.shape == (cfg.d_in, cfg.d_sae)
+    assert sae.W_dec.shape == (cfg.d_sae, cfg.d_in)
+    assert sae.b_mag.shape == (cfg.d_sae,)
+    assert sae.b_gate.shape == (cfg.d_sae,)
+    assert sae.r_mag.shape == (cfg.d_sae,)
+    assert sae.b_dec.shape == (cfg.d_in,)
+    assert isinstance(sae.activation_fn, torch.nn.ReLU)
+    assert sae.device == torch.device("cpu")
+    assert sae.dtype == torch.float32
+
+    # biases
+    assert torch.allclose(sae.b_dec, torch.zeros_like(sae.b_dec), atol=1e-6)
+    assert torch.allclose(sae.b_mag, torch.zeros_like(sae.b_mag), atol=1e-6)
+    assert torch.allclose(sae.b_gate, torch.zeros_like(sae.b_gate), atol=1e-6)
+
+    # check if the decoder weight norm is 1 by default
+    assert torch.allclose(
+        sae.W_dec.norm(dim=1), torch.ones_like(sae.W_dec.norm(dim=1)), atol=1e-6
+    )
+
+    #  Default currently shouldn't be tranpose initialization
+    unit_normed_W_enc = sae.W_enc / torch.norm(sae.W_enc, dim=0)
+    unit_normed_W_dec = sae.W_dec.T
+    assert not torch.allclose(unit_normed_W_enc, unit_normed_W_dec, atol=1e-6)
+
+
 def test_SparseAutoencoder_initialization_orthogonal_enc_dec():
     cfg = build_sae_cfg(decoder_orthogonal_init=True)
 
