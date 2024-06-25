@@ -2,6 +2,13 @@
 
 
 
+## v3.7.0 (2024-06-25)
+
+### Feature
+
+* feat: new saes for gemma-2b-it and feature splitting on gpt2-small-layer-8 (#195) ([`5cfe382`](https://github.com/jbloomAus/SAELens/commit/5cfe382d43f028c2e4f4e7cb21a1c19abb5471d0))
+
+
 ## v3.6.0 (2024-06-25)
 
 ### Feature
