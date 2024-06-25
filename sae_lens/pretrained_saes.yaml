@@ -162,6 +162,43 @@ SAE_LOOKUP:
         path: "sae_group_gpt2_blocks.11.hook_mlp_out_24576:v2"
         variance_explained: 0.05
         l0: 170.0
+  gpt2-small-res-jb-feature-splitting:
+    repo_id: "jbloom/GPT2-Small-Feature-Splitting-Experiment-Layer-8"
+    model: "gpt2-small"
+    conversion_func: null
+    saes:
+      - id: "blocks.8.hook_resid_pre_768"
+        path: "blocks.8.hook_resid_pre_768"
+        variance_explained: 0.61
+        l0: 36.0
+      - id: "blocks.8.hook_resid_pre_1536"
+        path: "blocks.8.hook_resid_pre_1536"
+        variance_explained: 0.67
+        l0: 39.0
+      - id: "blocks.8.hook_resid_pre_3072"
+        path: "blocks.8.hook_resid_pre_3072"
+        variance_explained: 0.72
+        l0: 41.0
+      - id: "blocks.8.hook_resid_pre_6144"
+        path: "blocks.8.hook_resid_pre_6144"
+        variance_explained: 0.76
+        l0: 43.0
+      - id: "blocks.8.hook_resid_pre_12288"
+        path: "blocks.8.hook_resid_pre_12288"
+        variance_explained: 0.77
+        l0: 43.0
+      - id: "blocks.8.hook_resid_pre_24576"
+        path: "blocks.8.hook_resid_pre_24576"
+        variance_explained: 0.79
+        l0: 40.0
+      - id: "blocks.8.hook_resid_pre_49152"
+        path: "blocks.8.hook_resid_pre_49152"
+        variance_explained: 0.81
+        l0: 40.0
+      - id: "blocks.8.hook_resid_pre_98304"
+        path: "blocks.8.hook_resid_pre_98304"
+        variance_explained: 0.82
+        l0: 43.0
   gemma-2b-res-jb:
     repo_id: "jbloom/Gemma-2b-Residual-Stream-SAEs"
     model: "gemma-2b"
@@ -179,6 +216,15 @@ SAE_LOOKUP:
         path: "gemma_2b_blocks.12.hook_resid_post_16384"
         variance_explained: -3.6
         l0: 62.0
+  gemma-2b-it-res-jb:
+    repo_id: "jbloom/Gemma-2b-IT-Residual-Stream-SAEs"
+    model: "gemma-2b-it"
+    conversion_func: null
+    saes:
+      - id: "blocks.12.hook_resid_post"
+        path: "gemma_2b_it_blocks.12.hook_resid_post_16384"
+        variance_explained: 0.57
+        l0: 61.0
   mistral-7b-res-wg:
     repo_id: "JoshEngels/Mistral-7B-Residual-Stream-SAEs"
     model: "mistral-7b"
