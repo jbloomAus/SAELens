@@ -12,7 +12,7 @@ def test_gated_sae_initialization():
 
     assert sae.W_enc.shape == (cfg.d_in, cfg.d_sae)
     assert sae.W_dec.shape == (cfg.d_sae, cfg.d_in)
-    assert sae.b_enc.shape == (cfg.d_sae,)
+    # assert sae.b_enc.shape == (cfg.d_sae,)
     assert sae.b_mag.shape == (cfg.d_sae,)
     assert sae.b_gate.shape == (cfg.d_sae,)
     assert sae.r_mag.shape == (cfg.d_sae,)
@@ -23,7 +23,8 @@ def test_gated_sae_initialization():
 
     # biases
     assert torch.allclose(sae.b_dec, torch.zeros_like(sae.b_dec), atol=1e-6)
-    assert torch.allclose(sae.b_enc, torch.zeros_like(sae.b_enc), atol=1e-6)
+    assert torch.allclose(sae.b_mag, torch.zeros_like(sae.b_mag), atol=1e-6)
+    assert torch.allclose(sae.b_gate, torch.zeros_like(sae.b_gate), atol=1e-6)
 
     # check if the decoder weight norm is 1 by default
     assert torch.allclose(
