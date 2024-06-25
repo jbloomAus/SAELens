@@ -141,6 +141,7 @@ def connor_rob_hook_z_loader(
         "dataset_path": "apollo-research/Skylion007-openwebtext-tokenizer-gpt2",
         "context_size": 128,
         "normalize_activations": "none",
+        "dataset_trust_remote_code": True,
     }
 
     return cfg_dict, weights, None
