@@ -112,7 +112,7 @@ class NeuronpediaFeature:
         description: str = "",
         activations: list[NeuronpediaActivation] | None = None,
         autointerp_explanation: str = "",
-        autointerp_explanation_score: float = 0.0,
+        autointerp_explanation_score: float | None = None,
     ):
         self.modelId = modelId
         self.layer = layer
@@ -357,6 +357,7 @@ async def autointerp_neuronpedia_features(
         print(f"===== {autointerp_explainer_model_name}'s explanation: {explanation}")
         feature.autointerp_explanation = explanation
 
+        scored_simulation = None
         if do_score:
             print(
                 f"\n=== Step 3) Scoring feature {feature.modelId}@{feature.layer}-{feature.dataset}:{feature.feature}"
@@ -378,7 +379,6 @@ async def autointerp_neuronpedia_features(
             ]
 
             score = None
-            scored_simulation = None
             for _ in range(autointerp_retry_attempts):
                 try:
                     simulator = UncalibratedNeuronSimulator(
@@ -413,49 +413,53 @@ async def autointerp_neuronpedia_features(
             feature.autointerp_explanation_score = score
             print(f"===== {autointerp_scorer_model_name}'s score: {(score * 100):.0f}")
 
-            output_file = (
-                f"{output_dir}/{feature.layer}-{feature.dataset}_feature-{feature.feature}_score-"
-                f"{feature.autointerp_explanation_score}_time-{datetime.now().strftime('%Y%m%d-%H%M%S')}.jsonl"
-            )
-            os.makedirs(output_dir, exist_ok=True)
-            print(f"===== Your results will be saved to: {output_file} =====")
+        output_file = (
+            f"{output_dir}/{feature.layer}-{feature.dataset}_feature-{feature.feature}_score-"
+            f"{feature.autointerp_explanation_score}_time-{datetime.now().strftime('%Y%m%d-%H%M%S')}.jsonl"
+        )
+        os.makedirs(output_dir, exist_ok=True)
+        print(f"===== Your results will be saved to: {output_file} =====")
 
-            output_data = json.dumps(
-                {
-                    "apiKey": neuronpedia_api_key,
-                    "feature": {
-                        "modelId": feature.modelId,
-                        "layer": f"{feature.layer}-{feature.dataset}",
-                        "index": feature.feature,
-                        "activations": feature.activations,
-                        "explanation": feature.autointerp_explanation,
-                        "explanationScore": feature.autointerp_explanation_score,
-                        "explanationModel": autointerp_explainer_model_name,
-                        "autointerpModel": autointerp_scorer_model_name,
-                        "simulatedActivations": scored_simulation.scored_sequence_simulations,
-                    },
+        output_data = json.dumps(
+            {
+                "apiKey": neuronpedia_api_key,
+                "feature": {
+                    "modelId": feature.modelId,
+                    "layer": f"{feature.layer}-{feature.dataset}",
+                    "index": feature.feature,
+                    "activations": feature.activations,
+                    "explanation": feature.autointerp_explanation,
+                    "explanationScore": feature.autointerp_explanation_score,
+                    "explanationModel": autointerp_explainer_model_name,
+                    "autointerpModel": autointerp_scorer_model_name,
+                    "simulatedActivations": (
+                        scored_simulation.scored_sequence_simulations
+                        if scored_simulation
+                        else []
+                    ),
                 },
-                default=vars,
+            },
+            default=vars,
+        )
+        output_data_json = json.loads(output_data, parse_constant=NanAndInfReplacer)
+        output_data_str = json.dumps(output_data)
+
+        print(f"\n=== Step 4) Saving feature to {output_file}")
+        with open(output_file, "a") as f:
+            f.write(output_data_str)
+            f.write("\n")
+
+        if upload_to_neuronpedia:
+            print(
+                f"\n=== Step 5) Uploading feature to Neuronpedia: {feature.modelId}@{feature.layer}-{feature.dataset}:{feature.feature}"
             )
-            output_data_json = json.loads(output_data, parse_constant=NanAndInfReplacer)
-            output_data_str = json.dumps(output_data)
-
-            print(f"\n=== Step 4) Saving feature to {output_file}")
-            with open(output_file, "a") as f:
-                f.write(output_data_str)
-                f.write("\n")
-
-            if upload_to_neuronpedia:
+            url = f"{NEURONPEDIA_DOMAIN}/api/upload-explanation"
+            body = output_data_json
+            response = requests.post(url, json=body)
+            if response.status_code != 200:
                 print(
-                    f"\n=== Step 5) Uploading feature to Neuronpedia: {feature.modelId}@{feature.layer}-{feature.dataset}:{feature.feature}"
+                    f"ERROR: Couldn't upload explanation to Neuronpedia: {response.text}"
                 )
-                url = f"{NEURONPEDIA_DOMAIN}/api/upload-explanation"
-                body = output_data_json
-                response = requests.post(url, json=body)
-                if response.status_code != 200:
-                    print(
-                        f"ERROR: Couldn't upload explanation to Neuronpedia: {response.text}"
-                    )
 
         end_time = datetime.now()
         print(f"\n========== Time Spent for Feature: {end_time - start_time}\n")
