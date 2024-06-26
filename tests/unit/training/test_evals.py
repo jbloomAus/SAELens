@@ -93,6 +93,25 @@ def training_sae(cfg: LanguageModelSAERunnerConfig):
     return TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
 
 
+expected_keys = [
+    "metrics/l2_norm_in",
+    "metrics/l2_ratio",
+    "metrics/l2_norm_out",
+    "metrics/explained_variance",
+    "metrics/l0",
+    "metrics/l1",
+    "metrics/mse",
+    "metrics/ce_loss_score",
+    "metrics/ce_loss_without_sae",
+    "metrics/ce_loss_with_sae",
+    "metrics/ce_loss_with_ablation",
+    "metrics/kl_div_score",
+    "metrics/kl_div_without_sae",
+    "metrics/kl_div_with_sae",
+    "metrics/kl_div_with_ablation",
+]
+
+
 def test_run_evals_base_sae(
     base_sae: SAE,
     activation_store: ActivationsStore,
@@ -106,16 +125,6 @@ def test_run_evals_base_sae(
         n_eval_batches=2,
         eval_batch_size_prompts=None,
     )
-
-    expected_keys = [
-        "metrics/l2_norm",
-        "metrics/l2_ratio",
-        "metrics/l2_norm_in",
-        "metrics/CE_loss_score",
-        "metrics/ce_loss_without_sae",
-        "metrics/ce_loss_with_sae",
-        "metrics/ce_loss_with_ablation",
-    ]
 
     # results will be garbage without a real model.
     for key in expected_keys:
@@ -135,16 +144,6 @@ def test_run_evals_training_sae(
         n_eval_batches=10,
         eval_batch_size_prompts=None,
     )
-
-    expected_keys = [
-        "metrics/l2_norm",
-        "metrics/l2_ratio",
-        "metrics/l2_norm_in",
-        "metrics/CE_loss_score",
-        "metrics/ce_loss_without_sae",
-        "metrics/ce_loss_with_sae",
-        "metrics/ce_loss_with_ablation",
-    ]
 
     for key in expected_keys:
         assert key in eval_metrics
