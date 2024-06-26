@@ -61,8 +61,8 @@ def eval_all_loadable_gpt2_saes(
                     sae=sae,
                     activation_store=activation_store,
                     model=model,
-                    n_eval_batches=10,
-                    eval_batch_size_prompts=8,
+                    n_eval_batches=num_eval_batches,
+                    eval_batch_size_prompts=eval_batch_size_prompts,
                 )
 
                 data.append(eval_metrics)
