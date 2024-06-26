@@ -442,8 +442,8 @@ def multiple_evals(
 if __name__ == "__main__":
 
     # Example commands:
-    # python sae_lens/evals.py "gpt2-small-res-jb.*" "blocks.8.hook_resid_pre" --save_path "gpt2_small_jb_layer8_resid_pre_eval_results.csv"
-    # python sae_lens/evals.py "gpt2-small.*" "blocks.8.hook_resid_pre" --save_path "gpt2_small_layer8_resid_pre_eval_results.csv"
+    # python sae_lens/evals.py "gpt2-small-res-jb.*" "blocks.8.hook_resid_pre.*" --save_path "gpt2_small_jb_layer8_resid_pre_eval_results.csv"
+    # python sae_lens/evals.py "gpt2-small.*" "blocks.8.hook_resid_pre.*" --save_path "gpt2_small_layer8_resid_pre_eval_results.csv"
     # python sae_lens/evals.py "gpt2-small.*" ".*" --save_path "gpt2_small_eval_results.csv"
     # python sae_lens/evals.py "mistral.*" ".*" --save_path "mistral_eval_results.csv"
 
