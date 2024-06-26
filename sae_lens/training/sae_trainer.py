@@ -318,6 +318,16 @@ class SAETrainer:
                 model_kwargs=self.cfg.model_kwargs,
             )
 
+            # Remove eval metrics that are already logged during training
+            eval_metrics.pop("metrics/explained_variance", None)
+            eval_metrics.pop("metrics/explained_variance_std", None)
+            eval_metrics.pop("metrics/l0", None)
+            eval_metrics.pop("metrics/l1", None)
+            eval_metrics.pop("metrics/mse", None)
+
+            # Remove metrics that are not useful for wandb logging
+            eval_metrics.pop("metrics/total_tokens_evaluated", None)
+
             W_dec_norm_dist = self.sae.W_dec.norm(dim=1).detach().cpu().numpy()
             eval_metrics["weights/W_dec_norms"] = wandb.Histogram(W_dec_norm_dist)  # type: ignore
 
