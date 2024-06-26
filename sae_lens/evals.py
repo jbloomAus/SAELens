@@ -1,11 +1,17 @@
+import argparse
+import re
 from functools import partial
 from typing import Any, Mapping, Tuple
 
 import einops
+import pandas as pd
 import torch
+from tqdm import tqdm
+from transformer_lens import HookedTransformer
 from transformer_lens.hook_points import HookedRootModule
 
 from sae_lens.sae import SAE
+from sae_lens.toolkit.pretrained_saes_directory import get_pretrained_saes_directory
 from sae_lens.training.activations_store import ActivationsStore
 
 
@@ -348,3 +354,150 @@ def get_recons_loss(
         recons_ce_loss,
         zero_abl_ce_loss,
     )
+
+
+def all_loadable_saes() -> list[tuple[str, str, float, float]]:
+    all_loadable_saes = []
+    saes_directory = get_pretrained_saes_directory()
+    for release, lookup in saes_directory.items():
+        for sae_name in lookup.saes_map.keys():
+            expected_var_explained = lookup.expected_var_explained[sae_name]
+            expected_l0 = lookup.expected_l0[sae_name]
+            all_loadable_saes.append(
+                (release, sae_name, expected_var_explained, expected_l0)
+            )
+
+    return all_loadable_saes
+
+
+def multiple_evals(
+    sae_regex_pattern: str,
+    sae_block_pattern: str,
+    num_eval_batches: int = 10,
+    eval_batch_size_prompts: int = 8,
+    datasets: list[str] = ["Skylion007/openwebtext", "lighteval/MATH"],
+    ctx_lens: list[int] = [64, 128, 256, 512],
+) -> pd.DataFrame:
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    sae_regex_compiled = re.compile(sae_regex_pattern)
+    sae_block_compiled = re.compile(sae_block_pattern)
+    all_saes = all_loadable_saes()
+    filtered_saes = [
+        sae
+        for sae in all_saes
+        if sae_regex_compiled.fullmatch(sae[0]) and sae_block_compiled.fullmatch(sae[1])
+    ]
+
+    assert len(filtered_saes) > 0, "No SAEs matched the given regex patterns"
+
+    eval_results = []
+
+    current_model = None
+    current_model_str = None
+    print(filtered_saes)
+    for sae_name, sae_block, _, _ in tqdm(filtered_saes):
+
+        sae = SAE.from_pretrained(
+            release=sae_name,  # see other options in sae_lens/pretrained_saes.yaml
+            sae_id=sae_block,  # won't always be a hook point
+            device=device,
+        )[0]
+
+        if current_model_str != sae.cfg.model_name:
+            del current_model  # potentially saves GPU memory
+            current_model_str = sae.cfg.model_name
+            current_model = HookedTransformer.from_pretrained(
+                current_model_str, device=device
+            )
+        assert current_model is not None
+
+        for ctx_len in ctx_lens:
+            for dataset in datasets:
+
+                activation_store = ActivationsStore.from_sae(
+                    current_model, sae, context_size=ctx_len, dataset=dataset
+                )
+                activation_store.shuffle_input_dataset(seed=42)
+
+                eval_metrics = {}
+                eval_metrics["sae_id"] = f"{sae_name}-{sae_block}"
+                eval_metrics["context_size"] = ctx_len
+                eval_metrics["dataset"] = dataset
+
+                eval_metrics |= run_evals(
+                    sae=sae,
+                    activation_store=activation_store,
+                    model=current_model,
+                    n_eval_batches=num_eval_batches,
+                    eval_batch_size_prompts=eval_batch_size_prompts,
+                )
+
+                eval_results.append(eval_metrics)
+
+    return pd.DataFrame(eval_results)
+
+
+if __name__ == "__main__":
+
+    # Example commands:
+    # python sae_lens/evals.py "gpt2-small-res-jb.*" "blocks.8.hook_resid_pre" --save_path "gpt2_small_jb_layer8_resid_pre_eval_results.csv"
+    # python sae_lens/evals.py "gpt2-small.*" "blocks.8.hook_resid_pre" --save_path "gpt2_small_layer8_resid_pre_eval_results.csv"
+    # python sae_lens/evals.py "gpt2-small.*" ".*" --save_path "gpt2_small_eval_results.csv"
+    # python sae_lens/evals.py "mistral.*" ".*" --save_path "mistral_eval_results.csv"
+
+    arg_parser = argparse.ArgumentParser(description="Run evaluations on SAEs")
+    arg_parser.add_argument(
+        "sae_regex_pattern",
+        type=str,
+        help="Regex pattern to match SAE names. Can be an entire SAE name to match a specific SAE.",
+    )
+    arg_parser.add_argument(
+        "sae_block_pattern",
+        type=str,
+        help="Regex pattern to match SAE block names. Can be an entire block name to match a specific block.",
+    )
+    arg_parser.add_argument(
+        "--num_eval_batches",
+        type=int,
+        default=10,
+        help="Number of evaluation batches to run.",
+    )
+    arg_parser.add_argument(
+        "--eval_batch_size_prompts",
+        type=int,
+        default=8,
+        help="Batch size for evaluation prompts.",
+    )
+    arg_parser.add_argument(
+        "--datasets",
+        nargs="+",
+        default=["Skylion007/openwebtext", "lighteval/MATH"],
+        help="Datasets to evaluate on.",
+    )
+    arg_parser.add_argument(
+        "--ctx_lens",
+        nargs="+",
+        default=[64, 128, 256, 512],
+        help="Context lengths to evaluate on.",
+    )
+    arg_parser.add_argument(
+        "--save_path",
+        type=str,
+        default="eval_results.csv",
+        help="Path to save evaluation results to.",
+    )
+
+    args = arg_parser.parse_args()
+
+    eval_results = multiple_evals(
+        sae_regex_pattern=args.sae_regex_pattern,
+        sae_block_pattern=args.sae_block_pattern,
+        num_eval_batches=args.num_eval_batches,
+        eval_batch_size_prompts=args.eval_batch_size_prompts,
+        datasets=args.datasets,
+        ctx_lens=args.ctx_lens,
+    )
+
+    eval_results.to_csv(args.save_path, index=False)
