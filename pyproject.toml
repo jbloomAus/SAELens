@@ -53,6 +53,7 @@ mkdocstrings-python = "^1.9.0"
 
 [tool.poetry.group.tutorials.dependencies]
 ipykernel = "^6.29.4"
+simple-parsing = "^0.1.5"
 
 [tool.poetry.extras]
 mamba = ["mamba-lens"]
