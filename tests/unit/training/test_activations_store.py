@@ -50,7 +50,7 @@ def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
         },
         {
             "model_name": "gpt2",
-            "dataset_path": "apollo-research/sae-monology-pile-uncopyrighted-tokenizer-gpt2",
+            "dataset_path": "apollo-research/monology-pile-uncopyrighted-tokenizer-gpt2",
             "tokenized": True,
             "hook_name": "blocks.1.hook_resid_pre",
             "hook_layer": 1,
