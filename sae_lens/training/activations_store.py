@@ -201,6 +201,10 @@ class ActivationsStore:
             # TODO: investigate if this can work for iterable datasets, or if this is even worthwhile as a perf improvement
             if hasattr(self.dataset, "set_format"):
                 self.dataset.set_format(type="torch", columns=[self.tokens_column])  # type: ignore
+        else:
+            print(
+                "Warning: Dataset is not tokenized. Pre-tokenizing will improve performance and allows for more control over special tokens. See https://jbloomaus.github.io/SAELens/training_saes/#pretokenizing-datasets for more info."
+            )
 
         self.iterable_sequences = self._iterate_tokenized_sequences()
 
