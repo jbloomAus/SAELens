@@ -2,6 +2,71 @@
 
 
 
+## v3.7.0 (2024-06-25)
+
+### Feature
+
+* feat: new saes for gemma-2b-it and feature splitting on gpt2-small-layer-8 (#195) ([`5cfe382`](https://github.com/jbloomAus/SAELens/commit/5cfe382d43f028c2e4f4e7cb21a1c19abb5471d0))
+
+
+## v3.6.0 (2024-06-25)
+
+### Feature
+
+* feat: Support Gated-SAEs (#188)
+
+* Initial draft of encoder
+
+* Second draft of Gated SAE implementation
+
+* Added SFN loss implementation
+
+* Latest modification of SFN loss training setup
+
+* fix missing config use
+
+* dont have special sfn loss
+
+* add hooks and reshape
+
+* sae error term not working, WIP
+
+* make tests  pass
+
+* add benchmark for gated
+
+---------
+
+Co-authored-by: Joseph Bloom &lt;jbloomaus@gmail.com&gt; ([`232c39c`](https://github.com/jbloomAus/SAELens/commit/232c39cea709ae9c4b68b204cf027fbaab385f64))
+
+### Unknown
+
+* fix hook z loader (#194) ([`cb30996`](https://github.com/jbloomAus/SAELens/commit/cb30996cf36c80bbf6f0fd529bd27262bbce13ce))
+
+
+## v3.5.0 (2024-06-20)
+
+### Feature
+
+* feat: trigger release ([`1a4663b`](https://github.com/jbloomAus/SAELens/commit/1a4663b7eadb42682586697e72192346c66cf430))
+
+### Unknown
+
+*  Performance improvements + using multiple GPUs.  (#189)
+
+* fix: no grads when filling cache
+
+* trainer should put activations on sae device
+
+* hack to allow sae device to be specific gpu when model is on multiple devices
+
+* add some tests (not in CI, which check multiple GPU performance
+
+* make formatter typer happy
+
+* make sure SAE calls move data between devices as needed ([`400474e`](https://github.com/jbloomAus/SAELens/commit/400474eaf758d57ea4090fd08e84cbdd91d55cc4))
+
+
 ## v3.4.1 (2024-06-17)
 
 ### Fix

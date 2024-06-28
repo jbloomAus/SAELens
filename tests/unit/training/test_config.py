@@ -45,6 +45,7 @@ def test_sae_training_runner_config_get_sae_base_parameters():
     cfg = LanguageModelSAERunnerConfig()
 
     expected_config = {
+        "architecture": "standard",
         "d_in": 512,
         "d_sae": 2048,
         "activation_fn_str": "relu",

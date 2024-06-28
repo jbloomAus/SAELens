@@ -5,7 +5,7 @@ https://github.com/ArthurConmy/sae/blob/main/sae/model.py
 import json
 import os
 from dataclasses import dataclass
-from typing import Any, Callable, Optional, Tuple
+from typing import Any, Callable, Literal, Optional, Tuple
 
 import einops
 import torch
@@ -28,6 +28,8 @@ SAE_CFG_PATH = "cfg.json"
 
 @dataclass
 class SAEConfig:
+    # architecture details
+    architecture: Literal["standard", "gated"]
 
     # forward pass details.
     d_in: int
@@ -76,6 +78,7 @@ class SAEConfig:
 
     def to_dict(self) -> dict[str, Any]:
         return {
+            "architecture": self.architecture,
             "d_in": self.d_in,
             "d_sae": self.d_sae,
             "dtype": self.dtype,
@@ -121,7 +124,12 @@ class SAE(HookedRootModule):
         self.device = torch.device(cfg.device)
         self.use_error_term = use_error_term
 
-        self.initialize_weights_basic()
+        if self.cfg.architecture == "standard":
+            self.initialize_weights_basic()
+            self.encode_fn = self.encode
+        elif self.cfg.architecture == "gated":
+            self.initialize_weights_gated()
+            self.encode_fn = self.encode_gated
 
         # handle presence / absence of scaling factor.
         if self.cfg.finetuning_scaling_factor:
@@ -209,16 +217,50 @@ class SAE(HookedRootModule):
                 torch.ones(self.cfg.d_sae, dtype=self.dtype, device=self.device)
             )
 
+    def initialize_weights_gated(self):
+        # Initialize the weights and biases for the gated encoder
+        self.W_enc = nn.Parameter(
+            torch.nn.init.kaiming_uniform_(
+                torch.empty(
+                    self.cfg.d_in, self.cfg.d_sae, dtype=self.dtype, device=self.device
+                )
+            )
+        )
+
+        self.b_gate = nn.Parameter(
+            torch.zeros(self.cfg.d_sae, dtype=self.dtype, device=self.device)
+        )
+
+        self.r_mag = nn.Parameter(
+            torch.zeros(self.cfg.d_sae, dtype=self.dtype, device=self.device)
+        )
+
+        self.b_mag = nn.Parameter(
+            torch.zeros(self.cfg.d_sae, dtype=self.dtype, device=self.device)
+        )
+
+        self.W_dec = nn.Parameter(
+            torch.nn.init.kaiming_uniform_(
+                torch.empty(
+                    self.cfg.d_sae, self.cfg.d_in, dtype=self.dtype, device=self.device
+                )
+            )
+        )
+
+        self.b_dec = nn.Parameter(
+            torch.zeros(self.cfg.d_in, dtype=self.dtype, device=self.device)
+        )
+
     # Basic Forward Pass Functionality.
     def forward(
         self,
         x: torch.Tensor,
     ) -> torch.Tensor:
-
-        feature_acts = self.encode(x)
+        feature_acts = self.encode_fn(x)
         sae_out = self.decode(feature_acts)
 
-        if self.use_error_term:
+        # TEMP
+        if self.use_error_term and self.cfg.architecture != "gated":
             with torch.no_grad():
                 # Recompute everything without hooks to get true error term
                 # Otherwise, the output with error term will always equal input, even for causal interventions that affect x_reconstruct
@@ -248,16 +290,62 @@ class SAE(HookedRootModule):
 
                 sae_out = self.run_time_activation_norm_fn_out(sae_out)
                 sae_error = self.hook_sae_error(x - x_reconstruct_clean)
+            return self.hook_sae_output(sae_out + sae_error)
 
+        # TODO: Add tests
+        elif self.use_error_term and self.cfg.architecture == "gated":
+            with torch.no_grad():
+                x = x.to(self.dtype)
+                sae_in = self.reshape_fn_in(x)  # type: ignore
+                gating_pre_activation = sae_in @ self.W_enc + self.b_gate
+                active_features = (gating_pre_activation > 0).float()
+
+                # Magnitude path with weight sharing
+                magnitude_pre_activation = self.hook_sae_acts_pre(
+                    sae_in @ (self.W_enc * self.r_mag.exp()) + self.b_mag
+                )
+                feature_magnitudes = self.hook_sae_acts_post(
+                    self.activation_fn(magnitude_pre_activation)
+                )
+                feature_acts_clean = active_features * feature_magnitudes
+                x_reconstruct_clean = self.reshape_fn_out(
+                    self.apply_finetuning_scaling_factor(feature_acts_clean)
+                    @ self.W_dec
+                    + self.b_dec,
+                    d_head=self.d_head,
+                )
+
+                sae_error = self.hook_sae_error(x - x_reconstruct_clean)
             return self.hook_sae_output(sae_out + sae_error)
 
         return self.hook_sae_output(sae_out)
+
+    def encode_gated(
+        self, x: Float[torch.Tensor, "... d_in"]
+    ) -> Float[torch.Tensor, "... d_sae"]:
+        x = x.to(self.dtype)
+        x = self.reshape_fn_in(x)
+        sae_in = self.hook_sae_input(x - self.b_dec * self.cfg.apply_b_dec_to_input)
+
+        # Gating path
+        gating_pre_activation = sae_in @ self.W_enc + self.b_gate
+        active_features = (gating_pre_activation > 0).float()
+
+        # Magnitude path with weight sharing
+        magnitude_pre_activation = self.hook_sae_acts_pre(
+            sae_in @ (self.W_enc * self.r_mag.exp()) + self.b_mag
+        )
+        feature_magnitudes = self.hook_sae_acts_post(
+            self.activation_fn(magnitude_pre_activation)
+        )
+
+        return active_features * feature_magnitudes
 
     def encode(
         self, x: Float[torch.Tensor, "... d_in"]
     ) -> Float[torch.Tensor, "... d_sae"]:
         """
-        Calcuate SAE features from inputs
+        Calculate SAE features from inputs
         """
 
         # move x to correct dtype
@@ -301,7 +389,12 @@ class SAE(HookedRootModule):
         W_dec_norms = self.W_dec.norm(dim=-1).unsqueeze(1)
         self.W_dec.data = self.W_dec.data / W_dec_norms
         self.W_enc.data = self.W_enc.data * W_dec_norms.T
-        self.b_enc.data = self.b_enc.data * W_dec_norms.squeeze()
+        if self.cfg.architecture == "gated":
+            self.r_mag.data = self.r_mag.data * W_dec_norms.squeeze()
+            self.b_gate.data = self.b_gate.data * W_dec_norms.squeeze()
+            self.b_mag.data = self.b_mag.data * W_dec_norms.squeeze()
+        else:
+            self.b_enc.data = self.b_enc.data * W_dec_norms.squeeze()
 
     @torch.no_grad()
     def fold_activation_norm_scaling_factor(

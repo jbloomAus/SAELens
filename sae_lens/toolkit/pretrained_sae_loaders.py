@@ -124,6 +124,7 @@ def connor_rob_hook_z_loader(
     # }
 
     cfg_dict = {
+        "architecture": "standard",
         "d_in": old_cfg_dict["act_size"],
         "d_sae": old_cfg_dict["dict_size"],
         "dtype": "float32",
@@ -140,6 +141,7 @@ def connor_rob_hook_z_loader(
         "dataset_path": "apollo-research/Skylion007-openwebtext-tokenizer-gpt2",
         "context_size": 128,
         "normalize_activations": "none",
+        "dataset_trust_remote_code": True,
     }
 
     return cfg_dict, weights, None
@@ -168,6 +170,10 @@ def load_pretrained_sae_lens_sae_components(
 ) -> tuple[dict[str, Any], dict[str, torch.Tensor], Optional[torch.Tensor]]:
     with open(cfg_path, "r") as f:
         cfg_dict = json.load(f)
+
+    cfg_dict["architecture"] = (
+        "standard"  # TODO: modify this when we add support for loading more architectures
+    )
 
     # filter config for varnames
     cfg_dict["device"] = device
