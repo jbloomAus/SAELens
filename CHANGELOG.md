@@ -2,6 +2,29 @@
 
 
 
+## v3.8.0 (2024-06-29)
+
+### Feature
+
+* feat: harmize activation store and pretokenize runner (#181)
+
+* eat: harmize activation store and pretokenize runner
+
+* reverting SAE cfg back to prepend_bos
+
+* adding a benchmark test
+
+* adding another test
+
+* adding list of tokenized datasets to docs
+
+* adding a warning message about lack of pre-tokenization, and linking to SAELens docs
+
+* fixing tests after apollo deleted sae- dataset versions
+
+* Update training_saes.md ([`2e6a3c3`](https://github.com/jbloomAus/SAELens/commit/2e6a3c3b72e0724b24dd8ed3803f3b80a17b77d5))
+
+
 ## v3.7.0 (2024-06-25)
 
 ### Feature
