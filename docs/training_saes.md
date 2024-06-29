@@ -141,7 +141,7 @@ cfg = PretokenizeRunnerConfig(
     context_size=128,
     begin_batch_token="bos",
     begin_sequence_token=None,
-    sequence_separator_token="bos",
+    sequence_separator_token="eos",
 
     # uncomment to upload to huggingface
     # hf_repo_id="your-username/c4-10k-tokenized-gpt2"
