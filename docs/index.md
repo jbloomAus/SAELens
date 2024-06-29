@@ -37,7 +37,7 @@ sae, cfg_dict, sparsity = SAE.from_pretrained(
 )
 ```
 
-You can see other importable SAEs in   `sae_lens/pretrained_saes.yaml`.
+You can see other importable SAEs in   `sae_lens/pretrained_saes.yaml` and at [this link](importable_saes.md).
 
 (We'd accept a PR that converts this yaml to a nice table in the docs!)
 
