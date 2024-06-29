@@ -7,7 +7,8 @@ import torch
 from datasets import Dataset, IterableDataset
 from transformer_lens import HookedTransformer
 
-from sae_lens.config import LanguageModelSAERunnerConfig
+from sae_lens.config import LanguageModelSAERunnerConfig, PretokenizeRunnerConfig
+from sae_lens.pretokenize_runner import pretokenize_dataset
 from sae_lens.training.activations_store import ActivationsStore
 from tests.unit.helpers import build_sae_cfg, load_model_cached
 
@@ -28,7 +29,6 @@ def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
             "hook_name": "blocks.1.hook_resid_pre",
             "hook_layer": 1,
             "d_in": 64,
-            "prepend_bos": True,
             "normalize_activations": "expected_average_only_in",
         },
         {
@@ -38,7 +38,6 @@ def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
             "hook_name": "blocks.1.attn.hook_z",
             "hook_layer": 1,
             "d_in": 64,
-            "prepend_bos": True,
         },
         {
             "model_name": "gelu-2l",
@@ -47,16 +46,16 @@ def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
             "hook_name": "blocks.1.hook_resid_pre",
             "hook_layer": 1,
             "d_in": 512,
-            "prepend_bos": True,
+            "context_size": 1024,
         },
         {
             "model_name": "gpt2",
-            "dataset_path": "apollo-research/sae-monology-pile-uncopyrighted-tokenizer-gpt2",
+            "dataset_path": "apollo-research/monology-pile-uncopyrighted-tokenizer-gpt2",
             "tokenized": True,
             "hook_name": "blocks.1.hook_resid_pre",
             "hook_layer": 1,
             "d_in": 768,
-            "prepend_bos": True,
+            "context_size": 1024,
         },
         {
             "model_name": "gpt2",
@@ -65,7 +64,6 @@ def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
             "hook_name": "blocks.1.hook_resid_pre",
             "hook_layer": 1,
             "d_in": 768,
-            "prepend_bos": True,
         },
     ],
     ids=[
@@ -109,7 +107,7 @@ def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
     assert store.model == model
 
     assert isinstance(store.dataset, IterableDataset)
-    assert isinstance(store.iterable_dataset, Iterable)
+    assert isinstance(store.iterable_sequences, Iterable)
 
     # the rest is in the dataloader.
     expected_size = (
@@ -216,9 +214,11 @@ def test_activations_store__get_batch_tokens__fills_the_context_separated_by_bos
     assert tokens[1].tolist() == expected_tokens2
 
 
-def test_activations_store__get_next_dataset_tokens__tokenizes_each_example_in_order(
+def test_activations_store__iterate_raw_dataset_tokens__tokenizes_each_example_in_order(
     ts_model: HookedTransformer,
 ):
+    tokenizer = ts_model.tokenizer
+    assert tokenizer is not None
     cfg = build_sae_cfg()
     dataset = Dataset.from_list(
         [
@@ -228,19 +228,14 @@ def test_activations_store__get_next_dataset_tokens__tokenizes_each_example_in_o
         ]
     )
     activation_store = ActivationsStore.from_config(ts_model, cfg, dataset=dataset)
+    iterator = activation_store._iterate_raw_dataset_tokens()
 
-    assert activation_store._get_next_dataset_tokens().tolist() == tokenize_with_bos(
-        ts_model, "hello world1"
-    )
-    assert activation_store._get_next_dataset_tokens().tolist() == tokenize_with_bos(
-        ts_model, "hello world2"
-    )
-    assert activation_store._get_next_dataset_tokens().tolist() == tokenize_with_bos(
-        ts_model, "hello world3"
-    )
+    assert next(iterator).tolist() == tokenizer.encode("hello world1")
+    assert next(iterator).tolist() == tokenizer.encode("hello world2")
+    assert next(iterator).tolist() == tokenizer.encode("hello world3")
 
 
-def test_activations_store__get_next_dataset_tokens__can_handle_long_examples(
+def test_activations_store__iterate_raw_dataset_tokens__can_handle_long_examples(
     ts_model: HookedTransformer,
 ):
     cfg = build_sae_cfg()
@@ -250,8 +245,9 @@ def test_activations_store__get_next_dataset_tokens__can_handle_long_examples(
         ]
     )
     activation_store = ActivationsStore.from_config(ts_model, cfg, dataset=dataset)
+    iterator = activation_store._iterate_raw_dataset_tokens()
 
-    assert len(activation_store._get_next_dataset_tokens().tolist()) == 3001
+    assert len(next(iterator).tolist()) == 3000
 
 
 def test_activations_store_goes_to_cpu(ts_model: HookedTransformer):
@@ -296,3 +292,103 @@ def test_activations_store_estimate_norm_scaling_factor(
 
     scaled_norm = store._storage_buffer.norm(dim=-1).mean() * factor  # type: ignore
     assert scaled_norm == pytest.approx(np.sqrt(store.d_in), abs=5)
+
+
+def test_activations_store___iterate_tokenized_sequences__yields_concat_and_batched_sequences(
+    ts_model: HookedTransformer,
+):
+    tokenizer = ts_model.tokenizer
+    assert tokenizer is not None
+    cfg = build_sae_cfg(prepend_bos=True, context_size=5)
+    dataset = Dataset.from_list(
+        [
+            {"text": "hello world1"},
+            {"text": "hello world2"},
+            {"text": "hello world3"},
+        ]
+    )
+    activation_store = ActivationsStore.from_config(ts_model, cfg, dataset=dataset)
+    iterator = activation_store._iterate_tokenized_sequences()
+
+    expected = [
+        tokenizer.bos_token_id,
+        *tokenizer.encode("hello world1"),
+        tokenizer.bos_token_id,
+        *tokenizer.encode("hello world2"),
+        tokenizer.bos_token_id,
+        *tokenizer.encode("hello world3"),
+    ]
+    assert next(iterator).tolist() == expected[:5]
+
+
+def test_activations_store___iterate_tokenized_sequences__yields_sequences_of_context_size(
+    ts_model: HookedTransformer,
+):
+    tokenizer = ts_model.tokenizer
+    assert tokenizer is not None
+    cfg = build_sae_cfg(prepend_bos=True, context_size=5)
+    dataset = Dataset.from_list(
+        [
+            {"text": "hello world1"},
+            {"text": "hello world2"},
+            {"text": "hello world3"},
+        ]
+        * 20
+    )
+    activation_store = ActivationsStore.from_config(ts_model, cfg, dataset=dataset)
+    for toks in activation_store._iterate_tokenized_sequences():
+        assert toks.shape == (5,)
+
+
+def test_activations_store__errors_if_pretokenized_context_size_doesnt_match_cfg(
+    ts_model: HookedTransformer,
+):
+    tokenizer = ts_model.tokenizer
+    assert tokenizer is not None
+    cfg = build_sae_cfg(prepend_bos=True, context_size=5)
+    dataset = Dataset.from_list(
+        [
+            {"text": "hello world1"},
+            {"text": "hello world2"},
+            {"text": "hello world3"},
+        ]
+        * 20
+    )
+    pretokenize_cfg = PretokenizeRunnerConfig(context_size=10)
+    tokenized_dataset = pretokenize_dataset(dataset, tokenizer, cfg=pretokenize_cfg)
+    with pytest.raises(ValueError):
+        ActivationsStore.from_config(ts_model, cfg, dataset=tokenized_dataset)
+
+
+def test_activations_store___iterate_tokenized_sequences__yields_identical_results_with_and_without_pretokenizing(
+    ts_model: HookedTransformer,
+):
+    tokenizer = ts_model.tokenizer
+    assert tokenizer is not None
+    cfg = build_sae_cfg(prepend_bos=True, context_size=5)
+    dataset = Dataset.from_list(
+        [
+            {"text": "hello world1"},
+            {"text": "hello world2"},
+            {"text": "hello world3"},
+        ]
+        * 20
+    )
+    pretokenize_cfg = PretokenizeRunnerConfig(
+        context_size=5,
+        num_proc=1,
+        shuffle=False,
+        begin_batch_token="bos",
+        sequence_separator_token="bos",
+    )
+    tokenized_dataset = pretokenize_dataset(dataset, tokenizer, cfg=pretokenize_cfg)
+    activation_store = ActivationsStore.from_config(ts_model, cfg, dataset=dataset)
+    tokenized_activation_store = ActivationsStore.from_config(
+        ts_model, cfg, dataset=tokenized_dataset
+    )
+    seqs = [seq.tolist() for seq in activation_store._iterate_tokenized_sequences()]
+    pretok_seqs = [
+        seq.tolist()
+        for seq in tokenized_activation_store._iterate_tokenized_sequences()
+    ]
+    assert seqs == pretok_seqs

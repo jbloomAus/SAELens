@@ -24,7 +24,7 @@ def test_cache_activations_runner(tmp_path: Path):
         device = "cpu"
 
     # total_training_steps = 20_000
-    context_size = 32
+    context_size = 1024
     print(f"n tokens per context: {context_size}")
     n_batches_in_buffer = 32
     print(f"n batches in buffer: {n_batches_in_buffer}")
@@ -129,7 +129,7 @@ def test_load_cached_activations():
         hook_name="blocks.0.hook_mlp_out",
         hook_layer=0,
         d_in=512,
-        dataset_path="NeelNanda/c4-tokenized-2b",
+        dataset_path="NeelNanda/c4-10k",
         context_size=context_size,
         is_dataset_tokenized=True,
         prepend_bos=True,  # I used to train GPT2 SAEs with a prepended-bos but no longer think we should do this.

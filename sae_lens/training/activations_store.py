@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import os
-from typing import Any, Iterator, Literal, cast
+from typing import Any, Generator, Iterator, Literal, cast
 
 import numpy as np
 import torch
@@ -25,6 +25,7 @@ from sae_lens.config import (
     LanguageModelSAERunnerConfig,
 )
 from sae_lens.sae import SAE
+from sae_lens.tokenization_and_batching import concat_and_batch_sequences
 
 HfDataset = DatasetDict | Dataset | IterableDatasetDict | IterableDataset
 
@@ -171,12 +172,11 @@ class ActivationsStore:
         self.autocast_lm = autocast_lm
 
         self.n_dataset_processed = 0
-        self.iterable_dataset = iter(self.dataset)
 
         self.estimated_norm_scaling_factor = 1.0
 
         # Check if dataset is tokenized
-        dataset_sample = next(self.iterable_dataset)
+        dataset_sample = next(iter(self.dataset))
 
         # check if it's tokenized
         if "tokens" in dataset_sample.keys():
@@ -192,11 +192,84 @@ class ActivationsStore:
             raise ValueError(
                 "Dataset must have a 'tokens', 'input_ids', or 'text' column."
             )
-        self.iterable_dataset = iter(self.dataset)  # Reset iterator after checking
+        if self.is_dataset_tokenized:
+            ds_context_size = len(dataset_sample[self.tokens_column])
+            if ds_context_size != self.context_size:
+                raise ValueError(
+                    f"pretokenized dataset has context_size {ds_context_size}, but the provided context_size is {self.context_size}."
+                )
+            # TODO: investigate if this can work for iterable datasets, or if this is even worthwhile as a perf improvement
+            if hasattr(self.dataset, "set_format"):
+                self.dataset.set_format(type="torch", columns=[self.tokens_column])  # type: ignore
+        else:
+            print(
+                "Warning: Dataset is not tokenized. Pre-tokenizing will improve performance and allows for more control over special tokens. See https://jbloomaus.github.io/SAELens/training_saes/#pretokenizing-datasets for more info."
+            )
+
+        self.iterable_sequences = self._iterate_tokenized_sequences()
 
         self.check_cached_activations_against_config()
 
         # TODO add support for "mixed loading" (ie use cache until you run out, then switch over to streaming from HF)
+
+    def _iterate_raw_dataset(
+        self,
+    ) -> Generator[torch.Tensor | list[int] | str, None, None]:
+        """
+        Helper to iterate over the dataset while incrementing n_dataset_processed
+        """
+        for row in self.dataset:
+            # typing datasets is difficult
+            yield row[self.tokens_column]  # type: ignore
+            self.n_dataset_processed += 1
+
+    def _iterate_raw_dataset_tokens(self) -> Generator[torch.Tensor, None, None]:
+        """
+        Helper to create an iterator which tokenizes raw text from the dataset on the fly
+        """
+        for row in self._iterate_raw_dataset():
+            tokens = (
+                self.model.to_tokens(
+                    row,
+                    truncate=False,
+                    move_to_device=True,
+                    prepend_bos=False,
+                )
+                .squeeze(0)
+                .to(self.device)
+            )
+            assert (
+                len(tokens.shape) == 1
+            ), f"tokens.shape should be 1D but was {tokens.shape}"
+            yield tokens
+
+    def _iterate_tokenized_sequences(self) -> Generator[torch.Tensor, None, None]:
+        """
+        Generator which iterates over full sequence of context_size tokens
+        """
+        # If the datset is pretokenized, we can just return each row as a tensor, no further processing is needed.
+        # We assume that all necessary BOS/EOS/SEP tokens have been added during pretokenization.
+        if self.is_dataset_tokenized:
+            for row in self._iterate_raw_dataset():
+                yield torch.tensor(
+                    row,
+                    dtype=torch.long,
+                    device=self.device,
+                    requires_grad=False,
+                )
+        # If the dataset isn't tokenized, we'll tokenize, concat, and batch on the fly
+        else:
+            tokenizer = getattr(self.model, "tokenizer", None)
+            bos_token_id = None if tokenizer is None else tokenizer.bos_token_id
+            yield from concat_and_batch_sequences(
+                tokens_iterator=self._iterate_raw_dataset_tokens(),
+                context_size=self.context_size,
+                begin_batch_token_id=(bos_token_id if self.prepend_bos else None),
+                begin_sequence_token_id=None,
+                sequence_separator_token_id=(
+                    bos_token_id if self.prepend_bos else None
+                ),
+            )
 
     def check_cached_activations_against_config(self):
 
@@ -267,70 +340,11 @@ class ActivationsStore:
         """
         if not batch_size:
             batch_size = self.store_batch_size_prompts
-        context_size = self.context_size
-        device = self.device
-
-        batch_tokens = torch.zeros(
-            size=(0, context_size), device=device, dtype=torch.long, requires_grad=False
-        )
-
-        current_batch = []
-        current_length = 0
-
-        while batch_tokens.shape[0] < batch_size:
-            tokens = self._get_next_dataset_tokens()
-            token_len = tokens.shape[0]
-
-            # TODO: Fix this so that we are limiting how many tokens we get from the same context.
-            assert self.model.tokenizer is not None  # keep pyright happy
-            while token_len > 0 and batch_tokens.shape[0] < batch_size:
-                # Space left in the current batch
-                space_left = context_size - current_length
-
-                # If the current tokens fit entirely into the remaining space
-                if token_len <= space_left:
-                    current_batch.append(tokens[:token_len])
-                    current_length += token_len
-                    break
-
-                else:
-                    # Take as much as will fit
-                    current_batch.append(tokens[:space_left])
-
-                    # Remove used part, add BOS
-                    tokens = tokens[space_left:]
-                    token_len -= space_left
-
-                    # only add BOS if it's not already the first token
-                    if self.prepend_bos:
-                        bos_token_id_tensor = torch.tensor(
-                            [self.model.tokenizer.bos_token_id],
-                            device=tokens.device,
-                            dtype=torch.long,
-                        )
-                        if tokens[0] != bos_token_id_tensor:
-                            tokens = torch.cat(
-                                (
-                                    bos_token_id_tensor,
-                                    tokens,
-                                ),
-                                dim=0,
-                            )
-                            token_len += 1
-                    current_length = context_size
-
-                # If a batch is full, concatenate and move to next batch
-                if current_length == context_size:
-                    full_batch = torch.cat(current_batch, dim=0)
-                    batch_tokens = torch.cat(
-                        (batch_tokens, full_batch.unsqueeze(0)), dim=0
-                    )
-                    current_batch = []
-                    current_length = 0
-
-            # pbar.n = batch_tokens.shape[0]
-            # pbar.refresh()
-        return batch_tokens[:batch_size].to(self.model.W_E.device)
+        sequences = []
+        # the sequences iterator yields fully formed tokens of size context_size, so we just need to cat these into a batch
+        for _ in range(batch_size):
+            sequences.append(next(self.iterable_sequences))
+        return torch.stack(sequences, dim=0).to(self.model.W_E.device)
 
     @torch.no_grad()
     def get_activations(self, batch_tokens: torch.Tensor):
@@ -355,7 +369,7 @@ class ActivationsStore:
                 batch_tokens,
                 names_filter=[self.hook_name],
                 stop_at_layer=self.hook_layer + 1,
-                prepend_bos=self.prepend_bos,
+                prepend_bos=False,
                 **self.model_kwargs,
             )[1]
 
@@ -540,35 +554,3 @@ class ActivationsStore:
 
     def save(self, file_path: str):
         save_file(self.state_dict(), file_path)
-
-    def _get_next_dataset_tokens(self) -> torch.Tensor:
-        device = self.device
-        if not self.is_dataset_tokenized:
-            s = next(self.iterable_dataset)[self.tokens_column]
-            tokens = (
-                self.model.to_tokens(
-                    s,
-                    truncate=False,
-                    move_to_device=True,
-                    prepend_bos=self.prepend_bos,
-                )
-                .squeeze(0)
-                .to(device)
-            )
-            assert (
-                len(tokens.shape) == 1
-            ), f"tokens.shape should be 1D but was {tokens.shape}"
-        else:
-            tokens = torch.tensor(
-                next(self.iterable_dataset)[self.tokens_column],
-                dtype=torch.long,
-                device=device,
-                requires_grad=False,
-            )
-            if (
-                not self.prepend_bos
-                and tokens[0] == self.model.tokenizer.bos_token_id  # type: ignore
-            ):
-                tokens = tokens[1:]
-        self.n_dataset_processed += 1
-        return tokens

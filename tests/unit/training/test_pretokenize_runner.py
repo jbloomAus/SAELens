@@ -154,6 +154,8 @@ def test_pretokenize_runner_save_dataset_locally(tmp_path: Path):
         save_path=str(save_path),
         dataset_path="NeelNanda/c4-10k",
         split="train[:20]",
+        begin_batch_token="bos",
+        sequence_separator_token="eos",
     )
     dataset = pretokenize_runner(cfg)
     assert save_path.exists()
