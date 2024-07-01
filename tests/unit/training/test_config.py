@@ -49,6 +49,7 @@ def test_sae_training_runner_config_get_sae_base_parameters():
         "d_in": 512,
         "d_sae": 2048,
         "activation_fn_str": "relu",
+        "activation_fn_kwargs": {},
         "apply_b_dec_to_input": True,
         "dtype": "float32",
         "model_name": "gelu-2l",
