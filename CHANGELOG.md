@@ -2,6 +2,25 @@
 
 
 
+## v3.9.0 (2024-07-01)
+
+### Feature
+
+* feat: OpenAI TopK SAEs for residual stream of GPT2 Small (#201)
+
+* streamlit app
+
+* feat:  basic top-k support + oai gpt2small saes
+
+* fix merge mistake ([`06c4302`](https://github.com/jbloomAus/SAELens/commit/06c4302eedaaa4ba95686ab6b9a49fed4652ead7))
+
+### Unknown
+
+* prevent context size mismatch error (#200) ([`76389ac`](https://github.com/jbloomAus/SAELens/commit/76389ac007b77ed639035bdaee2e7587a949a9fc))
+
+* point gpt2 dataset path to apollo-research/monology-pile (#199) ([`d3eb427`](https://github.com/jbloomAus/SAELens/commit/d3eb427c64765fc27950249d299791bfa17b6a73))
+
+
 ## v3.8.0 (2024-06-29)
 
 ### Feature
