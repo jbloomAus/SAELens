@@ -199,6 +199,112 @@ SAE_LOOKUP:
         path: "blocks.8.hook_resid_pre_98304"
         variance_explained: 0.82
         l0: 43.0
+  gpt2-small-resid-post-v5-32k:
+    repo_id: "jbloom/GPT2-Small-OAI-v5-32k-resid-post-SAEs"
+    model: "gpt2-small"
+    conversion_func: null
+    saes:
+      - id: "blocks.0.hook_resid_post"
+        path: "v5_32k_layer_0.pt"
+        variance_explained: 0.9
+        l0: 32.0
+      - id: "blocks.1.hook_resid_post"
+        path: "v5_32k_layer_1.pt"
+        variance_explained: 0.9
+        l0: 32.0
+      - id: "blocks.2.hook_resid_post"
+        path: "v5_32k_layer_2.pt"
+        variance_explained: 0.9
+        l0: 32.0
+      - id: "blocks.3.hook_resid_post"
+        path: "v5_32k_layer_3.pt"
+        variance_explained: 0.9
+        l0: 32.0
+      - id: "blocks.4.hook_resid_post"
+        path: "v5_32k_layer_4.pt"
+        variance_explained: 0.9
+        l0: 32.0
+      - id: "blocks.5.hook_resid_post"
+        path: "v5_32k_layer_5.pt"
+        variance_explained: 0.9
+        l0: 32.0
+      - id: "blocks.6.hook_resid_post"
+        path: "v5_32k_layer_6.pt"
+        variance_explained: 0.9
+        l0: 32.0
+      - id: "blocks.7.hook_resid_post"
+        path: "v5_32k_layer_7.pt"
+        variance_explained: 0.9
+        l0: 32.0
+      - id: "blocks.8.hook_resid_post"
+        path: "v5_32k_layer_8.pt"
+        variance_explained: 0.74
+        l0: 32.0
+      - id: "blocks.9.hook_resid_post"
+        path: "v5_32k_layer_9.pt"
+        variance_explained: 0.9
+        l0: 32.0
+      - id: "blocks.10.hook_resid_post"
+        path: "v5_32k_layer_10.pt"
+        variance_explained: 0.9
+        l0: 32.0
+      - id: "blocks.11.hook_resid_post"
+        path: "v5_32k_layer_11.pt"
+        variance_explained: 0.9
+        l0: 32.0
+  gpt2-small-resid-post-v5-128k:
+    repo_id: "jbloom/GPT2-Small-OAI-v5-128k-resid-post-SAEs"
+    model: "gpt2-small"
+    conversion_func: null
+    saes:
+      - id: "blocks.0.hook_resid_post"
+        path: "v5_128k_layer_0"
+        variance_explained: 0.9
+        l0: 32.0
+      - id: "blocks.1.hook_resid_post"
+        path: "v5_128k_layer_1"
+        variance_explained: 0.9
+        l0: 32.0
+      - id: "blocks.2.hook_resid_post"
+        path: "v5_128k_layer_2"
+        variance_explained: 0.9
+        l0: 32.0
+      - id: "blocks.3.hook_resid_post"
+        path: "v5_128k_layer_3"
+        variance_explained: 0.9
+        l0: 32.0
+      - id: "blocks.4.hook_resid_post"
+        path: "v5_128k_layer_4"
+        variance_explained: 0.9
+        l0: 32.0
+      - id: "blocks.5.hook_resid_post"
+        path: "v5_128k_layer_5"
+        variance_explained: 0.9
+        l0: 32.0
+      - id: "blocks.6.hook_resid_post"
+        path: "v5_128k_layer_6"
+        variance_explained: 0.9
+        l0: 32.0
+      - id: "blocks.7.hook_resid_post"
+        path: "v5_128k_layer_7"
+        variance_explained: 0.9
+        l0: 32.0
+      - id: "blocks.8.hook_resid_post"
+        path: "v5_128k_layer_8"
+        variance_explained: 0.9
+        l0: 32.0
+      - id: "blocks.9.hook_resid_post"
+        path: "v5_128k_layer_9"
+        variance_explained: 0.9
+        l0: 32.0
+      - id: "blocks.10.hook_resid_post"
+        path: "v5_128k_layer_10"
+        variance_explained: 0.9
+        l0: 32.0
+      - id: "blocks.11.hook_resid_post"
+        path: "v5_128k_layer_11"
+        variance_explained: 0.9
+        l0: 32.0
   gemma-2b-res-jb:
     repo_id: "jbloom/Gemma-2b-Residual-Stream-SAEs"
     model: "gemma-2b"

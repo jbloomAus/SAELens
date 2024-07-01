@@ -30,7 +30,7 @@ class TrainStepOutput:
     auxiliary_reconstruction_loss: float = 0.0
 
 
-@dataclass
+@dataclass(kw_only=True)
 class TrainingSAEConfig(SAEConfig):
 
     # Sparsity Loss Calculations
@@ -62,6 +62,7 @@ class TrainingSAEConfig(SAEConfig):
             hook_layer=cfg.hook_layer,
             hook_head_index=cfg.hook_head_index,
             activation_fn_str=cfg.activation_fn,
+            activation_fn_kwargs=cfg.activation_fn_kwargs,
             apply_b_dec_to_input=cfg.apply_b_dec_to_input,
             finetuning_scaling_factor=cfg.finetuning_method is not None,
             sae_lens_training_version=cfg.sae_lens_training_version,
@@ -80,6 +81,7 @@ class TrainingSAEConfig(SAEConfig):
             init_encoder_as_decoder_transpose=cfg.init_encoder_as_decoder_transpose,
             scale_sparsity_penalty_by_decoder_norm=cfg.scale_sparsity_penalty_by_decoder_norm,
             normalize_activations=cfg.normalize_activations,
+            dataset_trust_remote_code=cfg.dataset_trust_remote_code,
         )
 
     @classmethod
@@ -110,6 +112,7 @@ class TrainingSAEConfig(SAEConfig):
             "d_in": self.d_in,
             "d_sae": self.d_sae,
             "activation_fn_str": self.activation_fn_str,
+            "activation_fn_kwargs": self.activation_fn_kwargs,
             "apply_b_dec_to_input": self.apply_b_dec_to_input,
             "dtype": self.dtype,
             "model_name": self.model_name,
@@ -425,9 +428,6 @@ class TrainingSAE(SAE):
                 )
             )
             self.initialize_decoder_norm_constant_norm()
-
-        elif self.cfg.normalize_sae_decoder:
-            self.set_decoder_norm_to_unit_norm()
 
         # Then we initialize the encoder weights (either as the transpose of decoder or not)
         if self.cfg.init_encoder_as_decoder_transpose:
