@@ -2,6 +2,13 @@
 
 
 
+## v3.9.1 (2024-07-01)
+
+### Fix
+
+* fix: pin typing-extensions version (#205) ([`3f0e4fe`](https://github.com/jbloomAus/SAELens/commit/3f0e4fe9e1a353e8b9563567919734af662ab69d))
+
+
 ## v3.9.0 (2024-07-01)
 
 ### Feature
