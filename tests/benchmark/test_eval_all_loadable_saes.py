@@ -3,11 +3,9 @@
 # import numpy as np
 import pytest
 import torch
-from tqdm import tqdm
 
-# from sae_lens.training.evals import run_evals
+from sae_lens.evals import all_loadable_saes
 from sae_lens.sae import SAE
-from sae_lens.toolkit.pretrained_saes_directory import get_pretrained_saes_directory
 from sae_lens.training.activations_store import ActivationsStore
 from tests.unit.helpers import load_model_cached
 
@@ -24,21 +22,6 @@ that they were perfectly normal, thank you very much. They were the last
 people you'd expect to be involved in anything strange or mysterious,
 because they just didn't hold with such nonsense.
 """
-
-
-# @pytest.fixture
-def all_loadable_saes() -> list[tuple[str, str]]:
-    all_loadable_saes = []
-    saes_directory = get_pretrained_saes_directory()
-    for release, lookup in tqdm(saes_directory.items()):
-        for sae_name in lookup.saes_map.keys():
-            expected_var_explained = lookup.expected_var_explained[sae_name]
-            expected_l0 = lookup.expected_l0[sae_name]
-            all_loadable_saes.append(
-                (release, sae_name, expected_var_explained, expected_l0)
-            )
-
-    return all_loadable_saes
 
 
 @pytest.mark.parametrize(
