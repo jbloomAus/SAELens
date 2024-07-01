@@ -12,8 +12,8 @@ from transformers import AutoTokenizer, PreTrainedTokenizerBase
 from typing_extensions import deprecated
 
 from sae_lens import __version__
-from sae_lens.batching import concat_and_batch_sequences
 from sae_lens.config import PretokenizeRunnerConfig
+from sae_lens.tokenization_and_batching import concat_and_batch_sequences
 
 
 @dataclass
@@ -102,6 +102,7 @@ def pretokenize_dataset(
     tokenized_dataset = dataset.map(
         process_examples,
         batched=True,
+        batch_size=cfg.pretokenize_batch_size,
         num_proc=cfg.num_proc,
         remove_columns=dataset.column_names,
     )
