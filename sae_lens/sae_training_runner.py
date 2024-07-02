@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import signal
 from typing import Any, cast
@@ -36,8 +37,15 @@ class SAETrainingRunner:
     activations_store: ActivationsStore
 
     def __init__(
-        self, cfg: LanguageModelSAERunnerConfig, dataset: HfDataset | None = None
+        self,
+        cfg: LanguageModelSAERunnerConfig,
+        override_dataset: HfDataset | None = None,
     ):
+        if override_dataset is not None:
+            logging.warning(
+                f"You just passed in a dataset which will override the one specified in your configuration: {cfg.dataset_path}. As a consequence this run will not be reproducable via configuration alone."
+            )
+
         self.cfg = cfg
 
         self.model = load_model(
@@ -50,7 +58,7 @@ class SAETrainingRunner:
         self.activations_store = ActivationsStore.from_config(
             self.model,
             self.cfg,
-            dataset=dataset,
+            override_dataset=override_dataset,
         )
 
         if self.cfg.from_pretrained_path is not None:

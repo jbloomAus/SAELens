@@ -46,7 +46,7 @@ class ActivationsStore:
         cls,
         model: HookedRootModule,
         cfg: LanguageModelSAERunnerConfig | CacheActivationsRunnerConfig,
-        dataset: HfDataset | None = None,
+        override_dataset: HfDataset | None = None,
     ) -> "ActivationsStore":
         cached_activations_path = cfg.cached_activations_path
         # set cached_activations_path to None if we're not using cached activations
@@ -56,14 +56,14 @@ class ActivationsStore:
         ):
             cached_activations_path = None
 
-        if dataset is None and cfg.dataset_path == "":
+        if override_dataset is None and cfg.dataset_path == "":
             raise ValueError(
                 "You must either pass in a dataset or specify a dataset_path in your configutation."
             )
 
         return cls(
             model=model,
-            dataset=dataset or cfg.dataset_path,
+            dataset=override_dataset or cfg.dataset_path,
             streaming=cfg.streaming,
             hook_name=cfg.hook_name,
             hook_layer=cfg.hook_layer,

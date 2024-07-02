@@ -87,7 +87,7 @@ def training_sae(cfg: Any):
 @pytest.fixture
 def activation_store(model: HookedTransformer, cfg: LanguageModelSAERunnerConfig):
     return ActivationsStore.from_config(
-        model, cfg, dataset=Dataset.from_list([{"text": "hello world"}] * 2000)
+        model, cfg, override_dataset=Dataset.from_list([{"text": "hello world"}] * 2000)
     )
 
 

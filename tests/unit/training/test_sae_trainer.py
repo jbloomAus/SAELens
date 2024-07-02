@@ -33,7 +33,7 @@ def model():
 @pytest.fixture
 def activation_store(model: HookedTransformer, cfg: LanguageModelSAERunnerConfig):
     return ActivationsStore.from_config(
-        model, cfg, dataset=Dataset.from_list([{"text": "hello world"}] * 2000)
+        model, cfg, override_dataset=Dataset.from_list([{"text": "hello world"}] * 2000)
     )
 
 
@@ -211,7 +211,9 @@ def test_train_sae_group_on_language_model__runs(
     )
     # just a tiny datast which will run quickly
     dataset = Dataset.from_list([{"text": "hello world"}] * 2000)
-    activation_store = ActivationsStore.from_config(ts_model, cfg, dataset=dataset)
+    activation_store = ActivationsStore.from_config(
+        ts_model, cfg, override_dataset=dataset
+    )
     sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
     sae = SAETrainer(
         model=ts_model,
