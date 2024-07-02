@@ -167,7 +167,7 @@ def test_activations_store_refreshes_dataset_when_it_runs_out():
         os.path.dirname(__file__), "fixtures", "cached_activations"
     )
 
-    total_training_steps = 200  # probably we should do more
+    total_training_steps = 200  
     batch_size = 4
     total_training_tokens = total_training_steps * batch_size
 
@@ -175,28 +175,21 @@ def test_activations_store_refreshes_dataset_when_it_runs_out():
     cfg = LanguageModelSAERunnerConfig(
         cached_activations_path=cached_activations_fixture_path,
         use_cached_activations=True,
-        # Pick a tiny model to make this easier.
         model_name="gelu-1l",
-        ## MLP Layer 0 ##
         hook_name="blocks.0.hook_mlp_out",
         hook_layer=0,
         d_in=512,
-        dataset_path="NeelNanda/c4-10k",
+        dataset_path="",
         context_size=context_size,
         is_dataset_tokenized=True,
-        prepend_bos=True,  # I used to train GPT2 SAEs with a prepended-bos but no longer think we should do this.
-        training_tokens=total_training_tokens,  # For initial testing I think this is a good number.
+        prepend_bos=True, 
+        training_tokens=total_training_tokens, 
         train_batch_size_tokens=4096,
-        # Loss Function
-        ## Reconstruction Coefficient.
-        # Buffer details won't matter in we cache / shuffle our activations ahead of time.
+        
         n_batches_in_buffer=2,
         store_batch_size_prompts=batch_size,
         normalize_activations="none",
-        # shuffle_every_n_buffers=2,
-        # n_shuffles_with_last_section=1,
-        # n_shuffles_in_entire_dir=1,
-        # n_shuffles_final=1,
+        
         # Misc
         device="cpu",
         seed=42,
