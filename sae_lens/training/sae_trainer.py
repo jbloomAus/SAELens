@@ -153,13 +153,20 @@ class SAETrainer:
 
         self._estimate_norm_scaling_factor_if_needed()
 
+        layer_acts = self.activation_store.next_batch()[:, 0, :].to(self.sae.device)
+
         # Train loop
         while self.n_training_tokens < self.cfg.total_training_tokens:
             # Do a training step.
-            layer_acts = self.activation_store.next_batch()[:, 0, :].to(self.sae.device)
+
             self.n_training_tokens += self.cfg.train_batch_size_tokens
 
             step_output = self._train_step(sae=self.sae, sae_in=layer_acts)
+
+            # Get the next batch of activations (pre-requisite for async)
+            # note: will use n+1 calls to next batch which might cause a problem if your
+            # dataset is exactly the right size and has no more room.
+            layer_acts = self.activation_store.next_batch()[:, 0, :].to(self.sae.device)
 
             if self.cfg.log_to_wandb:
                 self._log_train_step(step_output)
