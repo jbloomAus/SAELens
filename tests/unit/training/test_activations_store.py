@@ -392,3 +392,23 @@ def test_activations_store___iterate_tokenized_sequences__yields_identical_resul
         for seq in tokenized_activation_store._iterate_tokenized_sequences()
     ]
     assert seqs == pretok_seqs
+
+
+def test_activation_store__errors_if_neither_dataset_nor_dataset_path(
+    ts_model: HookedTransformer,
+):
+    cfg = build_sae_cfg(dataset_path="")
+
+    example_ds = Dataset.from_list(
+        [
+            {"text": "hello world1"},
+            {"text": "hello world2"},
+            {"text": "hello world3"},
+        ]
+        * 20
+    )
+
+    ActivationsStore.from_config(ts_model, cfg, dataset=example_ds)
+
+    with pytest.raises(ValueError):
+        ActivationsStore.from_config(ts_model, cfg, dataset=None)

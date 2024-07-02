@@ -5,6 +5,7 @@ from typing import Any, Literal, Optional, cast
 
 import torch
 import wandb
+from datasets import Dataset, DatasetDict, IterableDataset, IterableDatasetDict
 
 from sae_lens import __version__
 
@@ -18,6 +19,8 @@ DTYPE_MAP = {
     "torch.float16": torch.float16,
     "torch.bfloat16": torch.bfloat16,
 }
+
+HfDataset = DatasetDict | Dataset | IterableDatasetDict | IterableDataset
 
 
 @dataclass

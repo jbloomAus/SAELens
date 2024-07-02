@@ -8,7 +8,7 @@ import wandb
 from safetensors.torch import save_file
 from transformer_lens.hook_points import HookedRootModule
 
-from sae_lens.config import LanguageModelSAERunnerConfig
+from sae_lens.config import HfDataset, LanguageModelSAERunnerConfig
 from sae_lens.load_model import load_model
 from sae_lens.sae import SAE_CFG_PATH, SAE_WEIGHTS_PATH, SPARSITY_PATH
 from sae_lens.training.activations_store import ActivationsStore
@@ -35,7 +35,9 @@ class SAETrainingRunner:
     sae: TrainingSAE
     activations_store: ActivationsStore
 
-    def __init__(self, cfg: LanguageModelSAERunnerConfig):
+    def __init__(
+        self, cfg: LanguageModelSAERunnerConfig, dataset: HfDataset | None = None
+    ):
         self.cfg = cfg
 
         self.model = load_model(
@@ -48,6 +50,7 @@ class SAETrainingRunner:
         self.activations_store = ActivationsStore.from_config(
             self.model,
             self.cfg,
+            dataset=dataset,
         )
 
         if self.cfg.from_pretrained_path is not None:
