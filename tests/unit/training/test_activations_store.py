@@ -144,19 +144,19 @@ def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
     n_batches_in_buffer = 3
     buffer = store.get_buffer(n_batches_in_buffer)
 
-    assert isinstance(buffer, torch.Tensor)
+    assert isinstance(buffer, np.memmap)
     buffer_size_expected = (
         store.store_batch_size_prompts * store.context_size * n_batches_in_buffer
     )
 
     assert buffer.shape == (buffer_size_expected, 1, store.d_in)
-    assert buffer.device == store.device
 
     # check the buffer norm
     if cfg.normalize_activations == "expected_average_only_in":
+        example_activations = store.next_batch()
         assert torch.allclose(
-            buffer.norm(dim=-1),
-            np.sqrt(store.d_in) * torch.ones_like(buffer.norm(dim=-1)),
+            example_activations.norm(dim=-1),
+            np.sqrt(store.d_in) * torch.ones_like(example_activations.norm(dim=-1)),
             atol=2,
         )
 
