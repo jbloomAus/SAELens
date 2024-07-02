@@ -345,7 +345,9 @@ class ActivationsStore:
             try:
                 sequences.append(next(self.iterable_sequences))
             except StopIteration:
-                raise ValueError(f"the number of tokens in your dataset is less than (batches_in_buffer // 2) * batch_size, {self.n_batches_in_buffer // 2} * {batch_size}. Consider lowering n_batches_in_buffer.")
+                raise ValueError(
+                    f"the number of tokens in your dataset is less than (batches_in_buffer // 2) * batch_size, {self.n_batches_in_buffer // 2} * {batch_size}. Consider lowering n_batches_in_buffer."
+                )
         return torch.stack(sequences, dim=0).to(self.model.W_E.device)
 
     @torch.no_grad()
