@@ -343,7 +343,12 @@ class ActivationsStore:
         sequences = []
         # the sequences iterator yields fully formed tokens of size context_size, so we just need to cat these into a batch
         for _ in range(batch_size):
-            sequences.append(next(self.iterable_sequences))
+            try:
+                sequences.append(next(self.iterable_sequences))
+            except StopIteration:
+                self.iterable_sequences = self._iterate_tokenized_sequences()
+                sequences.append(next(self.iterable_sequences))
+
         return torch.stack(sequences, dim=0).to(self.model.W_E.device)
 
     @torch.no_grad()
