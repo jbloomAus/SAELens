@@ -6,13 +6,7 @@ from typing import Any, Generator, Iterator, Literal, cast
 
 import numpy as np
 import torch
-from datasets import (
-    Dataset,
-    DatasetDict,
-    IterableDataset,
-    IterableDatasetDict,
-    load_dataset,
-)
+from datasets import load_dataset
 from safetensors import safe_open
 from safetensors.torch import save_file
 from torch.utils.data import DataLoader
@@ -22,12 +16,11 @@ from transformer_lens.hook_points import HookedRootModule
 from sae_lens.config import (
     DTYPE_MAP,
     CacheActivationsRunnerConfig,
+    HfDataset,
     LanguageModelSAERunnerConfig,
 )
 from sae_lens.sae import SAE
 from sae_lens.tokenization_and_batching import concat_and_batch_sequences
-
-HfDataset = DatasetDict | Dataset | IterableDatasetDict | IterableDataset
 
 
 # TODO: Make an activation store config class to be consistent with the rest of the code.
@@ -53,7 +46,7 @@ class ActivationsStore:
         cls,
         model: HookedRootModule,
         cfg: LanguageModelSAERunnerConfig | CacheActivationsRunnerConfig,
-        dataset: HfDataset | None = None,
+        override_dataset: HfDataset | None = None,
     ) -> "ActivationsStore":
         cached_activations_path = cfg.cached_activations_path
         # set cached_activations_path to None if we're not using cached activations
@@ -62,9 +55,15 @@ class ActivationsStore:
             and not cfg.use_cached_activations
         ):
             cached_activations_path = None
+
+        if override_dataset is None and cfg.dataset_path == "":
+            raise ValueError(
+                "You must either pass in a dataset or specify a dataset_path in your configutation."
+            )
+
         return cls(
             model=model,
-            dataset=dataset or cfg.dataset_path,
+            dataset=override_dataset or cfg.dataset_path,
             streaming=cfg.streaming,
             hook_name=cfg.hook_name,
             hook_layer=cfg.hook_layer,
