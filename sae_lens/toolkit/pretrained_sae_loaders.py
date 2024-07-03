@@ -171,7 +171,7 @@ def load_pretrained_sae_lens_sae_components(
     with open(cfg_path, "r") as f:
         cfg_dict = json.load(f)
 
-    if not "architecture" in cfg_dict:
+    if "architecture" not in cfg_dict:
         cfg_dict["architecture"] = (
             "standard"  # TODO: modify this when we add support for loading more architectures
         )
