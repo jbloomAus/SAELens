@@ -172,6 +172,60 @@ def test_sae_save_and_load_from_pretrained(tmp_path: Path) -> None:
     assert torch.allclose(sae_out_1, sae_out_2)
 
 
+def test_sae_save_and_load_from_pretrained_gated(tmp_path: Path) -> None:
+    cfg = build_sae_cfg(architecture="gated", device="cpu")
+    model_path = str(tmp_path)
+    sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
+    sae_state_dict = sae.state_dict()
+    sae.save_model(model_path)
+
+    assert os.path.exists(model_path)
+
+    sae_loaded = SAE.load_from_pretrained(model_path, device="cpu")
+
+    sae_loaded_state_dict = sae_loaded.state_dict()
+
+    # check state_dict matches the original
+    for key in sae.state_dict().keys():
+        assert torch.allclose(
+            sae_state_dict[key],
+            sae_loaded_state_dict[key],
+        )
+
+    sae_in = torch.randn(10, cfg.d_in, device=cfg.device)
+    sae_out_1 = sae(sae_in)
+    sae_out_2 = sae_loaded(sae_in)
+    assert torch.allclose(sae_out_1, sae_out_2)
+
+
+def test_sae_save_and_load_from_pretrained_topk(tmp_path: Path) -> None:
+    cfg = build_sae_cfg(
+        activation_fn_str="topk", activation_fn_kwargs={"k": 30}, device="cpu"
+    )
+    model_path = str(tmp_path)
+    sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
+    sae_state_dict = sae.state_dict()
+    sae.save_model(model_path)
+
+    assert os.path.exists(model_path)
+
+    sae_loaded = SAE.load_from_pretrained(model_path, device="cpu")
+
+    sae_loaded_state_dict = sae_loaded.state_dict()
+
+    # check state_dict matches the original
+    for key in sae.state_dict().keys():
+        assert torch.allclose(
+            sae_state_dict[key],
+            sae_loaded_state_dict[key],
+        )
+
+    sae_in = torch.randn(10, cfg.d_in, device=cfg.device)
+    sae_out_1 = sae(sae_in)
+    sae_out_2 = sae_loaded(sae_in)
+    assert torch.allclose(sae_out_1, sae_out_2)
+
+
 # TODO: Handle scaling factor in saeBase
 # def test_sae_save_and_load_from_pretrained_lacks_scaling_factor(
 #     tmp_path: Path,
