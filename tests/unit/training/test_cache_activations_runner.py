@@ -167,7 +167,7 @@ def test_activations_store_refreshes_dataset_when_it_runs_out():
         os.path.dirname(__file__), "fixtures", "cached_activations"
     )
 
-    total_training_steps = 200  
+    total_training_steps = 200
     batch_size = 4
     total_training_tokens = total_training_steps * batch_size
 
@@ -182,10 +182,9 @@ def test_activations_store_refreshes_dataset_when_it_runs_out():
         dataset_path="",
         context_size=context_size,
         is_dataset_tokenized=True,
-        prepend_bos=True, 
-        training_tokens=total_training_tokens, 
+        prepend_bos=True,
+        training_tokens=total_training_tokens,
         train_batch_size_tokens=4096,
-        
         n_batches_in_buffer=2,
         store_batch_size_prompts=batch_size,
         normalize_activations="none",
