@@ -199,7 +199,9 @@ def test_activations_store__get_batch_tokens__fills_the_context_separated_by_bos
         context_size=context_size,
     )
 
-    activation_store = ActivationsStore.from_config(ts_model, cfg, dataset=dataset)
+    activation_store = ActivationsStore.from_config(
+        ts_model, cfg, override_dataset=dataset
+    )
     encoded_text = tokenize_with_bos(ts_model, "hello world")
     tokens = activation_store.get_batch_tokens()
     assert tokens.shape == (2, context_size)  # batch_size x context_size
@@ -227,7 +229,9 @@ def test_activations_store__iterate_raw_dataset_tokens__tokenizes_each_example_i
             {"text": "hello world3"},
         ]
     )
-    activation_store = ActivationsStore.from_config(ts_model, cfg, dataset=dataset)
+    activation_store = ActivationsStore.from_config(
+        ts_model, cfg, override_dataset=dataset
+    )
     iterator = activation_store._iterate_raw_dataset_tokens()
 
     assert next(iterator).tolist() == tokenizer.encode("hello world1")
@@ -244,7 +248,9 @@ def test_activations_store__iterate_raw_dataset_tokens__can_handle_long_examples
             {"text": " France" * 3000},
         ]
     )
-    activation_store = ActivationsStore.from_config(ts_model, cfg, dataset=dataset)
+    activation_store = ActivationsStore.from_config(
+        ts_model, cfg, override_dataset=dataset
+    )
     iterator = activation_store._iterate_raw_dataset_tokens()
 
     assert len(next(iterator).tolist()) == 3000
@@ -307,7 +313,9 @@ def test_activations_store___iterate_tokenized_sequences__yields_concat_and_batc
             {"text": "hello world3"},
         ]
     )
-    activation_store = ActivationsStore.from_config(ts_model, cfg, dataset=dataset)
+    activation_store = ActivationsStore.from_config(
+        ts_model, cfg, override_dataset=dataset
+    )
     iterator = activation_store._iterate_tokenized_sequences()
 
     expected = [
@@ -335,7 +343,9 @@ def test_activations_store___iterate_tokenized_sequences__yields_sequences_of_co
         ]
         * 20
     )
-    activation_store = ActivationsStore.from_config(ts_model, cfg, dataset=dataset)
+    activation_store = ActivationsStore.from_config(
+        ts_model, cfg, override_dataset=dataset
+    )
     for toks in activation_store._iterate_tokenized_sequences():
         assert toks.shape == (5,)
 
@@ -357,7 +367,7 @@ def test_activations_store__errors_if_pretokenized_context_size_doesnt_match_cfg
     pretokenize_cfg = PretokenizeRunnerConfig(context_size=10)
     tokenized_dataset = pretokenize_dataset(dataset, tokenizer, cfg=pretokenize_cfg)
     with pytest.raises(ValueError):
-        ActivationsStore.from_config(ts_model, cfg, dataset=tokenized_dataset)
+        ActivationsStore.from_config(ts_model, cfg, override_dataset=tokenized_dataset)
 
 
 def test_activations_store___iterate_tokenized_sequences__yields_identical_results_with_and_without_pretokenizing(
@@ -382,9 +392,11 @@ def test_activations_store___iterate_tokenized_sequences__yields_identical_resul
         sequence_separator_token="bos",
     )
     tokenized_dataset = pretokenize_dataset(dataset, tokenizer, cfg=pretokenize_cfg)
-    activation_store = ActivationsStore.from_config(ts_model, cfg, dataset=dataset)
+    activation_store = ActivationsStore.from_config(
+        ts_model, cfg, override_dataset=dataset
+    )
     tokenized_activation_store = ActivationsStore.from_config(
-        ts_model, cfg, dataset=tokenized_dataset
+        ts_model, cfg, override_dataset=tokenized_dataset
     )
     seqs = [seq.tolist() for seq in activation_store._iterate_tokenized_sequences()]
     pretok_seqs = [
@@ -392,3 +404,23 @@ def test_activations_store___iterate_tokenized_sequences__yields_identical_resul
         for seq in tokenized_activation_store._iterate_tokenized_sequences()
     ]
     assert seqs == pretok_seqs
+
+
+def test_activation_store__errors_if_neither_dataset_nor_dataset_path(
+    ts_model: HookedTransformer,
+):
+    cfg = build_sae_cfg(dataset_path="")
+
+    example_ds = Dataset.from_list(
+        [
+            {"text": "hello world1"},
+            {"text": "hello world2"},
+            {"text": "hello world3"},
+        ]
+        * 20
+    )
+
+    ActivationsStore.from_config(ts_model, cfg, override_dataset=example_ds)
+
+    with pytest.raises(ValueError):
+        ActivationsStore.from_config(ts_model, cfg, override_dataset=None)
