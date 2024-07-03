@@ -156,7 +156,7 @@ class ActivationsStore:
             else dataset
         )
 
-        if isinstance(dataset, (Dataset, DatasetDict)):
+        if isinstance(dataset, (DatasetDict, Dataset)):
             self.dataset = cast(Dataset | DatasetDict, self.dataset)
             n_samples = len(self.dataset)
 
