@@ -2,6 +2,33 @@
 
 
 
+## v3.9.2 (2024-07-03)
+
+### Fix
+
+* fix: Gated SAE Note Loading (#211)
+
+* fix: add tests, make pass
+
+* not in ([`b083feb`](https://github.com/jbloomAus/SAELens/commit/b083feb5ffb5b7f45669403786c3c7593aa1d3ba))
+
+### Unknown
+
+* SAETrainingRunner takes optional HFDataset (#206)
+
+* SAETrainingRunner takes optional HFDataset
+
+* more explicit errors when the buffer is too large for the dataset
+
+* format
+
+* add warnings when a new dataset is added
+
+* replace default dataset with empty string
+
+* remove valueerror ([`2c8fb6a`](https://github.com/jbloomAus/SAELens/commit/2c8fb6aeed214ff47dccfe427eb2881aca4e6808))
+
+
 ## v3.9.1 (2024-07-01)
 
 ### Fix
