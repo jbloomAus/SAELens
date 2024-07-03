@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any, Tuple
 
 import torch
+import pytest
 from datasets import Dataset
 from safetensors import safe_open
 from transformer_lens import HookedTransformer
@@ -162,7 +163,6 @@ def test_load_cached_activations():
 
 
 def test_activations_store_refreshes_dataset_when_it_runs_out():
-
     cached_activations_fixture_path = os.path.join(
         os.path.dirname(__file__), "fixtures", "cached_activations"
     )
@@ -189,8 +189,6 @@ def test_activations_store_refreshes_dataset_when_it_runs_out():
         n_batches_in_buffer=2,
         store_batch_size_prompts=batch_size,
         normalize_activations="none",
-        
-        # Misc
         device="cpu",
         seed=42,
         dtype="float16",
@@ -213,6 +211,17 @@ def test_activations_store_refreshes_dataset_when_it_runs_out():
 
     model = MockModel()
     activations_store = ActivationsStore.from_config(model, cfg, override_dataset=dataset)  # type: ignore
-    for _ in range(17):
-        _ = activations_store.get_batch_tokens(batch_size)
-        # we iterate 17 times, 17 * 4 (batch_size) = 68, more than we have samples
+    for _ in range(16):
+        _ = activations_store.get_batch_tokens(batch_size, raise_at_epoch_end=True)
+
+    # assert a stop iteration is raised when we do one more get_batch_tokens
+
+    pytest.raises(StopIteration, activations_store.get_batch_tokens, batch_size, raise_at_epoch_end=True)
+
+    # no errors are ever raised if we do not ask for raise_at_epoch_end
+    for _ in range(32):
+        _ = activations_store.get_batch_tokens(batch_size, raise_at_epoch_end=False)
+
+    
+    
+
