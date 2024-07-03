@@ -92,7 +92,6 @@ class CacheActivationsRunner:
 
                 del buffer
 
-
                 if i % self.cfg.shuffle_every_n_buffers == 0 and i > 0:
                     # Shuffle the buffers on disk
 

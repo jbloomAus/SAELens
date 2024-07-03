@@ -2,8 +2,8 @@ import os
 from pathlib import Path
 from typing import Any, Tuple
 
-import torch
 import pytest
+import torch
 from datasets import Dataset
 from safetensors import safe_open
 from transformer_lens import HookedTransformer
@@ -216,12 +216,13 @@ def test_activations_store_refreshes_dataset_when_it_runs_out():
 
     # assert a stop iteration is raised when we do one more get_batch_tokens
 
-    pytest.raises(StopIteration, activations_store.get_batch_tokens, batch_size, raise_at_epoch_end=True)
+    pytest.raises(
+        StopIteration,
+        activations_store.get_batch_tokens,
+        batch_size,
+        raise_at_epoch_end=True,
+    )
 
     # no errors are ever raised if we do not ask for raise_at_epoch_end
     for _ in range(32):
         _ = activations_store.get_batch_tokens(batch_size, raise_at_epoch_end=False)
-
-    
-    
-

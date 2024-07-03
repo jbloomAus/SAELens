@@ -543,11 +543,15 @@ class ActivationsStore:
                 self.half_buffer_size, raise_on_epoch_end=True
             )
         except StopIteration:
-            print("Warning: All samples in the training dataset have been exhausted, we are now beginning a new epoch with the same samples.")
-            self._storage_buffer = None # dump the current buffer so samples do not leak between epochs
+            print(
+                "Warning: All samples in the training dataset have been exhausted, we are now beginning a new epoch with the same samples."
+            )
+            self._storage_buffer = (
+                None  # dump the current buffer so samples do not leak between epochs
+            )
             try:
                 new_samples = self.get_buffer(self.half_buffer_size)
-            except StopIteration: 
+            except StopIteration:
                 raise ValueError(
                     "We were unable to fill up the buffer directly after starting a new epoch. This could indicate that there are less samples in the dataset than are required to fill up the buffer. Consider reducing batch_size or n_batches_in_buffer. "
                 )
