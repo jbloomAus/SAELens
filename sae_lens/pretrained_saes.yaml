@@ -3,6 +3,10 @@ SAE_LOOKUP:
     repo_id: "jbloom/GPT2-Small-SAEs-Reformatted"
     model: "gpt2-small"
     conversion_func: null
+    links:
+      model: "https://huggingface.co/gpt2"
+      dashboards: "https://www.neuronpedia.org/gpt2sm-res-jb"
+      publication: "https://www.lesswrong.com/posts/f9EgfLSurAiqRJySD/open-source-sparse-autoencoders-for-all-residual-stream"
     saes:
       - id: "blocks.0.hook_resid_pre"
         path: "blocks.0.hook_resid_pre"
@@ -60,6 +64,10 @@ SAE_LOOKUP:
     repo_id: "ckkissane/attn-saes-gpt2-small-all-layers"
     model: "gpt2-small"
     conversion_func: "connor_rob_hook_z"
+    links:
+      model: "https://huggingface.co/gpt2"
+      dashboards: "https://www.neuronpedia.org/gpt2sm-kk"
+      publication: "https://www.lesswrong.com/posts/FSTRedtjuHa4Gfdbr/attention-saes-scale-to-gpt-2-small"
     saes:
       - id: "blocks.0.hook_z"
         path: "gpt2-small_L0_Hcat_z_lr1.20e-03_l11.80e+00_ds24576_bs4096_dc1.00e-06_rsanthropic_rie25000_nr4_v9.pt"
@@ -112,6 +120,8 @@ SAE_LOOKUP:
   gpt2-small-mlp-tm:
     repo_id: "tommmcgrath/gpt2-small-mlp-out-saes"
     model: "gpt2-small"
+    links:
+      model: "https://huggingface.co/gpt2"
     conversion_func: null
     config_overrides:
       dataset_path: "Skylion007/openwebtext"
@@ -167,6 +177,9 @@ SAE_LOOKUP:
   gpt2-small-res-jb-feature-splitting:
     repo_id: "jbloom/GPT2-Small-Feature-Splitting-Experiment-Layer-8"
     model: "gpt2-small"
+    links:
+      model: "https://huggingface.co/gpt2"
+      dashboards: "https://www.neuronpedia.org/gpt2sm-rfs-jb"
     conversion_func: null
     saes:
       - id: "blocks.8.hook_resid_pre_768"
@@ -315,6 +328,9 @@ SAE_LOOKUP:
     repo_id: "jbloom/Gemma-2b-Residual-Stream-SAEs"
     model: "gemma-2b"
     conversion_func: null
+    links:
+      model: https://huggingface.co/google/gemma-2b
+      dashboards: https://www.neuronpedia.org/gemma2b-res-jb
     saes:
       - id: "blocks.0.hook_resid_post"
         path: "gemma_2b_blocks.0.hook_resid_post_16384_anthropic"
@@ -332,6 +348,9 @@ SAE_LOOKUP:
     repo_id: "jbloom/Gemma-2b-IT-Residual-Stream-SAEs"
     model: "gemma-2b-it"
     conversion_func: null
+    links:
+      model: https://huggingface.co/google/gemma-2b-it
+      dashboards: https://www.neuronpedia.org/gemma2bit-res-jb
     saes:
       - id: "blocks.12.hook_resid_post"
         path: "gemma_2b_it_blocks.12.hook_resid_post_16384"
@@ -340,7 +359,9 @@ SAE_LOOKUP:
   mistral-7b-res-wg:
     repo_id: "JoshEngels/Mistral-7B-Residual-Stream-SAEs"
     model: "mistral-7b"
-    conversion_func: "mistral_7b_josh_engels_loader"
+    conversion_func: null
+    config_overrides:
+      normalize_activations: "constant_norm_rescale"
     saes:
       - id: "blocks.8.hook_resid_pre"
         path: "mistral_7b_layer_8"

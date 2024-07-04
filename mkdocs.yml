@@ -48,8 +48,8 @@ nav:
   - Training SAEs: training_saes.md
   - Citation: citation.md
   - Contributing: contributing.md
-  # - Analysis: usage/examples.md
   - API: api.md
+  - Supported SAEs: sae_table.md
 
 plugins:
   - search
@@ -60,6 +60,8 @@ plugins:
       watch:
         - sae_lens/  # Replace with the path to your Python code
 
+hooks:
+  - docs/generate_sae_table.py
 
 markdown_extensions:
   - pymdownx.highlight:
