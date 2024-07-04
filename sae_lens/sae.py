@@ -17,7 +17,8 @@ from transformer_lens.hook_points import HookedRootModule, HookPoint
 from sae_lens.config import DTYPE_MAP
 from sae_lens.toolkit.pretrained_sae_loaders import (
     NAMED_PRETRAINED_SAE_LOADERS,
-    load_pretrained_sae_lens_sae_components,
+    handle_config_defaulting,
+    read_sae_from_disk,
 )
 from sae_lens.toolkit.pretrained_saes_directory import get_pretrained_saes_directory
 
@@ -454,11 +455,18 @@ class SAE(HookedRootModule):
         cls, path: str, device: str = "cpu", dtype: str = "float32"
     ) -> "SAE":
 
-        config_path = os.path.join(path, "cfg.json")
-        weight_path = os.path.join(path, "sae_weights.safetensors")
+        # get the config
+        config_path = os.path.join(path, SAE_CFG_PATH)
+        with open(config_path, "r") as f:
+            cfg_dict = json.load(f)
+        cfg_dict = handle_config_defaulting(cfg_dict)
 
-        cfg_dict, state_dict, _ = load_pretrained_sae_lens_sae_components(
-            config_path, weight_path, device, dtype
+        weight_path = os.path.join(path, SAE_WEIGHTS_PATH)
+        cfg_dict, state_dict = read_sae_from_disk(
+            cfg_dict=cfg_dict,
+            weight_path=weight_path,
+            device=device,
+            dtype=DTYPE_MAP[dtype],
         )
 
         sae_cfg = SAEConfig.from_dict(cfg_dict)

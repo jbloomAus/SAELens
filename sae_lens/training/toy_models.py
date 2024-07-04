@@ -435,7 +435,7 @@ def plot_features_in_2d(
         if title:
             fig.suptitle(title[t], fontsize=15)
         if subplot_titles:
-            ax.set_title(subplot_titles[t], fontsize=12)  # type: ignore
+            ax.set_title(subplot_titles[t], fontsize=12)
         fig.canvas.draw_idle()
 
     def play(event: Any):
