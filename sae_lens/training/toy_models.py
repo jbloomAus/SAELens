@@ -350,7 +350,7 @@ def plot_features_in_2d(
     values: Float[Tensor, "timesteps d_hidden feats"],
     colors: Optional[list[Any]] = None,  # shape [timesteps feats]
     title: Optional[str | list[str]] = None,
-    subplot_titles: Optional[list[str] | list[list[str]]] = None,
+    subplot_titles: Optional[list[str] | list[list[str]]] = None,  # type: ignore
     save: Optional[str] = None,
     colab: bool = False,
 ):
