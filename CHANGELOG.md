@@ -2,6 +2,19 @@
 
 
 
+## v3.11.0 (2024-07-04)
+
+### Feature
+
+* feat: make pretrained sae directory docs page (#213)
+
+* make pretrained sae directory docs page
+
+* type issue weirdness
+
+* type issue weirdness ([`b8a99ab`](https://github.com/jbloomAus/SAELens/commit/b8a99ab4dfe8f7790a3b15f41e351fbc3b82f1ab))
+
+
 ## v3.10.0 (2024-07-04)
 
 ### Feature
