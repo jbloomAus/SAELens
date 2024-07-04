@@ -185,10 +185,12 @@ def load_pretrained_sae_lens_sae_components(
     if cfg_overrides is not None:
         cfg_dict.update(cfg_overrides)
 
-    cfg_dict["architecture"] = (
-        "standard"  # TODO: modify this when we add support for loading more architectures
-    )
 
+    if "architecture" not in cfg_dict:
+        cfg_dict["architecture"] = (
+            "standard"  # TODO: modify this when we add support for loading more architectures
+        )
+        
     # filter config for varnames
     cfg_dict["device"] = device
     cfg_dict["dtype"] = dtype
