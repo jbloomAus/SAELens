@@ -83,29 +83,36 @@ class CacheActivationsRunner:
         n_buffers = math.ceil(self.cfg.training_tokens / tokens_per_buffer)
 
         for i in tqdm(range(n_buffers), desc="Caching activations"):
-            buffer = self.activations_store.get_buffer(self.cfg.n_batches_in_buffer)
-            self.activations_store.save_buffer(
-                buffer, f"{new_cached_activations_path}/{i}.safetensors"
-            )
+            try:
+                buffer = self.activations_store.get_buffer(self.cfg.n_batches_in_buffer)
 
-            del buffer
+                self.activations_store.save_buffer(
+                    buffer, f"{new_cached_activations_path}/{i}.safetensors"
+                )
 
-            if i % self.cfg.shuffle_every_n_buffers == 0 and i > 0:
-                # Shuffle the buffers on disk
+                del buffer
 
-                # Do random pairwise shuffling between the last shuffle_every_n_buffers buffers
-                for _ in range(self.cfg.n_shuffles_with_last_section):
-                    self.shuffle_activations_pairwise(
-                        new_cached_activations_path,
-                        buffer_idx_range=(i - self.cfg.shuffle_every_n_buffers, i),
-                    )
+                if i % self.cfg.shuffle_every_n_buffers == 0 and i > 0:
+                    # Shuffle the buffers on disk
 
-                # Do more random pairwise shuffling between all the buffers
-                for _ in range(self.cfg.n_shuffles_in_entire_dir):
-                    self.shuffle_activations_pairwise(
-                        new_cached_activations_path,
-                        buffer_idx_range=(0, i),
-                    )
+                    # Do random pairwise shuffling between the last shuffle_every_n_buffers buffers
+                    for _ in range(self.cfg.n_shuffles_with_last_section):
+                        self.shuffle_activations_pairwise(
+                            new_cached_activations_path,
+                            buffer_idx_range=(i - self.cfg.shuffle_every_n_buffers, i),
+                        )
+
+                    # Do more random pairwise shuffling between all the buffers
+                    for _ in range(self.cfg.n_shuffles_in_entire_dir):
+                        self.shuffle_activations_pairwise(
+                            new_cached_activations_path,
+                            buffer_idx_range=(0, i),
+                        )
+            except StopIteration:
+                print(
+                    f"Warning: Ran out of samples while filling the buffer at batch {i} before reaching {n_buffers} batches. No more caching will occur."
+                )
+                break
 
         # More final shuffling (mostly in case we didn't end on an i divisible by shuffle_every_n_buffers)
         if n_buffers > 1:

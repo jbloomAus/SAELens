@@ -1,10 +1,10 @@
 import os
-
-# import pytest
-# import shutil
 from pathlib import Path
+from typing import Any, Tuple
 
+import pytest
 import torch
+from datasets import Dataset
 from safetensors import safe_open
 from transformer_lens import HookedTransformer
 
@@ -160,3 +160,68 @@ def test_load_cached_activations():
 
     # assert sparse_autoencoder_dictionary is not None
     # know whether or not this works by looking at the dashboard!
+
+
+def test_activations_store_refreshes_dataset_when_it_runs_out():
+    cached_activations_fixture_path = os.path.join(
+        os.path.dirname(__file__), "fixtures", "cached_activations"
+    )
+
+    total_training_steps = 200
+    batch_size = 4
+    total_training_tokens = total_training_steps * batch_size
+
+    context_size = 256
+    cfg = LanguageModelSAERunnerConfig(
+        cached_activations_path=cached_activations_fixture_path,
+        use_cached_activations=True,
+        model_name="gelu-1l",
+        hook_name="blocks.0.hook_mlp_out",
+        hook_layer=0,
+        d_in=512,
+        dataset_path="",
+        context_size=context_size,
+        is_dataset_tokenized=True,
+        prepend_bos=True,
+        training_tokens=total_training_tokens,
+        train_batch_size_tokens=4096,
+        n_batches_in_buffer=2,
+        store_batch_size_prompts=batch_size,
+        normalize_activations="none",
+        device="cpu",
+        seed=42,
+        dtype="float16",
+    )
+
+    class MockModel:
+        def to_tokens(self, *args: Tuple[Any, ...], **kwargs: Any) -> torch.Tensor:
+            return torch.ones(context_size)
+
+        @property
+        def W_E(self) -> torch.Tensor:
+            return torch.ones(16, 16)
+
+    dataset = Dataset.from_list(
+        [
+            {"text": "hello world1"},
+        ]
+        * 64
+    )
+
+    model = MockModel()
+    activations_store = ActivationsStore.from_config(model, cfg, override_dataset=dataset)  # type: ignore
+    for _ in range(16):
+        _ = activations_store.get_batch_tokens(batch_size, raise_at_epoch_end=True)
+
+    # assert a stop iteration is raised when we do one more get_batch_tokens
+
+    pytest.raises(
+        StopIteration,
+        activations_store.get_batch_tokens,
+        batch_size,
+        raise_at_epoch_end=True,
+    )
+
+    # no errors are ever raised if we do not ask for raise_at_epoch_end
+    for _ in range(32):
+        _ = activations_store.get_batch_tokens(batch_size, raise_at_epoch_end=False)

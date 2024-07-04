@@ -6,7 +6,7 @@ from typing import Any, Generator, Iterator, Literal, cast
 
 import numpy as np
 import torch
-from datasets import load_dataset
+from datasets import Dataset, DatasetDict, load_dataset
 from safetensors import safe_open
 from safetensors.torch import save_file
 from torch.utils.data import DataLoader
@@ -154,12 +154,23 @@ class ActivationsStore:
             if isinstance(dataset, str)
             else dataset
         )
+
+        if isinstance(dataset, (Dataset, DatasetDict)):
+            self.dataset = cast(Dataset | DatasetDict, self.dataset)
+            n_samples = len(self.dataset)
+
+            if n_samples < total_training_tokens:
+                print(
+                    f"Warning: the training dataset contains fewer samples ({n_samples}) than the number of samples required by your training configuration ({total_training_tokens}). This will result in multiple training epochs and some samples being used more than once."
+                )
+
         self.hook_name = hook_name
         self.hook_layer = hook_layer
         self.hook_head_index = hook_head_index
         self.context_size = context_size
         self.d_in = d_in
         self.n_batches_in_buffer = n_batches_in_buffer
+        self.half_buffer_size = n_batches_in_buffer // 2
         self.total_training_tokens = total_training_tokens
         self.store_batch_size_prompts = store_batch_size_prompts
         self.train_batch_size_tokens = train_batch_size_tokens
@@ -323,7 +334,7 @@ class ActivationsStore:
     @property
     def storage_buffer(self) -> torch.Tensor:
         if self._storage_buffer is None:
-            self._storage_buffer = self.get_buffer(self.n_batches_in_buffer // 2)
+            self._storage_buffer = self.get_buffer(self.half_buffer_size)
 
         return self._storage_buffer
 
@@ -333,16 +344,30 @@ class ActivationsStore:
             self._dataloader = self.get_data_loader()
         return self._dataloader
 
-    def get_batch_tokens(self, batch_size: int | None = None):
+    def get_batch_tokens(
+        self, batch_size: int | None = None, raise_at_epoch_end: bool = False
+    ):
         """
         Streams a batch of tokens from a dataset.
+
+        If raise_at_epoch_end is true we will reset the dataset at the end of each epoch and raise a StopIteration. Otherwise we will reset silently.
         """
         if not batch_size:
             batch_size = self.store_batch_size_prompts
         sequences = []
         # the sequences iterator yields fully formed tokens of size context_size, so we just need to cat these into a batch
         for _ in range(batch_size):
-            sequences.append(next(self.iterable_sequences))
+            try:
+                sequences.append(next(self.iterable_sequences))
+            except StopIteration:
+                self.iterable_sequences = self._iterate_tokenized_sequences()
+                if raise_at_epoch_end:
+                    raise StopIteration(
+                        f"Ran out of tokens in dataset after {self.n_dataset_processed} samples, beginning the next epoch."
+                    )
+                else:
+                    sequences.append(next(self.iterable_sequences))
+
         return torch.stack(sequences, dim=0).to(self.model.W_E.device)
 
     @torch.no_grad()
@@ -392,7 +417,16 @@ class ActivationsStore:
         return stacked_activations
 
     @torch.no_grad()
-    def get_buffer(self, n_batches_in_buffer: int) -> torch.Tensor:
+    def get_buffer(
+        self, n_batches_in_buffer: int, raise_on_epoch_end: bool = False
+    ) -> torch.Tensor:
+        """
+        Loads the next n_batches_in_buffer batches of activations into a tensor and returns half of it.
+
+        The primary purpose here is maintaining a shuffling buffer.
+
+        If raise_on_epoch_end is True, when the dataset it exhausted it will automatically refill the dataset and then raise a StopIteration so that the caller has a chance to react.
+        """
         context_size = self.context_size
         batch_size = self.store_batch_size_prompts
         d_in = self.d_in
@@ -462,7 +496,9 @@ class ActivationsStore:
 
         for refill_batch_idx_start in refill_iterator:
             # move batch toks to gpu for model
-            refill_batch_tokens = self.get_batch_tokens().to(self.model.cfg.device)
+            refill_batch_tokens = self.get_batch_tokens(
+                raise_at_epoch_end=raise_on_epoch_end
+            ).to(self.model.cfg.device)
             refill_activations = self.get_activations(refill_batch_tokens)
             # move acts back to cpu
             refill_activations.to(self.device)
@@ -507,9 +543,27 @@ class ActivationsStore:
 
         batch_size = self.train_batch_size_tokens
 
+        try:
+            new_samples = self.get_buffer(
+                self.half_buffer_size, raise_on_epoch_end=True
+            )
+        except StopIteration:
+            print(
+                "Warning: All samples in the training dataset have been exhausted, we are now beginning a new epoch with the same samples."
+            )
+            self._storage_buffer = (
+                None  # dump the current buffer so samples do not leak between epochs
+            )
+            try:
+                new_samples = self.get_buffer(self.half_buffer_size)
+            except StopIteration:
+                raise ValueError(
+                    "We were unable to fill up the buffer directly after starting a new epoch. This could indicate that there are less samples in the dataset than are required to fill up the buffer. Consider reducing batch_size or n_batches_in_buffer. "
+                )
+
         # 1. # create new buffer by mixing stored and new buffer
         mixing_buffer = torch.cat(
-            [self.get_buffer(self.n_batches_in_buffer // 2), self.storage_buffer],
+            [new_samples, self.storage_buffer],
             dim=0,
         )
 
