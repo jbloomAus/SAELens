@@ -219,8 +219,11 @@ def load_pretrained_sae_lens_sae_components(
     if "sae_lens_training_version" not in cfg_dict:
         cfg_dict["sae_lens_training_version"] = None
 
-    if "activation_fn" not in cfg_dict:
-        cfg_dict["activation_fn_str"] = "relu"
+    if "activation_fn_str" not in cfg_dict:
+        if "activation_fn" in cfg_dict:  # older config might call it activation fn
+            cfg_dict["activation_fn_str"] = cfg_dict["activation_fn"]
+        else:
+            cfg_dict["activation_fn_str"] = "relu"
 
     # if missing then none.
     if "normalize_activations" not in cfg_dict:

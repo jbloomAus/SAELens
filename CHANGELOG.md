@@ -2,6 +2,48 @@
 
 
 
+## v3.9.0 (2024-07-01)
+
+### Feature
+
+* feat: OpenAI TopK SAEs for residual stream of GPT2 Small (#201)
+
+* streamlit app
+
+* feat:  basic top-k support + oai gpt2small saes
+
+* fix merge mistake ([`06c4302`](https://github.com/jbloomAus/SAELens/commit/06c4302eedaaa4ba95686ab6b9a49fed4652ead7))
+
+### Unknown
+
+* prevent context size mismatch error (#200) ([`76389ac`](https://github.com/jbloomAus/SAELens/commit/76389ac007b77ed639035bdaee2e7587a949a9fc))
+
+* point gpt2 dataset path to apollo-research/monology-pile (#199) ([`d3eb427`](https://github.com/jbloomAus/SAELens/commit/d3eb427c64765fc27950249d299791bfa17b6a73))
+
+
+## v3.8.0 (2024-06-29)
+
+### Feature
+
+* feat: harmize activation store and pretokenize runner (#181)
+
+* eat: harmize activation store and pretokenize runner
+
+* reverting SAE cfg back to prepend_bos
+
+* adding a benchmark test
+
+* adding another test
+
+* adding list of tokenized datasets to docs
+
+* adding a warning message about lack of pre-tokenization, and linking to SAELens docs
+
+* fixing tests after apollo deleted sae- dataset versions
+
+* Update training_saes.md ([`2e6a3c3`](https://github.com/jbloomAus/SAELens/commit/2e6a3c3b72e0724b24dd8ed3803f3b80a17b77d5))
+
+
 ## v3.7.0 (2024-06-25)
 
 ### Feature

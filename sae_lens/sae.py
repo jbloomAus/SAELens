@@ -4,7 +4,7 @@ https://github.com/ArthurConmy/sae/blob/main/sae/model.py
 
 import json
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Callable, Literal, Optional, Tuple
 
 import einops
@@ -53,6 +53,7 @@ class SAEConfig:
     dtype: str
     device: str
     sae_lens_training_version: Optional[str]
+    activation_fn_kwargs: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, config_dict: dict[str, Any]) -> "SAEConfig":
@@ -88,6 +89,7 @@ class SAEConfig:
             "hook_layer": self.hook_layer,
             "hook_head_index": self.hook_head_index,
             "activation_fn_str": self.activation_fn_str,  # use string for serialization
+            "activation_fn_kwargs": self.activation_fn_kwargs or {},
             "apply_b_dec_to_input": self.apply_b_dec_to_input,
             "finetuning_scaling_factor": self.finetuning_scaling_factor,
             "sae_lens_training_version": self.sae_lens_training_version,
@@ -119,7 +121,9 @@ class SAE(HookedRootModule):
         super().__init__()
 
         self.cfg = cfg
-        self.activation_fn = get_activation_fn(cfg.activation_fn_str)
+        self.activation_fn = get_activation_fn(
+            cfg.activation_fn_str, **cfg.activation_fn_kwargs or {}
+        )
         self.dtype = DTYPE_MAP[cfg.dtype]
         self.device = torch.device(cfg.device)
         self.use_error_term = use_error_term
@@ -167,13 +171,33 @@ class SAE(HookedRootModule):
                 x = x * self.x_norm_coeff
                 return x
 
-            def run_time_activation_norm_fn_out(x: torch.Tensor) -> torch.Tensor:
+            def run_time_activation_norm_fn_out(x: torch.Tensor) -> torch.Tensor:  #
                 x = x / self.x_norm_coeff
                 del self.x_norm_coeff  # prevents reusing
                 return x
 
             self.run_time_activation_norm_fn_in = run_time_activation_norm_fn_in
             self.run_time_activation_norm_fn_out = run_time_activation_norm_fn_out
+
+        elif self.cfg.normalize_activations == "layer_norm":
+
+            #  we need to scale the norm of the input and store the scaling factor
+            def run_time_activation_ln_in(
+                x: torch.Tensor, eps: float = 1e-5
+            ) -> torch.Tensor:
+                mu = x.mean(dim=-1, keepdim=True)
+                x = x - mu
+                std = x.std(dim=-1, keepdim=True)
+                x = x / (std + eps)
+                self.ln_mu = mu
+                self.ln_std = std
+                return x
+
+            def run_time_activation_ln_out(x: torch.Tensor, eps: float = 1e-5):
+                return x * self.ln_std + self.ln_mu
+
+            self.run_time_activation_norm_fn_in = run_time_activation_ln_in
+            self.run_time_activation_norm_fn_out = run_time_activation_ln_out
 
         else:
             self.run_time_activation_norm_fn_in = lambda x: x
@@ -525,7 +549,25 @@ class SAE(HookedRootModule):
         self.hook_z_reshaping_mode = False
 
 
-def get_activation_fn(activation_fn: str) -> Callable[[torch.Tensor], torch.Tensor]:
+class TopK(nn.Module):
+    def __init__(
+        self, k: int, postact_fn: Callable[[torch.Tensor], torch.Tensor] = nn.ReLU()
+    ):
+        super().__init__()
+        self.k = k
+        self.postact_fn = postact_fn
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        topk = torch.topk(x, k=self.k, dim=-1)
+        values = self.postact_fn(topk.values)
+        result = torch.zeros_like(x)
+        result.scatter_(-1, topk.indices, values)
+        return result
+
+
+def get_activation_fn(
+    activation_fn: str, **kwargs: Any
+) -> Callable[[torch.Tensor], torch.Tensor]:
     if activation_fn == "relu":
         return torch.nn.ReLU()
     elif activation_fn == "tanh-relu":
@@ -536,5 +578,13 @@ def get_activation_fn(activation_fn: str) -> Callable[[torch.Tensor], torch.Tens
             return input
 
         return tanh_relu
+    elif activation_fn == "topk":
+        assert "k" in kwargs, "TopK activation function requires a k value."
+        k = kwargs.get("k", 1)  # Default k to 1 if not provided
+        postact_fn = kwargs.get(
+            "postact_fn", nn.ReLU()
+        )  # Default post-activation to ReLU if not provided
+
+        return TopK(k, postact_fn)
     else:
         raise ValueError(f"Unknown activation function: {activation_fn}")

@@ -129,7 +129,8 @@ class LanguageModelSAERunnerConfig:
     d_sae: Optional[int] = None
     b_dec_init_method: str = "geometric_median"
     expansion_factor: int = 4
-    activation_fn: str = "relu"  # relu, tanh-relu
+    activation_fn: str = "relu"  # relu, tanh-relu, topk
+    activation_fn_kwargs: dict[str, Any] = field(default_factory=dict)  # for topk
     normalize_sae_decoder: bool = True
     noise_scale: float = 0.0
     from_pretrained_path: Optional[str] = None
@@ -274,6 +275,7 @@ class LanguageModelSAERunnerConfig:
             "none",
             "expected_average_only_in",
             "constant_norm_rescale",
+            "layer_norm",
         ]:
             raise ValueError(
                 f"normalize_activations must be none, expected_average_only_in, or constant_norm_rescale. Got {self.normalize_activations}"
@@ -369,6 +371,7 @@ class LanguageModelSAERunnerConfig:
             "finetuning_scaling_factor": self.finetuning_method is not None,
             "sae_lens_training_version": self.sae_lens_training_version,
             "normalize_activations": self.normalize_activations,
+            "activation_fn_kwargs": self.activation_fn_kwargs,
         }
 
     def get_training_sae_cfg_dict(self) -> dict[str, Any]:
@@ -573,11 +576,12 @@ class PretokenizeRunnerConfig:
     shuffle: bool = True
     seed: int | None = None
     streaming: bool = False
+    pretokenize_batch_size: int | None = 1000
 
     # special tokens
     begin_batch_token: int | Literal["bos", "eos", "sep"] | None = "bos"
     begin_sequence_token: int | Literal["bos", "eos", "sep"] | None = None
-    sequence_separator_token: int | Literal["bos", "eos", "sep"] | None = "eos"
+    sequence_separator_token: int | Literal["bos", "eos", "sep"] | None = "bos"
 
     # if saving locally, set save_path
     save_path: str | None = None
