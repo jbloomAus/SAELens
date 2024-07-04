@@ -6,7 +6,7 @@ from typing import Any, Generator, Iterator, Literal, cast
 
 import numpy as np
 import torch
-from datasets import Dataset, DatasetDict, load_dataset
+from datasets import Dataset, DatasetDict, IterableDataset, load_dataset
 from safetensors import safe_open
 from safetensors.torch import save_file
 from torch.utils.data import DataLoader
