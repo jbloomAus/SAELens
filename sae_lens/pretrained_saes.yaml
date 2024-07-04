@@ -326,7 +326,7 @@ SAE_LOOKUP:
         l0: 56.0
       - id: "blocks.12.hook_resid_post"
         path: "gemma_2b_blocks.12.hook_resid_post_16384"
-        variance_explained: -3.6
+        variance_explained: -0.65
         l0: 62.0
   gemma-2b-it-res-jb:
     repo_id: "jbloom/Gemma-2b-IT-Residual-Stream-SAEs"
