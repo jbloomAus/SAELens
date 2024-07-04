@@ -6,6 +6,7 @@ import torch
 
 from sae_lens.evals import all_loadable_saes
 from sae_lens.sae import SAE
+from sae_lens.toolkit.pretrained_sae_loaders import get_sae_config_from_hf
 from sae_lens.training.activations_store import ActivationsStore
 from tests.unit.helpers import load_model_cached
 
@@ -22,6 +23,15 @@ that they were perfectly normal, thank you very much. They were the last
 people you'd expect to be involved in anything strange or mysterious,
 because they just didn't hold with such nonsense.
 """
+
+
+def test_get_sae_config():
+    repo_id = "jbloom/GPT2-Small-SAEs-Reformatted"
+    cfg = get_sae_config_from_hf(
+        repo_id=repo_id,
+        folder_name="blocks.0.hook_resid_pre",
+    )
+    assert cfg is not None
 
 
 @pytest.mark.parametrize(

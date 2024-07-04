@@ -5,6 +5,7 @@ from typing import Any, Literal, Optional, cast
 
 import torch
 import wandb
+from datasets import Dataset, DatasetDict, IterableDataset, IterableDatasetDict
 
 from sae_lens import __version__
 
@@ -18,6 +19,8 @@ DTYPE_MAP = {
     "torch.float16": torch.float16,
     "torch.bfloat16": torch.bfloat16,
 }
+
+HfDataset = DatasetDict | Dataset | IterableDatasetDict | IterableDataset
 
 
 @dataclass
@@ -113,7 +116,7 @@ class LanguageModelSAERunnerConfig:
     hook_eval: str = "NOT_IN_USE"
     hook_layer: int = 0
     hook_head_index: Optional[int] = None
-    dataset_path: str = "NeelNanda/c4-tokenized-2b"
+    dataset_path: str = ""
     dataset_trust_remote_code: bool = True
     streaming: bool = True
     is_dataset_tokenized: bool = True
@@ -428,7 +431,7 @@ class CacheActivationsRunnerConfig:
     hook_name: str = "blocks.{layer}.hook_mlp_out"
     hook_layer: int = 0
     hook_head_index: Optional[int] = None
-    dataset_path: str = "NeelNanda/c4-tokenized-2b"
+    dataset_path: str = ""
     dataset_trust_remote_code: bool | None = None
     streaming: bool = True
     is_dataset_tokenized: bool = True
@@ -565,7 +568,7 @@ def _default_cached_activations_path(
 @dataclass
 class PretokenizeRunnerConfig:
     tokenizer_name: str = "gpt2"
-    dataset_path: str = "NeelNanda/c4-10k"
+    dataset_path: str = ""
     dataset_trust_remote_code: bool | None = None
     split: str | None = "train"
     data_files: list[str] | None = None

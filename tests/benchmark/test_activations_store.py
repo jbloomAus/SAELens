@@ -36,9 +36,11 @@ def test_benchmark_activations_store_get_batch_tokens_pretokenized_vs_raw():
         cast(Any, dataset), tokenizer, pretokenize_cfg
     )
 
-    text_dataset_store = ActivationsStore.from_config(model, cfg, dataset=dataset)
+    text_dataset_store = ActivationsStore.from_config(
+        model, cfg, override_dataset=dataset
+    )
     pretokenized_dataset_store = ActivationsStore.from_config(
-        model, cfg, dataset=tokenized_dataset
+        model, cfg, override_dataset=tokenized_dataset
     )
 
     text_start_time = perf_counter()

@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import signal
 from typing import Any, cast
@@ -8,7 +9,7 @@ import wandb
 from safetensors.torch import save_file
 from transformer_lens.hook_points import HookedRootModule
 
-from sae_lens.config import LanguageModelSAERunnerConfig
+from sae_lens.config import HfDataset, LanguageModelSAERunnerConfig
 from sae_lens.load_model import load_model
 from sae_lens.sae import SAE_CFG_PATH, SAE_WEIGHTS_PATH, SPARSITY_PATH
 from sae_lens.training.activations_store import ActivationsStore
@@ -35,19 +36,37 @@ class SAETrainingRunner:
     sae: TrainingSAE
     activations_store: ActivationsStore
 
-    def __init__(self, cfg: LanguageModelSAERunnerConfig):
+    def __init__(
+        self,
+        cfg: LanguageModelSAERunnerConfig,
+        override_dataset: HfDataset | None = None,
+        override_model: HookedRootModule | None = None,
+    ):
+        if override_dataset is not None:
+            logging.warning(
+                f"You just passed in a dataset which will override the one specified in your configuration: {cfg.dataset_path}. As a consequence this run will not be reproducible via configuration alone."
+            )
+        if override_model is not None:
+            logging.warning(
+                f"You just passed in a model which will override the one specified in your configuration: {cfg.model_name}. As a consequence this run will not be reproducible via configuration alone."
+            )
+
         self.cfg = cfg
 
-        self.model = load_model(
-            self.cfg.model_class_name,
-            self.cfg.model_name,
-            device=self.cfg.device,
-            model_from_pretrained_kwargs=self.cfg.model_from_pretrained_kwargs,
-        )
+        if override_model is None:
+            self.model = load_model(
+                self.cfg.model_class_name,
+                self.cfg.model_name,
+                device=self.cfg.device,
+                model_from_pretrained_kwargs=self.cfg.model_from_pretrained_kwargs,
+            )
+        else:
+            self.model = override_model
 
         self.activations_store = ActivationsStore.from_config(
             self.model,
             self.cfg,
+            override_dataset=override_dataset,
         )
 
         if self.cfg.from_pretrained_path is not None:

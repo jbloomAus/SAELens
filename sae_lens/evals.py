@@ -230,7 +230,7 @@ def get_sparsity_and_variance_metrics(
         else:
             original_act = cache[hook_name]
 
-        # normalise if necessary
+        # normalise if necessary (necessary in training only, otherwise we should fold the scaling in)
         if activation_store.normalize_activations == "expected_average_only_in":
             original_act = activation_store.apply_norm_scaling_factor(original_act)
 
@@ -238,6 +238,9 @@ def get_sparsity_and_variance_metrics(
         sae_feature_activations = sae.encode(original_act.to(sae.device))
         sae_out = sae.decode(sae_feature_activations).to(original_act.device)
         del cache
+
+        if activation_store.normalize_activations == "expected_average_only_in":
+            sae_out = activation_store.unscale(sae_out)
 
         flattened_sae_input = einops.rearrange(original_act, "b ctx d -> (b ctx) d")
         flattened_sae_feature_acts = einops.rearrange(
@@ -417,7 +420,7 @@ def get_recons_loss(
 def all_loadable_saes() -> list[tuple[str, str, float, float]]:
     all_loadable_saes = []
     saes_directory = get_pretrained_saes_directory()
-    for release, lookup in saes_directory.items():
+    for release, lookup in tqdm(saes_directory.items()):
         for sae_name in lookup.saes_map.keys():
             expected_var_explained = lookup.expected_var_explained[sae_name]
             expected_l0 = lookup.expected_l0[sae_name]

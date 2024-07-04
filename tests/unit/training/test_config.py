@@ -60,7 +60,7 @@ def test_sae_training_runner_config_get_sae_base_parameters():
         "context_size": 128,
         "prepend_bos": True,
         "finetuning_scaling_factor": False,
-        "dataset_path": "NeelNanda/c4-tokenized-2b",
+        "dataset_path": "",
         "dataset_trust_remote_code": True,
         "sae_lens_training_version": str(__version__),
         "normalize_activations": "none",
