@@ -16,6 +16,7 @@ class PretrainedSaeLoader(Protocol):
         folder_name: str,
         device: str | torch.device | None = None,
         force_download: bool = False,
+        cfg_overrides: dict[str, Any] | None = None,
     ) -> tuple[dict[str, Any], dict[str, torch.Tensor], Optional[torch.Tensor]]: ...
 
 
@@ -24,6 +25,7 @@ def sae_lens_loader(
     folder_name: str,
     device: Optional[str] = None,
     force_download: bool = False,
+    cfg_overrides: Optional[dict[str, Any]] = None,
 ) -> tuple[dict[str, Any], dict[str, torch.Tensor], Optional[torch.Tensor]]:
     cfg_filename = f"{folder_name}/cfg.json"
     cfg_path = hf_hub_download(
@@ -49,7 +51,11 @@ def sae_lens_loader(
 
     # TODO: don't call a function at the end of another like this. Poor form.
     return load_pretrained_sae_lens_sae_components(
-        cfg_path, sae_path, device, log_sparsity_path=log_sparsity_path
+        cfg_path,
+        sae_path,
+        device,
+        log_sparsity_path=log_sparsity_path,
+        cfg_overrides=cfg_overrides,
     )
 
 
@@ -138,7 +144,7 @@ def connor_rob_hook_z_loader(
         "finetuning_scaling_factor": False,
         "sae_lens_training_version": None,
         "prepend_bos": True,
-        "dataset_path": "apollo-research/Skylion007-openwebtext-tokenizer-gpt2",
+        "dataset_path": "Skylion007/openwebtext",
         "context_size": 128,
         "normalize_activations": "none",
         "dataset_trust_remote_code": True,
@@ -152,11 +158,14 @@ def mistral_7b_josh_engels_loader(
     folder_name: str,
     device: Optional[str] = None,
     force_download: bool = False,
+    cfg_overrides: Optional[dict[str, Any]] = None,
 ) -> tuple[dict[str, Any], dict[str, torch.Tensor], Optional[torch.Tensor]]:
 
     cfg_dict, state_dict, log_sparsity = sae_lens_loader(
-        repo_id, folder_name, device, force_download
+        repo_id, folder_name, device, force_download, cfg_overrides
     )
+
+    # this is redundant now but can remove later. We should just use the config overrides.
     cfg_dict["normalize_activations"] = "constant_norm_rescale"
     return cfg_dict, state_dict, log_sparsity
 
@@ -167,9 +176,14 @@ def load_pretrained_sae_lens_sae_components(
     device: str = "cpu",
     dtype: str = "float32",
     log_sparsity_path: Optional[str] = None,
+    cfg_overrides: Optional[dict[str, Any]] = None,
 ) -> tuple[dict[str, Any], dict[str, torch.Tensor], Optional[torch.Tensor]]:
     with open(cfg_path, "r") as f:
         cfg_dict = json.load(f)
+
+    # apply overrides
+    if cfg_overrides is not None:
+        cfg_dict.update(cfg_overrides)
 
     if "architecture" not in cfg_dict:
         cfg_dict["architecture"] = (

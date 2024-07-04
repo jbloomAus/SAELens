@@ -425,6 +425,11 @@ class SAE(HookedRootModule):
         self, activation_norm_scaling_factor: float
     ):
         self.W_enc.data = self.W_enc.data * activation_norm_scaling_factor
+        # previously weren't doing this.
+        self.W_dec.data = self.W_dec.data / activation_norm_scaling_factor
+
+        # once we normalize, we shouldn't need to scale activations.
+        self.cfg.normalize_activations = "none"
 
     def save_model(self, path: str, sparsity: Optional[torch.Tensor] = None):
 
@@ -507,6 +512,7 @@ class SAE(HookedRootModule):
             folder_name=hf_path,
             device=device,
             force_download=False,
+            cfg_overrides=sae_directory[release].config_overrides,
         )
 
         sae = cls(SAEConfig.from_dict(cfg_dict))

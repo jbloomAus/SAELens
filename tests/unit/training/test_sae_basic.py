@@ -119,6 +119,8 @@ def test_sae_fold_norm_scaling_factor(cfg: LanguageModelSAERunnerConfig):
     sae2 = deepcopy(sae)
     sae2.fold_activation_norm_scaling_factor(norm_scaling_factor)
 
+    assert sae2.cfg.normalize_activations == "none"
+
     assert torch.allclose(sae2.W_enc.data, sae.W_enc.data * norm_scaling_factor)
 
     # we expect activations of features to differ by W_dec norm weights.
@@ -140,7 +142,7 @@ def test_sae_fold_norm_scaling_factor(cfg: LanguageModelSAERunnerConfig):
     torch.testing.assert_close(feature_activations_2, feature_activations_1)
 
     sae_out_1 = sae.decode(feature_activations_1)
-    sae_out_2 = sae2.decode(feature_activations_2)
+    sae_out_2 = sae2.decode(feature_activations_2 * norm_scaling_factor)
 
     # but actual outputs should be the same
     torch.testing.assert_close(sae_out_1, sae_out_2)

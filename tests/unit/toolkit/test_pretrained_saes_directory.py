@@ -57,6 +57,7 @@ def test_get_pretrained_saes_directory():
             "blocks.11.hook_resid_pre": 56.0,
             "blocks.11.hook_resid_post": 70.0,
         },
+        config_overrides=None,
     )
 
     assert sae_directory["gpt2-small-res-jb"] == expected_result
