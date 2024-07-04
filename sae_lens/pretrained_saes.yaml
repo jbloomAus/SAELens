@@ -113,6 +113,8 @@ SAE_LOOKUP:
     repo_id: "tommmcgrath/gpt2-small-mlp-out-saes"
     model: "gpt2-small"
     conversion_func: null
+    config_overrides:
+      dataset_path: "Skylion007/openwebtext"
     saes:
       - id: "blocks.0.hook_mlp_out"
         path: "sae_group_gpt2_blocks.0.hook_mlp_out_24576:v1"
@@ -120,7 +122,7 @@ SAE_LOOKUP:
         l0: 15.0
       - id: "blocks.1.hook_mlp_out"
         path: "sae_group_gpt2_blocks.1.hook_mlp_out_24576:v0"
-        variance_explained: -0.20
+        variance_explained: 0.57
         l0: 21.0
       - id: "blocks.2.hook_mlp_out"
         path: "sae_group_gpt2_blocks.2.hook_mlp_out_24576:v0"
@@ -128,7 +130,7 @@ SAE_LOOKUP:
         l0: 137.0
       - id: "blocks.3.hook_mlp_out"
         path: "sae_group_gpt2_blocks.3.hook_mlp_out_24576:v0"
-        variance_explained: 0.41
+        variance_explained: 0.57
         l0: 54.0
       - id: "blocks.4.hook_mlp_out"
         path: "sae_group_gpt2_blocks.4.hook_mlp_out_24576:v0"
@@ -152,15 +154,15 @@ SAE_LOOKUP:
         l0: 36.0
       - id: "blocks.9.hook_mlp_out"
         path: "sae_group_gpt2_blocks.9.hook_mlp_out_24576:v0"
-        variance_explained: 0.37
+        variance_explained: 0.49
         l0: 49.0
       - id: "blocks.10.hook_mlp_out"
         path: "sae_group_gpt2_blocks.10.hook_mlp_out_24576:v0"
-        variance_explained: -0.44
+        variance_explained: 0.22
         l0: 167.0
       - id: "blocks.11.hook_mlp_out"
         path: "sae_group_gpt2_blocks.11.hook_mlp_out_24576:v2"
-        variance_explained: 0.05
+        variance_explained: 0.59
         l0: 170.0
   gpt2-small-res-jb-feature-splitting:
     repo_id: "jbloom/GPT2-Small-Feature-Splitting-Experiment-Layer-8"
@@ -203,6 +205,8 @@ SAE_LOOKUP:
     repo_id: "jbloom/GPT2-Small-OAI-v5-32k-resid-post-SAEs"
     model: "gpt2-small"
     conversion_func: null
+    config_overrides:
+      dataset_path: "Skylion007/openwebtext"
     saes:
       - id: "blocks.0.hook_resid_post"
         path: "v5_32k_layer_0.pt"
@@ -256,6 +260,8 @@ SAE_LOOKUP:
     repo_id: "jbloom/GPT2-Small-OAI-v5-128k-resid-post-SAEs"
     model: "gpt2-small"
     conversion_func: null
+    config_overrides:
+      dataset_path: "Skylion007/openwebtext"
     saes:
       - id: "blocks.0.hook_resid_post"
         path: "v5_128k_layer_0"
@@ -338,8 +344,8 @@ SAE_LOOKUP:
     saes:
       - id: "blocks.8.hook_resid_pre"
         path: "mistral_7b_layer_8"
-        variance_explained: 0.74
-        l0: 82
+        variance_explained: 0.94
+        l0: 92
       - id: "blocks.16.hook_resid_pre"
         path: "mistral_7b_layer_16"
         variance_explained: 0.85
