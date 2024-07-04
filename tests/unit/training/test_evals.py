@@ -3,9 +3,10 @@ from datasets import Dataset
 from transformer_lens import HookedTransformer
 
 from sae_lens.config import LanguageModelSAERunnerConfig
-from sae_lens.evals import run_evals
+from sae_lens.evals import get_eval_everything_config, run_evals
 from sae_lens.sae import SAE
 from sae_lens.training.activations_store import ActivationsStore
+from sae_lens.training.sae_trainer import TRAINER_EVAL_CONFIG
 from sae_lens.training.training_sae import TrainingSAE
 from tests.unit.helpers import TINYSTORIES_MODEL, build_sae_cfg, load_model_cached
 
@@ -93,7 +94,7 @@ def training_sae(cfg: LanguageModelSAERunnerConfig):
     return TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
 
 
-expected_keys = [
+all_expected_keys = [
     "metrics/l2_norm_in",
     "metrics/l2_ratio",
     "metrics/l2_norm_out",
@@ -106,7 +107,6 @@ expected_keys = [
     "metrics/ce_loss_with_sae",
     "metrics/ce_loss_with_ablation",
     "metrics/kl_div_score",
-    "metrics/kl_div_without_sae",
     "metrics/kl_div_with_sae",
     "metrics/kl_div_with_ablation",
 ]
@@ -122,12 +122,11 @@ def test_run_evals_base_sae(
         sae=base_sae,
         activation_store=activation_store,
         model=model,
-        n_eval_batches=2,
-        eval_batch_size_prompts=None,
+        eval_config=get_eval_everything_config(),
     )
 
     # results will be garbage without a real model.
-    for key in expected_keys:
+    for key in all_expected_keys:
         assert key in eval_metrics
 
 
@@ -141,9 +140,46 @@ def test_run_evals_training_sae(
         sae=training_sae,
         activation_store=activation_store,
         model=model,
-        n_eval_batches=10,
-        eval_batch_size_prompts=None,
+        eval_config=get_eval_everything_config(),
     )
 
-    for key in expected_keys:
+    print(eval_metrics)
+    for key in all_expected_keys:
         assert key in eval_metrics
+
+
+def test_run_empty_evals(
+    base_sae: SAE,
+    activation_store: ActivationsStore,
+    model: HookedTransformer,
+):
+    with pytest.raises(ValueError):
+        run_evals(sae=base_sae, activation_store=activation_store, model=model)
+
+
+def test_training_eval_config(
+    base_sae: SAE,
+    activation_store: ActivationsStore,
+    model: HookedTransformer,
+):
+    expected_keys = [
+        "metrics/l2_norm_in",
+        "metrics/l2_ratio",
+        "metrics/l2_norm_out",
+        "metrics/ce_loss_score",
+        "metrics/ce_loss_without_sae",
+        "metrics/ce_loss_with_sae",
+        "metrics/ce_loss_with_ablation",
+    ]
+    eval_config = TRAINER_EVAL_CONFIG
+    eval_metrics = run_evals(
+        sae=base_sae,
+        activation_store=activation_store,
+        model=model,
+        eval_config=eval_config,
+    )
+    sorted_returned_keys = sorted(eval_metrics.keys())
+    sorted_expected_keys = sorted(expected_keys)
+
+    for i in range(len(expected_keys)):
+        assert sorted_returned_keys[i] == sorted_expected_keys[i]
