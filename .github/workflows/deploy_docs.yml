@@ -1,5 +1,4 @@
 name: Deploy Docs
-
 on:
   push:
     branches:
@@ -13,28 +12,55 @@ on:
     paths-ignore:
       - '.vscode/**'
       - '.gitignore'
-
 jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
       - name: Install Python
         uses: actions/setup-python@v5
         with:
           python-version: 3.11
-
+      - name: Cache Huggingface assets
+        uses: actions/cache@v4
+        with:
+          key: huggingface-${{ runner.os }}-3.11-${{ hashFiles('**/pyproject.toml') }}
+          path: ~/.cache/huggingface
+          restore-keys: |
+            huggingface-${{ runner.os }}-3.11-
+      - name: Load cached Poetry installation
+        id: cached-poetry
+        uses: actions/cache@v4
+        with:
+          path: ~/.local
+          key: poetry-${{ runner.os }}-3.11-0
       - name: Install Poetry
-        run: pip install poetry
-
-      - name: Install Dependencies
-        run: poetry install --no-root
-
+        if: steps.cached-poetry.outputs.cache-hit != 'true'
+        uses: snok/install-poetry@v1
+        with:
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+          installer-parallel: true
+      - name: Load cached venv
+        id: cached-poetry-dependencies
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-3.11-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            venv-${{ runner.os }}-3.11-
+      - name: Install dependencies
+        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+        run: poetry install --no-interaction
+      - name: Set Python Path
+        run: echo "PYTHONPATH=$PYTHONPATH:$PWD" >> $GITHUB_ENV
+      - name: Debug info
+        run: |
+          ls -R
+          poetry show
       - name: Deploy website
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
