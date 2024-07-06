@@ -1,6 +1,5 @@
 import math
 import os
-from typing import Tuple
 
 import numpy as np
 import torch
@@ -98,14 +97,16 @@ class CacheActivationsRunner:
                 for _ in range(self.cfg.n_shuffles_with_last_section):
                     self.shuffle_activations_pairwise(
                         new_cached_activations_path,
-                        buffer_idx_range=(i - self.cfg.shuffle_every_n_buffers, i),
+                        start_idx = i - self.cfg.shuffle_every_n_buffers,
+                        end_idx = i,
                     )
 
                 # Do more random pairwise shuffling between all the buffers
                 for _ in range(self.cfg.n_shuffles_in_entire_dir):
                     self.shuffle_activations_pairwise(
                         new_cached_activations_path,
-                        buffer_idx_range=(0, i),
+                        start_idx=0,
+                        end_idx=i
                     )
 
         # More final shuffling (mostly in case we didn't end on an i divisible by shuffle_every_n_buffers)
@@ -113,29 +114,30 @@ class CacheActivationsRunner:
             for _ in tqdm(range(self.cfg.n_shuffles_final), desc="Final shuffling"):
                 self.shuffle_activations_pairwise(
                     new_cached_activations_path,
-                    buffer_idx_range=(0, self.n_buffers),
+                    start_idx = 0,
+                    end_idx = self.n_buffers,
                 )
 
     @torch.no_grad()
     def shuffle_activations_pairwise(
-        self, datapath: str, buffer_idx_range: Tuple[int, int]
+        self, datapath: str, start_idx: int, end_idx: int
     ):
         """
         Shuffles two buffers on disk.
         """
         assert (
-            buffer_idx_range[0] < buffer_idx_range[1] - 1
+            start_idx < end_idx - 1
         ), "buffer_idx_range[0] must be smaller than buffer_idx_range[1] by at least 1"
 
         buffer_idx1 = torch.randint(
-            buffer_idx_range[0], buffer_idx_range[1], (1,)
+            start_idx, end_idx, (1,)
         ).item()
         buffer_idx2 = torch.randint(
-            buffer_idx_range[0], buffer_idx_range[1], (1,)
+            start_idx, end_idx, (1,)
         ).item()
         while buffer_idx1 == buffer_idx2:  # Make sure they're not the same
             buffer_idx2 = torch.randint(
-                buffer_idx_range[0], buffer_idx_range[1], (1,)
+                start_idx, end_idx, (1,)
             ).item()
 
         path1 = f"{datapath}/{buffer_idx1}.{self.file_extension}"
