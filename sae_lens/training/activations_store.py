@@ -1,17 +1,22 @@
 from __future__ import annotations
 
 import contextlib
+import json
 import os
 from typing import Any, Generator, Iterator, Literal, cast
 
 import numpy as np
 import torch
 from datasets import Dataset, DatasetDict, load_dataset
+from huggingface_hub import hf_hub_download
+from huggingface_hub.utils._errors import HfHubHTTPError
+from requests import HTTPError
 from safetensors import safe_open
 from safetensors.torch import save_file
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformer_lens.hook_points import HookedRootModule
+from transformers import AutoTokenizer, PreTrainedTokenizerBase
 
 from sae_lens.config import (
     DTYPE_MAP,
@@ -211,6 +216,15 @@ class ActivationsStore:
             # TODO: investigate if this can work for iterable datasets, or if this is even worthwhile as a perf improvement
             if hasattr(self.dataset, "set_format"):
                 self.dataset.set_format(type="torch", columns=[self.tokens_column])  # type: ignore
+
+            if (
+                isinstance(dataset, str)
+                and hasattr(model, "tokenizer")
+                and model.tokenizer is not None
+            ):
+                validate_pretokenized_dataset_tokenizer(
+                    dataset_path=dataset, model_tokenizer=model.tokenizer
+                )
         else:
             print(
                 "Warning: Dataset is not tokenized. Pre-tokenizing will improve performance and allows for more control over special tokens. See https://jbloomaus.github.io/SAELens/training_saes/#pretokenizing-datasets for more info."
@@ -607,3 +621,31 @@ class ActivationsStore:
 
     def save(self, file_path: str):
         save_file(self.state_dict(), file_path)
+
+
+def validate_pretokenized_dataset_tokenizer(
+    dataset_path: str, model_tokenizer: PreTrainedTokenizerBase
+) -> None:
+    """
+    Helper to validate that the tokenizer used to pretokenize the dataset matches the model tokenizer.
+    """
+    try:
+        tokenization_cfg_path = hf_hub_download(
+            dataset_path, "sae_lens.json", repo_type="dataset"
+        )
+    except HfHubHTTPError:
+        return
+    if tokenization_cfg_path is None:
+        return
+    with open(tokenization_cfg_path, "r") as f:
+        tokenization_cfg = json.load(f)
+    tokenizer_name = tokenization_cfg["tokenizer_name"]
+    try:
+        ds_tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+    # if we can't download the specified tokenizer to verify, just continue
+    except HTTPError:
+        return
+    if ds_tokenizer.get_vocab() != model_tokenizer.get_vocab():
+        raise ValueError(
+            f"Dataset tokenizer {tokenizer_name} does not match model tokenizer {model_tokenizer}."
+        )

@@ -9,7 +9,10 @@ from transformer_lens import HookedTransformer
 
 from sae_lens.config import LanguageModelSAERunnerConfig, PretokenizeRunnerConfig
 from sae_lens.pretokenize_runner import pretokenize_dataset
-from sae_lens.training.activations_store import ActivationsStore
+from sae_lens.training.activations_store import (
+    ActivationsStore,
+    validate_pretokenized_dataset_tokenizer,
+)
 from tests.unit.helpers import build_sae_cfg, load_model_cached
 
 
@@ -424,3 +427,38 @@ def test_activation_store__errors_if_neither_dataset_nor_dataset_path(
 
     with pytest.raises(ValueError):
         ActivationsStore.from_config(ts_model, cfg, override_dataset=None)
+
+
+def test_validate_pretokenized_dataset_tokenizer_errors_if_the_tokenizer_doesnt_match_the_model():
+    ds_path = "chanind/openwebtext-gpt2"
+    model_tokenizer = HookedTransformer.from_pretrained("opt-125m").tokenizer
+    assert model_tokenizer is not None
+    with pytest.raises(ValueError):
+        validate_pretokenized_dataset_tokenizer(ds_path, model_tokenizer)
+
+
+def test_validate_pretokenized_dataset_tokenizer_runs_successfully_if_tokenizers_match(
+    ts_model: HookedTransformer,
+):
+    ds_path = "chanind/openwebtext-gpt2"
+    model_tokenizer = ts_model.tokenizer
+    assert model_tokenizer is not None
+    validate_pretokenized_dataset_tokenizer(ds_path, model_tokenizer)
+
+
+def test_validate_pretokenized_dataset_tokenizer_does_nothing_if_the_dataset_is_not_created_by_sae_lens(
+    ts_model: HookedTransformer,
+):
+    ds_path = "apollo-research/monology-pile-uncopyrighted-tokenizer-gpt2"
+    model_tokenizer = ts_model.tokenizer
+    assert model_tokenizer is not None
+    validate_pretokenized_dataset_tokenizer(ds_path, model_tokenizer)
+
+
+def test_validate_pretokenized_dataset_tokenizer_does_nothing_if_the_dataset_path_doesnt_exist(
+    ts_model: HookedTransformer,
+):
+    ds_path = "blah/nonsense-1234"
+    model_tokenizer = ts_model.tokenizer
+    assert model_tokenizer is not None
+    validate_pretokenized_dataset_tokenizer(ds_path, model_tokenizer)
