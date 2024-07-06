@@ -455,6 +455,8 @@ class ActivationsStore:
                 shape=(total_size, context_size, num_layers, d_in),
             )
 
+            print('memmapped file shape', new_buffer.shape)
+
             for refill_batch_idx_start in refill_iterator:
                 # move batch toks to gpu for model
                 refill_batch_tokens = self.get_batch_tokens().to(self.model.cfg.device)
