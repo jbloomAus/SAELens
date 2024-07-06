@@ -16,7 +16,7 @@ from sae_lens.training.activations_store import ActivationsStore
 
 # The way to run this with this command:
 # poetry run py.test tests/unit/test_cache_activations_runner.py --profile-svg -s
-def test_cache_activations_runner(tmp_path: Path):
+def test_cache_activations_runner_saving(tmp_path: Path):
     if torch.cuda.is_available():
         device = "cuda"
     elif torch.backends.mps.is_available():

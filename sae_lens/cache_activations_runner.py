@@ -85,6 +85,7 @@ class CacheActivationsRunner:
 
         for i in tqdm(range(self.n_buffers), desc="Caching activations"):
             buffer = self.activations_store.get_buffer()
+            print('buffer shape as generated', buffer.shape)
             buffer_path = f"{new_cached_activations_path}/{i}.{self.file_extension}"
             self.activations_store.save_buffer(buffer, buffer_path)
 
@@ -129,22 +130,20 @@ class CacheActivationsRunner:
             start_idx < end_idx - 1
         ), "buffer_idx_range[0] must be smaller than buffer_idx_range[1] by at least 1"
 
-        buffer_idx1 = torch.randint(
-            start_idx, end_idx, (1,)
-        ).item()
-        buffer_idx2 = torch.randint(
-            start_idx, end_idx, (1,)
-        ).item()
+        buffer_idx1 = torch.randint(start_idx, end_idx, (1,)).item()
+        buffer_idx2 = torch.randint(start_idx, end_idx, (1,)).item()
         while buffer_idx1 == buffer_idx2:  # Make sure they're not the same
-            buffer_idx2 = torch.randint(
-                start_idx, end_idx, (1,)
-            ).item()
+            buffer_idx2 = torch.randint(start_idx, end_idx, (1,)).item()
+
 
         path1 = f"{datapath}/{buffer_idx1}.{self.file_extension}"
         path2 = f"{datapath}/{buffer_idx2}.{self.file_extension}"
 
         buffer1 = self.activations_store.load_buffer(path1)
         buffer2 = self.activations_store.load_buffer(path2)
+
+        print('buffer shape initial', buffer1.shape)    
+        print('buffer shape initial', buffer2.shape)
 
         # Get total size and create a joint buffer
         total_size = buffer1.shape[0] + buffer2.shape[0]
@@ -179,6 +178,9 @@ class CacheActivationsRunner:
         # Apply permutation
         shuffled_buffer1[:] = joint_buffer[permutation[: buffer1.shape[0]]]
         shuffled_buffer2[:] = joint_buffer[permutation[buffer1.shape[0] :]]
+
+        print('shuffled buffer shape', shuffled_buffer1.shape)
+        print('shuffled buffer shape', shuffled_buffer2.shape)
 
         # Save shuffled buffers back to original files
         self.activations_store.save_buffer(shuffled_buffer1, path1)

@@ -22,7 +22,7 @@ from sae_lens.config import (
 from sae_lens.sae import SAE
 from sae_lens.tokenization_and_batching import concat_and_batch_sequences
 
-torch_to_numpy_dtype_dict = {
+torch_to_numpy_dtype_dict: dict[torch.dtype, Any] = {
     torch.float32: np.float32,
     torch.float: np.float32,
     torch.float64: np.float64,
@@ -43,7 +43,7 @@ torch_to_numpy_dtype_dict = {
 FILE_EXTENSION = "dat"
 
 
-def torch_dtype_to_numpy_dtype(torch_dtype):
+def torch_dtype_to_numpy_dtype(torch_dtype: torch.dtype) -> np.dtype[Any] | None:
     return torch_to_numpy_dtype_dict.get(torch_dtype, None)
 
 
@@ -62,7 +62,7 @@ class ActivationsStore:
     hook_layer: int
     hook_head_index: int | None
     _dataloader: Iterator[Any] | None = None
-    _storage_buffer: torch.Tensor | None = None
+    _storage_buffer: np.ndarray[Any, np.dtype[Any]] | None = None
     device: torch.device
 
     @classmethod
@@ -350,7 +350,7 @@ class ActivationsStore:
         return scaling_factor
 
     @property
-    def storage_buffer(self) -> np.memmap:
+    def storage_buffer(self) -> np.ndarray[Any, np.dtype[Any]]:
         if self._storage_buffer is None:
             self._storage_buffer = self.get_buffer()
         return self._storage_buffer
@@ -420,7 +420,7 @@ class ActivationsStore:
         return stacked_activations
 
     @torch.no_grad()
-    def get_buffer(self) -> np.memmap:
+    def get_buffer(self) -> np.ndarray[Any, np.dtype[Any]]:
         context_size = self.context_size
         batch_size = self.store_batch_size_prompts
         d_in = self.d_in
@@ -475,7 +475,7 @@ class ActivationsStore:
 
         return new_buffer
 
-    def save_buffer(self, buffer: np.memmap, path: str):
+    def save_buffer(self, buffer: np.memmap[Any, Any], path: str):
         # If buffer is already a memmap, we just need to flush it
         if buffer.filename != path:
             # If the paths are different, we need to create a new memmap
@@ -488,7 +488,7 @@ class ActivationsStore:
             # If the paths are the same, we just need to flush the existing buffer
             buffer.flush()
 
-    def load_buffer(self, path: str) -> np.memmap:
+    def load_buffer(self, path: str) -> np.ndarray[Any, np.dtype[Any]]:
         # Load the memory-mapped array
         memmap_file = np.memmap(path, dtype=self.numpy_dtype, mode="r")
         memmap_file = memmap_file.reshape(-1, 1, self.d_in)
@@ -544,7 +544,7 @@ class ActivationsStore:
             "n_dataset_processed": torch.tensor(self.n_dataset_processed),
         }
         if self._storage_buffer is not None:  # first time might be None
-            result["storage_buffer"] = self._storage_buffer
+            result["storage_buffer"] = self._storage_buffer # type: ignore
         return result
 
     def save(self, file_path: str):
