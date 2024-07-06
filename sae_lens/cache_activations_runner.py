@@ -2,6 +2,7 @@ import math
 import os
 from typing import Tuple
 
+import numpy as np
 import torch
 from tqdm import tqdm
 
@@ -25,7 +26,7 @@ class CacheActivationsRunner:
             cfg,
         )
 
-        self.file_extension = "safetensors"
+        self.file_extension = "dat"
 
     def __str__(self):
         """
@@ -83,10 +84,9 @@ class CacheActivationsRunner:
         n_buffers = math.ceil(self.cfg.training_tokens / tokens_per_buffer)
 
         for i in tqdm(range(n_buffers), desc="Caching activations"):
-            buffer = self.activations_store.get_buffer(self.cfg.n_batches_in_buffer)
-            self.activations_store.save_buffer(
-                buffer, f"{new_cached_activations_path}/{i}.safetensors"
-            )
+            buffer = self.activations_store.get_buffer()
+            buffer_path = f"{new_cached_activations_path}/{i}.{self.file_extension}"
+            self.activations_store.save_buffer(buffer, buffer_path)
 
             del buffer
 
@@ -137,23 +137,53 @@ class CacheActivationsRunner:
                 buffer_idx_range[0], buffer_idx_range[1], (1,)
             ).item()
 
-        buffer1 = self.activations_store.load_buffer(
-            f"{datapath}/{buffer_idx1}.{self.file_extension}"
-        )
-        buffer2 = self.activations_store.load_buffer(
-            f"{datapath}/{buffer_idx2}.{self.file_extension}"
-        )
-        joint_buffer = torch.cat([buffer1, buffer2])
+        path1 = f"{datapath}/{buffer_idx1}.{self.file_extension}"
+        path2 = f"{datapath}/{buffer_idx2}.{self.file_extension}"
 
-        # Shuffle them
-        joint_buffer = joint_buffer[torch.randperm(joint_buffer.shape[0])]
-        shuffled_buffer1 = joint_buffer[: buffer1.shape[0]]
-        shuffled_buffer2 = joint_buffer[buffer1.shape[0] :]
+        buffer1 = self.activations_store.load_buffer(path1)
+        buffer2 = self.activations_store.load_buffer(path2)
 
-        # Save them back
-        self.activations_store.save_buffer(
-            shuffled_buffer1, f"{datapath}/{buffer_idx1}.{self.file_extension}"
+        # Get total size and create a joint buffer
+        total_size = buffer1.shape[0] + buffer2.shape[0]
+        joint_buffer = np.memmap(
+            f"{datapath}/temp_joint_buffer",
+            dtype=buffer1.dtype,
+            mode="w+",
+            shape=(total_size,) + buffer1.shape[1:],
         )
-        self.activations_store.save_buffer(
-            shuffled_buffer2, f"{datapath}/{buffer_idx2}.{self.file_extension}"
+
+        # Copy data to joint buffer
+        joint_buffer[: buffer1.shape[0]] = buffer1
+        joint_buffer[buffer1.shape[0] :] = buffer2
+
+        # Generate random permutation
+        permutation = np.random.permutation(total_size)
+
+        # Create shuffled buffers
+        shuffled_buffer1 = np.memmap(
+            f"{datapath}/temp_shuffled_1",
+            dtype=buffer1.dtype,
+            mode="w+",
+            shape=buffer1.shape,
         )
+        shuffled_buffer2 = np.memmap(
+            f"{datapath}/temp_shuffled_2",
+            dtype=buffer2.dtype,
+            mode="w+",
+            shape=buffer2.shape,
+        )
+
+        # Apply permutation
+        shuffled_buffer1[:] = joint_buffer[permutation[: buffer1.shape[0]]]
+        shuffled_buffer2[:] = joint_buffer[permutation[buffer1.shape[0] :]]
+
+        # Save shuffled buffers back to original files
+        self.activations_store.save_buffer(shuffled_buffer1, path1)
+        self.activations_store.save_buffer(shuffled_buffer2, path2)
+
+        # Clean up temporary files
+        import os
+
+        os.remove(f"{datapath}/temp_joint_buffer")
+        os.remove(f"{datapath}/temp_shuffled_1")
+        os.remove(f"{datapath}/temp_shuffled_2")

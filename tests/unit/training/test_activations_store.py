@@ -105,13 +105,12 @@ def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
         store.estimated_norm_scaling_factor = 10.399
 
     assert store.model == model
-
     assert isinstance(store.dataset, IterableDataset)
     assert isinstance(store.iterable_sequences, Iterable)
 
     # the rest is in the dataloader.
     expected_size = (
-        cfg.store_batch_size_prompts * cfg.context_size * cfg.n_batches_in_buffer // 2
+        cfg.store_batch_size_prompts * cfg.context_size * cfg.n_batches_in_buffer
     )
     assert store.storage_buffer.shape == (expected_size, 1, cfg.d_in)
 
@@ -141,12 +140,11 @@ def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
 
     # --- Next, get buffer and assert it looks correct ---
 
-    n_batches_in_buffer = 3
-    buffer = store.get_buffer(n_batches_in_buffer)
+    buffer = store.get_buffer()
 
     assert isinstance(buffer, np.memmap)
     buffer_size_expected = (
-        store.store_batch_size_prompts * store.context_size * n_batches_in_buffer
+        store.store_batch_size_prompts * store.context_size * cfg.n_batches_in_buffer
     )
 
     assert buffer.shape == (buffer_size_expected, 1, store.d_in)
@@ -280,23 +278,15 @@ def test_activations_store_moves_with_model(ts_model: HookedTransformer):
     assert activations.device == torch.device("cuda:0")
 
 
-def test_activations_store_estimate_norm_scaling_factor(
-    cfg: LanguageModelSAERunnerConfig, model: HookedTransformer
-):
+def test_activations_store_estimate_norm_scaling_factor(ts_model: HookedTransformer):
     # --- first, test initialisation ---
-
-    # config if you want to benchmark this:
-    #
-    # cfg.context_size = 1024
-    # cfg.n_batches_in_buffer = 64
-    # cfg.store_batch_size_prompts = 16
-
+    cfg = build_sae_cfg()
+    model = ts_model
     store = ActivationsStore.from_config(model, cfg)
-
     factor = store.estimate_norm_scaling_factor(n_batches_for_norm_estimate=10)
     assert isinstance(factor, float)
 
-    scaled_norm = store._storage_buffer.norm(dim=-1).mean() * factor  # type: ignore
+    scaled_norm = torch.tensor(store.next_batch()).norm(dim=-1).mean() * factor  # type: ignore
     assert scaled_norm == pytest.approx(np.sqrt(store.d_in), abs=5)
 
 

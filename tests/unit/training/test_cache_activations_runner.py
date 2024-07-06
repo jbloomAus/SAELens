@@ -5,7 +5,8 @@ import os
 from pathlib import Path
 
 import torch
-from safetensors import safe_open
+
+# from safetensors import safe_open
 from transformer_lens import HookedTransformer
 
 from sae_lens.cache_activations_runner import CacheActivationsRunner
@@ -37,14 +38,14 @@ def test_cache_activations_runner(tmp_path: Path):
     total_training_tokens = n_buffers * tokens_in_buffer
     print(f"Total Training Tokens: {total_training_tokens}")
 
-    # better if we can look at the files (change tmp_path to a real path to look at the files)
-    # tmp_path = os.path.join(os.path.dirname(__file__), "tmp")
-    # tmp_path = Path("/Volumes/T7 Shield/activations/gelu_1l")
-    # if os.path.exists(tmp_path):
-    #     shutil.rmtree(tmp_path)
+    # for generating the fixture
+    # cached_activations_fixture_path = os.path.join(
+    #     os.path.dirname(__file__), "fixtures", "cached_activations"
+    # )
 
     cfg = CacheActivationsRunnerConfig(
         new_cached_activations_path=str(tmp_path),
+        # new_cached_activations_path=cached_activations_fixture_path,
         # Pick a tiny model to make this easier.
         model_name="gelu-1l",
         ## MLP Layer 0 ##
@@ -75,22 +76,23 @@ def test_cache_activations_runner(tmp_path: Path):
     )
 
     # look at the next cell to see some instruction for what to do while this is running.
-    CacheActivationsRunner(cfg).run()
+    runner = CacheActivationsRunner(cfg)
+    runner.run()
 
     assert os.path.exists(tmp_path)
 
     # assert that there are n_buffer files in the directory.
     assert len(os.listdir(tmp_path)) == n_buffers
 
+    activations_store = runner.activations_store
     for _, buffer_file in enumerate(os.listdir(tmp_path)):
         path_to_file = Path(tmp_path) / buffer_file
-        with safe_open(path_to_file, framework="pt", device=str(device)) as f:  # type: ignore
-            buffer = f.get_tensor("activations")
-            assert buffer.shape == (
-                tokens_in_buffer,
-                1,
-                cfg.d_in,
-            )
+        buffer = activations_store.load_buffer(str(path_to_file))
+        assert buffer.shape == (
+            tokens_in_buffer,
+            1,
+            cfg.d_in,
+        )
 
 
 def test_load_cached_activations():
@@ -102,7 +104,7 @@ def test_load_cached_activations():
         device = "cpu"
 
     # total_training_steps = 20_000
-    context_size = 256
+    context_size = 1024
     print(f"n tokens per context: {context_size}")
     n_batches_in_buffer = 32
     print(f"n batches in buffer: {n_batches_in_buffer}")
@@ -155,7 +157,7 @@ def test_load_cached_activations():
     activations_store = ActivationsStore.from_config(model, cfg)
 
     for _ in range(n_buffers):
-        buffer = activations_store.get_buffer(32)
+        buffer = activations_store.get_buffer()
         assert buffer.shape == (tokens_in_buffer, 1, cfg.d_in)
 
     # assert sparse_autoencoder_dictionary is not None

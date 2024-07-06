@@ -22,6 +22,30 @@ from sae_lens.config import (
 from sae_lens.sae import SAE
 from sae_lens.tokenization_and_batching import concat_and_batch_sequences
 
+torch_to_numpy_dtype_dict = {
+    torch.float32: np.float32,
+    torch.float: np.float32,
+    torch.float64: np.float64,
+    torch.double: np.float64,
+    torch.float16: np.float16,
+    torch.half: np.float16,
+    torch.uint8: np.uint8,
+    torch.int8: np.int8,
+    torch.int16: np.int16,
+    torch.short: np.int16,
+    torch.int32: np.int32,
+    torch.int: np.int32,
+    torch.int64: np.int64,
+    torch.long: np.int64,
+    torch.bool: np.bool_,
+}
+
+FILE_EXTENSION = "dat"
+
+
+def torch_dtype_to_numpy_dtype(torch_dtype):
+    return torch_to_numpy_dtype_dict.get(torch_dtype, None)
+
 
 # TODO: Make an activation store config class to be consistent with the rest of the code.
 class ActivationsStore:
@@ -167,6 +191,7 @@ class ActivationsStore:
         self.normalize_activations = normalize_activations
         self.device = torch.device(device)
         self.dtype = DTYPE_MAP[dtype]
+        self.numpy_dtype = torch_dtype_to_numpy_dtype(self.dtype)
         self.cached_activations_path = cached_activations_path
         self.autocast_lm = autocast_lm
 
@@ -280,14 +305,16 @@ class ActivationsStore:
             self.next_idx_within_buffer = 0
 
             # Check that we have enough data on disk
-            first_buffer = self.load_buffer(f"{self.cached_activations_path}/0.npy")
+            first_buffer = self.load_buffer(
+                f"{self.cached_activations_path}/0.{FILE_EXTENSION}"
+            )
 
             buffer_size_on_disk = first_buffer.shape[0]
             n_buffers_on_disk = len(
                 [
                     f
                     for f in os.listdir(self.cached_activations_path)
-                    if f.endswith(".npy")
+                    if f.endswith(FILE_EXTENSION)
                 ]
             )
 
@@ -297,18 +324,10 @@ class ActivationsStore:
             ), f"Only {n_activations_on_disk/1e6:.1f}M activations on disk, but total_training_tokens is {self.total_training_tokens/1e6:.1f}M."
 
     def apply_norm_scaling_factor(
-        self, activations: Union[np.ndarray, torch.Tensor]
-    ) -> Union[np.ndarray, torch.Tensor]:
-        if isinstance(activations, np.ndarray):
-            return activations * self.estimated_norm_scaling_factor
-        elif isinstance(activations, torch.Tensor):
-            return activations * torch.tensor(
-                self.estimated_norm_scaling_factor, device=activations.device
-            )
-        else:
-            raise TypeError(
-                "activations must be either a numpy array or a torch tensor"
-            )
+        self,
+        activations: torch.Tensor,
+    ) -> torch.Tensor:
+        return activations * self.estimated_norm_scaling_factor
 
     def unscale(self, activations: torch.Tensor) -> torch.Tensor:
         return activations / self.estimated_norm_scaling_factor
@@ -333,7 +352,7 @@ class ActivationsStore:
     @property
     def storage_buffer(self) -> np.memmap:
         if self._storage_buffer is None:
-            self._storage_buffer = self.get_buffer(self.n_batches_in_buffer // 2)
+            self._storage_buffer = self.get_buffer()
         return self._storage_buffer
 
     @property
@@ -401,69 +420,31 @@ class ActivationsStore:
         return stacked_activations
 
     @torch.no_grad()
-    def get_buffer(self, n_batches_in_buffer: int) -> np.memmap:
+    def get_buffer(self) -> np.memmap:
         context_size = self.context_size
         batch_size = self.store_batch_size_prompts
         d_in = self.d_in
-        total_size = batch_size * n_batches_in_buffer
+        total_size = batch_size * self.n_batches_in_buffer
         num_layers = 1
 
         if self.cached_activations_path is not None:
             # Load the activations from disk (this part remains similar to before)
-            buffer_size = total_size * context_size
-            new_buffer = np.memmap(
-                f"{self.cached_activations_path}/buffer.npy",
-                dtype=np.float32,
-                mode="w+",
-                shape=(buffer_size, num_layers, d_in),
+            # buffer_size = total_size * context_size * 2
+            next_buffer_path = (
+                f"{self.cached_activations_path}/{self.next_cache_idx}.{FILE_EXTENSION}"
             )
-            n_tokens_filled = 0
-
-            while n_tokens_filled < buffer_size:
-                if not os.path.exists(
-                    f"{self.cached_activations_path}/{self.next_cache_idx}.npy"
-                ):
-                    print(
-                        f"\n\nWarning: Ran out of cached activation files earlier than expected."
-                    )
-                    print(
-                        f"Expected to have {buffer_size} activations, but only found {n_tokens_filled}."
-                    )
-                    if buffer_size % self.total_training_tokens != 0:
-                        print(
-                            "This might just be a rounding error — your batch_size * n_batches_in_buffer * context_size is not divisible by your total_training_tokens"
-                        )
-                    print(f"Returning a buffer of size {n_tokens_filled} instead.")
-                    print("\n\n")
-                    new_buffer = new_buffer[:n_tokens_filled, ...]
-                    return new_buffer
-
-                activations = self.load_buffer(
-                    f"{self.cached_activations_path}/{self.next_cache_idx}.npy"
-                )
-                taking_subset_of_file = False
-                if n_tokens_filled + activations.shape[0] > buffer_size:
-                    activations = activations[: buffer_size - n_tokens_filled, ...]
-                    taking_subset_of_file = True
-
-                new_buffer[
-                    n_tokens_filled : n_tokens_filled + activations.shape[0], ...
-                ] = activations
-
-                if taking_subset_of_file:
-                    self.next_idx_within_buffer = activations.shape[0]
-                else:
-                    self.next_cache_idx += 1
-                    self.next_idx_within_buffer = 0
-
-                n_tokens_filled += activations.shape[0]
+            new_buffer = self.load_buffer(next_buffer_path)
 
         else:
             # Generate the buffer directly
-            refill_iterator = range(0, batch_size * n_batches_in_buffer, batch_size)
+            refill_iterator = range(
+                0, batch_size * self.n_batches_in_buffer, batch_size
+            )
 
             # Create a temporary file
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".npy") as tmp:
+            with tempfile.NamedTemporaryFile(
+                delete=False, suffix=f".{FILE_EXTENSION}"
+            ) as tmp:
                 temp_file_path = tmp.name
 
             # Initialize empty numpy memmap of the maximum required size
@@ -494,29 +475,30 @@ class ActivationsStore:
 
         return new_buffer
 
-    def save_buffer(self, buffer: torch.Tensor, path: str):
-        # Convert torch tensor to numpy array
-        numpy_buffer = buffer.cpu().numpy()
-        # Create a memory-mapped array
-        mmap_buffer = np.memmap(
-            path, dtype=numpy_buffer.dtype, mode="w+", shape=numpy_buffer.shape
-        )
-        # Write the data to the memory-mapped array
-        mmap_buffer[:] = numpy_buffer[:]
-        # Flush to disk
-        mmap_buffer.flush()
+    def save_buffer(self, buffer: np.memmap, path: str):
+        # If buffer is already a memmap, we just need to flush it
+        if buffer.filename != path:
+            # If the paths are different, we need to create a new memmap
+            new_buffer = np.memmap(
+                path, dtype=buffer.dtype, mode="w+", shape=buffer.shape
+            )
+            new_buffer[:] = buffer[:]
+            new_buffer.flush()
+        else:
+            # If the paths are the same, we just need to flush the existing buffer
+            buffer.flush()
 
     def load_buffer(self, path: str) -> np.memmap:
         # Load the memory-mapped array
-        return np.memmap(path, dtype=self.dtype, mode="r")
+        memmap_file = np.memmap(path, dtype=self.numpy_dtype, mode="r")
+        memmap_file = memmap_file.reshape(-1, 1, self.d_in)
+        return memmap_file
 
     def get_data_loader(self) -> Iterator[Any]:
         batch_size = self.train_batch_size_tokens
 
         # Create new buffer by mixing stored and new buffer
-        mixing_buffer = np.concatenate(
-            [self.get_buffer(self.n_batches_in_buffer // 2), self.storage_buffer]
-        )
+        mixing_buffer = np.concatenate([self.get_buffer(), self.storage_buffer])
 
         # Shuffle the mixing buffer
         np.random.shuffle(mixing_buffer)
@@ -525,16 +507,16 @@ class ActivationsStore:
         self._storage_buffer = mixing_buffer[: mixing_buffer.shape[0] // 2]
 
         # Create a dataset from the other 50%
-        if self.normalize_activations == "expected_average_only_in":
-            # Apply normalization when creating the dataset
-            normalized_buffer = self.apply_norm_scaling_factor(
-                torch.from_numpy(mixing_buffer[mixing_buffer.shape[0] // 2 :])
-            )
-            dataset = torch.utils.data.TensorDataset(normalized_buffer)
-        else:
-            dataset = torch.utils.data.TensorDataset(
-                torch.from_numpy(mixing_buffer[mixing_buffer.shape[0] // 2 :])
-            )
+        # if self.normalize_activations == "expected_average_only_in":
+        #     # Apply normalization when creating the dataset
+        #     normalized_buffer = self.apply_norm_scaling_factor(
+        #         torch.from_numpy(mixing_buffer[mixing_buffer.shape[0] // 2 :])
+        #     )
+        #     dataset = torch.utils.data.TensorDataset(normalized_buffer)
+        # else:
+        dataset = torch.utils.data.TensorDataset(
+            torch.from_numpy(mixing_buffer[mixing_buffer.shape[0] // 2 :])
+        )
 
         # Create and return the dataloader
         return iter(DataLoader(dataset, batch_size=batch_size, shuffle=True))
@@ -551,7 +533,11 @@ class ActivationsStore:
             self._dataloader = self.get_data_loader()
             x = next(self.dataloader)
 
-        return x[0].to(self.device)
+        x = x[0].to(self.device)
+        if self.normalize_activations == "expected_average_only_in":
+            x = self.apply_norm_scaling_factor(x)
+
+        return x
 
     def state_dict(self) -> dict[str, torch.Tensor]:
         result = {
