@@ -420,7 +420,7 @@ class ActivationsStore:
         return stacked_activations
 
     @torch.no_grad()
-    def get_buffer(self) -> np.ndarray[Any, np.dtype[Any]]:
+    def get_buffer(self) -> np.memmap[Any, np.dtype[Any]]:
         context_size = self.context_size
         batch_size = self.store_batch_size_prompts
         d_in = self.d_in
@@ -455,8 +455,6 @@ class ActivationsStore:
                 shape=(total_size, context_size, num_layers, d_in),
             )
 
-            print('memmapped file shape', new_buffer.shape)
-
             for refill_batch_idx_start in refill_iterator:
                 # move batch toks to gpu for model
                 refill_batch_tokens = self.get_batch_tokens().to(self.model.cfg.device)
@@ -477,7 +475,7 @@ class ActivationsStore:
 
         return new_buffer
 
-    def save_buffer(self, buffer: np.memmap[Any, Any], path: str):
+    def save_buffer(self, buffer: np.memmap[Any, np.dtype[Any]], path: str):
         # If buffer is already a memmap, we just need to flush it
         if buffer.filename != path:
             # If the paths are different, we need to create a new memmap
@@ -490,7 +488,7 @@ class ActivationsStore:
             # If the paths are the same, we just need to flush the existing buffer
             buffer.flush()
 
-    def load_buffer(self, path: str) -> np.ndarray[Any, np.dtype[Any]]:
+    def load_buffer(self, path: str) -> np.memmap[Any, np.dtype[Any]]:
         # Load the memory-mapped array
         memmap_file = np.memmap(path, dtype=self.numpy_dtype, mode="r")
         memmap_file = memmap_file.reshape(-1, 1, self.d_in)

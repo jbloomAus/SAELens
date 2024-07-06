@@ -96,7 +96,7 @@ class CacheActivationsRunner:
 
                 # Do random pairwise shuffling between the last shuffle_every_n_buffers buffers
                 for _ in range(self.cfg.n_shuffles_with_last_section):
-                    self.shuffle_activations_pairwise(
+                    self.shuffle_two_random_buffers(
                         new_cached_activations_path,
                         start_idx = i - self.cfg.shuffle_every_n_buffers,
                         end_idx = i,
@@ -104,7 +104,7 @@ class CacheActivationsRunner:
 
                 # Do more random pairwise shuffling between all the buffers
                 for _ in range(self.cfg.n_shuffles_in_entire_dir):
-                    self.shuffle_activations_pairwise(
+                    self.shuffle_two_random_buffers(
                         new_cached_activations_path,
                         start_idx=0,
                         end_idx=i
@@ -113,29 +113,34 @@ class CacheActivationsRunner:
         # More final shuffling (mostly in case we didn't end on an i divisible by shuffle_every_n_buffers)
         if self.n_buffers > 1:
             for _ in tqdm(range(self.cfg.n_shuffles_final), desc="Final shuffling"):
-                self.shuffle_activations_pairwise(
+                self.shuffle_two_random_buffers(
                     new_cached_activations_path,
                     start_idx = 0,
                     end_idx = self.n_buffers,
                 )
 
-    @torch.no_grad()
-    def shuffle_activations_pairwise(
+    def shuffle_two_random_buffers(
         self, datapath: str, start_idx: int, end_idx: int
     ):
         """
-        Shuffles two buffers on disk.
+        Shuffles two randomly selected buffers on disk.
         """
         assert (
             start_idx < end_idx - 1
         ), "buffer_idx_range[0] must be smaller than buffer_idx_range[1] by at least 1"
 
-        buffer_idx1 = torch.randint(start_idx, end_idx, (1,)).item()
-        buffer_idx2 = torch.randint(start_idx, end_idx, (1,)).item()
+        buffer_idx1 = int(torch.randint(start_idx, end_idx, (1,)).item())
+        buffer_idx2 = int(torch.randint(start_idx, end_idx, (1,)).item())
         while buffer_idx1 == buffer_idx2:  # Make sure they're not the same
-            buffer_idx2 = torch.randint(start_idx, end_idx, (1,)).item()
+            buffer_idx2 = int(torch.randint(start_idx, end_idx, (1,)).item())
+
+        self.shuffle_two_buffers(datapath, buffer_idx1, buffer_idx2)
 
 
+    @torch.no_grad()
+    def shuffle_two_buffers(
+        self, datapath: str, buffer_idx1: int, buffer_idx2: int
+    ):
         path1 = f"{datapath}/{buffer_idx1}.{self.file_extension}"
         path2 = f"{datapath}/{buffer_idx2}.{self.file_extension}"
 
