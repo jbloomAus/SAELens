@@ -104,7 +104,6 @@ def trainer(
     model: HookedTransformer,
     activation_store: ActivationsStore,
 ):
-
     trainer = SAETrainer(
         model=model,
         sae=training_sae,
@@ -247,7 +246,6 @@ def test_sae_forward_with_mse_loss_norm(
 def test_SparseAutoencoder_forward_ghost_grad_loss_non_zero(
     training_sae: TrainingSAE,
 ):
-
     training_sae.cfg.use_ghost_grads = True
     batch_size = 32
     d_in = training_sae.cfg.d_in
@@ -310,7 +308,6 @@ def test_calculate_ghost_grad_loss(
 def test_per_item_mse_loss_with_norm_matches_original_implementation(
     training_sae: TrainingSAE,
 ) -> None:
-
     training_sae.cfg.mse_loss_normalization = "dense_batch"
     training_sae.mse_loss_fn = training_sae._get_mse_loss_fn()
 
@@ -351,7 +348,6 @@ def test_SparseAutoencoder_forward_can_add_noise_to_hidden_pre() -> None:
 def test_SparseAutoencoder_remove_gradient_parallel_to_decoder_directions(
     training_sae: TrainingSAE,
 ) -> None:
-
     if not training_sae.cfg.normalize_sae_decoder:
         pytest.skip("Test only applies when decoder is not normalized")
     sae = training_sae
@@ -383,7 +379,6 @@ def test_SparseAutoencoder_remove_gradient_parallel_to_decoder_directions(
 def test_SparseAutoencoder_set_decoder_norm_to_unit_norm(
     trainer: SAETrainer,
 ) -> None:
-
     if not trainer.cfg.normalize_sae_decoder:
         pytest.skip("Test only applies when decoder is not normalized")
 

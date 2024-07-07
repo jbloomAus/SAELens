@@ -12,7 +12,6 @@ from sae_lens.training.activations_store import FILE_EXTENSION, ActivationsStore
 
 
 class CacheActivationsRunner:
-
     def __init__(
         self,
         cfg: CacheActivationsRunnerConfig,
@@ -75,7 +74,6 @@ class CacheActivationsRunner:
 
     @torch.no_grad()
     def run(self):
-
         new_cached_activations_path = self.cfg.new_cached_activations_path
 
         # if the activations directory exists and has files in it, raise an exception

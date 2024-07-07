@@ -9,7 +9,6 @@ from safetensors import safe_open
 
 # loaders take in a repo_id, folder_name, device, and whether to force download, and returns a tuple of config and state_dict
 class PretrainedSaeLoader(Protocol):
-
     def __call__(
         self,
         repo_id: str,
@@ -17,7 +16,8 @@ class PretrainedSaeLoader(Protocol):
         device: str | torch.device | None = None,
         force_download: bool = False,
         cfg_overrides: dict[str, Any] | None = None,
-    ) -> tuple[dict[str, Any], dict[str, torch.Tensor], Optional[torch.Tensor]]: ...
+    ) -> tuple[dict[str, Any], dict[str, torch.Tensor], Optional[torch.Tensor]]:
+        ...
 
 
 def sae_lens_loader(
@@ -101,7 +101,6 @@ def get_sae_config_from_hf(
 
 
 def handle_config_defaulting(cfg_dict: dict[str, Any]) -> dict[str, Any]:
-
     # Set default values for backwards compatibility
     cfg_dict.setdefault("prepend_bos", True)
     cfg_dict.setdefault("dataset_trust_remote_code", True)
@@ -133,7 +132,6 @@ def connor_rob_hook_z_loader(
     force_download: bool = False,
     cfg_overrides: Optional[dict[str, Any]] = None,
 ) -> tuple[dict[str, Any], dict[str, torch.Tensor], None]:
-
     file_path = hf_hub_download(
         repo_id=repo_id, filename=folder_name, force_download=force_download
     )

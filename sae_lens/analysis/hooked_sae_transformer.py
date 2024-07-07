@@ -57,7 +57,6 @@ def set_deep_attr(obj: Any, path: str, value: Any):
 
 
 class HookedSAETransformer(HookedTransformer):
-
     def __init__(
         self,
         *model_args: Any,

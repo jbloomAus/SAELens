@@ -119,7 +119,6 @@ class ActivationsStore:
         total_tokens: int = 10**9,
         device: str = "cpu",
     ) -> "ActivationsStore":
-
         return cls(
             model=model,
             dataset=sae.cfg.dataset_path,
@@ -345,7 +344,6 @@ class ActivationsStore:
 
     @torch.no_grad()
     def estimate_norm_scaling_factor(self, n_batches_for_norm_estimate: int = int(1e3)):
-
         norms_per_batch = []
         for _ in tqdm(
             range(n_batches_for_norm_estimate), desc="Estimating norm scaling factor"
@@ -578,6 +576,11 @@ class ActivationsStore:
         tensor_batch = torch.from_numpy(next_batch).to(self.device)
         if self.normalize_activations == "expected_average_only_in":
             tensor_batch = self.apply_norm_scaling_factor(tensor_batch)
+
+        if self.device == torch.device("cuda"):
+            tensor_batch = tensor_batch.pin_memory().to(self.device, non_blocking=True)
+        else:
+            tensor_batch = tensor_batch.to(self.device)
 
         return tensor_batch
 

@@ -17,7 +17,6 @@ def get_enrichment_df(
     features: list[int],
     gene_sets_selected: dict[str, set[int]],
 ):
-
     gene_sets_token_ids_padded = pad_gene_sets(gene_sets_selected)
     gene_sets_token_ids_tensor = torch.tensor(list(gene_sets_token_ids_padded.values()))
     enrichment_scores = calculate_batch_enrichment_scores(
@@ -91,7 +90,6 @@ def calculate_batch_enrichment_scores(scores: torch.Tensor, index_lists: torch.T
 def manhattan_plot_enrichment_scores(
     df_enrichment_scores: pd.DataFrame, label_threshold: float = 1.0, top_n: int = 3
 ):
-
     tmp_df = df_enrichment_scores.apply(lambda x: -1 * np.log(1 - x))
 
     # wide to long format
@@ -167,7 +165,6 @@ def plot_top_k_feature_projections_by_token_and_category(
     log_y: bool = True,
     histnorm: Optional[str] = None,
 ):
-
     if not os.path.exists("es_plots"):
         os.makedirs("es_plots")
 
@@ -291,7 +288,6 @@ def get_gene_set_from_regex(vocab: dict[str, int], pattern: str) -> set[int]:
 
 
 def get_test_gene_sets(model: HookedTransformer) -> dict[str, set[int]]:
-
     colors = [
         "red",
         "blue",

@@ -22,7 +22,6 @@ def download_sae_from_hf(
     folder_name: str = "blocks.0.hook_resid_pre",
     force_download: bool = False,
 ) -> Tuple[str, str, Optional[str]]:
-
     FILENAME = f"{folder_name}/cfg.json"
     cfg_path = hf_hub_download(
         repo_id=repo_id, filename=FILENAME, force_download=force_download
@@ -76,7 +75,6 @@ def get_gpt2_res_jb_saes(
     saes = {}
     sparsities = {}
     for hook_point in tqdm(GPT2_SMALL_RESIDUAL_SAES_HOOK_POINTS):
-
         _, sae_path, _ = download_sae_from_hf(
             repo_id=GPT2_SMALL_RESIDUAL_SAES_REPO_ID, folder_name=hook_point
         )
@@ -114,7 +112,6 @@ def convert_connor_rob_sae_to_our_saelens_format(
 
 
 def get_gpt2_small_ckrk_attn_out_saes() -> dict[str, SAE]:
-
     REPO_ID = "ckkissane/attn-saes-gpt2-small-all-layers"
 
     # list all files in repo

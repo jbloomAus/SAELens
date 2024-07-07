@@ -110,7 +110,6 @@ def test_sae_fold_w_dec_norm(cfg: LanguageModelSAERunnerConfig):
 
 
 def test_sae_fold_norm_scaling_factor(cfg: LanguageModelSAERunnerConfig):
-
     norm_scaling_factor = 3.0
 
     sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
