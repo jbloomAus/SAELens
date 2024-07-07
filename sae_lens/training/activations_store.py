@@ -7,7 +7,7 @@ from typing import Any, Generator, Literal, cast
 
 import numpy as np
 import torch
-from datasets import load_dataset
+from datasets import load_dataset, Dataset, DatasetDict
 from safetensors.torch import save_file
 from tqdm import tqdm
 from transformer_lens.hook_points import HookedRootModule
@@ -363,12 +363,6 @@ class ActivationsStore:
             self._storage_buffer = self.get_buffer()
         return self._storage_buffer
 
-    @property
-    def dataloader(self) -> Iterator[Any]:
-        if self._dataloader is None:
-            self._dataloader = self.get_data_loader()
-        return self._dataloader
-
     def get_batch_tokens(
         self, batch_size: int | None = None, raise_at_epoch_end: bool = False
     ):
@@ -445,7 +439,7 @@ class ActivationsStore:
         return f"{self.cached_activations_path}/{idx}.{FILE_EXTENSION}"
 
     @torch.no_grad()
-    def get_buffer(self) -> np.memmap[Any, np.dtype[Any]]:
+    def get_buffer(self, raise_at_epoch_end: bool = False) -> np.memmap[Any, np.dtype[Any]]:
         context_size = self.context_size
         batch_size = self.store_batch_size_prompts
         d_in = self.d_in

@@ -4,7 +4,6 @@ import pytest
 from pathlib import Path
 from typing import Any, Tuple
 
-import pytest
 import torch
 from datasets import Dataset
 
@@ -158,18 +157,14 @@ def test_load_cached_activations(tmp_path: Path):
 
 
 def test_activations_store_refreshes_dataset_when_it_runs_out():
-    cached_activations_fixture_path = os.path.join(
-        os.path.dirname(__file__), "fixtures", "cached_activations"
-    )
-
     total_training_steps = 200
     batch_size = 4
     total_training_tokens = total_training_steps * batch_size
 
     context_size = 256
     cfg = LanguageModelSAERunnerConfig(
-        cached_activations_path=cached_activations_fixture_path,
-        use_cached_activations=True,
+        cached_activations_path=None,
+        use_cached_activations=False,
         model_name="gelu-1l",
         hook_name="blocks.0.hook_mlp_out",
         hook_layer=0,
