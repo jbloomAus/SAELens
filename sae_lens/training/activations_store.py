@@ -37,6 +37,7 @@ torch_to_numpy_dtype_dict: dict[torch.dtype, Any] = {
     torch.int64: np.int64,
     torch.long: np.int64,
     torch.bool: np.bool_,
+    torch.bfloat16: np.float32,
 }
 
 FILE_EXTENSION = "dat"
