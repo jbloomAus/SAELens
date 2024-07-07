@@ -3,13 +3,12 @@ from __future__ import annotations
 import contextlib
 import os
 import tempfile
-from typing import Any, Generator, Iterator, Literal, cast
+from typing import Any, Generator, Literal, cast
 
 import numpy as np
 import torch
 from datasets import load_dataset
 from safetensors.torch import save_file
-from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformer_lens.hook_points import HookedRootModule
 
@@ -61,7 +60,6 @@ class ActivationsStore:
     hook_name: str
     hook_layer: int
     hook_head_index: int | None
-    _dataloader: Iterator[Any] | None = None
     _storage_buffer: np.ndarray[Any, np.dtype[Any]] | None = None
     device: torch.device
 
@@ -196,8 +194,10 @@ class ActivationsStore:
         self.autocast_lm = autocast_lm
 
         self.n_dataset_processed = 0
-
         self.estimated_norm_scaling_factor = 1.0
+        self.buffer_idx = 0
+        self.next_idx_within_buffer = 0
+
 
         # Check if dataset is tokenized
         dataset_sample = next(iter(self.dataset))
@@ -301,9 +301,6 @@ class ActivationsStore:
                 self.cached_activations_path
             ), f"Cache directory {self.cached_activations_path} does not exist. Consider double-checking your dataset, model, and hook names."
 
-            self.next_cache_idx = 0
-            self.next_idx_within_buffer = 0
-
             # Check that we have enough data on disk
             first_buffer = self.load_buffer(
                 f"{self.cached_activations_path}/0.{FILE_EXTENSION}"
@@ -354,12 +351,6 @@ class ActivationsStore:
         if self._storage_buffer is None:
             self._storage_buffer = self.get_buffer()
         return self._storage_buffer
-
-    @property
-    def dataloader(self) -> Iterator[Any]:
-        if self._dataloader is None:
-            self._dataloader = self.get_data_loader()
-        return self._dataloader
 
     def get_batch_tokens(self, batch_size: int | None = None):
         """
@@ -434,7 +425,7 @@ class ActivationsStore:
             # Load the activations from disk (this part remains similar to before)
             # buffer_size = total_size * context_size * 2
 
-            new_buffer = self.load_buffer(self.get_buffer_path(self.next_cache_idx), num_layers)
+            new_buffer = self.load_buffer(self.get_buffer_path(self.buffer_idx), num_layers)
 
         else:
             # Generate the buffer directly
@@ -504,50 +495,49 @@ class ActivationsStore:
     def load_buffer(self, path: str, num_layers:int=1) -> np.memmap[Any, np.dtype[Any]]:
         return self._load_buffer(path, num_layers, self.numpy_dtype, self.d_in)
 
-    def get_data_loader(self) -> Iterator[Any]:
-        batch_size = self.train_batch_size_tokens
+    def _generate_new_batch(self) -> np.ndarray[Any, np.dtype[Any]]:
+        next_batch = self.storage_buffer[
+            self.next_idx_within_buffer * self.store_batch_size_prompts : (
+                self.next_idx_within_buffer + 1
+            )
+            * self.store_batch_size_prompts
+        ]
+        self.next_idx_within_buffer += 1
+        if self.next_idx_within_buffer == self.n_batches_in_buffer:
+            self.next_idx_within_buffer = 0
+            self.buffer_idx += 1
+            self._storage_buffer = self.get_buffer()
 
-        # Create new buffer by mixing stored and new buffer
-        mixing_buffer = np.concatenate([self.get_buffer(), self.storage_buffer])
+        return next_batch
 
-        # Shuffle the mixing buffer
-        np.random.shuffle(mixing_buffer)
+    def _load_batch_from_cache(self) -> np.ndarray[Any, np.dtype[Any]]:
+        batch_buffer_path = self.get_buffer_path(self.buffer_idx)
 
-        # Put 50% in storage
-        self._storage_buffer = mixing_buffer[: mixing_buffer.shape[0] // 2]
+        if not os.path.exists(batch_buffer_path):
+            print(f"Warning: could not find a buffer file {batch_buffer_path} for the next buffer index {self.buffer_idx}, resetting index to 0.")
+            self.buffer_idx = 0
+            batch_buffer_path = self.get_buffer_path(self.buffer_idx)
 
-        # Create a dataset from the other 50%
-        # if self.normalize_activations == "expected_average_only_in":
-        #     # Apply normalization when creating the dataset
-        #     normalized_buffer = self.apply_norm_scaling_factor(
-        #         torch.from_numpy(mixing_buffer[mixing_buffer.shape[0] // 2 :])
-        #     )
-        #     dataset = torch.utils.data.TensorDataset(normalized_buffer)
-        # else:
-        dataset = torch.utils.data.TensorDataset( # type: ignore
-            torch.from_numpy(mixing_buffer[mixing_buffer.shape[0] // 2 :])
-        )
+        current_buffer = self.load_buffer(batch_buffer_path)
+        next_batch = current_buffer[self.next_idx_within_buffer *self.store_batch_size_prompts : (self.next_idx_within_buffer + 1) * self.store_batch_size_prompts]
 
-        # Create and return the dataloader
-        return iter(DataLoader(dataset, batch_size=batch_size, shuffle=True))
+        self.next_idx_within_buffer += 1
+        if self.next_idx_within_buffer == self.n_batches_in_buffer:
+            self.next_idx_within_buffer = 0
+            self.buffer_idx += 1
+        return next_batch
 
     def next_batch(self) -> torch.Tensor:
-        """
-        Get the next batch from the current DataLoader.xzt
-        If the DataLoader is exhausted, refill the buffer and create a new DataLoader.
-        """
-        try:
-            x = next(self.dataloader)
-        except StopIteration:
-            # If the DataLoader is exhausted, create a new one
-            self._dataloader = self.get_data_loader()
-            x = next(self.dataloader)
+        if self.cached_activations_path is None:
+            next_batch = self._generate_new_batch()
+        else:
+            next_batch = self._load_batch_from_cache()
 
-        x = x[0].to(self.device)
+        tensor_batch = torch.from_numpy(next_batch).to(self.device)
         if self.normalize_activations == "expected_average_only_in":
-            x = self.apply_norm_scaling_factor(x)
+            tensor_batch = self.apply_norm_scaling_factor(tensor_batch)
 
-        return x
+        return tensor_batch
 
     def state_dict(self) -> dict[str, torch.Tensor]:
         result = {
