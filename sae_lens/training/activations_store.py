@@ -573,11 +573,11 @@ class ActivationsStore:
         else:
             next_batch = self._load_batch_from_cache()
 
-        tensor_batch = torch.from_numpy(next_batch).to(self.device)
+        tensor_batch = torch.from_numpy(next_batch)
         if self.normalize_activations == "expected_average_only_in":
             tensor_batch = self.apply_norm_scaling_factor(tensor_batch)
 
-        if self.device == torch.device("cuda"):
+        if torch.device(self.device).type == "cuda":
             tensor_batch = tensor_batch.pin_memory().to(self.device, non_blocking=True)
         else:
             tensor_batch = tensor_batch.to(self.device)
