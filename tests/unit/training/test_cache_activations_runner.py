@@ -1,6 +1,6 @@
 import os
-from pathlib import Path
 import random
+from pathlib import Path
 from typing import Any, Tuple
 
 import pytest
@@ -92,6 +92,7 @@ def test_cache_activations_runner_saving(tmp_path: Path):
             cfg.d_in,
         )
 
+
 def test_loads_cached_activations_per_batch(tmp_path: Path):
     if torch.cuda.is_available():
         device = "cuda"
@@ -148,9 +149,7 @@ def test_loads_cached_activations_per_batch(tmp_path: Path):
     for _ in range(5_000):
         random_word_indices = random.choices(range(len(words)), k=256)
         random_words = [words[i] for i in random_word_indices]
-        word_list.append({
-            "text": " ".join(random_words)
-        })
+        word_list.append({"text": " ".join(random_words)})
 
     override_dataset = Dataset.from_list(word_list)
 
@@ -161,7 +160,7 @@ def test_loads_cached_activations_per_batch(tmp_path: Path):
     activations_store = ActivationsStore.from_config(model, cfg)
 
     prev_batch = None
-    for _ in range(100): # i.e. more than 16, the number of batches per buffer
+    for _ in range(100):  # i.e. more than 16, the number of batches per buffer
         batch = activations_store.next_batch()
         if prev_batch is not None:
             # assert that the current batch is not the same as the previous batch
