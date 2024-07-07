@@ -3,7 +3,7 @@ from __future__ import annotations
 import contextlib
 import os
 import tempfile
-from typing import Any, Generator, Iterator, Literal
+from typing import Any, Generator, Iterator, Literal, cast
 
 import numpy as np
 import torch
@@ -433,7 +433,7 @@ class ActivationsStore:
             next_buffer_path = (
                 f"{self.cached_activations_path}/{self.next_cache_idx}.{FILE_EXTENSION}"
             )
-            new_buffer = self.load_buffer(next_buffer_path)
+            new_buffer = self.load_buffer(next_buffer_path, num_layers)
 
         else:
             # Generate the buffer directly
@@ -468,6 +468,7 @@ class ActivationsStore:
             # Reshape and shuffle
             new_buffer = new_buffer.reshape(-1, num_layers, d_in)
             np.random.shuffle(new_buffer)
+            new_buffer = cast(np.memmap[Any, np.dtype[Any]], new_buffer)
 
         # # Normalize if needed
         # if self.normalize_activations == "expected_average_only_in":
@@ -489,18 +490,18 @@ class ActivationsStore:
             # If the paths are the same, we just need to flush the existing buffer
             buffer.flush()
 
-    @classmethod
-    def _load_buffer(cls, path: str, dtype: np.dtype[Any] | None, d_in: int) -> np.memmap[Any, np.dtype[Any]]:
-        # Load the memory-mapped array
-        memmap_file = np.memmap(path, dtype=dtype, mode="r")
-        memmap_file = memmap_file.reshape(-1, 1, d_in)
-        return memmap_file
-
     def save_buffer(self, buffer: np.memmap[Any, np.dtype[Any]], path: str):
         self._save_buffer(buffer, path)
 
-    def load_buffer(self, path: str) -> np.memmap[Any, np.dtype[Any]]:
-        return self._load_buffer(path, self.numpy_dtype, self.d_in)
+    @classmethod
+    def _load_buffer(cls, path: str, num_layers:int, dtype: np.dtype[Any] | None, d_in: int) -> np.memmap[Any, np.dtype[Any]]:
+        # Load the memory-mapped array
+        memmap_file = np.memmap(path, dtype=dtype, mode="r")
+        memmap_file = cast(np.memmap[Any, np.dtype[Any]], memmap_file.reshape(-1, num_layers, d_in))
+        return memmap_file
+
+    def load_buffer(self, path: str, num_layers:int=1) -> np.memmap[Any, np.dtype[Any]]:
+        return self._load_buffer(path, num_layers, self.numpy_dtype, self.d_in)
 
     def get_data_loader(self) -> Iterator[Any]:
         batch_size = self.train_batch_size_tokens
@@ -522,7 +523,7 @@ class ActivationsStore:
         #     )
         #     dataset = torch.utils.data.TensorDataset(normalized_buffer)
         # else:
-        dataset = torch.utils.data.TensorDataset(
+        dataset = torch.utils.data.TensorDataset( # type: ignore
             torch.from_numpy(mixing_buffer[mixing_buffer.shape[0] // 2 :])
         )
 

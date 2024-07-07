@@ -433,7 +433,7 @@ def test_activation_store_save_load_cls_methods():
 
     ActivationsStore._save_buffer(memmap_buffer, memmap_filename)
 
-    loaded_buffer = ActivationsStore._load_buffer(memmap_filename, dtype=dtype, d_in=d_in)
+    loaded_buffer = ActivationsStore._load_buffer(memmap_filename, num_layers=1, dtype=dtype, d_in=d_in) # type: ignore
 
     assert loaded_buffer.shape == memmap_buffer.shape
     assert np.allclose(memmap_buffer, loaded_buffer)
