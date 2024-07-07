@@ -436,6 +436,7 @@ class ActivationsStore:
             new_buffer = self.load_buffer(next_buffer_path)
 
         else:
+            print("creating a new buffer ------------------------")
             # Generate the buffer directly
             refill_iterator = range(
                 0, batch_size * self.n_batches_in_buffer, batch_size
