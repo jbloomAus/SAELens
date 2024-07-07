@@ -85,12 +85,8 @@ class CacheActivationsRunner:
         else:
             os.makedirs(new_cached_activations_path)
 
-        print(f"Started caching {self.cfg.training_tokens} activations")
-
-
         for i in tqdm(range(self.n_buffers), desc="Caching activations"):
             buffer = self.activations_store.get_buffer()
-            print('buffer shape as generated', buffer.shape)
             buffer_path = f"{new_cached_activations_path}/{i}.{self.file_extension}"
             self.activations_store.save_buffer(buffer, buffer_path)
 
@@ -152,9 +148,6 @@ class CacheActivationsRunner:
         buffer1 = self.activations_store.load_buffer(path1)
         buffer2 = self.activations_store.load_buffer(path2)
 
-        print('buffer shape initial', buffer1.shape)    
-        print('buffer shape initial', buffer2.shape)
-
         # Get total size and create a joint buffer
         total_size = buffer1.shape[0] + buffer2.shape[0]
         joint_buffer = np.memmap(
@@ -188,9 +181,6 @@ class CacheActivationsRunner:
         # Apply permutation
         shuffled_buffer1[:] = joint_buffer[permutation[: buffer1.shape[0]]]
         shuffled_buffer2[:] = joint_buffer[permutation[buffer1.shape[0] :]]
-
-        print('shuffled buffer shape', shuffled_buffer1.shape)
-        print('shuffled buffer shape', shuffled_buffer2.shape)
 
         # Save shuffled buffers back to original files
         self.activations_store.save_buffer(shuffled_buffer1, path1)

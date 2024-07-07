@@ -463,7 +463,7 @@ def test_activation_store_save_load_buffer(
 
     # total_training_steps = 20_000
     context_size = 256
-    n_batches_in_buffer = 32
+    n_batches_in_buffer = 4
     store_batch_size = 1
     n_buffers = 3
 

@@ -436,7 +436,6 @@ class ActivationsStore:
             new_buffer = self.load_buffer(next_buffer_path)
 
         else:
-            print("creating a new buffer ------------------------")
             # Generate the buffer directly
             refill_iterator = range(
                 0, batch_size * self.n_batches_in_buffer, batch_size
@@ -451,7 +450,7 @@ class ActivationsStore:
             # Initialize empty numpy memmap of the maximum required size
             new_buffer = np.memmap(
                 temp_file_path,
-                dtype=np.float32,
+                dtype=self.numpy_dtype,
                 mode="w+",
                 shape=(total_size, context_size, num_layers, d_in),
             )
