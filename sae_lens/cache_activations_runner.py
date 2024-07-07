@@ -90,7 +90,7 @@ class CacheActivationsRunner:
             buffer_path = f"{new_cached_activations_path}/{i}.{self.file_extension}"
             self.activations_store.save_buffer(buffer, buffer_path)
 
-            del buffer
+                del buffer
 
             if i > 0 and i % self.cfg.shuffle_every_n_buffers == 0:
                 # Shuffle the buffers on disk

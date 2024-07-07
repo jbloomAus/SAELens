@@ -128,12 +128,21 @@ class NeuronpediaRunner:
     ):
         all_tokens_list = []
         pbar = tqdm(range(n_batches_to_sample_from))
-        for _ in pbar:
-            batch_tokens = self.activation_store.get_batch_tokens()
-            batch_tokens = batch_tokens[torch.randperm(batch_tokens.shape[0])][
-                : batch_tokens.shape[0]
-            ]
-            all_tokens_list.append(batch_tokens)
+        for i in pbar:
+            try:
+                batch_tokens = self.activation_store.get_batch_tokens(
+                    raise_at_epoch_end=True
+                )
+                batch_tokens = batch_tokens[torch.randperm(batch_tokens.shape[0])][
+                    : batch_tokens.shape[0]
+                ]
+                all_tokens_list.append(batch_tokens)
+            except StopIteration:
+                print(
+                    f"Warning: Ran out of tokens to sample from at batch {i} before reaching {n_batches_to_sample_from} batches."
+                )
+                pbar.close()
+                break
 
         all_tokens = torch.cat(all_tokens_list, dim=0)
         all_tokens = all_tokens[torch.randperm(all_tokens.shape[0])]

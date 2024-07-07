@@ -21,6 +21,9 @@ SAE Lens is the result of many contributors working collectively to improve huma
 
 This library is maintained by [Joseph Bloom](https://www.jbloomaus.com/) and [David Chanin](https://github.com/chanind).
 
+## Loading Pre-trained SAEs. 
+
+Pre-trained SAEs for various models can be imported via SAE Lens. See this [page](https://jbloomaus.github.io/SAELens/sae_table/) in the readme for a list of all SAEs.
 ## Tutorials
 
 - [Loading and Analysing Pre-Trained Sparse Autoencoders](tutorials/basic_loading_and_analysing.ipynb)

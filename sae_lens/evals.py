@@ -64,7 +64,7 @@ def run_evals(
     else:
         original_act = cache[hook_name]
 
-    # normalise if necessary
+    # normalise if necessary (necessary in training only, otherwise we should fold the scaling in)
     if activation_store.normalize_activations == "expected_average_only_in":
         original_act = activation_store.apply_norm_scaling_factor(original_act)
 
@@ -72,6 +72,10 @@ def run_evals(
     sae_out = sae.decode(sae.encode(original_act.to(sae.device))).to(
         original_act.device
     )
+
+    if activation_store.normalize_activations == "expected_average_only_in":
+        sae_out = activation_store.unscale(sae_out)
+
     del cache
 
     l2_norm_in = torch.norm(original_act, dim=-1)

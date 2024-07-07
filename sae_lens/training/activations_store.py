@@ -176,12 +176,23 @@ class ActivationsStore:
             if isinstance(dataset, str)
             else dataset
         )
+
+        if isinstance(dataset, (Dataset, DatasetDict)):
+            self.dataset = cast(Dataset | DatasetDict, self.dataset)
+            n_samples = len(self.dataset)
+
+            if n_samples < total_training_tokens:
+                print(
+                    f"Warning: the training dataset contains fewer samples ({n_samples}) than the number of samples required by your training configuration ({total_training_tokens}). This will result in multiple training epochs and some samples being used more than once."
+                )
+
         self.hook_name = hook_name
         self.hook_layer = hook_layer
         self.hook_head_index = hook_head_index
         self.context_size = context_size
         self.d_in = d_in
         self.n_batches_in_buffer = n_batches_in_buffer
+        self.half_buffer_size = n_batches_in_buffer // 2
         self.total_training_tokens = total_training_tokens
         self.store_batch_size_prompts = store_batch_size_prompts
         self.train_batch_size_tokens = train_batch_size_tokens
@@ -352,16 +363,36 @@ class ActivationsStore:
             self._storage_buffer = self.get_buffer()
         return self._storage_buffer
 
-    def get_batch_tokens(self, batch_size: int | None = None):
+    @property
+    def dataloader(self) -> Iterator[Any]:
+        if self._dataloader is None:
+            self._dataloader = self.get_data_loader()
+        return self._dataloader
+
+    def get_batch_tokens(
+        self, batch_size: int | None = None, raise_at_epoch_end: bool = False
+    ):
         """
         Streams a batch of tokens from a dataset.
+
+        If raise_at_epoch_end is true we will reset the dataset at the end of each epoch and raise a StopIteration. Otherwise we will reset silently.
         """
         if not batch_size:
             batch_size = self.store_batch_size_prompts
         sequences = []
         # the sequences iterator yields fully formed tokens of size context_size, so we just need to cat these into a batch
         for _ in range(batch_size):
-            sequences.append(next(self.iterable_sequences))
+            try:
+                sequences.append(next(self.iterable_sequences))
+            except StopIteration:
+                self.iterable_sequences = self._iterate_tokenized_sequences()
+                if raise_at_epoch_end:
+                    raise StopIteration(
+                        f"Ran out of tokens in dataset after {self.n_dataset_processed} samples, beginning the next epoch."
+                    )
+                else:
+                    sequences.append(next(self.iterable_sequences))
+
         return torch.stack(sequences, dim=0).to(self.model.W_E.device)
 
     @torch.no_grad()
@@ -449,7 +480,9 @@ class ActivationsStore:
 
             for refill_batch_idx_start in refill_iterator:
                 # move batch toks to gpu for model
-                refill_batch_tokens = self.get_batch_tokens().to(self.model.cfg.device)
+                refill_batch_tokens = self.get_batch_tokens(
+                    raise_at_epoch_end=raise_at_epoch_end
+                ).to(self.model.cfg.device)
                 refill_activations = self.get_activations(refill_batch_tokens)
                 # move acts back to cpu and convert to numpy
                 refill_activations = refill_activations.cpu().numpy()

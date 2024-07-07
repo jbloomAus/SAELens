@@ -2,6 +2,85 @@
 
 
 
+## v3.11.0 (2024-07-04)
+
+### Feature
+
+* feat: make pretrained sae directory docs page (#213)
+
+* make pretrained sae directory docs page
+
+* type issue weirdness
+
+* type issue weirdness ([`b8a99ab`](https://github.com/jbloomAus/SAELens/commit/b8a99ab4dfe8f7790a3b15f41e351fbc3b82f1ab))
+
+
+## v3.10.0 (2024-07-04)
+
+### Feature
+
+* feat: make activations_store re start the dataset when it runs out (#207)
+
+* make activations_store re start the dataset when it runs out
+
+* remove misleading comments
+
+* allow StopIteration to bubble up where appropriate
+
+* add test to ensure that stopiteration is raised
+
+* formatting
+
+* more formatting
+
+* format tweak so we can re-try ci
+
+* add deps back ([`91f4850`](https://github.com/jbloomAus/SAELens/commit/91f48502c39cd573d5f28aba2f3295c7694112e6))
+
+* feat: allow models to be passed in as overrides (#210) ([`dd95996`](https://github.com/jbloomAus/SAELens/commit/dd95996efaa46c779b85ead9e52a8342869cfc24))
+
+### Fix
+
+* fix: Activation store factor unscaling fold fix (#212)
+
+* add unscaling to evals
+
+* fix act norm unscaling missing
+
+* improved variance explained, still off for that prompt
+
+* format
+
+* why suddenly a typingerror and only in CI? ([`1db84b5`](https://github.com/jbloomAus/SAELens/commit/1db84b5ca4ab82fae9edbe98c1e9a563ed1eb3c9))
+
+
+## v3.9.2 (2024-07-03)
+
+### Fix
+
+* fix: Gated SAE Note Loading (#211)
+
+* fix: add tests, make pass
+
+* not in ([`b083feb`](https://github.com/jbloomAus/SAELens/commit/b083feb5ffb5b7f45669403786c3c7593aa1d3ba))
+
+### Unknown
+
+* SAETrainingRunner takes optional HFDataset (#206)
+
+* SAETrainingRunner takes optional HFDataset
+
+* more explicit errors when the buffer is too large for the dataset
+
+* format
+
+* add warnings when a new dataset is added
+
+* replace default dataset with empty string
+
+* remove valueerror ([`2c8fb6a`](https://github.com/jbloomAus/SAELens/commit/2c8fb6aeed214ff47dccfe427eb2881aca4e6808))
+
+
 ## v3.9.1 (2024-07-01)
 
 ### Fix

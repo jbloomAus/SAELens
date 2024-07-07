@@ -3,6 +3,10 @@ SAE_LOOKUP:
     repo_id: "jbloom/GPT2-Small-SAEs-Reformatted"
     model: "gpt2-small"
     conversion_func: null
+    links:
+      model: "https://huggingface.co/gpt2"
+      dashboards: "https://www.neuronpedia.org/gpt2sm-res-jb"
+      publication: "https://www.lesswrong.com/posts/f9EgfLSurAiqRJySD/open-source-sparse-autoencoders-for-all-residual-stream"
     saes:
       - id: "blocks.0.hook_resid_pre"
         path: "blocks.0.hook_resid_pre"
@@ -60,6 +64,10 @@ SAE_LOOKUP:
     repo_id: "ckkissane/attn-saes-gpt2-small-all-layers"
     model: "gpt2-small"
     conversion_func: "connor_rob_hook_z"
+    links:
+      model: "https://huggingface.co/gpt2"
+      dashboards: "https://www.neuronpedia.org/gpt2sm-kk"
+      publication: "https://www.lesswrong.com/posts/FSTRedtjuHa4Gfdbr/attention-saes-scale-to-gpt-2-small"
     saes:
       - id: "blocks.0.hook_z"
         path: "gpt2-small_L0_Hcat_z_lr1.20e-03_l11.80e+00_ds24576_bs4096_dc1.00e-06_rsanthropic_rie25000_nr4_v9.pt"
@@ -112,7 +120,11 @@ SAE_LOOKUP:
   gpt2-small-mlp-tm:
     repo_id: "tommmcgrath/gpt2-small-mlp-out-saes"
     model: "gpt2-small"
+    links:
+      model: "https://huggingface.co/gpt2"
     conversion_func: null
+    config_overrides:
+      dataset_path: "Skylion007/openwebtext"
     saes:
       - id: "blocks.0.hook_mlp_out"
         path: "sae_group_gpt2_blocks.0.hook_mlp_out_24576:v1"
@@ -120,7 +132,7 @@ SAE_LOOKUP:
         l0: 15.0
       - id: "blocks.1.hook_mlp_out"
         path: "sae_group_gpt2_blocks.1.hook_mlp_out_24576:v0"
-        variance_explained: -0.20
+        variance_explained: 0.57
         l0: 21.0
       - id: "blocks.2.hook_mlp_out"
         path: "sae_group_gpt2_blocks.2.hook_mlp_out_24576:v0"
@@ -128,7 +140,7 @@ SAE_LOOKUP:
         l0: 137.0
       - id: "blocks.3.hook_mlp_out"
         path: "sae_group_gpt2_blocks.3.hook_mlp_out_24576:v0"
-        variance_explained: 0.41
+        variance_explained: 0.57
         l0: 54.0
       - id: "blocks.4.hook_mlp_out"
         path: "sae_group_gpt2_blocks.4.hook_mlp_out_24576:v0"
@@ -152,19 +164,22 @@ SAE_LOOKUP:
         l0: 36.0
       - id: "blocks.9.hook_mlp_out"
         path: "sae_group_gpt2_blocks.9.hook_mlp_out_24576:v0"
-        variance_explained: 0.37
+        variance_explained: 0.49
         l0: 49.0
       - id: "blocks.10.hook_mlp_out"
         path: "sae_group_gpt2_blocks.10.hook_mlp_out_24576:v0"
-        variance_explained: -0.44
+        variance_explained: 0.22
         l0: 167.0
       - id: "blocks.11.hook_mlp_out"
         path: "sae_group_gpt2_blocks.11.hook_mlp_out_24576:v2"
-        variance_explained: 0.05
+        variance_explained: 0.59
         l0: 170.0
   gpt2-small-res-jb-feature-splitting:
     repo_id: "jbloom/GPT2-Small-Feature-Splitting-Experiment-Layer-8"
     model: "gpt2-small"
+    links:
+      model: "https://huggingface.co/gpt2"
+      dashboards: "https://www.neuronpedia.org/gpt2sm-rfs-jb"
     conversion_func: null
     saes:
       - id: "blocks.8.hook_resid_pre_768"
@@ -203,6 +218,8 @@ SAE_LOOKUP:
     repo_id: "jbloom/GPT2-Small-OAI-v5-32k-resid-post-SAEs"
     model: "gpt2-small"
     conversion_func: null
+    config_overrides:
+      dataset_path: "Skylion007/openwebtext"
     saes:
       - id: "blocks.0.hook_resid_post"
         path: "v5_32k_layer_0.pt"
@@ -256,6 +273,8 @@ SAE_LOOKUP:
     repo_id: "jbloom/GPT2-Small-OAI-v5-128k-resid-post-SAEs"
     model: "gpt2-small"
     conversion_func: null
+    config_overrides:
+      dataset_path: "Skylion007/openwebtext"
     saes:
       - id: "blocks.0.hook_resid_post"
         path: "v5_128k_layer_0"
@@ -309,6 +328,9 @@ SAE_LOOKUP:
     repo_id: "jbloom/Gemma-2b-Residual-Stream-SAEs"
     model: "gemma-2b"
     conversion_func: null
+    links:
+      model: https://huggingface.co/google/gemma-2b
+      dashboards: https://www.neuronpedia.org/gemma2b-res-jb
     saes:
       - id: "blocks.0.hook_resid_post"
         path: "gemma_2b_blocks.0.hook_resid_post_16384_anthropic"
@@ -320,12 +342,15 @@ SAE_LOOKUP:
         l0: 56.0
       - id: "blocks.12.hook_resid_post"
         path: "gemma_2b_blocks.12.hook_resid_post_16384"
-        variance_explained: -3.6
+        variance_explained: -0.65
         l0: 62.0
   gemma-2b-it-res-jb:
     repo_id: "jbloom/Gemma-2b-IT-Residual-Stream-SAEs"
     model: "gemma-2b-it"
     conversion_func: null
+    links:
+      model: https://huggingface.co/google/gemma-2b-it
+      dashboards: https://www.neuronpedia.org/gemma2bit-res-jb
     saes:
       - id: "blocks.12.hook_resid_post"
         path: "gemma_2b_it_blocks.12.hook_resid_post_16384"
@@ -334,12 +359,14 @@ SAE_LOOKUP:
   mistral-7b-res-wg:
     repo_id: "JoshEngels/Mistral-7B-Residual-Stream-SAEs"
     model: "mistral-7b"
-    conversion_func: "mistral_7b_josh_engels_loader"
+    conversion_func: null
+    config_overrides:
+      normalize_activations: "constant_norm_rescale"
     saes:
       - id: "blocks.8.hook_resid_pre"
         path: "mistral_7b_layer_8"
-        variance_explained: 0.74
-        l0: 82
+        variance_explained: 0.94
+        l0: 92
       - id: "blocks.16.hook_resid_pre"
         path: "mistral_7b_layer_16"
         variance_explained: 0.85

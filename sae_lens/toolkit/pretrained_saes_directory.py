@@ -14,6 +14,7 @@ class PretrainedSAELookup:
     saes_map: dict[str, str]  # id -> path
     expected_var_explained: dict[str, float]
     expected_l0: dict[str, float]
+    config_overrides: dict[str, str] | None
 
 
 @cache
@@ -42,5 +43,6 @@ def get_pretrained_saes_directory() -> dict[str, PretrainedSAELookup]:
                 saes_map=saes_map,
                 expected_var_explained=var_explained_map,
                 expected_l0=l0_map,
+                config_overrides=value.get("config_overrides"),
             )
     return directory
