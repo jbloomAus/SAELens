@@ -7,7 +7,7 @@ from typing import Any, Generator, Literal, cast
 
 import numpy as np
 import torch
-from datasets import load_dataset, Dataset, DatasetDict
+from datasets import Dataset, DatasetDict, load_dataset
 from safetensors.torch import save_file
 from tqdm import tqdm
 from transformer_lens.hook_points import HookedRootModule
@@ -208,7 +208,6 @@ class ActivationsStore:
         self.estimated_norm_scaling_factor = 1.0
         self.buffer_idx = 0
         self.next_idx_within_buffer = 0
-
 
         # Check if dataset is tokenized
         dataset_sample = next(iter(self.dataset))
@@ -439,7 +438,9 @@ class ActivationsStore:
         return f"{self.cached_activations_path}/{idx}.{FILE_EXTENSION}"
 
     @torch.no_grad()
-    def get_buffer(self, raise_at_epoch_end: bool = False) -> np.memmap[Any, np.dtype[Any]]:
+    def get_buffer(
+        self, raise_at_epoch_end: bool = False
+    ) -> np.memmap[Any, np.dtype[Any]]:
         context_size = self.context_size
         batch_size = self.store_batch_size_prompts
         d_in = self.d_in
@@ -450,7 +451,9 @@ class ActivationsStore:
             # Load the activations from disk (this part remains similar to before)
             # buffer_size = total_size * context_size * 2
 
-            new_buffer = self.load_buffer(self.get_buffer_path(self.buffer_idx), num_layers)
+            new_buffer = self.load_buffer(
+                self.get_buffer_path(self.buffer_idx), num_layers
+            )
 
         else:
             # Generate the buffer directly
@@ -513,20 +516,25 @@ class ActivationsStore:
         self._save_buffer(buffer, path)
 
     @classmethod
-    def _load_buffer(cls, path: str, num_layers:int, dtype: np.dtype[Any] | None, d_in: int) -> np.memmap[Any, np.dtype[Any]]:
+    def _load_buffer(
+        cls, path: str, num_layers: int, dtype: np.dtype[Any] | None, d_in: int
+    ) -> np.memmap[Any, np.dtype[Any]]:
         # Load the memory-mapped array
         memmap_file = np.memmap(path, dtype=dtype, mode="r")
-        memmap_file = cast(np.memmap[Any, np.dtype[Any]], memmap_file.reshape(-1, num_layers, d_in))
+        memmap_file = cast(
+            np.memmap[Any, np.dtype[Any]], memmap_file.reshape(-1, num_layers, d_in)
+        )
         return memmap_file
 
-    def load_buffer(self, path: str, num_layers:int=1) -> np.memmap[Any, np.dtype[Any]]:
+    def load_buffer(
+        self, path: str, num_layers: int = 1
+    ) -> np.memmap[Any, np.dtype[Any]]:
         return self._load_buffer(path, num_layers, self.numpy_dtype, self.d_in)
 
     def _generate_new_batch(self) -> np.ndarray[Any, np.dtype[Any]]:
         next_batch = self.storage_buffer[
-            self.next_idx_within_buffer * self.store_batch_size_prompts : (
-                self.next_idx_within_buffer + 1
-            )
+            self.next_idx_within_buffer
+            * self.store_batch_size_prompts : (self.next_idx_within_buffer + 1)
             * self.store_batch_size_prompts
         ]
         self.next_idx_within_buffer += 1
@@ -541,12 +549,18 @@ class ActivationsStore:
         batch_buffer_path = self.get_buffer_path(self.buffer_idx)
 
         if not os.path.exists(batch_buffer_path):
-            print(f"Warning: could not find a buffer file {batch_buffer_path} for the next buffer index {self.buffer_idx}, resetting index to 0.")
+            print(
+                f"Warning: could not find a buffer file {batch_buffer_path} for the next buffer index {self.buffer_idx}, resetting index to 0."
+            )
             self.buffer_idx = 0
             batch_buffer_path = self.get_buffer_path(self.buffer_idx)
 
         current_buffer = self.load_buffer(batch_buffer_path)
-        next_batch = current_buffer[self.next_idx_within_buffer *self.store_batch_size_prompts : (self.next_idx_within_buffer + 1) * self.store_batch_size_prompts]
+        next_batch = current_buffer[
+            self.next_idx_within_buffer
+            * self.store_batch_size_prompts : (self.next_idx_within_buffer + 1)
+            * self.store_batch_size_prompts
+        ]
 
         self.next_idx_within_buffer += 1
         if self.next_idx_within_buffer == self.n_batches_in_buffer:
@@ -571,7 +585,7 @@ class ActivationsStore:
             "n_dataset_processed": torch.tensor(self.n_dataset_processed),
         }
         if self._storage_buffer is not None:  # first time might be None
-            result["storage_buffer"] = self._storage_buffer # type: ignore
+            result["storage_buffer"] = self._storage_buffer  # type: ignore
         return result
 
     def save(self, file_path: str):

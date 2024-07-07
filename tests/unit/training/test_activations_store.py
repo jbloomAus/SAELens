@@ -9,10 +9,14 @@ import torch
 from datasets import Dataset, IterableDataset
 from transformer_lens import HookedTransformer
 
+from sae_lens.config import (
+    CacheActivationsRunnerConfig,
+    LanguageModelSAERunnerConfig,
+    PretokenizeRunnerConfig,
+)
 from sae_lens.load_model import load_model
-from sae_lens.config import LanguageModelSAERunnerConfig, PretokenizeRunnerConfig, CacheActivationsRunnerConfig
 from sae_lens.pretokenize_runner import pretokenize_dataset
-from sae_lens.training.activations_store import ActivationsStore, FILE_EXTENSION
+from sae_lens.training.activations_store import FILE_EXTENSION, ActivationsStore
 from tests.unit.helpers import build_sae_cfg, load_model_cached
 
 
@@ -418,6 +422,7 @@ def test_activation_store__errors_if_neither_dataset_nor_dataset_path(
     with pytest.raises(ValueError):
         ActivationsStore.from_config(ts_model, cfg, override_dataset=None)
 
+
 def test_activation_store_save_load_cls_methods():
 
     dtype = np.float32
@@ -433,7 +438,7 @@ def test_activation_store_save_load_cls_methods():
 
     ActivationsStore._save_buffer(memmap_buffer, memmap_filename)
 
-    loaded_buffer = ActivationsStore._load_buffer(memmap_filename, num_layers=1, dtype=dtype, d_in=d_in) # type: ignore
+    loaded_buffer = ActivationsStore._load_buffer(memmap_filename, num_layers=1, dtype=dtype, d_in=d_in)  # type: ignore
 
     assert loaded_buffer.shape == memmap_buffer.shape
     assert np.allclose(memmap_buffer, loaded_buffer)
@@ -450,7 +455,6 @@ def test_activation_store_save_load_buffer(
         device = "mps"
     else:
         device = "cpu"
-
 
     example_ds = Dataset.from_list(
         [

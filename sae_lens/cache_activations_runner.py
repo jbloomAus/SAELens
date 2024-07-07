@@ -3,20 +3,23 @@ import os
 
 import numpy as np
 import torch
-from tqdm import tqdm
 from datasets import Dataset, DatasetDict, IterableDataset, IterableDatasetDict
+from tqdm import tqdm
 
 from sae_lens.config import DTYPE_MAP, CacheActivationsRunnerConfig
 from sae_lens.load_model import load_model
-from sae_lens.training.activations_store import ActivationsStore, FILE_EXTENSION
+from sae_lens.training.activations_store import FILE_EXTENSION, ActivationsStore
 
 
 class CacheActivationsRunner:
 
-    def __init__(self, 
-            cfg: CacheActivationsRunnerConfig, 
-            override_dataset: DatasetDict | Dataset | IterableDatasetDict | IterableDataset | None = None,
-        ):
+    def __init__(
+        self,
+        cfg: CacheActivationsRunnerConfig,
+        override_dataset: (
+            DatasetDict | Dataset | IterableDatasetDict | IterableDataset | None
+        ) = None,
+    ):
         self.cfg = cfg
         self.model = load_model(
             model_class_name=cfg.model_class_name,
@@ -57,7 +60,7 @@ class CacheActivationsRunner:
             f"Configuration:\n"
             f"{self.cfg}"
         )
-    
+
     @property
     def tokens_in_buffer(self):
         return (
@@ -86,7 +89,7 @@ class CacheActivationsRunner:
             os.makedirs(new_cached_activations_path)
 
         for i in tqdm(range(self.n_buffers), desc="Caching activations"):
-            try: 
+            try:
                 buffer = self.activations_store.get_buffer()
                 buffer_path = f"{new_cached_activations_path}/{i}.{self.file_extension}"
                 self.activations_store.save_buffer(buffer, buffer_path)
@@ -100,16 +103,14 @@ class CacheActivationsRunner:
                     for _ in range(self.cfg.n_shuffles_with_last_section):
                         self.shuffle_two_random_buffers(
                             new_cached_activations_path,
-                            start_idx = i - self.cfg.shuffle_every_n_buffers,
-                            end_idx = i,
+                            start_idx=i - self.cfg.shuffle_every_n_buffers,
+                            end_idx=i,
                         )
 
                     # Do more random pairwise shuffling between all the buffers
                     for _ in range(self.cfg.n_shuffles_in_entire_dir):
                         self.shuffle_two_random_buffers(
-                            new_cached_activations_path,
-                            start_idx=0,
-                            end_idx=i
+                            new_cached_activations_path, start_idx=0, end_idx=i
                         )
             except StopIteration:
                 print(
@@ -122,13 +123,11 @@ class CacheActivationsRunner:
             for _ in tqdm(range(self.cfg.n_shuffles_final), desc="Final shuffling"):
                 self.shuffle_two_random_buffers(
                     new_cached_activations_path,
-                    start_idx = 0,
-                    end_idx = self.n_buffers,
+                    start_idx=0,
+                    end_idx=self.n_buffers,
                 )
 
-    def shuffle_two_random_buffers(
-        self, datapath: str, start_idx: int, end_idx: int
-    ):
+    def shuffle_two_random_buffers(self, datapath: str, start_idx: int, end_idx: int):
         """
         Shuffles two randomly selected buffers on disk.
         """
@@ -143,11 +142,8 @@ class CacheActivationsRunner:
 
         self.shuffle_two_buffers(datapath, buffer_idx1, buffer_idx2)
 
-
     @torch.no_grad()
-    def shuffle_two_buffers(
-        self, datapath: str, buffer_idx1: int, buffer_idx2: int
-    ):
+    def shuffle_two_buffers(self, datapath: str, buffer_idx1: int, buffer_idx2: int):
         path1 = f"{datapath}/{buffer_idx1}.{self.file_extension}"
         path2 = f"{datapath}/{buffer_idx2}.{self.file_extension}"
 
