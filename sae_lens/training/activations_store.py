@@ -419,6 +419,9 @@ class ActivationsStore:
 
         return stacked_activations
 
+    def get_buffer_path(self, idx: int) -> str:
+        return f"{self.cached_activations_path}/{idx}.{FILE_EXTENSION}"
+
     @torch.no_grad()
     def get_buffer(self) -> np.memmap[Any, np.dtype[Any]]:
         context_size = self.context_size
@@ -430,10 +433,8 @@ class ActivationsStore:
         if self.cached_activations_path is not None:
             # Load the activations from disk (this part remains similar to before)
             # buffer_size = total_size * context_size * 2
-            next_buffer_path = (
-                f"{self.cached_activations_path}/{self.next_cache_idx}.{FILE_EXTENSION}"
-            )
-            new_buffer = self.load_buffer(next_buffer_path, num_layers)
+
+            new_buffer = self.load_buffer(self.get_buffer_path(self.next_cache_idx), num_layers)
 
         else:
             # Generate the buffer directly
@@ -532,7 +533,7 @@ class ActivationsStore:
 
     def next_batch(self) -> torch.Tensor:
         """
-        Get the next batch from the current DataLoader.
+        Get the next batch from the current DataLoader.xzt
         If the DataLoader is exhausted, refill the buffer and create a new DataLoader.
         """
         try:
