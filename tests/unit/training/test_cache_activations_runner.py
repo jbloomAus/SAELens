@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 
 import torch
+from datasets import Dataset
 
 # from safetensors import safe_open
 from transformer_lens import HookedTransformer
@@ -25,7 +26,7 @@ def test_cache_activations_runner_saving(tmp_path: Path):
         device = "cpu"
 
     # total_training_steps = 20_000
-    context_size = 1024
+    context_size = 256
     print(f"n tokens per context: {context_size}")
     n_batches_in_buffer = 32
     print(f"n batches in buffer: {n_batches_in_buffer}")
@@ -42,6 +43,13 @@ def test_cache_activations_runner_saving(tmp_path: Path):
     # cached_activations_fixture_path = os.path.join(
     #     os.path.dirname(__file__), "fixtures", "cached_activations"
     # )
+
+    override_dataset = Dataset.from_list(
+        [
+            {"text": "I like to creep around my home and act like a goblin I don’t know why but I just enjoy doing this. Maybe it’s my way of dealing with stress or something but I just do it about once every week. Generally I’ll carry around a sack and creep around in a sort of crouch-walking position making goblin noises, then I’ll walk around my house and pick up various different “trinkets” and put them in my bag while saying stuff like “I’ll be having that” and laughing maniacally in my goblin voice (“trinkets” can include anything from shit I find on the ground to cutlery or other utensils). The other day I was talking with my neighbours and they mentioned hearing weird noises like what I wrote about and I was just internally screaming the entire conversation. I’m 99% sure they don’t know it’s me but god that 1% chance is seriously weighing on my mind."},
+        ]
+        * 20_000
+    )
 
     cfg = CacheActivationsRunnerConfig(
         new_cached_activations_path=str(tmp_path),
@@ -76,7 +84,7 @@ def test_cache_activations_runner_saving(tmp_path: Path):
     )
 
     # look at the next cell to see some instruction for what to do while this is running.
-    runner = CacheActivationsRunner(cfg)
+    runner = CacheActivationsRunner(cfg, override_dataset)
     runner.run()
 
     assert os.path.exists(tmp_path)

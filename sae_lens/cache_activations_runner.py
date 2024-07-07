@@ -4,6 +4,7 @@ import os
 import numpy as np
 import torch
 from tqdm import tqdm
+from datasets import Dataset, DatasetDict, IterableDataset, IterableDatasetDict
 
 from sae_lens.config import DTYPE_MAP, CacheActivationsRunnerConfig
 from sae_lens.load_model import load_model
@@ -12,7 +13,10 @@ from sae_lens.training.activations_store import ActivationsStore
 
 class CacheActivationsRunner:
 
-    def __init__(self, cfg: CacheActivationsRunnerConfig):
+    def __init__(self, 
+            cfg: CacheActivationsRunnerConfig, 
+            override_dataset: DatasetDict | Dataset | IterableDatasetDict | IterableDataset | None = None,
+        ):
         self.cfg = cfg
         self.model = load_model(
             model_class_name=cfg.model_class_name,
@@ -23,6 +27,7 @@ class CacheActivationsRunner:
         self.activations_store = ActivationsStore.from_config(
             self.model,
             cfg,
+            override_dataset=override_dataset,
         )
 
         self.file_extension = "dat"
@@ -88,6 +93,9 @@ class CacheActivationsRunner:
             print('buffer shape as generated', buffer.shape)
             buffer_path = f"{new_cached_activations_path}/{i}.{self.file_extension}"
             self.activations_store.save_buffer(buffer, buffer_path)
+
+            loaded_buffer = self.activations_store.load_buffer(buffer_path)
+            print('loaded buffer shape', loaded_buffer.shape)
 
             del buffer
 

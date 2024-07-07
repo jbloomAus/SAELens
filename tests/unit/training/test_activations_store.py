@@ -1,3 +1,4 @@
+import os
 from collections.abc import Iterable
 from math import ceil
 
@@ -414,3 +415,52 @@ def test_activation_store__errors_if_neither_dataset_nor_dataset_path(
 
     with pytest.raises(ValueError):
         ActivationsStore.from_config(ts_model, cfg, override_dataset=None)
+
+def test_activation_store_save_load_cls_methods():
+
+    dtype = np.float32
+    d_in = 1024
+
+    memmap_filename = "tmp.dat"
+    memmap_buffer = np.memmap(
+        memmap_filename,
+        dtype=dtype,
+        mode="w+",
+        shape=(10, 1, d_in),
+    )
+
+    ActivationsStore._save_buffer(memmap_buffer, memmap_filename)
+
+    loaded_buffer = ActivationsStore._load_buffer(memmap_filename, dtype=dtype, d_in=d_in)
+
+    assert loaded_buffer.shape == memmap_buffer.shape
+    assert np.allclose(memmap_buffer, loaded_buffer)
+
+    os.remove(memmap_filename)
+
+
+def test_activation_store_save_load_buffer(
+    ts_model: HookedTransformer,
+):
+    cfg = build_sae_cfg(dataset_path="")
+
+    example_ds = Dataset.from_list(
+        [
+            {"text": "hello world1"},
+            {"text": "hello world2"},
+            {"text": "hello world3"},
+        ]
+        * 20
+    )
+
+    store = ActivationsStore.from_config(ts_model, cfg, override_dataset=example_ds)
+    buffer_filename = "tmp.dat"
+
+    buffer = store.get_buffer()
+    store.save_buffer(buffer, buffer_filename)
+    loaded_buffer = store.load_buffer(buffer_filename)
+
+    assert loaded_buffer.shape == buffer.shape
+    assert np.allclose(buffer, loaded_buffer)
+
+    os.remove(buffer_filename)

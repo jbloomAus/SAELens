@@ -475,7 +475,8 @@ class ActivationsStore:
 
         return new_buffer
 
-    def save_buffer(self, buffer: np.memmap[Any, np.dtype[Any]], path: str):
+    @classmethod
+    def _save_buffer(cls, buffer: np.memmap[Any, np.dtype[Any]], path: str):
         # If buffer is already a memmap, we just need to flush it
         if buffer.filename != path:
             # If the paths are different, we need to create a new memmap
@@ -488,11 +489,18 @@ class ActivationsStore:
             # If the paths are the same, we just need to flush the existing buffer
             buffer.flush()
 
-    def load_buffer(self, path: str) -> np.memmap[Any, np.dtype[Any]]:
+    @classmethod
+    def _load_buffer(cls, path: str, dtype: np.dtype[Any] | None, d_in: int) -> np.memmap[Any, np.dtype[Any]]:
         # Load the memory-mapped array
-        memmap_file = np.memmap(path, dtype=self.numpy_dtype, mode="r")
-        memmap_file = memmap_file.reshape(-1, 1, self.d_in)
+        memmap_file = np.memmap(path, dtype=dtype, mode="r")
+        memmap_file = memmap_file.reshape(-1, 1, d_in)
         return memmap_file
+
+    def save_buffer(self, buffer: np.memmap[Any, np.dtype[Any]], path: str):
+        self._save_buffer(buffer, path)
+
+    def load_buffer(self, path: str) -> np.memmap[Any, np.dtype[Any]]:
+        return self._load_buffer(path, self.numpy_dtype, self.d_in)
 
     def get_data_loader(self) -> Iterator[Any]:
         batch_size = self.train_batch_size_tokens
