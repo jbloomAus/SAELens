@@ -27,22 +27,12 @@ def test_cache_activations_runner_saving(tmp_path: Path):
 
     # total_training_steps = 20_000
     context_size = 256
-    print(f"n tokens per context: {context_size}")
     n_batches_in_buffer = 32
-    print(f"n batches in buffer: {n_batches_in_buffer}")
     store_batch_size = 1
-    print(f"store_batch_size: {store_batch_size}")
     n_buffers = 3
-    print(f"n_buffers: {n_buffers}")
 
     tokens_in_buffer = n_batches_in_buffer * store_batch_size * context_size
     total_training_tokens = n_buffers * tokens_in_buffer
-    print(f"Total Training Tokens: {total_training_tokens}")
-
-    # for generating the fixture
-    # cached_activations_fixture_path = os.path.join(
-    #     os.path.dirname(__file__), "fixtures", "cached_activations"
-    # )
 
     override_dataset = Dataset.from_list(
         [

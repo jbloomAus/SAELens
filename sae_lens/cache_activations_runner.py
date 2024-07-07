@@ -8,7 +8,7 @@ from datasets import Dataset, DatasetDict, IterableDataset, IterableDatasetDict
 
 from sae_lens.config import DTYPE_MAP, CacheActivationsRunnerConfig
 from sae_lens.load_model import load_model
-from sae_lens.training.activations_store import ActivationsStore
+from sae_lens.training.activations_store import ActivationsStore, FILE_EXTENSION
 
 
 class CacheActivationsRunner:
@@ -30,7 +30,7 @@ class CacheActivationsRunner:
             override_dataset=override_dataset,
         )
 
-        self.file_extension = "dat"
+        self.file_extension = FILE_EXTENSION
 
     def __str__(self):
         """
@@ -93,9 +93,6 @@ class CacheActivationsRunner:
             print('buffer shape as generated', buffer.shape)
             buffer_path = f"{new_cached_activations_path}/{i}.{self.file_extension}"
             self.activations_store.save_buffer(buffer, buffer_path)
-
-            loaded_buffer = self.activations_store.load_buffer(buffer_path)
-            print('loaded buffer shape', loaded_buffer.shape)
 
             del buffer
 

@@ -1,6 +1,7 @@
 import os
 from collections.abc import Iterable
 from math import ceil
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -8,9 +9,10 @@ import torch
 from datasets import Dataset, IterableDataset
 from transformer_lens import HookedTransformer
 
-from sae_lens.config import LanguageModelSAERunnerConfig, PretokenizeRunnerConfig
+from sae_lens.load_model import load_model
+from sae_lens.config import LanguageModelSAERunnerConfig, PretokenizeRunnerConfig, CacheActivationsRunnerConfig
 from sae_lens.pretokenize_runner import pretokenize_dataset
-from sae_lens.training.activations_store import ActivationsStore
+from sae_lens.training.activations_store import ActivationsStore, FILE_EXTENSION
 from tests.unit.helpers import build_sae_cfg, load_model_cached
 
 
@@ -440,9 +442,15 @@ def test_activation_store_save_load_cls_methods():
 
 
 def test_activation_store_save_load_buffer(
-    ts_model: HookedTransformer,
+    tmp_path: Path,
 ):
-    cfg = build_sae_cfg(dataset_path="")
+    if torch.cuda.is_available():
+        device = "cuda"
+    elif torch.backends.mps.is_available():
+        device = "mps"
+    else:
+        device = "cpu"
+
 
     example_ds = Dataset.from_list(
         [
@@ -450,11 +458,59 @@ def test_activation_store_save_load_buffer(
             {"text": "hello world2"},
             {"text": "hello world3"},
         ]
-        * 20
+        * 5000
     )
 
-    store = ActivationsStore.from_config(ts_model, cfg, override_dataset=example_ds)
-    buffer_filename = "tmp.dat"
+    # total_training_steps = 20_000
+    context_size = 256
+    n_batches_in_buffer = 32
+    store_batch_size = 1
+    n_buffers = 3
+
+    tokens_in_buffer = n_batches_in_buffer * store_batch_size * context_size
+    total_training_tokens = n_buffers * tokens_in_buffer
+
+    cfg = CacheActivationsRunnerConfig(
+        new_cached_activations_path=str(tmp_path),
+        # new_cached_activations_path=cached_activations_fixture_path,
+        # Pick a tiny model to make this easier.
+        model_name="gelu-1l",
+        ## MLP Layer 0 ##
+        hook_name="blocks.0.hook_mlp_out",
+        hook_layer=0,
+        d_in=512,
+        dataset_path="NeelNanda/c4-tokenized-2b",
+        context_size=context_size,  # Speed things up.
+        is_dataset_tokenized=True,
+        prepend_bos=True,  # I used to train GPT2 SAEs with a prepended-bos but no longer think we should do this.
+        training_tokens=total_training_tokens,  # For initial testing I think this is a good number.
+        train_batch_size_tokens=4096,
+        # Loss Function
+        ## Reconstruction Coefficient.
+        # Buffer details won't matter in we cache / shuffle our activations ahead of time.
+        n_batches_in_buffer=n_batches_in_buffer,
+        store_batch_size_prompts=store_batch_size,
+        normalize_activations="none",
+        #
+        shuffle_every_n_buffers=2,
+        n_shuffles_with_last_section=1,
+        n_shuffles_in_entire_dir=1,
+        n_shuffles_final=1,
+        # Misc
+        device=device,
+        seed=42,
+        dtype="float16",
+    )
+
+    model = load_model(
+        model_class_name=cfg.model_class_name,
+        model_name=cfg.model_name,
+        device=cfg.device,
+        model_from_pretrained_kwargs=cfg.model_from_pretrained_kwargs,
+    )
+
+    store = ActivationsStore.from_config(model, cfg, override_dataset=example_ds)
+    buffer_filename = f"{tmp_path}/{0}.{FILE_EXTENSION}"
 
     buffer = store.get_buffer()
     store.save_buffer(buffer, buffer_filename)
