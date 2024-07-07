@@ -422,9 +422,7 @@ def test_activation_store__errors_if_neither_dataset_nor_dataset_path(
     with pytest.raises(ValueError):
         ActivationsStore.from_config(ts_model, cfg, override_dataset=None)
 
-
 def test_activation_store_save_load_cls_methods():
-
     dtype = np.float32
     d_in = 1024
 

@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+import random
 from typing import Any, Tuple
 
 import pytest
@@ -91,9 +92,7 @@ def test_cache_activations_runner_saving(tmp_path: Path):
             cfg.d_in,
         )
 
-
-def test_load_cached_activations(tmp_path: Path):
-    pytest.skip("It is not fully clear what the purpose of this test is")
+def test_loads_cached_activations_per_batch(tmp_path: Path):
     if torch.cuda.is_available():
         device = "cuda"
     elif torch.backends.mps.is_available():
@@ -103,29 +102,24 @@ def test_load_cached_activations(tmp_path: Path):
 
     # total_training_steps = 20_000
     context_size = 1024
-    n_batches_in_buffer = 32
-    store_batch_size = 1
+    n_batches_in_buffer = 16
+    store_batch_size = 2
     n_buffers = 3
 
     tokens_in_buffer = n_batches_in_buffer * store_batch_size * context_size
     total_training_tokens = n_buffers * tokens_in_buffer
 
-    # better if we can look at the files
-    # cached_activations_fixture_path = os.path.join(
-    #     os.path.dirname(__file__), "fixtures", "cached_activations"
-    # )
-
-    cfg = LanguageModelSAERunnerConfig(
-        cached_activations_path=str(tmp_path),
-        use_cached_activations=True,
+    cfg = CacheActivationsRunnerConfig(
+        new_cached_activations_path=str(tmp_path),
+        # new_cached_activations_path=cached_activations_fixture_path,
         # Pick a tiny model to make this easier.
         model_name="gelu-1l",
         ## MLP Layer 0 ##
         hook_name="blocks.0.hook_mlp_out",
         hook_layer=0,
         d_in=512,
-        dataset_path="NeelNanda/c4-10k",
-        context_size=context_size,
+        dataset_path="NeelNanda/c4-tokenized-2b",
+        context_size=context_size,  # Speed things up.
         is_dataset_tokenized=True,
         prepend_bos=True,  # I used to train GPT2 SAEs with a prepended-bos but no longer think we should do this.
         training_tokens=total_training_tokens,  # For initial testing I think this is a good number.
@@ -136,25 +130,43 @@ def test_load_cached_activations(tmp_path: Path):
         n_batches_in_buffer=n_batches_in_buffer,
         store_batch_size_prompts=store_batch_size,
         normalize_activations="none",
-        # shuffle_every_n_buffers=2,
-        # n_shuffles_with_last_section=1,
-        # n_shuffles_in_entire_dir=1,
-        # n_shuffles_final=1,
+        #
+        shuffle_every_n_buffers=2,
+        n_shuffles_with_last_section=1,
+        n_shuffles_in_entire_dir=1,
+        n_shuffles_final=1,
         # Misc
         device=device,
         seed=42,
         dtype="float16",
     )
 
+    words = "What the darn-diddily-doodily did you just say about me, you little witcharooney? I’ll have you know I graduated top of my class at Springfield Bible College, and I’ve been involved in numerous secret mission trips in Capital City, and I have over 300 confirmed baptisms. I am trained in the Old Testament and I’m the top converter in the entire church mission group. You are nothing to me but just another heathen. I will cast your sins out with precision the likes of which has never been seen before in Heaven, mark my diddily-iddilly words. You think you can get away with saying that blasphemy to me over the Internet? Think again, friendarino. As we speak I am contacting my secret network of evangelists across Springfield and your IP is being traced by God right now so you better prepare for the storm, maggorino. The storm that wipes out the diddily little thing you call your life of sin. You’re going to Church, kiddily-widdily. Jesus can be anywhere, anytime, and he can turn you to the Gospel in over infinity ways, and that’s just with his bare hands. Not only am I extensively trained in preaching to nonbelievers, but I have access to the entire dang- diddily Bible collection of the Springfield Bible College and I will use it to its full extent to wipe your sins away off the face of the continent, you diddily-doo satan-worshipper. If only you could have known what holy retribution your little “clever” comment was about to bring down upon you from the Heavens, maybe you would have held your darn-diddily-fundgearoo tongue. But you couldn’t, you didn’t, and now you’re clean of all your sins, you widdillo-skiddily neighborino. I will sing hymns of praise all over you and you will drown in the love of Christ. You’re farn-foodily- flank-fiddily reborn, kiddo-diddily."
+    words = words.split()
+
+    word_list = []
+    for _ in range(5_000):
+        random_word_indices = random.choices(range(len(words)), k=256)
+        random_words = [words[i] for i in random_word_indices]
+        word_list.append({
+            "text": " ".join(random_words)
+        })
+
+    override_dataset = Dataset.from_list(word_list)
+
+    runner = CacheActivationsRunner(cfg, override_dataset)
+    runner.run()
+
     model = HookedTransformer.from_pretrained(cfg.model_name)
     activations_store = ActivationsStore.from_config(model, cfg)
 
-    for _ in range(n_buffers):
-        buffer = activations_store.get_buffer()
-        assert buffer.shape == (tokens_in_buffer, 1, cfg.d_in)
-
-    # assert sparse_autoencoder_dictionary is not None
-    # know whether or not this works by looking at the dashboard!
+    prev_batch = None
+    for _ in range(100): # i.e. more than 16, the number of batches per buffer
+        batch = activations_store.next_batch()
+        if prev_batch is not None:
+            # assert that the current batch is not the same as the previous batch
+            assert not torch.allclose(prev_batch, batch)
+        assert batch.shape[0] == 2
 
 
 def test_activations_store_refreshes_dataset_when_it_runs_out():
