@@ -131,10 +131,10 @@ class SAE(HookedRootModule):
 
         if self.cfg.architecture == "standard":
             self.initialize_weights_basic()
-            self.encode_fn = self.encode
+            self.encode = self.encode_standard
         elif self.cfg.architecture == "gated":
             self.initialize_weights_gated()
-            self.encode_fn = self.encode_gated
+            self.encode = self.encode_gated
 
         # handle presence / absence of scaling factor.
         if self.cfg.finetuning_scaling_factor:
@@ -281,7 +281,7 @@ class SAE(HookedRootModule):
         self,
         x: torch.Tensor,
     ) -> torch.Tensor:
-        feature_acts = self.encode_fn(x)
+        feature_acts = self.encode(x)
         sae_out = self.decode(feature_acts)
 
         # TEMP
@@ -366,7 +366,7 @@ class SAE(HookedRootModule):
 
         return active_features * feature_magnitudes
 
-    def encode(
+    def encode_standard(
         self, x: Float[torch.Tensor, "... d_in"]
     ) -> Float[torch.Tensor, "... d_sae"]:
         """

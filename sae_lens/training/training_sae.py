@@ -182,7 +182,7 @@ class TrainingSAE(SAE):
             ), "Gated SAEs do not support ghost grads"
             assert self.use_error_term is False, "Gated SAEs do not support error terms"
 
-    def encode(
+    def encode_standard(
         self, x: Float[torch.Tensor, "... d_in"]
     ) -> Float[torch.Tensor, "... d_sae"]:
         """
