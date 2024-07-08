@@ -2,6 +2,13 @@
 
 
 
+## v3.11.2 (2024-07-08)
+
+### Fix
+
+* fix: rename encode_fn to encode and encode to encode_standard (#218) ([`8c09ec1`](https://github.com/jbloomAus/SAELens/commit/8c09ec1ff29bf3212a43b6d65cf5c88c5c318994))
+
+
 ## v3.11.1 (2024-07-08)
 
 ### Fix
