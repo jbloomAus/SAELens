@@ -203,7 +203,7 @@ def get_recons_loss(
         if activation_store.normalize_activations == "expected_average_only_in":
             activations = activation_store.apply_norm_scaling_factor(activations)
 
-        new_activations = sae.decoder(sae.encode(activations[:, :, head_index])).to(
+        new_activations = sae.decode(sae.encode(activations[:, :, head_index])).to(
             activations.dtype
         )
         activations[:, :, head_index] = new_activations
