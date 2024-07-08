@@ -460,6 +460,8 @@ class SAE(HookedRootModule):
         with open(config_path, "r") as f:
             cfg_dict = json.load(f)
         cfg_dict = handle_config_defaulting(cfg_dict)
+        cfg_dict["device"] = device
+        cfg_dict["dtype"] = dtype
 
         weight_path = os.path.join(path, SAE_WEIGHTS_PATH)
         cfg_dict, state_dict = read_sae_from_disk(
