@@ -166,9 +166,7 @@ class SAE(HookedRootModule):
         if self.cfg.normalize_activations == "constant_norm_rescale":
             #  we need to scale the norm of the input and store the scaling factor
             def run_time_activation_norm_fn_in(x: torch.Tensor) -> torch.Tensor:
-                self.x_norm_coeff = (self.cfg.d_in**0.5) / x.norm(
-                    dim=-1, keepdim=True
-                )
+                self.x_norm_coeff = (self.cfg.d_in**0.5) / x.norm(dim=-1, keepdim=True)
                 x = x * self.x_norm_coeff
                 return x
 

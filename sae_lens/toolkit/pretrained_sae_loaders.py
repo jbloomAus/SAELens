@@ -16,8 +16,7 @@ class PretrainedSaeLoader(Protocol):
         device: str | torch.device | None = None,
         force_download: bool = False,
         cfg_overrides: dict[str, Any] | None = None,
-    ) -> tuple[dict[str, Any], dict[str, torch.Tensor], Optional[torch.Tensor]]:
-        ...
+    ) -> tuple[dict[str, Any], dict[str, torch.Tensor], Optional[torch.Tensor]]: ...
 
 
 def sae_lens_loader(

@@ -319,27 +319,27 @@ class NeuronpediaRunner:
                     )
 
                     if feature.feature_tables_data:
-                        feature_output[
-                            "neuron_alignment_indices"
-                        ] = feature.feature_tables_data.neuron_alignment_indices
+                        feature_output["neuron_alignment_indices"] = (
+                            feature.feature_tables_data.neuron_alignment_indices
+                        )
                         feature_output["neuron_alignment_values"] = self.round_list(
                             feature.feature_tables_data.neuron_alignment_values
                         )
                         feature_output["neuron_alignment_l1"] = self.round_list(
                             feature.feature_tables_data.neuron_alignment_l1
                         )
-                        feature_output[
-                            "correlated_neurons_indices"
-                        ] = feature.feature_tables_data.correlated_neurons_indices
+                        feature_output["correlated_neurons_indices"] = (
+                            feature.feature_tables_data.correlated_neurons_indices
+                        )
                         feature_output["correlated_neurons_l1"] = self.round_list(
                             feature.feature_tables_data.correlated_neurons_cossim
                         )
                         feature_output["correlated_neurons_pearson"] = self.round_list(
                             feature.feature_tables_data.correlated_neurons_pearson
                         )
-                        feature_output[
-                            "correlated_features_indices"
-                        ] = feature.feature_tables_data.correlated_features_indices
+                        feature_output["correlated_features_indices"] = (
+                            feature.feature_tables_data.correlated_features_indices
+                        )
                         feature_output["correlated_features_l1"] = self.round_list(
                             feature.feature_tables_data.correlated_features_cossim
                         )
@@ -382,9 +382,9 @@ class NeuronpediaRunner:
                         logits_hist_data.bar_values
                     )
 
-                    feature_output[
-                        "num_tokens_for_dashboard"
-                    ] = self.n_prompts_to_select
+                    feature_output["num_tokens_for_dashboard"] = (
+                        self.n_prompts_to_select
+                    )
 
                     activations = []
                     sdbs = feature.sequence_data
