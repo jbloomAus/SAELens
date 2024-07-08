@@ -420,7 +420,7 @@ class ActivationsStore:
                 ].reshape(n_batches, n_context, -1)
         else:
             stacked_activations[:, :, 0] = layerwise_activations[self.hook_name]
-            
+
         return stacked_activations
 
     @torch.no_grad()
