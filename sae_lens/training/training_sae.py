@@ -231,7 +231,7 @@ class TrainingSAE(SAE):
 
         # Gating path with Heaviside step function
         gating_pre_activation = sae_in @ self.W_enc + self.b_gate
-        active_features = (gating_pre_activation > 0).float()
+        active_features = (gating_pre_activation > 0).to(self.dtype)
 
         # Magnitude path with weight sharing
         magnitude_pre_activation = sae_in @ (self.W_enc * self.r_mag.exp()) + self.b_mag

@@ -354,7 +354,7 @@ class SAE(HookedRootModule):
 
         # Gating path
         gating_pre_activation = sae_in @ self.W_enc + self.b_gate
-        active_features = (gating_pre_activation > 0).float()
+        active_features = (gating_pre_activation > 0).to(self.dtype)
 
         # Magnitude path with weight sharing
         magnitude_pre_activation = self.hook_sae_acts_pre(

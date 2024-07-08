@@ -318,16 +318,16 @@ class SAETrainer:
                 model_kwargs=self.cfg.model_kwargs,
             )
 
-            W_dec_norm_dist = self.sae.W_dec.norm(dim=1).detach().cpu().numpy()
+            W_dec_norm_dist = self.sae.W_dec.detach().float().norm(dim=1).cpu().numpy()
             eval_metrics["weights/W_dec_norms"] = wandb.Histogram(W_dec_norm_dist)  # type: ignore
 
             if self.sae.cfg.architecture == "standard":
-                b_e_dist = self.sae.b_enc.detach().cpu().numpy()
+                b_e_dist = self.sae.b_enc.detach().float().cpu().numpy()
                 eval_metrics["weights/b_e"] = wandb.Histogram(b_e_dist)  # type: ignore
             elif self.sae.cfg.architecture == "gated":
-                b_gate_dist = self.sae.b_gate.detach().cpu().numpy()
+                b_gate_dist = self.sae.b_gate.detach().float().cpu().numpy()
                 eval_metrics["weights/b_gate"] = wandb.Histogram(b_gate_dist)  # type: ignore
-                b_mag_dist = self.sae.b_mag.detach().cpu().numpy()
+                b_mag_dist = self.sae.b_mag.detach().float().cpu().numpy()
                 eval_metrics["weights/b_mag"] = wandb.Histogram(b_mag_dist)  # type: ignore
 
             wandb.log(
