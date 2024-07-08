@@ -2,6 +2,21 @@
 
 
 
+## v3.11.1 (2024-07-08)
+
+### Fix
+
+* fix: avoid bfloat16 errors in training gated saes (#217) ([`1e48f86`](https://github.com/jbloomAus/SAELens/commit/1e48f8668537d6b20067cc5862b9805ece5e2a70))
+
+### Unknown
+
+* Update README.md ([`9adba61`](https://github.com/jbloomAus/SAELens/commit/9adba61b03bb90583bea64902bc900091992b0b4))
+
+* Update deploy_docs.yml
+
+Modified this file to install dependencies (using caching for efficiency). ([`e90d5c1`](https://github.com/jbloomAus/SAELens/commit/e90d5c195b02bd450bd7335b83bfb952a58fa29d))
+
+
 ## v3.11.0 (2024-07-04)
 
 ### Feature
