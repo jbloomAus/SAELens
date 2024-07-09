@@ -375,3 +375,13 @@ SAE_LOOKUP:
         path: "mistral_7b_layer_24"
         variance_explained: 0.72
         l0: 75
+  sae-llama-3-8b-eai:
+    repo_id: "EleutherAI/sae-llama-3-8b-32x"
+    model: "meta-llama/Meta-Llama-3-8B"
+    conversion_func: "eleuther_llama3"
+    links:
+      model: "https://huggingface.co/meta-llama/Meta-Llama-3-8B"
+    saes:
+      - id: "blocks.11.hook_resid_pre"
+        path: "layers.11"
+  

@@ -126,6 +126,65 @@ def handle_config_defaulting(cfg_dict: dict[str, Any]) -> dict[str, Any]:
     return cfg_dict
 
 
+def eleuther_llama3_loader(
+    repo_id: str,
+    folder_name: str,
+    device: str = "cpu",
+    force_download: bool = False,
+    cfg_overrides: Optional[dict[str, Any]] = None,
+) -> tuple[dict[str, Any], dict[str, torch.Tensor], None]:
+
+
+    cfg_dict = get_sae_config_from_hf(
+        repo_id,
+        folder_name,
+        force_download,
+    )
+    # Apply overrides if provided
+    if cfg_overrides is not None:
+        cfg_dict.update(cfg_overrides)
+
+    weights_filename = f"{folder_name}/sae.safetensors"
+    sae_path = hf_hub_download(
+        repo_id=repo_id, filename=weights_filename, force_download=force_download
+    )
+    
+    layer = int(folder_name.split(".")[-1])
+    hook_name = f"blocks.{layer}.hook_resid_pre"
+
+    cfg_dict = {
+        "architecture": "standard",
+        "d_in": cfg_dict["d_in"],
+        "d_sae": cfg_dict["d_in"] * cfg_dict["expansion_factor"],
+        "dtype": "float32",
+        "device": device if device is not None else "cpu",
+        "model_name": "meta-llama/Meta-Llama-3-8B",
+        "hook_name": hook_name,
+        "hook_layer": layer,
+        "hook_head_index": None,
+        "activation_fn_str": "relu",
+        "apply_b_dec_to_input": True,
+        "finetuning_scaling_factor": False,
+        "sae_lens_training_version": None,
+        "prepend_bos": True,
+        "dataset_path": "togethercomputer/RedPajama-Data-1T-Sample",
+        "context_size": 2048,
+        "normalize_activations": "none",
+        "dataset_trust_remote_code": True,
+    }
+
+    cfg_dict, state_dict = read_sae_from_disk(
+        cfg_dict=cfg_dict,
+        weight_path=sae_path,
+        device=device,
+    )
+    
+    state_dict["b_enc"] = state_dict.pop("encoder.bias")
+    state_dict["W_enc"] = state_dict.pop("encoder.weight").transpose(0, 1)
+    
+    return cfg_dict, state_dict, None
+
+
 def connor_rob_hook_z_loader(
     repo_id: str,
     folder_name: str,
@@ -264,4 +323,5 @@ def read_sae_from_disk(
 NAMED_PRETRAINED_SAE_LOADERS: dict[str, PretrainedSaeLoader] = {
     "sae_lens": sae_lens_loader,  # type: ignore
     "connor_rob_hook_z": connor_rob_hook_z_loader,  # type: ignore
+    "eleuther_llama3": eleuther_llama3_loader,  # type: ignore
 }
