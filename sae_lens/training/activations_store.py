@@ -408,9 +408,16 @@ class ActivationsStore:
         elif (
             layerwise_activations[self.hook_name].ndim > 3
         ):  # if we have a head dimension
-            stacked_activations[:, :, 0] = layerwise_activations[self.hook_name].view(
-                n_batches, n_context, -1
-            )
+            try:
+                stacked_activations[:, :, 0] = layerwise_activations[
+                    self.hook_name
+                ].view(n_batches, n_context, -1)
+            except RuntimeError as e:
+                print(f"Error during view operation: {e}")
+                print("Attempting to use reshape instead...")
+                stacked_activations[:, :, 0] = layerwise_activations[
+                    self.hook_name
+                ].reshape(n_batches, n_context, -1)
         else:
             stacked_activations[:, :, 0] = layerwise_activations[self.hook_name]
 
