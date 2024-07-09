@@ -49,7 +49,6 @@ def trainer(
     model: HookedTransformer,
     activation_store: ActivationsStore,
 ):
-
     trainer = SAETrainer(
         model=model,
         sae=training_sae,
@@ -77,7 +76,6 @@ def modify_sae_output(sae: TrainingSAE, modifier: Callable[[torch.Tensor], Any])
 def test_train_step__reduces_loss_when_called_repeatedly_on_same_acts(
     trainer: SAETrainer,
 ) -> None:
-
     layer_acts = trainer.activation_store.next_batch()
 
     # intentionally train on the same activations 5 times to ensure loss decreases
@@ -98,7 +96,6 @@ def test_train_step__reduces_loss_when_called_repeatedly_on_same_acts(
 
 
 def test_train_step__output_looks_reasonable(trainer: SAETrainer) -> None:
-
     layer_acts = trainer.activation_store.next_batch()
 
     output = trainer._train_step(
@@ -123,7 +120,6 @@ def test_train_step__output_looks_reasonable(trainer: SAETrainer) -> None:
 def test_train_step__sparsity_updates_based_on_feature_act_sparsity(
     trainer: SAETrainer,
 ) -> None:
-
     trainer._reset_running_sparsity_stats()
     layer_acts = trainer.activation_store.next_batch()
 
@@ -163,7 +159,6 @@ def test_log_feature_sparsity__handles_zeroes_by_default_fp16() -> None:
 
 
 def test_build_train_step_log_dict(trainer: SAETrainer) -> None:
-
     train_output = TrainStepOutput(
         sae_in=torch.tensor([[-1, 0], [0, 2], [1, 1]]).float(),
         sae_out=torch.tensor([[0, 0], [0, 2], [0.5, 1]]).float(),

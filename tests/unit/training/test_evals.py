@@ -98,7 +98,6 @@ def test_run_evals_base_sae(
     activation_store: ActivationsStore,
     model: HookedTransformer,
 ):
-
     eval_metrics = run_evals(
         sae=base_sae,
         activation_store=activation_store,
@@ -127,7 +126,6 @@ def test_run_evals_training_sae(
     activation_store: ActivationsStore,
     model: HookedTransformer,
 ):
-
     eval_metrics = run_evals(
         sae=training_sae,
         activation_store=activation_store,

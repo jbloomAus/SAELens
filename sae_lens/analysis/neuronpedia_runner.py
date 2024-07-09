@@ -62,7 +62,6 @@ class NpEncoder(json.JSONEncoder):
 
 
 class NeuronpediaRunner:
-
     def __init__(
         self,
         sae_id: str,
@@ -83,7 +82,6 @@ class NeuronpediaRunner:
         top_acts_group_size: int = 20,
         quantile_group_size: int = 5,
     ):
-
         self.device = "cpu"
         if torch.backends.mps.is_available():
             self.device = "mps"

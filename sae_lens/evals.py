@@ -18,7 +18,6 @@ def run_evals(
     eval_batch_size_prompts: int | None = None,
     model_kwargs: Mapping[str, Any] = {},
 ) -> Mapping[str, Any]:
-
     hook_name = sae.cfg.hook_name
     hook_head_index = sae.cfg.hook_head_index
     ### Evals
@@ -153,7 +152,6 @@ def get_recons_loss(
 
     # TODO(tomMcGrath): the rescaling below is a bit of a hack and could probably be tidied up
     def standard_replacement_hook(activations: torch.Tensor, hook: Any):
-
         original_device = activations.device
         activations = activations.to(sae.device)
 
@@ -171,7 +169,6 @@ def get_recons_loss(
         return activations.to(original_device)
 
     def all_head_replacement_hook(activations: torch.Tensor, hook: Any):
-
         original_device = activations.device
         activations = activations.to(sae.device)
 
@@ -195,7 +192,6 @@ def get_recons_loss(
         return new_activations.to(original_device)
 
     def single_head_replacement_hook(activations: torch.Tensor, hook: Any):
-
         original_device = activations.device
         activations = activations.to(sae.device)
 

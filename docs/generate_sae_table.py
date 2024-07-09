@@ -66,7 +66,6 @@ def generate_sae_table():
         #     )
 
         for info in tqdm(model_info["saes"]):
-
             # can remove this by explicitly overriding config in yaml. Do this later.
             if model_info["conversion_func"] == "connor_rob_hook_z":
                 repo_id = model_info["repo_id"]

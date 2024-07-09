@@ -111,7 +111,6 @@ class SAETrainingRunner:
         return sae
 
     def _compile_if_needed(self):
-
         # Compile model and SAE
         #  torch.compile can provide significant speedups (10-20% in testing)
         # using max-autotune gives the best speedups but:
@@ -166,7 +165,7 @@ class SAETrainingRunner:
         """
 
         if self.cfg.b_dec_init_method == "geometric_median":
-            layer_acts = self.activations_store.storage_buffer.detach()[:, 0, :]
+            layer_acts = torch.tensor(self.activations_store.storage_buffer)[:, 0, :]
             # get geometric median of the activations if we're using those.
             median = compute_geometric_median(
                 layer_acts,
@@ -174,7 +173,7 @@ class SAETrainingRunner:
             ).median
             self.sae.initialize_b_dec_with_precalculated(median)  # type: ignore
         elif self.cfg.b_dec_init_method == "mean":
-            layer_acts = self.activations_store.storage_buffer.detach().cpu()[:, 0, :]
+            layer_acts = torch.tensor(self.activations_store.storage_buffer)[:, 0, :]
             self.sae.initialize_b_dec_with_mean(layer_acts)  # type: ignore
 
     def save_checkpoint(
@@ -183,7 +182,6 @@ class SAETrainingRunner:
         checkpoint_name: int | str,
         wandb_aliases: list[str] | None = None,
     ) -> str:
-
         checkpoint_path = f"{trainer.cfg.checkpoint_path}/{checkpoint_name}"
 
         os.makedirs(checkpoint_path, exist_ok=True)

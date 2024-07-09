@@ -1,5 +1,7 @@
+import os
 from collections.abc import Iterable
 from math import ceil
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -7,9 +9,14 @@ import torch
 from datasets import Dataset, IterableDataset
 from transformer_lens import HookedTransformer
 
-from sae_lens.config import LanguageModelSAERunnerConfig, PretokenizeRunnerConfig
+from sae_lens.config import (
+    CacheActivationsRunnerConfig,
+    LanguageModelSAERunnerConfig,
+    PretokenizeRunnerConfig,
+)
+from sae_lens.load_model import load_model
 from sae_lens.pretokenize_runner import pretokenize_dataset
-from sae_lens.training.activations_store import ActivationsStore
+from sae_lens.training.activations_store import FILE_EXTENSION, ActivationsStore
 from tests.unit.helpers import build_sae_cfg, load_model_cached
 
 
@@ -105,13 +112,12 @@ def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
         store.estimated_norm_scaling_factor = 10.399
 
     assert store.model == model
-
     assert isinstance(store.dataset, IterableDataset)
     assert isinstance(store.iterable_sequences, Iterable)
 
     # the rest is in the dataloader.
     expected_size = (
-        cfg.store_batch_size_prompts * cfg.context_size * cfg.n_batches_in_buffer // 2
+        cfg.store_batch_size_prompts * cfg.context_size * cfg.n_batches_in_buffer
     )
     assert store.storage_buffer.shape == (expected_size, 1, cfg.d_in)
 
@@ -141,22 +147,21 @@ def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
 
     # --- Next, get buffer and assert it looks correct ---
 
-    n_batches_in_buffer = 3
-    buffer = store.get_buffer(n_batches_in_buffer)
+    buffer = store.get_buffer()
 
-    assert isinstance(buffer, torch.Tensor)
+    assert isinstance(buffer, np.memmap)
     buffer_size_expected = (
-        store.store_batch_size_prompts * store.context_size * n_batches_in_buffer
+        store.store_batch_size_prompts * store.context_size * cfg.n_batches_in_buffer
     )
 
     assert buffer.shape == (buffer_size_expected, 1, store.d_in)
-    assert buffer.device == store.device
 
     # check the buffer norm
     if cfg.normalize_activations == "expected_average_only_in":
+        example_activations = store.next_batch()
         assert torch.allclose(
-            buffer.norm(dim=-1),
-            np.sqrt(store.d_in) * torch.ones_like(buffer.norm(dim=-1)),
+            example_activations.norm(dim=-1),
+            np.sqrt(store.d_in) * torch.ones_like(example_activations.norm(dim=-1)),
             atol=2,
         )
 
@@ -280,23 +285,15 @@ def test_activations_store_moves_with_model(ts_model: HookedTransformer):
     assert activations.device == torch.device("cuda:0")
 
 
-def test_activations_store_estimate_norm_scaling_factor(
-    cfg: LanguageModelSAERunnerConfig, model: HookedTransformer
-):
+def test_activations_store_estimate_norm_scaling_factor(ts_model: HookedTransformer):
     # --- first, test initialisation ---
-
-    # config if you want to benchmark this:
-    #
-    # cfg.context_size = 1024
-    # cfg.n_batches_in_buffer = 64
-    # cfg.store_batch_size_prompts = 16
-
+    cfg = build_sae_cfg()
+    model = ts_model
     store = ActivationsStore.from_config(model, cfg)
-
     factor = store.estimate_norm_scaling_factor(n_batches_for_norm_estimate=10)
     assert isinstance(factor, float)
 
-    scaled_norm = store._storage_buffer.norm(dim=-1).mean() * factor  # type: ignore
+    scaled_norm = torch.tensor(store.next_batch()).norm(dim=-1).mean() * factor  # type: ignore
     assert scaled_norm == pytest.approx(np.sqrt(store.d_in), abs=5)
 
 
@@ -424,3 +421,105 @@ def test_activation_store__errors_if_neither_dataset_nor_dataset_path(
 
     with pytest.raises(ValueError):
         ActivationsStore.from_config(ts_model, cfg, override_dataset=None)
+
+
+def test_activation_store_save_load_cls_methods():
+    dtype = np.float32
+    d_in = 1024
+
+    memmap_filename = "tmp.dat"
+    memmap_buffer = np.memmap(
+        memmap_filename,
+        dtype=dtype,
+        mode="w+",
+        shape=(10, 1, d_in),
+    )
+
+    ActivationsStore._save_buffer(memmap_buffer, memmap_filename)
+
+    loaded_buffer = ActivationsStore._load_buffer(memmap_filename, num_layers=1, dtype=dtype, d_in=d_in)  # type: ignore
+
+    assert loaded_buffer.shape == memmap_buffer.shape
+    assert np.allclose(memmap_buffer, loaded_buffer)
+
+    os.remove(memmap_filename)
+
+
+def test_activation_store_save_load_buffer(
+    tmp_path: Path,
+):
+    if torch.cuda.is_available():
+        device = "cuda"
+    elif torch.backends.mps.is_available():
+        device = "mps"
+    else:
+        device = "cpu"
+
+    example_ds = Dataset.from_list(
+        [
+            {"text": "hello world1"},
+            {"text": "hello world2"},
+            {"text": "hello world3"},
+        ]
+        * 5000
+    )
+
+    # total_training_steps = 20_000
+    context_size = 256
+    n_batches_in_buffer = 4
+    store_batch_size = 1
+    n_buffers = 3
+
+    tokens_in_buffer = n_batches_in_buffer * store_batch_size * context_size
+    total_training_tokens = n_buffers * tokens_in_buffer
+
+    cfg = CacheActivationsRunnerConfig(
+        new_cached_activations_path=str(tmp_path),
+        # new_cached_activations_path=cached_activations_fixture_path,
+        # Pick a tiny model to make this easier.
+        model_name="gelu-1l",
+        ## MLP Layer 0 ##
+        hook_name="blocks.0.hook_mlp_out",
+        hook_layer=0,
+        d_in=512,
+        dataset_path="NeelNanda/c4-tokenized-2b",
+        context_size=context_size,  # Speed things up.
+        is_dataset_tokenized=True,
+        prepend_bos=True,  # I used to train GPT2 SAEs with a prepended-bos but no longer think we should do this.
+        training_tokens=total_training_tokens,  # For initial testing I think this is a good number.
+        train_batch_size_tokens=4096,
+        # Loss Function
+        ## Reconstruction Coefficient.
+        # Buffer details won't matter in we cache / shuffle our activations ahead of time.
+        n_batches_in_buffer=n_batches_in_buffer,
+        store_batch_size_prompts=store_batch_size,
+        normalize_activations="none",
+        #
+        shuffle_every_n_buffers=2,
+        n_shuffles_with_last_section=1,
+        n_shuffles_in_entire_dir=1,
+        n_shuffles_final=1,
+        # Misc
+        device=device,
+        seed=42,
+        dtype="float16",
+    )
+
+    model = load_model(
+        model_class_name=cfg.model_class_name,
+        model_name=cfg.model_name,
+        device=cfg.device,
+        model_from_pretrained_kwargs=cfg.model_from_pretrained_kwargs,
+    )
+
+    store = ActivationsStore.from_config(model, cfg, override_dataset=example_ds)
+    buffer_filename = f"{tmp_path}/{0}.{FILE_EXTENSION}"
+
+    buffer = store.get_buffer()
+    store.save_buffer(buffer, buffer_filename)
+    loaded_buffer = store.load_buffer(buffer_filename)
+
+    assert loaded_buffer.shape == buffer.shape
+    assert np.allclose(buffer, loaded_buffer)
+
+    os.remove(buffer_filename)

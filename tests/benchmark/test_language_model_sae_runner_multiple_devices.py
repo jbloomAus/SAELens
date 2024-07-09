@@ -100,7 +100,6 @@ BASE_CFG = dict(
 
 # The way to run this with this command:
 def test_sae_runner_multiple_devices():
-
     cfg_dict = BASE_CFG
     cfg_dict["model_name"] = "gemma-2b"
     cfg_dict["d_in"] = 2048

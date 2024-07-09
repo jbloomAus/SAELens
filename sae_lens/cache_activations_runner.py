@@ -1,18 +1,24 @@
 import math
 import os
-from typing import Tuple
 
+import numpy as np
 import torch
+from datasets import Dataset, DatasetDict, IterableDataset, IterableDatasetDict
 from tqdm import tqdm
 
 from sae_lens.config import DTYPE_MAP, CacheActivationsRunnerConfig
 from sae_lens.load_model import load_model
-from sae_lens.training.activations_store import ActivationsStore
+from sae_lens.training.activations_store import FILE_EXTENSION, ActivationsStore
 
 
 class CacheActivationsRunner:
-
-    def __init__(self, cfg: CacheActivationsRunnerConfig):
+    def __init__(
+        self,
+        cfg: CacheActivationsRunnerConfig,
+        override_dataset: (
+            DatasetDict | Dataset | IterableDatasetDict | IterableDataset | None
+        ) = None,
+    ):
         self.cfg = cfg
         self.model = load_model(
             model_class_name=cfg.model_class_name,
@@ -23,9 +29,10 @@ class CacheActivationsRunner:
         self.activations_store = ActivationsStore.from_config(
             self.model,
             cfg,
+            override_dataset=override_dataset,
         )
 
-        self.file_extension = "safetensors"
+        self.file_extension = FILE_EXTENSION
 
     def __str__(self):
         """
@@ -40,27 +47,33 @@ class CacheActivationsRunner:
             if isinstance(self.cfg.dtype, torch.dtype)
             else DTYPE_MAP[self.cfg.dtype].itemsize
         )
-        tokens_in_buffer = (
-            self.cfg.n_batches_in_buffer
-            * self.cfg.store_batch_size_prompts
-            * self.cfg.context_size
-        )
         total_training_tokens = self.cfg.training_tokens
         total_disk_space_gb = total_training_tokens * bytes_per_token / 10**9
 
         return (
             f"Activation Cache Runner:\n"
             f"Total training tokens: {total_training_tokens}\n"
-            f"Number of buffers: {math.ceil(total_training_tokens / tokens_in_buffer)}\n"
-            f"Tokens per buffer: {tokens_in_buffer}\n"
+            f"Number of buffers: {self.n_buffers}\n"
+            f"Tokens per buffer: {self.tokens_in_buffer}\n"
             f"Disk space required: {total_disk_space_gb:.2f} GB\n"
             f"Configuration:\n"
             f"{self.cfg}"
         )
 
+    @property
+    def tokens_in_buffer(self):
+        return (
+            self.cfg.n_batches_in_buffer
+            * self.cfg.store_batch_size_prompts
+            * self.cfg.context_size
+        )
+
+    @property
+    def n_buffers(self):
+        return math.ceil(self.cfg.training_tokens / self.tokens_in_buffer)
+
     @torch.no_grad()
     def run(self):
-
         new_cached_activations_path = self.cfg.new_cached_activations_path
 
         # if the activations directory exists and has files in it, raise an exception
@@ -73,94 +86,109 @@ class CacheActivationsRunner:
         else:
             os.makedirs(new_cached_activations_path)
 
-        print(f"Started caching {self.cfg.training_tokens} activations")
-        tokens_per_buffer = (
-            self.cfg.store_batch_size_prompts
-            * self.cfg.context_size
-            * self.cfg.n_batches_in_buffer
-        )
-
-        n_buffers = math.ceil(self.cfg.training_tokens / tokens_per_buffer)
-
-        for i in tqdm(range(n_buffers), desc="Caching activations"):
+        for i in tqdm(range(self.n_buffers), desc="Caching activations"):
             try:
-                buffer = self.activations_store.get_buffer(self.cfg.n_batches_in_buffer)
-
-                self.activations_store.save_buffer(
-                    buffer, f"{new_cached_activations_path}/{i}.safetensors"
-                )
+                buffer = self.activations_store.get_buffer()
+                buffer_path = f"{new_cached_activations_path}/{i}.{self.file_extension}"
+                self.activations_store.save_buffer(buffer, buffer_path)
 
                 del buffer
 
-                if i % self.cfg.shuffle_every_n_buffers == 0 and i > 0:
+                if i > 0 and i % self.cfg.shuffle_every_n_buffers == 0:
                     # Shuffle the buffers on disk
 
                     # Do random pairwise shuffling between the last shuffle_every_n_buffers buffers
                     for _ in range(self.cfg.n_shuffles_with_last_section):
-                        self.shuffle_activations_pairwise(
+                        self.shuffle_two_random_buffers(
                             new_cached_activations_path,
-                            buffer_idx_range=(i - self.cfg.shuffle_every_n_buffers, i),
+                            start_idx=i - self.cfg.shuffle_every_n_buffers,
+                            end_idx=i,
                         )
 
                     # Do more random pairwise shuffling between all the buffers
                     for _ in range(self.cfg.n_shuffles_in_entire_dir):
-                        self.shuffle_activations_pairwise(
-                            new_cached_activations_path,
-                            buffer_idx_range=(0, i),
+                        self.shuffle_two_random_buffers(
+                            new_cached_activations_path, start_idx=0, end_idx=i
                         )
             except StopIteration:
                 print(
-                    f"Warning: Ran out of samples while filling the buffer at batch {i} before reaching {n_buffers} batches. No more caching will occur."
+                    f"Warning: Ran out of samples while filling the buffer at batch {i} before reaching {self.n_buffers} batches. No more caching will occur."
                 )
                 break
 
         # More final shuffling (mostly in case we didn't end on an i divisible by shuffle_every_n_buffers)
-        if n_buffers > 1:
+        if self.n_buffers > 1:
             for _ in tqdm(range(self.cfg.n_shuffles_final), desc="Final shuffling"):
-                self.shuffle_activations_pairwise(
+                self.shuffle_two_random_buffers(
                     new_cached_activations_path,
-                    buffer_idx_range=(0, n_buffers),
+                    start_idx=0,
+                    end_idx=self.n_buffers,
                 )
 
-    @torch.no_grad()
-    def shuffle_activations_pairwise(
-        self, datapath: str, buffer_idx_range: Tuple[int, int]
-    ):
+    def shuffle_two_random_buffers(self, datapath: str, start_idx: int, end_idx: int):
         """
-        Shuffles two buffers on disk.
+        Shuffles two randomly selected buffers on disk.
         """
         assert (
-            buffer_idx_range[0] < buffer_idx_range[1] - 1
+            start_idx < end_idx - 1
         ), "buffer_idx_range[0] must be smaller than buffer_idx_range[1] by at least 1"
 
-        buffer_idx1 = torch.randint(
-            buffer_idx_range[0], buffer_idx_range[1], (1,)
-        ).item()
-        buffer_idx2 = torch.randint(
-            buffer_idx_range[0], buffer_idx_range[1], (1,)
-        ).item()
+        buffer_idx1 = int(torch.randint(start_idx, end_idx, (1,)).item())
+        buffer_idx2 = int(torch.randint(start_idx, end_idx, (1,)).item())
         while buffer_idx1 == buffer_idx2:  # Make sure they're not the same
-            buffer_idx2 = torch.randint(
-                buffer_idx_range[0], buffer_idx_range[1], (1,)
-            ).item()
+            buffer_idx2 = int(torch.randint(start_idx, end_idx, (1,)).item())
 
-        buffer1 = self.activations_store.load_buffer(
-            f"{datapath}/{buffer_idx1}.{self.file_extension}"
-        )
-        buffer2 = self.activations_store.load_buffer(
-            f"{datapath}/{buffer_idx2}.{self.file_extension}"
-        )
-        joint_buffer = torch.cat([buffer1, buffer2])
+        self.shuffle_two_buffers(datapath, buffer_idx1, buffer_idx2)
 
-        # Shuffle them
-        joint_buffer = joint_buffer[torch.randperm(joint_buffer.shape[0])]
-        shuffled_buffer1 = joint_buffer[: buffer1.shape[0]]
-        shuffled_buffer2 = joint_buffer[buffer1.shape[0] :]
+    @torch.no_grad()
+    def shuffle_two_buffers(self, datapath: str, buffer_idx1: int, buffer_idx2: int):
+        path1 = f"{datapath}/{buffer_idx1}.{self.file_extension}"
+        path2 = f"{datapath}/{buffer_idx2}.{self.file_extension}"
 
-        # Save them back
-        self.activations_store.save_buffer(
-            shuffled_buffer1, f"{datapath}/{buffer_idx1}.{self.file_extension}"
+        buffer1 = self.activations_store.load_buffer(path1)
+        buffer2 = self.activations_store.load_buffer(path2)
+
+        # Get total size and create a joint buffer
+        total_size = buffer1.shape[0] + buffer2.shape[0]
+        joint_buffer = np.memmap(
+            f"{datapath}/temp_joint_buffer",
+            dtype=buffer1.dtype,
+            mode="w+",
+            shape=(total_size,) + buffer1.shape[1:],
         )
-        self.activations_store.save_buffer(
-            shuffled_buffer2, f"{datapath}/{buffer_idx2}.{self.file_extension}"
+
+        # Copy data to joint buffer
+        joint_buffer[: buffer1.shape[0]] = buffer1
+        joint_buffer[buffer1.shape[0] :] = buffer2
+
+        # Generate random permutation
+        permutation = np.random.permutation(total_size)
+
+        # Create shuffled buffers
+        shuffled_buffer1 = np.memmap(
+            f"{datapath}/temp_shuffled_1",
+            dtype=buffer1.dtype,
+            mode="w+",
+            shape=buffer1.shape,
         )
+        shuffled_buffer2 = np.memmap(
+            f"{datapath}/temp_shuffled_2",
+            dtype=buffer2.dtype,
+            mode="w+",
+            shape=buffer2.shape,
+        )
+
+        # Apply permutation
+        shuffled_buffer1[:] = joint_buffer[permutation[: buffer1.shape[0]]]
+        shuffled_buffer2[:] = joint_buffer[permutation[buffer1.shape[0] :]]
+
+        # Save shuffled buffers back to original files
+        self.activations_store.save_buffer(shuffled_buffer1, path1)
+        self.activations_store.save_buffer(shuffled_buffer2, path2)
+
+        # Clean up temporary files
+        import os
+
+        os.remove(f"{datapath}/temp_joint_buffer")
+        os.remove(f"{datapath}/temp_shuffled_1")
+        os.remove(f"{datapath}/temp_shuffled_2")

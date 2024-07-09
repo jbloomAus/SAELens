@@ -229,7 +229,6 @@ class LanguageModelSAERunnerConfig:
     sae_lens_training_version: str = field(default_factory=lambda: __version__)
 
     def __post_init__(self):
-
         if self.resume:
             raise ValueError(
                 "Resuming is no longer supported. You can finetune a trained SAE using cfg.from_pretrained path."
@@ -393,7 +392,6 @@ class LanguageModelSAERunnerConfig:
         }
 
     def to_dict(self) -> dict[str, Any]:
-
         cfg_dict = {
             **self.__dict__,
             # some args may not be serializable by default
@@ -405,7 +403,6 @@ class LanguageModelSAERunnerConfig:
         return cfg_dict
 
     def to_json(self, path: str) -> None:
-
         if not os.path.exists(os.path.dirname(path)):
             os.makedirs(os.path.dirname(path))
 
@@ -483,7 +480,6 @@ class CacheActivationsRunnerConfig:
 
 @dataclass
 class ToyModelSAERunnerConfig:
-
     architecture: Literal["standard", "gated"] = "standard"
 
     # ReLu Model Parameters
