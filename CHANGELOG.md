@@ -2,6 +2,37 @@
 
 
 
+## v3.12.0 (2024-07-09)
+
+### Feature
+
+* feat: use TransformerLens 2 (#214)
+
+* Updated pyproject.toml to use TL ^2.0, and to use fork of sae-vis that also uses TL ^2.0
+
+* Removed reliance on sae-vis
+
+* Removed neuronpedia tutorial
+
+* Added error handling for view operation
+
+* Corrected formatting ([`526e736`](https://github.com/jbloomAus/SAELens/commit/526e736b937f95333969c33c83d2500dacab43d7))
+
+### Unknown
+
+* Fix/allow device override (#221)
+
+* Forced load_from_pretrained to respect device and dtype params
+
+* Removed test file ([`697dd5f`](https://github.com/jbloomAus/SAELens/commit/697dd5f0911d145d6a7c956e29bbcf28cf9fee38))
+
+* Fixed hooks for single head SAEs (#219)
+
+* included zero-ablation-hook for single-head SAEs
+
+* fixed a typo in single_head_replacement_hook ([`3bb4f73`](https://github.com/jbloomAus/SAELens/commit/3bb4f73933984278bd4fb0446ead630f6edad600))
+
+
 ## v3.11.2 (2024-07-08)
 
 ### Fix
