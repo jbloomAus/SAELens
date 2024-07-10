@@ -452,7 +452,7 @@ class SAE(HookedRootModule):
 
     @classmethod
     def load_from_pretrained(
-        cls, path: str, device: str = "cpu", dtype: str = "float32"
+        cls, path: str, device: str = "cpu", dtype: str | None = None
     ) -> "SAE":
 
         # get the config
@@ -461,14 +461,15 @@ class SAE(HookedRootModule):
             cfg_dict = json.load(f)
         cfg_dict = handle_config_defaulting(cfg_dict)
         cfg_dict["device"] = device
-        cfg_dict["dtype"] = dtype
+        if dtype is not None:
+            cfg_dict["dtype"] = dtype
 
         weight_path = os.path.join(path, SAE_WEIGHTS_PATH)
         cfg_dict, state_dict = read_sae_from_disk(
             cfg_dict=cfg_dict,
             weight_path=weight_path,
             device=device,
-            dtype=DTYPE_MAP[dtype],
+            dtype=DTYPE_MAP[cfg_dict["dtype"]],
         )
 
         sae_cfg = SAEConfig.from_dict(cfg_dict)
