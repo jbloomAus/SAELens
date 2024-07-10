@@ -404,7 +404,7 @@ class TrainingSAE(SAE):
         cls,
         path: str,
         device: str = "cpu",
-        dtype: str = "float32",
+        dtype: str | None = None,
     ) -> "TrainingSAE":
 
         # get the config
@@ -412,13 +412,16 @@ class TrainingSAE(SAE):
         with open(config_path, "r") as f:
             cfg_dict = json.load(f)
         cfg_dict = handle_config_defaulting(cfg_dict)
+        cfg_dict["device"] = device
+        if dtype is not None:
+            cfg_dict["dtype"] = dtype
 
         weight_path = os.path.join(path, SAE_WEIGHTS_PATH)
         cfg_dict, state_dict = read_sae_from_disk(
             cfg_dict=cfg_dict,
             weight_path=weight_path,
             device=device,
-            dtype=DTYPE_MAP[dtype],
+            dtype=DTYPE_MAP[cfg_dict["dtype"]],
         )
         sae_cfg = TrainingSAEConfig.from_dict(cfg_dict)
 
