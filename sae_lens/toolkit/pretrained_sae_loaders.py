@@ -134,7 +134,6 @@ def eleuther_llama3_loader(
     cfg_overrides: Optional[dict[str, Any]] = None,
 ) -> tuple[dict[str, Any], dict[str, torch.Tensor], None]:
 
-
     cfg_dict = get_sae_config_from_hf(
         repo_id,
         folder_name,
@@ -148,9 +147,9 @@ def eleuther_llama3_loader(
     sae_path = hf_hub_download(
         repo_id=repo_id, filename=weights_filename, force_download=force_download
     )
-    
+
     layer = int(folder_name.split(".")[-1])
-    hook_name = f"blocks.{layer}.hook_resid_pre"
+    hook_name = f"blocks.{layer}.hook_resid_post"  # relevant
 
     cfg_dict = {
         "architecture": "standard",
@@ -178,10 +177,10 @@ def eleuther_llama3_loader(
         weight_path=sae_path,
         device=device,
     )
-    
+
     state_dict["b_enc"] = state_dict.pop("encoder.bias")
     state_dict["W_enc"] = state_dict.pop("encoder.weight").transpose(0, 1)
-    
+
     return cfg_dict, state_dict, None
 
 

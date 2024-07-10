@@ -382,6 +382,9 @@ SAE_LOOKUP:
     links:
       model: "https://huggingface.co/meta-llama/Meta-Llama-3-8B"
     saes:
-      - id: "blocks.11.hook_resid_pre"
+      - id: "blocks.3.hook_resid_post"
+        path: "layers.3"
+      - id: "blocks.11.hook_resid_post"
         path: "layers.11"
-  
+      - id: "blocks.30.hook_resid_post"
+        path: "layers.30"
