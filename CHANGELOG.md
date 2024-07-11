@@ -2,6 +2,33 @@
 
 
 
+## v3.12.1 (2024-07-11)
+
+### Fix
+
+* fix: force release of dtype_fix ([`bfe7feb`](https://github.com/jbloomAus/SAELens/commit/bfe7feb10d987f39a9e0d00f5595869a64de2b5b))
+
+### Unknown
+
+* Merge pull request #225 from jbloomAus/dtype_fix
+
+fix: load_from_pretrained should not require a dtype nor default to float32 ([`71d9da8`](https://github.com/jbloomAus/SAELens/commit/71d9da80a0e48a56f8d2394aecb0383a5f2a0cc6))
+
+* TrainingSAE should: 1) respect device override and 2) not default to float32 dtype, and instead default to the SAE&#39;s dtype ([`a4a1c46`](https://github.com/jbloomAus/SAELens/commit/a4a1c469fff7e3b0685ced4c0632808fc3690359))
+
+* load_from_pretrained should not require a dtype nor default to float32 ([`a485dc0`](https://github.com/jbloomAus/SAELens/commit/a485dc00d45bd3a69add64ccdf0cb5697d8b77ad))
+
+* Fix SAE failing to upload to wandb due to artifact name. (#224)
+
+* Fix SAE artifact name.
+
+* format
+
+---------
+
+Co-authored-by: Joseph Bloom &lt;jbloomaus@gmail.com&gt; ([`6ae4849`](https://github.com/jbloomAus/SAELens/commit/6ae4849bb1947b6c83fd438b9dd00a8172f1f4b8))
+
+
 ## v3.12.0 (2024-07-09)
 
 ### Feature
