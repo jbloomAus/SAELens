@@ -10,7 +10,7 @@ from transformer_lens.hook_points import HookedRootModule
 
 from sae_lens import __version__
 from sae_lens.config import LanguageModelSAERunnerConfig
-from sae_lens.evals import run_evals
+from sae_lens.evals import EvalConfig, run_evals
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.optim import L1Scheduler, get_lr_scheduler
 from sae_lens.training.training_sae import TrainingSAE, TrainStepOutput
@@ -21,6 +21,13 @@ FINETUNING_PARAMETERS = {
     "decoder": ["scaling_factor", "W_dec", "b_dec"],
     "unrotated_decoder": ["scaling_factor", "b_dec"],
 }
+
+TRAINER_EVAL_CONFIG = EvalConfig(
+    n_eval_reconstruction_batches=10,
+    compute_ce_loss=True,
+    n_eval_sparsity_variance_batches=1,
+    compute_l2_norms=True,
+)
 
 
 def _log_feature_sparsity(
@@ -313,10 +320,29 @@ class SAETrainer:
                 sae=self.sae,
                 activation_store=self.activation_store,
                 model=self.model,
-                n_eval_batches=self.cfg.n_eval_batches,
-                eval_batch_size_prompts=self.cfg.eval_batch_size_prompts,
+                eval_config=TRAINER_EVAL_CONFIG,
                 model_kwargs=self.cfg.model_kwargs,
             )
+
+            # Remove eval metrics that are already logged during training
+            eval_metrics.pop("metrics/explained_variance", None)
+            eval_metrics.pop("metrics/explained_variance_std", None)
+            eval_metrics.pop("metrics/l0", None)
+            eval_metrics.pop("metrics/l1", None)
+            eval_metrics.pop("metrics/mse", None)
+
+            # Remove metrics that are not useful for wandb logging
+            eval_metrics.pop("metrics/total_tokens_evaluated", None)
+
+            # Remove eval metrics that are already logged during training
+            eval_metrics.pop("metrics/explained_variance", None)
+            eval_metrics.pop("metrics/explained_variance_std", None)
+            eval_metrics.pop("metrics/l0", None)
+            eval_metrics.pop("metrics/l1", None)
+            eval_metrics.pop("metrics/mse", None)
+
+            # Remove metrics that are not useful for wandb logging
+            eval_metrics.pop("metrics/total_tokens_evaluated", None)
 
             W_dec_norm_dist = self.sae.W_dec.detach().float().norm(dim=1).cpu().numpy()
             eval_metrics["weights/W_dec_norms"] = wandb.Histogram(W_dec_norm_dist)  # type: ignore

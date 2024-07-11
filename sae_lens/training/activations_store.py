@@ -6,7 +6,7 @@ from typing import Any, Generator, Iterator, Literal, cast
 
 import numpy as np
 import torch
-from datasets import Dataset, DatasetDict, load_dataset
+from datasets import Dataset, DatasetDict, IterableDataset, load_dataset
 from safetensors import safe_open
 from safetensors.torch import save_file
 from torch.utils.data import DataLoader
@@ -33,7 +33,7 @@ class ActivationsStore:
     model: HookedRootModule
     dataset: HfDataset
     cached_activations_path: str | None
-    tokens_column: Literal["tokens", "input_ids", "text"]
+    tokens_column: Literal["tokens", "input_ids", "text", "problem"]
     hook_name: str
     hook_layer: int
     hook_head_index: int | None
@@ -89,6 +89,8 @@ class ActivationsStore:
         cls,
         model: HookedRootModule,
         sae: SAE,
+        context_size: int | None = None,
+        dataset: HfDataset | str | None = None,
         streaming: bool = True,
         store_batch_size_prompts: int = 8,
         n_batches_in_buffer: int = 8,
@@ -99,12 +101,12 @@ class ActivationsStore:
 
         return cls(
             model=model,
-            dataset=sae.cfg.dataset_path,
+            dataset=sae.cfg.dataset_path if dataset is None else dataset,
             d_in=sae.cfg.d_in,
             hook_name=sae.cfg.hook_name,
             hook_layer=sae.cfg.hook_layer,
             hook_head_index=sae.cfg.hook_head_index,
-            context_size=sae.cfg.context_size,
+            context_size=sae.cfg.context_size if context_size is None else context_size,
             prepend_bos=sae.cfg.prepend_bos,
             streaming=streaming,
             store_batch_size_prompts=store_batch_size_prompts,
@@ -198,9 +200,12 @@ class ActivationsStore:
         elif "text" in dataset_sample.keys():
             self.is_dataset_tokenized = False
             self.tokens_column = "text"
+        elif "problem" in dataset_sample.keys():
+            self.is_dataset_tokenized = False
+            self.tokens_column = "problem"
         else:
             raise ValueError(
-                "Dataset must have a 'tokens', 'input_ids', or 'text' column."
+                "Dataset must have a 'tokens', 'input_ids', 'text', or 'problem' column."
             )
         if self.is_dataset_tokenized:
             ds_context_size = len(dataset_sample[self.tokens_column])
@@ -330,6 +335,26 @@ class ActivationsStore:
         scaling_factor = np.sqrt(self.d_in) / mean_norm
 
         return scaling_factor
+
+    def shuffle_input_dataset(self, seed: int, buffer_size: int = 1):
+        """
+        This applies a shuffle to the huggingface dataset that is the input to the activations store. This
+        also shuffles the shards of the dataset, which is especially useful for evaluating on different
+        sections of very large streaming datasets. Buffer size is only relevant for streaming datasets.
+        The default buffer_size of 1 means that only the shard will be shuffled; larger buffer sizes will
+        additionally shuffle individual elements within the shard.
+        """
+        if type(self.dataset) == IterableDataset:
+            self.dataset = self.dataset.shuffle(seed=seed, buffer_size=buffer_size)
+        else:
+            self.dataset = self.dataset.shuffle(seed=seed)
+        self.iterable_dataset = iter(self.dataset)
+
+    def reset_input_dataset(self):
+        """
+        Resets the input dataset iterator to the beginning.
+        """
+        self.iterable_dataset = iter(self.dataset)
 
     @property
     def storage_buffer(self) -> torch.Tensor:
