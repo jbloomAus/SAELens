@@ -195,6 +195,7 @@ def test_build_train_step_log_dict(trainer: SAETrainer) -> None:
         "details/current_learning_rate": 2e-4,
         "details/current_l1_coefficient": trainer.cfg.l1_coefficient,
         "details/n_training_tokens": 123,
+        "details/estimated_norm_scaling_factor": 1.0,
     }
 
 
