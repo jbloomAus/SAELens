@@ -39,17 +39,15 @@ Pre-trained SAEs for various models can be imported via SAE Lens. See this [page
 Feel free to join the [Open Source Mechanistic Interpretability Slack](https://join.slack.com/t/opensourcemechanistic/shared_invite/zt-2k0id7mv8-CsIgPLmmHd03RPJmLUcapw) for support!
 
 
-## Citations and References
+## Citation
 
-Research:
-- [Towards Monosemanticy](https://transformer-circuits.pub/2023/monosemantic-features)
-- [Sparse Autoencoders Find Highly Interpretable Features in Language Model](https://arxiv.org/abs/2309.08600)
+Please cite the package as follows:
 
-
-
-Reference Implementations:
-- [Neel Nanda](https://github.com/neelnanda-io/1L-Sparse-Autoencoder)
-- [AI-Safety-Foundation](https://github.com/ai-safety-foundation/sparse_autoencoder).
-- [Arthur Conmy](https://github.com/ArthurConmy/sae).
-- [Callum McDougall](https://github.com/callummcdougall/sae-exercises-mats/tree/main)
-
+```
+@misc{bloom2024saetrainingcodebase,
+   title = {SAELens
+   author = {Joseph Bloom, David Chanin},
+   year = {2024},
+   howpublished = {\url{https://github.com/jbloomAus/SAELens}}
+}}
+```
