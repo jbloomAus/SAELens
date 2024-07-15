@@ -348,9 +348,12 @@ class SAE(HookedRootModule):
     def encode_gated(
         self, x: Float[torch.Tensor, "... d_in"]
     ) -> Float[torch.Tensor, "... d_sae"]:
+
         x = x.to(self.dtype)
         x = self.reshape_fn_in(x)
-        sae_in = self.hook_sae_input(x - self.b_dec * self.cfg.apply_b_dec_to_input)
+        x = self.hook_sae_input(x)
+        x = self.run_time_activation_norm_fn_in(x)
+        sae_in = x - self.b_dec * self.cfg.apply_b_dec_to_input
 
         # Gating path
         gating_pre_activation = sae_in @ self.W_enc + self.b_gate
@@ -373,17 +376,13 @@ class SAE(HookedRootModule):
         Calculate SAE features from inputs
         """
 
-        # move x to correct dtype
         x = x.to(self.dtype)
-
-        # handle hook z reshaping if needed.
-        x = self.reshape_fn_in(x)  # type: ignore
-
-        # handle run time activation normalization if needed
+        x = self.reshape_fn_in(x)
+        x = self.hook_sae_input(x)
         x = self.run_time_activation_norm_fn_in(x)
 
         # apply b_dec_to_input if using that method.
-        sae_in = self.hook_sae_input(x - (self.b_dec * self.cfg.apply_b_dec_to_input))
+        sae_in = x - (self.b_dec * self.cfg.apply_b_dec_to_input)
 
         # "... d_in, d_in d_sae -> ... d_sae",
         hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
