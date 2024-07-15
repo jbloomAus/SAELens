@@ -2,6 +2,13 @@
 
 
 
+## v3.12.3 (2024-07-15)
+
+### Fix
+
+* fix: sae to method (#236) ([`4df78ea`](https://github.com/jbloomAus/SAELens/commit/4df78ea6b44affe0ee0b3f033f4d1836a7f4a3e9))
+
+
 ## v3.12.2 (2024-07-15)
 
 ### Fix
