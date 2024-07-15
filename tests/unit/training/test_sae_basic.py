@@ -268,3 +268,22 @@ def test_sae_get_name_returns_correct_name_from_cfg_vals() -> None:
     cfg = build_sae_cfg(model_name="test_model", hook_name="test_hook_name", d_sae=128)
     sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
     assert sae.get_name() == "sae_test_model_test_hook_name_128"
+
+
+def test_sae_move_between_devices() -> None:
+    cfg = build_sae_cfg(device="cpu")
+    sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
+
+    sae.to("meta")
+    assert sae.device == torch.device("meta")
+    assert sae.cfg.device == "meta"
+    assert sae.W_enc.device == torch.device("meta")
+
+
+def test_sae_change_dtype() -> None:
+    cfg = build_sae_cfg(device="cpu", dtype="float64")
+    sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
+
+    sae.to(dtype=torch.float16)
+    assert sae.dtype == torch.float16
+    assert sae.cfg.dtype == "torch.float16"

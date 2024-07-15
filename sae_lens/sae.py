@@ -5,8 +5,9 @@ https://github.com/ArthurConmy/sae/blob/main/sae/model.py
 import json
 import os
 from dataclasses import dataclass, field
-from typing import Any, Callable, Literal, Optional, Tuple
+from typing import Any, Callable, Literal, Optional, Tuple, TypeVar, Union, overload
 
+T = TypeVar("T", bound="SAE")
 import einops
 import torch
 from jaxtyping import Float
@@ -275,6 +276,60 @@ class SAE(HookedRootModule):
         self.b_dec = nn.Parameter(
             torch.zeros(self.cfg.d_in, dtype=self.dtype, device=self.device)
         )
+
+    @overload
+    def to(
+        self: T,
+        device: Optional[Union[torch.device, str]] = ...,
+        dtype: Optional[torch.dtype] = ...,
+        non_blocking: bool = ...,
+    ) -> T: ...
+
+    @overload
+    def to(self: T, dtype: torch.dtype, non_blocking: bool = ...) -> T: ...
+
+    @overload
+    def to(self: T, tensor: torch.Tensor, non_blocking: bool = ...) -> T: ...
+
+    def to(self, *args: Any, **kwargs: Any) -> "SAE":  # type: ignore
+        device_arg = None
+        dtype_arg = None
+
+        # Check args
+        for arg in args:
+            if isinstance(arg, (torch.device, str)):
+                device_arg = arg
+            elif isinstance(arg, torch.dtype):
+                dtype_arg = arg
+            elif isinstance(arg, torch.Tensor):
+                device_arg = arg.device
+                dtype_arg = arg.dtype
+
+        # Check kwargs
+        device_arg = kwargs.get("device", device_arg)
+        dtype_arg = kwargs.get("dtype", dtype_arg)
+
+        if device_arg is not None:
+            # Convert device to torch.device if it's a string
+            device = (
+                torch.device(device_arg) if isinstance(device_arg, str) else device_arg
+            )
+
+            # Update the cfg.device
+            self.cfg.device = str(device)
+
+            # Update the .device property
+            self.device = device
+
+        if dtype_arg is not None:
+            # Update the cfg.dtype
+            self.cfg.dtype = str(dtype_arg)
+
+            # Update the .dtype property
+            self.dtype = dtype_arg
+
+        # Call the parent class's to() method to handle all cases (device, dtype, tensor)
+        return super().to(*args, **kwargs)
 
     # Basic Forward Pass Functionality.
     def forward(
