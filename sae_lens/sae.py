@@ -5,8 +5,9 @@ https://github.com/ArthurConmy/sae/blob/main/sae/model.py
 import json
 import os
 from dataclasses import dataclass, field
-from typing import Any, Callable, Literal, Optional, Tuple
+from typing import Any, Callable, Literal, Optional, Tuple, TypeVar, Union, overload
 
+T = TypeVar("T", bound="SAE")
 import einops
 import torch
 from jaxtyping import Float
@@ -131,10 +132,10 @@ class SAE(HookedRootModule):
 
         if self.cfg.architecture == "standard":
             self.initialize_weights_basic()
-            self.encode_fn = self.encode
+            self.encode = self.encode_standard
         elif self.cfg.architecture == "gated":
             self.initialize_weights_gated()
-            self.encode_fn = self.encode_gated
+            self.encode = self.encode_gated
 
         # handle presence / absence of scaling factor.
         if self.cfg.finetuning_scaling_factor:
@@ -276,12 +277,66 @@ class SAE(HookedRootModule):
             torch.zeros(self.cfg.d_in, dtype=self.dtype, device=self.device)
         )
 
+    @overload
+    def to(
+        self: T,
+        device: Optional[Union[torch.device, str]] = ...,
+        dtype: Optional[torch.dtype] = ...,
+        non_blocking: bool = ...,
+    ) -> T: ...
+
+    @overload
+    def to(self: T, dtype: torch.dtype, non_blocking: bool = ...) -> T: ...
+
+    @overload
+    def to(self: T, tensor: torch.Tensor, non_blocking: bool = ...) -> T: ...
+
+    def to(self, *args: Any, **kwargs: Any) -> "SAE":  # type: ignore
+        device_arg = None
+        dtype_arg = None
+
+        # Check args
+        for arg in args:
+            if isinstance(arg, (torch.device, str)):
+                device_arg = arg
+            elif isinstance(arg, torch.dtype):
+                dtype_arg = arg
+            elif isinstance(arg, torch.Tensor):
+                device_arg = arg.device
+                dtype_arg = arg.dtype
+
+        # Check kwargs
+        device_arg = kwargs.get("device", device_arg)
+        dtype_arg = kwargs.get("dtype", dtype_arg)
+
+        if device_arg is not None:
+            # Convert device to torch.device if it's a string
+            device = (
+                torch.device(device_arg) if isinstance(device_arg, str) else device_arg
+            )
+
+            # Update the cfg.device
+            self.cfg.device = str(device)
+
+            # Update the .device property
+            self.device = device
+
+        if dtype_arg is not None:
+            # Update the cfg.dtype
+            self.cfg.dtype = str(dtype_arg)
+
+            # Update the .dtype property
+            self.dtype = dtype_arg
+
+        # Call the parent class's to() method to handle all cases (device, dtype, tensor)
+        return super().to(*args, **kwargs)
+
     # Basic Forward Pass Functionality.
     def forward(
         self,
         x: torch.Tensor,
     ) -> torch.Tensor:
-        feature_acts = self.encode_fn(x)
+        feature_acts = self.encode(x)
         sae_out = self.decode(feature_acts)
 
         # TEMP
@@ -348,13 +403,16 @@ class SAE(HookedRootModule):
     def encode_gated(
         self, x: Float[torch.Tensor, "... d_in"]
     ) -> Float[torch.Tensor, "... d_sae"]:
+
         x = x.to(self.dtype)
         x = self.reshape_fn_in(x)
-        sae_in = self.hook_sae_input(x - self.b_dec * self.cfg.apply_b_dec_to_input)
+        x = self.hook_sae_input(x)
+        x = self.run_time_activation_norm_fn_in(x)
+        sae_in = x - self.b_dec * self.cfg.apply_b_dec_to_input
 
         # Gating path
         gating_pre_activation = sae_in @ self.W_enc + self.b_gate
-        active_features = (gating_pre_activation > 0).float()
+        active_features = (gating_pre_activation > 0).to(self.dtype)
 
         # Magnitude path with weight sharing
         magnitude_pre_activation = self.hook_sae_acts_pre(
@@ -366,24 +424,20 @@ class SAE(HookedRootModule):
 
         return active_features * feature_magnitudes
 
-    def encode(
+    def encode_standard(
         self, x: Float[torch.Tensor, "... d_in"]
     ) -> Float[torch.Tensor, "... d_sae"]:
         """
         Calculate SAE features from inputs
         """
 
-        # move x to correct dtype
         x = x.to(self.dtype)
-
-        # handle hook z reshaping if needed.
-        x = self.reshape_fn_in(x)  # type: ignore
-
-        # handle run time activation normalization if needed
+        x = self.reshape_fn_in(x)
+        x = self.hook_sae_input(x)
         x = self.run_time_activation_norm_fn_in(x)
 
         # apply b_dec_to_input if using that method.
-        sae_in = self.hook_sae_input(x - (self.b_dec * self.cfg.apply_b_dec_to_input))
+        sae_in = x - (self.b_dec * self.cfg.apply_b_dec_to_input)
 
         # "... d_in, d_in d_sae -> ... d_sae",
         hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
@@ -452,7 +506,7 @@ class SAE(HookedRootModule):
 
     @classmethod
     def load_from_pretrained(
-        cls, path: str, device: str = "cpu", dtype: str = "float32"
+        cls, path: str, device: str = "cpu", dtype: str | None = None
     ) -> "SAE":
 
         # get the config
@@ -460,13 +514,16 @@ class SAE(HookedRootModule):
         with open(config_path, "r") as f:
             cfg_dict = json.load(f)
         cfg_dict = handle_config_defaulting(cfg_dict)
+        cfg_dict["device"] = device
+        if dtype is not None:
+            cfg_dict["dtype"] = dtype
 
         weight_path = os.path.join(path, SAE_WEIGHTS_PATH)
         cfg_dict, state_dict = read_sae_from_disk(
             cfg_dict=cfg_dict,
             weight_path=weight_path,
             device=device,
-            dtype=DTYPE_MAP[dtype],
+            dtype=DTYPE_MAP[cfg_dict["dtype"]],
         )
 
         sae_cfg = SAEConfig.from_dict(cfg_dict)

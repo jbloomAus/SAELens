@@ -182,7 +182,7 @@ class TrainingSAE(SAE):
             ), "Gated SAEs do not support ghost grads"
             assert self.use_error_term is False, "Gated SAEs do not support error terms"
 
-    def encode(
+    def encode_standard(
         self, x: Float[torch.Tensor, "... d_in"]
     ) -> Float[torch.Tensor, "... d_sae"]:
         """
@@ -195,17 +195,13 @@ class TrainingSAE(SAE):
         self, x: Float[torch.Tensor, "... d_in"]
     ) -> tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
 
-        # move x to correct dtype
         x = x.to(self.dtype)
-
-        # handle hook z reshaping if needed.
         x = self.reshape_fn_in(x)  # type: ignore
+        x = self.hook_sae_input(x)
+        x = self.run_time_activation_norm_fn_in(x)
 
         # apply b_dec_to_input if using that method.
-        sae_in = self.hook_sae_input(x - (self.b_dec * self.cfg.apply_b_dec_to_input))
-
-        # handle run time activation normalization if needed
-        x = self.run_time_activation_norm_fn_in(x)
+        sae_in = x - (self.b_dec * self.cfg.apply_b_dec_to_input)
 
         # "... d_in, d_in d_sae -> ... d_sae",
         hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
@@ -220,18 +216,17 @@ class TrainingSAE(SAE):
         self, x: Float[torch.Tensor, "... d_in"]
     ) -> tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
 
-        # move x to correct dtype
         x = x.to(self.dtype)
-
-        # handle hook z reshaping if needed.
         x = self.reshape_fn_in(x)  # type: ignore
+        x = self.hook_sae_input(x)
+        x = self.run_time_activation_norm_fn_in(x)
 
         # apply b_dec_to_input if using that method.
-        sae_in = self.hook_sae_input(x - (self.b_dec * self.cfg.apply_b_dec_to_input))
+        sae_in = x - (self.b_dec * self.cfg.apply_b_dec_to_input)
 
         # Gating path with Heaviside step function
         gating_pre_activation = sae_in @ self.W_enc + self.b_gate
-        active_features = (gating_pre_activation > 0).float()
+        active_features = (gating_pre_activation > 0).to(self.dtype)
 
         # Magnitude path with weight sharing
         magnitude_pre_activation = sae_in @ (self.W_enc * self.r_mag.exp()) + self.b_mag
@@ -404,7 +399,7 @@ class TrainingSAE(SAE):
         cls,
         path: str,
         device: str = "cpu",
-        dtype: str = "float32",
+        dtype: str | None = None,
     ) -> "TrainingSAE":
 
         # get the config
@@ -412,13 +407,16 @@ class TrainingSAE(SAE):
         with open(config_path, "r") as f:
             cfg_dict = json.load(f)
         cfg_dict = handle_config_defaulting(cfg_dict)
+        cfg_dict["device"] = device
+        if dtype is not None:
+            cfg_dict["dtype"] = dtype
 
         weight_path = os.path.join(path, SAE_WEIGHTS_PATH)
         cfg_dict, state_dict = read_sae_from_disk(
             cfg_dict=cfg_dict,
             weight_path=weight_path,
             device=device,
-            dtype=DTYPE_MAP[dtype],
+            dtype=DTYPE_MAP[cfg_dict["dtype"]],
         )
         sae_cfg = TrainingSAEConfig.from_dict(cfg_dict)
 
