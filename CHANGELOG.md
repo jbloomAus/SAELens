@@ -2,6 +2,23 @@
 
 
 
+## v3.12.2 (2024-07-15)
+
+### Fix
+
+* fix: sae hook location (#235) ([`94ba11c`](https://github.com/jbloomAus/SAELens/commit/94ba11c13bdf96740e6217d8c87af47237f89ca5))
+
+### Unknown
+
+* Updated tutorials to use SAEDashboard ([`db89dbc`](https://github.com/jbloomAus/SAELens/commit/db89dbc813e5a64a7609165474e3c66e2b537925))
+
+* Merge branch &#39;JoshEngels-Evals&#39; ([`fe66285`](https://github.com/jbloomAus/SAELens/commit/fe66285d75bf7b0617a8d0aedef010e74b972677))
+
+* Removed redundant lines ([`29e3aa2`](https://github.com/jbloomAus/SAELens/commit/29e3aa2b1a5b808dc32c5fc8187f5d7be808c7e3))
+
+* Merge branch &#39;Evals&#39; of https://github.com/JoshEngels/SAELens into JoshEngels-Evals ([`7b84053`](https://github.com/jbloomAus/SAELens/commit/7b84053027f9113ac3cf61946c5acc0367298e05))
+
+
 ## v3.12.1 (2024-07-11)
 
 ### Fix
@@ -80,6 +97,14 @@ Co-authored-by: Joseph Bloom &lt;jbloomaus@gmail.com&gt; ([`6ae4849`](https://gi
 * Update deploy_docs.yml
 
 Modified this file to install dependencies (using caching for efficiency). ([`e90d5c1`](https://github.com/jbloomAus/SAELens/commit/e90d5c195b02bd450bd7335b83bfb952a58fa29d))
+
+* Adding type hint ([`5da6a13`](https://github.com/jbloomAus/SAELens/commit/5da6a13df27678d59e0d233b51dbf8758e190e34))
+
+* Actually doing merge ([`c362e81`](https://github.com/jbloomAus/SAELens/commit/c362e813b56c4cc9c5045a79236f8287d23ae53f))
+
+* Merge remote-tracking branch &#39;upstream/main&#39; into Evals ([`52780c0`](https://github.com/jbloomAus/SAELens/commit/52780c08fa116667f77d22ec3a63a4ead9c47348))
+
+* Making changes in response to comments ([`cf4ebcd`](https://github.com/jbloomAus/SAELens/commit/cf4ebcdfe93d96270da2ed108f37a5c8d9d97c75))
 
 
 ## v3.11.0 (2024-07-04)
@@ -208,6 +233,18 @@ Modified this file to install dependencies (using caching for efficiency). ([`e9
 * fixing tests after apollo deleted sae- dataset versions
 
 * Update training_saes.md ([`2e6a3c3`](https://github.com/jbloomAus/SAELens/commit/2e6a3c3b72e0724b24dd8ed3803f3b80a17b77d5))
+
+### Unknown
+
+* Updating example commands ([`265687c`](https://github.com/jbloomAus/SAELens/commit/265687c09ba3c6ae090cf5a97e7f70251c0cf66c))
+
+* Fixing test ([`389a159`](https://github.com/jbloomAus/SAELens/commit/389a15924345c17442937e98f45c8d2eb9c92b21))
+
+* Adding script to evals.py ([`f9aa2dd`](https://github.com/jbloomAus/SAELens/commit/f9aa2ddd20c1f8c26b9181e685f04c7638511bc1))
+
+* Moving file ([`4be5011`](https://github.com/jbloomAus/SAELens/commit/4be50115b8b2c43448557ee54ff8f0afe692d111))
+
+* First round of evals ([`2476afb`](https://github.com/jbloomAus/SAELens/commit/2476afbffad41406840ebd5492c04acf90a0e62c))
 
 
 ## v3.7.0 (2024-06-25)
