@@ -91,7 +91,7 @@ class HookedSAETransformer(HookedTransformer):
             return
 
         if use_error_term is not None:
-            sae.use_error_term = True
+            sae.use_error_term = use_error_term
 
         self.acts_to_saes[act_name] = sae
         set_deep_attr(self, act_name, sae)
@@ -157,6 +157,7 @@ class HookedSAETransformer(HookedTransformer):
         *model_args: Any,
         saes: Union[SAE, List[SAE]] = [],
         reset_saes_end: bool = True,
+        use_error_term: Optional[bool] = None,
         **model_kwargs: Any,
     ) -> Union[
         None,
@@ -172,9 +173,10 @@ class HookedSAETransformer(HookedTransformer):
             *model_args: Positional arguments for the model forward pass
             saes: (Union[HookedSAE, List[HookedSAE]]) The SAEs to be attached for this forward pass
             reset_saes_end (bool): If True, all SAEs added during this run are removed at the end, and previously attached SAEs are restored to their original state. Default is True.
+            use_error_term: (Optional[bool]) If provided, will set the use_error_term attribute of all SAEs attached during this run to this value. Defaults to None.
             **model_kwargs: Keyword arguments for the model forward pass
         """
-        with self.saes(saes=saes, reset_saes_end=reset_saes_end):
+        with self.saes(saes=saes, reset_saes_end=reset_saes_end, use_error_term=use_error_term):
             return self(*model_args, **model_kwargs)
 
     def run_with_cache_with_saes(
@@ -182,6 +184,7 @@ class HookedSAETransformer(HookedTransformer):
         *model_args: Any,
         saes: Union[SAE, List[SAE]] = [],
         reset_saes_end: bool = True,
+        use_error_term: Optional[bool] = None,
         return_cache_object: bool = True,
         remove_batch_dim: bool = False,
         **kwargs: Any,
@@ -209,7 +212,7 @@ class HookedSAETransformer(HookedTransformer):
             remove_batch_dim: (bool) Whether to remove the batch dimension (only works for batch_size==1). Defaults to False.
             **kwargs: Keyword arguments for the model forward pass
         """
-        with self.saes(saes=saes, reset_saes_end=reset_saes_end):
+        with self.saes(saes=saes, reset_saes_end=reset_saes_end, use_error_term=use_error_term):
             return self.run_with_cache(  # type: ignore
                 *model_args,
                 return_cache_object=return_cache_object,  # type: ignore
@@ -258,6 +261,7 @@ class HookedSAETransformer(HookedTransformer):
         self,
         saes: Union[SAE, List[SAE]] = [],
         reset_saes_end: bool = True,
+        use_error_term: Optional[bool] = None,
     ):
         """
         A context manager for adding temporary SAEs to the model.
@@ -281,16 +285,38 @@ class HookedSAETransformer(HookedTransformer):
             saes (Union[HookedSAE, List[HookedSAE]]): SAEs to be attached.
             reset_saes_end (bool): If True, removes all SAEs added by this context manager when the context manager exits, returning previously attached SAEs to their original state.
         """
+        # act_names_to_reset = []
+        # prev_saes = []
+        # if isinstance(saes, SAE):
+        #     saes = [saes]
+        # try:
+        #     for sae in saes:
+        #         act_names_to_reset.append(sae.cfg.hook_name)
+        #         prev_saes.append(self.acts_to_saes.get(sae.cfg.hook_name, None))
+        #         self.add_sae(sae, use_error_term=use_error_term)
+        #     yield self
+        # finally:
+        #     if reset_saes_end:
+        #         self.reset_saes(act_names_to_reset, prev_saes)
+        
         act_names_to_reset = []
         prev_saes = []
+        original_use_error_terms = {}
         if isinstance(saes, SAE):
             saes = [saes]
         try:
             for sae in saes:
                 act_names_to_reset.append(sae.cfg.hook_name)
-                prev_saes.append(self.acts_to_saes.get(sae.cfg.hook_name, None))
-                self.add_sae(sae)
+                prev_sae = self.acts_to_saes.get(sae.cfg.hook_name, None)
+                prev_saes.append(prev_sae)
+                if prev_sae and use_error_term is not None:
+                    original_use_error_terms[sae.cfg.hook_name] = prev_sae.use_error_term
+                    prev_sae.use_error_term = use_error_term
+                self.add_sae(sae, use_error_term=use_error_term)
             yield self
         finally:
             if reset_saes_end:
                 self.reset_saes(act_names_to_reset, prev_saes)
+                for hook_name, original_value in original_use_error_terms.items():
+                    if hook_name in self.acts_to_saes:
+                        self.acts_to_saes[hook_name].use_error_term = original_value
