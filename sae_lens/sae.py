@@ -4,6 +4,7 @@ https://github.com/ArthurConmy/sae/blob/main/sae/model.py
 
 import json
 import os
+import warnings
 from dataclasses import dataclass, field
 from typing import Any, Callable, Literal, Optional, Tuple, TypeVar, Union, overload
 
@@ -21,7 +22,10 @@ from sae_lens.toolkit.pretrained_sae_loaders import (
     handle_config_defaulting,
     read_sae_from_disk,
 )
-from sae_lens.toolkit.pretrained_saes_directory import get_pretrained_saes_directory
+from sae_lens.toolkit.pretrained_saes_directory import (
+    get_norm_scaling_factor,
+    get_pretrained_saes_directory,
+)
 
 SPARSITY_PATH = "sparsity.safetensors"
 SAE_WEIGHTS_PATH = "sae_weights.safetensors"
@@ -200,7 +204,6 @@ class SAE(HookedRootModule):
 
             self.run_time_activation_norm_fn_in = run_time_activation_ln_in
             self.run_time_activation_norm_fn_out = run_time_activation_ln_out
-
         else:
             self.run_time_activation_norm_fn_in = lambda x: x
             self.run_time_activation_norm_fn_out = lambda x: x
@@ -582,6 +585,17 @@ class SAE(HookedRootModule):
 
         sae = cls(SAEConfig.from_dict(cfg_dict))
         sae.load_state_dict(state_dict)
+
+        # Check if normalization is 'expected_average_only_in'
+        if cfg_dict.get("normalize_activations") == "expected_average_only_in":
+            norm_scaling_factor = get_norm_scaling_factor(release, sae_id)
+            if norm_scaling_factor is not None:
+                sae.fold_activation_norm_scaling_factor(norm_scaling_factor)
+                cfg_dict["normalize_activations"] = "none"
+            else:
+                warnings.warn(
+                    f"norm_scaling_factor not found for {release} and {sae_id}, but normalize_activations is 'expected_average_only_in'. Skipping normalization folding."
+                )
 
         return sae, cfg_dict, log_sparsities
 

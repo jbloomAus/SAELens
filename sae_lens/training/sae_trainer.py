@@ -313,7 +313,6 @@ class SAETrainer:
             "details/current_learning_rate": current_learning_rate,
             "details/current_l1_coefficient": self.current_l1_coefficient,
             "details/n_training_tokens": n_training_tokens,
-            "details/estimated_norm_scaling_factor": self.activation_store.estimated_norm_scaling_factor,
         }
 
     @torch.no_grad()
