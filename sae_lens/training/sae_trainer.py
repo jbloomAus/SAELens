@@ -179,6 +179,12 @@ class SAETrainer:
             ### If n_training_tokens > sae_group.cfg.training_tokens, then we should switch to fine-tuning (if we haven't already)
             self._begin_finetuning_if_needed()
 
+        # fold the estimated norm scaling factor into the sae weights
+        if self.activation_store.estimated_norm_scaling_factor is not None:
+            self.sae.fold_activation_norm_scaling_factor(
+                self.activation_store.estimated_norm_scaling_factor
+            )
+
         # save final sae group to checkpoints folder
         self.save_checkpoint(
             trainer=self,
