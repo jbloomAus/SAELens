@@ -75,7 +75,7 @@ class HookedSAETransformer(HookedTransformer):
         super().__init__(*model_args, **model_kwargs)
         self.acts_to_saes: Dict[str, SAE] = {}
 
-    def add_sae(self, sae: SAE):
+    def add_sae(self, sae: SAE, use_error_term: Optional[bool] = None):
         """Attaches an SAE to the model
 
         WARNING: This sae will be permanantly attached until you remove it with reset_saes. This function will also overwrite any existing SAE attached to the same hook point.
@@ -89,6 +89,9 @@ class HookedSAETransformer(HookedTransformer):
                 f"No hook found for {act_name}. Skipping. Check model.hook_dict for available hooks."
             )
             return
+
+        if use_error_term is not None:
+            sae.use_error_term = True
 
         self.acts_to_saes[act_name] = sae
         set_deep_attr(self, act_name, sae)
