@@ -22,13 +22,6 @@ FINETUNING_PARAMETERS = {
     "unrotated_decoder": ["scaling_factor", "b_dec"],
 }
 
-TRAINER_EVAL_CONFIG = EvalConfig(
-    n_eval_reconstruction_batches=10,
-    compute_ce_loss=True,
-    n_eval_sparsity_variance_batches=1,
-    compute_l2_norms=True,
-)
-
 
 def _log_feature_sparsity(
     feature_sparsity: torch.Tensor, eps: float = 1e-10
@@ -137,6 +130,16 @@ class SAETrainer:
             )
         else:
             self.autocast_if_enabled = contextlib.nullcontext()
+
+        # Set up eval config
+
+        self.trainer_eval_config = EvalConfig(
+            batch_size_prompts=self.cfg.eval_batch_size_prompts,
+            n_eval_reconstruction_batches=self.cfg.n_eval_batches,
+            compute_ce_loss=True,
+            n_eval_sparsity_variance_batches=1,
+            compute_l2_norms=True,
+        )
 
     @property
     def feature_sparsity(self) -> torch.Tensor:
@@ -326,7 +329,7 @@ class SAETrainer:
                 sae=self.sae,
                 activation_store=self.activation_store,
                 model=self.model,
-                eval_config=TRAINER_EVAL_CONFIG,
+                eval_config=self.trainer_eval_config,
                 model_kwargs=self.cfg.model_kwargs,
             )
 
