@@ -1,14 +1,30 @@
+from typing import Tuple, Union
+
 import pytest
 import torch
 from transformer_lens import HookedTransformer
 from transformer_lens.ActivationCache import ActivationCache
 from transformer_lens.hook_points import HookPoint  # Hooking utilities
+from transformer_lens.HookedTransformer import Loss
 
 from sae_lens.analysis.hooked_sae_transformer import HookedSAETransformer, get_deep_attr
 from sae_lens.sae import SAE, SAEConfig
 
 MODEL = "solu-1l"
 prompt = "Hello World!"
+
+
+Output = Union[torch.Tensor, Tuple[torch.Tensor, Loss], None]
+
+
+def get_logits(output: Output) -> torch.Tensor:
+    if output is None:
+        raise ValueError("Model output is None")
+    if isinstance(output, torch.Tensor):
+        return output
+    if isinstance(output, tuple) and len(output) == 2:
+        return output[0]
+    raise ValueError(f"Unexpected output type: {type(output)}")
 
 
 class Counter:
@@ -408,3 +424,160 @@ def test_run_with_hooks_with_saes(
         assert isinstance(get_deep_attr(model, act_name), HookPoint)
     model.reset_saes()
     model.remove_all_hook_fns(including_permanent=True)
+
+
+def test_model_with_use_error_term_saes_matches_original_model(
+    model: HookedTransformer,
+    hooked_sae: SAE,
+    original_logits: torch.Tensor,
+):
+    """Verifies that the attached (and turned on) SAEs actually affect the models output logits"""
+    assert len(model.acts_to_saes) == 0
+    model.add_sae(hooked_sae, use_error_term=True)
+    assert len(model.acts_to_saes) == 1
+    logits_with_saes = model(prompt)
+    model.reset_saes()
+    assert torch.allclose(original_logits, logits_with_saes, atol=1e-5)
+
+
+def test_add_sae_with_use_error_term(model: HookedSAETransformer, hooked_sae: SAE):
+    """Verifies that add_sae correctly sets the use_error_term when specified."""
+    act_name = hooked_sae.cfg.hook_name
+    original_use_error_term = hooked_sae.use_error_term
+
+    model.add_sae(hooked_sae, use_error_term=True)
+    assert model.acts_to_saes[act_name].use_error_term is True
+
+    model.add_sae(hooked_sae, use_error_term=False)
+    assert model.acts_to_saes[act_name].use_error_term is False
+
+    model.add_sae(hooked_sae, use_error_term=None)
+    assert model.acts_to_saes[act_name].use_error_term == original_use_error_term
+
+    model.reset_saes()
+
+
+def test_saes_context_manager_with_use_error_term(
+    model: HookedSAETransformer, hooked_sae: SAE
+):
+    """Verifies that the saes context manager correctly handles use_error_term."""
+    act_name = hooked_sae.cfg.hook_name
+    original_use_error_term = hooked_sae.use_error_term
+
+    with model.saes(saes=[hooked_sae], use_error_term=True):
+        assert model.acts_to_saes[act_name].use_error_term is True
+
+    assert hooked_sae.use_error_term == original_use_error_term
+    assert len(model.acts_to_saes) == 0
+
+
+def test_run_with_saes_with_use_error_term(
+    model: HookedSAETransformer,
+    hooked_sae: SAE,
+    original_logits: torch.Tensor,
+):
+    """Verifies that run_with_saes correctly handles use_error_term."""
+    original_use_error_term = hooked_sae.use_error_term
+
+    model.run_with_saes(prompt, saes=[hooked_sae], use_error_term=True)
+    assert hooked_sae.use_error_term == original_use_error_term
+    assert len(model.acts_to_saes) == 0
+
+
+def test_run_with_cache_with_saes_with_use_error_term(
+    model: HookedSAETransformer,
+    hooked_sae: SAE,
+    original_logits: torch.Tensor,
+):
+    """Verifies that run_with_cache_with_saes correctly handles use_error_term."""
+    act_name = hooked_sae.cfg.hook_name
+    original_use_error_term = hooked_sae.use_error_term
+
+    _, cache = model.run_with_cache_with_saes(
+        prompt, saes=[hooked_sae], use_error_term=True
+    )
+    assert hooked_sae.use_error_term == original_use_error_term
+    assert len(model.acts_to_saes) == 0
+    assert act_name + ".hook_sae_acts_post" in cache
+
+
+def test_use_error_term_restoration_after_exception(
+    model: HookedSAETransformer,
+    hooked_sae: SAE,
+):
+    """Verifies that use_error_term is restored even if an exception occurs."""
+    original_use_error_term = hooked_sae.use_error_term
+
+    try:
+        with model.saes(saes=[hooked_sae], use_error_term=True):
+            raise Exception("Test exception")
+    except Exception:
+        pass
+
+    assert hooked_sae.use_error_term == original_use_error_term
+    assert len(model.acts_to_saes) == 0
+
+
+def test_add_sae_with_use_error_term_true(
+    model: HookedSAETransformer,
+    hooked_sae: SAE,
+):
+    """Verifies that add_sae with use_error_term=True doesn't change the model output."""
+    # Get output without SAE
+    output_without_sae = get_logits(model(prompt))
+
+    # Add SAE with use_error_term=True
+    model.add_sae(hooked_sae, use_error_term=True)
+    output_with_sae = get_logits(model(prompt))
+
+    # Compare outputs
+    assert torch.allclose(output_without_sae, output_with_sae, atol=1e-5)
+
+    # Clean up
+    model.reset_saes()
+
+
+def test_run_with_saes_use_error_term_true(
+    model: HookedSAETransformer,
+    hooked_sae: SAE,
+):
+    """Verifies that run_with_saes with use_error_term=True doesn't change the model output."""
+    # Get output without SAE
+    output_without_sae = get_logits(model(prompt))
+
+    # Run with SAE and use_error_term=True
+    output_with_sae = get_logits(
+        model.run_with_saes(prompt, saes=[hooked_sae], use_error_term=True)
+    )
+
+    # Compare outputs
+    assert torch.allclose(output_without_sae, output_with_sae, atol=1e-5)
+
+
+def test_run_with_cache_with_saes_use_error_term_true(
+    model: HookedSAETransformer,
+    hooked_sae: SAE,
+):
+    """Verifies that run_with_cache_with_saes with use_error_term=True doesn't change the model output."""
+    # Get output without SAE
+    output_without_sae, cache_without_sae = model.run_with_cache(prompt)
+    output_without_sae = get_logits(output_without_sae)
+
+    # Run with SAE and use_error_term=True
+    output_with_sae, cache_with_sae = model.run_with_cache_with_saes(
+        prompt, saes=[hooked_sae], use_error_term=True
+    )
+    output_with_sae = get_logits(output_with_sae)
+
+    # Compare outputs
+    assert torch.allclose(output_without_sae, output_with_sae, atol=1e-5)
+
+    # Verify that the cache contains the SAE activations
+    assert hooked_sae.cfg.hook_name + ".hook_sae_acts_post" in cache_with_sae
+
+    # Verify that the activations at the SAE hook point are the same in both caches
+    assert torch.allclose(
+        cache_without_sae[hooked_sae.cfg.hook_name],
+        cache_with_sae[hooked_sae.cfg.hook_name + ".hook_sae_output"],
+        atol=1e-5,
+    )

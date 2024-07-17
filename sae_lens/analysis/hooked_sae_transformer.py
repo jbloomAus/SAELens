@@ -92,8 +92,9 @@ class HookedSAETransformer(HookedTransformer):
             return
 
         if use_error_term is not None:
+            if not hasattr(sae, "_original_use_error_term"):
+                sae._original_use_error_term = sae.use_error_term  # type: ignore
             sae.use_error_term = use_error_term
-
         self.acts_to_saes[act_name] = sae
         set_deep_attr(self, act_name, sae)
         self.setup()
@@ -114,6 +115,11 @@ class HookedSAETransformer(HookedTransformer):
                 f"No SAE is attached to {act_name}. There's nothing to reset."
             )
             return
+
+        current_sae = self.acts_to_saes[act_name]
+        if hasattr(current_sae, "_original_use_error_term"):
+            current_sae.use_error_term = current_sae._original_use_error_term
+            delattr(current_sae, "_original_use_error_term")
 
         if prev_sae:
             set_deep_attr(self, act_name, prev_sae)
@@ -294,7 +300,6 @@ class HookedSAETransformer(HookedTransformer):
         """
         act_names_to_reset = []
         prev_saes = []
-        modified_saes = {}
         if isinstance(saes, SAE):
             saes = [saes]
         try:
@@ -302,15 +307,8 @@ class HookedSAETransformer(HookedTransformer):
                 act_names_to_reset.append(sae.cfg.hook_name)
                 prev_sae = self.acts_to_saes.get(sae.cfg.hook_name, None)
                 prev_saes.append(prev_sae)
-                if use_error_term is not None:
-                    if hasattr(sae, "use_error_term"):
-                        modified_saes[sae] = sae.use_error_term
-                        sae.use_error_term = use_error_term
                 self.add_sae(sae, use_error_term=use_error_term)
             yield self
         finally:
             if reset_saes_end:
                 self.reset_saes(act_names_to_reset, prev_saes)
-            # Restore original use_error_term for all modified SAEs
-            for sae, original_value in modified_saes.items():
-                sae.use_error_term = original_value
