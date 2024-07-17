@@ -4,7 +4,7 @@ https://github.com/ArthurConmy/sae/blob/main/sae/model.py
 
 import json
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from typing import Any, Optional
 
 import einops
@@ -92,7 +92,13 @@ class TrainingSAEConfig(SAEConfig):
 
     @classmethod
     def from_dict(cls, config_dict: dict[str, Any]) -> "TrainingSAEConfig":
-        return TrainingSAEConfig(**config_dict)
+        # remove any keys that are not in the dataclass
+        # since we sometimes enhance the config with the whole LM runner config
+        valid_field_names = {field.name for field in fields(cls)}
+        valid_config_dict = {
+            key: val for key, val in config_dict.items() if key in valid_field_names
+        }
+        return TrainingSAEConfig(**valid_config_dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {

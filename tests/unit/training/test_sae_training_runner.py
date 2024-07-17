@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 
 import pytest
+import torch
 from datasets import Dataset
 from transformer_lens import HookedTransformer
 
@@ -80,3 +81,27 @@ def test_save_checkpoint(training_runner: SAETrainingRunner, trainer: SAETrainer
     sae = SAE.load_from_pretrained(training_runner.cfg.checkpoint_path + "/test")
 
     assert isinstance(sae, SAE)
+
+
+def test_training_runner_works_with_from_pretrained_path(
+    training_runner: SAETrainingRunner,
+    trainer: SAETrainer,
+    cfg: LanguageModelSAERunnerConfig,
+):
+    training_runner.save_checkpoint(
+        trainer=trainer,
+        checkpoint_name="test",
+    )
+
+    cfg.from_pretrained_path = training_runner.cfg.checkpoint_path + "/test"
+    loaded_runner = SAETrainingRunner(cfg)
+
+    # the loaded runner should load the pretrained SAE
+    orig_sae = training_runner.sae
+    new_sae = loaded_runner.sae
+
+    assert orig_sae.cfg.to_dict() == new_sae.cfg.to_dict()
+    assert torch.allclose(orig_sae.W_dec, new_sae.W_dec)
+    assert torch.allclose(orig_sae.W_enc, new_sae.W_enc)
+    assert torch.allclose(orig_sae.b_enc, new_sae.b_enc)
+    assert torch.allclose(orig_sae.b_dec, new_sae.b_dec)
