@@ -3,12 +3,18 @@ from datasets import Dataset
 from transformer_lens import HookedTransformer
 
 from sae_lens.config import LanguageModelSAERunnerConfig
-from sae_lens.evals import get_eval_everything_config, run_evals
+from sae_lens.evals import EvalConfig, get_eval_everything_config, run_evals
 from sae_lens.sae import SAE
 from sae_lens.training.activations_store import ActivationsStore
-from sae_lens.training.sae_trainer import TRAINER_EVAL_CONFIG
 from sae_lens.training.training_sae import TrainingSAE
 from tests.unit.helpers import TINYSTORIES_MODEL, build_sae_cfg, load_model_cached
+
+TRAINER_EVAL_CONFIG = EvalConfig(
+    n_eval_reconstruction_batches=10,
+    compute_ce_loss=True,
+    n_eval_sparsity_variance_batches=1,
+    compute_l2_norms=True,
+)
 
 
 @pytest.fixture(
