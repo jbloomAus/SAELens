@@ -7,7 +7,8 @@ import torch
 from sae_lens.evals import all_loadable_saes
 from sae_lens.sae import SAE
 from sae_lens.toolkit.pretrained_sae_loaders import get_sae_config_from_hf
-from sae_lens.training.activations_store import ActivationsStore
+
+# from sae_lens.training.activations_store import ActivationsStore
 from tests.unit.helpers import load_model_cached
 
 # from sae_lens.evals import run_evals
