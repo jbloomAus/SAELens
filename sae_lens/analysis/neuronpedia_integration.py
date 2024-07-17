@@ -204,7 +204,7 @@ def test_key(api_key: str):
         raise Exception("Neuronpedia API key is not valid.")
 
 
-async def autointerp_neuronpedia_features(
+async def autointerp_neuronpedia_features(  # noqa: C901
     features: list[NeuronpediaFeature],
     openai_api_key: str | None = None,
     autointerp_retry_attempts: int = 3,
