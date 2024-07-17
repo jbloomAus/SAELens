@@ -74,24 +74,24 @@ def test_eval_all_loadable_saes(
     model = load_model_cached(sae.cfg.model_name)
     model.to(device)
 
-    activation_store = ActivationsStore.from_sae(
-        model=model,
-        sae=sae,
-        streaming=True,
-        # fairly conservative parameters here so can use same for larger
-        # models without running out of memory.
-        store_batch_size_prompts=8,
-        train_batch_size_tokens=4096,
-        n_batches_in_buffer=4,
-        device=device,
-    )
+    # activation_store = ActivationsStore.from_sae(
+    #     model=model,
+    #     sae=sae,
+    #     streaming=True,
+    #     # fairly conservative parameters here so can use same for larger
+    #     # models without running out of memory.
+    #     store_batch_size_prompts=8,
+    #     train_batch_size_tokens=4096,
+    #     n_batches_in_buffer=4,
+    #     device=device,
+    # )
 
-    if sae.cfg.normalize_activations == "expected_average_only_in":
-        norm_scaling_factor = activation_store.estimate_norm_scaling_factor(
-            n_batches_for_norm_estimate=100
-        )
-        sae.fold_activation_norm_scaling_factor(norm_scaling_factor)
-        activation_store.normalize_activations = "none"
+    # if sae.cfg.normalize_activations == "expected_average_only_in":
+    #     norm_scaling_factor = activation_store.estimate_norm_scaling_factor(
+    #         n_batches_for_norm_estimate=100
+    #     )
+    #     sae.fold_activation_norm_scaling_factor(norm_scaling_factor)
+    #     activation_store.normalize_activations = "none"
 
     metrics = {}
     # eval_metrics = run_evals(

@@ -352,15 +352,25 @@ SAE_LOOKUP:
       path: gemma_2b_blocks.6.hook_resid_post_16384_anthropic_fast_lr
       variance_explained: 0.71
       l0: 56.0
+    - id: blocks.10.hook_resid_post
+      path: gemma_2b_blocks.10.hook_resid_post_16384
+      variance_explained: -0.20
+      l0: 62.0
     - id: blocks.12.hook_resid_post
       path: gemma_2b_blocks.12.hook_resid_post_16384
       variance_explained: -0.65
       l0: 62.0
       norm_scaling_factor: 0.21381938399317255
+    - id: blocks.17.hook_resid_post
+      path: gemma_2b_blocks.17.hook_resid_post_16384
+      variance_explained: -0.85
+      l0: 54.0
   gemma-2b-it-res-jb:
     repo_id: jbloom/Gemma-2b-IT-Residual-Stream-SAEs
     model: gemma-2b-it
     conversion_func: null
+    config_overrides:
+      dataset_path: Skylion007/openwebtext
     links:
       model: https://huggingface.co/google/gemma-2b-it
       dashboards: https://www.neuronpedia.org/gemma2bit-res-jb
