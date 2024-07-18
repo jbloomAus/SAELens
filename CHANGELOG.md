@@ -2,6 +2,23 @@
 
 
 
+## v3.13.0 (2024-07-18)
+
+### Feature
+
+* feat: validate that pretokenized dataset tokenizer matches model tokenizer (#215)
+
+Co-authored-by: Joseph Bloom &lt;69127271+jbloomAus@users.noreply.github.com&gt; ([`c73b811`](https://github.com/jbloomAus/SAELens/commit/c73b81147dc9b47c9578fa24e1279bca7fc724af))
+
+### Unknown
+
+* add more bootleg gemma saes (#240)
+
+* add more bootleg gemma saes
+
+* removed unused import ([`22a0841`](https://github.com/jbloomAus/SAELens/commit/22a08416e9759fdefe52eca646cdca23a64d2049))
+
+
 ## v3.12.5 (2024-07-18)
 
 ### Fix
