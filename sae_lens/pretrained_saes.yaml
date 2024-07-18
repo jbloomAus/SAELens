@@ -398,3 +398,189 @@ SAE_LOOKUP:
       path: mistral_7b_layer_24
       variance_explained: 0.72
       l0: 75
+  gpt2-small-resid-mid-v5-32k:
+    repo_id: jbloom/GPT2-Small-OAI-v5-32k-resid-mid-SAEs
+    model: gpt2-small
+    conversion_func: null
+    config_overrides:
+      dataset_path: Skylion007/openwebtext
+    saes:
+    - id: blocks.0.hook_resid_mid
+      path: v5_32k_layer_0
+    - id: blocks.1.hook_resid_mid
+      path: v5_32k_layer_1
+    - id: blocks.2.hook_resid_mid
+      path: v5_32k_layer_2
+    - id: blocks.3.hook_resid_mid
+      path: v5_32k_layer_3
+    - id: blocks.4.hook_resid_mid
+      path: v5_32k_layer_4
+    - id: blocks.5.hook_resid_mid
+      path: v5_32k_layer_5
+    - id: blocks.6.hook_resid_mid
+      path: v5_32k_layer_6
+    - id: blocks.7.hook_resid_mid
+      path: v5_32k_layer_7
+    - id: blocks.8.hook_resid_mid
+      path: v5_32k_layer_8
+    - id: blocks.9.hook_resid_mid
+      path: v5_32k_layer_9
+    - id: blocks.10.hook_resid_mid
+      path: v5_32k_layer_10
+    - id: blocks.11.hook_resid_mid
+      path: v5_32k_layer_11
+  gpt2-small-resid-mid-v5-128k:
+    repo_id: jbloom/GPT2-Small-OAI-v5-128k-resid-mid-SAEs
+    model: gpt2-small
+    conversion_func: null
+    config_overrides:
+      dataset_path: Skylion007/openwebtext
+    saes:
+    - id: blocks.0.hook_resid_mid
+      path: v5_128k_layer_0
+    - id: blocks.1.hook_resid_mid
+      path: v5_128k_layer_1
+    - id: blocks.2.hook_resid_mid
+      path: v5_128k_layer_2
+    - id: blocks.3.hook_resid_mid
+      path: v5_128k_layer_3
+    - id: blocks.4.hook_resid_mid
+      path: v5_128k_layer_4
+    - id: blocks.5.hook_resid_mid
+      path: v5_128k_layer_5
+    - id: blocks.6.hook_resid_mid
+      path: v5_128k_layer_6
+    - id: blocks.7.hook_resid_mid
+      path: v5_128k_layer_7
+    - id: blocks.8.hook_resid_mid
+      path: v5_128k_layer_8
+    - id: blocks.9.hook_resid_mid
+      path: v5_128k_layer_9
+    - id: blocks.10.hook_resid_mid
+      path: v5_128k_layer_10
+    - id: blocks.11.hook_resid_mid
+      path: v5_128k_layer_11
+  gpt2-small-mlp-out-v5-32k:
+    repo_id: jbloom/GPT2-Small-OAI-v5-32k-mlp-out-SAEs
+    model: gpt2-small
+    conversion_func: null
+    config_overrides:
+      dataset_path: Skylion007/openwebtext
+    saes:
+    - id: blocks.0.hook_mlp_out
+      path: v5_32k_layer_0
+    - id: blocks.1.hook_mlp_out
+      path: v5_32k_layer_1
+    - id: blocks.2.hook_mlp_out
+      path: v5_32k_layer_2
+    - id: blocks.3.hook_mlp_out
+      path: v5_32k_layer_3
+    - id: blocks.4.hook_mlp_out
+      path: v5_32k_layer_4
+    - id: blocks.5.hook_mlp_out
+      path: v5_32k_layer_5
+    - id: blocks.6.hook_mlp_out
+      path: v5_32k_layer_6
+    - id: blocks.7.hook_mlp_out
+      path: v5_32k_layer_7
+    - id: blocks.8.hook_mlp_out
+      path: v5_32k_layer_8
+    - id: blocks.9.hook_mlp_out
+      path: v5_32k_layer_9
+    - id: blocks.10.hook_mlp_out
+      path: v5_32k_layer_10
+    - id: blocks.11.hook_mlp_out
+      path: v5_32k_layer_11
+  gpt2-small-mlp-out-v5-128k:
+    repo_id: jbloom/GPT2-Small-OAI-v5-128k-mlp-out-SAEs
+    model: gpt2-small
+    conversion_func: null
+    config_overrides:
+      dataset_path: Skylion007/openwebtext
+    saes:
+    - id: blocks.0.hook_mlp_out
+      path: v5_128k_layer_0
+    - id: blocks.1.hook_mlp_out
+      path: v5_128k_layer_1
+    - id: blocks.2.hook_mlp_out
+      path: v5_128k_layer_2
+    - id: blocks.3.hook_mlp_out
+      path: v5_128k_layer_3
+    - id: blocks.4.hook_mlp_out
+      path: v5_128k_layer_4
+    - id: blocks.5.hook_mlp_out
+      path: v5_128k_layer_5
+    - id: blocks.6.hook_mlp_out
+      path: v5_128k_layer_6
+    - id: blocks.7.hook_mlp_out
+      path: v5_128k_layer_7
+    - id: blocks.8.hook_mlp_out
+      path: v5_128k_layer_8
+    - id: blocks.9.hook_mlp_out
+      path: v5_128k_layer_9
+    - id: blocks.10.hook_mlp_out
+      path: v5_128k_layer_10
+    - id: blocks.11.hook_mlp_out
+      path: v5_128k_layer_11
+  gpt2-small-attn-out-v5-32k:
+    repo_id: jbloom/GPT2-Small-OAI-v5-32k-attn-out-SAEs
+    model: gpt2-small
+    conversion_func: null
+    config_overrides:
+      dataset_path: Skylion007/openwebtext
+    saes:
+    - id: blocks.0.hook_attn_out
+      path: v5_32k_layer_0
+    - id: blocks.1.hook_attn_out
+      path: v5_32k_layer_1
+    - id: blocks.2.hook_attn_out
+      path: v5_32k_layer_2
+    - id: blocks.3.hook_attn_out
+      path: v5_32k_layer_3
+    - id: blocks.4.hook_attn_out
+      path: v5_32k_layer_4
+    - id: blocks.5.hook_attn_out
+      path: v5_32k_layer_5
+    - id: blocks.6.hook_attn_out
+      path: v5_32k_layer_6
+    - id: blocks.7.hook_attn_out
+      path: v5_32k_layer_7
+    - id: blocks.8.hook_attn_out
+      path: v5_32k_layer_8
+    - id: blocks.9.hook_attn_out
+      path: v5_32k_layer_9
+    - id: blocks.10.hook_attn_out
+      path: v5_32k_layer_10
+    - id: blocks.11.hook_attn_out
+      path: v5_32k_layer_11
+  gpt2-small-attn-out-v5-128k:
+    repo_id: jbloom/GPT2-Small-OAI-v5-128k-attn-out-SAEs
+    model: gpt2-small
+    conversion_func: null
+    config_overrides:
+      dataset_path: Skylion007/openwebtext
+    saes:
+    - id: blocks.0.hook_attn_out
+      path: v5_128k_layer_0
+    - id: blocks.1.hook_attn_out
+      path: v5_128k_layer_1
+    - id: blocks.2.hook_attn_out
+      path: v5_128k_layer_2
+    - id: blocks.3.hook_attn_out
+      path: v5_128k_layer_3
+    - id: blocks.4.hook_attn_out
+      path: v5_128k_layer_4
+    - id: blocks.5.hook_attn_out
+      path: v5_128k_layer_5
+    - id: blocks.6.hook_attn_out
+      path: v5_128k_layer_6
+    - id: blocks.7.hook_attn_out
+      path: v5_128k_layer_7
+    - id: blocks.8.hook_attn_out
+      path: v5_128k_layer_8
+    - id: blocks.9.hook_attn_out
+      path: v5_128k_layer_9
+    - id: blocks.10.hook_attn_out
+      path: v5_128k_layer_10
+    - id: blocks.11.hook_attn_out
+      path: v5_128k_layer_11
