@@ -2,6 +2,19 @@
 
 
 
+## v3.12.5 (2024-07-18)
+
+### Fix
+
+* fix: fixing bug with cfg loading for fine-tuning (#241) ([`5a88d2c`](https://github.com/jbloomAus/SAELens/commit/5a88d2c2f3086393a35e2b8cc5d356e161494e9e))
+
+### Unknown
+
+* Update deploy_docs.yml
+
+Removed the Debug Info step that was causing issues. ([`71fd509`](https://github.com/jbloomAus/SAELens/commit/71fd509bf719481b2e89718cca53a39f9a113c80))
+
+
 ## v3.12.4 (2024-07-17)
 
 ### Fix
