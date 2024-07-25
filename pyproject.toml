@@ -22,7 +22,7 @@ safetensors = "^0.4.2"
 typer = "^0.12.3"
 mamba-lens = { version = "^0.0.4", optional = true }
 pyzmq = "26.0.0"
-automated-interpretability = "^0.0.3"
+automated-interpretability = ">=0.0.5,<1.0.0"
 python-dotenv = "^1.0.1"
 pyyaml = "^6.0.1"
 pytest-profiling = "^1.7.0"
