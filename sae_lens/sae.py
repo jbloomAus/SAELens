@@ -144,7 +144,7 @@ class SAE(HookedRootModule):
             self.initialize_weights_jumprelu()
             self.encode = self.encode_jumprelu
         else:
-            raise(ValueError)
+            raise (ValueError)
 
         # handle presence / absence of scaling factor.
         if self.cfg.finetuning_scaling_factor:
