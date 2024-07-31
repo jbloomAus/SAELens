@@ -458,7 +458,7 @@ class SAE(HookedRootModule):
                 )
                 sae_error = self.hook_sae_error(x - x_reconstruct_clean)
             return self.hook_sae_output(sae_out + sae_error)
-        else:
+        elif self.use_error_term:
             raise ValueError(f"No error term implemented for {self.cfg.architecture=}")
 
         return self.hook_sae_output(sae_out)
