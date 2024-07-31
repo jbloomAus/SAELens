@@ -376,7 +376,7 @@ class SAE(HookedRootModule):
         sae_out = self.decode(feature_acts)
 
         # TEMP
-        if self.use_error_term and self.cfg.architecture != "gated":
+        if self.use_error_term and self.cfg.architecture == "standard":
             with torch.no_grad():
                 # Recompute everything without hooks to get true error term
                 # Otherwise, the output with error term will always equal input, even for causal interventions that affect x_reconstruct
@@ -435,7 +435,7 @@ class SAE(HookedRootModule):
             return self.hook_sae_output(sae_out + sae_error)
 
         # TODO: Add tests
-        elif self.cfg.architecture == "jumprelu":
+        elif self.use_error_term and self.cfg.architecture == "jumprelu":
             with torch.no_grad():
                 x = x.to(self.dtype)
                 sae_in = self.reshape_fn_in(x)  # type: ignore

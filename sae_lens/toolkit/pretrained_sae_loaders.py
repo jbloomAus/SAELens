@@ -335,7 +335,7 @@ def gemma_2_sae_loader(
                 state_dict_key = "W_" + state_dict_key[2:]
             state_dict[state_dict_key] = (
                 torch.tensor(data[key])
-                .to(dtype=DTYPE_MAP[cfg_dict["dtype"]]) # type: ignore
+                .to(dtype=DTYPE_MAP[cfg_dict["dtype"]])  # type: ignore
                 .to(device)
             )
 
