@@ -35,7 +35,7 @@ SAE_CFG_PATH = "cfg.json"
 @dataclass
 class SAEConfig:
     # architecture details
-    architecture: Literal["standard", "gated"]
+    architecture: Literal["standard", "gated", "jumprelu"]
 
     # forward pass details.
     d_in: int
@@ -140,6 +140,11 @@ class SAE(HookedRootModule):
         elif self.cfg.architecture == "gated":
             self.initialize_weights_gated()
             self.encode = self.encode_gated
+        elif self.cfg.architecture == "jumprelu":
+            self.initialize_weights_jumprelu()
+            self.encode = self.encode_jumprelu
+        else:
+            raise(ValueError)
 
         # handle presence / absence of scaling factor.
         if self.cfg.finetuning_scaling_factor:
@@ -280,6 +285,34 @@ class SAE(HookedRootModule):
             torch.zeros(self.cfg.d_in, dtype=self.dtype, device=self.device)
         )
 
+    def initialize_weights_jumprelu(self):
+        # The params are identical to the standard SAE
+        # except we use a threshold parameter too
+        self.threshold = nn.Parameter(
+            torch.zeros(self.cfg.d_sae, dtype=self.dtype, device=self.device)
+        )
+        self.b_enc = nn.Parameter(
+            torch.zeros(self.cfg.d_sae, dtype=self.dtype, device=self.device)
+        )
+
+        self.W_dec = nn.Parameter(
+            torch.nn.init.kaiming_uniform_(
+                torch.empty(
+                    self.cfg.d_sae, self.cfg.d_in, dtype=self.dtype, device=self.device
+                )
+            )
+        )
+        self.W_enc = nn.Parameter(
+            torch.nn.init.kaiming_uniform_(
+                torch.empty(
+                    self.cfg.d_in, self.cfg.d_sae, dtype=self.dtype, device=self.device
+                )
+            )
+        )
+        self.b_dec = nn.Parameter(
+            torch.zeros(self.cfg.d_in, dtype=self.dtype, device=self.device)
+        )
+
     @overload
     def to(
         self: T,
@@ -401,6 +434,33 @@ class SAE(HookedRootModule):
                 sae_error = self.hook_sae_error(x - x_reconstruct_clean)
             return self.hook_sae_output(sae_out + sae_error)
 
+        # TODO: Add tests
+        elif self.cfg.architecture == "jumprelu":
+            with torch.no_grad():
+                x = x.to(self.dtype)
+                sae_in = self.reshape_fn_in(x)  # type: ignore
+
+                # handle run time activation normalization if needed
+                x = self.run_time_activation_norm_fn_in(x)
+
+                # apply b_dec_to_input if using that method.
+                sae_in = x - (self.b_dec * self.cfg.apply_b_dec_to_input)
+
+                # "... d_in, d_in d_sae -> ... d_sae",
+                hidden_pre = sae_in @ self.W_enc + self.b_enc
+                feature_acts = self.hook_sae_acts_post(
+                    self.activation_fn(hidden_pre) * (hidden_pre > self.threshold)
+                )
+                x_reconstruct_clean = self.reshape_fn_out(
+                    self.apply_finetuning_scaling_factor(feature_acts) @ self.W_dec
+                    + self.b_dec,
+                    d_head=self.d_head,  # TODO(conmy): d_head?! Eh?
+                )
+                sae_error = self.hook_sae_error(x - x_reconstruct_clean)
+            return self.hook_sae_output(sae_out + sae_error)
+        else:
+            raise ValueError(f"No error term implemented for {self.cfg.architecture=}")
+
         return self.hook_sae_output(sae_out)
 
     def encode_gated(
@@ -426,6 +486,34 @@ class SAE(HookedRootModule):
         )
 
         return active_features * feature_magnitudes
+
+    def encode_jumprelu(
+        self, x: Float[torch.Tensor, "... d_in"]
+    ) -> Float[torch.Tensor, "... d_sae"]:
+        """
+        Calculate SAE features from inputs
+        """
+
+        # move x to correct dtype
+        x = x.to(self.dtype)
+
+        # handle hook z reshaping if needed.
+        x = self.reshape_fn_in(x)  # type: ignore
+
+        # handle run time activation normalization if needed
+        x = self.run_time_activation_norm_fn_in(x)
+
+        # apply b_dec_to_input if using that method.
+        sae_in = self.hook_sae_input(x - (self.b_dec * self.cfg.apply_b_dec_to_input))
+
+        # "... d_in, d_in d_sae -> ... d_sae",
+        hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
+
+        feature_acts = self.hook_sae_acts_post(
+            self.activation_fn(hidden_pre) * (hidden_pre > self.threshold)
+        )
+
+        return feature_acts
 
     def encode_standard(
         self, x: Float[torch.Tensor, "... d_in"]

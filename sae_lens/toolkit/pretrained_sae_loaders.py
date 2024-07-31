@@ -1,6 +1,8 @@
 import json
+import re
 from typing import Any, Dict, Optional, Protocol
 
+import numpy as np
 import torch
 from huggingface_hub import hf_hub_download
 from huggingface_hub.utils._errors import EntryNotFoundError
@@ -259,9 +261,116 @@ def read_sae_from_disk(
     return cfg_dict, state_dict
 
 
-# TODO: add more loaders for other SAEs not trained by us
+def gemma_2_sae_loader(
+    repo_id: str,
+    folder_name: str,
+    device: str = "cpu",
+    force_download: bool = False,
+    cfg_overrides: Optional[dict[str, Any]] = None,
+    d_sae_override: Optional[int] = None,
+    layer_override: Optional[int] = None,
+) -> tuple[dict[str, Any], dict[str, torch.Tensor], Optional[torch.Tensor]]:
+    """
+    Custom loader for Gemma 2 SAEs.
+    """
+    # Detect width from folder_name
+    if "width_16k" in folder_name:
+        d_sae = 16384
+    elif "width_65k" in folder_name:
+        d_sae = 65536
+    else:
+        if not d_sae_override:
+            raise ValueError("Width not found in folder_name and no override provided.")
+        d_sae = d_sae_override
+
+    # Detect layer from folder_name
+    match = re.search(r"layer_(\d+)", folder_name)
+    if match:
+        layer = int(match.group(1))
+    else:
+        if not layer_override:
+            raise ValueError("Layer not found in folder_name and no override provided.")
+        layer = layer_override
+
+    # Set up the configuration dictionary
+    cfg_dict = {
+        "architecture": "jumprelu",
+        "d_in": 2304,
+        "d_sae": d_sae,
+        "dtype": "float32",
+        "device": device,
+        "model_name": "gemma-2-2b",
+        "hook_name": f"blocks.{layer}.hook_resid_post",
+        "hook_layer": layer,
+        "hook_head_index": None,
+        "activation_fn_str": "relu",
+        "finetuning_scaling_factor": False,
+        "sae_lens_training_version": None,
+        "prepend_bos": True,
+        "dataset_path": "monology/pile-uncopyrighted",
+        "context_size": 1024,
+        "dataset_trust_remote_code": True,
+        "apply_b_dec_to_input": False,
+        "normalize_activations": None,
+    }
+
+    # Apply overrides if provided
+    if cfg_overrides is not None:
+        cfg_dict.update(cfg_overrides)
+
+    # Download the SAE weights
+    sae_path = hf_hub_download(
+        repo_id=repo_id,
+        filename="params.npz",
+        subfolder=folder_name,
+        force_download=force_download,
+    )
+
+    # Load and convert the weights
+    state_dict = {}
+    with np.load(sae_path) as data:
+        for key in data.keys():
+            state_dict_key = key
+            if state_dict_key.startswith("w_"):
+                state_dict_key = "W_" + state_dict_key[2:]
+            state_dict[state_dict_key] = (
+                torch.tensor(data[key])
+                .to(dtype=DTYPE_MAP[cfg_dict["dtype"]]) # type: ignore
+                .to(device)
+            )
+
+    # Handle scaling factor
+    if "scaling_factor" in state_dict:
+        if torch.allclose(
+            state_dict["scaling_factor"], torch.ones_like(state_dict["scaling_factor"])
+        ):
+            del state_dict["scaling_factor"]
+            cfg_dict["finetuning_scaling_factor"] = False
+        else:
+            assert cfg_dict[
+                "finetuning_scaling_factor"
+            ], "Scaling factor is present but finetuning_scaling_factor is False."
+            state_dict["finetuning_scaling_factor"] = state_dict["scaling_factor"]
+            del state_dict["scaling_factor"]
+    else:
+        cfg_dict["finetuning_scaling_factor"] = False
+
+    # No sparsity tensor for Gemma 2 SAEs
+    log_sparsity = None
+
+    return cfg_dict, state_dict, log_sparsity
+
+
+# Helper function to get dtype from string
+DTYPE_MAP = {
+    "float32": torch.float32,
+    "float16": torch.float16,
+    "bfloat16": torch.bfloat16,
+}
+
 
 NAMED_PRETRAINED_SAE_LOADERS: dict[str, PretrainedSaeLoader] = {
     "sae_lens": sae_lens_loader,  # type: ignore
     "connor_rob_hook_z": connor_rob_hook_z_loader,  # type: ignore
+    "gemma_2": gemma_2_sae_loader,
 }

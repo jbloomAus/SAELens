@@ -2,64 +2,64 @@ SAE_LOOKUP:
   gpt2-small-res-jb:
     repo_id: jbloom/GPT2-Small-SAEs-Reformatted
     model: gpt2-small
-    conversion_func: null
+    conversion_func:
     links:
       model: https://huggingface.co/gpt2
       dashboards: https://www.neuronpedia.org/gpt2sm-res-jb
       publication: https://www.lesswrong.com/posts/f9EgfLSurAiqRJySD/open-source-sparse-autoencoders-for-all-residual-stream
     saes:
-    - id: blocks.0.hook_resid_pre
-      path: blocks.0.hook_resid_pre
-      variance_explained: 0.999
-      l0: 10.0
-    - id: blocks.1.hook_resid_pre
-      path: blocks.1.hook_resid_pre
-      variance_explained: 0.999
-      l0: 10.0
-    - id: blocks.2.hook_resid_pre
-      path: blocks.2.hook_resid_pre
-      variance_explained: 0.999
-      l0: 18.0
-    - id: blocks.3.hook_resid_pre
-      path: blocks.3.hook_resid_pre
-      variance_explained: 0.999
-      l0: 23.0
-    - id: blocks.4.hook_resid_pre
-      path: blocks.4.hook_resid_pre
-      variance_explained: 0.9
-      l0: 31.0
-    - id: blocks.5.hook_resid_pre
-      path: blocks.5.hook_resid_pre
-      variance_explained: 0.9
-      l0: 41.0
-    - id: blocks.6.hook_resid_pre
-      path: blocks.6.hook_resid_pre
-      variance_explained: 0.9
-      l0: 51.0
-    - id: blocks.7.hook_resid_pre
-      path: blocks.7.hook_resid_pre
-      variance_explained: 0.9
-      l0: 54.0
-    - id: blocks.8.hook_resid_pre
-      path: blocks.8.hook_resid_pre
-      variance_explained: 0.9
-      l0: 60.0
-    - id: blocks.9.hook_resid_pre
-      path: blocks.9.hook_resid_pre
-      variance_explained: 0.77
-      l0: 70.0
-    - id: blocks.10.hook_resid_pre
-      path: blocks.10.hook_resid_pre
-      variance_explained: 0.77
-      l0: 52.0
-    - id: blocks.11.hook_resid_pre
-      path: blocks.11.hook_resid_pre
-      variance_explained: 0.77
-      l0: 56.0
-    - id: blocks.11.hook_resid_post
-      path: blocks.11.hook_resid_post
-      variance_explained: 0.77
-      l0: 70.0
+      - id: blocks.0.hook_resid_pre
+        path: blocks.0.hook_resid_pre
+        variance_explained: 0.999
+        l0: 10.0
+      - id: blocks.1.hook_resid_pre
+        path: blocks.1.hook_resid_pre
+        variance_explained: 0.999
+        l0: 10.0
+      - id: blocks.2.hook_resid_pre
+        path: blocks.2.hook_resid_pre
+        variance_explained: 0.999
+        l0: 18.0
+      - id: blocks.3.hook_resid_pre
+        path: blocks.3.hook_resid_pre
+        variance_explained: 0.999
+        l0: 23.0
+      - id: blocks.4.hook_resid_pre
+        path: blocks.4.hook_resid_pre
+        variance_explained: 0.9
+        l0: 31.0
+      - id: blocks.5.hook_resid_pre
+        path: blocks.5.hook_resid_pre
+        variance_explained: 0.9
+        l0: 41.0
+      - id: blocks.6.hook_resid_pre
+        path: blocks.6.hook_resid_pre
+        variance_explained: 0.9
+        l0: 51.0
+      - id: blocks.7.hook_resid_pre
+        path: blocks.7.hook_resid_pre
+        variance_explained: 0.9
+        l0: 54.0
+      - id: blocks.8.hook_resid_pre
+        path: blocks.8.hook_resid_pre
+        variance_explained: 0.9
+        l0: 60.0
+      - id: blocks.9.hook_resid_pre
+        path: blocks.9.hook_resid_pre
+        variance_explained: 0.77
+        l0: 70.0
+      - id: blocks.10.hook_resid_pre
+        path: blocks.10.hook_resid_pre
+        variance_explained: 0.77
+        l0: 52.0
+      - id: blocks.11.hook_resid_pre
+        path: blocks.11.hook_resid_pre
+        variance_explained: 0.77
+        l0: 56.0
+      - id: blocks.11.hook_resid_post
+        path: blocks.11.hook_resid_post
+        variance_explained: 0.77
+        l0: 70.0
   gpt2-small-hook-z-kk:
     repo_id: ckkissane/attn-saes-gpt2-small-all-layers
     model: gpt2-small
@@ -69,518 +69,615 @@ SAE_LOOKUP:
       dashboards: https://www.neuronpedia.org/gpt2sm-kk
       publication: https://www.lesswrong.com/posts/FSTRedtjuHa4Gfdbr/attention-saes-scale-to-gpt-2-small
     saes:
-    - id: blocks.0.hook_z
-      path: gpt2-small_L0_Hcat_z_lr1.20e-03_l11.80e+00_ds24576_bs4096_dc1.00e-06_rsanthropic_rie25000_nr4_v9.pt
-      variance_explained: 0.13
-      l0: 3.0
-    - id: blocks.1.hook_z
-      path: gpt2-small_L1_Hcat_z_lr1.20e-03_l18.00e-01_ds24576_bs4096_dc1.00e-06_rsanthropic_rie25000_nr4_v5.pt
-      variance_explained: 0.42
-      l0: 23.0
-    - id: blocks.2.hook_z
-      path: gpt2-small_L2_Hcat_z_lr1.20e-03_l11.00e+00_ds24576_bs4096_dc1.00e-06_rsanthropic_rie25000_nr4_v4.pt
-      variance_explained: 0.4
-      l0: 16.0
-    - id: blocks.3.hook_z
-      path: gpt2-small_L3_Hcat_z_lr1.20e-03_l19.00e-01_ds24576_bs4096_dc1.00e-06_rsanthropic_rie25000_nr4_v9.pt
-      variance_explained: 0.43
-      l0: 15.0
-    - id: blocks.4.hook_z
-      path: gpt2-small_L4_Hcat_z_lr1.20e-03_l11.10e+00_ds24576_bs4096_dc1.00e-06_rsanthropic_rie25000_nr4_v7.pt
-      variance_explained: 0.27
-      l0: 14.0
-    - id: blocks.5.hook_z
-      path: gpt2-small_L5_Hcat_z_lr1.20e-03_l11.00e+00_ds49152_bs4096_dc1.00e-06_rsanthropic_rie25000_nr4_v9.pt
-      variance_explained: 0.13
-      l0: 17.0
-    - id: blocks.6.hook_z
-      path: gpt2-small_L6_Hcat_z_lr1.20e-03_l11.10e+00_ds24576_bs4096_dc1.00e-06_rsanthropic_rie25000_nr4_v9.pt
-      variance_explained: 0.0
-      l0: 17.0
-    - id: blocks.7.hook_z
-      path: gpt2-small_L7_Hcat_z_lr1.20e-03_l11.10e+00_ds49152_bs4096_dc1.00e-06_rsanthropic_rie25000_nr4_v9.pt
-      variance_explained: -7.55
-      l0: 19.0
-    - id: blocks.8.hook_z
-      path: gpt2-small_L8_Hcat_z_lr1.20e-03_l11.30e+00_ds24576_bs4096_dc1.00e-05_rsanthropic_rie25000_nr4_v6.pt
-      variance_explained: -0.22
-      l0: 23.0
-    - id: blocks.9.hook_z
-      path: gpt2-small_L9_Hcat_z_lr1.20e-03_l11.20e+00_ds24576_bs4096_dc1.00e-06_rsanthropic_rie25000_nr4_v9.pt
-      variance_explained: -0.54
-      l0: 23.0
-    - id: blocks.10.hook_z
-      path: gpt2-small_L10_Hcat_z_lr1.20e-03_l11.30e+00_ds24576_bs4096_dc1.00e-05_rsanthropic_rie25000_nr4_v9.pt
-      variance_explained: -0.27
-      l0: 14.0
-    - id: blocks.11.hook_z
-      path: gpt2-small_L11_Hcat_z_lr1.20e-03_l13.00e+00_ds24576_bs4096_dc3.16e-06_rsanthropic_rie25000_nr4_v9.pt
-      variance_explained: -0.7
-      l0: 9.4
+      - id: blocks.0.hook_z
+        path: gpt2-small_L0_Hcat_z_lr1.20e-03_l11.80e+00_ds24576_bs4096_dc1.00e-06_rsanthropic_rie25000_nr4_v9.pt
+        variance_explained: 0.13
+        l0: 3.0
+      - id: blocks.1.hook_z
+        path: gpt2-small_L1_Hcat_z_lr1.20e-03_l18.00e-01_ds24576_bs4096_dc1.00e-06_rsanthropic_rie25000_nr4_v5.pt
+        variance_explained: 0.42
+        l0: 23.0
+      - id: blocks.2.hook_z
+        path: gpt2-small_L2_Hcat_z_lr1.20e-03_l11.00e+00_ds24576_bs4096_dc1.00e-06_rsanthropic_rie25000_nr4_v4.pt
+        variance_explained: 0.4
+        l0: 16.0
+      - id: blocks.3.hook_z
+        path: gpt2-small_L3_Hcat_z_lr1.20e-03_l19.00e-01_ds24576_bs4096_dc1.00e-06_rsanthropic_rie25000_nr4_v9.pt
+        variance_explained: 0.43
+        l0: 15.0
+      - id: blocks.4.hook_z
+        path: gpt2-small_L4_Hcat_z_lr1.20e-03_l11.10e+00_ds24576_bs4096_dc1.00e-06_rsanthropic_rie25000_nr4_v7.pt
+        variance_explained: 0.27
+        l0: 14.0
+      - id: blocks.5.hook_z
+        path: gpt2-small_L5_Hcat_z_lr1.20e-03_l11.00e+00_ds49152_bs4096_dc1.00e-06_rsanthropic_rie25000_nr4_v9.pt
+        variance_explained: 0.13
+        l0: 17.0
+      - id: blocks.6.hook_z
+        path: gpt2-small_L6_Hcat_z_lr1.20e-03_l11.10e+00_ds24576_bs4096_dc1.00e-06_rsanthropic_rie25000_nr4_v9.pt
+        variance_explained: 0.0
+        l0: 17.0
+      - id: blocks.7.hook_z
+        path: gpt2-small_L7_Hcat_z_lr1.20e-03_l11.10e+00_ds49152_bs4096_dc1.00e-06_rsanthropic_rie25000_nr4_v9.pt
+        variance_explained: -7.55
+        l0: 19.0
+      - id: blocks.8.hook_z
+        path: gpt2-small_L8_Hcat_z_lr1.20e-03_l11.30e+00_ds24576_bs4096_dc1.00e-05_rsanthropic_rie25000_nr4_v6.pt
+        variance_explained: -0.22
+        l0: 23.0
+      - id: blocks.9.hook_z
+        path: gpt2-small_L9_Hcat_z_lr1.20e-03_l11.20e+00_ds24576_bs4096_dc1.00e-06_rsanthropic_rie25000_nr4_v9.pt
+        variance_explained: -0.54
+        l0: 23.0
+      - id: blocks.10.hook_z
+        path: gpt2-small_L10_Hcat_z_lr1.20e-03_l11.30e+00_ds24576_bs4096_dc1.00e-05_rsanthropic_rie25000_nr4_v9.pt
+        variance_explained: -0.27
+        l0: 14.0
+      - id: blocks.11.hook_z
+        path: gpt2-small_L11_Hcat_z_lr1.20e-03_l13.00e+00_ds24576_bs4096_dc3.16e-06_rsanthropic_rie25000_nr4_v9.pt
+        variance_explained: -0.7
+        l0: 9.4
   gpt2-small-mlp-tm:
     repo_id: tommmcgrath/gpt2-small-mlp-out-saes
     model: gpt2-small
     links:
       model: https://huggingface.co/gpt2
-    conversion_func: null
+    conversion_func:
     config_overrides:
       dataset_path: Skylion007/openwebtext
     saes:
-    - id: blocks.0.hook_mlp_out
-      path: sae_group_gpt2_blocks.0.hook_mlp_out_24576:v1
-      variance_explained: 0.999
-      l0: 15.0
-      norm_scaling_factor: 1.049317316132615
-    - id: blocks.1.hook_mlp_out
-      path: sae_group_gpt2_blocks.1.hook_mlp_out_24576:v0
-      variance_explained: 0.57
-      l0: 21.0
-      norm_scaling_factor: 2.3693984005104283
-    - id: blocks.2.hook_mlp_out
-      path: sae_group_gpt2_blocks.2.hook_mlp_out_24576:v0
-      variance_explained: 0.55
-      l0: 137.0
-      norm_scaling_factor: 1.6411934982190302
-    - id: blocks.3.hook_mlp_out
-      path: sae_group_gpt2_blocks.3.hook_mlp_out_24576:v0
-      variance_explained: 0.57
-      l0: 54.0
-      norm_scaling_factor: 1.8958522157897557
-    - id: blocks.4.hook_mlp_out
-      path: sae_group_gpt2_blocks.4.hook_mlp_out_24576:v0
-      variance_explained: 0.44
-      l0: 74.0
-      norm_scaling_factor: 1.81673478700627
-    - id: blocks.5.hook_mlp_out
-      path: sae_group_gpt2_blocks.5.hook_mlp_out_24576:v0
-      variance_explained: 0.52
-      l0: 76.0
-      norm_scaling_factor: 1.550234472245924
-    - id: blocks.6.hook_mlp_out
-      path: sae_group_gpt2_blocks.6.hook_mlp_out_24576:v0
-      variance_explained: 0.508
-      l0: 40.0
-      norm_scaling_factor: 1.3237742807210804
-    - id: blocks.7.hook_mlp_out
-      path: sae_group_gpt2_blocks.7.hook_mlp_out_24576:v0
-      variance_explained: 0.53
-      l0: 52.0
-      norm_scaling_factor: 1.1042905114723296
-    - id: blocks.8.hook_mlp_out
-      path: sae_group_gpt2_blocks.8.hook_mlp_out_24576:v1
-      variance_explained: 0.46
-      l0: 36.0
-      norm_scaling_factor: 0.9123762783479742
-    - id: blocks.9.hook_mlp_out
-      path: sae_group_gpt2_blocks.9.hook_mlp_out_24576:v0
-      variance_explained: 0.49
-      l0: 49.0
-      norm_scaling_factor: 0.6955335635232373
-    - id: blocks.10.hook_mlp_out
-      path: sae_group_gpt2_blocks.10.hook_mlp_out_24576:v0
-      variance_explained: 0.22
-      l0: 167.0
-      norm_scaling_factor: 0.3619728926727644
-    - id: blocks.11.hook_mlp_out
-      path: sae_group_gpt2_blocks.11.hook_mlp_out_24576:v2
-      variance_explained: 0.59
-      l0: 170.0
-      norm_scaling_factor: 0.2851548652550073
+      - id: blocks.0.hook_mlp_out
+        path: sae_group_gpt2_blocks.0.hook_mlp_out_24576:v1
+        variance_explained: 0.999
+        l0: 15.0
+        norm_scaling_factor: 1.049317316132615
+      - id: blocks.1.hook_mlp_out
+        path: sae_group_gpt2_blocks.1.hook_mlp_out_24576:v0
+        variance_explained: 0.57
+        l0: 21.0
+        norm_scaling_factor: 2.3693984005104283
+      - id: blocks.2.hook_mlp_out
+        path: sae_group_gpt2_blocks.2.hook_mlp_out_24576:v0
+        variance_explained: 0.55
+        l0: 137.0
+        norm_scaling_factor: 1.6411934982190302
+      - id: blocks.3.hook_mlp_out
+        path: sae_group_gpt2_blocks.3.hook_mlp_out_24576:v0
+        variance_explained: 0.57
+        l0: 54.0
+        norm_scaling_factor: 1.8958522157897557
+      - id: blocks.4.hook_mlp_out
+        path: sae_group_gpt2_blocks.4.hook_mlp_out_24576:v0
+        variance_explained: 0.44
+        l0: 74.0
+        norm_scaling_factor: 1.81673478700627
+      - id: blocks.5.hook_mlp_out
+        path: sae_group_gpt2_blocks.5.hook_mlp_out_24576:v0
+        variance_explained: 0.52
+        l0: 76.0
+        norm_scaling_factor: 1.550234472245924
+      - id: blocks.6.hook_mlp_out
+        path: sae_group_gpt2_blocks.6.hook_mlp_out_24576:v0
+        variance_explained: 0.508
+        l0: 40.0
+        norm_scaling_factor: 1.3237742807210804
+      - id: blocks.7.hook_mlp_out
+        path: sae_group_gpt2_blocks.7.hook_mlp_out_24576:v0
+        variance_explained: 0.53
+        l0: 52.0
+        norm_scaling_factor: 1.1042905114723296
+      - id: blocks.8.hook_mlp_out
+        path: sae_group_gpt2_blocks.8.hook_mlp_out_24576:v1
+        variance_explained: 0.46
+        l0: 36.0
+        norm_scaling_factor: 0.9123762783479742
+      - id: blocks.9.hook_mlp_out
+        path: sae_group_gpt2_blocks.9.hook_mlp_out_24576:v0
+        variance_explained: 0.49
+        l0: 49.0
+        norm_scaling_factor: 0.6955335635232373
+      - id: blocks.10.hook_mlp_out
+        path: sae_group_gpt2_blocks.10.hook_mlp_out_24576:v0
+        variance_explained: 0.22
+        l0: 167.0
+        norm_scaling_factor: 0.3619728926727644
+      - id: blocks.11.hook_mlp_out
+        path: sae_group_gpt2_blocks.11.hook_mlp_out_24576:v2
+        variance_explained: 0.59
+        l0: 170.0
+        norm_scaling_factor: 0.2851548652550073
   gpt2-small-res-jb-feature-splitting:
     repo_id: jbloom/GPT2-Small-Feature-Splitting-Experiment-Layer-8
     model: gpt2-small
     links:
       model: https://huggingface.co/gpt2
       dashboards: https://www.neuronpedia.org/gpt2sm-rfs-jb
-    conversion_func: null
+    conversion_func:
     saes:
-    - id: blocks.8.hook_resid_pre_768
-      path: blocks.8.hook_resid_pre_768
-      variance_explained: 0.61
-      l0: 36.0
-    - id: blocks.8.hook_resid_pre_1536
-      path: blocks.8.hook_resid_pre_1536
-      variance_explained: 0.67
-      l0: 39.0
-    - id: blocks.8.hook_resid_pre_3072
-      path: blocks.8.hook_resid_pre_3072
-      variance_explained: 0.72
-      l0: 41.0
-    - id: blocks.8.hook_resid_pre_6144
-      path: blocks.8.hook_resid_pre_6144
-      variance_explained: 0.76
-      l0: 43.0
-    - id: blocks.8.hook_resid_pre_12288
-      path: blocks.8.hook_resid_pre_12288
-      variance_explained: 0.77
-      l0: 43.0
-    - id: blocks.8.hook_resid_pre_24576
-      path: blocks.8.hook_resid_pre_24576
-      variance_explained: 0.79
-      l0: 40.0
-    - id: blocks.8.hook_resid_pre_49152
-      path: blocks.8.hook_resid_pre_49152
-      variance_explained: 0.81
-      l0: 40.0
-    - id: blocks.8.hook_resid_pre_98304
-      path: blocks.8.hook_resid_pre_98304
-      variance_explained: 0.82
-      l0: 43.0
+      - id: blocks.8.hook_resid_pre_768
+        path: blocks.8.hook_resid_pre_768
+        variance_explained: 0.61
+        l0: 36.0
+      - id: blocks.8.hook_resid_pre_1536
+        path: blocks.8.hook_resid_pre_1536
+        variance_explained: 0.67
+        l0: 39.0
+      - id: blocks.8.hook_resid_pre_3072
+        path: blocks.8.hook_resid_pre_3072
+        variance_explained: 0.72
+        l0: 41.0
+      - id: blocks.8.hook_resid_pre_6144
+        path: blocks.8.hook_resid_pre_6144
+        variance_explained: 0.76
+        l0: 43.0
+      - id: blocks.8.hook_resid_pre_12288
+        path: blocks.8.hook_resid_pre_12288
+        variance_explained: 0.77
+        l0: 43.0
+      - id: blocks.8.hook_resid_pre_24576
+        path: blocks.8.hook_resid_pre_24576
+        variance_explained: 0.79
+        l0: 40.0
+      - id: blocks.8.hook_resid_pre_49152
+        path: blocks.8.hook_resid_pre_49152
+        variance_explained: 0.81
+        l0: 40.0
+      - id: blocks.8.hook_resid_pre_98304
+        path: blocks.8.hook_resid_pre_98304
+        variance_explained: 0.82
+        l0: 43.0
   gpt2-small-resid-post-v5-32k:
     repo_id: jbloom/GPT2-Small-OAI-v5-32k-resid-post-SAEs
     model: gpt2-small
-    conversion_func: null
+    conversion_func:
     config_overrides:
       dataset_path: Skylion007/openwebtext
     saes:
-    - id: blocks.0.hook_resid_post
-      path: v5_32k_layer_0.pt
-      variance_explained: 0.9
-      l0: 32.0
-    - id: blocks.1.hook_resid_post
-      path: v5_32k_layer_1.pt
-      variance_explained: 0.9
-      l0: 32.0
-    - id: blocks.2.hook_resid_post
-      path: v5_32k_layer_2.pt
-      variance_explained: 0.9
-      l0: 32.0
-    - id: blocks.3.hook_resid_post
-      path: v5_32k_layer_3.pt
-      variance_explained: 0.9
-      l0: 32.0
-    - id: blocks.4.hook_resid_post
-      path: v5_32k_layer_4.pt
-      variance_explained: 0.9
-      l0: 32.0
-    - id: blocks.5.hook_resid_post
-      path: v5_32k_layer_5.pt
-      variance_explained: 0.9
-      l0: 32.0
-    - id: blocks.6.hook_resid_post
-      path: v5_32k_layer_6.pt
-      variance_explained: 0.9
-      l0: 32.0
-    - id: blocks.7.hook_resid_post
-      path: v5_32k_layer_7.pt
-      variance_explained: 0.9
-      l0: 32.0
-    - id: blocks.8.hook_resid_post
-      path: v5_32k_layer_8.pt
-      variance_explained: 0.74
-      l0: 32.0
-    - id: blocks.9.hook_resid_post
-      path: v5_32k_layer_9.pt
-      variance_explained: 0.9
-      l0: 32.0
-    - id: blocks.10.hook_resid_post
-      path: v5_32k_layer_10.pt
-      variance_explained: 0.9
-      l0: 32.0
-    - id: blocks.11.hook_resid_post
-      path: v5_32k_layer_11.pt
-      variance_explained: 0.9
-      l0: 32.0
+      - id: blocks.0.hook_resid_post
+        path: v5_32k_layer_0.pt
+        variance_explained: 0.9
+        l0: 32.0
+      - id: blocks.1.hook_resid_post
+        path: v5_32k_layer_1.pt
+        variance_explained: 0.9
+        l0: 32.0
+      - id: blocks.2.hook_resid_post
+        path: v5_32k_layer_2.pt
+        variance_explained: 0.9
+        l0: 32.0
+      - id: blocks.3.hook_resid_post
+        path: v5_32k_layer_3.pt
+        variance_explained: 0.9
+        l0: 32.0
+      - id: blocks.4.hook_resid_post
+        path: v5_32k_layer_4.pt
+        variance_explained: 0.9
+        l0: 32.0
+      - id: blocks.5.hook_resid_post
+        path: v5_32k_layer_5.pt
+        variance_explained: 0.9
+        l0: 32.0
+      - id: blocks.6.hook_resid_post
+        path: v5_32k_layer_6.pt
+        variance_explained: 0.9
+        l0: 32.0
+      - id: blocks.7.hook_resid_post
+        path: v5_32k_layer_7.pt
+        variance_explained: 0.9
+        l0: 32.0
+      - id: blocks.8.hook_resid_post
+        path: v5_32k_layer_8.pt
+        variance_explained: 0.74
+        l0: 32.0
+      - id: blocks.9.hook_resid_post
+        path: v5_32k_layer_9.pt
+        variance_explained: 0.9
+        l0: 32.0
+      - id: blocks.10.hook_resid_post
+        path: v5_32k_layer_10.pt
+        variance_explained: 0.9
+        l0: 32.0
+      - id: blocks.11.hook_resid_post
+        path: v5_32k_layer_11.pt
+        variance_explained: 0.9
+        l0: 32.0
   gpt2-small-resid-post-v5-128k:
     repo_id: jbloom/GPT2-Small-OAI-v5-128k-resid-post-SAEs
     model: gpt2-small
-    conversion_func: null
+    conversion_func:
     config_overrides:
       dataset_path: Skylion007/openwebtext
     saes:
-    - id: blocks.0.hook_resid_post
-      path: v5_128k_layer_0
-      variance_explained: 0.9
-      l0: 32.0
-    - id: blocks.1.hook_resid_post
-      path: v5_128k_layer_1
-      variance_explained: 0.9
-      l0: 32.0
-    - id: blocks.2.hook_resid_post
-      path: v5_128k_layer_2
-      variance_explained: 0.9
-      l0: 32.0
-    - id: blocks.3.hook_resid_post
-      path: v5_128k_layer_3
-      variance_explained: 0.9
-      l0: 32.0
-    - id: blocks.4.hook_resid_post
-      path: v5_128k_layer_4
-      variance_explained: 0.9
-      l0: 32.0
-    - id: blocks.5.hook_resid_post
-      path: v5_128k_layer_5
-      variance_explained: 0.9
-      l0: 32.0
-    - id: blocks.6.hook_resid_post
-      path: v5_128k_layer_6
-      variance_explained: 0.9
-      l0: 32.0
-    - id: blocks.7.hook_resid_post
-      path: v5_128k_layer_7
-      variance_explained: 0.9
-      l0: 32.0
-    - id: blocks.8.hook_resid_post
-      path: v5_128k_layer_8
-      variance_explained: 0.9
-      l0: 32.0
-    - id: blocks.9.hook_resid_post
-      path: v5_128k_layer_9
-      variance_explained: 0.9
-      l0: 32.0
-    - id: blocks.10.hook_resid_post
-      path: v5_128k_layer_10
-      variance_explained: 0.9
-      l0: 32.0
-    - id: blocks.11.hook_resid_post
-      path: v5_128k_layer_11
-      variance_explained: 0.9
-      l0: 32.0
+      - id: blocks.0.hook_resid_post
+        path: v5_128k_layer_0
+        variance_explained: 0.9
+        l0: 32.0
+      - id: blocks.1.hook_resid_post
+        path: v5_128k_layer_1
+        variance_explained: 0.9
+        l0: 32.0
+      - id: blocks.2.hook_resid_post
+        path: v5_128k_layer_2
+        variance_explained: 0.9
+        l0: 32.0
+      - id: blocks.3.hook_resid_post
+        path: v5_128k_layer_3
+        variance_explained: 0.9
+        l0: 32.0
+      - id: blocks.4.hook_resid_post
+        path: v5_128k_layer_4
+        variance_explained: 0.9
+        l0: 32.0
+      - id: blocks.5.hook_resid_post
+        path: v5_128k_layer_5
+        variance_explained: 0.9
+        l0: 32.0
+      - id: blocks.6.hook_resid_post
+        path: v5_128k_layer_6
+        variance_explained: 0.9
+        l0: 32.0
+      - id: blocks.7.hook_resid_post
+        path: v5_128k_layer_7
+        variance_explained: 0.9
+        l0: 32.0
+      - id: blocks.8.hook_resid_post
+        path: v5_128k_layer_8
+        variance_explained: 0.9
+        l0: 32.0
+      - id: blocks.9.hook_resid_post
+        path: v5_128k_layer_9
+        variance_explained: 0.9
+        l0: 32.0
+      - id: blocks.10.hook_resid_post
+        path: v5_128k_layer_10
+        variance_explained: 0.9
+        l0: 32.0
+      - id: blocks.11.hook_resid_post
+        path: v5_128k_layer_11
+        variance_explained: 0.9
+        l0: 32.0
   gemma-2b-res-jb:
     repo_id: jbloom/Gemma-2b-Residual-Stream-SAEs
     model: gemma-2b
-    conversion_func: null
+    conversion_func:
     links:
       model: https://huggingface.co/google/gemma-2b
       dashboards: https://www.neuronpedia.org/gemma2b-res-jb
     saes:
-    - id: blocks.0.hook_resid_post
-      path: gemma_2b_blocks.0.hook_resid_post_16384_anthropic
-      variance_explained: 0.999
-      l0: 47.0
-    - id: blocks.6.hook_resid_post
-      path: gemma_2b_blocks.6.hook_resid_post_16384_anthropic_fast_lr
-      variance_explained: 0.71
-      l0: 56.0
-    - id: blocks.10.hook_resid_post
-      path: gemma_2b_blocks.10.hook_resid_post_16384
-      variance_explained: -0.20
-      l0: 62.0
-    - id: blocks.12.hook_resid_post
-      path: gemma_2b_blocks.12.hook_resid_post_16384
-      variance_explained: -0.65
-      l0: 62.0
-      norm_scaling_factor: 0.21381938399317255
-    - id: blocks.17.hook_resid_post
-      path: gemma_2b_blocks.17.hook_resid_post_16384
-      variance_explained: -0.85
-      l0: 54.0
+      - id: blocks.0.hook_resid_post
+        path: gemma_2b_blocks.0.hook_resid_post_16384_anthropic
+        variance_explained: 0.999
+        l0: 47.0
+      - id: blocks.6.hook_resid_post
+        path: gemma_2b_blocks.6.hook_resid_post_16384_anthropic_fast_lr
+        variance_explained: 0.71
+        l0: 56.0
+      - id: blocks.10.hook_resid_post
+        path: gemma_2b_blocks.10.hook_resid_post_16384
+        variance_explained: -0.20
+        l0: 62.0
+      - id: blocks.12.hook_resid_post
+        path: gemma_2b_blocks.12.hook_resid_post_16384
+        variance_explained: -0.65
+        l0: 62.0
+        norm_scaling_factor: 0.21381938399317255
+      - id: blocks.17.hook_resid_post
+        path: gemma_2b_blocks.17.hook_resid_post_16384
+        variance_explained: -0.85
+        l0: 54.0
   gemma-2b-it-res-jb:
     repo_id: jbloom/Gemma-2b-IT-Residual-Stream-SAEs
     model: gemma-2b-it
-    conversion_func: null
+    conversion_func:
     config_overrides:
       dataset_path: Skylion007/openwebtext
     links:
       model: https://huggingface.co/google/gemma-2b-it
       dashboards: https://www.neuronpedia.org/gemma2bit-res-jb
     saes:
-    - id: blocks.12.hook_resid_post
-      path: gemma_2b_it_blocks.12.hook_resid_post_16384
-      variance_explained: 0.57
-      l0: 61.0
+      - id: blocks.12.hook_resid_post
+        path: gemma_2b_it_blocks.12.hook_resid_post_16384
+        variance_explained: 0.57
+        l0: 61.0
   mistral-7b-res-wg:
     repo_id: JoshEngels/Mistral-7B-Residual-Stream-SAEs
     model: mistral-7b
-    conversion_func: null
+    conversion_func:
     config_overrides:
       normalize_activations: constant_norm_rescale
     saes:
-    - id: blocks.8.hook_resid_pre
-      path: mistral_7b_layer_8
-      variance_explained: 0.94
-      l0: 92
-    - id: blocks.16.hook_resid_pre
-      path: mistral_7b_layer_16
-      variance_explained: 0.85
-      l0: 74
-    - id: blocks.24.hook_resid_pre
-      path: mistral_7b_layer_24
-      variance_explained: 0.72
-      l0: 75
+      - id: blocks.8.hook_resid_pre
+        path: mistral_7b_layer_8
+        variance_explained: 0.94
+        l0: 92
+      - id: blocks.16.hook_resid_pre
+        path: mistral_7b_layer_16
+        variance_explained: 0.85
+        l0: 74
+      - id: blocks.24.hook_resid_pre
+        path: mistral_7b_layer_24
+        variance_explained: 0.72
+        l0: 75
   gpt2-small-resid-mid-v5-32k:
     repo_id: jbloom/GPT2-Small-OAI-v5-32k-resid-mid-SAEs
     model: gpt2-small
-    conversion_func: null
+    conversion_func:
     config_overrides:
       dataset_path: Skylion007/openwebtext
     saes:
-    - id: blocks.0.hook_resid_mid
-      path: v5_32k_layer_0
-    - id: blocks.1.hook_resid_mid
-      path: v5_32k_layer_1
-    - id: blocks.2.hook_resid_mid
-      path: v5_32k_layer_2
-    - id: blocks.3.hook_resid_mid
-      path: v5_32k_layer_3
-    - id: blocks.4.hook_resid_mid
-      path: v5_32k_layer_4
-    - id: blocks.5.hook_resid_mid
-      path: v5_32k_layer_5
-    - id: blocks.6.hook_resid_mid
-      path: v5_32k_layer_6
-    - id: blocks.7.hook_resid_mid
-      path: v5_32k_layer_7
-    - id: blocks.8.hook_resid_mid
-      path: v5_32k_layer_8
-    - id: blocks.9.hook_resid_mid
-      path: v5_32k_layer_9
-    - id: blocks.10.hook_resid_mid
-      path: v5_32k_layer_10
-    - id: blocks.11.hook_resid_mid
-      path: v5_32k_layer_11
+      - id: blocks.0.hook_resid_mid
+        path: v5_32k_layer_0
+      - id: blocks.1.hook_resid_mid
+        path: v5_32k_layer_1
+      - id: blocks.2.hook_resid_mid
+        path: v5_32k_layer_2
+      - id: blocks.3.hook_resid_mid
+        path: v5_32k_layer_3
+      - id: blocks.4.hook_resid_mid
+        path: v5_32k_layer_4
+      - id: blocks.5.hook_resid_mid
+        path: v5_32k_layer_5
+      - id: blocks.6.hook_resid_mid
+        path: v5_32k_layer_6
+      - id: blocks.7.hook_resid_mid
+        path: v5_32k_layer_7
+      - id: blocks.8.hook_resid_mid
+        path: v5_32k_layer_8
+      - id: blocks.9.hook_resid_mid
+        path: v5_32k_layer_9
+      - id: blocks.10.hook_resid_mid
+        path: v5_32k_layer_10
+      - id: blocks.11.hook_resid_mid
+        path: v5_32k_layer_11
   gpt2-small-resid-mid-v5-128k:
     repo_id: jbloom/GPT2-Small-OAI-v5-128k-resid-mid-SAEs
     model: gpt2-small
-    conversion_func: null
+    conversion_func:
     config_overrides:
       dataset_path: Skylion007/openwebtext
     saes:
-    - id: blocks.0.hook_resid_mid
-      path: v5_128k_layer_0
-    - id: blocks.1.hook_resid_mid
-      path: v5_128k_layer_1
-    - id: blocks.2.hook_resid_mid
-      path: v5_128k_layer_2
-    - id: blocks.3.hook_resid_mid
-      path: v5_128k_layer_3
-    - id: blocks.4.hook_resid_mid
-      path: v5_128k_layer_4
-    - id: blocks.5.hook_resid_mid
-      path: v5_128k_layer_5
-    - id: blocks.6.hook_resid_mid
-      path: v5_128k_layer_6
-    - id: blocks.7.hook_resid_mid
-      path: v5_128k_layer_7
-    - id: blocks.8.hook_resid_mid
-      path: v5_128k_layer_8
-    - id: blocks.9.hook_resid_mid
-      path: v5_128k_layer_9
-    - id: blocks.10.hook_resid_mid
-      path: v5_128k_layer_10
-    - id: blocks.11.hook_resid_mid
-      path: v5_128k_layer_11
+      - id: blocks.0.hook_resid_mid
+        path: v5_128k_layer_0
+      - id: blocks.1.hook_resid_mid
+        path: v5_128k_layer_1
+      - id: blocks.2.hook_resid_mid
+        path: v5_128k_layer_2
+      - id: blocks.3.hook_resid_mid
+        path: v5_128k_layer_3
+      - id: blocks.4.hook_resid_mid
+        path: v5_128k_layer_4
+      - id: blocks.5.hook_resid_mid
+        path: v5_128k_layer_5
+      - id: blocks.6.hook_resid_mid
+        path: v5_128k_layer_6
+      - id: blocks.7.hook_resid_mid
+        path: v5_128k_layer_7
+      - id: blocks.8.hook_resid_mid
+        path: v5_128k_layer_8
+      - id: blocks.9.hook_resid_mid
+        path: v5_128k_layer_9
+      - id: blocks.10.hook_resid_mid
+        path: v5_128k_layer_10
+      - id: blocks.11.hook_resid_mid
+        path: v5_128k_layer_11
   gpt2-small-mlp-out-v5-32k:
     repo_id: jbloom/GPT2-Small-OAI-v5-32k-mlp-out-SAEs
     model: gpt2-small
-    conversion_func: null
+    conversion_func:
     config_overrides:
       dataset_path: Skylion007/openwebtext
     saes:
-    - id: blocks.0.hook_mlp_out
-      path: v5_32k_layer_0
-    - id: blocks.1.hook_mlp_out
-      path: v5_32k_layer_1
-    - id: blocks.2.hook_mlp_out
-      path: v5_32k_layer_2
-    - id: blocks.3.hook_mlp_out
-      path: v5_32k_layer_3
-    - id: blocks.4.hook_mlp_out
-      path: v5_32k_layer_4
-    - id: blocks.5.hook_mlp_out
-      path: v5_32k_layer_5
-    - id: blocks.6.hook_mlp_out
-      path: v5_32k_layer_6
-    - id: blocks.7.hook_mlp_out
-      path: v5_32k_layer_7
-    - id: blocks.8.hook_mlp_out
-      path: v5_32k_layer_8
-    - id: blocks.9.hook_mlp_out
-      path: v5_32k_layer_9
-    - id: blocks.10.hook_mlp_out
-      path: v5_32k_layer_10
-    - id: blocks.11.hook_mlp_out
-      path: v5_32k_layer_11
+      - id: blocks.0.hook_mlp_out
+        path: v5_32k_layer_0
+      - id: blocks.1.hook_mlp_out
+        path: v5_32k_layer_1
+      - id: blocks.2.hook_mlp_out
+        path: v5_32k_layer_2
+      - id: blocks.3.hook_mlp_out
+        path: v5_32k_layer_3
+      - id: blocks.4.hook_mlp_out
+        path: v5_32k_layer_4
+      - id: blocks.5.hook_mlp_out
+        path: v5_32k_layer_5
+      - id: blocks.6.hook_mlp_out
+        path: v5_32k_layer_6
+      - id: blocks.7.hook_mlp_out
+        path: v5_32k_layer_7
+      - id: blocks.8.hook_mlp_out
+        path: v5_32k_layer_8
+      - id: blocks.9.hook_mlp_out
+        path: v5_32k_layer_9
+      - id: blocks.10.hook_mlp_out
+        path: v5_32k_layer_10
+      - id: blocks.11.hook_mlp_out
+        path: v5_32k_layer_11
   gpt2-small-mlp-out-v5-128k:
     repo_id: jbloom/GPT2-Small-OAI-v5-128k-mlp-out-SAEs
     model: gpt2-small
-    conversion_func: null
+    conversion_func:
     config_overrides:
       dataset_path: Skylion007/openwebtext
     saes:
-    - id: blocks.0.hook_mlp_out
-      path: v5_128k_layer_0
-    - id: blocks.1.hook_mlp_out
-      path: v5_128k_layer_1
-    - id: blocks.2.hook_mlp_out
-      path: v5_128k_layer_2
-    - id: blocks.3.hook_mlp_out
-      path: v5_128k_layer_3
-    - id: blocks.4.hook_mlp_out
-      path: v5_128k_layer_4
-    - id: blocks.5.hook_mlp_out
-      path: v5_128k_layer_5
-    - id: blocks.6.hook_mlp_out
-      path: v5_128k_layer_6
-    - id: blocks.7.hook_mlp_out
-      path: v5_128k_layer_7
-    - id: blocks.8.hook_mlp_out
-      path: v5_128k_layer_8
-    - id: blocks.9.hook_mlp_out
-      path: v5_128k_layer_9
-    - id: blocks.10.hook_mlp_out
-      path: v5_128k_layer_10
-    - id: blocks.11.hook_mlp_out
-      path: v5_128k_layer_11
+      - id: blocks.0.hook_mlp_out
+        path: v5_128k_layer_0
+      - id: blocks.1.hook_mlp_out
+        path: v5_128k_layer_1
+      - id: blocks.2.hook_mlp_out
+        path: v5_128k_layer_2
+      - id: blocks.3.hook_mlp_out
+        path: v5_128k_layer_3
+      - id: blocks.4.hook_mlp_out
+        path: v5_128k_layer_4
+      - id: blocks.5.hook_mlp_out
+        path: v5_128k_layer_5
+      - id: blocks.6.hook_mlp_out
+        path: v5_128k_layer_6
+      - id: blocks.7.hook_mlp_out
+        path: v5_128k_layer_7
+      - id: blocks.8.hook_mlp_out
+        path: v5_128k_layer_8
+      - id: blocks.9.hook_mlp_out
+        path: v5_128k_layer_9
+      - id: blocks.10.hook_mlp_out
+        path: v5_128k_layer_10
+      - id: blocks.11.hook_mlp_out
+        path: v5_128k_layer_11
   gpt2-small-attn-out-v5-32k:
     repo_id: jbloom/GPT2-Small-OAI-v5-32k-attn-out-SAEs
     model: gpt2-small
-    conversion_func: null
+    conversion_func:
     config_overrides:
       dataset_path: Skylion007/openwebtext
     saes:
-    - id: blocks.0.hook_attn_out
-      path: v5_32k_layer_0
-    - id: blocks.1.hook_attn_out
-      path: v5_32k_layer_1
-    - id: blocks.2.hook_attn_out
-      path: v5_32k_layer_2
-    - id: blocks.3.hook_attn_out
-      path: v5_32k_layer_3
-    - id: blocks.4.hook_attn_out
-      path: v5_32k_layer_4
-    - id: blocks.5.hook_attn_out
-      path: v5_32k_layer_5
-    - id: blocks.6.hook_attn_out
-      path: v5_32k_layer_6
-    - id: blocks.7.hook_attn_out
-      path: v5_32k_layer_7
-    - id: blocks.8.hook_attn_out
-      path: v5_32k_layer_8
-    - id: blocks.9.hook_attn_out
-      path: v5_32k_layer_9
-    - id: blocks.10.hook_attn_out
-      path: v5_32k_layer_10
-    - id: blocks.11.hook_attn_out
-      path: v5_32k_layer_11
+      - id: blocks.0.hook_attn_out
+        path: v5_32k_layer_0
+      - id: blocks.1.hook_attn_out
+        path: v5_32k_layer_1
+      - id: blocks.2.hook_attn_out
+        path: v5_32k_layer_2
+      - id: blocks.3.hook_attn_out
+        path: v5_32k_layer_3
+      - id: blocks.4.hook_attn_out
+        path: v5_32k_layer_4
+      - id: blocks.5.hook_attn_out
+        path: v5_32k_layer_5
+      - id: blocks.6.hook_attn_out
+        path: v5_32k_layer_6
+      - id: blocks.7.hook_attn_out
+        path: v5_32k_layer_7
+      - id: blocks.8.hook_attn_out
+        path: v5_32k_layer_8
+      - id: blocks.9.hook_attn_out
+        path: v5_32k_layer_9
+      - id: blocks.10.hook_attn_out
+        path: v5_32k_layer_10
+      - id: blocks.11.hook_attn_out
+        path: v5_32k_layer_11
   gpt2-small-attn-out-v5-128k:
     repo_id: jbloom/GPT2-Small-OAI-v5-128k-attn-out-SAEs
     model: gpt2-small
-    conversion_func: null
+    conversion_func:
     config_overrides:
       dataset_path: Skylion007/openwebtext
     saes:
-    - id: blocks.0.hook_attn_out
-      path: v5_128k_layer_0
-    - id: blocks.1.hook_attn_out
-      path: v5_128k_layer_1
-    - id: blocks.2.hook_attn_out
-      path: v5_128k_layer_2
-    - id: blocks.3.hook_attn_out
-      path: v5_128k_layer_3
-    - id: blocks.4.hook_attn_out
-      path: v5_128k_layer_4
-    - id: blocks.5.hook_attn_out
-      path: v5_128k_layer_5
-    - id: blocks.6.hook_attn_out
-      path: v5_128k_layer_6
-    - id: blocks.7.hook_attn_out
-      path: v5_128k_layer_7
-    - id: blocks.8.hook_attn_out
-      path: v5_128k_layer_8
-    - id: blocks.9.hook_attn_out
-      path: v5_128k_layer_9
-    - id: blocks.10.hook_attn_out
-      path: v5_128k_layer_10
-    - id: blocks.11.hook_attn_out
-      path: v5_128k_layer_11
+      - id: blocks.0.hook_attn_out
+        path: v5_128k_layer_0
+      - id: blocks.1.hook_attn_out
+        path: v5_128k_layer_1
+      - id: blocks.2.hook_attn_out
+        path: v5_128k_layer_2
+      - id: blocks.3.hook_attn_out
+        path: v5_128k_layer_3
+      - id: blocks.4.hook_attn_out
+        path: v5_128k_layer_4
+      - id: blocks.5.hook_attn_out
+        path: v5_128k_layer_5
+      - id: blocks.6.hook_attn_out
+        path: v5_128k_layer_6
+      - id: blocks.7.hook_attn_out
+        path: v5_128k_layer_7
+      - id: blocks.8.hook_attn_out
+        path: v5_128k_layer_8
+      - id: blocks.9.hook_attn_out
+        path: v5_128k_layer_9
+      - id: blocks.10.hook_attn_out
+        path: v5_128k_layer_10
+      - id: blocks.11.hook_attn_out
+        path: v5_128k_layer_11
+  gemmascope-2b-pt-res-freeze:
+    repo_id: gg-hf/gemmascope-2b-pt-res
+    model: gemma-2-2b
+    conversion_func: gemma_2
+    saes:
+      - id: layer_11/width_16k/average_l0_79
+        path: layer_11/width_16k/average_l0_79/params.npz
+        l0: 79.0
+      - id: layer_1/width_16k/average_l0_101
+        path: layer_1/width_16k/average_l0_101/params.npz
+        l0: 101.0
+      - id: layer_12/width_65k/average_l0_72
+        path: layer_12/width_65k/average_l0_72
+        l0: 72.0
+      - id: layer_12/width_16k/average_l0_82
+        path: layer_12/width_16k/average_l0_82/params.npz
+        l0: 82.0
+      - id: layer_10/width_16k/average_l0_77
+        path: layer_10/width_16k/average_l0_77/params.npz
+        l0: 77.0
+      - id: layer_0/width_16k/average_l0_106
+        path: layer_0/width_16k/average_l0_106/params.npz
+        l0: 106.0
+      - id: layer_13/width_16k/average_l0_83
+        path: layer_13/width_16k/average_l0_83/params.npz
+        l0: 83.0
+      - id: layer_13/width_65k/average_l0_74
+        path: layer_13/width_65k/average_l0_74/params.npz
+        l0: 74.0
+      - id: layer_18/width_16k/average_l0_74
+        path: layer_18/width_16k/average_l0_74/params.npz
+        l0: 74.0
+      - id: layer_18/width_65k/average_l0_117
+        path: layer_18/width_65k/average_l0_117/params.npz
+        l0: 117.0
+      - id: layer_19/width_16k/average_l0_73
+        path: layer_19/width_16k/average_l0_73/params.npz
+        l0: 73.0
+      - id: layer_19/width_65k/average_l0_115
+        path: layer_19/width_65k/average_l0_115/params.npz
+        l0: 115.0
+      - id: layer_14/width_16k/average_l0_83
+        path: layer_14/width_16k/average_l0_83/params.npz
+        l0: 83.0
+      - id: layer_2/width_16k/average_l0_141
+        path: layer_2/width_16k/average_l0_141/params.npz
+        l0: 141.0
+      - id: layer_20/width_16k/average_l0_71
+        path: layer_20/width_16k/average_l0_71/params.npz
+        l0: 71.0
+      - id: layer_20/width_65k/average_l0_114
+        path: layer_20/width_65k/average_l0_114/params.npz
+        l0: 114.0
+      - id: layer_21/width_16k/average_l0_70
+        path: layer_21/width_16k/average_l0_70/params.npz
+        l0: 70.0
+      - id: layer_21/width_65k/average_l0_112
+        path: layer_21/width_65k/average_l0_112/params.npz
+        l0: 112.0
+      - id: layer_22/width_16k/average_l0_72
+        path: layer_22/width_16k/average_l0_72/params.npz
+        l0: 72.0
+      - id: layer_22/width_65k/average_l0_117
+        path: layer_22/width_65k/average_l0_117/params.npz
+        l0: 117.0
+      - id: layer_4/width_16k/average_l0_125
+        path: layer_4/width_16k/average_l0_125/params.npz
+        l0: 125.0
+      - id: layer_23/width_65k/average_l0_124
+        path: layer_23/width_65k/average_l0_124/params.npz
+        l0: 124.0
+      - id: layer_23/width_16k/average_l0_75
+        path: layer_23/width_16k/average_l0_75/params.npz
+        l0: 75.0
+      - id: layer_5/width_16k/average_l0_68
+        path: layer_5/width_16k/average_l0_68/params.npz
+        l0: 68.0
+      - id: layer_7/width_16k/average_l0_69
+        path: layer_7/width_16k/average_l0_69/params.npz
+        l0: 69.0
+      - id: layer_3/width_16k/average_l0_59
+        path: layer_3/width_16k/average_l0_59/params.npz
+        l0: 59.0
+      - id: layer_6/width_16k/average_l0_70
+        path: layer_6/width_16k/average_l0_70/params.npz
+        l0: 70.0
+      - id: layer_9/width_16k/average_l0_73
+        path: layer_9/width_16k/average_l0_73/params.npz
+        l0: 73.0
+  gemmascope-2b-pt-res:
+    repo_id: gg-hf/gemmascope-2b-pt-res
+    model: gemma-2-2b
+    conversion_func: gemma_2
+    saes:
+      - id: layer_11/width_16k/average_l0_79
+        path: layer_11/width_16k/average_l0_79/params.npz
+        l0: 79.0
