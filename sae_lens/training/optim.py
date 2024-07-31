@@ -91,10 +91,10 @@ def _get_main_lr_scheduler(
     if scheduler_name == "constant":
         return lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda steps: 1.0)
     elif scheduler_name == "cosineannealing":
-        return lr_scheduler.CosineAnnealingLR(optimizer, T_max=steps, eta_min=lr_end)
+        return lr_scheduler.CosineAnnealingLR(optimizer, T_max=steps, eta_min=lr_end)  # type: ignore
     elif scheduler_name == "cosineannealingwarmrestarts":
         return lr_scheduler.CosineAnnealingWarmRestarts(
-            optimizer, T_0=steps // num_cycles, eta_min=lr_end
+            optimizer, T_0=steps // num_cycles, eta_min=lr_end  # type: ignore
         )
     else:
         raise ValueError(f"Unsupported scheduler: {scheduler_name}")

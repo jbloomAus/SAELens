@@ -365,7 +365,7 @@ class SAETrainer:
     def _build_sparsity_log_dict(self) -> dict[str, Any]:
 
         log_feature_sparsity = _log_feature_sparsity(self.feature_sparsity)
-        wandb_histogram = wandb.Histogram(log_feature_sparsity.numpy())
+        wandb_histogram = wandb.Histogram(log_feature_sparsity.numpy())  # type: ignore
         return {
             "metrics/mean_log10_feature_sparsity": log_feature_sparsity.mean().item(),
             "plots/feature_density_line_chart": wandb_histogram,
