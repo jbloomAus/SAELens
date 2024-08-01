@@ -584,92 +584,182 @@ SAE_LOOKUP:
         path: v5_128k_layer_10
       - id: blocks.11.hook_attn_out
         path: v5_128k_layer_11
-  gemma-scope-2b-pt-res:
+  gemma-scope-2b-pt-res-canonical:
     repo_id: google/gemma-scope-2b-pt-res
     model: gemma-2-2b
     conversion_func: gemma_2
     saes:
-      - id: layer_11/width_16k/average_l0_79
-        path: layer_11/width_16k/average_l0_79
-        l0: 79.0
-      - id: layer_1/width_16k/average_l0_101
-        path: layer_1/width_16k/average_l0_101
-        l0: 101.0
-      - id: layer_12/width_65k/average_l0_72
-        path: layer_12/width_65k/average_l0_72
-        l0: 72.0
-      - id: layer_12/width_16k/average_l0_82
-        path: layer_12/width_16k/average_l0_82
-        l0: 82.0
-      - id: layer_10/width_16k/average_l0_77
-        path: layer_10/width_16k/average_l0_77
-        l0: 77.0
-      - id: layer_0/width_16k/average_l0_106
-        path: layer_0/width_16k/average_l0_106
-        l0: 106.0
-      - id: layer_13/width_16k/average_l0_83
-        path: layer_13/width_16k/average_l0_83
-        l0: 83.0
-      - id: layer_13/width_65k/average_l0_74
-        path: layer_13/width_65k/average_l0_74
-        l0: 74.0
-      - id: layer_18/width_16k/average_l0_74
-        path: layer_18/width_16k/average_l0_74
-        l0: 74.0
-      - id: layer_18/width_65k/average_l0_117
-        path: layer_18/width_65k/average_l0_117
-        l0: 117.0
-      - id: layer_19/width_16k/average_l0_73
-        path: layer_19/width_16k/average_l0_73
-        l0: 73.0
-      - id: layer_19/width_65k/average_l0_115
-        path: layer_19/width_65k/average_l0_115
-        l0: 115.0
-      - id: layer_14/width_16k/average_l0_83
-        path: layer_14/width_16k/average_l0_83
-        l0: 83.0
-      - id: layer_2/width_16k/average_l0_141
-        path: layer_2/width_16k/average_l0_141
-        l0: 141.0
-      - id: layer_20/width_16k/average_l0_71
-        path: layer_20/width_16k/average_l0_71
-        l0: 71.0
-      - id: layer_20/width_65k/average_l0_114
-        path: layer_20/width_65k/average_l0_114
-        l0: 114.0
-      - id: layer_21/width_16k/average_l0_70
-        path: layer_21/width_16k/average_l0_70
-        l0: 70.0
-      - id: layer_21/width_65k/average_l0_112
-        path: layer_21/width_65k/average_l0_112
-        l0: 112.0
-      - id: layer_22/width_16k/average_l0_72
-        path: layer_22/width_16k/average_l0_72
-        l0: 72.0
-      - id: layer_22/width_65k/average_l0_117
-        path: layer_22/width_65k/average_l0_117
-        l0: 117.0
-      - id: layer_4/width_16k/average_l0_125
-        path: layer_4/width_16k/average_l0_125
-        l0: 125.0
-      - id: layer_23/width_65k/average_l0_124
-        path: layer_23/width_65k/average_l0_124
-        l0: 124.0
-      - id: layer_23/width_16k/average_l0_75
-        path: layer_23/width_16k/average_l0_75
-        l0: 75.0
-      - id: layer_5/width_16k/average_l0_68
-        path: layer_5/width_16k/average_l0_68
-        l0: 68.0
-      - id: layer_7/width_16k/average_l0_69
-        path: layer_7/width_16k/average_l0_69
-        l0: 69.0
-      - id: layer_3/width_16k/average_l0_59
-        path: layer_3/width_16k/average_l0_59
-        l0: 59.0
-      - id: layer_6/width_16k/average_l0_70
-        path: layer_6/width_16k/average_l0_70
-        l0: 70.0
-      - id: layer_9/width_16k/average_l0_73
-        path: layer_9/width_16k/average_l0_73
-        l0: 73.0
+      - id: layer_0/width_16k/canonical
+        path: layer_0/width_16k/canonical
+
+      - id: layer_1/width_16k/canonical
+        path: layer_1/width_16k/canonical
+
+      - id: layer_2/width_16k/canonical
+        path: layer_2/width_16k/canonical
+
+      - id: layer_3/width_16k/canonical
+        path: layer_3/width_16k/canonical
+
+      - id: layer_4/width_16k/canonical
+        path: layer_4/width_16k/canonical
+
+      - id: layer_5/width_16k/canonical
+        path: layer_5/width_16k/canonical
+
+      - id: layer_6/width_16k/canonical
+        path: layer_6/width_16k/canonical
+
+      - id: layer_7/width_16k/canonical
+        path: layer_7/width_16k/canonical
+
+      - id: layer_8/width_16k/canonical
+        path: layer_8/width_16k/canonical
+
+      - id: layer_9/width_16k/canonical
+        path: layer_9/width_16k/canonical
+
+      - id: layer_10/width_16k/canonical
+        path: layer_10/width_16k/canonical
+
+      - id: layer_11/width_16k/canonical
+        path: layer_11/width_16k/canonical
+
+      - id: layer_12/width_16k/canonical
+        path: layer_12/width_16k/canonical
+
+      - id: layer_13/width_16k/canonical
+        path: layer_13/width_16k/canonical
+
+      - id: layer_14/width_16k/canonical
+        path: layer_14/width_16k/canonical
+
+      - id: layer_15/width_16k/canonical
+        path: layer_15/width_16k/canonical
+
+      - id: layer_16/width_16k/canonical
+        path: layer_16/width_16k/canonical
+
+      - id: layer_17/width_16k/canonical
+        path: layer_17/width_16k/canonical
+
+      - id: layer_18/width_16k/canonical
+        path: layer_18/width_16k/canonical
+
+      - id: layer_19/width_16k/canonical
+        path: layer_19/width_16k/canonical
+
+      - id: layer_20/width_16k/canonical
+        path: layer_20/width_16k/canonical
+
+      - id: layer_21/width_16k/canonical
+        path: layer_21/width_16k/canonical
+
+      - id: layer_22/width_16k/canonical
+        path: layer_22/width_16k/canonical
+
+      - id: layer_23/width_16k/canonical
+        path: layer_23/width_16k/canonical
+
+      - id: layer_24/width_16k/canonical
+        path: layer_24/width_16k/canonical
+
+      - id: layer_25/width_16k/canonical
+        path: layer_25/width_16k/canonical
+
+      - id: layer_5/width_1m/canonical
+        path: layer_5/width_1m/canonical
+
+      - id: layer_12/width_1m/canonical
+        path: layer_12/width_1m/canonical
+
+      - id: layer_19/width_1m/canonical
+        path: layer_19/width_1m/canonical
+
+      - id: layer_12/width_262k/canonical
+        path: layer_12/width_262k/canonical
+
+      - id: layer_12/width_32k/canonical
+        path: layer_12/width_32k/canonical
+
+      - id: layer_12/width_524k/canonical
+        path: layer_12/width_524k/canonical
+
+      - id: layer_0/width_65k/canonical
+        path: layer_0/width_65k/canonical
+
+      - id: layer_1/width_65k/canonical
+        path: layer_1/width_65k/canonical
+
+      - id: layer_2/width_65k/canonical
+        path: layer_2/width_65k/canonical
+
+      - id: layer_3/width_65k/canonical
+        path: layer_3/width_65k/canonical
+
+      - id: layer_4/width_65k/canonical
+        path: layer_4/width_65k/canonical
+
+      - id: layer_5/width_65k/canonical
+        path: layer_5/width_65k/canonical
+
+      - id: layer_6/width_65k/canonical
+        path: layer_6/width_65k/canonical
+
+      - id: layer_7/width_65k/canonical
+        path: layer_7/width_65k/canonical
+
+      - id: layer_8/width_65k/canonical
+        path: layer_8/width_65k/canonical
+
+      - id: layer_9/width_65k/canonical
+        path: layer_9/width_65k/canonical
+
+      - id: layer_10/width_65k/canonical
+        path: layer_10/width_65k/canonical
+
+      - id: layer_11/width_65k/canonical
+        path: layer_11/width_65k/canonical
+
+      - id: layer_12/width_65k/canonical
+        path: layer_12/width_65k/canonical
+
+      - id: layer_13/width_65k/canonical
+        path: layer_13/width_65k/canonical
+
+      - id: layer_14/width_65k/canonical
+        path: layer_14/width_65k/canonical
+
+      - id: layer_15/width_65k/canonical
+        path: layer_15/width_65k/canonical
+
+      - id: layer_16/width_65k/canonical
+        path: layer_16/width_65k/canonical
+
+      - id: layer_17/width_65k/canonical
+        path: layer_17/width_65k/canonical
+
+      - id: layer_18/width_65k/canonical
+        path: layer_18/width_65k/canonical
+
+      - id: layer_19/width_65k/canonical
+        path: layer_19/width_65k/canonical
+
+      - id: layer_20/width_65k/canonical
+        path: layer_20/width_65k/canonical
+
+      - id: layer_21/width_65k/canonical
+        path: layer_21/width_65k/canonical
+
+      - id: layer_22/width_65k/canonical
+        path: layer_22/width_65k/canonical
+
+      - id: layer_23/width_65k/canonical
+        path: layer_23/width_65k/canonical
+
+      - id: layer_24/width_65k/canonical
+        path: layer_24/width_65k/canonical
+
+      - id: layer_25/width_65k/canonical
+        path: layer_25/width_65k/canonical
+
