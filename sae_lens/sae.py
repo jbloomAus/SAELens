@@ -651,7 +651,7 @@ class SAE(HookedRootModule):
                 f"Release {release} not found in pretrained SAEs directory."
             )
         if sae_id not in sae_directory[release].saes_map:
-            raise ValueError(f"ID {sae_id} not found in release {release}.")
+            raise ValueError(f"ID {sae_id} not found in release {release}. Valid IDs are {sae_directory[release].saes_map.keys()}")
         sae_info = sae_directory[release]
         hf_repo_id = sae_info.repo_id
         hf_path = sae_info.saes_map[sae_id]
