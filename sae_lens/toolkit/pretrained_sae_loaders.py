@@ -314,7 +314,7 @@ def gemma_2_sae_loader(
         d_in = 4608
     else:
         raise ValueError("Model name not found in repo_id.")
-    
+
     # deal with hook specific pars
     if "res" in repo_id:
         hook_name = f"blocks.{layer}.hook_resid_post"
