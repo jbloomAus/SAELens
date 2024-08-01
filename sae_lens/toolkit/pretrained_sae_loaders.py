@@ -276,8 +276,18 @@ def gemma_2_sae_loader(
     # Detect width from folder_name
     if "width_16k" in folder_name:
         d_sae = 16384
+    elif "width_32k" in folder_name:
+        d_sae = 32768
     elif "width_65k" in folder_name:
         d_sae = 65536
+    elif "width_131k" in folder_name:
+        d_sae = 131072
+    elif "width_262k" in folder_name:
+        d_sae = 262144
+    elif "width_524k" in folder_name:
+        d_sae = 524288
+    elif "width_1m":
+        d_sae = 1048576
     else:
         if not d_sae_override:
             raise ValueError("Width not found in folder_name and no override provided.")
@@ -292,15 +302,44 @@ def gemma_2_sae_loader(
             raise ValueError("Layer not found in folder_name and no override provided.")
         layer = layer_override
 
+    # deal with model specific pars
+    if "2b" in repo_id:
+        model_name = "gemma-2-2b"
+        d_in = 2304
+    elif "9b" in repo_id:
+        model_name = "gemma-2-9b"
+        d_in = 3584
+    elif "27b" in repo_id:
+        model_name = "gemma-2-27b"
+        d_in = 4608
+    else:
+        raise ValueError("Model name not found in repo_id.")
+
+    # deal with hook specific pars
+    if "res" in repo_id:
+        hook_name = f"blocks.{layer}.hook_resid_post"
+    elif "mlp" in repo_id:
+        hook_name = f"blocks.{layer}.hook_mlp_out"
+    elif "att" in repo_id:
+        hook_name = f"blocks.{layer}.attn.hook_z"
+        if "2b" in repo_id:
+            d_in = 2048
+        elif "9b" in repo_id:
+            d_in = 4096
+        elif "27b" in repo_id:
+            d_in = 4608
+    else:
+        raise ValueError("Hook name not found in folder_name.")
+
     # Set up the configuration dictionary
     cfg_dict = {
         "architecture": "jumprelu",
-        "d_in": 2304,
+        "d_in": d_in,
         "d_sae": d_sae,
         "dtype": "float32",
         "device": device,
-        "model_name": "gemma-2-2b",
-        "hook_name": f"blocks.{layer}.hook_resid_post",
+        "model_name": model_name,
+        "hook_name": hook_name,
         "hook_layer": layer,
         "hook_head_index": None,
         "activation_fn_str": "relu",
