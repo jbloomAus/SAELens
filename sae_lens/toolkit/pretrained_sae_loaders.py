@@ -320,8 +320,14 @@ def gemma_2_sae_loader(
         hook_name = f"blocks.{layer}.hook_resid_post"
     elif "mlp" in repo_id:
         hook_name = f"blocks.{layer}.hook_mlp_out"
-    elif "attn" in repo_id:
-        hook_name = f"blocks.{layer}.hook_attn_out"
+    elif "att" in repo_id:
+        hook_name = f"blocks.{layer}.attn.hook_z"
+        if "2b" in repo_id:
+            d_in = 2048
+        elif "9b" in repo_id:
+            d_in = 4096
+        elif "27b" in repo_id:
+            d_in = 4608
     else:
         raise ValueError("Hook name not found in folder_name.")
 
