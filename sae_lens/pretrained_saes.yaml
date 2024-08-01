@@ -762,4 +762,4144 @@ SAE_LOOKUP:
 
       - id: layer_25/width_65k/canonical
         path: layer_25/width_65k/canonical
+  gemma-scope-2b-pt-res:
+    repo_id: google/gemma-scope-2b-pt-res
+    model: gemma-2-2b
+    conversion_func: gemma_2
+    saes:
+      - id: layer_0/width_16k/average_l0_105
+        path: layer_0/width_16k/average_l0_105
+        l0: 105
+
+      - id: layer_0/width_16k/average_l0_13
+        path: layer_0/width_16k/average_l0_13
+        l0: 13
+
+      - id: layer_0/width_16k/average_l0_226
+        path: layer_0/width_16k/average_l0_226
+        l0: 226
+
+      - id: layer_0/width_16k/average_l0_25
+        path: layer_0/width_16k/average_l0_25
+        l0: 25
+
+      - id: layer_0/width_16k/average_l0_46
+        path: layer_0/width_16k/average_l0_46
+        l0: 46
+
+      - id: layer_1/width_16k/average_l0_10
+        path: layer_1/width_16k/average_l0_10
+        l0: 10
+
+      - id: layer_1/width_16k/average_l0_102
+        path: layer_1/width_16k/average_l0_102
+        l0: 102
+
+      - id: layer_1/width_16k/average_l0_20
+        path: layer_1/width_16k/average_l0_20
+        l0: 20
+
+      - id: layer_1/width_16k/average_l0_250
+        path: layer_1/width_16k/average_l0_250
+        l0: 250
+
+      - id: layer_1/width_16k/average_l0_40
+        path: layer_1/width_16k/average_l0_40
+        l0: 40
+
+      - id: layer_2/width_16k/average_l0_13
+        path: layer_2/width_16k/average_l0_13
+        l0: 13
+
+      - id: layer_2/width_16k/average_l0_141
+        path: layer_2/width_16k/average_l0_141
+        l0: 141
+
+      - id: layer_2/width_16k/average_l0_142
+        path: layer_2/width_16k/average_l0_142
+        l0: 142
+
+      - id: layer_2/width_16k/average_l0_24
+        path: layer_2/width_16k/average_l0_24
+        l0: 24
+
+      - id: layer_2/width_16k/average_l0_304
+        path: layer_2/width_16k/average_l0_304
+        l0: 304
+
+      - id: layer_2/width_16k/average_l0_53
+        path: layer_2/width_16k/average_l0_53
+        l0: 53
+
+      - id: layer_3/width_16k/average_l0_14
+        path: layer_3/width_16k/average_l0_14
+        l0: 14
+
+      - id: layer_3/width_16k/average_l0_142
+        path: layer_3/width_16k/average_l0_142
+        l0: 142
+
+      - id: layer_3/width_16k/average_l0_28
+        path: layer_3/width_16k/average_l0_28
+        l0: 28
+
+      - id: layer_3/width_16k/average_l0_315
+        path: layer_3/width_16k/average_l0_315
+        l0: 315
+
+      - id: layer_3/width_16k/average_l0_59
+        path: layer_3/width_16k/average_l0_59
+        l0: 59
+
+      - id: layer_4/width_16k/average_l0_124
+        path: layer_4/width_16k/average_l0_124
+        l0: 124
+
+      - id: layer_4/width_16k/average_l0_125
+        path: layer_4/width_16k/average_l0_125
+        l0: 125
+
+      - id: layer_4/width_16k/average_l0_17
+        path: layer_4/width_16k/average_l0_17
+        l0: 17
+
+      - id: layer_4/width_16k/average_l0_281
+        path: layer_4/width_16k/average_l0_281
+        l0: 281
+
+      - id: layer_4/width_16k/average_l0_31
+        path: layer_4/width_16k/average_l0_31
+        l0: 31
+
+      - id: layer_4/width_16k/average_l0_60
+        path: layer_4/width_16k/average_l0_60
+        l0: 60
+
+      - id: layer_5/width_16k/average_l0_143
+        path: layer_5/width_16k/average_l0_143
+        l0: 143
+
+      - id: layer_5/width_16k/average_l0_18
+        path: layer_5/width_16k/average_l0_18
+        l0: 18
+
+      - id: layer_5/width_16k/average_l0_309
+        path: layer_5/width_16k/average_l0_309
+        l0: 309
+
+      - id: layer_5/width_16k/average_l0_34
+        path: layer_5/width_16k/average_l0_34
+        l0: 34
+
+      - id: layer_5/width_16k/average_l0_68
+        path: layer_5/width_16k/average_l0_68
+        l0: 68
+
+      - id: layer_6/width_16k/average_l0_144
+        path: layer_6/width_16k/average_l0_144
+        l0: 144
+
+      - id: layer_6/width_16k/average_l0_19
+        path: layer_6/width_16k/average_l0_19
+        l0: 19
+
+      - id: layer_6/width_16k/average_l0_301
+        path: layer_6/width_16k/average_l0_301
+        l0: 301
+
+      - id: layer_6/width_16k/average_l0_36
+        path: layer_6/width_16k/average_l0_36
+        l0: 36
+
+      - id: layer_6/width_16k/average_l0_70
+        path: layer_6/width_16k/average_l0_70
+        l0: 70
+
+      - id: layer_7/width_16k/average_l0_137
+        path: layer_7/width_16k/average_l0_137
+        l0: 137
+
+      - id: layer_7/width_16k/average_l0_20
+        path: layer_7/width_16k/average_l0_20
+        l0: 20
+
+      - id: layer_7/width_16k/average_l0_285
+        path: layer_7/width_16k/average_l0_285
+        l0: 285
+
+      - id: layer_7/width_16k/average_l0_36
+        path: layer_7/width_16k/average_l0_36
+        l0: 36
+
+      - id: layer_7/width_16k/average_l0_69
+        path: layer_7/width_16k/average_l0_69
+        l0: 69
+
+      - id: layer_8/width_16k/average_l0_142
+        path: layer_8/width_16k/average_l0_142
+        l0: 142
+
+      - id: layer_8/width_16k/average_l0_20
+        path: layer_8/width_16k/average_l0_20
+        l0: 20
+
+      - id: layer_8/width_16k/average_l0_301
+        path: layer_8/width_16k/average_l0_301
+        l0: 301
+
+      - id: layer_8/width_16k/average_l0_37
+        path: layer_8/width_16k/average_l0_37
+        l0: 37
+
+      - id: layer_8/width_16k/average_l0_71
+        path: layer_8/width_16k/average_l0_71
+        l0: 71
+
+      - id: layer_9/width_16k/average_l0_151
+        path: layer_9/width_16k/average_l0_151
+        l0: 151
+
+      - id: layer_9/width_16k/average_l0_21
+        path: layer_9/width_16k/average_l0_21
+        l0: 21
+
+      - id: layer_9/width_16k/average_l0_340
+        path: layer_9/width_16k/average_l0_340
+        l0: 340
+
+      - id: layer_9/width_16k/average_l0_37
+        path: layer_9/width_16k/average_l0_37
+        l0: 37
+
+      - id: layer_9/width_16k/average_l0_73
+        path: layer_9/width_16k/average_l0_73
+        l0: 73
+
+      - id: layer_10/width_16k/average_l0_166
+        path: layer_10/width_16k/average_l0_166
+        l0: 166
+
+      - id: layer_10/width_16k/average_l0_21
+        path: layer_10/width_16k/average_l0_21
+        l0: 21
+
+      - id: layer_10/width_16k/average_l0_39
+        path: layer_10/width_16k/average_l0_39
+        l0: 39
+
+      - id: layer_10/width_16k/average_l0_395
+        path: layer_10/width_16k/average_l0_395
+        l0: 395
+
+      - id: layer_10/width_16k/average_l0_77
+        path: layer_10/width_16k/average_l0_77
+        l0: 77
+
+      - id: layer_11/width_16k/average_l0_168
+        path: layer_11/width_16k/average_l0_168
+        l0: 168
+
+      - id: layer_11/width_16k/average_l0_22
+        path: layer_11/width_16k/average_l0_22
+        l0: 22
+
+      - id: layer_11/width_16k/average_l0_393
+        path: layer_11/width_16k/average_l0_393
+        l0: 393
+
+      - id: layer_11/width_16k/average_l0_41
+        path: layer_11/width_16k/average_l0_41
+        l0: 41
+
+      - id: layer_11/width_16k/average_l0_79
+        path: layer_11/width_16k/average_l0_79
+        l0: 79
+
+      - id: layer_11/width_16k/average_l0_80
+        path: layer_11/width_16k/average_l0_80
+        l0: 80
+
+      - id: layer_12/width_16k/average_l0_176
+        path: layer_12/width_16k/average_l0_176
+        l0: 176
+
+      - id: layer_12/width_16k/average_l0_22
+        path: layer_12/width_16k/average_l0_22
+        l0: 22
+
+      - id: layer_12/width_16k/average_l0_41
+        path: layer_12/width_16k/average_l0_41
+        l0: 41
+
+      - id: layer_12/width_16k/average_l0_445
+        path: layer_12/width_16k/average_l0_445
+        l0: 445
+
+      - id: layer_12/width_16k/average_l0_82
+        path: layer_12/width_16k/average_l0_82
+        l0: 82
+
+      - id: layer_13/width_16k/average_l0_173
+        path: layer_13/width_16k/average_l0_173
+        l0: 173
+
+      - id: layer_13/width_16k/average_l0_23
+        path: layer_13/width_16k/average_l0_23
+        l0: 23
+
+      - id: layer_13/width_16k/average_l0_403
+        path: layer_13/width_16k/average_l0_403
+        l0: 403
+
+      - id: layer_13/width_16k/average_l0_43
+        path: layer_13/width_16k/average_l0_43
+        l0: 43
+
+      - id: layer_13/width_16k/average_l0_83
+        path: layer_13/width_16k/average_l0_83
+        l0: 83
+
+      - id: layer_13/width_16k/average_l0_84
+        path: layer_13/width_16k/average_l0_84
+        l0: 84
+
+      - id: layer_14/width_16k/average_l0_173
+        path: layer_14/width_16k/average_l0_173
+        l0: 173
+
+      - id: layer_14/width_16k/average_l0_23
+        path: layer_14/width_16k/average_l0_23
+        l0: 23
+
+      - id: layer_14/width_16k/average_l0_388
+        path: layer_14/width_16k/average_l0_388
+        l0: 388
+
+      - id: layer_14/width_16k/average_l0_43
+        path: layer_14/width_16k/average_l0_43
+        l0: 43
+
+      - id: layer_14/width_16k/average_l0_83
+        path: layer_14/width_16k/average_l0_83
+        l0: 83
+
+      - id: layer_14/width_16k/average_l0_84
+        path: layer_14/width_16k/average_l0_84
+        l0: 84
+
+      - id: layer_15/width_16k/average_l0_150
+        path: layer_15/width_16k/average_l0_150
+        l0: 150
+
+      - id: layer_15/width_16k/average_l0_23
+        path: layer_15/width_16k/average_l0_23
+        l0: 23
+
+      - id: layer_15/width_16k/average_l0_308
+        path: layer_15/width_16k/average_l0_308
+        l0: 308
+
+      - id: layer_15/width_16k/average_l0_41
+        path: layer_15/width_16k/average_l0_41
+        l0: 41
+
+      - id: layer_15/width_16k/average_l0_78
+        path: layer_15/width_16k/average_l0_78
+        l0: 78
+
+      - id: layer_16/width_16k/average_l0_154
+        path: layer_16/width_16k/average_l0_154
+        l0: 154
+
+      - id: layer_16/width_16k/average_l0_23
+        path: layer_16/width_16k/average_l0_23
+        l0: 23
+
+      - id: layer_16/width_16k/average_l0_335
+        path: layer_16/width_16k/average_l0_335
+        l0: 335
+
+      - id: layer_16/width_16k/average_l0_42
+        path: layer_16/width_16k/average_l0_42
+        l0: 42
+
+      - id: layer_16/width_16k/average_l0_78
+        path: layer_16/width_16k/average_l0_78
+        l0: 78
+
+      - id: layer_17/width_16k/average_l0_150
+        path: layer_17/width_16k/average_l0_150
+        l0: 150
+
+      - id: layer_17/width_16k/average_l0_23
+        path: layer_17/width_16k/average_l0_23
+        l0: 23
+
+      - id: layer_17/width_16k/average_l0_304
+        path: layer_17/width_16k/average_l0_304
+        l0: 304
+
+      - id: layer_17/width_16k/average_l0_42
+        path: layer_17/width_16k/average_l0_42
+        l0: 42
+
+      - id: layer_17/width_16k/average_l0_77
+        path: layer_17/width_16k/average_l0_77
+        l0: 77
+
+      - id: layer_18/width_16k/average_l0_138
+        path: layer_18/width_16k/average_l0_138
+        l0: 138
+
+      - id: layer_18/width_16k/average_l0_23
+        path: layer_18/width_16k/average_l0_23
+        l0: 23
+
+      - id: layer_18/width_16k/average_l0_280
+        path: layer_18/width_16k/average_l0_280
+        l0: 280
+
+      - id: layer_18/width_16k/average_l0_40
+        path: layer_18/width_16k/average_l0_40
+        l0: 40
+
+      - id: layer_18/width_16k/average_l0_74
+        path: layer_18/width_16k/average_l0_74
+        l0: 74
+
+      - id: layer_19/width_16k/average_l0_137
+        path: layer_19/width_16k/average_l0_137
+        l0: 137
+
+      - id: layer_19/width_16k/average_l0_23
+        path: layer_19/width_16k/average_l0_23
+        l0: 23
+
+      - id: layer_19/width_16k/average_l0_279
+        path: layer_19/width_16k/average_l0_279
+        l0: 279
+
+      - id: layer_19/width_16k/average_l0_40
+        path: layer_19/width_16k/average_l0_40
+        l0: 40
+
+      - id: layer_19/width_16k/average_l0_73
+        path: layer_19/width_16k/average_l0_73
+        l0: 73
+
+      - id: layer_20/width_16k/average_l0_139
+        path: layer_20/width_16k/average_l0_139
+        l0: 139
+
+      - id: layer_20/width_16k/average_l0_22
+        path: layer_20/width_16k/average_l0_22
+        l0: 22
+
+      - id: layer_20/width_16k/average_l0_294
+        path: layer_20/width_16k/average_l0_294
+        l0: 294
+
+      - id: layer_20/width_16k/average_l0_38
+        path: layer_20/width_16k/average_l0_38
+        l0: 38
+
+      - id: layer_20/width_16k/average_l0_71
+        path: layer_20/width_16k/average_l0_71
+        l0: 71
+
+      - id: layer_21/width_16k/average_l0_139
+        path: layer_21/width_16k/average_l0_139
+        l0: 139
+
+      - id: layer_21/width_16k/average_l0_22
+        path: layer_21/width_16k/average_l0_22
+        l0: 22
+
+      - id: layer_21/width_16k/average_l0_301
+        path: layer_21/width_16k/average_l0_301
+        l0: 301
+
+      - id: layer_21/width_16k/average_l0_38
+        path: layer_21/width_16k/average_l0_38
+        l0: 38
+
+      - id: layer_21/width_16k/average_l0_70
+        path: layer_21/width_16k/average_l0_70
+        l0: 70
+
+      - id: layer_22/width_16k/average_l0_147
+        path: layer_22/width_16k/average_l0_147
+        l0: 147
+
+      - id: layer_22/width_16k/average_l0_21
+        path: layer_22/width_16k/average_l0_21
+        l0: 21
+
+      - id: layer_22/width_16k/average_l0_349
+        path: layer_22/width_16k/average_l0_349
+        l0: 349
+
+      - id: layer_22/width_16k/average_l0_38
+        path: layer_22/width_16k/average_l0_38
+        l0: 38
+
+      - id: layer_22/width_16k/average_l0_72
+        path: layer_22/width_16k/average_l0_72
+        l0: 72
+
+      - id: layer_23/width_16k/average_l0_157
+        path: layer_23/width_16k/average_l0_157
+        l0: 157
+
+      - id: layer_23/width_16k/average_l0_21
+        path: layer_23/width_16k/average_l0_21
+        l0: 21
+
+      - id: layer_23/width_16k/average_l0_38
+        path: layer_23/width_16k/average_l0_38
+        l0: 38
+
+      - id: layer_23/width_16k/average_l0_404
+        path: layer_23/width_16k/average_l0_404
+        l0: 404
+
+      - id: layer_23/width_16k/average_l0_74
+        path: layer_23/width_16k/average_l0_74
+        l0: 74
+
+      - id: layer_23/width_16k/average_l0_75
+        path: layer_23/width_16k/average_l0_75
+        l0: 75
+
+      - id: layer_24/width_16k/average_l0_158
+        path: layer_24/width_16k/average_l0_158
+        l0: 158
+
+      - id: layer_24/width_16k/average_l0_20
+        path: layer_24/width_16k/average_l0_20
+        l0: 20
+
+      - id: layer_24/width_16k/average_l0_38
+        path: layer_24/width_16k/average_l0_38
+        l0: 38
+
+      - id: layer_24/width_16k/average_l0_457
+        path: layer_24/width_16k/average_l0_457
+        l0: 457
+
+      - id: layer_24/width_16k/average_l0_73
+        path: layer_24/width_16k/average_l0_73
+        l0: 73
+
+      - id: layer_25/width_16k/average_l0_116
+        path: layer_25/width_16k/average_l0_116
+        l0: 116
+
+      - id: layer_25/width_16k/average_l0_16
+        path: layer_25/width_16k/average_l0_16
+        l0: 16
+
+      - id: layer_25/width_16k/average_l0_28
+        path: layer_25/width_16k/average_l0_28
+        l0: 28
+
+      - id: layer_25/width_16k/average_l0_285
+        path: layer_25/width_16k/average_l0_285
+        l0: 285
+
+      - id: layer_25/width_16k/average_l0_55
+        path: layer_25/width_16k/average_l0_55
+        l0: 55
+
+      - id: layer_5/width_1m/average_l0_114
+        path: layer_5/width_1m/average_l0_114
+        l0: 114
+
+      - id: layer_5/width_1m/average_l0_13
+        path: layer_5/width_1m/average_l0_13
+        l0: 13
+
+      - id: layer_5/width_1m/average_l0_21
+        path: layer_5/width_1m/average_l0_21
+        l0: 21
+
+      - id: layer_5/width_1m/average_l0_36
+        path: layer_5/width_1m/average_l0_36
+        l0: 36
+
+      - id: layer_5/width_1m/average_l0_63
+        path: layer_5/width_1m/average_l0_63
+        l0: 63
+
+      - id: layer_5/width_1m/average_l0_9
+        path: layer_5/width_1m/average_l0_9
+        l0: 9
+
+      - id: layer_12/width_1m/average_l0_107
+        path: layer_12/width_1m/average_l0_107
+        l0: 107
+
+      - id: layer_12/width_1m/average_l0_19
+        path: layer_12/width_1m/average_l0_19
+        l0: 19
+
+      - id: layer_12/width_1m/average_l0_207
+        path: layer_12/width_1m/average_l0_207
+        l0: 207
+
+      - id: layer_12/width_1m/average_l0_26
+        path: layer_12/width_1m/average_l0_26
+        l0: 26
+
+      - id: layer_12/width_1m/average_l0_58
+        path: layer_12/width_1m/average_l0_58
+        l0: 58
+
+      - id: layer_12/width_1m/average_l0_73
+        path: layer_12/width_1m/average_l0_73
+        l0: 73
+
+      - id: layer_19/width_1m/average_l0_157
+        path: layer_19/width_1m/average_l0_157
+        l0: 157
+
+      - id: layer_19/width_1m/average_l0_16
+        path: layer_19/width_1m/average_l0_16
+        l0: 16
+
+      - id: layer_19/width_1m/average_l0_18
+        path: layer_19/width_1m/average_l0_18
+        l0: 18
+
+      - id: layer_19/width_1m/average_l0_29
+        path: layer_19/width_1m/average_l0_29
+        l0: 29
+
+      - id: layer_19/width_1m/average_l0_50
+        path: layer_19/width_1m/average_l0_50
+        l0: 50
+
+      - id: layer_19/width_1m/average_l0_88
+        path: layer_19/width_1m/average_l0_88
+        l0: 88
+
+      - id: layer_12/width_262k/average_l0_11
+        path: layer_12/width_262k/average_l0_11
+        l0: 11
+
+      - id: layer_12/width_262k/average_l0_121
+        path: layer_12/width_262k/average_l0_121
+        l0: 121
+
+      - id: layer_12/width_262k/average_l0_21
+        path: layer_12/width_262k/average_l0_21
+        l0: 21
+
+      - id: layer_12/width_262k/average_l0_243
+        path: layer_12/width_262k/average_l0_243
+        l0: 243
+
+      - id: layer_12/width_262k/average_l0_36
+        path: layer_12/width_262k/average_l0_36
+        l0: 36
+
+      - id: layer_12/width_262k/average_l0_67
+        path: layer_12/width_262k/average_l0_67
+        l0: 67
+
+      - id: layer_12/width_32k/average_l0_12
+        path: layer_12/width_32k/average_l0_12
+        l0: 12
+
+      - id: layer_12/width_32k/average_l0_155
+        path: layer_12/width_32k/average_l0_155
+        l0: 155
+
+      - id: layer_12/width_32k/average_l0_22
+        path: layer_12/width_32k/average_l0_22
+        l0: 22
+
+      - id: layer_12/width_32k/average_l0_360
+        path: layer_12/width_32k/average_l0_360
+        l0: 360
+
+      - id: layer_12/width_32k/average_l0_40
+        path: layer_12/width_32k/average_l0_40
+        l0: 40
+
+      - id: layer_12/width_32k/average_l0_76
+        path: layer_12/width_32k/average_l0_76
+        l0: 76
+
+      - id: layer_12/width_524k/average_l0_115
+        path: layer_12/width_524k/average_l0_115
+        l0: 115
+
+      - id: layer_12/width_524k/average_l0_22
+        path: layer_12/width_524k/average_l0_22
+        l0: 22
+
+      - id: layer_12/width_524k/average_l0_227
+        path: layer_12/width_524k/average_l0_227
+        l0: 227
+
+      - id: layer_12/width_524k/average_l0_29
+        path: layer_12/width_524k/average_l0_29
+        l0: 29
+
+      - id: layer_12/width_524k/average_l0_46
+        path: layer_12/width_524k/average_l0_46
+        l0: 46
+
+      - id: layer_12/width_524k/average_l0_65
+        path: layer_12/width_524k/average_l0_65
+        l0: 65
+
+      - id: layer_0/width_65k/average_l0_11
+        path: layer_0/width_65k/average_l0_11
+        l0: 11
+
+      - id: layer_0/width_65k/average_l0_17
+        path: layer_0/width_65k/average_l0_17
+        l0: 17
+
+      - id: layer_0/width_65k/average_l0_27
+        path: layer_0/width_65k/average_l0_27
+        l0: 27
+
+      - id: layer_0/width_65k/average_l0_43
+        path: layer_0/width_65k/average_l0_43
+        l0: 43
+
+      - id: layer_0/width_65k/average_l0_73
+        path: layer_0/width_65k/average_l0_73
+        l0: 73
+
+      - id: layer_1/width_65k/average_l0_121
+        path: layer_1/width_65k/average_l0_121
+        l0: 121
+
+      - id: layer_1/width_65k/average_l0_16
+        path: layer_1/width_65k/average_l0_16
+        l0: 16
+
+      - id: layer_1/width_65k/average_l0_30
+        path: layer_1/width_65k/average_l0_30
+        l0: 30
+
+      - id: layer_1/width_65k/average_l0_54
+        path: layer_1/width_65k/average_l0_54
+        l0: 54
+
+      - id: layer_1/width_65k/average_l0_9
+        path: layer_1/width_65k/average_l0_9
+        l0: 9
+
+      - id: layer_2/width_65k/average_l0_11
+        path: layer_2/width_65k/average_l0_11
+        l0: 11
+
+      - id: layer_2/width_65k/average_l0_169
+        path: layer_2/width_65k/average_l0_169
+        l0: 169
+
+      - id: layer_2/width_65k/average_l0_20
+        path: layer_2/width_65k/average_l0_20
+        l0: 20
+
+      - id: layer_2/width_65k/average_l0_37
+        path: layer_2/width_65k/average_l0_37
+        l0: 37
+
+      - id: layer_2/width_65k/average_l0_77
+        path: layer_2/width_65k/average_l0_77
+        l0: 77
+
+      - id: layer_3/width_65k/average_l0_13
+        path: layer_3/width_65k/average_l0_13
+        l0: 13
+
+      - id: layer_3/width_65k/average_l0_193
+        path: layer_3/width_65k/average_l0_193
+        l0: 193
+
+      - id: layer_3/width_65k/average_l0_23
+        path: layer_3/width_65k/average_l0_23
+        l0: 23
+
+      - id: layer_3/width_65k/average_l0_42
+        path: layer_3/width_65k/average_l0_42
+        l0: 42
+
+      - id: layer_3/width_65k/average_l0_89
+        path: layer_3/width_65k/average_l0_89
+        l0: 89
+
+      - id: layer_4/width_65k/average_l0_14
+        path: layer_4/width_65k/average_l0_14
+        l0: 14
+
+      - id: layer_4/width_65k/average_l0_177
+        path: layer_4/width_65k/average_l0_177
+        l0: 177
+
+      - id: layer_4/width_65k/average_l0_25
+        path: layer_4/width_65k/average_l0_25
+        l0: 25
+
+      - id: layer_4/width_65k/average_l0_46
+        path: layer_4/width_65k/average_l0_46
+        l0: 46
+
+      - id: layer_4/width_65k/average_l0_89
+        path: layer_4/width_65k/average_l0_89
+        l0: 89
+
+      - id: layer_5/width_65k/average_l0_105
+        path: layer_5/width_65k/average_l0_105
+        l0: 105
+
+      - id: layer_5/width_65k/average_l0_17
+        path: layer_5/width_65k/average_l0_17
+        l0: 17
+
+      - id: layer_5/width_65k/average_l0_211
+        path: layer_5/width_65k/average_l0_211
+        l0: 211
+
+      - id: layer_5/width_65k/average_l0_29
+        path: layer_5/width_65k/average_l0_29
+        l0: 29
+
+      - id: layer_5/width_65k/average_l0_53
+        path: layer_5/width_65k/average_l0_53
+        l0: 53
+
+      - id: layer_6/width_65k/average_l0_107
+        path: layer_6/width_65k/average_l0_107
+        l0: 107
+
+      - id: layer_6/width_65k/average_l0_17
+        path: layer_6/width_65k/average_l0_17
+        l0: 17
+
+      - id: layer_6/width_65k/average_l0_208
+        path: layer_6/width_65k/average_l0_208
+        l0: 208
+
+      - id: layer_6/width_65k/average_l0_30
+        path: layer_6/width_65k/average_l0_30
+        l0: 30
+
+      - id: layer_6/width_65k/average_l0_56
+        path: layer_6/width_65k/average_l0_56
+        l0: 56
+
+      - id: layer_7/width_65k/average_l0_107
+        path: layer_7/width_65k/average_l0_107
+        l0: 107
+
+      - id: layer_7/width_65k/average_l0_18
+        path: layer_7/width_65k/average_l0_18
+        l0: 18
+
+      - id: layer_7/width_65k/average_l0_203
+        path: layer_7/width_65k/average_l0_203
+        l0: 203
+
+      - id: layer_7/width_65k/average_l0_31
+        path: layer_7/width_65k/average_l0_31
+        l0: 31
+
+      - id: layer_7/width_65k/average_l0_57
+        path: layer_7/width_65k/average_l0_57
+        l0: 57
+
+      - id: layer_8/width_65k/average_l0_111
+        path: layer_8/width_65k/average_l0_111
+        l0: 111
+
+      - id: layer_8/width_65k/average_l0_19
+        path: layer_8/width_65k/average_l0_19
+        l0: 19
+
+      - id: layer_8/width_65k/average_l0_213
+        path: layer_8/width_65k/average_l0_213
+        l0: 213
+
+      - id: layer_8/width_65k/average_l0_33
+        path: layer_8/width_65k/average_l0_33
+        l0: 33
+
+      - id: layer_8/width_65k/average_l0_59
+        path: layer_8/width_65k/average_l0_59
+        l0: 59
+
+      - id: layer_9/width_65k/average_l0_118
+        path: layer_9/width_65k/average_l0_118
+        l0: 118
+
+      - id: layer_9/width_65k/average_l0_19
+        path: layer_9/width_65k/average_l0_19
+        l0: 19
+
+      - id: layer_9/width_65k/average_l0_240
+        path: layer_9/width_65k/average_l0_240
+        l0: 240
+
+      - id: layer_9/width_65k/average_l0_34
+        path: layer_9/width_65k/average_l0_34
+        l0: 34
+
+      - id: layer_9/width_65k/average_l0_61
+        path: layer_9/width_65k/average_l0_61
+        l0: 61
+
+      - id: layer_10/width_65k/average_l0_128
+        path: layer_10/width_65k/average_l0_128
+        l0: 128
+
+      - id: layer_10/width_65k/average_l0_20
+        path: layer_10/width_65k/average_l0_20
+        l0: 20
+
+      - id: layer_10/width_65k/average_l0_265
+        path: layer_10/width_65k/average_l0_265
+        l0: 265
+
+      - id: layer_10/width_65k/average_l0_36
+        path: layer_10/width_65k/average_l0_36
+        l0: 36
+
+      - id: layer_10/width_65k/average_l0_66
+        path: layer_10/width_65k/average_l0_66
+        l0: 66
+
+      - id: layer_11/width_65k/average_l0_134
+        path: layer_11/width_65k/average_l0_134
+        l0: 134
+
+      - id: layer_11/width_65k/average_l0_21
+        path: layer_11/width_65k/average_l0_21
+        l0: 21
+
+      - id: layer_11/width_65k/average_l0_273
+        path: layer_11/width_65k/average_l0_273
+        l0: 273
+
+      - id: layer_11/width_65k/average_l0_37
+        path: layer_11/width_65k/average_l0_37
+        l0: 37
+
+      - id: layer_11/width_65k/average_l0_70
+        path: layer_11/width_65k/average_l0_70
+        l0: 70
+
+      - id: layer_12/width_65k/average_l0_141
+        path: layer_12/width_65k/average_l0_141
+        l0: 141
+
+      - id: layer_12/width_65k/average_l0_21
+        path: layer_12/width_65k/average_l0_21
+        l0: 21
+
+      - id: layer_12/width_65k/average_l0_297
+        path: layer_12/width_65k/average_l0_297
+        l0: 297
+
+      - id: layer_12/width_65k/average_l0_38
+        path: layer_12/width_65k/average_l0_38
+        l0: 38
+
+      - id: layer_12/width_65k/average_l0_72
+        path: layer_12/width_65k/average_l0_72
+        l0: 72
+
+      - id: layer_13/width_65k/average_l0_142
+        path: layer_13/width_65k/average_l0_142
+        l0: 142
+
+      - id: layer_13/width_65k/average_l0_22
+        path: layer_13/width_65k/average_l0_22
+        l0: 22
+
+      - id: layer_13/width_65k/average_l0_288
+        path: layer_13/width_65k/average_l0_288
+        l0: 288
+
+      - id: layer_13/width_65k/average_l0_40
+        path: layer_13/width_65k/average_l0_40
+        l0: 40
+
+      - id: layer_13/width_65k/average_l0_74
+        path: layer_13/width_65k/average_l0_74
+        l0: 74
+
+      - id: layer_13/width_65k/average_l0_75
+        path: layer_13/width_65k/average_l0_75
+        l0: 75
+
+      - id: layer_14/width_65k/average_l0_144
+        path: layer_14/width_65k/average_l0_144
+        l0: 144
+
+      - id: layer_14/width_65k/average_l0_21
+        path: layer_14/width_65k/average_l0_21
+        l0: 21
+
+      - id: layer_14/width_65k/average_l0_284
+        path: layer_14/width_65k/average_l0_284
+        l0: 284
+
+      - id: layer_14/width_65k/average_l0_40
+        path: layer_14/width_65k/average_l0_40
+        l0: 40
+
+      - id: layer_14/width_65k/average_l0_73
+        path: layer_14/width_65k/average_l0_73
+        l0: 73
+
+      - id: layer_15/width_65k/average_l0_127
+        path: layer_15/width_65k/average_l0_127
+        l0: 127
+
+      - id: layer_15/width_65k/average_l0_21
+        path: layer_15/width_65k/average_l0_21
+        l0: 21
+
+      - id: layer_15/width_65k/average_l0_240
+        path: layer_15/width_65k/average_l0_240
+        l0: 240
+
+      - id: layer_15/width_65k/average_l0_38
+        path: layer_15/width_65k/average_l0_38
+        l0: 38
+
+      - id: layer_15/width_65k/average_l0_68
+        path: layer_15/width_65k/average_l0_68
+        l0: 68
+
+      - id: layer_16/width_65k/average_l0_128
+        path: layer_16/width_65k/average_l0_128
+        l0: 128
+
+      - id: layer_16/width_65k/average_l0_21
+        path: layer_16/width_65k/average_l0_21
+        l0: 21
+
+      - id: layer_16/width_65k/average_l0_244
+        path: layer_16/width_65k/average_l0_244
+        l0: 244
+
+      - id: layer_16/width_65k/average_l0_38
+        path: layer_16/width_65k/average_l0_38
+        l0: 38
+
+      - id: layer_16/width_65k/average_l0_69
+        path: layer_16/width_65k/average_l0_69
+        l0: 69
+
+      - id: layer_17/width_65k/average_l0_125
+        path: layer_17/width_65k/average_l0_125
+        l0: 125
+
+      - id: layer_17/width_65k/average_l0_21
+        path: layer_17/width_65k/average_l0_21
+        l0: 21
+
+      - id: layer_17/width_65k/average_l0_233
+        path: layer_17/width_65k/average_l0_233
+        l0: 233
+
+      - id: layer_17/width_65k/average_l0_38
+        path: layer_17/width_65k/average_l0_38
+        l0: 38
+
+      - id: layer_17/width_65k/average_l0_68
+        path: layer_17/width_65k/average_l0_68
+        l0: 68
+
+      - id: layer_18/width_65k/average_l0_116
+        path: layer_18/width_65k/average_l0_116
+        l0: 116
+
+      - id: layer_18/width_65k/average_l0_117
+        path: layer_18/width_65k/average_l0_117
+        l0: 117
+
+      - id: layer_18/width_65k/average_l0_21
+        path: layer_18/width_65k/average_l0_21
+        l0: 21
+
+      - id: layer_18/width_65k/average_l0_216
+        path: layer_18/width_65k/average_l0_216
+        l0: 216
+
+      - id: layer_18/width_65k/average_l0_36
+        path: layer_18/width_65k/average_l0_36
+        l0: 36
+
+      - id: layer_18/width_65k/average_l0_64
+        path: layer_18/width_65k/average_l0_64
+        l0: 64
+
+      - id: layer_19/width_65k/average_l0_115
+        path: layer_19/width_65k/average_l0_115
+        l0: 115
+
+      - id: layer_19/width_65k/average_l0_21
+        path: layer_19/width_65k/average_l0_21
+        l0: 21
+
+      - id: layer_19/width_65k/average_l0_216
+        path: layer_19/width_65k/average_l0_216
+        l0: 216
+
+      - id: layer_19/width_65k/average_l0_35
+        path: layer_19/width_65k/average_l0_35
+        l0: 35
+
+      - id: layer_19/width_65k/average_l0_63
+        path: layer_19/width_65k/average_l0_63
+        l0: 63
+
+      - id: layer_20/width_65k/average_l0_114
+        path: layer_20/width_65k/average_l0_114
+        l0: 114
+
+      - id: layer_20/width_65k/average_l0_20
+        path: layer_20/width_65k/average_l0_20
+        l0: 20
+
+      - id: layer_20/width_65k/average_l0_221
+        path: layer_20/width_65k/average_l0_221
+        l0: 221
+
+      - id: layer_20/width_65k/average_l0_34
+        path: layer_20/width_65k/average_l0_34
+        l0: 34
+
+      - id: layer_20/width_65k/average_l0_61
+        path: layer_20/width_65k/average_l0_61
+        l0: 61
+
+      - id: layer_21/width_65k/average_l0_111
+        path: layer_21/width_65k/average_l0_111
+        l0: 111
+
+      - id: layer_21/width_65k/average_l0_112
+        path: layer_21/width_65k/average_l0_112
+        l0: 112
+
+      - id: layer_21/width_65k/average_l0_20
+        path: layer_21/width_65k/average_l0_20
+        l0: 20
+
+      - id: layer_21/width_65k/average_l0_225
+        path: layer_21/width_65k/average_l0_225
+        l0: 225
+
+      - id: layer_21/width_65k/average_l0_33
+        path: layer_21/width_65k/average_l0_33
+        l0: 33
+
+      - id: layer_21/width_65k/average_l0_61
+        path: layer_21/width_65k/average_l0_61
+        l0: 61
+
+      - id: layer_22/width_65k/average_l0_116
+        path: layer_22/width_65k/average_l0_116
+        l0: 116
+
+      - id: layer_22/width_65k/average_l0_117
+        path: layer_22/width_65k/average_l0_117
+        l0: 117
+
+      - id: layer_22/width_65k/average_l0_20
+        path: layer_22/width_65k/average_l0_20
+        l0: 20
+
+      - id: layer_22/width_65k/average_l0_248
+        path: layer_22/width_65k/average_l0_248
+        l0: 248
+
+      - id: layer_22/width_65k/average_l0_33
+        path: layer_22/width_65k/average_l0_33
+        l0: 33
+
+      - id: layer_22/width_65k/average_l0_62
+        path: layer_22/width_65k/average_l0_62
+        l0: 62
+
+      - id: layer_23/width_65k/average_l0_123
+        path: layer_23/width_65k/average_l0_123
+        l0: 123
+
+      - id: layer_23/width_65k/average_l0_124
+        path: layer_23/width_65k/average_l0_124
+        l0: 124
+
+      - id: layer_23/width_65k/average_l0_20
+        path: layer_23/width_65k/average_l0_20
+        l0: 20
+
+      - id: layer_23/width_65k/average_l0_272
+        path: layer_23/width_65k/average_l0_272
+        l0: 272
+
+      - id: layer_23/width_65k/average_l0_35
+        path: layer_23/width_65k/average_l0_35
+        l0: 35
+
+      - id: layer_23/width_65k/average_l0_64
+        path: layer_23/width_65k/average_l0_64
+        l0: 64
+
+      - id: layer_24/width_65k/average_l0_124
+        path: layer_24/width_65k/average_l0_124
+        l0: 124
+
+      - id: layer_24/width_65k/average_l0_19
+        path: layer_24/width_65k/average_l0_19
+        l0: 19
+
+      - id: layer_24/width_65k/average_l0_273
+        path: layer_24/width_65k/average_l0_273
+        l0: 273
+
+      - id: layer_24/width_65k/average_l0_34
+        path: layer_24/width_65k/average_l0_34
+        l0: 34
+
+      - id: layer_24/width_65k/average_l0_63
+        path: layer_24/width_65k/average_l0_63
+        l0: 63
+
+      - id: layer_25/width_65k/average_l0_15
+        path: layer_25/width_65k/average_l0_15
+        l0: 15
+
+      - id: layer_25/width_65k/average_l0_197
+        path: layer_25/width_65k/average_l0_197
+        l0: 197
+
+      - id: layer_25/width_65k/average_l0_26
+        path: layer_25/width_65k/average_l0_26
+        l0: 26
+
+      - id: layer_25/width_65k/average_l0_48
+        path: layer_25/width_65k/average_l0_48
+        l0: 48
+
+      - id: layer_25/width_65k/average_l0_93
+        path: layer_25/width_65k/average_l0_93
+        l0: 93
+  gemma-scope-2b-pt-mlp-canonical:
+    repo_id: google/gemma-scope-2b-pt-mlp
+    model: gemma-2-2b
+    conversion_func: gemma_2
+    saes:
+      - id: layer_0/width_16k/canonical
+        path: layer_0/width_16k/canonical
+
+      - id: layer_1/width_16k/canonical
+        path: layer_1/width_16k/canonical
+
+      - id: layer_2/width_16k/canonical
+        path: layer_2/width_16k/canonical
+
+      - id: layer_3/width_16k/canonical
+        path: layer_3/width_16k/canonical
+
+      - id: layer_4/width_16k/canonical
+        path: layer_4/width_16k/canonical
+
+      - id: layer_5/width_16k/canonical
+        path: layer_5/width_16k/canonical
+
+      - id: layer_6/width_16k/canonical
+        path: layer_6/width_16k/canonical
+
+      - id: layer_7/width_16k/canonical
+        path: layer_7/width_16k/canonical
+
+      - id: layer_8/width_16k/canonical
+        path: layer_8/width_16k/canonical
+
+      - id: layer_9/width_16k/canonical
+        path: layer_9/width_16k/canonical
+
+      - id: layer_10/width_16k/canonical
+        path: layer_10/width_16k/canonical
+
+      - id: layer_11/width_16k/canonical
+        path: layer_11/width_16k/canonical
+
+      - id: layer_12/width_16k/canonical
+        path: layer_12/width_16k/canonical
+
+      - id: layer_13/width_16k/canonical
+        path: layer_13/width_16k/canonical
+
+      - id: layer_14/width_16k/canonical
+        path: layer_14/width_16k/canonical
+
+      - id: layer_15/width_16k/canonical
+        path: layer_15/width_16k/canonical
+
+      - id: layer_16/width_16k/canonical
+        path: layer_16/width_16k/canonical
+
+      - id: layer_17/width_16k/canonical
+        path: layer_17/width_16k/canonical
+
+      - id: layer_18/width_16k/canonical
+        path: layer_18/width_16k/canonical
+
+      - id: layer_19/width_16k/canonical
+        path: layer_19/width_16k/canonical
+
+      - id: layer_20/width_16k/canonical
+        path: layer_20/width_16k/canonical
+
+      - id: layer_21/width_16k/canonical
+        path: layer_21/width_16k/canonical
+
+      - id: layer_22/width_16k/canonical
+        path: layer_22/width_16k/canonical
+
+      - id: layer_23/width_16k/canonical
+        path: layer_23/width_16k/canonical
+
+      - id: layer_24/width_16k/canonical
+        path: layer_24/width_16k/canonical
+
+      - id: layer_25/width_16k/canonical
+        path: layer_25/width_16k/canonical
+
+      - id: layer_0/width_65k/canonical
+        path: layer_0/width_65k/canonical
+
+      - id: layer_1/width_65k/canonical
+        path: layer_1/width_65k/canonical
+
+      - id: layer_2/width_65k/canonical
+        path: layer_2/width_65k/canonical
+
+      - id: layer_3/width_65k/canonical
+        path: layer_3/width_65k/canonical
+
+      - id: layer_4/width_65k/canonical
+        path: layer_4/width_65k/canonical
+
+      - id: layer_5/width_65k/canonical
+        path: layer_5/width_65k/canonical
+
+      - id: layer_6/width_65k/canonical
+        path: layer_6/width_65k/canonical
+
+      - id: layer_7/width_65k/canonical
+        path: layer_7/width_65k/canonical
+
+      - id: layer_8/width_65k/canonical
+        path: layer_8/width_65k/canonical
+
+      - id: layer_9/width_65k/canonical
+        path: layer_9/width_65k/canonical
+
+      - id: layer_10/width_65k/canonical
+        path: layer_10/width_65k/canonical
+
+      - id: layer_11/width_65k/canonical
+        path: layer_11/width_65k/canonical
+
+      - id: layer_12/width_65k/canonical
+        path: layer_12/width_65k/canonical
+
+      - id: layer_13/width_65k/canonical
+        path: layer_13/width_65k/canonical
+
+      - id: layer_14/width_65k/canonical
+        path: layer_14/width_65k/canonical
+
+      - id: layer_15/width_65k/canonical
+        path: layer_15/width_65k/canonical
+
+      - id: layer_16/width_65k/canonical
+        path: layer_16/width_65k/canonical
+
+      - id: layer_17/width_65k/canonical
+        path: layer_17/width_65k/canonical
+
+      - id: layer_18/width_65k/canonical
+        path: layer_18/width_65k/canonical
+
+      - id: layer_19/width_65k/canonical
+        path: layer_19/width_65k/canonical
+
+      - id: layer_20/width_65k/canonical
+        path: layer_20/width_65k/canonical
+
+      - id: layer_21/width_65k/canonical
+        path: layer_21/width_65k/canonical
+
+      - id: layer_22/width_65k/canonical
+        path: layer_22/width_65k/canonical
+
+      - id: layer_23/width_65k/canonical
+        path: layer_23/width_65k/canonical
+
+      - id: layer_24/width_65k/canonical
+        path: layer_24/width_65k/canonical
+
+      - id: layer_25/width_65k/canonical
+        path: layer_25/width_65k/canonical
+  gemma-scope-2b-pt-mlp:
+    repo_id: google/gemma-scope-2b-pt-mlp
+    model: gemma-2-2b
+    conversion_func: gemma_2
+    saes:
+      - id: layer_0/width_16k/average_l0_119
+        path: layer_0/width_16k/average_l0_119
+        l0: 119
+
+      - id: layer_0/width_16k/average_l0_16
+        path: layer_0/width_16k/average_l0_16
+        l0: 16
+
+      - id: layer_0/width_16k/average_l0_30
+        path: layer_0/width_16k/average_l0_30
+        l0: 30
+
+      - id: layer_0/width_16k/average_l0_60
+        path: layer_0/width_16k/average_l0_60
+        l0: 60
+
+      - id: layer_0/width_16k/average_l0_9
+        path: layer_0/width_16k/average_l0_9
+        l0: 9
+
+      - id: layer_1/width_16k/average_l0_105
+        path: layer_1/width_16k/average_l0_105
+        l0: 105
+
+      - id: layer_1/width_16k/average_l0_12
+        path: layer_1/width_16k/average_l0_12
+        l0: 12
+
+      - id: layer_1/width_16k/average_l0_239
+        path: layer_1/width_16k/average_l0_239
+        l0: 239
+
+      - id: layer_1/width_16k/average_l0_24
+        path: layer_1/width_16k/average_l0_24
+        l0: 24
+
+      - id: layer_1/width_16k/average_l0_50
+        path: layer_1/width_16k/average_l0_50
+        l0: 50
+
+      - id: layer_2/width_16k/average_l0_19
+        path: layer_2/width_16k/average_l0_19
+        l0: 19
+
+      - id: layer_2/width_16k/average_l0_213
+        path: layer_2/width_16k/average_l0_213
+        l0: 213
+
+      - id: layer_2/width_16k/average_l0_41
+        path: layer_2/width_16k/average_l0_41
+        l0: 41
+
+      - id: layer_2/width_16k/average_l0_434
+        path: layer_2/width_16k/average_l0_434
+        l0: 434
+
+      - id: layer_2/width_16k/average_l0_95
+        path: layer_2/width_16k/average_l0_95
+        l0: 95
+
+      - id: layer_3/width_16k/average_l0_195
+        path: layer_3/width_16k/average_l0_195
+        l0: 195
+
+      - id: layer_3/width_16k/average_l0_21
+        path: layer_3/width_16k/average_l0_21
+        l0: 21
+
+      - id: layer_3/width_16k/average_l0_377
+        path: layer_3/width_16k/average_l0_377
+        l0: 377
+
+      - id: layer_3/width_16k/average_l0_44
+        path: layer_3/width_16k/average_l0_44
+        l0: 44
+
+      - id: layer_3/width_16k/average_l0_95
+        path: layer_3/width_16k/average_l0_95
+        l0: 95
+
+      - id: layer_4/width_16k/average_l0_18
+        path: layer_4/width_16k/average_l0_18
+        l0: 18
+
+      - id: layer_4/width_16k/average_l0_198
+        path: layer_4/width_16k/average_l0_198
+        l0: 198
+
+      - id: layer_4/width_16k/average_l0_38
+        path: layer_4/width_16k/average_l0_38
+        l0: 38
+
+      - id: layer_4/width_16k/average_l0_433
+        path: layer_4/width_16k/average_l0_433
+        l0: 433
+
+      - id: layer_4/width_16k/average_l0_85
+        path: layer_4/width_16k/average_l0_85
+        l0: 85
+
+      - id: layer_5/width_16k/average_l0_114
+        path: layer_5/width_16k/average_l0_114
+        l0: 114
+
+      - id: layer_5/width_16k/average_l0_23
+        path: layer_5/width_16k/average_l0_23
+        l0: 23
+
+      - id: layer_5/width_16k/average_l0_269
+        path: layer_5/width_16k/average_l0_269
+        l0: 269
+
+      - id: layer_5/width_16k/average_l0_48
+        path: layer_5/width_16k/average_l0_48
+        l0: 48
+
+      - id: layer_5/width_16k/average_l0_575
+        path: layer_5/width_16k/average_l0_575
+        l0: 575
+
+      - id: layer_6/width_16k/average_l0_133
+        path: layer_6/width_16k/average_l0_133
+        l0: 133
+
+      - id: layer_6/width_16k/average_l0_25
+        path: layer_6/width_16k/average_l0_25
+        l0: 25
+
+      - id: layer_6/width_16k/average_l0_328
+        path: layer_6/width_16k/average_l0_328
+        l0: 328
+
+      - id: layer_6/width_16k/average_l0_55
+        path: layer_6/width_16k/average_l0_55
+        l0: 55
+
+      - id: layer_6/width_16k/average_l0_699
+        path: layer_6/width_16k/average_l0_699
+        l0: 699
+
+      - id: layer_7/width_16k/average_l0_146
+        path: layer_7/width_16k/average_l0_146
+        l0: 146
+
+      - id: layer_7/width_16k/average_l0_28
+        path: layer_7/width_16k/average_l0_28
+        l0: 28
+
+      - id: layer_7/width_16k/average_l0_355
+        path: layer_7/width_16k/average_l0_355
+        l0: 355
+
+      - id: layer_7/width_16k/average_l0_60
+        path: layer_7/width_16k/average_l0_60
+        l0: 60
+
+      - id: layer_7/width_16k/average_l0_731
+        path: layer_7/width_16k/average_l0_731
+        l0: 731
+
+      - id: layer_8/width_16k/average_l0_136
+        path: layer_8/width_16k/average_l0_136
+        l0: 136
+
+      - id: layer_8/width_16k/average_l0_27
+        path: layer_8/width_16k/average_l0_27
+        l0: 27
+
+      - id: layer_8/width_16k/average_l0_351
+        path: layer_8/width_16k/average_l0_351
+        l0: 351
+
+      - id: layer_8/width_16k/average_l0_56
+        path: layer_8/width_16k/average_l0_56
+        l0: 56
+
+      - id: layer_8/width_16k/average_l0_739
+        path: layer_8/width_16k/average_l0_739
+        l0: 739
+
+      - id: layer_9/width_16k/average_l0_216
+        path: layer_9/width_16k/average_l0_216
+        l0: 216
+
+      - id: layer_9/width_16k/average_l0_38
+        path: layer_9/width_16k/average_l0_38
+        l0: 38
+
+      - id: layer_9/width_16k/average_l0_482
+        path: layer_9/width_16k/average_l0_482
+        l0: 482
+
+      - id: layer_9/width_16k/average_l0_861
+        path: layer_9/width_16k/average_l0_861
+        l0: 861
+
+      - id: layer_9/width_16k/average_l0_88
+        path: layer_9/width_16k/average_l0_88
+        l0: 88
+
+      - id: layer_10/width_16k/average_l0_110
+        path: layer_10/width_16k/average_l0_110
+        l0: 110
+
+      - id: layer_10/width_16k/average_l0_266
+        path: layer_10/width_16k/average_l0_266
+        l0: 266
+
+      - id: layer_10/width_16k/average_l0_45
+        path: layer_10/width_16k/average_l0_45
+        l0: 45
+
+      - id: layer_10/width_16k/average_l0_568
+        path: layer_10/width_16k/average_l0_568
+        l0: 568
+
+      - id: layer_10/width_16k/average_l0_908
+        path: layer_10/width_16k/average_l0_908
+        l0: 908
+
+      - id: layer_11/width_16k/average_l0_234
+        path: layer_11/width_16k/average_l0_234
+        l0: 234
+
+      - id: layer_11/width_16k/average_l0_42
+        path: layer_11/width_16k/average_l0_42
+        l0: 42
+
+      - id: layer_11/width_16k/average_l0_499
+        path: layer_11/width_16k/average_l0_499
+        l0: 499
+
+      - id: layer_11/width_16k/average_l0_847
+        path: layer_11/width_16k/average_l0_847
+        l0: 847
+
+      - id: layer_11/width_16k/average_l0_98
+        path: layer_11/width_16k/average_l0_98
+        l0: 98
+
+      - id: layer_12/width_16k/average_l0_108
+        path: layer_12/width_16k/average_l0_108
+        l0: 108
+
+      - id: layer_12/width_16k/average_l0_262
+        path: layer_12/width_16k/average_l0_262
+        l0: 262
+
+      - id: layer_12/width_16k/average_l0_44
+        path: layer_12/width_16k/average_l0_44
+        l0: 44
+
+      - id: layer_12/width_16k/average_l0_548
+        path: layer_12/width_16k/average_l0_548
+        l0: 548
+
+      - id: layer_12/width_16k/average_l0_879
+        path: layer_12/width_16k/average_l0_879
+        l0: 879
+
+      - id: layer_13/width_16k/average_l0_112
+        path: layer_13/width_16k/average_l0_112
+        l0: 112
+
+      - id: layer_13/width_16k/average_l0_267
+        path: layer_13/width_16k/average_l0_267
+        l0: 267
+
+      - id: layer_13/width_16k/average_l0_47
+        path: layer_13/width_16k/average_l0_47
+        l0: 47
+
+      - id: layer_13/width_16k/average_l0_553
+        path: layer_13/width_16k/average_l0_553
+        l0: 553
+
+      - id: layer_13/width_16k/average_l0_892
+        path: layer_13/width_16k/average_l0_892
+        l0: 892
+
+      - id: layer_14/width_16k/average_l0_246
+        path: layer_14/width_16k/average_l0_246
+        l0: 246
+
+      - id: layer_14/width_16k/average_l0_41
+        path: layer_14/width_16k/average_l0_41
+        l0: 41
+
+      - id: layer_14/width_16k/average_l0_536
+        path: layer_14/width_16k/average_l0_536
+        l0: 536
+
+      - id: layer_14/width_16k/average_l0_894
+        path: layer_14/width_16k/average_l0_894
+        l0: 894
+
+      - id: layer_14/width_16k/average_l0_97
+        path: layer_14/width_16k/average_l0_97
+        l0: 97
+
+      - id: layer_15/width_16k/average_l0_207
+        path: layer_15/width_16k/average_l0_207
+        l0: 207
+
+      - id: layer_15/width_16k/average_l0_35
+        path: layer_15/width_16k/average_l0_35
+        l0: 35
+
+      - id: layer_15/width_16k/average_l0_492
+        path: layer_15/width_16k/average_l0_492
+        l0: 492
+
+      - id: layer_15/width_16k/average_l0_80
+        path: layer_15/width_16k/average_l0_80
+        l0: 80
+
+      - id: layer_15/width_16k/average_l0_879
+        path: layer_15/width_16k/average_l0_879
+        l0: 879
+
+      - id: layer_16/width_16k/average_l0_185
+        path: layer_16/width_16k/average_l0_185
+        l0: 185
+
+      - id: layer_16/width_16k/average_l0_33
+        path: layer_16/width_16k/average_l0_33
+        l0: 33
+
+      - id: layer_16/width_16k/average_l0_452
+        path: layer_16/width_16k/average_l0_452
+        l0: 452
+
+      - id: layer_16/width_16k/average_l0_72
+        path: layer_16/width_16k/average_l0_72
+        l0: 72
+
+      - id: layer_16/width_16k/average_l0_847
+        path: layer_16/width_16k/average_l0_847
+        l0: 847
+
+      - id: layer_17/width_16k/average_l0_179
+        path: layer_17/width_16k/average_l0_179
+        l0: 179
+
+      - id: layer_17/width_16k/average_l0_31
+        path: layer_17/width_16k/average_l0_31
+        l0: 31
+
+      - id: layer_17/width_16k/average_l0_453
+        path: layer_17/width_16k/average_l0_453
+        l0: 453
+
+      - id: layer_17/width_16k/average_l0_68
+        path: layer_17/width_16k/average_l0_68
+        l0: 68
+
+      - id: layer_17/width_16k/average_l0_853
+        path: layer_17/width_16k/average_l0_853
+        l0: 853
+
+      - id: layer_18/width_16k/average_l0_106
+        path: layer_18/width_16k/average_l0_106
+        l0: 106
+
+      - id: layer_18/width_16k/average_l0_24
+        path: layer_18/width_16k/average_l0_24
+        l0: 24
+
+      - id: layer_18/width_16k/average_l0_292
+        path: layer_18/width_16k/average_l0_292
+        l0: 292
+
+      - id: layer_18/width_16k/average_l0_47
+        path: layer_18/width_16k/average_l0_47
+        l0: 47
+
+      - id: layer_18/width_16k/average_l0_672
+        path: layer_18/width_16k/average_l0_672
+        l0: 672
+
+      - id: layer_19/width_16k/average_l0_109
+        path: layer_19/width_16k/average_l0_109
+        l0: 109
+
+      - id: layer_19/width_16k/average_l0_25
+        path: layer_19/width_16k/average_l0_25
+        l0: 25
+
+      - id: layer_19/width_16k/average_l0_295
+        path: layer_19/width_16k/average_l0_295
+        l0: 295
+
+      - id: layer_19/width_16k/average_l0_50
+        path: layer_19/width_16k/average_l0_50
+        l0: 50
+
+      - id: layer_19/width_16k/average_l0_673
+        path: layer_19/width_16k/average_l0_673
+        l0: 673
+
+      - id: layer_20/width_16k/average_l0_109
+        path: layer_20/width_16k/average_l0_109
+        l0: 109
+
+      - id: layer_20/width_16k/average_l0_24
+        path: layer_20/width_16k/average_l0_24
+        l0: 24
+
+      - id: layer_20/width_16k/average_l0_289
+        path: layer_20/width_16k/average_l0_289
+        l0: 289
+
+      - id: layer_20/width_16k/average_l0_49
+        path: layer_20/width_16k/average_l0_49
+        l0: 49
+
+      - id: layer_20/width_16k/average_l0_658
+        path: layer_20/width_16k/average_l0_658
+        l0: 658
+
+      - id: layer_21/width_16k/average_l0_113
+        path: layer_21/width_16k/average_l0_113
+        l0: 113
+
+      - id: layer_21/width_16k/average_l0_23
+        path: layer_21/width_16k/average_l0_23
+        l0: 23
+
+      - id: layer_21/width_16k/average_l0_279
+        path: layer_21/width_16k/average_l0_279
+        l0: 279
+
+      - id: layer_21/width_16k/average_l0_48
+        path: layer_21/width_16k/average_l0_48
+        l0: 48
+
+      - id: layer_21/width_16k/average_l0_633
+        path: layer_21/width_16k/average_l0_633
+        l0: 633
+
+      - id: layer_22/width_16k/average_l0_121
+        path: layer_22/width_16k/average_l0_121
+        l0: 121
+
+      - id: layer_22/width_16k/average_l0_24
+        path: layer_22/width_16k/average_l0_24
+        l0: 24
+
+      - id: layer_22/width_16k/average_l0_290
+        path: layer_22/width_16k/average_l0_290
+        l0: 290
+
+      - id: layer_22/width_16k/average_l0_51
+        path: layer_22/width_16k/average_l0_51
+        l0: 51
+
+      - id: layer_22/width_16k/average_l0_624
+        path: layer_22/width_16k/average_l0_624
+        l0: 624
+
+      - id: layer_23/width_16k/average_l0_128
+        path: layer_23/width_16k/average_l0_128
+        l0: 128
+
+      - id: layer_23/width_16k/average_l0_27
+        path: layer_23/width_16k/average_l0_27
+        l0: 27
+
+      - id: layer_23/width_16k/average_l0_287
+        path: layer_23/width_16k/average_l0_287
+        l0: 287
+
+      - id: layer_23/width_16k/average_l0_57
+        path: layer_23/width_16k/average_l0_57
+        l0: 57
+
+      - id: layer_23/width_16k/average_l0_627
+        path: layer_23/width_16k/average_l0_627
+        l0: 627
+
+      - id: layer_24/width_16k/average_l0_158
+        path: layer_24/width_16k/average_l0_158
+        l0: 158
+
+      - id: layer_24/width_16k/average_l0_19
+        path: layer_24/width_16k/average_l0_19
+        l0: 19
+
+      - id: layer_24/width_16k/average_l0_35
+        path: layer_24/width_16k/average_l0_35
+        l0: 35
+
+      - id: layer_24/width_16k/average_l0_357
+        path: layer_24/width_16k/average_l0_357
+        l0: 357
+
+      - id: layer_24/width_16k/average_l0_73
+        path: layer_24/width_16k/average_l0_73
+        l0: 73
+
+      - id: layer_25/width_16k/average_l0_126
+        path: layer_25/width_16k/average_l0_126
+        l0: 126
+
+      - id: layer_25/width_16k/average_l0_15
+        path: layer_25/width_16k/average_l0_15
+        l0: 15
+
+      - id: layer_25/width_16k/average_l0_277
+        path: layer_25/width_16k/average_l0_277
+        l0: 277
+
+      - id: layer_25/width_16k/average_l0_29
+        path: layer_25/width_16k/average_l0_29
+        l0: 29
+
+      - id: layer_25/width_16k/average_l0_59
+        path: layer_25/width_16k/average_l0_59
+        l0: 59
+
+      - id: layer_0/width_65k/average_l0_12
+        path: layer_0/width_65k/average_l0_12
+        l0: 12
+
+      - id: layer_0/width_65k/average_l0_21
+        path: layer_0/width_65k/average_l0_21
+        l0: 21
+
+      - id: layer_0/width_65k/average_l0_39
+        path: layer_0/width_65k/average_l0_39
+        l0: 39
+
+      - id: layer_0/width_65k/average_l0_7
+        path: layer_0/width_65k/average_l0_7
+        l0: 7
+
+      - id: layer_0/width_65k/average_l0_72
+        path: layer_0/width_65k/average_l0_72
+        l0: 72
+
+      - id: layer_1/width_65k/average_l0_11
+        path: layer_1/width_65k/average_l0_11
+        l0: 11
+
+      - id: layer_1/width_65k/average_l0_127
+        path: layer_1/width_65k/average_l0_127
+        l0: 127
+
+      - id: layer_1/width_65k/average_l0_20
+        path: layer_1/width_65k/average_l0_20
+        l0: 20
+
+      - id: layer_1/width_65k/average_l0_37
+        path: layer_1/width_65k/average_l0_37
+        l0: 37
+
+      - id: layer_1/width_65k/average_l0_67
+        path: layer_1/width_65k/average_l0_67
+        l0: 67
+
+      - id: layer_2/width_65k/average_l0_134
+        path: layer_2/width_65k/average_l0_134
+        l0: 134
+
+      - id: layer_2/width_65k/average_l0_16
+        path: layer_2/width_65k/average_l0_16
+        l0: 16
+
+      - id: layer_2/width_65k/average_l0_265
+        path: layer_2/width_65k/average_l0_265
+        l0: 265
+
+      - id: layer_2/width_65k/average_l0_31
+        path: layer_2/width_65k/average_l0_31
+        l0: 31
+
+      - id: layer_2/width_65k/average_l0_60
+        path: layer_2/width_65k/average_l0_60
+        l0: 60
+
+      - id: layer_3/width_65k/average_l0_144
+        path: layer_3/width_65k/average_l0_144
+        l0: 144
+
+      - id: layer_3/width_65k/average_l0_18
+        path: layer_3/width_65k/average_l0_18
+        l0: 18
+
+      - id: layer_3/width_65k/average_l0_279
+        path: layer_3/width_65k/average_l0_279
+        l0: 279
+
+      - id: layer_3/width_65k/average_l0_33
+        path: layer_3/width_65k/average_l0_33
+        l0: 33
+
+      - id: layer_3/width_65k/average_l0_68
+        path: layer_3/width_65k/average_l0_68
+        l0: 68
+
+      - id: layer_4/width_65k/average_l0_138
+        path: layer_4/width_65k/average_l0_138
+        l0: 138
+
+      - id: layer_4/width_65k/average_l0_17
+        path: layer_4/width_65k/average_l0_17
+        l0: 17
+
+      - id: layer_4/width_65k/average_l0_299
+        path: layer_4/width_65k/average_l0_299
+        l0: 299
+
+      - id: layer_4/width_65k/average_l0_32
+        path: layer_4/width_65k/average_l0_32
+        l0: 32
+
+      - id: layer_4/width_65k/average_l0_66
+        path: layer_4/width_65k/average_l0_66
+        l0: 66
+
+      - id: layer_5/width_65k/average_l0_186
+        path: layer_5/width_65k/average_l0_186
+        l0: 186
+
+      - id: layer_5/width_65k/average_l0_22
+        path: layer_5/width_65k/average_l0_22
+        l0: 22
+
+      - id: layer_5/width_65k/average_l0_407
+        path: layer_5/width_65k/average_l0_407
+        l0: 407
+
+      - id: layer_5/width_65k/average_l0_43
+        path: layer_5/width_65k/average_l0_43
+        l0: 43
+
+      - id: layer_5/width_65k/average_l0_86
+        path: layer_5/width_65k/average_l0_86
+        l0: 86
+
+      - id: layer_6/width_65k/average_l0_101
+        path: layer_6/width_65k/average_l0_101
+        l0: 101
+
+      - id: layer_6/width_65k/average_l0_224
+        path: layer_6/width_65k/average_l0_224
+        l0: 224
+
+      - id: layer_6/width_65k/average_l0_24
+        path: layer_6/width_65k/average_l0_24
+        l0: 24
+
+      - id: layer_6/width_65k/average_l0_47
+        path: layer_6/width_65k/average_l0_47
+        l0: 47
+
+      - id: layer_6/width_65k/average_l0_515
+        path: layer_6/width_65k/average_l0_515
+        l0: 515
+
+      - id: layer_7/width_65k/average_l0_115
+        path: layer_7/width_65k/average_l0_115
+        l0: 115
+
+      - id: layer_7/width_65k/average_l0_266
+        path: layer_7/width_65k/average_l0_266
+        l0: 266
+
+      - id: layer_7/width_65k/average_l0_28
+        path: layer_7/width_65k/average_l0_28
+        l0: 28
+
+      - id: layer_7/width_65k/average_l0_56
+        path: layer_7/width_65k/average_l0_56
+        l0: 56
+
+      - id: layer_7/width_65k/average_l0_571
+        path: layer_7/width_65k/average_l0_571
+        l0: 571
+
+      - id: layer_8/width_65k/average_l0_110
+        path: layer_8/width_65k/average_l0_110
+        l0: 110
+
+      - id: layer_8/width_65k/average_l0_256
+        path: layer_8/width_65k/average_l0_256
+        l0: 256
+
+      - id: layer_8/width_65k/average_l0_31
+        path: layer_8/width_65k/average_l0_31
+        l0: 31
+
+      - id: layer_8/width_65k/average_l0_547
+        path: layer_8/width_65k/average_l0_547
+        l0: 547
+
+      - id: layer_8/width_65k/average_l0_55
+        path: layer_8/width_65k/average_l0_55
+        l0: 55
+
+      - id: layer_9/width_65k/average_l0_168
+        path: layer_9/width_65k/average_l0_168
+        l0: 168
+
+      - id: layer_9/width_65k/average_l0_38
+        path: layer_9/width_65k/average_l0_38
+        l0: 38
+
+      - id: layer_9/width_65k/average_l0_387
+        path: layer_9/width_65k/average_l0_387
+        l0: 387
+
+      - id: layer_9/width_65k/average_l0_745
+        path: layer_9/width_65k/average_l0_745
+        l0: 745
+
+      - id: layer_9/width_65k/average_l0_77
+        path: layer_9/width_65k/average_l0_77
+        l0: 77
+
+      - id: layer_10/width_65k/average_l0_218
+        path: layer_10/width_65k/average_l0_218
+        l0: 218
+
+      - id: layer_10/width_65k/average_l0_43
+        path: layer_10/width_65k/average_l0_43
+        l0: 43
+
+      - id: layer_10/width_65k/average_l0_474
+        path: layer_10/width_65k/average_l0_474
+        l0: 474
+
+      - id: layer_10/width_65k/average_l0_851
+        path: layer_10/width_65k/average_l0_851
+        l0: 851
+
+      - id: layer_10/width_65k/average_l0_95
+        path: layer_10/width_65k/average_l0_95
+        l0: 95
+
+      - id: layer_11/width_65k/average_l0_200
+        path: layer_11/width_65k/average_l0_200
+        l0: 200
+
+      - id: layer_11/width_65k/average_l0_41
+        path: layer_11/width_65k/average_l0_41
+        l0: 41
+
+      - id: layer_11/width_65k/average_l0_436
+        path: layer_11/width_65k/average_l0_436
+        l0: 436
+
+      - id: layer_11/width_65k/average_l0_771
+        path: layer_11/width_65k/average_l0_771
+        l0: 771
+
+      - id: layer_11/width_65k/average_l0_88
+        path: layer_11/width_65k/average_l0_88
+        l0: 88
+
+      - id: layer_12/width_65k/average_l0_222
+        path: layer_12/width_65k/average_l0_222
+        l0: 222
+
+      - id: layer_12/width_65k/average_l0_44
+        path: layer_12/width_65k/average_l0_44
+        l0: 44
+
+      - id: layer_12/width_65k/average_l0_482
+        path: layer_12/width_65k/average_l0_482
+        l0: 482
+
+      - id: layer_12/width_65k/average_l0_848
+        path: layer_12/width_65k/average_l0_848
+        l0: 848
+
+      - id: layer_12/width_65k/average_l0_96
+        path: layer_12/width_65k/average_l0_96
+        l0: 96
+
+      - id: layer_13/width_65k/average_l0_228
+        path: layer_13/width_65k/average_l0_228
+        l0: 228
+
+      - id: layer_13/width_65k/average_l0_44
+        path: layer_13/width_65k/average_l0_44
+        l0: 44
+
+      - id: layer_13/width_65k/average_l0_480
+        path: layer_13/width_65k/average_l0_480
+        l0: 480
+
+      - id: layer_13/width_65k/average_l0_841
+        path: layer_13/width_65k/average_l0_841
+        l0: 841
+
+      - id: layer_13/width_65k/average_l0_98
+        path: layer_13/width_65k/average_l0_98
+        l0: 98
+
+      - id: layer_14/width_65k/average_l0_204
+        path: layer_14/width_65k/average_l0_204
+        l0: 204
+
+      - id: layer_14/width_65k/average_l0_39
+        path: layer_14/width_65k/average_l0_39
+        l0: 39
+
+      - id: layer_14/width_65k/average_l0_463
+        path: layer_14/width_65k/average_l0_463
+        l0: 463
+
+      - id: layer_14/width_65k/average_l0_816
+        path: layer_14/width_65k/average_l0_816
+        l0: 816
+
+      - id: layer_14/width_65k/average_l0_89
+        path: layer_14/width_65k/average_l0_89
+        l0: 89
+
+      - id: layer_15/width_65k/average_l0_164
+        path: layer_15/width_65k/average_l0_164
+        l0: 164
+
+      - id: layer_15/width_65k/average_l0_35
+        path: layer_15/width_65k/average_l0_35
+        l0: 35
+
+      - id: layer_15/width_65k/average_l0_405
+        path: layer_15/width_65k/average_l0_405
+        l0: 405
+
+      - id: layer_15/width_65k/average_l0_72
+        path: layer_15/width_65k/average_l0_72
+        l0: 72
+
+      - id: layer_15/width_65k/average_l0_754
+        path: layer_15/width_65k/average_l0_754
+        l0: 754
+
+      - id: layer_16/width_65k/average_l0_142
+        path: layer_16/width_65k/average_l0_142
+        l0: 142
+
+      - id: layer_16/width_65k/average_l0_32
+        path: layer_16/width_65k/average_l0_32
+        l0: 32
+
+      - id: layer_16/width_65k/average_l0_348
+        path: layer_16/width_65k/average_l0_348
+        l0: 348
+
+      - id: layer_16/width_65k/average_l0_66
+        path: layer_16/width_65k/average_l0_66
+        l0: 66
+
+      - id: layer_16/width_65k/average_l0_695
+        path: layer_16/width_65k/average_l0_695
+        l0: 695
+
+      - id: layer_17/width_65k/average_l0_136
+        path: layer_17/width_65k/average_l0_136
+        l0: 136
+
+      - id: layer_17/width_65k/average_l0_30
+        path: layer_17/width_65k/average_l0_30
+        l0: 30
+
+      - id: layer_17/width_65k/average_l0_342
+        path: layer_17/width_65k/average_l0_342
+        l0: 342
+
+      - id: layer_17/width_65k/average_l0_61
+        path: layer_17/width_65k/average_l0_61
+        l0: 61
+
+      - id: layer_17/width_65k/average_l0_666
+        path: layer_17/width_65k/average_l0_666
+        l0: 666
+
+      - id: layer_18/width_65k/average_l0_191
+        path: layer_18/width_65k/average_l0_191
+        l0: 191
+
+      - id: layer_18/width_65k/average_l0_24
+        path: layer_18/width_65k/average_l0_24
+        l0: 24
+
+      - id: layer_18/width_65k/average_l0_44
+        path: layer_18/width_65k/average_l0_44
+        l0: 44
+
+      - id: layer_18/width_65k/average_l0_491
+        path: layer_18/width_65k/average_l0_491
+        l0: 491
+
+      - id: layer_18/width_65k/average_l0_88
+        path: layer_18/width_65k/average_l0_88
+        l0: 88
+
+      - id: layer_19/width_65k/average_l0_192
+        path: layer_19/width_65k/average_l0_192
+        l0: 192
+
+      - id: layer_19/width_65k/average_l0_25
+        path: layer_19/width_65k/average_l0_25
+        l0: 25
+
+      - id: layer_19/width_65k/average_l0_45
+        path: layer_19/width_65k/average_l0_45
+        l0: 45
+
+      - id: layer_19/width_65k/average_l0_470
+        path: layer_19/width_65k/average_l0_470
+        l0: 470
+
+      - id: layer_19/width_65k/average_l0_88
+        path: layer_19/width_65k/average_l0_88
+        l0: 88
+
+      - id: layer_20/width_65k/average_l0_189
+        path: layer_20/width_65k/average_l0_189
+        l0: 189
+
+      - id: layer_20/width_65k/average_l0_23
+        path: layer_20/width_65k/average_l0_23
+        l0: 23
+
+      - id: layer_20/width_65k/average_l0_44
+        path: layer_20/width_65k/average_l0_44
+        l0: 44
+
+      - id: layer_20/width_65k/average_l0_446
+        path: layer_20/width_65k/average_l0_446
+        l0: 446
+
+      - id: layer_20/width_65k/average_l0_88
+        path: layer_20/width_65k/average_l0_88
+        l0: 88
+
+      - id: layer_21/width_65k/average_l0_192
+        path: layer_21/width_65k/average_l0_192
+        l0: 192
+
+      - id: layer_21/width_65k/average_l0_23
+        path: layer_21/width_65k/average_l0_23
+        l0: 23
+
+      - id: layer_21/width_65k/average_l0_42
+        path: layer_21/width_65k/average_l0_42
+        l0: 42
+
+      - id: layer_21/width_65k/average_l0_472
+        path: layer_21/width_65k/average_l0_472
+        l0: 472
+
+      - id: layer_21/width_65k/average_l0_86
+        path: layer_21/width_65k/average_l0_86
+        l0: 86
+
+      - id: layer_22/width_65k/average_l0_203
+        path: layer_22/width_65k/average_l0_203
+        l0: 203
+
+      - id: layer_22/width_65k/average_l0_23
+        path: layer_22/width_65k/average_l0_23
+        l0: 23
+
+      - id: layer_22/width_65k/average_l0_46
+        path: layer_22/width_65k/average_l0_46
+        l0: 46
+
+      - id: layer_22/width_65k/average_l0_487
+        path: layer_22/width_65k/average_l0_487
+        l0: 487
+
+      - id: layer_22/width_65k/average_l0_92
+        path: layer_22/width_65k/average_l0_92
+        l0: 92
+
+      - id: layer_23/width_65k/average_l0_102
+        path: layer_23/width_65k/average_l0_102
+        l0: 102
+
+      - id: layer_23/width_65k/average_l0_218
+        path: layer_23/width_65k/average_l0_218
+        l0: 218
+
+      - id: layer_23/width_65k/average_l0_25
+        path: layer_23/width_65k/average_l0_25
+        l0: 25
+
+      - id: layer_23/width_65k/average_l0_49
+        path: layer_23/width_65k/average_l0_49
+        l0: 49
+
+      - id: layer_23/width_65k/average_l0_497
+        path: layer_23/width_65k/average_l0_497
+        l0: 497
+
+      - id: layer_24/width_65k/average_l0_128
+        path: layer_24/width_65k/average_l0_128
+        l0: 128
+
+      - id: layer_24/width_65k/average_l0_18
+        path: layer_24/width_65k/average_l0_18
+        l0: 18
+
+      - id: layer_24/width_65k/average_l0_268
+        path: layer_24/width_65k/average_l0_268
+        l0: 268
+
+      - id: layer_24/width_65k/average_l0_32
+        path: layer_24/width_65k/average_l0_32
+        l0: 32
+
+      - id: layer_24/width_65k/average_l0_62
+        path: layer_24/width_65k/average_l0_62
+        l0: 62
+
+      - id: layer_25/width_65k/average_l0_107
+        path: layer_25/width_65k/average_l0_107
+        l0: 107
+
+      - id: layer_25/width_65k/average_l0_14
+        path: layer_25/width_65k/average_l0_14
+        l0: 14
+
+      - id: layer_25/width_65k/average_l0_215
+        path: layer_25/width_65k/average_l0_215
+        l0: 215
+
+      - id: layer_25/width_65k/average_l0_26
+        path: layer_25/width_65k/average_l0_26
+        l0: 26
+
+      - id: layer_25/width_65k/average_l0_52
+        path: layer_25/width_65k/average_l0_52
+        l0: 52
+  gemma-scope-2b-pt-att:
+    repo_id: google/gemma-scope-2b-pt-att
+    model: gemma-2-2b
+    conversion_func: gemma_2
+    saes:
+      - id: layer_0/width_16k/average_l0_104
+        path: layer_0/width_16k/average_l0_104
+        l0: 104
+
+      - id: layer_0/width_16k/average_l0_12
+        path: layer_0/width_16k/average_l0_12
+        l0: 12
+
+      - id: layer_0/width_16k/average_l0_18
+        path: layer_0/width_16k/average_l0_18
+        l0: 18
+
+      - id: layer_0/width_16k/average_l0_30
+        path: layer_0/width_16k/average_l0_30
+        l0: 30
+
+      - id: layer_0/width_16k/average_l0_57
+        path: layer_0/width_16k/average_l0_57
+        l0: 57
+
+      - id: layer_1/width_16k/average_l0_146
+        path: layer_1/width_16k/average_l0_146
+        l0: 146
+
+      - id: layer_1/width_16k/average_l0_20
+        path: layer_1/width_16k/average_l0_20
+        l0: 20
+
+      - id: layer_1/width_16k/average_l0_251
+        path: layer_1/width_16k/average_l0_251
+        l0: 251
+
+      - id: layer_1/width_16k/average_l0_40
+        path: layer_1/width_16k/average_l0_40
+        l0: 40
+
+      - id: layer_1/width_16k/average_l0_79
+        path: layer_1/width_16k/average_l0_79
+        l0: 79
+
+      - id: layer_2/width_16k/average_l0_174
+        path: layer_2/width_16k/average_l0_174
+        l0: 174
+
+      - id: layer_2/width_16k/average_l0_19
+        path: layer_2/width_16k/average_l0_19
+        l0: 19
+
+      - id: layer_2/width_16k/average_l0_297
+        path: layer_2/width_16k/average_l0_297
+        l0: 297
+
+      - id: layer_2/width_16k/average_l0_43
+        path: layer_2/width_16k/average_l0_43
+        l0: 43
+
+      - id: layer_2/width_16k/average_l0_93
+        path: layer_2/width_16k/average_l0_93
+        l0: 93
+
+      - id: layer_3/width_16k/average_l0_117
+        path: layer_3/width_16k/average_l0_117
+        l0: 117
+
+      - id: layer_3/width_16k/average_l0_219
+        path: layer_3/width_16k/average_l0_219
+        l0: 219
+
+      - id: layer_3/width_16k/average_l0_24
+        path: layer_3/width_16k/average_l0_24
+        l0: 24
+
+      - id: layer_3/width_16k/average_l0_386
+        path: layer_3/width_16k/average_l0_386
+        l0: 386
+
+      - id: layer_3/width_16k/average_l0_55
+        path: layer_3/width_16k/average_l0_55
+        l0: 55
+
+      - id: layer_4/width_16k/average_l0_116
+        path: layer_4/width_16k/average_l0_116
+        l0: 116
+
+      - id: layer_4/width_16k/average_l0_249
+        path: layer_4/width_16k/average_l0_249
+        l0: 249
+
+      - id: layer_4/width_16k/average_l0_26
+        path: layer_4/width_16k/average_l0_26
+        l0: 26
+
+      - id: layer_4/width_16k/average_l0_454
+        path: layer_4/width_16k/average_l0_454
+        l0: 454
+
+      - id: layer_4/width_16k/average_l0_53
+        path: layer_4/width_16k/average_l0_53
+        l0: 53
+
+      - id: layer_5/width_16k/average_l0_135
+        path: layer_5/width_16k/average_l0_135
+        l0: 135
+
+      - id: layer_5/width_16k/average_l0_268
+        path: layer_5/width_16k/average_l0_268
+        l0: 268
+
+      - id: layer_5/width_16k/average_l0_30
+        path: layer_5/width_16k/average_l0_30
+        l0: 30
+
+      - id: layer_5/width_16k/average_l0_449
+        path: layer_5/width_16k/average_l0_449
+        l0: 449
+
+      - id: layer_5/width_16k/average_l0_59
+        path: layer_5/width_16k/average_l0_59
+        l0: 59
+
+      - id: layer_6/width_16k/average_l0_143
+        path: layer_6/width_16k/average_l0_143
+        l0: 143
+
+      - id: layer_6/width_16k/average_l0_292
+        path: layer_6/width_16k/average_l0_292
+        l0: 292
+
+      - id: layer_6/width_16k/average_l0_30
+        path: layer_6/width_16k/average_l0_30
+        l0: 30
+
+      - id: layer_6/width_16k/average_l0_479
+        path: layer_6/width_16k/average_l0_479
+        l0: 479
+
+      - id: layer_6/width_16k/average_l0_61
+        path: layer_6/width_16k/average_l0_61
+        l0: 61
+
+      - id: layer_7/width_16k/average_l0_184
+        path: layer_7/width_16k/average_l0_184
+        l0: 184
+
+      - id: layer_7/width_16k/average_l0_331
+        path: layer_7/width_16k/average_l0_331
+        l0: 331
+
+      - id: layer_7/width_16k/average_l0_46
+        path: layer_7/width_16k/average_l0_46
+        l0: 46
+
+      - id: layer_7/width_16k/average_l0_537
+        path: layer_7/width_16k/average_l0_537
+        l0: 537
+
+      - id: layer_7/width_16k/average_l0_99
+        path: layer_7/width_16k/average_l0_99
+        l0: 99
+
+      - id: layer_8/width_16k/average_l0_129
+        path: layer_8/width_16k/average_l0_129
+        l0: 129
+
+      - id: layer_8/width_16k/average_l0_282
+        path: layer_8/width_16k/average_l0_282
+        l0: 282
+
+      - id: layer_8/width_16k/average_l0_32
+        path: layer_8/width_16k/average_l0_32
+        l0: 32
+
+      - id: layer_8/width_16k/average_l0_482
+        path: layer_8/width_16k/average_l0_482
+        l0: 482
+
+      - id: layer_8/width_16k/average_l0_64
+        path: layer_8/width_16k/average_l0_64
+        l0: 64
+
+      - id: layer_9/width_16k/average_l0_127
+        path: layer_9/width_16k/average_l0_127
+        l0: 127
+
+      - id: layer_9/width_16k/average_l0_270
+        path: layer_9/width_16k/average_l0_270
+        l0: 270
+
+      - id: layer_9/width_16k/average_l0_34
+        path: layer_9/width_16k/average_l0_34
+        l0: 34
+
+      - id: layer_9/width_16k/average_l0_499
+        path: layer_9/width_16k/average_l0_499
+        l0: 499
+
+      - id: layer_9/width_16k/average_l0_64
+        path: layer_9/width_16k/average_l0_64
+        l0: 64
+
+      - id: layer_10/width_16k/average_l0_148
+        path: layer_10/width_16k/average_l0_148
+        l0: 148
+
+      - id: layer_10/width_16k/average_l0_307
+        path: layer_10/width_16k/average_l0_307
+        l0: 307
+
+      - id: layer_10/width_16k/average_l0_36
+        path: layer_10/width_16k/average_l0_36
+        l0: 36
+
+      - id: layer_10/width_16k/average_l0_541
+        path: layer_10/width_16k/average_l0_541
+        l0: 541
+
+      - id: layer_10/width_16k/average_l0_70
+        path: layer_10/width_16k/average_l0_70
+        l0: 70
+
+      - id: layer_11/width_16k/average_l0_170
+        path: layer_11/width_16k/average_l0_170
+        l0: 170
+
+      - id: layer_11/width_16k/average_l0_350
+        path: layer_11/width_16k/average_l0_350
+        l0: 350
+
+      - id: layer_11/width_16k/average_l0_41
+        path: layer_11/width_16k/average_l0_41
+        l0: 41
+
+      - id: layer_11/width_16k/average_l0_593
+        path: layer_11/width_16k/average_l0_593
+        l0: 593
+
+      - id: layer_11/width_16k/average_l0_80
+        path: layer_11/width_16k/average_l0_80
+        l0: 80
+
+      - id: layer_12/width_16k/average_l0_184
+        path: layer_12/width_16k/average_l0_184
+        l0: 184
+
+      - id: layer_12/width_16k/average_l0_328
+        path: layer_12/width_16k/average_l0_328
+        l0: 328
+
+      - id: layer_12/width_16k/average_l0_41
+        path: layer_12/width_16k/average_l0_41
+        l0: 41
+
+      - id: layer_12/width_16k/average_l0_514
+        path: layer_12/width_16k/average_l0_514
+        l0: 514
+
+      - id: layer_12/width_16k/average_l0_85
+        path: layer_12/width_16k/average_l0_85
+        l0: 85
+
+      - id: layer_13/width_16k/average_l0_203
+        path: layer_13/width_16k/average_l0_203
+        l0: 203
+
+      - id: layer_13/width_16k/average_l0_372
+        path: layer_13/width_16k/average_l0_372
+        l0: 372
+
+      - id: layer_13/width_16k/average_l0_43
+        path: layer_13/width_16k/average_l0_43
+        l0: 43
+
+      - id: layer_13/width_16k/average_l0_570
+        path: layer_13/width_16k/average_l0_570
+        l0: 570
+
+      - id: layer_13/width_16k/average_l0_92
+        path: layer_13/width_16k/average_l0_92
+        l0: 92
+
+      - id: layer_14/width_16k/average_l0_161
+        path: layer_14/width_16k/average_l0_161
+        l0: 161
+
+      - id: layer_14/width_16k/average_l0_298
+        path: layer_14/width_16k/average_l0_298
+        l0: 298
+
+      - id: layer_14/width_16k/average_l0_37
+        path: layer_14/width_16k/average_l0_37
+        l0: 37
+
+      - id: layer_14/width_16k/average_l0_468
+        path: layer_14/width_16k/average_l0_468
+        l0: 468
+
+      - id: layer_14/width_16k/average_l0_71
+        path: layer_14/width_16k/average_l0_71
+        l0: 71
+
+      - id: layer_15/width_16k/average_l0_195
+        path: layer_15/width_16k/average_l0_195
+        l0: 195
+
+      - id: layer_15/width_16k/average_l0_342
+        path: layer_15/width_16k/average_l0_342
+        l0: 342
+
+      - id: layer_15/width_16k/average_l0_44
+        path: layer_15/width_16k/average_l0_44
+        l0: 44
+
+      - id: layer_15/width_16k/average_l0_535
+        path: layer_15/width_16k/average_l0_535
+        l0: 535
+
+      - id: layer_15/width_16k/average_l0_98
+        path: layer_15/width_16k/average_l0_98
+        l0: 98
+
+      - id: layer_16/width_16k/average_l0_144
+        path: layer_16/width_16k/average_l0_144
+        l0: 144
+
+      - id: layer_16/width_16k/average_l0_293
+        path: layer_16/width_16k/average_l0_293
+        l0: 293
+
+      - id: layer_16/width_16k/average_l0_37
+        path: layer_16/width_16k/average_l0_37
+        l0: 37
+
+      - id: layer_16/width_16k/average_l0_527
+        path: layer_16/width_16k/average_l0_527
+        l0: 527
+
+      - id: layer_16/width_16k/average_l0_71
+        path: layer_16/width_16k/average_l0_71
+        l0: 71
+
+      - id: layer_17/width_16k/average_l0_176
+        path: layer_17/width_16k/average_l0_176
+        l0: 176
+
+      - id: layer_17/width_16k/average_l0_316
+        path: layer_17/width_16k/average_l0_316
+        l0: 316
+
+      - id: layer_17/width_16k/average_l0_38
+        path: layer_17/width_16k/average_l0_38
+        l0: 38
+
+      - id: layer_17/width_16k/average_l0_509
+        path: layer_17/width_16k/average_l0_509
+        l0: 509
+
+      - id: layer_17/width_16k/average_l0_79
+        path: layer_17/width_16k/average_l0_79
+        l0: 79
+
+      - id: layer_18/width_16k/average_l0_144
+        path: layer_18/width_16k/average_l0_144
+        l0: 144
+
+      - id: layer_18/width_16k/average_l0_292
+        path: layer_18/width_16k/average_l0_292
+        l0: 292
+
+      - id: layer_18/width_16k/average_l0_34
+        path: layer_18/width_16k/average_l0_34
+        l0: 34
+
+      - id: layer_18/width_16k/average_l0_491
+        path: layer_18/width_16k/average_l0_491
+        l0: 491
+
+      - id: layer_18/width_16k/average_l0_72
+        path: layer_18/width_16k/average_l0_72
+        l0: 72
+
+      - id: layer_19/width_16k/average_l0_122
+        path: layer_19/width_16k/average_l0_122
+        l0: 122
+
+      - id: layer_19/width_16k/average_l0_249
+        path: layer_19/width_16k/average_l0_249
+        l0: 249
+
+      - id: layer_19/width_16k/average_l0_28
+        path: layer_19/width_16k/average_l0_28
+        l0: 28
+
+      - id: layer_19/width_16k/average_l0_423
+        path: layer_19/width_16k/average_l0_423
+        l0: 423
+
+      - id: layer_19/width_16k/average_l0_56
+        path: layer_19/width_16k/average_l0_56
+        l0: 56
+
+      - id: layer_20/width_16k/average_l0_141
+        path: layer_20/width_16k/average_l0_141
+        l0: 141
+
+      - id: layer_20/width_16k/average_l0_274
+        path: layer_20/width_16k/average_l0_274
+        l0: 274
+
+      - id: layer_20/width_16k/average_l0_31
+        path: layer_20/width_16k/average_l0_31
+        l0: 31
+
+      - id: layer_20/width_16k/average_l0_446
+        path: layer_20/width_16k/average_l0_446
+        l0: 446
+
+      - id: layer_20/width_16k/average_l0_62
+        path: layer_20/width_16k/average_l0_62
+        l0: 62
+
+      - id: layer_21/width_16k/average_l0_142
+        path: layer_21/width_16k/average_l0_142
+        l0: 142
+
+      - id: layer_21/width_16k/average_l0_301
+        path: layer_21/width_16k/average_l0_301
+        l0: 301
+
+      - id: layer_21/width_16k/average_l0_32
+        path: layer_21/width_16k/average_l0_32
+        l0: 32
+
+      - id: layer_21/width_16k/average_l0_505
+        path: layer_21/width_16k/average_l0_505
+        l0: 505
+
+      - id: layer_21/width_16k/average_l0_65
+        path: layer_21/width_16k/average_l0_65
+        l0: 65
+
+      - id: layer_22/width_16k/average_l0_106
+        path: layer_22/width_16k/average_l0_106
+        l0: 106
+
+      - id: layer_22/width_16k/average_l0_215
+        path: layer_22/width_16k/average_l0_215
+        l0: 215
+
+      - id: layer_22/width_16k/average_l0_22
+        path: layer_22/width_16k/average_l0_22
+        l0: 22
+
+      - id: layer_22/width_16k/average_l0_373
+        path: layer_22/width_16k/average_l0_373
+        l0: 373
+
+      - id: layer_22/width_16k/average_l0_47
+        path: layer_22/width_16k/average_l0_47
+        l0: 47
+
+      - id: layer_23/width_16k/average_l0_161
+        path: layer_23/width_16k/average_l0_161
+        l0: 161
+
+      - id: layer_23/width_16k/average_l0_30
+        path: layer_23/width_16k/average_l0_30
+        l0: 30
+
+      - id: layer_23/width_16k/average_l0_300
+        path: layer_23/width_16k/average_l0_300
+        l0: 300
+
+      - id: layer_23/width_16k/average_l0_474
+        path: layer_23/width_16k/average_l0_474
+        l0: 474
+
+      - id: layer_23/width_16k/average_l0_73
+        path: layer_23/width_16k/average_l0_73
+        l0: 73
+
+      - id: layer_24/width_16k/average_l0_212
+        path: layer_24/width_16k/average_l0_212
+        l0: 212
+
+      - id: layer_24/width_16k/average_l0_372
+        path: layer_24/width_16k/average_l0_372
+        l0: 372
+
+      - id: layer_24/width_16k/average_l0_39
+        path: layer_24/width_16k/average_l0_39
+        l0: 39
+
+      - id: layer_24/width_16k/average_l0_558
+        path: layer_24/width_16k/average_l0_558
+        l0: 558
+
+      - id: layer_24/width_16k/average_l0_96
+        path: layer_24/width_16k/average_l0_96
+        l0: 96
+
+      - id: layer_25/width_16k/average_l0_177
+        path: layer_25/width_16k/average_l0_177
+        l0: 177
+
+      - id: layer_25/width_16k/average_l0_313
+        path: layer_25/width_16k/average_l0_313
+        l0: 313
+
+      - id: layer_25/width_16k/average_l0_35
+        path: layer_25/width_16k/average_l0_35
+        l0: 35
+
+      - id: layer_25/width_16k/average_l0_492
+        path: layer_25/width_16k/average_l0_492
+        l0: 492
+
+      - id: layer_25/width_16k/average_l0_77
+        path: layer_25/width_16k/average_l0_77
+        l0: 77
+
+      - id: layer_0/width_65k/average_l0_10
+        path: layer_0/width_65k/average_l0_10
+        l0: 10
+
+      - id: layer_0/width_65k/average_l0_16
+        path: layer_0/width_65k/average_l0_16
+        l0: 16
+
+      - id: layer_0/width_65k/average_l0_24
+        path: layer_0/width_65k/average_l0_24
+        l0: 24
+
+      - id: layer_0/width_65k/average_l0_43
+        path: layer_0/width_65k/average_l0_43
+        l0: 43
+
+      - id: layer_0/width_65k/average_l0_75
+        path: layer_0/width_65k/average_l0_75
+        l0: 75
+
+      - id: layer_1/width_65k/average_l0_15
+        path: layer_1/width_65k/average_l0_15
+        l0: 15
+
+      - id: layer_1/width_65k/average_l0_181
+        path: layer_1/width_65k/average_l0_181
+        l0: 181
+
+      - id: layer_1/width_65k/average_l0_28
+        path: layer_1/width_65k/average_l0_28
+        l0: 28
+
+      - id: layer_1/width_65k/average_l0_55
+        path: layer_1/width_65k/average_l0_55
+        l0: 55
+
+      - id: layer_1/width_65k/average_l0_98
+        path: layer_1/width_65k/average_l0_98
+        l0: 98
+
+      - id: layer_2/width_65k/average_l0_125
+        path: layer_2/width_65k/average_l0_125
+        l0: 125
+
+      - id: layer_2/width_65k/average_l0_14
+        path: layer_2/width_65k/average_l0_14
+        l0: 14
+
+      - id: layer_2/width_65k/average_l0_228
+        path: layer_2/width_65k/average_l0_228
+        l0: 228
+
+      - id: layer_2/width_65k/average_l0_28
+        path: layer_2/width_65k/average_l0_28
+        l0: 28
+
+      - id: layer_2/width_65k/average_l0_59
+        path: layer_2/width_65k/average_l0_59
+        l0: 59
+
+      - id: layer_3/width_65k/average_l0_174
+        path: layer_3/width_65k/average_l0_174
+        l0: 174
+
+      - id: layer_3/width_65k/average_l0_19
+        path: layer_3/width_65k/average_l0_19
+        l0: 19
+
+      - id: layer_3/width_65k/average_l0_320
+        path: layer_3/width_65k/average_l0_320
+        l0: 320
+
+      - id: layer_3/width_65k/average_l0_39
+        path: layer_3/width_65k/average_l0_39
+        l0: 39
+
+      - id: layer_3/width_65k/average_l0_83
+        path: layer_3/width_65k/average_l0_83
+        l0: 83
+
+      - id: layer_4/width_65k/average_l0_188
+        path: layer_4/width_65k/average_l0_188
+        l0: 188
+
+      - id: layer_4/width_65k/average_l0_22
+        path: layer_4/width_65k/average_l0_22
+        l0: 22
+
+      - id: layer_4/width_65k/average_l0_382
+        path: layer_4/width_65k/average_l0_382
+        l0: 382
+
+      - id: layer_4/width_65k/average_l0_43
+        path: layer_4/width_65k/average_l0_43
+        l0: 43
+
+      - id: layer_4/width_65k/average_l0_87
+        path: layer_4/width_65k/average_l0_87
+        l0: 87
+
+      - id: layer_5/width_65k/average_l0_227
+        path: layer_5/width_65k/average_l0_227
+        l0: 227
+
+      - id: layer_5/width_65k/average_l0_28
+        path: layer_5/width_65k/average_l0_28
+        l0: 28
+
+      - id: layer_5/width_65k/average_l0_400
+        path: layer_5/width_65k/average_l0_400
+        l0: 400
+
+      - id: layer_5/width_65k/average_l0_51
+        path: layer_5/width_65k/average_l0_51
+        l0: 51
+
+      - id: layer_5/width_65k/average_l0_99
+        path: layer_5/width_65k/average_l0_99
+        l0: 99
+
+      - id: layer_6/width_65k/average_l0_112
+        path: layer_6/width_65k/average_l0_112
+        l0: 112
+
+      - id: layer_6/width_65k/average_l0_261
+        path: layer_6/width_65k/average_l0_261
+        l0: 261
+
+      - id: layer_6/width_65k/average_l0_30
+        path: layer_6/width_65k/average_l0_30
+        l0: 30
+
+      - id: layer_6/width_65k/average_l0_449
+        path: layer_6/width_65k/average_l0_449
+        l0: 449
+
+      - id: layer_6/width_65k/average_l0_55
+        path: layer_6/width_65k/average_l0_55
+        l0: 55
+
+      - id: layer_7/width_65k/average_l0_176
+        path: layer_7/width_65k/average_l0_176
+        l0: 176
+
+      - id: layer_7/width_65k/average_l0_311
+        path: layer_7/width_65k/average_l0_311
+        l0: 311
+
+      - id: layer_7/width_65k/average_l0_519
+        path: layer_7/width_65k/average_l0_519
+        l0: 519
+
+      - id: layer_7/width_65k/average_l0_52
+        path: layer_7/width_65k/average_l0_52
+        l0: 52
+
+      - id: layer_7/width_65k/average_l0_96
+        path: layer_7/width_65k/average_l0_96
+        l0: 96
+
+      - id: layer_8/width_65k/average_l0_112
+        path: layer_8/width_65k/average_l0_112
+        l0: 112
+
+      - id: layer_8/width_65k/average_l0_246
+        path: layer_8/width_65k/average_l0_246
+        l0: 246
+
+      - id: layer_8/width_65k/average_l0_35
+        path: layer_8/width_65k/average_l0_35
+        l0: 35
+
+      - id: layer_8/width_65k/average_l0_454
+        path: layer_8/width_65k/average_l0_454
+        l0: 454
+
+      - id: layer_8/width_65k/average_l0_56
+        path: layer_8/width_65k/average_l0_56
+        l0: 56
+
+      - id: layer_9/width_65k/average_l0_107
+        path: layer_9/width_65k/average_l0_107
+        l0: 107
+
+      - id: layer_9/width_65k/average_l0_231
+        path: layer_9/width_65k/average_l0_231
+        l0: 231
+
+      - id: layer_9/width_65k/average_l0_31
+        path: layer_9/width_65k/average_l0_31
+        l0: 31
+
+      - id: layer_9/width_65k/average_l0_454
+        path: layer_9/width_65k/average_l0_454
+        l0: 454
+
+      - id: layer_9/width_65k/average_l0_57
+        path: layer_9/width_65k/average_l0_57
+        l0: 57
+
+      - id: layer_10/width_65k/average_l0_134
+        path: layer_10/width_65k/average_l0_134
+        l0: 134
+
+      - id: layer_10/width_65k/average_l0_292
+        path: layer_10/width_65k/average_l0_292
+        l0: 292
+
+      - id: layer_10/width_65k/average_l0_35
+        path: layer_10/width_65k/average_l0_35
+        l0: 35
+
+      - id: layer_10/width_65k/average_l0_521
+        path: layer_10/width_65k/average_l0_521
+        l0: 521
+
+      - id: layer_10/width_65k/average_l0_67
+        path: layer_10/width_65k/average_l0_67
+        l0: 67
+
+      - id: layer_11/width_65k/average_l0_154
+        path: layer_11/width_65k/average_l0_154
+        l0: 154
+
+      - id: layer_11/width_65k/average_l0_330
+        path: layer_11/width_65k/average_l0_330
+        l0: 330
+
+      - id: layer_11/width_65k/average_l0_41
+        path: layer_11/width_65k/average_l0_41
+        l0: 41
+
+      - id: layer_11/width_65k/average_l0_576
+        path: layer_11/width_65k/average_l0_576
+        l0: 576
+
+      - id: layer_11/width_65k/average_l0_75
+        path: layer_11/width_65k/average_l0_75
+        l0: 75
+
+      - id: layer_12/width_65k/average_l0_172
+        path: layer_12/width_65k/average_l0_172
+        l0: 172
+
+      - id: layer_12/width_65k/average_l0_320
+        path: layer_12/width_65k/average_l0_320
+        l0: 320
+
+      - id: layer_12/width_65k/average_l0_39
+        path: layer_12/width_65k/average_l0_39
+        l0: 39
+
+      - id: layer_12/width_65k/average_l0_503
+        path: layer_12/width_65k/average_l0_503
+        l0: 503
+
+      - id: layer_12/width_65k/average_l0_79
+        path: layer_12/width_65k/average_l0_79
+        l0: 79
+
+      - id: layer_13/width_65k/average_l0_191
+        path: layer_13/width_65k/average_l0_191
+        l0: 191
+
+      - id: layer_13/width_65k/average_l0_363
+        path: layer_13/width_65k/average_l0_363
+        l0: 363
+
+      - id: layer_13/width_65k/average_l0_41
+        path: layer_13/width_65k/average_l0_41
+        l0: 41
+
+      - id: layer_13/width_65k/average_l0_556
+        path: layer_13/width_65k/average_l0_556
+        l0: 556
+
+      - id: layer_13/width_65k/average_l0_87
+        path: layer_13/width_65k/average_l0_87
+        l0: 87
+
+      - id: layer_14/width_65k/average_l0_138
+        path: layer_14/width_65k/average_l0_138
+        l0: 138
+
+      - id: layer_14/width_65k/average_l0_283
+        path: layer_14/width_65k/average_l0_283
+        l0: 283
+
+      - id: layer_14/width_65k/average_l0_37
+        path: layer_14/width_65k/average_l0_37
+        l0: 37
+
+      - id: layer_14/width_65k/average_l0_453
+        path: layer_14/width_65k/average_l0_453
+        l0: 453
+
+      - id: layer_14/width_65k/average_l0_66
+        path: layer_14/width_65k/average_l0_66
+        l0: 66
+
+      - id: layer_15/width_65k/average_l0_182
+        path: layer_15/width_65k/average_l0_182
+        l0: 182
+
+      - id: layer_15/width_65k/average_l0_327
+        path: layer_15/width_65k/average_l0_327
+        l0: 327
+
+      - id: layer_15/width_65k/average_l0_42
+        path: layer_15/width_65k/average_l0_42
+        l0: 42
+
+      - id: layer_15/width_65k/average_l0_517
+        path: layer_15/width_65k/average_l0_517
+        l0: 517
+
+      - id: layer_15/width_65k/average_l0_90
+        path: layer_15/width_65k/average_l0_90
+        l0: 90
+
+      - id: layer_16/width_65k/average_l0_129
+        path: layer_16/width_65k/average_l0_129
+        l0: 129
+
+      - id: layer_16/width_65k/average_l0_260
+        path: layer_16/width_65k/average_l0_260
+        l0: 260
+
+      - id: layer_16/width_65k/average_l0_35
+        path: layer_16/width_65k/average_l0_35
+        l0: 35
+
+      - id: layer_16/width_65k/average_l0_502
+        path: layer_16/width_65k/average_l0_502
+        l0: 502
+
+      - id: layer_16/width_65k/average_l0_64
+        path: layer_16/width_65k/average_l0_64
+        l0: 64
+
+      - id: layer_17/width_65k/average_l0_157
+        path: layer_17/width_65k/average_l0_157
+        l0: 157
+
+      - id: layer_17/width_65k/average_l0_293
+        path: layer_17/width_65k/average_l0_293
+        l0: 293
+
+      - id: layer_17/width_65k/average_l0_35
+        path: layer_17/width_65k/average_l0_35
+        l0: 35
+
+      - id: layer_17/width_65k/average_l0_489
+        path: layer_17/width_65k/average_l0_489
+        l0: 489
+
+      - id: layer_17/width_65k/average_l0_70
+        path: layer_17/width_65k/average_l0_70
+        l0: 70
+
+      - id: layer_18/width_65k/average_l0_123
+        path: layer_18/width_65k/average_l0_123
+        l0: 123
+
+      - id: layer_18/width_65k/average_l0_255
+        path: layer_18/width_65k/average_l0_255
+        l0: 255
+
+      - id: layer_18/width_65k/average_l0_29
+        path: layer_18/width_65k/average_l0_29
+        l0: 29
+
+      - id: layer_18/width_65k/average_l0_466
+        path: layer_18/width_65k/average_l0_466
+        l0: 466
+
+      - id: layer_18/width_65k/average_l0_58
+        path: layer_18/width_65k/average_l0_58
+        l0: 58
+
+      - id: layer_19/width_65k/average_l0_106
+        path: layer_19/width_65k/average_l0_106
+        l0: 106
+
+      - id: layer_19/width_65k/average_l0_220
+        path: layer_19/width_65k/average_l0_220
+        l0: 220
+
+      - id: layer_19/width_65k/average_l0_26
+        path: layer_19/width_65k/average_l0_26
+        l0: 26
+
+      - id: layer_19/width_65k/average_l0_411
+        path: layer_19/width_65k/average_l0_411
+        l0: 411
+
+      - id: layer_19/width_65k/average_l0_49
+        path: layer_19/width_65k/average_l0_49
+        l0: 49
+
+      - id: layer_20/width_65k/average_l0_102
+        path: layer_20/width_65k/average_l0_102
+        l0: 102
+
+      - id: layer_20/width_65k/average_l0_242
+        path: layer_20/width_65k/average_l0_242
+        l0: 242
+
+      - id: layer_20/width_65k/average_l0_26
+        path: layer_20/width_65k/average_l0_26
+        l0: 26
+
+      - id: layer_20/width_65k/average_l0_419
+        path: layer_20/width_65k/average_l0_419
+        l0: 419
+
+      - id: layer_20/width_65k/average_l0_49
+        path: layer_20/width_65k/average_l0_49
+        l0: 49
+
+      - id: layer_21/width_65k/average_l0_118
+        path: layer_21/width_65k/average_l0_118
+        l0: 118
+
+      - id: layer_21/width_65k/average_l0_266
+        path: layer_21/width_65k/average_l0_266
+        l0: 266
+
+      - id: layer_21/width_65k/average_l0_29
+        path: layer_21/width_65k/average_l0_29
+        l0: 29
+
+      - id: layer_21/width_65k/average_l0_474
+        path: layer_21/width_65k/average_l0_474
+        l0: 474
+
+      - id: layer_21/width_65k/average_l0_56
+        path: layer_21/width_65k/average_l0_56
+        l0: 56
+
+      - id: layer_22/width_65k/average_l0_112
+        path: layer_22/width_65k/average_l0_112
+        l0: 112
+
+      - id: layer_22/width_65k/average_l0_196
+        path: layer_22/width_65k/average_l0_196
+        l0: 196
+
+      - id: layer_22/width_65k/average_l0_20
+        path: layer_22/width_65k/average_l0_20
+        l0: 20
+
+      - id: layer_22/width_65k/average_l0_361
+        path: layer_22/width_65k/average_l0_361
+        l0: 361
+
+      - id: layer_22/width_65k/average_l0_37
+        path: layer_22/width_65k/average_l0_37
+        l0: 37
+
+      - id: layer_23/width_65k/average_l0_140
+        path: layer_23/width_65k/average_l0_140
+        l0: 140
+
+      - id: layer_23/width_65k/average_l0_27
+        path: layer_23/width_65k/average_l0_27
+        l0: 27
+
+      - id: layer_23/width_65k/average_l0_276
+        path: layer_23/width_65k/average_l0_276
+        l0: 276
+
+      - id: layer_23/width_65k/average_l0_457
+        path: layer_23/width_65k/average_l0_457
+        l0: 457
+
+      - id: layer_23/width_65k/average_l0_56
+        path: layer_23/width_65k/average_l0_56
+        l0: 56
+
+      - id: layer_24/width_65k/average_l0_186
+        path: layer_24/width_65k/average_l0_186
+        l0: 186
+
+      - id: layer_24/width_65k/average_l0_32
+        path: layer_24/width_65k/average_l0_32
+        l0: 32
+
+      - id: layer_24/width_65k/average_l0_347
+        path: layer_24/width_65k/average_l0_347
+        l0: 347
+
+      - id: layer_24/width_65k/average_l0_537
+        path: layer_24/width_65k/average_l0_537
+        l0: 537
+
+      - id: layer_24/width_65k/average_l0_77
+        path: layer_24/width_65k/average_l0_77
+        l0: 77
+
+      - id: layer_25/width_65k/average_l0_153
+        path: layer_25/width_65k/average_l0_153
+        l0: 153
+
+      - id: layer_25/width_65k/average_l0_290
+        path: layer_25/width_65k/average_l0_290
+        l0: 290
+
+      - id: layer_25/width_65k/average_l0_30
+        path: layer_25/width_65k/average_l0_30
+        l0: 30
+
+      - id: layer_25/width_65k/average_l0_465
+        path: layer_25/width_65k/average_l0_465
+        l0: 465
+
+      - id: layer_25/width_65k/average_l0_63
+        path: layer_25/width_65k/average_l0_63
+        l0: 63
+  gemma-scope-9b-pt-att:
+    repo_id: google/gemma-scope-9b-pt-att
+    model: gemma-2-2b
+    conversion_func: gemma_2
+    saes:
+      - id: layer_0/width_131k/average_l0_55
+        path: layer_0/width_131k/average_l0_55
+        l0: 55
+
+      - id: layer_1/width_131k/average_l0_116
+        path: layer_1/width_131k/average_l0_116
+        l0: 116
+
+      - id: layer_2/width_131k/average_l0_11
+        path: layer_2/width_131k/average_l0_11
+        l0: 11
+
+      - id: layer_3/width_131k/average_l0_10
+        path: layer_3/width_131k/average_l0_10
+        l0: 10
+
+      - id: layer_4/width_131k/average_l0_12
+        path: layer_4/width_131k/average_l0_12
+        l0: 12
+
+      - id: layer_5/width_131k/average_l0_12
+        path: layer_5/width_131k/average_l0_12
+        l0: 12
+
+      - id: layer_6/width_131k/average_l0_14
+        path: layer_6/width_131k/average_l0_14
+        l0: 14
+
+      - id: layer_6/width_131k/average_l0_148
+        path: layer_6/width_131k/average_l0_148
+        l0: 148
+
+      - id: layer_7/width_131k/average_l0_106
+        path: layer_7/width_131k/average_l0_106
+        l0: 106
+
+      - id: layer_8/width_131k/average_l0_16
+        path: layer_8/width_131k/average_l0_16
+        l0: 16
+
+      - id: layer_9/width_131k/average_l0_111
+        path: layer_9/width_131k/average_l0_111
+        l0: 111
+
+      - id: layer_10/width_131k/average_l0_16
+        path: layer_10/width_131k/average_l0_16
+        l0: 16
+
+      - id: layer_11/width_131k/average_l0_104
+        path: layer_11/width_131k/average_l0_104
+        l0: 104
+
+      - id: layer_12/width_131k/average_l0_110
+        path: layer_12/width_131k/average_l0_110
+        l0: 110
+
+      - id: layer_13/width_131k/average_l0_126
+        path: layer_13/width_131k/average_l0_126
+        l0: 126
+
+      - id: layer_14/width_131k/average_l0_131
+        path: layer_14/width_131k/average_l0_131
+        l0: 131
+
+      - id: layer_15/width_131k/average_l0_130
+        path: layer_15/width_131k/average_l0_130
+        l0: 130
+
+      - id: layer_16/width_131k/average_l0_140
+        path: layer_16/width_131k/average_l0_140
+        l0: 140
+
+      - id: layer_17/width_131k/average_l0_191
+        path: layer_17/width_131k/average_l0_191
+        l0: 191
+
+      - id: layer_18/width_131k/average_l0_133
+        path: layer_18/width_131k/average_l0_133
+        l0: 133
+
+      - id: layer_19/width_131k/average_l0_152
+        path: layer_19/width_131k/average_l0_152
+        l0: 152
+
+      - id: layer_20/width_131k/average_l0_125
+        path: layer_20/width_131k/average_l0_125
+        l0: 125
+
+      - id: layer_21/width_131k/average_l0_150
+        path: layer_21/width_131k/average_l0_150
+        l0: 150
+
+      - id: layer_22/width_131k/average_l0_115
+        path: layer_22/width_131k/average_l0_115
+        l0: 115
+
+      - id: layer_23/width_131k/average_l0_134
+        path: layer_23/width_131k/average_l0_134
+        l0: 134
+
+      - id: layer_24/width_131k/average_l0_130
+        path: layer_24/width_131k/average_l0_130
+        l0: 130
+
+      - id: layer_25/width_131k/average_l0_115
+        path: layer_25/width_131k/average_l0_115
+        l0: 115
+
+      - id: layer_26/width_131k/average_l0_120
+        path: layer_26/width_131k/average_l0_120
+        l0: 120
+
+      - id: layer_27/width_131k/average_l0_102
+        path: layer_27/width_131k/average_l0_102
+        l0: 102
+
+      - id: layer_28/width_131k/average_l0_115
+        path: layer_28/width_131k/average_l0_115
+        l0: 115
+
+      - id: layer_29/width_131k/average_l0_128
+        path: layer_29/width_131k/average_l0_128
+        l0: 128
+
+      - id: layer_30/width_131k/average_l0_109
+        path: layer_30/width_131k/average_l0_109
+        l0: 109
+
+      - id: layer_31/width_131k/average_l0_117
+        path: layer_31/width_131k/average_l0_117
+        l0: 117
+
+      - id: layer_32/width_131k/average_l0_117
+        path: layer_32/width_131k/average_l0_117
+        l0: 117
+
+      - id: layer_33/width_131k/average_l0_128
+        path: layer_33/width_131k/average_l0_128
+        l0: 128
+
+      - id: layer_34/width_131k/average_l0_15
+        path: layer_34/width_131k/average_l0_15
+        l0: 15
+
+      - id: layer_35/width_131k/average_l0_124
+        path: layer_35/width_131k/average_l0_124
+        l0: 124
+
+      - id: layer_36/width_131k/average_l0_105
+        path: layer_36/width_131k/average_l0_105
+        l0: 105
+
+      - id: layer_37/width_131k/average_l0_124
+        path: layer_37/width_131k/average_l0_124
+        l0: 124
+
+      - id: layer_38/width_131k/average_l0_135
+        path: layer_38/width_131k/average_l0_135
+        l0: 135
+
+      - id: layer_39/width_131k/average_l0_120
+        path: layer_39/width_131k/average_l0_120
+        l0: 120
+
+      - id: layer_40/width_131k/average_l0_144
+        path: layer_40/width_131k/average_l0_144
+        l0: 144
+
+      - id: layer_41/width_131k/average_l0_13
+        path: layer_41/width_131k/average_l0_13
+        l0: 13
+
+      - id: layer_0/width_16k/average_l0_12
+        path: layer_0/width_16k/average_l0_12
+        l0: 12
+
+      - id: layer_1/width_16k/average_l0_147
+        path: layer_1/width_16k/average_l0_147
+        l0: 147
+
+      - id: layer_2/width_16k/average_l0_15
+        path: layer_2/width_16k/average_l0_15
+        l0: 15
+
+      - id: layer_3/width_16k/average_l0_102
+        path: layer_3/width_16k/average_l0_102
+        l0: 102
+
+      - id: layer_4/width_16k/average_l0_126
+        path: layer_4/width_16k/average_l0_126
+        l0: 126
+
+      - id: layer_5/width_16k/average_l0_125
+        path: layer_5/width_16k/average_l0_125
+        l0: 125
+
+      - id: layer_6/width_16k/average_l0_108
+        path: layer_6/width_16k/average_l0_108
+        l0: 108
+
+      - id: layer_7/width_16k/average_l0_70
+        path: layer_7/width_16k/average_l0_70
+        l0: 70
+
+      - id: layer_8/width_16k/average_l0_150
+        path: layer_8/width_16k/average_l0_150
+        l0: 150
+
+      - id: layer_9/width_16k/average_l0_172
+        path: layer_9/width_16k/average_l0_172
+        l0: 172
+
+      - id: layer_10/width_16k/average_l0_132
+        path: layer_10/width_16k/average_l0_132
+        l0: 132
+
+      - id: layer_11/width_16k/average_l0_153
+        path: layer_11/width_16k/average_l0_153
+        l0: 153
+
+      - id: layer_12/width_16k/average_l0_149
+        path: layer_12/width_16k/average_l0_149
+        l0: 149
+
+      - id: layer_13/width_16k/average_l0_170
+        path: layer_13/width_16k/average_l0_170
+        l0: 170
+
+      - id: layer_14/width_16k/average_l0_179
+        path: layer_14/width_16k/average_l0_179
+        l0: 179
+
+      - id: layer_15/width_16k/average_l0_168
+        path: layer_15/width_16k/average_l0_168
+        l0: 168
+
+      - id: layer_16/width_16k/average_l0_172
+        path: layer_16/width_16k/average_l0_172
+        l0: 172
+
+      - id: layer_17/width_16k/average_l0_110
+        path: layer_17/width_16k/average_l0_110
+        l0: 110
+
+      - id: layer_18/width_16k/average_l0_171
+        path: layer_18/width_16k/average_l0_171
+        l0: 171
+
+      - id: layer_19/width_16k/average_l0_186
+        path: layer_19/width_16k/average_l0_186
+        l0: 186
+
+      - id: layer_20/width_16k/average_l0_158
+        path: layer_20/width_16k/average_l0_158
+        l0: 158
+
+      - id: layer_21/width_16k/average_l0_195
+        path: layer_21/width_16k/average_l0_195
+        l0: 195
+
+      - id: layer_22/width_16k/average_l0_141
+        path: layer_22/width_16k/average_l0_141
+        l0: 141
+
+      - id: layer_23/width_16k/average_l0_173
+        path: layer_23/width_16k/average_l0_173
+        l0: 173
+
+      - id: layer_24/width_16k/average_l0_167
+        path: layer_24/width_16k/average_l0_167
+        l0: 167
+
+      - id: layer_25/width_16k/average_l0_156
+        path: layer_25/width_16k/average_l0_156
+        l0: 156
+
+      - id: layer_26/width_16k/average_l0_159
+        path: layer_26/width_16k/average_l0_159
+        l0: 159
+
+      - id: layer_27/width_16k/average_l0_136
+        path: layer_27/width_16k/average_l0_136
+        l0: 136
+
+      - id: layer_28/width_16k/average_l0_143
+        path: layer_28/width_16k/average_l0_143
+        l0: 143
+
+      - id: layer_29/width_16k/average_l0_171
+        path: layer_29/width_16k/average_l0_171
+        l0: 171
+
+      - id: layer_30/width_16k/average_l0_157
+        path: layer_30/width_16k/average_l0_157
+        l0: 157
+
+      - id: layer_31/width_16k/average_l0_168
+        path: layer_31/width_16k/average_l0_168
+        l0: 168
+
+      - id: layer_32/width_16k/average_l0_158
+        path: layer_32/width_16k/average_l0_158
+        l0: 158
+
+      - id: layer_33/width_16k/average_l0_158
+        path: layer_33/width_16k/average_l0_158
+        l0: 158
+
+      - id: layer_34/width_16k/average_l0_17
+        path: layer_34/width_16k/average_l0_17
+        l0: 17
+
+      - id: layer_35/width_16k/average_l0_14
+        path: layer_35/width_16k/average_l0_14
+        l0: 14
+
+      - id: layer_36/width_16k/average_l0_144
+        path: layer_36/width_16k/average_l0_144
+        l0: 144
+
+      - id: layer_37/width_16k/average_l0_17
+        path: layer_37/width_16k/average_l0_17
+        l0: 17
+
+      - id: layer_37/width_16k/average_l0_172
+        path: layer_37/width_16k/average_l0_172
+        l0: 172
+
+      - id: layer_38/width_16k/average_l0_175
+        path: layer_38/width_16k/average_l0_175
+        l0: 175
+
+      - id: layer_39/width_16k/average_l0_15
+        path: layer_39/width_16k/average_l0_15
+        l0: 15
+
+      - id: layer_40/width_16k/average_l0_18
+        path: layer_40/width_16k/average_l0_18
+        l0: 18
+
+      - id: layer_40/width_16k/average_l0_189
+        path: layer_40/width_16k/average_l0_189
+        l0: 189
+
+      - id: layer_41/width_16k/average_l0_129
+        path: layer_41/width_16k/average_l0_129
+        l0: 129
+  gemma-scope-9b-pt-mlp:
+    repo_id: google/gemma-scope-9b-pt-mlp
+    model: gemma-2-2b
+    conversion_func: gemma_2
+    saes:
+      - id: layer_0/width_131k/average_l0_11
+        path: layer_0/width_131k/average_l0_11
+        l0: 11
+
+      - id: layer_1/width_131k/average_l0_10
+        path: layer_1/width_131k/average_l0_10
+        l0: 10
+
+      - id: layer_1/width_131k/average_l0_106
+        path: layer_1/width_131k/average_l0_106
+        l0: 106
+
+      - id: layer_2/width_131k/average_l0_12
+        path: layer_2/width_131k/average_l0_12
+        l0: 12
+
+      - id: layer_3/width_131k/average_l0_109
+        path: layer_3/width_131k/average_l0_109
+        l0: 109
+
+      - id: layer_4/width_131k/average_l0_14
+        path: layer_4/width_131k/average_l0_14
+        l0: 14
+
+      - id: layer_5/width_131k/average_l0_12
+        path: layer_5/width_131k/average_l0_12
+        l0: 12
+
+      - id: layer_6/width_131k/average_l0_12
+        path: layer_6/width_131k/average_l0_12
+        l0: 12
+
+      - id: layer_7/width_131k/average_l0_13
+        path: layer_7/width_131k/average_l0_13
+        l0: 13
+
+      - id: layer_8/width_131k/average_l0_15
+        path: layer_8/width_131k/average_l0_15
+        l0: 15
+
+      - id: layer_9/width_131k/average_l0_12
+        path: layer_9/width_131k/average_l0_12
+        l0: 12
+
+      - id: layer_9/width_131k/average_l0_129
+        path: layer_9/width_131k/average_l0_129
+        l0: 129
+
+      - id: layer_10/width_131k/average_l0_12
+        path: layer_10/width_131k/average_l0_12
+        l0: 12
+
+      - id: layer_11/width_131k/average_l0_120
+        path: layer_11/width_131k/average_l0_120
+        l0: 120
+
+      - id: layer_12/width_131k/average_l0_159
+        path: layer_12/width_131k/average_l0_159
+        l0: 159
+
+      - id: layer_13/width_131k/average_l0_160
+        path: layer_13/width_131k/average_l0_160
+        l0: 160
+
+      - id: layer_14/width_131k/average_l0_174
+        path: layer_14/width_131k/average_l0_174
+        l0: 174
+
+      - id: layer_15/width_131k/average_l0_194
+        path: layer_15/width_131k/average_l0_194
+        l0: 194
+
+      - id: layer_16/width_131k/average_l0_17
+        path: layer_16/width_131k/average_l0_17
+        l0: 17
+
+      - id: layer_16/width_131k/average_l0_175
+        path: layer_16/width_131k/average_l0_175
+        l0: 175
+
+      - id: layer_17/width_131k/average_l0_207
+        path: layer_17/width_131k/average_l0_207
+        l0: 207
+
+      - id: layer_18/width_131k/average_l0_174
+        path: layer_18/width_131k/average_l0_174
+        l0: 174
+
+      - id: layer_19/width_131k/average_l0_189
+        path: layer_19/width_131k/average_l0_189
+        l0: 189
+
+      - id: layer_20/width_131k/average_l0_20
+        path: layer_20/width_131k/average_l0_20
+        l0: 20
+
+      - id: layer_21/width_131k/average_l0_16
+        path: layer_21/width_131k/average_l0_16
+        l0: 16
+
+      - id: layer_22/width_131k/average_l0_17
+        path: layer_22/width_131k/average_l0_17
+        l0: 17
+
+      - id: layer_22/width_131k/average_l0_172
+        path: layer_22/width_131k/average_l0_172
+        l0: 172
+
+      - id: layer_23/width_131k/average_l0_146
+        path: layer_23/width_131k/average_l0_146
+        l0: 146
+
+      - id: layer_24/width_131k/average_l0_147
+        path: layer_24/width_131k/average_l0_147
+        l0: 147
+
+      - id: layer_25/width_131k/average_l0_139
+        path: layer_25/width_131k/average_l0_139
+        l0: 139
+
+      - id: layer_26/width_131k/average_l0_110
+        path: layer_26/width_131k/average_l0_110
+        l0: 110
+
+      - id: layer_27/width_131k/average_l0_14
+        path: layer_27/width_131k/average_l0_14
+        l0: 14
+
+      - id: layer_28/width_131k/average_l0_15
+        path: layer_28/width_131k/average_l0_15
+        l0: 15
+
+      - id: layer_29/width_131k/average_l0_15
+        path: layer_29/width_131k/average_l0_15
+        l0: 15
+
+      - id: layer_30/width_131k/average_l0_14
+        path: layer_30/width_131k/average_l0_14
+        l0: 14
+
+      - id: layer_31/width_131k/average_l0_12
+        path: layer_31/width_131k/average_l0_12
+        l0: 12
+
+      - id: layer_32/width_131k/average_l0_12
+        path: layer_32/width_131k/average_l0_12
+        l0: 12
+
+      - id: layer_33/width_131k/average_l0_12
+        path: layer_33/width_131k/average_l0_12
+        l0: 12
+
+      - id: layer_34/width_131k/average_l0_10
+        path: layer_34/width_131k/average_l0_10
+        l0: 10
+
+      - id: layer_35/width_131k/average_l0_10
+        path: layer_35/width_131k/average_l0_10
+        l0: 10
+
+      - id: layer_36/width_131k/average_l0_11
+        path: layer_36/width_131k/average_l0_11
+        l0: 11
+
+      - id: layer_37/width_131k/average_l0_12
+        path: layer_37/width_131k/average_l0_12
+        l0: 12
+
+      - id: layer_38/width_131k/average_l0_11
+        path: layer_38/width_131k/average_l0_11
+        l0: 11
+
+      - id: layer_39/width_131k/average_l0_11
+        path: layer_39/width_131k/average_l0_11
+        l0: 11
+
+      - id: layer_40/width_131k/average_l0_11
+        path: layer_40/width_131k/average_l0_11
+        l0: 11
+
+      - id: layer_41/width_131k/average_l0_14
+        path: layer_41/width_131k/average_l0_14
+        l0: 14
+
+      - id: layer_3/width_16k/average_l0_126
+        path: layer_3/width_16k/average_l0_126
+        l0: 126
+
+      - id: layer_10/width_16k/average_l0_114
+        path: layer_10/width_16k/average_l0_114
+        l0: 114
+
+      - id: layer_20/width_16k/average_l0_146
+        path: layer_20/width_16k/average_l0_146
+        l0: 146
+
+      - id: layer_20/width_16k/average_l0_1522
+        path: layer_20/width_16k/average_l0_1522
+        l0: 1522
+
+      - id: layer_20/width_16k/average_l0_23
+        path: layer_20/width_16k/average_l0_23
+        l0: 23
+
+      - id: layer_20/width_16k/average_l0_384
+        path: layer_20/width_16k/average_l0_384
+        l0: 384
+
+      - id: layer_20/width_16k/average_l0_56
+        path: layer_20/width_16k/average_l0_56
+        l0: 56
+
+      - id: layer_20/width_16k/average_l0_868
+        path: layer_20/width_16k/average_l0_868
+        l0: 868
+
+      - id: layer_26/width_16k/average_l0_14
+        path: layer_26/width_16k/average_l0_14
+        l0: 14
+
+      - id: layer_26/width_16k/average_l0_142
+        path: layer_26/width_16k/average_l0_142
+        l0: 142
+
+      - id: layer_31/width_16k/average_l0_12
+        path: layer_31/width_16k/average_l0_12
+        l0: 12
+  gemma-scope-27b-pt-res:
+    repo_id: google/gemma-scope-27b-pt-res
+    model: gemma-2-2b
+    conversion_func: gemma_2
+    saes:
+      - id: layer_10/width_131k/average_l0_106
+        path: layer_10/width_131k/average_l0_106
+        l0: 106
+
+      - id: layer_10/width_131k/average_l0_15
+        path: layer_10/width_131k/average_l0_15
+        l0: 15
+
+      - id: layer_10/width_131k/average_l0_200
+        path: layer_10/width_131k/average_l0_200
+        l0: 200
+
+      - id: layer_10/width_131k/average_l0_24
+        path: layer_10/width_131k/average_l0_24
+        l0: 24
+
+      - id: layer_10/width_131k/average_l0_37
+        path: layer_10/width_131k/average_l0_37
+        l0: 37
+
+      - id: layer_10/width_131k/average_l0_64
+        path: layer_10/width_131k/average_l0_64
+        l0: 64
+
+      - id: layer_22/width_131k/average_l0_150
+        path: layer_22/width_131k/average_l0_150
+        l0: 150
+
+      - id: layer_22/width_131k/average_l0_20
+        path: layer_22/width_131k/average_l0_20
+        l0: 20
+
+      - id: layer_22/width_131k/average_l0_290
+        path: layer_22/width_131k/average_l0_290
+        l0: 290
+
+      - id: layer_22/width_131k/average_l0_31
+        path: layer_22/width_131k/average_l0_31
+        l0: 31
+
+      - id: layer_22/width_131k/average_l0_48
+        path: layer_22/width_131k/average_l0_48
+        l0: 48
+
+      - id: layer_22/width_131k/average_l0_82
+        path: layer_22/width_131k/average_l0_82
+        l0: 82
+
+      - id: layer_34/width_131k/average_l0_155
+        path: layer_34/width_131k/average_l0_155
+        l0: 155
+
+      - id: layer_34/width_131k/average_l0_21
+        path: layer_34/width_131k/average_l0_21
+        l0: 21
+
+      - id: layer_34/width_131k/average_l0_333
+        path: layer_34/width_131k/average_l0_333
+        l0: 333
+
+      - id: layer_34/width_131k/average_l0_38
+        path: layer_34/width_131k/average_l0_38
+        l0: 38
+
+      - id: layer_34/width_131k/average_l0_72
+        path: layer_34/width_131k/average_l0_72
+        l0: 72
+
+      - id: layer_34/width_131k/average_l0_785
+        path: layer_34/width_131k/average_l0_785
+        l0: 785
 
