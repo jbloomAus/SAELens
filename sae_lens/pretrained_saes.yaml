@@ -588,6 +588,10 @@ SAE_LOOKUP:
     repo_id: google/gemma-scope-2b-pt-res
     model: gemma-2-2b
     conversion_func: gemma_2
+    links:
+      model: https://huggingface.co/google/gemma-2-2b
+      dashboards: https://www.neuronpedia.org/gemma-2-2b/gemmascope-res-16k
+      publication: https://huggingface.co/google/gemma-scope
     saes:
       - id: layer_0/width_16k/canonical
         path: layer_0/width_16k/canonical
