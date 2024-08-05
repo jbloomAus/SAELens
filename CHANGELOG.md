@@ -2,6 +2,59 @@
 
 
 
+## v3.14.0 (2024-08-05)
+
+### Feature
+
+* feat: GemmaScope SAEs + fix gemma-scope in docs (#254) ([`3da4cee`](https://github.com/jbloomAus/SAELens/commit/3da4ceea61a0c62c2c2fc9a4182d1b5409e91688))
+
+### Unknown
+
+* More complete set of Gemma Scope SAEs (#252)
+
+* commit for posterity
+
+* ignore pt files in home
+
+* add canonical saes
+
+* improve gemma 2 loader
+
+* better error msg on wrong id
+
+* handle config better
+
+* handle hook z weirdness better
+
+* add joseph / curt script
+
+* add gemma scope saes
+
+* format
+
+* make linter happy ([`68de42c`](https://github.com/jbloomAus/SAELens/commit/68de42cb770952afe425725a710df96ab4e92b66))
+
+* Updated dashes ([`7c7a271`](https://github.com/jbloomAus/SAELens/commit/7c7a271ef04c8a1984f765c11ba3774daa0f289c))
+
+* Changed gemma repo to google ([`fa483f0`](https://github.com/jbloomAus/SAELens/commit/fa483f068032af8a9c642e71ccb27e813e9e1052))
+
+* Fixed pretrained_saes.yaml Gemma 2 paths ([`920b77e`](https://github.com/jbloomAus/SAELens/commit/920b77eace6da6796f770c69814fc7e93f23cc39))
+
+* Gemma2 2b saes (#251)
+
+* Added support for Gemma 2
+
+* minor fixes
+
+* format
+
+* remove faulty error raise
+
+---------
+
+Co-authored-by: jbloomAus &lt;jbloomaus@gmail.com&gt; ([`df273c4`](https://github.com/jbloomAus/SAELens/commit/df273c4bbcb66e74bf1864eed11973380393e82a))
+
+
 ## v3.13.1 (2024-07-31)
 
 ### Fix
