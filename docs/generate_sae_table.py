@@ -9,6 +9,7 @@ from tqdm import tqdm
 
 from sae_lens import SAEConfig
 from sae_lens.toolkit.pretrained_sae_loaders import (
+    get_gemma_2_config,
     get_sae_config_from_hf,
     handle_config_defaulting,
 )
@@ -95,6 +96,14 @@ def generate_sae_table():
                     "normalize_activations": "none",
                     "dataset_trust_remote_code": True,
                 }
+                cfg = handle_config_defaulting(cfg)
+                cfg = SAEConfig.from_dict(cfg).to_dict()
+                info.update(cfg)
+
+            elif model_info["conversion_func"] == "gemma_2":
+                repo_id = model_info["repo_id"]
+                folder_name = info["path"]
+                cfg = get_gemma_2_config(repo_id, folder_name)
                 cfg = handle_config_defaulting(cfg)
                 cfg = SAEConfig.from_dict(cfg).to_dict()
                 info.update(cfg)
