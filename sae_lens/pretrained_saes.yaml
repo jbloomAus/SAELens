@@ -4907,3 +4907,65 @@ SAE_LOOKUP:
         path: layer_34/width_131k/average_l0_785
         l0: 785
 
+  pythia-70m-deduped-res-sm:
+    repo_id: ctigges/pythia-70m-deduped__res-sm_processed
+    model: pythia-70m-deduped
+    conversion_func: null
+    links:
+      model: https://huggingface.co/EleutherAI/pythia-70m-deduped
+      dashboards: https://www.neuronpedia.org/pythia-70m-deduped
+    saes:
+    - id: blocks.0.hook_resid_pre
+      path: e-res-sm
+    - id: blocks.0.hook_resid_post
+      path: 0-res-sm
+    - id: blocks.1.hook_resid_post
+      path: 1-res-sm
+    - id: blocks.2.hook_resid_post
+      path: 2-res-sm
+    - id: blocks.3.hook_resid_post
+      path: 3-res-sm
+    - id: blocks.4.hook_resid_post
+      path: 4-res-sm
+    - id: blocks.5.hook_resid_post
+      path: 5-res-sm
+  pythia-70m-deduped-mlp-sm:
+    repo_id: ctigges/pythia-70m-deduped__mlp-sm_processed
+    model: pythia-70m-deduped
+    conversion_func: null
+    links:
+      model: https://huggingface.co/EleutherAI/pythia-70m-deduped
+      dashboards: https://www.neuronpedia.org/pythia-70m-deduped
+    saes:
+    - id: blocks.0.hook_mlp_out
+      path: 0-mlp-sm
+    - id: blocks.1.hook_mlp_out
+      path: 1-mlp-sm
+    - id: blocks.2.hook_mlp_out
+      path: 2-mlp-sm
+    - id: blocks.3.hook_mlp_out
+      path: 3-mlp-sm
+    - id: blocks.4.hook_mlp_out
+      path: 4-mlp-sm
+    - id: blocks.5.hook_mlp_out
+      path: 5-mlp-sm
+  pythia-70m-deduped-att-sm:
+    repo_id: ctigges/pythia-70m-deduped__att-sm_processed
+    model: pythia-70m-deduped
+    conversion_func: null
+    links:
+      model: https://huggingface.co/EleutherAI/pythia-70m-deduped
+      dashboards: https://www.neuronpedia.org/pythia-70m-deduped
+    saes:
+    - id: blocks.0.hook_attn_out
+      path: 0-att-sm
+    - id: blocks.1.hook_attn_out
+      path: 1-att-sm
+    - id: blocks.2.hook_attn_out
+      path: 2-att-sm
+    - id: blocks.3.hook_attn_out
+      path: 3-att-sm
+    - id: blocks.4.hook_attn_out
+      path: 4-att-sm
+    - id: blocks.5.hook_attn_out
+      path: 5-att-sm
