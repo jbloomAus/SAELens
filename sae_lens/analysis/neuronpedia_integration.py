@@ -172,7 +172,6 @@ def make_neuronpedia_list_with_features(
 
     # make POST json request with body
     body = {
-        "apiKey": api_key,
         "name": list_name,
         "description": list_description,
         "features": [
@@ -185,7 +184,7 @@ def make_neuronpedia_list_with_features(
             for feature in features
         ],
     }
-    response = requests.post(url, json=body)
+    response = requests.post(url, json=body, headers={"x-api-key": api_key})
     result = response.json()
 
     if "url" in result and open_browser:

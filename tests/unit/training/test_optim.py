@@ -158,7 +158,7 @@ def test_get_scheduler_cosineannealing_with_warmup_and_decay():
 
     # From here on, it should match CosineAnnealingLR
     new_optimizer = Adam([torch.tensor(1.0)], lr=LR)
-    cos_scheduler = CosineAnnealingLR(new_optimizer, T_max=4, eta_min=lr_end)
+    cos_scheduler = CosineAnnealingLR(new_optimizer, T_max=4, eta_min=lr_end)  # type: ignore
 
     step(optimizer, scheduler)
     step(new_optimizer, cos_scheduler)

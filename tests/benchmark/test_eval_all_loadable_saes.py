@@ -55,6 +55,43 @@ def test_loading_pretrained_saes(
 @pytest.mark.parametrize(
     "release, sae_name, expected_var_explained, expected_l0", all_loadable_saes()
 )
+def test_loading_pretrained_saes_do_forward_pass(
+    release: str, sae_name: str, expected_var_explained: float, expected_l0: float
+):
+    if torch.cuda.is_available():
+        device = "cuda"
+    elif torch.backends.mps.is_available():
+        device = "mps"
+    else:
+        device = "cpu"
+
+    sae, _, _ = SAE.from_pretrained(release, sae_name, device=device)
+    assert isinstance(sae, SAE)
+
+    # from transformer_lens import HookedTransformer
+    # model = HookedTransformer.from_pretrained("gemma-2-9b")
+    # sae_in = model.run_with_cache("test test test")[1][sae.cfg.hook_name]
+
+    if "hook_z" in sae.cfg.hook_name:
+        # check that reshaping works as intended
+        from transformer_lens.loading_from_pretrained import get_pretrained_model_config
+
+        model_cfg = get_pretrained_model_config(sae.cfg.model_name)
+        sae_in = torch.randn(1, 4, model_cfg.n_heads, model_cfg.d_head).to(device)
+        sae_out = sae(sae_in)
+        assert sae_out.shape == sae_in.shape
+
+    sae.turn_off_forward_pass_hook_z_reshaping()  # just in case
+    sae_in = torch.randn(1, sae.cfg.d_in).to(device)
+    sae_out = sae(sae_in)
+    assert sae_out.shape == sae_in.shape
+
+    assert True  # If we get here, we're good
+
+
+@pytest.mark.parametrize(
+    "release, sae_name, expected_var_explained, expected_l0", all_loadable_saes()
+)
 def test_eval_all_loadable_saes(
     release: str, sae_name: str, expected_var_explained: float, expected_l0: float
 ):

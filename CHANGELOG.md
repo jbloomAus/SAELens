@@ -2,6 +2,112 @@
 
 
 
+## v3.14.0 (2024-08-05)
+
+### Feature
+
+* feat: GemmaScope SAEs + fix gemma-scope in docs (#254) ([`3da4cee`](https://github.com/jbloomAus/SAELens/commit/3da4ceea61a0c62c2c2fc9a4182d1b5409e91688))
+
+### Unknown
+
+* More complete set of Gemma Scope SAEs (#252)
+
+* commit for posterity
+
+* ignore pt files in home
+
+* add canonical saes
+
+* improve gemma 2 loader
+
+* better error msg on wrong id
+
+* handle config better
+
+* handle hook z weirdness better
+
+* add joseph / curt script
+
+* add gemma scope saes
+
+* format
+
+* make linter happy ([`68de42c`](https://github.com/jbloomAus/SAELens/commit/68de42cb770952afe425725a710df96ab4e92b66))
+
+* Updated dashes ([`7c7a271`](https://github.com/jbloomAus/SAELens/commit/7c7a271ef04c8a1984f765c11ba3774daa0f289c))
+
+* Changed gemma repo to google ([`fa483f0`](https://github.com/jbloomAus/SAELens/commit/fa483f068032af8a9c642e71ccb27e813e9e1052))
+
+* Fixed pretrained_saes.yaml Gemma 2 paths ([`920b77e`](https://github.com/jbloomAus/SAELens/commit/920b77eace6da6796f770c69814fc7e93f23cc39))
+
+* Gemma2 2b saes (#251)
+
+* Added support for Gemma 2
+
+* minor fixes
+
+* format
+
+* remove faulty error raise
+
+---------
+
+Co-authored-by: jbloomAus &lt;jbloomaus@gmail.com&gt; ([`df273c4`](https://github.com/jbloomAus/SAELens/commit/df273c4bbcb66e74bf1864eed11973380393e82a))
+
+
+## v3.13.1 (2024-07-31)
+
+### Fix
+
+* fix: update automated-interpretability dep to use newly released version (#247)
+
+* fix: update automated-interpretability dep to use newly released version
+
+* fixing / ignore optim typing errors ([`93b2ebe`](https://github.com/jbloomAus/SAELens/commit/93b2ebee8d1a4962faff55c0a522636b35d3f0bb))
+
+### Unknown
+
+* Tutorial 2.0 (#250)
+
+* tutorial 2.0 draft
+
+* minor changes
+
+* Various additions to tutorial
+
+* Added ablation
+
+* better intro text
+
+* improve content further
+
+* fix steering
+
+* fix ablation to be true ablation
+
+* current tutorial
+
+---------
+
+Co-authored-by: curt-tigges &lt;ct@curttigges.com&gt; ([`fe27b7c`](https://github.com/jbloomAus/SAELens/commit/fe27b7c21b4e5452b6ef348d5190ec3c57a19754))
+
+* Fix typo in readme (#249) ([`fe987f1`](https://github.com/jbloomAus/SAELens/commit/fe987f1d1b06a5f0116e390efc87a69f59e04473))
+
+* Merge pull request #242 from jbloomAus/add_openai_gpt2_small_saes
+
+Added OpenAI TopK SAEs to pretrained yaml ([`2c1cbc4`](https://github.com/jbloomAus/SAELens/commit/2c1cbc4d0a6c446bf62ac9f84760e3f041bc021e))
+
+* Neuronpedia API key is now in header, not in body (#243) ([`caacef1`](https://github.com/jbloomAus/SAELens/commit/caacef1d5e6f48ec18ead19d2e72be033417ebc9))
+
+* Merge pull request #237 from jbloomAus/use_error_term_param
+
+Use error term param ([`ac86d10`](https://github.com/jbloomAus/SAELens/commit/ac86d10f1321c5a5a5345c00dc688c2634d35f7f))
+
+* Update pyproject.toml ([`4b032ab`](https://github.com/jbloomAus/SAELens/commit/4b032ab840e8f9e04041b74fd27b856aeda95359))
+
+* Added OpenAI TopK SAEs to pretrained yaml ([`7463e9f`](https://github.com/jbloomAus/SAELens/commit/7463e9f3f04453cfb01a6099cb46b8680515c5b6))
+
+
 ## v3.13.0 (2024-07-18)
 
 ### Feature
@@ -31,6 +137,12 @@ Co-authored-by: Joseph Bloom &lt;69127271+jbloomAus@users.noreply.github.com&gt;
 
 Removed the Debug Info step that was causing issues. ([`71fd509`](https://github.com/jbloomAus/SAELens/commit/71fd509bf719481b2e89718cca53a39f9a113c80))
 
+* More tests for the negative case ([`a0b0f54`](https://github.com/jbloomAus/SAELens/commit/a0b0f547df51e17568f92d15390c2356f05beed5))
+
+* Upped version ([`845d5d7`](https://github.com/jbloomAus/SAELens/commit/845d5d75f3033ce325f32e2d3c4c9421e15f847f))
+
+* Added tests ([`e5ff793`](https://github.com/jbloomAus/SAELens/commit/e5ff793f32c1f3d6644c97127754fbc64ec631b8))
+
 
 ## v3.12.4 (2024-07-17)
 
@@ -49,6 +161,14 @@ Removed the Debug Info step that was causing issues. ([`71fd509`](https://github
 * Neuronpedia autointerp API improvements: new API, new flags for save to disk and test key, fix bug with scoring disabled
 
 * Ignore C901 ([`ba7d218`](https://github.com/jbloomAus/SAELens/commit/ba7d21815c6429e1b92b36ebc030278acdea8c5e))
+
+* Fixed toml file ([`8211cac`](https://github.com/jbloomAus/SAELens/commit/8211cac570a7c8baf0dbcc61e6cf72d4635c05a3))
+
+* Ensured that even detatched SAEs are returned to former state ([`90ac661`](https://github.com/jbloomAus/SAELens/commit/90ac66179a3bfec9324161bdd86f4f6245aa3791))
+
+* Added use_error_term functionality to run_with_x functions ([`1531c1f`](https://github.com/jbloomAus/SAELens/commit/1531c1f72d21b8068ad78ae60ec08af9da1d3751))
+
+* Added use_error_term to hooked sae transformer ([`d172e79`](https://github.com/jbloomAus/SAELens/commit/d172e792441bb8c233e50cf5c7af74b8c37b865f))
 
 * Trainer will now fold and log estimated norm scaling factor (#229)
 
