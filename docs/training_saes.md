@@ -187,3 +187,27 @@ CacheActivationsRunner(cfg).run()
 ```
 
 To use the cached activations during training, set `use_cached_activations=True` and `cached_activations_path` to match the `new_cached_activations_path` above option in training configuration.
+
+
+## Uploading SAEs to Huggingface
+
+Once you have a set of SAEs that you're happy with, your next step is to share them with the world! SAELens has a `upload_saes_to_huggingface()` function which makes this easy to do. We also provide a [uploading saes to huggingface tutorial](https://github.com/jbloomAus/SAELens/blob/main/tutorials/uploading_saes_to_huggingface.ipynb) with more details.
+
+You'll just need to pass a dictionary of SAEs to upload along with the huggingface repo id to upload to. The dictionary keys will become the folders in the repo where each SAE will be located. It's best practice to use the hook point that the SAE was trained on as the key to make it clear to users where in the model to apply the SAE. The values of this dictionary can be either an SAE object, or a path to a saved SAE object on disk from the `sae.save_model()` method.
+
+A sample is shown below:
+
+```python
+from sae_lens import upload_saes_to_huggingface
+
+saes_dict = {
+    "blocks.0.hook_resid_pre": layer_0_sae,
+    "blocks.1.hook_resid_pre": layer_1_sae,
+    # ...
+}
+
+upload_saes_to_huggingface(
+    saes_dict,
+    hf_repo_id="your-username/your-sae-repo",
+)
+```

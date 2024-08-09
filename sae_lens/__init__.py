@@ -14,6 +14,7 @@ from .sae import SAE, SAEConfig
 from .sae_training_runner import SAETrainingRunner
 from .training.activations_store import ActivationsStore
 from .training.training_sae import TrainingSAE, TrainingSAEConfig
+from .training.upload_saes_to_huggingface import upload_saes_to_huggingface
 
 __all__ = [
     "SAE",
@@ -30,4 +31,5 @@ __all__ = [
     "PretokenizeRunner",
     "pretokenize_runner",
     "run_evals",
+    "upload_saes_to_huggingface",
 ]
