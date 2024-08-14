@@ -67,7 +67,7 @@ WandB Dashboards provide lots of useful insights while training SAE's. Here's a 
 ```
 @misc{bloom2024saetrainingcodebase,
    title = {SAELens Training
-   author = {Joseph Bloom, David Channin},
+   author = {Joseph Bloom, David Chanin},
    year = {2024},
    howpublished = {\url{}},
 }}

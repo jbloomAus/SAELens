@@ -647,18 +647,22 @@ class SAE(HookedRootModule):
 
         # get the repo id and path to the SAE
         if release not in sae_directory:
-            raise ValueError(
-                f"Release {release} not found in pretrained SAEs directory."
-            )
-        if sae_id not in sae_directory[release].saes_map:
+            if "/" not in release:
+                raise ValueError(
+                    f"Release {release} not found in pretrained SAEs directory, and is not a valid huggingface repo."
+                )
+        elif sae_id not in sae_directory[release].saes_map:
             raise ValueError(
                 f"ID {sae_id} not found in release {release}. Valid IDs are {sae_directory[release].saes_map.keys()}"
             )
-        sae_info = sae_directory[release]
-        hf_repo_id = sae_info.repo_id
-        hf_path = sae_info.saes_map[sae_id]
+        sae_info = sae_directory.get(release, None)
+        hf_repo_id = sae_info.repo_id if sae_info is not None else release
+        hf_path = sae_info.saes_map[sae_id] if sae_info is not None else sae_id
+        config_overrides = sae_info.config_overrides if sae_info is not None else None
 
-        conversion_loader_name = sae_info.conversion_func or "sae_lens"
+        conversion_loader_name = "sae_lens"
+        if sae_info is not None and sae_info.conversion_func is not None:
+            conversion_loader_name = sae_info.conversion_func
         if conversion_loader_name not in NAMED_PRETRAINED_SAE_LOADERS:
             raise ValueError(
                 f"Conversion func {conversion_loader_name} not found in NAMED_PRETRAINED_SAE_LOADERS."
@@ -670,7 +674,7 @@ class SAE(HookedRootModule):
             folder_name=hf_path,
             device=device,
             force_download=False,
-            cfg_overrides=sae_directory[release].config_overrides,
+            cfg_overrides=config_overrides,
         )
 
         sae = cls(SAEConfig.from_dict(cfg_dict))
