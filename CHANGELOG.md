@@ -2,6 +2,31 @@
 
 
 
+## v3.15.0 (2024-08-14)
+
+### Chore
+
+* chore: updating slack link in docs (#255) ([`5c7595a`](https://github.com/jbloomAus/SAELens/commit/5c7595a8ef145d1dad65552a8e9abfedd11b3063))
+
+### Feature
+
+* feat: support uploading and loading arbitrary huggingface SAEs (#258) ([`5994827`](https://github.com/jbloomAus/SAELens/commit/599482768daf463ab41b9e2df4ddc2e05e5d0a45))
+
+### Unknown
+
+* Remove duplicate link (#256) ([`c40f1c5`](https://github.com/jbloomAus/SAELens/commit/c40f1c583d44aee96b27504a1da1e29b788da6cd))
+
+* Update index.md (#257)
+
+removes comment asking for table creation and links to it ([`1e185b3`](https://github.com/jbloomAus/SAELens/commit/1e185b3a266e0b6e011b0b5430a56463026149a8))
+
+* Merge pull request #244 from jbloomAus/add_pythia_70m_saes
+
+Added pythia-70m SAEs to yaml ([`022f1de`](https://github.com/jbloomAus/SAELens/commit/022f1deeec252d63990375432efde738cc92f3b1))
+
+* Merge branch &#39;main&#39; into add_pythia_70m_saes ([`32901f2`](https://github.com/jbloomAus/SAELens/commit/32901f25f5d3a990661978d2d8f3e3693268b227))
+
+
 ## v3.14.0 (2024-08-05)
 
 ### Feature
@@ -96,6 +121,8 @@ Co-authored-by: curt-tigges &lt;ct@curttigges.com&gt; ([`fe27b7c`](https://githu
 * Merge pull request #242 from jbloomAus/add_openai_gpt2_small_saes
 
 Added OpenAI TopK SAEs to pretrained yaml ([`2c1cbc4`](https://github.com/jbloomAus/SAELens/commit/2c1cbc4d0a6c446bf62ac9f84760e3f041bc021e))
+
+* Added pythia-70m SAEs to yaml ([`25fb167`](https://github.com/jbloomAus/SAELens/commit/25fb167d6df4d4fd58a0bbb750d3ff90f985b3b2))
 
 * Neuronpedia API key is now in header, not in body (#243) ([`caacef1`](https://github.com/jbloomAus/SAELens/commit/caacef1d5e6f48ec18ead19d2e72be033417ebc9))
 
