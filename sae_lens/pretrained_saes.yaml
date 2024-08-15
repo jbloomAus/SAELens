@@ -4246,6 +4246,115 @@ SAE_LOOKUP:
       - id: layer_25/width_65k/average_l0_63
         path: layer_25/width_65k/average_l0_63
         l0: 63
+  gemma-scope-2b-pt-att-canonical:
+    repo_id: google/gemma-scope-2b-pt-att
+    model: gemma-2-2b
+    conversion_func: gemma_2
+    saes:
+      - id: layer_0/width_16k/canonical
+        path: layer_0/width_16k/average_l0_104
+      - id: layer_1/width_16k/canonical
+        path: layer_1/width_16k/average_l0_79
+      - id: layer_2/width_16k/canonical
+        path: layer_2/width_16k/average_l0_93
+      - id: layer_3/width_16k/canonical
+        path: layer_3/width_16k/average_l0_117
+      - id: layer_4/width_16k/canonical
+        path: layer_4/width_16k/average_l0_116
+      - id: layer_5/width_16k/canonical
+        path: layer_5/width_16k/average_l0_135
+      - id: layer_6/width_16k/canonical
+        path: layer_6/width_16k/average_l0_61
+      - id: layer_7/width_16k/canonical
+        path: layer_7/width_16k/average_l0_99
+      - id: layer_8/width_16k/canonical
+        path: layer_8/width_16k/average_l0_129
+      - id: layer_9/width_16k/canonical
+        path: layer_9/width_16k/average_l0_127
+      - id: layer_10/width_16k/canonical
+        path: layer_10/width_16k/average_l0_70
+      - id: layer_11/width_16k/canonical
+        path: layer_11/width_16k/average_l0_80
+      - id: layer_12/width_16k/canonical
+        path: layer_12/width_16k/average_l0_85
+      - id: layer_13/width_16k/canonical
+        path: layer_13/width_16k/average_l0_92
+      - id: layer_14/width_16k/canonical
+        path: layer_14/width_16k/average_l0_71
+      - id: layer_15/width_16k/canonical
+        path: layer_15/width_16k/average_l0_98
+      - id: layer_16/width_16k/canonical
+        path: layer_16/width_16k/average_l0_71
+      - id: layer_17/width_16k/canonical
+        path: layer_17/width_16k/average_l0_79
+      - id: layer_18/width_16k/canonical
+        path: layer_18/width_16k/average_l0_72
+      - id: layer_19/width_16k/canonical
+        path: layer_19/width_16k/average_l0_122
+      - id: layer_20/width_16k/canonical
+        path: layer_20/width_16k/average_l0_62
+      - id: layer_21/width_16k/canonical
+        path: layer_21/width_16k/average_l0_65
+      - id: layer_22/width_16k/canonical
+        path: layer_22/width_16k/average_l0_106
+      - id: layer_23/width_16k/canonical
+        path: layer_23/width_16k/average_l0_73
+      - id: layer_24/width_16k/canonical
+        path: layer_24/width_16k/average_l0_96
+      - id: layer_25/width_16k/canonical
+        path: layer_25/width_16k/average_l0_77
+      - id: layer_0/width_65k/canonical
+        path: layer_0/width_65k/average_l0_75
+      - id: layer_1/width_65k/canonical
+        path: layer_1/width_65k/average_l0_98
+      - id: layer_2/width_65k/canonical
+        path: layer_2/width_65k/average_l0_125
+      - id: layer_3/width_65k/canonical
+        path: layer_3/width_65k/average_l0_83
+      - id: layer_4/width_65k/canonical
+        path: layer_4/width_65k/average_l0_87
+      - id: layer_5/width_65k/canonical
+        path: layer_5/width_65k/average_l0_99
+      - id: layer_6/width_65k/canonical
+        path: layer_6/width_65k/average_l0_112
+      - id: layer_7/width_65k/canonical
+        path: layer_7/width_65k/average_l0_96
+      - id: layer_8/width_65k/canonical
+        path: layer_8/width_65k/average_l0_112
+      - id: layer_9/width_65k/canonical
+        path: layer_9/width_65k/average_l0_107
+      - id: layer_10/width_65k/canonical
+        path: layer_10/width_65k/average_l0_67
+      - id: layer_11/width_65k/canonical
+        path: layer_11/width_65k/average_l0_75
+      - id: layer_12/width_65k/canonical
+        path: layer_12/width_65k/average_l0_79
+      - id: layer_13/width_65k/canonical
+        path: layer_13/width_65k/average_l0_87
+      - id: layer_14/width_65k/canonical
+        path: layer_14/width_65k/average_l0_66
+      - id: layer_15/width_65k/canonical
+        path: layer_15/width_65k/average_l0_90
+      - id: layer_16/width_65k/canonical
+        path: layer_16/width_65k/average_l0_129
+      - id: layer_17/width_65k/canonical
+        path: layer_17/width_65k/average_l0_70
+      - id: layer_18/width_65k/canonical
+        path: layer_18/width_65k/average_l0_123
+      - id: layer_19/width_65k/canonical
+        path: layer_19/width_65k/average_l0_106
+      - id: layer_20/width_65k/canonical
+        path: layer_20/width_65k/average_l0_102
+      - id: layer_21/width_65k/canonical
+        path: layer_21/width_65k/average_l0_118
+      - id: layer_22/width_65k/canonical
+        path: layer_22/width_65k/average_l0_112
+      - id: layer_23/width_65k/canonical
+        path: layer_23/width_65k/average_l0_140
+      - id: layer_24/width_65k/canonical
+        path: layer_24/width_65k/average_l0_77
+      - id: layer_25/width_65k/canonical
+        path: layer_25/width_65k/average_l0_63
   gemma-scope-9b-pt-att:
     repo_id: google/gemma-scope-9b-pt-att
     model: gemma-2-2b
