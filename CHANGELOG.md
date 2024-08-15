@@ -2,6 +2,13 @@
 
 
 
+## v3.16.0 (2024-08-15)
+
+### Feature
+
+* feat: make canonical saes for attn (#259) ([`ed2437b`](https://github.com/jbloomAus/SAELens/commit/ed2437bd9c435cbfaef6597a089a93608755c355))
+
+
 ## v3.15.0 (2024-08-14)
 
 ### Chore
