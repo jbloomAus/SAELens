@@ -5078,3 +5078,93 @@ SAE_LOOKUP:
       path: 4-att-sm
     - id: blocks.5.hook_attn_out
       path: 5-att-sm
+
+  gpt2-small-res_sll-ajt:
+    repo_id: neuronpedia/gpt2-small__res_sll-ajt
+    model: gpt2-small
+    conversion_func: null
+    links:
+      model: https://huggingface.co/gpt2
+      dashboards: https://www.neuronpedia.org/gpt2-small/res_sll-ajt
+    saes:
+    - id: blocks.2.hook_resid_pre
+      path: 2-res_sll-ajt
+    - id: blocks.6.hook_resid_pre
+      path: 6-res_sll-ajt
+    - id: blocks.10.hook_resid_pre
+      path: 10-res_sll-ajt
+
+  gpt2-small-res_slefr-ajt:
+    repo_id: neuronpedia/gpt2-small__res_slefr-ajt
+    model: gpt2-small
+    conversion_func: null
+    links:
+      model: https://huggingface.co/gpt2
+      dashboards: https://www.neuronpedia.org/gpt2-small/res_slefr-ajt
+    saes:
+    - id: blocks.2.hook_resid_pre
+      path: 2-res_slefr-ajt
+    - id: blocks.6.hook_resid_pre
+      path: 6-res_slefr-ajt
+    - id: blocks.10.hook_resid_pre
+      path: 10-res_slefr-ajt
+
+  gpt2-small-res_scl-ajt:
+    repo_id: neuronpedia/gpt2-small__res_scl-ajt
+    model: gpt2-small
+    conversion_func: null
+    links:
+      model: https://huggingface.co/gpt2
+      dashboards: https://www.neuronpedia.org/gpt2-small/res_scl-ajt
+    saes:
+    - id: blocks.2.hook_resid_pre
+      path: 2-res_scl-ajt
+    - id: blocks.6.hook_resid_pre
+      path: 6-res_scl-ajt
+    - id: blocks.10.hook_resid_pre
+      path: 10-res_scl-ajt
+
+  gpt2-small-res_sle-ajt:
+    repo_id: neuronpedia/gpt2-small__res_sle-ajt
+    model: gpt2-small
+    conversion_func: null
+    links:
+      model: https://huggingface.co/gpt2
+      dashboards: https://www.neuronpedia.org/gpt2-small/res_sle-ajt
+    saes:
+    - id: blocks.2.hook_resid_pre
+      path: 2-res_sle-ajt
+    - id: blocks.6.hook_resid_pre
+      path: 6-res_sle-ajt
+    - id: blocks.10.hook_resid_pre
+      path: 10-res_sle-ajt
+
+  gpt2-small-res_sce-ajt:
+    repo_id: neuronpedia/gpt2-small__res_sce-ajt
+    model: gpt2-small
+    conversion_func: null
+    links:
+      model: https://huggingface.co/gpt2
+      dashboards: https://www.neuronpedia.org/gpt2-small/res_sce-ajt
+    saes:
+    - id: blocks.2.hook_resid_pre
+      path: 2-res_sce-ajt
+    - id: blocks.6.hook_resid_pre
+      path: 6-res_sce-ajt
+    - id: blocks.10.hook_resid_pre
+      path: 10-res_sce-ajt
+
+  gpt2-small-res_scefr-ajt:
+    repo_id: neuronpedia/gpt2-small__res_scefr-ajt
+    model: gpt2-small
+    conversion_func: null
+    links:
+      model: https://huggingface.co/gpt2
+      dashboards: https://www.neuronpedia.org/gpt2-small/res_scefr-ajt
+    saes:
+    - id: blocks.2.hook_resid_pre
+      path: 2-res_scefr-ajt
+    - id: blocks.6.hook_resid_pre
+      path: 6-res_scefr-ajt
+    - id: blocks.10.hook_resid_pre
+      path: 10-res_scefr-ajt
