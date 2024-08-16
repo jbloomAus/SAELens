@@ -2,6 +2,13 @@
 
 
 
+## v3.17.0 (2024-08-16)
+
+### Feature
+
+* feat: add end-2-end saes from Braun et al to yaml (#261) ([`1d4eac1`](https://github.com/jbloomAus/SAELens/commit/1d4eac1dfde0bb8056779c0a7266e8455cb7fe4e))
+
+
 ## v3.16.0 (2024-08-15)
 
 ### Feature
