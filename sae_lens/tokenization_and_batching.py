@@ -6,20 +6,23 @@ import torch
 def _add_tokens_to_batch(
     batch: torch.Tensor | None,
     tokens: torch.Tensor,
+    offset: int,
     context_size: int,
     is_start_of_sequence: bool,
     begin_batch_token_id: int | None = None,
     begin_sequence_token_id: int | None = None,
     sequence_separator_token_id: int | None = None,
-) -> tuple[torch.Tensor, torch.Tensor]:
-    original_tokens = tokens
+) -> tuple[torch.Tensor, int]:
+    prefix_toks = []
+    first_token = tokens[offset]
     # prepend the start of sequence token if needed
     if is_start_of_sequence and begin_sequence_token_id is not None:
         begin_sequence_token_id_tensor = torch.tensor(
             [begin_sequence_token_id], dtype=torch.long, device=tokens.device
         )
-        if tokens[0] != begin_sequence_token_id_tensor:
-            tokens = torch.concat([begin_sequence_token_id_tensor, tokens], dim=0)
+        if first_token != begin_sequence_token_id_tensor:
+            prefix_toks.insert(0, begin_sequence_token_id_tensor)
+            first_token = begin_sequence_token_id_tensor
     # We're at the start of a new batch
     if batch is None:
         # add the BOS token to the start if needed
@@ -27,26 +30,31 @@ def _add_tokens_to_batch(
             begin_batch_token_id_tensor = torch.tensor(
                 [begin_batch_token_id], dtype=torch.long, device=tokens.device
             )
-            if tokens[0] != begin_batch_token_id_tensor:
-                tokens = torch.concat([begin_batch_token_id_tensor, tokens], dim=0)
-            batch = tokens[:context_size]
-        return tokens[:context_size], tokens[context_size:]
+            if first_token != begin_batch_token_id_tensor:
+                prefix_toks.insert(0, begin_batch_token_id_tensor)
+                first_token = begin_batch_token_id_tensor
+        tokens_needed = max(context_size - len(prefix_toks), 0)
+        tokens_part = tokens[offset : offset + tokens_needed]
+        batch = torch.cat([*prefix_toks[:context_size], tokens_part])
+        return batch, offset + tokens_needed
     # if we're concatting batches, add the separator token as needed
     if sequence_separator_token_id is not None:
         sequence_separator_token_id_tensor = torch.tensor(
             [sequence_separator_token_id], dtype=torch.long, device=tokens.device
         )
-        if tokens[0] != sequence_separator_token_id_tensor:
-            tokens = torch.concat([sequence_separator_token_id_tensor, tokens], dim=0)
-    tokens_needed = context_size - batch.shape[0]
-    batch = torch.concat([batch, tokens[:tokens_needed]])
-
-    remaining_tokens = tokens[tokens_needed:]
-    # it's possible we've prepending 2 tokens to original_tokens, but only removed 1
-    # if so, we should only return the original tokens
-    if len(remaining_tokens) > len(original_tokens):
-        remaining_tokens = original_tokens
-    return batch, remaining_tokens
+        if first_token != sequence_separator_token_id_tensor:
+            prefix_toks.insert(0, sequence_separator_token_id_tensor)
+            first_token = sequence_separator_token_id_tensor
+    tokens_needed = max(context_size - batch.shape[0] - len(prefix_toks), 0)
+    prefix_toks_needed = max(context_size - batch.shape[0], 0)
+    batch = torch.concat(
+        [
+            batch,
+            *prefix_toks[:prefix_toks_needed],
+            tokens[offset : offset + tokens_needed],
+        ]
+    )
+    return batch, offset + tokens_needed
 
 
 @torch.no_grad()
@@ -74,12 +82,14 @@ def concat_and_batch_sequences(
         assert (
             len(tokens.shape) == 1
         ), f"tokens.shape should be 1D but was {tokens.shape}"
-        remaining_tokens = tokens
+        offset = 0
+        total_toks = tokens.shape[0]
         is_start_of_sequence = True
-        while len(remaining_tokens) > 0:
-            batch, remaining_tokens = _add_tokens_to_batch(
+        while total_toks - offset > 0:
+            batch, offset = _add_tokens_to_batch(
                 batch=batch,
-                tokens=remaining_tokens,
+                tokens=tokens,
+                offset=offset,
                 context_size=context_size,
                 is_start_of_sequence=is_start_of_sequence,
                 begin_batch_token_id=begin_batch_token_id,
