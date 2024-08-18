@@ -2,6 +2,13 @@
 
 
 
+## v3.17.1 (2024-08-18)
+
+### Fix
+
+* fix: fix memory crash when batching huge samples (#262) ([`f0bec81`](https://github.com/jbloomAus/SAELens/commit/f0bec8164a34f0ea14bb63ea7917ab54c226aa3d))
+
+
 ## v3.17.0 (2024-08-16)
 
 ### Feature
