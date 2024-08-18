@@ -6,6 +6,16 @@ authors = ["Joseph Bloom"]
 readme = "README.md"
 packages = [{include = "sae_lens"}]
 include = ["pretrained_saes.yaml"]
+repository = "https://github.com/jbloomAus/SAELens"
+homepage = "https://jbloomaus.github.io/SAELens"
+license = "MIT"
+keywords = [
+    "deep-learning",
+    "sparse-autoencoders",
+    "mechanistic-interpretability",
+    "PyTorch",
+]
+classifiers = ["Topic :: Scientific/Engineering :: Artificial Intelligence"]
 
 [tool.poetry.dependencies]
 python = "^3.10"
