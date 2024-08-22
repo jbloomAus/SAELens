@@ -15,8 +15,9 @@ from sae_lens.toolkit.pretrained_sae_loaders import (
 )
 
 INCLUDED_CFG = [
-    # "id",
-    # "architecture",
+    "id",
+    "architecture",
+    "neuronpedia",
     # "model_name",
     "hook_name",
     "hook_layer",
@@ -45,7 +46,7 @@ def generate_sae_table():
     markdown_content += "*This file contains the contents of `sae_lens/pretrained_saes.yaml` in Markdown*\n\n"
 
     # Generate content for each model
-    for model_name, model_info in tqdm(data["SAE_LOOKUP"].items()):
+    for model_name, model_info in tqdm(data.items()):
         repo_link = f"https://huggingface.co/{model_info['repo_id']}"
         markdown_content += f"## [{model_name}]({repo_link})\n\n"
         markdown_content += f"- **Huggingface Repo**: {model_info['repo_id']}\n"
@@ -114,6 +115,10 @@ def generate_sae_table():
                 )
                 cfg = handle_config_defaulting(cfg)
                 cfg = SAEConfig.from_dict(cfg).to_dict()
+
+            if "neuronpedia" not in info.keys():
+                info["neuronpedia"] = None
+
             info.update(cfg)
 
         # cfg_to_in

@@ -13,6 +13,10 @@ def test_SparseAutoencoder_from_pretrained_loads_from_hugginface_using_shorthand
         device="cpu",
     )
 
+    assert (
+        sae.cfg.neuronpedia_id == "gpt2-small/0-res-jb"
+    )  # what we expect from the yml
+
     # it should match what we get when manually loading from hf
     repo_id = "jbloom/GPT2-Small-SAEs-Reformatted"
     hook_point = "blocks.0.hook_resid_pre"

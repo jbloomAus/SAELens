@@ -4,6 +4,7 @@
 import pytest
 import torch
 
+from sae_lens.analysis.neuronpedia_integration import open_neuronpedia_feature_dashboard
 from sae_lens.evals import all_loadable_saes
 from sae_lens.sae import SAE
 from sae_lens.toolkit.pretrained_sae_loaders import get_sae_config_from_hf
@@ -50,6 +51,25 @@ def test_loading_pretrained_saes(
 
     sae, _, _ = SAE.from_pretrained(release, sae_name, device=device)
     assert isinstance(sae, SAE)
+
+
+@pytest.mark.parametrize(
+    "release, sae_name, expected_var_explained, expected_l0", all_loadable_saes()
+)
+def test_loading_pretrained_saes_open_neuronpedia(
+    release: str, sae_name: str, expected_var_explained: float, expected_l0: float
+):
+    if torch.cuda.is_available():
+        device = "cuda"
+    elif torch.backends.mps.is_available():
+        device = "mps"
+    else:
+        device = "cpu"
+
+    sae, _, _ = SAE.from_pretrained(release, sae_name, device=device)
+    assert isinstance(sae, SAE)
+
+    open_neuronpedia_feature_dashboard(sae, 0)
 
 
 @pytest.mark.parametrize(

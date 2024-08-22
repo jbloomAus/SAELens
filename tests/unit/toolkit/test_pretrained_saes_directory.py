@@ -58,6 +58,21 @@ def test_get_pretrained_saes_directory():
             "blocks.11.hook_resid_post": 70.0,
         },
         config_overrides=None,
+        neuronpedia_id={
+            "blocks.0.hook_resid_pre": "gpt2-small/0-res-jb",
+            "blocks.1.hook_resid_pre": "gpt2-small/1-res-jb",
+            "blocks.2.hook_resid_pre": "gpt2-small/2-res-jb",
+            "blocks.3.hook_resid_pre": "gpt2-small/3-res-jb",
+            "blocks.4.hook_resid_pre": "gpt2-small/4-res-jb",
+            "blocks.5.hook_resid_pre": "gpt2-small/0-res-jb",
+            "blocks.6.hook_resid_pre": "gpt2-small/6-res-jb",
+            "blocks.7.hook_resid_pre": "gpt2-small/7-res-jb",
+            "blocks.8.hook_resid_pre": "gpt2-small/8-res-jb",
+            "blocks.9.hook_resid_pre": "gpt2-small/9-res-jb",
+            "blocks.10.hook_resid_pre": "gpt2-small/10-res-jb",
+            "blocks.11.hook_resid_pre": "gpt2-small/11-res-jb",
+            "blocks.11.hook_resid_post": "gpt2-small/12-res-jb",
+        },
     )
 
     assert sae_directory["gpt2-small-res-jb"] == expected_result

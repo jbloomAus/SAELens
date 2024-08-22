@@ -60,6 +60,7 @@ class SAEConfig:
     device: str
     sae_lens_training_version: Optional[str]
     activation_fn_kwargs: dict[str, Any] = field(default_factory=dict)
+    neuronpedia_id: Optional[str] = None
 
     @classmethod
     def from_dict(cls, config_dict: dict[str, Any]) -> "SAEConfig":
@@ -104,6 +105,7 @@ class SAEConfig:
             "dataset_trust_remote_code": self.dataset_trust_remote_code,
             "context_size": self.context_size,
             "normalize_activations": self.normalize_activations,
+            "neuronpedia_id": self.neuronpedia_id,
         }
 
 
@@ -659,6 +661,9 @@ class SAE(HookedRootModule):
         hf_repo_id = sae_info.repo_id if sae_info is not None else release
         hf_path = sae_info.saes_map[sae_id] if sae_info is not None else sae_id
         config_overrides = sae_info.config_overrides if sae_info is not None else None
+        neuronpedia_id = (
+            sae_info.neuronpedia_id[sae_id] if sae_info is not None else None
+        )
 
         conversion_loader_name = "sae_lens"
         if sae_info is not None and sae_info.conversion_func is not None:
@@ -679,6 +684,7 @@ class SAE(HookedRootModule):
 
         sae = cls(SAEConfig.from_dict(cfg_dict))
         sae.load_state_dict(state_dict)
+        sae.cfg.neuronpedia_id = neuronpedia_id
 
         # Check if normalization is 'expected_average_only_in'
         if cfg_dict.get("normalize_activations") == "expected_average_only_in":
