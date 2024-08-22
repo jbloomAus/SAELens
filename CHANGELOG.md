@@ -2,6 +2,13 @@
 
 
 
+## v3.18.0 (2024-08-22)
+
+### Feature
+
+* feat: updated pretrained yml gemmascope and neuronpedia ids (#264) ([`a3cb00d`](https://github.com/jbloomAus/SAELens/commit/a3cb00dc792a139c89f7311e5d1fa3f5bd9e855f))
+
+
 ## v3.17.1 (2024-08-18)
 
 ### Fix
