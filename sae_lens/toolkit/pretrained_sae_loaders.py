@@ -112,6 +112,7 @@ def handle_config_defaulting(cfg_dict: dict[str, Any]) -> dict[str, Any]:
     cfg_dict.setdefault("sae_lens_training_version", None)
     cfg_dict.setdefault("activation_fn_str", cfg_dict.get("activation_fn", "relu"))
     cfg_dict.setdefault("architecture", "standard")
+    cfg_dict.setdefault("neuronpedia", None)
 
     if "normalize_activations" in cfg_dict and isinstance(
         cfg_dict["normalize_activations"], bool
