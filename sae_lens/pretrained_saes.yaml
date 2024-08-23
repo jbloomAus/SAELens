@@ -34,7 +34,7 @@ gpt2-small-res-jb:
     l0: 31.0
   - id: blocks.5.hook_resid_pre
     path: blocks.5.hook_resid_pre
-    neuronpedia: gpt2-small/0-res-jb
+    neuronpedia: gpt2-small/-res-jb
     variance_explained: 0.9
     l0: 41.0
   - id: blocks.6.hook_resid_pre
@@ -6305,18 +6305,18 @@ gemma-scope-9b-it-res:
     l0: 88
 gemma-scope-9b-it-res-canonical:
   repo_id: google/gemma-scope-9b-it-res
-  model: gemma-2-9b
+  model: gemma-2-9b-it
   conversion_func: gemma_2
   saes:
   - id: layer_9/width_131k/canonical
     path: layer_9/width_131k/average_l0_121/params.npz
-    neuronpedia: gemma-2-9b/9-gemmascope-res-131k
+    neuronpedia: gemma-2-9b-it/9-gemmascope-it-res-131k
   - id: layer_20/width_131k/canonical
     path: layer_20/width_131k/average_l0_81/params.npz
-    neuronpedia: gemma-2-9b/20-gemmascope-res-131k
+    neuronpedia: gemma-2-9b-it/20-gemmascope-it-res-131k
   - id: layer_31/width_131k/canonical
     path: layer_31/width_131k/average_l0_109/params.npz
-    neuronpedia: gemma-2-9b/31-gemmascope-res-131k
+    neuronpedia: gemma-2-9b-it/31-gemmascope-it-res-131k
 gemma-scope-27b-pt-res:
   repo_id: google/gemma-scope-27b-pt-res
   model: gemma-2-2b
