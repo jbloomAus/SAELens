@@ -2,6 +2,21 @@
 
 
 
+## v3.18.1 (2024-08-23)
+
+### Chore
+
+* chore: adding more metatadata to pyproject.toml for PyPI (#263) ([`5c2d391`](https://github.com/jbloomAus/SAELens/commit/5c2d391686e67516827a89a559a1ff5d56584f41))
+
+### Fix
+
+* fix: modify duplicate neuronpedia ids in config.yml, add test. (#265)
+
+* fix duplicate ids
+
+* fix test that had mistake ([`0555178`](https://github.com/jbloomAus/SAELens/commit/055517806cccc41be1de87495df20445fd7d6b18))
+
+
 ## v3.18.0 (2024-08-22)
 
 ### Feature
