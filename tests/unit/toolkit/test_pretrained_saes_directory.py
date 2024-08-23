@@ -1,3 +1,5 @@
+import pandas as pd
+
 from sae_lens.toolkit.pretrained_saes_directory import (
     PretrainedSAELookup,
     get_pretrained_saes_directory,
@@ -64,7 +66,7 @@ def test_get_pretrained_saes_directory():
             "blocks.2.hook_resid_pre": "gpt2-small/2-res-jb",
             "blocks.3.hook_resid_pre": "gpt2-small/3-res-jb",
             "blocks.4.hook_resid_pre": "gpt2-small/4-res-jb",
-            "blocks.5.hook_resid_pre": "gpt2-small/0-res-jb",
+            "blocks.5.hook_resid_pre": "gpt2-small/5-res-jb",
             "blocks.6.hook_resid_pre": "gpt2-small/6-res-jb",
             "blocks.7.hook_resid_pre": "gpt2-small/7-res-jb",
             "blocks.8.hook_resid_pre": "gpt2-small/8-res-jb",
@@ -76,3 +78,39 @@ def test_get_pretrained_saes_directory():
     )
 
     assert sae_directory["gpt2-small-res-jb"] == expected_result
+
+
+def test_get_pretrained_saes_directory_unique_np_ids():
+
+    # ideally this code should be elsewhere but as a stop-gap we'll leave it here.
+    df = pd.DataFrame.from_records(
+        {k: v.__dict__ for k, v in get_pretrained_saes_directory().items()}
+    ).T
+    df.drop(
+        columns=[
+            "repo_id",
+            "saes_map",
+            "expected_var_explained",
+            "expected_l0",
+            "config_overrides",
+            "conversion_func",
+        ],
+        inplace=True,
+    )
+    df["neuronpedia_id_list"] = df["neuronpedia_id"].apply(lambda x: list(x.items()))
+    df_exploded = df.explode("neuronpedia_id_list")
+    df_exploded[["sae_lens_id", "neuronpedia_id"]] = pd.DataFrame(
+        df_exploded["neuronpedia_id_list"].tolist(), index=df_exploded.index
+    )
+    df_exploded = df_exploded.drop(columns=["neuronpedia_id_list"])
+    df_exploded = df_exploded.reset_index(drop=True)
+    df_exploded["neuronpedia_set"] = df_exploded["neuronpedia_id"].apply(
+        lambda x: "-".join(x.split("/")[-1].split("-")[1:]) if x is not None else None
+    )
+
+    duplicate_ids = df_exploded.groupby("neuronpedia_id").sae_lens_id.apply(
+        lambda x: len(x)
+    )
+    assert (
+        duplicate_ids.max() == 1
+    ), f"Duplicate IDs found: {duplicate_ids[duplicate_ids > 1]}"
