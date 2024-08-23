@@ -66,7 +66,7 @@ def test_get_pretrained_saes_directory():
             "blocks.2.hook_resid_pre": "gpt2-small/2-res-jb",
             "blocks.3.hook_resid_pre": "gpt2-small/3-res-jb",
             "blocks.4.hook_resid_pre": "gpt2-small/4-res-jb",
-            "blocks.5.hook_resid_pre": "gpt2-small/0-res-jb",
+            "blocks.5.hook_resid_pre": "gpt2-small/5-res-jb",
             "blocks.6.hook_resid_pre": "gpt2-small/6-res-jb",
             "blocks.7.hook_resid_pre": "gpt2-small/7-res-jb",
             "blocks.8.hook_resid_pre": "gpt2-small/8-res-jb",
