@@ -34,7 +34,7 @@ gpt2-small-res-jb:
     l0: 31.0
   - id: blocks.5.hook_resid_pre
     path: blocks.5.hook_resid_pre
-    neuronpedia: gpt2-small/-res-jb
+    neuronpedia: gpt2-small/5-res-jb
     variance_explained: 0.9
     l0: 41.0
   - id: blocks.6.hook_resid_pre
