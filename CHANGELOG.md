@@ -2,6 +2,17 @@
 
 
 
+## v3.18.2 (2024-08-25)
+
+### Fix
+
+* fix: gemma scope saes yml. 16k for Gemma 2 9b was missing entries.  (#266)
+
+* add missing saes, 16k was missing for 9b att and mlp
+
+* remove file name not needed ([`86c04ac`](https://github.com/jbloomAus/SAELens/commit/86c04acb7198c45d0fdbe59ea96dacbd88d4011a))
+
+
 ## v3.18.1 (2024-08-23)
 
 ### Chore
