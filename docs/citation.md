@@ -5,6 +5,6 @@
    title = {SAELens Training
    author = {Joseph Bloom},
    year = {2024},
-   howpublished = {\url{}},
+   howpublished = {\url{https://github.com/jbloomAus/SAELens}},
 }}
 ```
