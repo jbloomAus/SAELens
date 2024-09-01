@@ -106,7 +106,8 @@ class SAETrainingRunner:
         sae = self.run_trainer_with_interruption_handling(trainer)
 
         if self.cfg.log_to_wandb:
-            wandb.finish()
+            # remove this type ignore comment after https://github.com/wandb/wandb/issues/8248 is resolved
+            wandb.finish()  # type: ignore
 
         return sae
 
@@ -220,7 +221,8 @@ class SAETrainingRunner:
             model_artifact.add_file(f"{path}/{SAE_WEIGHTS_PATH}")
             model_artifact.add_file(f"{path}/{SAE_CFG_PATH}")
 
-            wandb.log_artifact(model_artifact, aliases=wandb_aliases)
+            # remove this type ignore comment after https://github.com/wandb/wandb/issues/8248 is resolved
+            wandb.log_artifact(model_artifact, aliases=wandb_aliases)  # type: ignore
 
             sparsity_artifact = wandb.Artifact(
                 f"{sae_name}_log_feature_sparsity",
@@ -228,6 +230,7 @@ class SAETrainingRunner:
                 metadata=dict(trainer.cfg.__dict__),
             )
             sparsity_artifact.add_file(log_feature_sparsity_path)
-            wandb.log_artifact(sparsity_artifact)
+            # remove this type ignore comment after https://github.com/wandb/wandb/issues/8248 is resolved
+            wandb.log_artifact(sparsity_artifact)  # type: ignore
 
         return checkpoint_path
