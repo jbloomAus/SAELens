@@ -5,6 +5,7 @@ import pytest
 import torch
 from datasets import Dataset
 from transformer_lens import HookedTransformer
+from transformer_lens.hook_points import HookedRootModule
 
 from sae_lens.config import LanguageModelSAERunnerConfig
 from sae_lens.training.activations_store import ActivationsStore
@@ -77,11 +78,15 @@ def cfg(request: pytest.FixtureRequest):
 
 
 @pytest.fixture
-def training_sae(cfg: Any):
+def model(cfg: LanguageModelSAERunnerConfig):
+    return HookedTransformer.from_pretrained(cfg.model_name, device="cpu")
+
+@pytest.fixture
+def training_sae(cfg: Any, model: HookedRootModule):
     """
     Pytest fixture to create a mock instance of SparseAutoencoder.
     """
-    return TrainingSAE(cfg)
+    return TrainingSAE(cfg, model)
 
 
 @pytest.fixture
@@ -91,9 +96,6 @@ def activation_store(model: HookedTransformer, cfg: LanguageModelSAERunnerConfig
     )
 
 
-@pytest.fixture
-def model(cfg: LanguageModelSAERunnerConfig):
-    return HookedTransformer.from_pretrained(cfg.model_name, device="cpu")
 
 
 # todo: remove the need for this fixture
@@ -187,6 +189,8 @@ def test_sae_forward(training_sae: TrainingSAE):
         pytest.approx(train_step_output.l1_loss, rel=1e-3)
         == training_sae.cfg.l1_coefficient * expected_l1_loss.detach().float()
     )
+
+    assert training_sae.original_model is not None
 
 
 def test_sae_forward_with_mse_loss_norm(
