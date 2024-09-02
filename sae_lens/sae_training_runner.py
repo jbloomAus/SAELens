@@ -77,7 +77,9 @@ class SAETrainingRunner:
             self.sae = TrainingSAE(
                 TrainingSAEConfig.from_dict(
                     self.cfg.get_training_sae_cfg_dict(),
-                )
+                ),
+                original_model=self.model
+
             )
             self._init_sae_group_b_decs()
 

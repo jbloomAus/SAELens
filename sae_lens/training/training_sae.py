@@ -11,6 +11,7 @@ import einops
 import torch
 from jaxtyping import Float
 from torch import nn
+from transformer_lens.hook_points import HookedRootModule
 
 from sae_lens.config import DTYPE_MAP, LanguageModelSAERunnerConfig
 from sae_lens.sae import SAE, SAEConfig
@@ -153,11 +154,18 @@ class TrainingSAE(SAE):
     dtype: torch.dtype
     device: torch.device
 
-    def __init__(self, cfg: TrainingSAEConfig, use_error_term: bool = False):
+    # The model that this SAE was trained on. As SAETrainingRunner(cfg).run() may be 
+    # called directly without previously defining the model, and TrainingSAE is the 
+    # return type, it can be useful to allow the user to access this original model 
+    # directly from the returned SAE output
+    original_model: HookedRootModule 
+
+    def __init__(self, cfg: TrainingSAEConfig, original_model: HookedRootModule, use_error_term: bool = False):
 
         base_sae_cfg = SAEConfig.from_dict(cfg.get_base_sae_cfg_dict())
         super().__init__(base_sae_cfg)
         self.cfg = cfg  # type: ignore
+        self.original_model = original_model
 
         self.encode_with_hidden_pre_fn = (
             self.encode_with_hidden_pre
