@@ -211,3 +211,16 @@ upload_saes_to_huggingface(
     hf_repo_id="your-username/your-sae-repo",
 )
 ```
+
+## Accessing the model your SAE was trained on
+
+If you train a new SAE, and which to access the original model that your SAE was trained on directly, you can use the `original_model` property from the returned `sparse_autoencoder`:
+
+```python
+cfg = LanguageModelSAERunnerConfig(
+    ...
+)
+sparse_autoencoder = SAETrainingRunner(cfg).run()
+sparse_autoencoder.original_model
+```
+
