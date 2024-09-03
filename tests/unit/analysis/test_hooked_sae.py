@@ -21,7 +21,7 @@ class Counter:
 
 @pytest.fixture(scope="module")
 def model():
-    model = HookedSAETransformer.from_pretrained(MODEL, device="cpu")
+    model = HookedSAETransformer.from_pretrained_no_processing(MODEL, device="cpu")
     yield model
     model.reset_saes()
 
@@ -60,6 +60,7 @@ def get_hooked_sae(model: HookedTransformer, act_name: str) -> SAE:
         finetuning_scaling_factor=False,
         sae_lens_training_version=None,
         normalize_activations="none",
+        model_from_pretrained_kwargs={},
     )
 
     return SAE(sae_cfg)

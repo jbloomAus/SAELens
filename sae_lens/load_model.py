@@ -23,7 +23,7 @@ def load_model(
             print("-------------")
 
     if model_class_name == "HookedTransformer":
-        return HookedTransformer.from_pretrained(
+        return HookedTransformer.from_pretrained_no_processing(
             model_name=model_name, device=device, **model_from_pretrained_kwargs
         )
     elif model_class_name == "HookedMamba":
