@@ -16,7 +16,7 @@ class PretrainedSAELookup:
     expected_var_explained: dict[str, float]
     expected_l0: dict[str, float]
     neuronpedia_id: dict[str, str]
-    config_overrides: dict[str, str] | None
+    config_overrides: dict[str, str] | dict[str, dict[str, str | bool | int]] | None
 
 
 @cache

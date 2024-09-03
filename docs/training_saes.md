@@ -22,6 +22,7 @@ However, we are attempting to maintain this [tutorial](https://github.com/jbloom
  - `l1_coefficient`: This controls how much sparsity the SAE will have after training.
  - `training_tokens`: The total tokens used for training.
  - `train_batch_size_tokens`: The batch size used for training. Adjust this to keep the GPU saturated.
+ -  `model_from_pretrained_kwargs`: A dictionary of keyword arguments to pass to HookedTransformer.from_pretrained when loading the model. It's best to set "center_writing_weights" to False (this will be the default in the future).
 
 A sample training run from the [tutorial](https://github.com/jbloomAus/SAELens/blob/main/tutorials/training_a_sparse_autoencoder.ipynb) is shown below:
 
