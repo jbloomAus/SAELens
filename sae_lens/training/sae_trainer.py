@@ -296,15 +296,12 @@ class SAETrainer:
         total_variance = (sae_in - sae_in.mean(0)).pow(2).sum(-1)
         explained_variance = 1 - per_token_l2_loss / total_variance
 
-        if isinstance(ghost_grad_loss, torch.Tensor):
-            ghost_grad_loss = ghost_grad_loss.item()
-        return {
+        log_dict = {
             # losses
             "losses/mse_loss": mse_loss,
             "losses/l1_loss": l1_loss
             / self.current_l1_coefficient,  # normalize by l1 coefficient
             "losses/auxiliary_reconstruction_loss": output.auxiliary_reconstruction_loss,
-            "losses/ghost_grad_loss": ghost_grad_loss,
             "losses/overall_loss": loss,
             # variance explained
             "metrics/explained_variance": explained_variance.mean().item(),
@@ -317,6 +314,14 @@ class SAETrainer:
             "details/current_l1_coefficient": self.current_l1_coefficient,
             "details/n_training_tokens": n_training_tokens,
         }
+        # Log ghost grad if we're using them
+        if self.cfg.use_ghost_grads:
+            if isinstance(ghost_grad_loss, torch.Tensor):
+                ghost_grad_loss = ghost_grad_loss.item()
+
+            log_dict["losses/ghost_grad_loss"] = ghost_grad_loss
+
+        return log_dict
 
     @torch.no_grad()
     def _run_and_log_evals(self):

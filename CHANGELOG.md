@@ -2,6 +2,37 @@
 
 
 
+## v3.19.0 (2024-09-03)
+
+### Chore
+
+* chore: Cleanup basic tutorial (#271)
+
+* saelens: remove unnecessary html outputsaving, to save some space
+
+* saelens: update top comment on basic tutorial ([`396e66e`](https://github.com/jbloomAus/SAELens/commit/396e66eee1c699decdf71c52a12d65c793b1c994))
+
+* chore: update get neuronpedia quicklist function in logit lens tutorial (#274) ([`5b819b5`](https://github.com/jbloomAus/SAELens/commit/5b819b52b6e3784bb571d39a337d28b57fc3c14e))
+
+* chore: Corrected outdated code to call API (#269)
+
+Co-authored-by: dhuynh95 &lt;daniel.huynh@mithrilsecurity.io&gt; ([`7b19adc`](https://github.com/jbloomAus/SAELens/commit/7b19adcbbc4a7413bc1fdeba1965b61764e54c1b))
+
+* chore: updating mkdocs deps (#268)
+
+* chore: updating mkdocs deps
+
+* adding type: ignore to wandb calls ([`75d142f`](https://github.com/jbloomAus/SAELens/commit/75d142fd457d75bece89a16afeec782073cc2128))
+
+### Feature
+
+* feat: only log ghost grad if you&#39;ve enabled it (#272)
+
+* saelens: improve log output to only include ghost grad logs if you&#39;re using them
+
+* sae: update ghostgrad log tests ([`da05f08`](https://github.com/jbloomAus/SAELens/commit/da05f08c051e3c7c9256ab6b2cebb76f2a81cfbd))
+
+
 ## v3.18.2 (2024-08-25)
 
 ### Fix

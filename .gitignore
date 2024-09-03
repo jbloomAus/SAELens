@@ -190,3 +190,6 @@ scripts/ansible/ansible.log
 
 
 *.pt
+
+# Don't add outputs from tutorials, as they ballon the repo size for no reason
+tutorials/*.html
