@@ -131,6 +131,16 @@ class SAE(HookedRootModule):
         super().__init__()
 
         self.cfg = cfg
+
+        if cfg.model_from_pretrained_kwargs:
+            warnings.warn(
+                "\nThis SAE has non-empty model_from_pretrained_kwargs. "
+                "\nFor optimal performance, load the model like so:\n"
+                "model = HookedSAETransformer.from_pretrained_no_processing(..., **cfg.model_from_pretrained_kwargs)",
+                category=UserWarning,
+                stacklevel=1,
+            )
+
         self.activation_fn = get_activation_fn(
             cfg.activation_fn_str, **cfg.activation_fn_kwargs or {}
         )
