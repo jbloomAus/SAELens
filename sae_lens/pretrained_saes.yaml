@@ -6,6 +6,9 @@ gpt2-small-res-jb:
     model: https://huggingface.co/gpt2
     dashboards: https://www.neuronpedia.org/gpt2sm-res-jb
     publication: https://www.lesswrong.com/posts/f9EgfLSurAiqRJySD/open-source-sparse-autoencoders-for-all-residual-stream
+  config_overrides:
+    model_from_pretrained_kwargs:
+      center_writing_weights: true
   saes:
   - id: blocks.0.hook_resid_pre
     path: blocks.0.hook_resid_pre
@@ -149,6 +152,8 @@ gpt2-small-mlp-tm:
   conversion_func: null
   config_overrides:
     dataset_path: Skylion007/openwebtext
+    model_from_pretrained_kwargs:
+      center_writing_weights: true
   saes:
   - id: blocks.0.hook_mlp_out
     path: sae_group_gpt2_blocks.0.hook_mlp_out_24576:v1
@@ -217,6 +222,9 @@ gpt2-small-res-jb-feature-splitting:
     model: https://huggingface.co/gpt2
     dashboards: https://www.neuronpedia.org/gpt2sm-rfs-jb
   conversion_func: null
+  config_overrides:
+    model_from_pretrained_kwargs:
+      center_writing_weights: true
   saes:
   - id: blocks.8.hook_resid_pre_768
     path: blocks.8.hook_resid_pre_768
