@@ -59,6 +59,7 @@ def toy_model_sae_runner(cfg: ToyModelSAERunnerConfig):
     )
 
     if cfg.log_to_wandb:
-        wandb.finish()
+        # remove this type ignore comment after https://github.com/wandb/wandb/issues/8248 is resolved
+        wandb.finish()  # type: ignore
 
     return sae
