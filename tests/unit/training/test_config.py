@@ -64,6 +64,9 @@ def test_sae_training_runner_config_get_sae_base_parameters():
         "dataset_trust_remote_code": True,
         "sae_lens_training_version": str(__version__),
         "normalize_activations": "none",
+        "model_from_pretrained_kwargs": {
+            "center_writing_weights": False,
+        },
     }
     assert expected_config == cfg.get_base_sae_cfg_dict()
 

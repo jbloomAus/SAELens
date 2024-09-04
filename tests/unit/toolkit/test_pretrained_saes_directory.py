@@ -59,7 +59,11 @@ def test_get_pretrained_saes_directory():
             "blocks.11.hook_resid_pre": 56.0,
             "blocks.11.hook_resid_post": 70.0,
         },
-        config_overrides=None,
+        config_overrides={
+            "model_from_pretrained_kwargs": {
+                "center_writing_weights": True,
+            }
+        },
         neuronpedia_id={
             "blocks.0.hook_resid_pre": "gpt2-small/0-res-jb",
             "blocks.1.hook_resid_pre": "gpt2-small/1-res-jb",

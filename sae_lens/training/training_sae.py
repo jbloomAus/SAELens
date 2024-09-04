@@ -88,6 +88,7 @@ class TrainingSAEConfig(SAEConfig):
             scale_sparsity_penalty_by_decoder_norm=cfg.scale_sparsity_penalty_by_decoder_norm,
             normalize_activations=cfg.normalize_activations,
             dataset_trust_remote_code=cfg.dataset_trust_remote_code,
+            model_from_pretrained_kwargs=cfg.model_from_pretrained_kwargs,
         )
 
     @classmethod

@@ -61,6 +61,7 @@ class SAEConfig:
     sae_lens_training_version: Optional[str]
     activation_fn_kwargs: dict[str, Any] = field(default_factory=dict)
     neuronpedia_id: Optional[str] = None
+    model_from_pretrained_kwargs: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, config_dict: dict[str, Any]) -> "SAEConfig":
@@ -106,6 +107,7 @@ class SAEConfig:
             "context_size": self.context_size,
             "normalize_activations": self.normalize_activations,
             "neuronpedia_id": self.neuronpedia_id,
+            "model_from_pretrained_kwargs": self.model_from_pretrained_kwargs,
         }
 
 
@@ -129,6 +131,16 @@ class SAE(HookedRootModule):
         super().__init__()
 
         self.cfg = cfg
+
+        if cfg.model_from_pretrained_kwargs:
+            warnings.warn(
+                "\nThis SAE has non-empty model_from_pretrained_kwargs. "
+                "\nFor optimal performance, load the model like so:\n"
+                "model = HookedSAETransformer.from_pretrained_no_processing(..., **cfg.model_from_pretrained_kwargs)",
+                category=UserWarning,
+                stacklevel=1,
+            )
+
         self.activation_fn = get_activation_fn(
             cfg.activation_fn_str, **cfg.activation_fn_kwargs or {}
         )

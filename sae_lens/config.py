@@ -224,7 +224,9 @@ class LanguageModelSAERunnerConfig:
     checkpoint_path: str = "checkpoints"
     verbose: bool = True
     model_kwargs: dict[str, Any] = field(default_factory=dict)
-    model_from_pretrained_kwargs: dict[str, Any] = field(default_factory=dict)
+    model_from_pretrained_kwargs: dict[str, Any] = field(
+        default_factory=lambda: {"center_writing_weights": False}
+    )
     sae_lens_version: str = field(default_factory=lambda: __version__)
     sae_lens_training_version: str = field(default_factory=lambda: __version__)
 
@@ -375,6 +377,7 @@ class LanguageModelSAERunnerConfig:
             "sae_lens_training_version": self.sae_lens_training_version,
             "normalize_activations": self.normalize_activations,
             "activation_fn_kwargs": self.activation_fn_kwargs,
+            "model_from_pretrained_kwargs": self.model_from_pretrained_kwargs,
         }
 
     def get_training_sae_cfg_dict(self) -> dict[str, Any]:
