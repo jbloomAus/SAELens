@@ -2,6 +2,25 @@
 
 
 
+## v3.19.2 (2024-09-04)
+
+### Fix
+
+* fix: centre writing weights defaults (#279)
+
+* add model_from_pretrained_kwargs to SAE config
+
+* default to using no processing when training SAEs
+
+* add centre writing weights true as config override for some SAEs
+
+* add warning about from pretrained kwargs
+
+* fix saving of config by trainer
+
+* fix: test ([`7c0d1f7`](https://github.com/jbloomAus/SAELens/commit/7c0d1f70e5169b1209fccf2280ebeb82b5e5917b))
+
+
 ## v3.19.1 (2024-09-04)
 
 ### Chore
