@@ -7287,31 +7287,31 @@ gemma-scope-9b-pt-att-canonical:
     path: layer_1/width_131k/average_l0_116
     neuronpedia: gemma-2-9b/1-gemmascope-att-131k
   - id: layer_2/width_131k/canonical
-    path: layer_2/width_131k/average_l0_11
+    path: layer_2/width_131k/average_l0_135
     neuronpedia: gemma-2-9b/2-gemmascope-att-131k
   - id: layer_3/width_131k/canonical
-    path: layer_3/width_131k/average_l0_10
+    path: layer_3/width_131k/average_l0_119
     neuronpedia: gemma-2-9b/3-gemmascope-att-131k
   - id: layer_4/width_131k/canonical
-    path: layer_4/width_131k/average_l0_12
+    path: layer_4/width_131k/average_l0_75
     neuronpedia: gemma-2-9b/4-gemmascope-att-131k
   - id: layer_5/width_131k/canonical
-    path: layer_5/width_131k/average_l0_12
+    path: layer_5/width_131k/average_l0_78
     neuronpedia: gemma-2-9b/5-gemmascope-att-131k
   - id: layer_6/width_131k/canonical
-    path: layer_6/width_131k/average_l0_148
+    path: layer_6/width_131k/average_l0_73
     neuronpedia: gemma-2-9b/6-gemmascope-att-131k
   - id: layer_7/width_131k/canonical
     path: layer_7/width_131k/average_l0_106
     neuronpedia: gemma-2-9b/7-gemmascope-att-131k
   - id: layer_8/width_131k/canonical
-    path: layer_8/width_131k/average_l0_16
+    path: layer_8/width_131k/average_l0_98
     neuronpedia: gemma-2-9b/8-gemmascope-att-131k
   - id: layer_9/width_131k/canonical
     path: layer_9/width_131k/average_l0_111
     neuronpedia: gemma-2-9b/9-gemmascope-att-131k
   - id: layer_10/width_131k/canonical
-    path: layer_10/width_131k/average_l0_16
+    path: layer_10/width_131k/average_l0_97
     neuronpedia: gemma-2-9b/10-gemmascope-att-131k
   - id: layer_11/width_131k/canonical
     path: layer_11/width_131k/average_l0_104
@@ -7329,28 +7329,28 @@ gemma-scope-9b-pt-att-canonical:
     path: layer_15/width_131k/average_l0_130
     neuronpedia: gemma-2-9b/15-gemmascope-att-131k
   - id: layer_16/width_131k/canonical
-    path: layer_16/width_131k/average_l0_140
+    path: layer_16/width_131k/average_l0_71
     neuronpedia: gemma-2-9b/16-gemmascope-att-131k
   - id: layer_17/width_131k/canonical
-    path: layer_17/width_131k/average_l0_191
+    path: layer_17/width_131k/average_l0_90
     neuronpedia: gemma-2-9b/17-gemmascope-att-131k
   - id: layer_18/width_131k/canonical
-    path: layer_18/width_131k/average_l0_133
+    path: layer_18/width_131k/average_l0_69
     neuronpedia: gemma-2-9b/18-gemmascope-att-131k
   - id: layer_19/width_131k/canonical
-    path: layer_19/width_131k/average_l0_152
+    path: layer_19/width_131k/average_l0_71
     neuronpedia: gemma-2-9b/19-gemmascope-att-131k
   - id: layer_20/width_131k/canonical
     path: layer_20/width_131k/average_l0_125
     neuronpedia: gemma-2-9b/20-gemmascope-att-131k
   - id: layer_21/width_131k/canonical
-    path: layer_21/width_131k/average_l0_150
+    path: layer_21/width_131k/average_l0_71
     neuronpedia: gemma-2-9b/21-gemmascope-att-131k
   - id: layer_22/width_131k/canonical
     path: layer_22/width_131k/average_l0_115
     neuronpedia: gemma-2-9b/22-gemmascope-att-131k
   - id: layer_23/width_131k/canonical
-    path: layer_23/width_131k/average_l0_134
+    path: layer_23/width_131k/average_l0_66
     neuronpedia: gemma-2-9b/23-gemmascope-att-131k
   - id: layer_24/width_131k/canonical
     path: layer_24/width_131k/average_l0_130
@@ -7383,7 +7383,7 @@ gemma-scope-9b-pt-att-canonical:
     path: layer_33/width_131k/average_l0_128
     neuronpedia: gemma-2-9b/33-gemmascope-att-131k
   - id: layer_34/width_131k/canonical
-    path: layer_34/width_131k/average_l0_15
+    path: layer_34/width_131k/average_l0_63
     neuronpedia: gemma-2-9b/34-gemmascope-att-131k
   - id: layer_35/width_131k/canonical
     path: layer_35/width_131k/average_l0_124
@@ -7401,10 +7401,10 @@ gemma-scope-9b-pt-att-canonical:
     path: layer_39/width_131k/average_l0_120
     neuronpedia: gemma-2-9b/39-gemmascope-att-131k
   - id: layer_40/width_131k/canonical
-    path: layer_40/width_131k/average_l0_144
+    path: layer_40/width_131k/average_l0_64
     neuronpedia: gemma-2-9b/40-gemmascope-att-131k
   - id: layer_41/width_131k/canonical
-    path: layer_41/width_131k/average_l0_13
+    path: layer_41/width_131k/average_l0_92
     neuronpedia: gemma-2-9b/41-gemmascope-att-131k
 gemma-scope-9b-pt-mlp:
   repo_id: google/gemma-scope-9b-pt-mlp
