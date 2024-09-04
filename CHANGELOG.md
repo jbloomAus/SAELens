@@ -2,6 +2,23 @@
 
 
 
+## v3.19.1 (2024-09-04)
+
+### Chore
+
+* chore: Update usage of Neuronpedia explanations export (#267)
+
+Co-authored-by: David Chanin &lt;chanindav@gmail.com&gt; ([`f100aed`](https://github.com/jbloomAus/SAELens/commit/f100aedfda14f11206b69f5e210dd5d6e31832d4))
+
+### Fix
+
+* fix: reset hooks before saes in tutorial (#278) ([`2c225fd`](https://github.com/jbloomAus/SAELens/commit/2c225fd1d5c35325f075c0580d65101990e50e94))
+
+### Unknown
+
+* updating howpublished url in docs (#270) ([`25d9ba4`](https://github.com/jbloomAus/SAELens/commit/25d9ba4fe5d7b9b347aafac38792b95379b8151c))
+
+
 ## v3.19.0 (2024-09-03)
 
 ### Chore
