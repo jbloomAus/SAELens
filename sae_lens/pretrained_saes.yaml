@@ -5638,6 +5638,36 @@ gemma-scope-9b-pt-res-canonical:
   - id: layer_41/width_131k/canonical
     path: layer_41/width_131k/average_l0_84
     neuronpedia: gemma-2-9b/41-gemmascope-res-131k
+  - id: layer_9/width_1m/canonical
+    path: layer_9/width_1m/average_l0_122
+    neuronpedia: gemma-2-9b/9-gemmascope-res-1m
+    l0: 122
+  - id: layer_20/width_1m/canonical
+    path: layer_20/width_1m/average_l0_101
+    neuronpedia: gemma-2-9b/20-gemmascope-res-1m
+    l0: 101
+  - id: layer_31/width_1m/canonical
+    path: layer_31/width_1m/average_l0_77
+    neuronpedia: gemma-2-9b/31-gemmascope-res-1m
+    l0: 77
+  - id: layer_20/width_262k/canonical
+    path: layer_20/width_262k/average_l0_64
+    neuronpedia: gemma-2-9b/20-gemmascope-res-262k
+    l0: 64
+  - id: layer_20/width_32k/canonical
+    path: layer_20/width_32k/average_l0_57
+    neuronpedia: gemma-2-9b/20-gemmascope-res-32k
+    l0: 57
+  - id: layer_20/width_524k/canonical
+    path: layer_20/width_524k/average_l0_78
+    neuronpedia: gemma-2-9b/20-gemmascope-res-524k
+    l0: 78
+  - id: layer_20/width_65k/canonical
+    path: layer_20/width_65k/average_l0_55
+    neuronpedia: gemma-2-9b/20-gemmascope-res-65k
+    l0: 55
+
+
 gemma-scope-9b-pt-att:
   repo_id: google/gemma-scope-9b-pt-att
   model: gemma-2-9b
