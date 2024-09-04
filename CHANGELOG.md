@@ -2,6 +2,21 @@
 
 
 
+## v3.19.3 (2024-09-04)
+
+### Fix
+
+* fix: more gemma scope canonical ids + a few canonical ids were off.  (#280)
+
+* fix model name in config for it models
+
+* add 9b non-standard sizes
+
+* fix att 131k canonical that were off
+
+* fix mlp 131k canonical that were off ([`aa3e733`](https://github.com/jbloomAus/SAELens/commit/aa3e733a352052b7b27b48b9617cea99099b4c0a))
+
+
 ## v3.19.2 (2024-09-04)
 
 ### Fix
