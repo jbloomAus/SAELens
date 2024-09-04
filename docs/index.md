@@ -67,6 +67,6 @@ WandB Dashboards provide lots of useful insights while training SAE's. Here's a 
    title = {SAELens Training
    author = {Joseph Bloom, David Chanin},
    year = {2024},
-   howpublished = {\url{}},
+   howpublished = {\url{https://github.com/jbloomAus/SAELens}},
 }}
 ```
