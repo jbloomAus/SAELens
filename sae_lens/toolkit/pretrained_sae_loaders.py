@@ -295,6 +295,9 @@ def get_gemma_2_config(
 
     # Model specific parameters
     model_params = {
+        "2b-it": {"name": "gemma-2-2b-it", "d_in": 2304},
+        "9b-it": {"name": "gemma-2-9b-it", "d_in": 3584},
+        "27b-it": {"name": "gemma-2-27b-it", "d_in": 4608},
         "2b": {"name": "gemma-2-2b", "d_in": 2304},
         "9b": {"name": "gemma-2-9b", "d_in": 3584},
         "27b": {"name": "gemma-2-27b", "d_in": 4608},
