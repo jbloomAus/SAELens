@@ -2,6 +2,25 @@
 
 
 
+## v3.19.4 (2024-09-05)
+
+### Fix
+
+* fix: add OAI mid SAEs for neuronpedia ([`a9cb852`](https://github.com/jbloomAus/SAELens/commit/a9cb852ae89256a8912e260e9c1dcaf7eaa8bef4))
+
+* fix: Gemma Scope 9b IT ids for Neuronpedia ([`dcafbff`](https://github.com/jbloomAus/SAELens/commit/dcafbffc15bdb46b77b7277f751cb915833bedf6))
+
+### Unknown
+
+* Merge pull request #282 from jbloomAus/oai_mid_fix
+
+fix: add OAI mid SAEs for neuronpedia ([`643f0c5`](https://github.com/jbloomAus/SAELens/commit/643f0c5cdf0d441a38d4c4279e42828fd6896aae))
+
+* Merge pull request #281 from jbloomAus/fix_np_gemmascope_ids
+
+fix: Gemma Scope 9b IT ids for Neuronpedia ([`e354918`](https://github.com/jbloomAus/SAELens/commit/e354918e24f2e4df2a3a0b8a49833774801484d2))
+
+
 ## v3.19.3 (2024-09-04)
 
 ### Fix
