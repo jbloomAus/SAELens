@@ -637,14 +637,5 @@ if __name__ == "__main__":
         ctx_lens=args.ctx_lens,
     )
 
-    eval_results = multiple_evals(
-        sae_regex_pattern="gpt2-small-res-jb",
-        sae_block_pattern="blocks.*",
-        num_eval_batches=10,
-        eval_batch_size_prompts=8,
-        datasets=["Skylion007/openwebtext", "lighteval/MATH"],
-        ctx_lens=[128],
-    )
-
     eval_results.to_csv(args.save_path, index=False)
     eval_results.to_json(args.save_path.replace(".csv", ".json"), orient="records")
