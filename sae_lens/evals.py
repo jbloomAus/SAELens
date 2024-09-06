@@ -60,6 +60,7 @@ def run_evals(
     model: HookedRootModule,
     eval_config: EvalConfig = EvalConfig(),
     model_kwargs: Mapping[str, Any] = {},
+    ignore_tokens: set[int | None] = set(),
 ) -> dict[str, Any]:
 
     hook_name = sae.cfg.hook_name
@@ -87,6 +88,7 @@ def run_evals(
             compute_ce_loss=eval_config.compute_ce_loss,
             n_batches=eval_config.n_eval_reconstruction_batches,
             eval_batch_size_prompts=actual_batch_size,
+            ignore_tokens=ignore_tokens,
         )
 
         activation_store.reset_input_dataset()
@@ -107,6 +109,7 @@ def run_evals(
             n_batches=eval_config.n_eval_sparsity_variance_batches,
             eval_batch_size_prompts=actual_batch_size,
             model_kwargs=model_kwargs,
+            ignore_tokens=ignore_tokens,
         )
 
     if len(metrics) == 0:
@@ -139,6 +142,7 @@ def get_downstream_reconstruction_metrics(
     compute_ce_loss: bool,
     n_batches: int,
     eval_batch_size_prompts: int,
+    ignore_tokens: set[int | None] = set(),
 ):
     metrics_dict = {}
     if compute_kl:
@@ -159,11 +163,26 @@ def get_downstream_reconstruction_metrics(
             compute_kl=compute_kl,
             compute_ce_loss=compute_ce_loss,
         ).items():
+
+            if len(ignore_tokens) > 0:
+                mask = torch.logical_not(
+                    torch.any(
+                        torch.stack(
+                            [batch_tokens == token for token in ignore_tokens], dim=0
+                        ),
+                        dim=0,
+                    )
+                )
+                if metric_value.shape[1] != mask.shape[1]:
+                    # ce loss will be missing the last value
+                    mask = mask[:, :-1]
+                metric_value = metric_value[mask]
+
             metrics_dict[metric_name].append(metric_value)
 
     metrics: dict[str, float] = {}
     for metric_name, metric_values in metrics_dict.items():
-        metrics[f"metrics/{metric_name}"] = torch.stack(metric_values).mean().item()
+        metrics[f"metrics/{metric_name}"] = torch.cat(metric_values).mean().item()
 
     if compute_kl:
         metrics["metrics/kl_div_score"] = (
@@ -192,6 +211,7 @@ def get_sparsity_and_variance_metrics(
     compute_variance_metrics: bool,
     eval_batch_size_prompts: int,
     model_kwargs: Mapping[str, Any],
+    ignore_tokens: set[int | None] = set(),
 ):
 
     hook_name = sae.cfg.hook_name
@@ -212,11 +232,25 @@ def get_sparsity_and_variance_metrics(
     for _ in range(n_batches):
         batch_tokens = activation_store.get_batch_tokens(eval_batch_size_prompts)
 
+        if len(ignore_tokens) > 0:
+            mask = torch.logical_not(
+                torch.any(
+                    torch.stack(
+                        [batch_tokens == token for token in ignore_tokens], dim=0
+                    ),
+                    dim=0,
+                )
+            )
+        else:
+            mask = torch.ones_like(batch_tokens, dtype=torch.bool)
+        flattened_mask = mask.flatten()
+
         # get cache
         _, cache = model.run_with_cache(
             batch_tokens,
             prepend_bos=False,
             names_filter=[hook_name],
+            stop_at_layer=sae.cfg.hook_layer + 1,
             **model_kwargs,
         )
 
@@ -248,6 +282,11 @@ def get_sparsity_and_variance_metrics(
         )
         flattened_sae_out = einops.rearrange(sae_out, "b ctx d -> (b ctx) d")
 
+        # apply mask
+        flattened_sae_input = flattened_sae_input[flattened_mask]
+        flattened_sae_feature_acts = flattened_sae_feature_acts[flattened_mask]
+        flattened_sae_out = flattened_sae_out[flattened_mask]
+
         if compute_l2_norms:
             l2_norm_in = torch.norm(flattened_sae_input, dim=-1)
             l2_norm_out = torch.norm(flattened_sae_out, dim=-1)
@@ -277,7 +316,9 @@ def get_sparsity_and_variance_metrics(
 
     metrics: dict[str, float] = {}
     for metric_name, metric_values in metric_dict.items():
-        metrics[f"metrics/{metric_name}"] = torch.stack(metric_values).mean().item()
+        # since we're masking, we need to flatten but may not have n_ctx for all metrics
+        # in all batches.
+        metrics[f"metrics/{metric_name}"] = torch.cat(metric_values).mean().item()
 
     return metrics
 
@@ -296,7 +337,7 @@ def get_recons_loss(
     head_index = sae.cfg.hook_head_index
 
     original_logits, original_ce_loss = model(
-        batch_tokens, return_type="both", **model_kwargs
+        batch_tokens, return_type="both", loss_per_token=True, **model_kwargs
     )
 
     metrics = {}
@@ -393,6 +434,7 @@ def get_recons_loss(
         batch_tokens,
         return_type="both",
         fwd_hooks=[(hook_name, partial(replacement_hook))],
+        loss_per_token=True,
         **model_kwargs,
     )
 
@@ -400,6 +442,7 @@ def get_recons_loss(
         batch_tokens,
         return_type="both",
         fwd_hooks=[(hook_name, zero_ablate_hook)],
+        loss_per_token=True,
         **model_kwargs,
     )
 
@@ -446,7 +489,7 @@ def multiple_evals(
     num_eval_batches: int = 10,
     eval_batch_size_prompts: int = 8,
     datasets: list[str] = ["Skylion007/openwebtext", "lighteval/MATH"],
-    ctx_lens: list[int] = [64, 128, 256, 512],
+    ctx_lens: list[int] = [128],
 ) -> pd.DataFrame:
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -473,11 +516,11 @@ def multiple_evals(
     current_model = None
     current_model_str = None
     print(filtered_saes)
-    for sae_name, sae_block, _, _ in tqdm(filtered_saes):
+    for sae_release_name, sae_id, _, _ in tqdm(filtered_saes):
 
         sae = SAE.from_pretrained(
-            release=sae_name,  # see other options in sae_lens/pretrained_saes.yaml
-            sae_id=sae_block,  # won't always be a hook point
+            release=sae_release_name,  # see other options in sae_lens/pretrained_saes.yaml
+            sae_id=sae_id,  # won't always be a hook point
             device=device,
         )[0]
 
@@ -498,16 +541,35 @@ def multiple_evals(
                 activation_store.shuffle_input_dataset(seed=42)
 
                 eval_metrics = {}
-                eval_metrics["sae_id"] = f"{sae_name}-{sae_block}"
-                eval_metrics["context_size"] = ctx_len
-                eval_metrics["dataset"] = dataset
+                eval_metrics["unique_id"] = f"{sae_release_name}-{sae_id}"
+                eval_metrics["sae_set"] = f"{sae_release_name}"
+                eval_metrics["sae_id"] = f"{sae_id}"
+                eval_metrics["eval_cfg/context_size"] = ctx_len
+                eval_metrics["eval_cfg/dataset"] = dataset
 
                 eval_metrics |= run_evals(
                     sae=sae,
                     activation_store=activation_store,
                     model=current_model,
                     eval_config=eval_config,
+                    ignore_tokens={
+                        current_model.tokenizer.pad_token_id,  # type: ignore
+                        current_model.tokenizer.eos_token_id,  # type: ignore
+                        current_model.tokenizer.bos_token_id,  # type: ignore
+                    },
                 )
+
+                # we will want to track the sae cfg as well
+                sae_cfg_dict = sae.cfg.to_dict()
+                # add "sae_cfg/" prefix to all keys
+                sae_cfg_dict = {f"sae_cfg/{k}": v for k, v in sae_cfg_dict.items()}
+                eval_metrics |= sae_cfg_dict
+
+                # do the saem with the cfg
+                eval_cfg_dict = eval_config.__dict__
+                # add "eval_cfg/" prefix to all keys
+                eval_cfg_dict = {f"eval_cfg/{k}": v for k, v in eval_cfg_dict.items()}
+                eval_metrics |= eval_cfg_dict
 
                 eval_results.append(eval_metrics)
 
@@ -554,14 +616,14 @@ if __name__ == "__main__":
     arg_parser.add_argument(
         "--ctx_lens",
         nargs="+",
-        default=[64, 128, 256, 512],
+        default=[128],
         help="Context lengths to evaluate on.",
     )
     arg_parser.add_argument(
         "--save_path",
         type=str,
         default="eval_results.csv",
-        help="Path to save evaluation results to.",
+        help="Path to save evaluation results to",
     )
 
     args = arg_parser.parse_args()
@@ -575,4 +637,14 @@ if __name__ == "__main__":
         ctx_lens=args.ctx_lens,
     )
 
+    eval_results = multiple_evals(
+        sae_regex_pattern="gpt2-small-res-jb",
+        sae_block_pattern="blocks.*",
+        num_eval_batches=10,
+        eval_batch_size_prompts=8,
+        datasets=["Skylion007/openwebtext", "lighteval/MATH"],
+        ctx_lens=[128],
+    )
+
     eval_results.to_csv(args.save_path, index=False)
+    eval_results.to_json(args.save_path.replace(".csv", ".json"), orient="records")

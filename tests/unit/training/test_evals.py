@@ -154,6 +154,29 @@ def test_run_evals_training_sae(
         assert key in eval_metrics
 
 
+def test_run_evals_training_sae_ignore_bos(
+    training_sae: TrainingSAE,
+    activation_store: ActivationsStore,
+    model: HookedTransformer,
+):
+
+    eval_metrics = run_evals(
+        sae=training_sae,
+        activation_store=activation_store,
+        model=model,
+        eval_config=get_eval_everything_config(),
+        ignore_tokens={
+            model.tokenizer.bos_token_id,  # type: ignore
+            model.tokenizer.eos_token_id,  # type: ignore
+            model.tokenizer.pad_token_id,  # type: ignore
+        },  # type: ignore
+    )
+
+    print(eval_metrics)
+    for key in all_expected_keys:
+        assert key in eval_metrics
+
+
 def test_run_empty_evals(
     base_sae: SAE,
     activation_store: ActivationsStore,
@@ -183,6 +206,39 @@ def test_training_eval_config(
         activation_store=activation_store,
         model=model,
         eval_config=eval_config,
+    )
+    sorted_returned_keys = sorted(eval_metrics.keys())
+    sorted_expected_keys = sorted(expected_keys)
+
+    for i in range(len(expected_keys)):
+        assert sorted_returned_keys[i] == sorted_expected_keys[i]
+
+
+def test_training_eval_config_ignore_control_tokens(
+    base_sae: SAE,
+    activation_store: ActivationsStore,
+    model: HookedTransformer,
+):
+    expected_keys = [
+        "metrics/l2_norm_in",
+        "metrics/l2_ratio",
+        "metrics/l2_norm_out",
+        "metrics/ce_loss_score",
+        "metrics/ce_loss_without_sae",
+        "metrics/ce_loss_with_sae",
+        "metrics/ce_loss_with_ablation",
+    ]
+    eval_config = TRAINER_EVAL_CONFIG
+    eval_metrics = run_evals(
+        sae=base_sae,
+        activation_store=activation_store,
+        model=model,
+        eval_config=eval_config,
+        ignore_tokens={
+            model.tokenizer.pad_token_id,  # type: ignore
+            model.tokenizer.eos_token_id,  # type: ignore
+            model.tokenizer.bos_token_id,  # type: ignore
+        },
     )
     sorted_returned_keys = sorted(eval_metrics.keys())
     sorted_expected_keys = sorted(expected_keys)
