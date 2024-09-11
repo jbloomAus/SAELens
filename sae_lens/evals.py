@@ -310,9 +310,10 @@ def get_sparsity_and_variance_metrics(
             total_sum_of_squares = (
                 (flattened_sae_input - flattened_sae_input.mean(dim=0)).pow(2).sum(-1)
             )
+            mse = resid_sum_of_squares / flattened_mask.sum()
             explained_variance = 1 - resid_sum_of_squares / total_sum_of_squares
             metric_dict["explained_variance"].append(explained_variance)
-            metric_dict["mse"].append(resid_sum_of_squares)
+            metric_dict["mse"].append(mse)
 
     metrics: dict[str, float] = {}
     for metric_name, metric_values in metric_dict.items():
