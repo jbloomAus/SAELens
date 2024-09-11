@@ -484,6 +484,20 @@ def all_loadable_saes() -> list[tuple[str, str, float, float]]:
     return all_loadable_saes
 
 
+def get_saes_from_regex(
+    sae_regex_pattern: str, sae_block_pattern: str
+) -> list[tuple[str, str, float, float]]:
+    sae_regex_compiled = re.compile(sae_regex_pattern)
+    sae_block_compiled = re.compile(sae_block_pattern)
+    all_saes = all_loadable_saes()
+    filtered_saes = [
+        sae
+        for sae in all_saes
+        if sae_regex_compiled.fullmatch(sae[0]) and sae_block_compiled.fullmatch(sae[1])
+    ]
+    return filtered_saes
+
+
 def multiple_evals(
     sae_regex_pattern: str,
     sae_block_pattern: str,
@@ -495,14 +509,7 @@ def multiple_evals(
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    sae_regex_compiled = re.compile(sae_regex_pattern)
-    sae_block_compiled = re.compile(sae_block_pattern)
-    all_saes = all_loadable_saes()
-    filtered_saes = [
-        sae
-        for sae in all_saes
-        if sae_regex_compiled.fullmatch(sae[0]) and sae_block_compiled.fullmatch(sae[1])
-    ]
+    filtered_saes = get_saes_from_regex(sae_regex_pattern, sae_block_pattern)
 
     assert len(filtered_saes) > 0, "No SAEs matched the given regex patterns"
 
