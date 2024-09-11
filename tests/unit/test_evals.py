@@ -1,9 +1,20 @@
+import argparse
+import json
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
 import pytest
 from datasets import Dataset
 from transformer_lens import HookedTransformer
 
 from sae_lens.config import LanguageModelSAERunnerConfig
-from sae_lens.evals import EvalConfig, get_eval_everything_config, run_evals
+from sae_lens.evals import (
+    EvalConfig,
+    get_eval_everything_config,
+    process_results,
+    run_evals,
+    run_evaluations,
+)
 from sae_lens.sae import SAE
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.training_sae import TrainingSAE
@@ -245,3 +256,76 @@ def test_training_eval_config_ignore_control_tokens(
 
     for i in range(len(expected_keys)):
         assert sorted_returned_keys[i] == sorted_expected_keys[i]
+
+
+@pytest.fixture
+def mock_args():
+    args = argparse.Namespace()
+    args.sae_regex_pattern = "test_pattern"
+    args.sae_block_pattern = "test_block"
+    args.num_eval_batches = 2
+    args.eval_batch_size_prompts = 4
+    args.datasets = ["test_dataset"]
+    args.ctx_lens = [64]
+    args.output_dir = "test_output"
+    return args
+
+
+@patch("sae_lens.evals.get_saes_from_regex")
+@patch("sae_lens.evals.multiple_evals")
+def test_run_evaluations(
+    mock_multiple_evals: MagicMock,
+    mock_get_saes_from_regex: MagicMock,
+    mock_args: argparse.Namespace,
+):
+    mock_get_saes_from_regex.return_value = [
+        ("release1", "sae1", 0.8, 10),
+        ("release2", "sae2", 0.7, 8),
+    ]
+    mock_multiple_evals.return_value = [{"test": "result"}]
+
+    result = run_evaluations(mock_args)
+
+    mock_get_saes_from_regex.assert_called_once_with(
+        mock_args.sae_regex_pattern, mock_args.sae_block_pattern
+    )
+    mock_multiple_evals.assert_called_once_with(
+        sae_regex_pattern=mock_args.sae_regex_pattern,
+        sae_block_pattern=mock_args.sae_block_pattern,
+        num_eval_batches=mock_args.num_eval_batches,
+        eval_batch_size_prompts=mock_args.eval_batch_size_prompts,
+        datasets=mock_args.datasets,
+        ctx_lens=mock_args.ctx_lens,
+        output_dir=mock_args.output_dir,
+    )
+    assert result == [{"test": "result"}]
+
+
+def test_process_results(tmp_path: Path):
+    eval_results = [
+        {
+            "unique_id": "test-sae",
+            "eval_cfg": {"context_size": 64, "dataset": "test/dataset"},
+            "metrics": {"metric1": 0.5, "metric2": 0.7},
+            "sae_cfg": {"config1": "value1"},
+        }
+    ]
+    output_dir = tmp_path / "test_output"
+
+    process_results(eval_results, str(output_dir))
+
+    # Check if individual JSON file is created
+    individual_json_path = output_dir / "test-sae_64_test_dataset.json"
+    assert individual_json_path.exists()
+    with open(individual_json_path, "r") as f:
+        assert json.load(f) == eval_results[0]
+
+    # Check if combined JSON file is created
+    combined_json_path = output_dir / "all_eval_results.json"
+    assert combined_json_path.exists()
+    with open(combined_json_path, "r") as f:
+        assert json.load(f) == eval_results
+
+    # Check if CSV file is created
+    csv_path = output_dir / "all_eval_results.csv"
+    assert csv_path.exists()

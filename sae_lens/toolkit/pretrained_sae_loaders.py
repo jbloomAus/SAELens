@@ -401,7 +401,7 @@ def gemma_2_sae_loader(
     return cfg_dict, state_dict, log_sparsity
 
 
-def get_dictionary_learning_config_1(config: dict) -> dict:
+def get_dictionary_learning_config_1(config: dict[str, Any]) -> dict[str, Any]:
     """
     Suitable for SAEs from https://huggingface.co/canrager/lm_sae.
     """

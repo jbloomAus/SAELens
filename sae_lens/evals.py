@@ -1,7 +1,10 @@
 import argparse
+import json
 import re
+from collections import defaultdict
 from dataclasses import dataclass
 from functools import partial
+from pathlib import Path
 from typing import Any, Mapping
 
 import einops
@@ -498,6 +501,21 @@ def get_saes_from_regex(
     return filtered_saes
 
 
+def nested_dict() -> defaultdict[Any, Any]:
+    return defaultdict(nested_dict)
+
+
+def dict_to_nested(flat_dict: dict[str, Any]) -> defaultdict[Any, Any]:
+    nested = nested_dict()
+    for key, value in flat_dict.items():
+        parts = key.split("/")
+        d = nested
+        for part in parts[:-1]:
+            d = d[part]
+        d[parts[-1]] = value
+    return nested
+
+
 def multiple_evals(
     sae_regex_pattern: str,
     sae_block_pattern: str,
@@ -505,7 +523,8 @@ def multiple_evals(
     eval_batch_size_prompts: int = 8,
     datasets: list[str] = ["Skylion007/openwebtext", "lighteval/MATH"],
     ctx_lens: list[int] = [128],
-) -> pd.DataFrame:
+    output_dir: str = "eval_results",
+) -> list[defaultdict[Any, Any]]:
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -514,6 +533,8 @@ def multiple_evals(
     assert len(filtered_saes) > 0, "No SAEs matched the given regex patterns"
 
     eval_results = []
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
 
     eval_config = get_eval_everything_config(
         batch_size_prompts=eval_batch_size_prompts,
@@ -548,14 +569,14 @@ def multiple_evals(
                 )
                 activation_store.shuffle_input_dataset(seed=42)
 
-                eval_metrics = {}
+                eval_metrics = nested_dict()
                 eval_metrics["unique_id"] = f"{sae_release_name}-{sae_id}"
                 eval_metrics["sae_set"] = f"{sae_release_name}"
                 eval_metrics["sae_id"] = f"{sae_id}"
-                eval_metrics["eval_cfg/context_size"] = ctx_len
-                eval_metrics["eval_cfg/dataset"] = dataset
+                eval_metrics["eval_cfg"]["context_size"] = ctx_len
+                eval_metrics["eval_cfg"]["dataset"] = dataset
 
-                eval_metrics |= run_evals(
+                run_eval_metrics = run_evals(
                     sae=sae,
                     activation_store=activation_store,
                     model=current_model,
@@ -566,32 +587,70 @@ def multiple_evals(
                         current_model.tokenizer.bos_token_id,  # type: ignore
                     },
                 )
+                eval_metrics["metrics"] = run_eval_metrics
 
-                # we will want to track the sae cfg as well
-                sae_cfg_dict = sae.cfg.to_dict()
-                # add "sae_cfg/" prefix to all keys
-                sae_cfg_dict = {f"sae_cfg/{k}": v for k, v in sae_cfg_dict.items()}
-                eval_metrics |= sae_cfg_dict
+                # Add SAE config
+                eval_metrics["sae_cfg"] = sae.cfg.to_dict()
 
-                # do the saem with the cfg
-                eval_cfg_dict = eval_config.__dict__
-                # add "eval_cfg/" prefix to all keys
-                eval_cfg_dict = {f"eval_cfg/{k}": v for k, v in eval_cfg_dict.items()}
-                eval_metrics |= eval_cfg_dict
+                # Add eval config
+                eval_metrics["eval_cfg"].update(eval_config.__dict__)
 
                 eval_results.append(eval_metrics)
 
-    return pd.DataFrame(eval_results)
+    return eval_results
+
+
+def run_evaluations(args: argparse.Namespace) -> list[defaultdict[Any, Any]]:
+    # Filter SAEs based on regex patterns
+    filtered_saes = get_saes_from_regex(args.sae_regex_pattern, args.sae_block_pattern)
+
+    num_sae_sets = len(set(sae_set for sae_set, _, _, _ in filtered_saes))
+    num_all_sae_ids = len(filtered_saes)
+
+    print("Filtered SAEs based on provided patterns:")
+    print(f"Number of SAE sets: {num_sae_sets}")
+    print(f"Total number of SAE IDs: {num_all_sae_ids}")
+
+    eval_results = multiple_evals(
+        sae_regex_pattern=args.sae_regex_pattern,
+        sae_block_pattern=args.sae_block_pattern,
+        num_eval_batches=args.num_eval_batches,
+        eval_batch_size_prompts=args.eval_batch_size_prompts,
+        datasets=args.datasets,
+        ctx_lens=args.ctx_lens,
+        output_dir=args.output_dir,
+    )
+
+    return eval_results
+
+
+def process_results(eval_results: list[defaultdict[Any, Any]], output_dir: str):
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    # Save individual JSON files
+    for result in eval_results:
+        json_filename = f"{result['unique_id']}_{result['eval_cfg']['context_size']}_{result['eval_cfg']['dataset'].replace('/', '_')}.json"
+        json_path = output_path / json_filename
+        with open(json_path, "w") as f:
+            json.dump(result, f, indent=2)
+
+    # Save all results in a single JSON file
+    with open(output_path / "all_eval_results.json", "w") as f:
+        json.dump(eval_results, f, indent=2)
+
+    # Convert to DataFrame and save as CSV
+    df = pd.json_normalize(eval_results)  # type: ignore
+    df.to_csv(output_path / "all_eval_results.csv", index=False)
+
+    return {
+        "individual_jsons": list(output_path.glob("*.json")),
+        "combined_json": output_path / "all_eval_results.json",
+        "csv": output_path / "all_eval_results.csv",
+    }
 
 
 if __name__ == "__main__":
-
-    # Example commands:
-    # python sae_lens/evals.py "gpt2-small-res-jb.*" "blocks.8.hook_resid_pre.*" --save_path "gpt2_small_jb_layer8_resid_pre_eval_results.csv"
-    # python sae_lens/evals.py "gpt2-small.*" "blocks.8.hook_resid_pre.*" --save_path "gpt2_small_layer8_resid_pre_eval_results.csv"
-    # python sae_lens/evals.py "gpt2-small.*" ".*" --save_path "gpt2_small_eval_results.csv"
-    # python sae_lens/evals.py "mistral.*" ".*" --save_path "mistral_eval_results.csv"
-
     arg_parser = argparse.ArgumentParser(description="Run evaluations on SAEs")
     arg_parser.add_argument(
         "sae_regex_pattern",
@@ -628,33 +687,18 @@ if __name__ == "__main__":
         help="Context lengths to evaluate on.",
     )
     arg_parser.add_argument(
-        "--save_path",
+        "--output_dir",
         type=str,
-        default="eval_results.csv",
-        help="Path to save evaluation results to",
+        default="eval_results",
+        help="Directory to save evaluation results",
     )
 
     args = arg_parser.parse_args()
 
-    # Filter SAEs based on regex patterns
-    filtered_saes = get_saes_from_regex(args.sae_regex_pattern, args.sae_block_pattern)
+    eval_results = run_evaluations(args)
+    output_files = process_results(eval_results, args.output_dir)
 
-    num_sae_sets = len(filtered_saes)
-    all_sae_sets = [sae_set for sae_set, _, _, _ in filtered_saes]
-    num_all_sae_ids = len(filtered_saes)
-
-    print(f"Filtered SAEs based on provided patterns:")
-    print(f"Number of SAE sets: {len(all_sae_sets)}")
-    print(f"Total number of SAE IDs: {num_all_sae_ids}")
-
-    eval_results = multiple_evals(
-        sae_regex_pattern=args.sae_regex_pattern,
-        sae_block_pattern=args.sae_block_pattern,
-        num_eval_batches=args.num_eval_batches,
-        eval_batch_size_prompts=args.eval_batch_size_prompts,
-        datasets=args.datasets,
-        ctx_lens=args.ctx_lens,
-    )
-
-    eval_results.to_csv(args.save_path, index=False)
-    eval_results.to_json(args.save_path.replace(".csv", ".json"), orient="records")
+    print("Evaluation complete. Output files:")
+    print(f"Individual JSONs: {len(output_files['individual_jsons'])}")  # type: ignore
+    print(f"Combined JSON: {output_files['combined_json']}")
+    print(f"CSV: {output_files['csv']}")
