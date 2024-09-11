@@ -535,8 +535,8 @@ def multiple_evals(
         if current_model_str != sae.cfg.model_name:
             del current_model  # potentially saves GPU memory
             current_model_str = sae.cfg.model_name
-            current_model = HookedTransformer.from_pretrained(
-                current_model_str, device=device
+            current_model = HookedTransformer.from_pretrained_no_processing(
+                current_model_str, device=device, **sae.cfg.model_from_pretrained_kwargs
             )
         assert current_model is not None
 
