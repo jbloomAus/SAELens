@@ -636,6 +636,17 @@ if __name__ == "__main__":
 
     args = arg_parser.parse_args()
 
+    # Filter SAEs based on regex patterns
+    filtered_saes = get_saes_from_regex(args.sae_regex_pattern, args.sae_block_pattern)
+
+    num_sae_sets = len(filtered_saes)
+    all_sae_sets = [sae_set for sae_set, _, _, _ in filtered_saes]
+    num_all_sae_ids = len(filtered_saes)
+
+    print(f"Filtered SAEs based on provided patterns:")
+    print(f"Number of SAE sets: {len(all_sae_sets)}")
+    print(f"Total number of SAE IDs: {num_all_sae_ids}")
+
     eval_results = multiple_evals(
         sae_regex_pattern=args.sae_regex_pattern,
         sae_block_pattern=args.sae_block_pattern,
