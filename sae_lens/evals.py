@@ -618,8 +618,8 @@ if __name__ == "__main__":
     arg_parser.add_argument(
         "--datasets",
         nargs="+",
-        default=["Skylion007/openwebtext", "lighteval/MATH"],
-        help="Datasets to evaluate on.",
+        default=["Skylion007/openwebtext"],
+        help="Datasets to evaluate on, such as 'Skylion007/openwebtext' or 'lighteval/MATH'.",
     )
     arg_parser.add_argument(
         "--ctx_lens",
