@@ -312,7 +312,7 @@ def test_process_results(tmp_path: Path):
     ]
     output_dir = tmp_path / "test_output"
 
-    process_results(eval_results, str(output_dir))
+    process_results(eval_results, str(output_dir))  # type: ignore
 
     # Check if individual JSON file is created
     individual_json_path = output_dir / "test-sae_64_test_dataset.json"
