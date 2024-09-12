@@ -1,7 +1,10 @@
 import argparse
+import json
 import re
+from collections import defaultdict
 from dataclasses import dataclass
 from functools import partial
+from pathlib import Path
 from typing import Any, Mapping
 
 import einops
@@ -60,6 +63,7 @@ def run_evals(
     model: HookedRootModule,
     eval_config: EvalConfig = EvalConfig(),
     model_kwargs: Mapping[str, Any] = {},
+    ignore_tokens: set[int | None] = set(),
 ) -> dict[str, Any]:
 
     hook_name = sae.cfg.hook_name
@@ -87,6 +91,7 @@ def run_evals(
             compute_ce_loss=eval_config.compute_ce_loss,
             n_batches=eval_config.n_eval_reconstruction_batches,
             eval_batch_size_prompts=actual_batch_size,
+            ignore_tokens=ignore_tokens,
         )
 
         activation_store.reset_input_dataset()
@@ -107,6 +112,7 @@ def run_evals(
             n_batches=eval_config.n_eval_sparsity_variance_batches,
             eval_batch_size_prompts=actual_batch_size,
             model_kwargs=model_kwargs,
+            ignore_tokens=ignore_tokens,
         )
 
     if len(metrics) == 0:
@@ -139,6 +145,7 @@ def get_downstream_reconstruction_metrics(
     compute_ce_loss: bool,
     n_batches: int,
     eval_batch_size_prompts: int,
+    ignore_tokens: set[int | None] = set(),
 ):
     metrics_dict = {}
     if compute_kl:
@@ -159,11 +166,26 @@ def get_downstream_reconstruction_metrics(
             compute_kl=compute_kl,
             compute_ce_loss=compute_ce_loss,
         ).items():
+
+            if len(ignore_tokens) > 0:
+                mask = torch.logical_not(
+                    torch.any(
+                        torch.stack(
+                            [batch_tokens == token for token in ignore_tokens], dim=0
+                        ),
+                        dim=0,
+                    )
+                )
+                if metric_value.shape[1] != mask.shape[1]:
+                    # ce loss will be missing the last value
+                    mask = mask[:, :-1]
+                metric_value = metric_value[mask]
+
             metrics_dict[metric_name].append(metric_value)
 
     metrics: dict[str, float] = {}
     for metric_name, metric_values in metrics_dict.items():
-        metrics[f"metrics/{metric_name}"] = torch.stack(metric_values).mean().item()
+        metrics[f"metrics/{metric_name}"] = torch.cat(metric_values).mean().item()
 
     if compute_kl:
         metrics["metrics/kl_div_score"] = (
@@ -192,6 +214,7 @@ def get_sparsity_and_variance_metrics(
     compute_variance_metrics: bool,
     eval_batch_size_prompts: int,
     model_kwargs: Mapping[str, Any],
+    ignore_tokens: set[int | None] = set(),
 ):
 
     hook_name = sae.cfg.hook_name
@@ -212,11 +235,25 @@ def get_sparsity_and_variance_metrics(
     for _ in range(n_batches):
         batch_tokens = activation_store.get_batch_tokens(eval_batch_size_prompts)
 
+        if len(ignore_tokens) > 0:
+            mask = torch.logical_not(
+                torch.any(
+                    torch.stack(
+                        [batch_tokens == token for token in ignore_tokens], dim=0
+                    ),
+                    dim=0,
+                )
+            )
+        else:
+            mask = torch.ones_like(batch_tokens, dtype=torch.bool)
+        flattened_mask = mask.flatten()
+
         # get cache
         _, cache = model.run_with_cache(
             batch_tokens,
             prepend_bos=False,
             names_filter=[hook_name],
+            stop_at_layer=sae.cfg.hook_layer + 1,
             **model_kwargs,
         )
 
@@ -248,6 +285,11 @@ def get_sparsity_and_variance_metrics(
         )
         flattened_sae_out = einops.rearrange(sae_out, "b ctx d -> (b ctx) d")
 
+        # apply mask
+        flattened_sae_input = flattened_sae_input[flattened_mask]
+        flattened_sae_feature_acts = flattened_sae_feature_acts[flattened_mask]
+        flattened_sae_out = flattened_sae_out[flattened_mask]
+
         if compute_l2_norms:
             l2_norm_in = torch.norm(flattened_sae_input, dim=-1)
             l2_norm_out = torch.norm(flattened_sae_out, dim=-1)
@@ -271,13 +313,16 @@ def get_sparsity_and_variance_metrics(
             total_sum_of_squares = (
                 (flattened_sae_input - flattened_sae_input.mean(dim=0)).pow(2).sum(-1)
             )
+            mse = resid_sum_of_squares / flattened_mask.sum()
             explained_variance = 1 - resid_sum_of_squares / total_sum_of_squares
             metric_dict["explained_variance"].append(explained_variance)
-            metric_dict["mse"].append(resid_sum_of_squares)
+            metric_dict["mse"].append(mse)
 
     metrics: dict[str, float] = {}
     for metric_name, metric_values in metric_dict.items():
-        metrics[f"metrics/{metric_name}"] = torch.stack(metric_values).mean().item()
+        # since we're masking, we need to flatten but may not have n_ctx for all metrics
+        # in all batches.
+        metrics[f"metrics/{metric_name}"] = torch.cat(metric_values).mean().item()
 
     return metrics
 
@@ -296,7 +341,7 @@ def get_recons_loss(
     head_index = sae.cfg.hook_head_index
 
     original_logits, original_ce_loss = model(
-        batch_tokens, return_type="both", **model_kwargs
+        batch_tokens, return_type="both", loss_per_token=True, **model_kwargs
     )
 
     metrics = {}
@@ -393,6 +438,7 @@ def get_recons_loss(
         batch_tokens,
         return_type="both",
         fwd_hooks=[(hook_name, partial(replacement_hook))],
+        loss_per_token=True,
         **model_kwargs,
     )
 
@@ -400,6 +446,7 @@ def get_recons_loss(
         batch_tokens,
         return_type="both",
         fwd_hooks=[(hook_name, zero_ablate_hook)],
+        loss_per_token=True,
         **model_kwargs,
     )
 
@@ -440,17 +487,9 @@ def all_loadable_saes() -> list[tuple[str, str, float, float]]:
     return all_loadable_saes
 
 
-def multiple_evals(
-    sae_regex_pattern: str,
-    sae_block_pattern: str,
-    num_eval_batches: int = 10,
-    eval_batch_size_prompts: int = 8,
-    datasets: list[str] = ["Skylion007/openwebtext", "lighteval/MATH"],
-    ctx_lens: list[int] = [64, 128, 256, 512],
-) -> pd.DataFrame:
-
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-
+def get_saes_from_regex(
+    sae_regex_pattern: str, sae_block_pattern: str
+) -> list[tuple[str, str, float, float]]:
     sae_regex_compiled = re.compile(sae_regex_pattern)
     sae_block_compiled = re.compile(sae_block_pattern)
     all_saes = all_loadable_saes()
@@ -459,10 +498,43 @@ def multiple_evals(
         for sae in all_saes
         if sae_regex_compiled.fullmatch(sae[0]) and sae_block_compiled.fullmatch(sae[1])
     ]
+    return filtered_saes
+
+
+def nested_dict() -> defaultdict[Any, Any]:
+    return defaultdict(nested_dict)
+
+
+def dict_to_nested(flat_dict: dict[str, Any]) -> defaultdict[Any, Any]:
+    nested = nested_dict()
+    for key, value in flat_dict.items():
+        parts = key.split("/")
+        d = nested
+        for part in parts[:-1]:
+            d = d[part]
+        d[parts[-1]] = value
+    return nested
+
+
+def multiple_evals(
+    sae_regex_pattern: str,
+    sae_block_pattern: str,
+    num_eval_batches: int = 10,
+    eval_batch_size_prompts: int = 8,
+    datasets: list[str] = ["Skylion007/openwebtext", "lighteval/MATH"],
+    ctx_lens: list[int] = [128],
+    output_dir: str = "eval_results",
+) -> list[defaultdict[Any, Any]]:
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    filtered_saes = get_saes_from_regex(sae_regex_pattern, sae_block_pattern)
 
     assert len(filtered_saes) > 0, "No SAEs matched the given regex patterns"
 
     eval_results = []
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
 
     eval_config = get_eval_everything_config(
         batch_size_prompts=eval_batch_size_prompts,
@@ -473,19 +545,19 @@ def multiple_evals(
     current_model = None
     current_model_str = None
     print(filtered_saes)
-    for sae_name, sae_block, _, _ in tqdm(filtered_saes):
+    for sae_release_name, sae_id, _, _ in tqdm(filtered_saes):
 
         sae = SAE.from_pretrained(
-            release=sae_name,  # see other options in sae_lens/pretrained_saes.yaml
-            sae_id=sae_block,  # won't always be a hook point
+            release=sae_release_name,  # see other options in sae_lens/pretrained_saes.yaml
+            sae_id=sae_id,  # won't always be a hook point
             device=device,
         )[0]
 
         if current_model_str != sae.cfg.model_name:
             del current_model  # potentially saves GPU memory
             current_model_str = sae.cfg.model_name
-            current_model = HookedTransformer.from_pretrained(
-                current_model_str, device=device
+            current_model = HookedTransformer.from_pretrained_no_processing(
+                current_model_str, device=device, **sae.cfg.model_from_pretrained_kwargs
             )
         assert current_model is not None
 
@@ -497,31 +569,88 @@ def multiple_evals(
                 )
                 activation_store.shuffle_input_dataset(seed=42)
 
-                eval_metrics = {}
-                eval_metrics["sae_id"] = f"{sae_name}-{sae_block}"
-                eval_metrics["context_size"] = ctx_len
-                eval_metrics["dataset"] = dataset
+                eval_metrics = nested_dict()
+                eval_metrics["unique_id"] = f"{sae_release_name}-{sae_id}"
+                eval_metrics["sae_set"] = f"{sae_release_name}"
+                eval_metrics["sae_id"] = f"{sae_id}"
+                eval_metrics["eval_cfg"]["context_size"] = ctx_len
+                eval_metrics["eval_cfg"]["dataset"] = dataset
 
-                eval_metrics |= run_evals(
+                run_eval_metrics = run_evals(
                     sae=sae,
                     activation_store=activation_store,
                     model=current_model,
                     eval_config=eval_config,
+                    ignore_tokens={
+                        current_model.tokenizer.pad_token_id,  # type: ignore
+                        current_model.tokenizer.eos_token_id,  # type: ignore
+                        current_model.tokenizer.bos_token_id,  # type: ignore
+                    },
                 )
+                eval_metrics["metrics"] = run_eval_metrics
+
+                # Add SAE config
+                eval_metrics["sae_cfg"] = sae.cfg.to_dict()
+
+                # Add eval config
+                eval_metrics["eval_cfg"].update(eval_config.__dict__)
 
                 eval_results.append(eval_metrics)
 
-    return pd.DataFrame(eval_results)
+    return eval_results
+
+
+def run_evaluations(args: argparse.Namespace) -> list[defaultdict[Any, Any]]:
+    # Filter SAEs based on regex patterns
+    filtered_saes = get_saes_from_regex(args.sae_regex_pattern, args.sae_block_pattern)
+
+    num_sae_sets = len(set(sae_set for sae_set, _, _, _ in filtered_saes))
+    num_all_sae_ids = len(filtered_saes)
+
+    print("Filtered SAEs based on provided patterns:")
+    print(f"Number of SAE sets: {num_sae_sets}")
+    print(f"Total number of SAE IDs: {num_all_sae_ids}")
+
+    eval_results = multiple_evals(
+        sae_regex_pattern=args.sae_regex_pattern,
+        sae_block_pattern=args.sae_block_pattern,
+        num_eval_batches=args.num_eval_batches,
+        eval_batch_size_prompts=args.eval_batch_size_prompts,
+        datasets=args.datasets,
+        ctx_lens=args.ctx_lens,
+        output_dir=args.output_dir,
+    )
+
+    return eval_results
+
+
+def process_results(eval_results: list[defaultdict[Any, Any]], output_dir: str):
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    # Save individual JSON files
+    for result in eval_results:
+        json_filename = f"{result['unique_id']}_{result['eval_cfg']['context_size']}_{result['eval_cfg']['dataset'].replace('/', '_')}.json"
+        json_path = output_path / json_filename
+        with open(json_path, "w") as f:
+            json.dump(result, f, indent=2)
+
+    # Save all results in a single JSON file
+    with open(output_path / "all_eval_results.json", "w") as f:
+        json.dump(eval_results, f, indent=2)
+
+    # Convert to DataFrame and save as CSV
+    df = pd.json_normalize(eval_results)  # type: ignore
+    df.to_csv(output_path / "all_eval_results.csv", index=False)
+
+    return {
+        "individual_jsons": list(output_path.glob("*.json")),
+        "combined_json": output_path / "all_eval_results.json",
+        "csv": output_path / "all_eval_results.csv",
+    }
 
 
 if __name__ == "__main__":
-
-    # Example commands:
-    # python sae_lens/evals.py "gpt2-small-res-jb.*" "blocks.8.hook_resid_pre.*" --save_path "gpt2_small_jb_layer8_resid_pre_eval_results.csv"
-    # python sae_lens/evals.py "gpt2-small.*" "blocks.8.hook_resid_pre.*" --save_path "gpt2_small_layer8_resid_pre_eval_results.csv"
-    # python sae_lens/evals.py "gpt2-small.*" ".*" --save_path "gpt2_small_eval_results.csv"
-    # python sae_lens/evals.py "mistral.*" ".*" --save_path "mistral_eval_results.csv"
-
     arg_parser = argparse.ArgumentParser(description="Run evaluations on SAEs")
     arg_parser.add_argument(
         "sae_regex_pattern",
@@ -548,31 +677,28 @@ if __name__ == "__main__":
     arg_parser.add_argument(
         "--datasets",
         nargs="+",
-        default=["Skylion007/openwebtext", "lighteval/MATH"],
-        help="Datasets to evaluate on.",
+        default=["Skylion007/openwebtext"],
+        help="Datasets to evaluate on, such as 'Skylion007/openwebtext' or 'lighteval/MATH'.",
     )
     arg_parser.add_argument(
         "--ctx_lens",
         nargs="+",
-        default=[64, 128, 256, 512],
+        default=[128],
         help="Context lengths to evaluate on.",
     )
     arg_parser.add_argument(
-        "--save_path",
+        "--output_dir",
         type=str,
-        default="eval_results.csv",
-        help="Path to save evaluation results to.",
+        default="eval_results",
+        help="Directory to save evaluation results",
     )
 
     args = arg_parser.parse_args()
 
-    eval_results = multiple_evals(
-        sae_regex_pattern=args.sae_regex_pattern,
-        sae_block_pattern=args.sae_block_pattern,
-        num_eval_batches=args.num_eval_batches,
-        eval_batch_size_prompts=args.eval_batch_size_prompts,
-        datasets=args.datasets,
-        ctx_lens=args.ctx_lens,
-    )
+    eval_results = run_evaluations(args)
+    output_files = process_results(eval_results, args.output_dir)
 
-    eval_results.to_csv(args.save_path, index=False)
+    print("Evaluation complete. Output files:")
+    print(f"Individual JSONs: {len(output_files['individual_jsons'])}")  # type: ignore
+    print(f"Combined JSON: {output_files['combined_json']}")
+    print(f"CSV: {output_files['csv']}")
