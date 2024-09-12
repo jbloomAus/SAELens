@@ -118,7 +118,8 @@ def get_neuronpedia_quick_list(
         list_feature = [
             {
                 "modelId": feature.model_name or model_name,
-                "layer": feature.neuronpedia_id.split("/")[1] or neuronpedia_id.split("/")[1],
+                "layer": feature.neuronpedia_id.split("/")[1]
+                or neuronpedia_id.split("/")[1],
                 "index": str(feature.feature_index),
                 "description": feature.description,
             }
@@ -129,7 +130,7 @@ def get_neuronpedia_quick_list(
             {
                 "modelId": model_name,
                 "layer": neuronpedia_id.split("/")[1],
-                "index": str(feature)
+                "index": str(feature),
             }
             for feature in features
         ]
