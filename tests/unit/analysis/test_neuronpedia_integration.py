@@ -1,6 +1,6 @@
 import webbrowser
+from unittest import mock
 
-import mock
 import pytest
 
 from sae_lens.analysis.neuronpedia_integration import (
@@ -87,7 +87,7 @@ def test_get_neuronpedia_quick_list(monkeypatch: pytest.MonkeyPatch):
     features = [0, 1, 2]
     url = get_neuronpedia_quick_list(sae_info, features, name="Test List")
 
-    expected_url = "https://neuronpedia.org/quick-list/?name=Test%20List&features=%5B%7B%22modelId%22%3A%22gpt2-small%22%2C%22layer%22%3A%220-res-jb%22%2C%22index%22%3A%220%22%7D%2C%7B%22modelId%22%3A%22gpt2-small%22%2C%22layer%22%3A%220-res-jb%22%2C%22index%22%3A%221%22%7D%2C%7B%22modelId%22%3A%22gpt2-small%22%2C%22layer%22%3A%220-res-jb%22%2C%22index%22%3A%222%22%7D%5D"
+    expected_url = "https://neuronpedia.org/quick-list/?name=Test%20List&features=%5B%7B%22modelId%22%3A%20%22gpt2-small%22%2C%20%22layer%22%3A%20%220-res-jb%22%2C%20%22index%22%3A%20%220%22%7D%2C%20%7B%22modelId%22%3A%20%22gpt2-small%22%2C%20%22layer%22%3A%20%220-res-jb%22%2C%20%22index%22%3A%20%221%22%7D%2C%20%7B%22modelId%22%3A%20%22gpt2-small%22%2C%20%22layer%22%3A%20%220-res-jb%22%2C%20%22index%22%3A%20%222%22%7D%5D"
     assert url == expected_url
     mock_open.assert_called_once_with(expected_url)
 
@@ -101,6 +101,6 @@ def test_get_neuronpedia_quick_list(monkeypatch: pytest.MonkeyPatch):
     ]
     url = get_neuronpedia_quick_list(sae_info, features_info, name="Test List 2", description="Test Description", default_test_text="Hello, world!")
 
-    expected_url = "https://neuronpedia.org/quick-list/?name=Test%20List%202&description=Test%20Description&default_test_text=Hello%2C%20world%21&features=%5B%7B%22modelId%22%3A%22gpt2-medium%22%2C%22layer%22%3A%221-res-jb%22%2C%22index%22%3A%220%22%7D%2C%7B%22modelId%22%3A%22gpt2-large%22%2C%22layer%22%3A%222-att-kk%22%2C%22index%22%3A%221%22%7D%5D"
+    expected_url = "https://neuronpedia.org/quick-list/?name=Test%20List%202&description=Test%20Description&default_test_text=Hello%2C%20world%21&features=%5B%7B%22modelId%22%3A%20%22gpt2-medium%22%2C%20%22layer%22%3A%20%221-res-jb%22%2C%20%22index%22%3A%20%220%22%2C%20%22description%22%3A%20%22Feature%200%22%7D%2C%20%7B%22modelId%22%3A%20%22gpt2-large%22%2C%20%22layer%22%3A%20%222-att-kk%22%2C%20%22index%22%3A%20%221%22%2C%20%22description%22%3A%20%22Feature%201%22%7D%5D"
     assert url == expected_url
     mock_open.assert_called_once_with(expected_url)
