@@ -2,6 +2,33 @@
 
 
 
+## v3.20.0 (2024-09-12)
+
+### Feature
+
+* feat: Add SAE Bench SAEs (#285)
+
+* add ignore tokens in evals
+
+* remove accidental hard coding
+
+* fix mse
+
+* extract sae filtering code
+
+* add sae_bench saes
+
+* use from pretrained no processing by default
+
+* use open web text by default
+
+* add estimate of number of SAEs print statements
+
+* add unit tests
+
+* type fix ([`680c52b`](https://github.com/jbloomAus/SAELens/commit/680c52b95abfb039687f5328c52b1b41f8c3e05d))
+
+
 ## v3.19.4 (2024-09-05)
 
 ### Fix
