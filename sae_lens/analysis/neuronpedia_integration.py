@@ -69,15 +69,18 @@ def open_neuronpedia_feature_dashboard(sae: SAE, index: int):
         url = f"{NEURONPEDIA_DOMAIN}/{sae_id}/{index}"
         webbrowser.open(url)
 
+
 class FeatureInfo(NamedTuple):
     feature_index: int
     description: str
     model_name: Optional[str]
     neuronpedia_id: Optional[str]
 
+
 class SaeInfo(NamedTuple):
     model_name: str
     neuronpedia_id: str
+
 
 def get_neuronpedia_quick_list(
     sae: SAE | SaeInfo,
@@ -99,10 +102,9 @@ def get_neuronpedia_quick_list(
         raise ValueError(
             "SAE does not have a Neuronpedia ID. Either dashboards for this SAE do not exist (yet) on Neuronpedia, or the SAE was not loaded via the from_pretrained method"
         )
-    
+
     if len(features) == 0:
         raise ValueError("No features provided")
-
 
     url = NEURONPEDIA_DOMAIN + "/quick-list/"
     name = urllib.parse.quote(name)
@@ -131,7 +133,7 @@ def get_neuronpedia_quick_list(
             }
             for feature in features
         ]
-        
+
     url = url + "&features=" + urllib.parse.quote(json.dumps(list_feature))
     webbrowser.open(url)
 

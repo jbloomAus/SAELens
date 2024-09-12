@@ -50,6 +50,7 @@ def test_make_neuronpedia_list_with_features():
         ],
     )
 
+
 @pytest.mark.skip(
     reason="Need a way to test with an API key - maybe test to dev environment?"
 )
@@ -74,6 +75,7 @@ async def test_neuronpedia_autointerp():
         save_to_disk=False,
         upload_to_neuronpedia=True,
     )
+
 
 def test_get_neuronpedia_quick_list(monkeypatch: pytest.MonkeyPatch):
     # Mock the webbrowser.open function
