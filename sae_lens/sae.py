@@ -670,7 +670,7 @@ class SAE(HookedRootModule):
             if "gemma-scope" in release and "canonical" not in release and f"{release}-canonical" in sae_directory:
                 canonical_ids = list(sae_directory[release+'-canonical'].saes_map.keys())
                 # Shorten the lengthy string of valid IDs
-                if len(canonical_valid_ids) > 5:
+                if len(canonical_ids) > 5:
                     str_canonical_ids = str(canonical_ids[:5])[:-1]+", ...]"
                 else:
                     str_canonical_ids = str(canonical_ids)
