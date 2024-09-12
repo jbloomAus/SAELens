@@ -666,8 +666,12 @@ class SAE(HookedRootModule):
                     f"Release {release} not found in pretrained SAEs directory, and is not a valid huggingface repo."
                 )
         elif sae_id not in sae_directory[release].saes_map:
+            if "gemma-scope" in release and "canonical" not in release and f"{release}-canonical" in sae_directory:
+                value_suffix = f"If you don't want to specify an L0 value, consider using release {release}-canonical which has valid IDs {sae_directory[release+'-canonical'].saes_map.keys()}"
+            else:
+                value_suffix = ""
             raise ValueError(
-                f"ID {sae_id} not found in release {release}. Valid IDs are {sae_directory[release].saes_map.keys()}"
+                f"ID {sae_id} not found in release {release}. Valid IDs are {sae_directory[release].saes_map.keys()}. " + value_suffix
             )
         sae_info = sae_directory.get(release, None)
         hf_repo_id = sae_info.repo_id if sae_info is not None else release
