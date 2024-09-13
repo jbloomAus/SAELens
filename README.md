@@ -49,6 +49,6 @@ Please cite the package as follows:
    title = {SAELens},
    author = {Joseph Bloom and David Chanin},
    year = {2024},
-   howpublished = {\url{https://github.com/jbloomAus/SAELens}}
-}}
+   howpublished = {\url{https://github.com/jbloomAus/SAELens}},
+}
 ```
