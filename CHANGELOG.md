@@ -2,6 +2,13 @@
 
 
 
+## v3.20.2 (2024-09-13)
+
+### Fix
+
+* fix: Update README.md (#290) ([`1d1ac1e`](https://github.com/jbloomAus/SAELens/commit/1d1ac1e4c811f6062c1c4eb777d790a86957a082))
+
+
 ## v3.20.1 (2024-09-13)
 
 ### Fix
