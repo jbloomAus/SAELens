@@ -2,6 +2,21 @@
 
 
 
+## v3.20.1 (2024-09-13)
+
+### Fix
+
+* fix: neuronpedia oai v5 sae ids ([`ffec7ed`](https://github.com/jbloomAus/SAELens/commit/ffec7ed2ee015846839c3ba128f48fe7edbe53b6))
+
+### Unknown
+
+* Merge pull request #291 from jbloomAus/fix_np_oai_ids
+
+fix: neuronpedia oai v5 sae ids ([`253191e`](https://github.com/jbloomAus/SAELens/commit/253191ee98e2a16637fe3f70183e81b8bd0b7705))
+
+* fix the ids for att&#34; ([`9e81c1c`](https://github.com/jbloomAus/SAELens/commit/9e81c1c216a599fdc80ac061895457e5eddce8fe))
+
+
 ## v3.20.0 (2024-09-12)
 
 ### Feature
