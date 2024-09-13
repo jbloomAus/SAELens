@@ -562,40 +562,40 @@ gpt2-small-mlp-out-v5-32k:
   saes:
   - id: blocks.0.hook_mlp_out
     path: v5_32k_layer_0
-    neuronpedia: gpt2-small/0-res_mlp_32k-oai
+    neuronpedia: gpt2-small/0-mlp_32k-oai
   - id: blocks.1.hook_mlp_out
     path: v5_32k_layer_1
-    neuronpedia: gpt2-small/1-res_mlp_32k-oai
+    neuronpedia: gpt2-small/1-mlp_32k-oai
   - id: blocks.2.hook_mlp_out
     path: v5_32k_layer_2
-    neuronpedia: gpt2-small/2-res_mlp_32k-oai
+    neuronpedia: gpt2-small/2-mlp_32k-oai
   - id: blocks.3.hook_mlp_out
     path: v5_32k_layer_3
-    neuronpedia: gpt2-small/3-res_mlp_32k-oai
+    neuronpedia: gpt2-small/3-mlp_32k-oai
   - id: blocks.4.hook_mlp_out
     path: v5_32k_layer_4
-    neuronpedia: gpt2-small/4-res_mlp_32k-oai
+    neuronpedia: gpt2-small/4-mlp_32k-oai
   - id: blocks.5.hook_mlp_out
     path: v5_32k_layer_5
-    neuronpedia: gpt2-small/5-res_mlp_32k-oai
+    neuronpedia: gpt2-small/5-mlp_32k-oai
   - id: blocks.6.hook_mlp_out
     path: v5_32k_layer_6
-    neuronpedia: gpt2-small/6-res_mlp_32k-oai
+    neuronpedia: gpt2-small/6-mlp_32k-oai
   - id: blocks.7.hook_mlp_out
     path: v5_32k_layer_7
-    neuronpedia: gpt2-small/7-res_mlp_32k-oai
+    neuronpedia: gpt2-small/7-mlp_32k-oai
   - id: blocks.8.hook_mlp_out
     path: v5_32k_layer_8
-    neuronpedia: gpt2-small/8-res_mlp_32k-oai
+    neuronpedia: gpt2-small/8-mlp_32k-oai
   - id: blocks.9.hook_mlp_out
     path: v5_32k_layer_9
-    neuronpedia: gpt2-small/9-res_mlp_32k-oai
+    neuronpedia: gpt2-small/9-mlp_32k-oai
   - id: blocks.10.hook_mlp_out
     path: v5_32k_layer_10
-    neuronpedia: gpt2-small/10-res_mlp_32k-oai
+    neuronpedia: gpt2-small/10-mlp_32k-oai
   - id: blocks.11.hook_mlp_out
     path: v5_32k_layer_11
-    neuronpedia: gpt2-small/11-res_mlp_32k-oai
+    neuronpedia: gpt2-small/11-mlp_32k-oai
 gpt2-small-mlp-out-v5-128k:
   repo_id: jbloom/GPT2-Small-OAI-v5-128k-mlp-out-SAEs
   model: gpt2-small
@@ -605,40 +605,40 @@ gpt2-small-mlp-out-v5-128k:
   saes:
   - id: blocks.0.hook_mlp_out
     path: v5_128k_layer_0
-    neuronpedia: gpt2-small/0-res_mlp_128k-oai
+    neuronpedia: gpt2-small/0-mlp_128k-oai
   - id: blocks.1.hook_mlp_out
     path: v5_128k_layer_1
-    neuronpedia: gpt2-small/1-res_mlp_128k-oai
+    neuronpedia: gpt2-small/1-mlp_128k-oai
   - id: blocks.2.hook_mlp_out
     path: v5_128k_layer_2
-    neuronpedia: gpt2-small/2-res_mlp_128k-oai
+    neuronpedia: gpt2-small/2-mlp_128k-oai
   - id: blocks.3.hook_mlp_out
     path: v5_128k_layer_3
-    neuronpedia: gpt2-small/3-res_mlp_128k-oai
+    neuronpedia: gpt2-small/3-mlp_128k-oai
   - id: blocks.4.hook_mlp_out
     path: v5_128k_layer_4
-    neuronpedia: gpt2-small/4-res_mlp_128k-oai
+    neuronpedia: gpt2-small/4-mlp_128k-oai
   - id: blocks.5.hook_mlp_out
     path: v5_128k_layer_5
-    neuronpedia: gpt2-small/5-res_mlp_128k-oai
+    neuronpedia: gpt2-small/5-mlp_128k-oai
   - id: blocks.6.hook_mlp_out
     path: v5_128k_layer_6
-    neuronpedia: gpt2-small/6-res_mlp_128k-oai
+    neuronpedia: gpt2-small/6-mlp_128k-oai
   - id: blocks.7.hook_mlp_out
     path: v5_128k_layer_7
-    neuronpedia: gpt2-small/7-res_mlp_128k-oai
+    neuronpedia: gpt2-small/7-mlp_128k-oai
   - id: blocks.8.hook_mlp_out
     path: v5_128k_layer_8
-    neuronpedia: gpt2-small/8-res_mlp_128k-oai
+    neuronpedia: gpt2-small/8-mlp_128k-oai
   - id: blocks.9.hook_mlp_out
     path: v5_128k_layer_9
-    neuronpedia: gpt2-small/9-res_mlp_128k-oai
+    neuronpedia: gpt2-small/9-mlp_128k-oai
   - id: blocks.10.hook_mlp_out
     path: v5_128k_layer_10
-    neuronpedia: gpt2-small/10-res_mlp_128k-oai
+    neuronpedia: gpt2-small/10-mlp_128k-oai
   - id: blocks.11.hook_mlp_out
     path: v5_128k_layer_11
-    neuronpedia: gpt2-small/11-res_mlp_128k-oai
+    neuronpedia: gpt2-small/11-mlp_128k-oai
 gpt2-small-attn-out-v5-32k:
   repo_id: jbloom/GPT2-Small-OAI-v5-32k-attn-out-SAEs
   model: gpt2-small
@@ -648,40 +648,40 @@ gpt2-small-attn-out-v5-32k:
   saes:
   - id: blocks.0.hook_attn_out
     path: v5_32k_layer_0
-    neuronpedia: gpt2-small/0-res_att_32k-oai
+    neuronpedia: gpt2-small/0-mlp_32k-oai
   - id: blocks.1.hook_attn_out
     path: v5_32k_layer_1
-    neuronpedia: gpt2-small/1-res_att_32k-oai
+    neuronpedia: gpt2-small/1-mlp_32k-oai
   - id: blocks.2.hook_attn_out
     path: v5_32k_layer_2
-    neuronpedia: gpt2-small/2-res_att_32k-oai
+    neuronpedia: gpt2-small/2-mlp_32k-oai
   - id: blocks.3.hook_attn_out
     path: v5_32k_layer_3
-    neuronpedia: gpt2-small/3-res_att_32k-oai
+    neuronpedia: gpt2-small/3-mlp_32k-oai
   - id: blocks.4.hook_attn_out
     path: v5_32k_layer_4
-    neuronpedia: gpt2-small/4-res_att_32k-oai
+    neuronpedia: gpt2-small/4-mlp_32k-oai
   - id: blocks.5.hook_attn_out
     path: v5_32k_layer_5
-    neuronpedia: gpt2-small/5-res_att_32k-oai
+    neuronpedia: gpt2-small/5-mlp_32k-oai
   - id: blocks.6.hook_attn_out
     path: v5_32k_layer_6
-    neuronpedia: gpt2-small/6-res_att_32k-oai
+    neuronpedia: gpt2-small/6-mlp_32k-oai
   - id: blocks.7.hook_attn_out
     path: v5_32k_layer_7
-    neuronpedia: gpt2-small/7-res_att_32k-oai
+    neuronpedia: gpt2-small/7-mlp_32k-oai
   - id: blocks.8.hook_attn_out
     path: v5_32k_layer_8
-    neuronpedia: gpt2-small/8-res_att_32k-oai
+    neuronpedia: gpt2-small/8-mlp_32k-oai
   - id: blocks.9.hook_attn_out
     path: v5_32k_layer_9
-    neuronpedia: gpt2-small/9-res_att_32k-oai
+    neuronpedia: gpt2-small/9-mlp_32k-oai
   - id: blocks.10.hook_attn_out
     path: v5_32k_layer_10
-    neuronpedia: gpt2-small/10-res_att_32k-oai
+    neuronpedia: gpt2-small/10-mlp_32k-oai
   - id: blocks.11.hook_attn_out
     path: v5_32k_layer_11
-    neuronpedia: gpt2-small/11-res_att_32k-oai
+    neuronpedia: gpt2-small/11-mlp_32k-oai
 gpt2-small-attn-out-v5-128k:
   repo_id: jbloom/GPT2-Small-OAI-v5-128k-attn-out-SAEs
   model: gpt2-small
@@ -691,40 +691,40 @@ gpt2-small-attn-out-v5-128k:
   saes:
   - id: blocks.0.hook_attn_out
     path: v5_128k_layer_0
-    neuronpedia: gpt2-small/0-res_att_128k-oai
+    neuronpedia: gpt2-small/0-mlp_128k-oai
   - id: blocks.1.hook_attn_out
     path: v5_128k_layer_1
-    neuronpedia: gpt2-small/1-res_att_128k-oai
+    neuronpedia: gpt2-small/1-mlp_128k-oai
   - id: blocks.2.hook_attn_out
     path: v5_128k_layer_2
-    neuronpedia: gpt2-small/2-res_att_128k-oai
+    neuronpedia: gpt2-small/2-mlp_128k-oai
   - id: blocks.3.hook_attn_out
     path: v5_128k_layer_3
-    neuronpedia: gpt2-small/3-res_att_128k-oai
+    neuronpedia: gpt2-small/3-mlp_128k-oai
   - id: blocks.4.hook_attn_out
     path: v5_128k_layer_4
-    neuronpedia: gpt2-small/4-res_att_128k-oai
+    neuronpedia: gpt2-small/4-mlp_128k-oai
   - id: blocks.5.hook_attn_out
     path: v5_128k_layer_5
-    neuronpedia: gpt2-small/5-res_att_128k-oai
+    neuronpedia: gpt2-small/5-mlp_128k-oai
   - id: blocks.6.hook_attn_out
     path: v5_128k_layer_6
-    neuronpedia: gpt2-small/6-res_att_128k-oai
+    neuronpedia: gpt2-small/6-mlp_128k-oai
   - id: blocks.7.hook_attn_out
     path: v5_128k_layer_7
-    neuronpedia: gpt2-small/7-res_att_128k-oai
+    neuronpedia: gpt2-small/7-mlp_128k-oai
   - id: blocks.8.hook_attn_out
     path: v5_128k_layer_8
-    neuronpedia: gpt2-small/8-res_att_128k-oai
+    neuronpedia: gpt2-small/8-mlp_128k-oai
   - id: blocks.9.hook_attn_out
     path: v5_128k_layer_9
-    neuronpedia: gpt2-small/9-res_att_128k-oai
+    neuronpedia: gpt2-small/9-mlp_128k-oai
   - id: blocks.10.hook_attn_out
     path: v5_128k_layer_10
-    neuronpedia: gpt2-small/10-res_att_128k-oai
+    neuronpedia: gpt2-small/10-mlp_128k-oai
   - id: blocks.11.hook_attn_out
     path: v5_128k_layer_11
-    neuronpedia: gpt2-small/11-res_att_128k-oai
+    neuronpedia: gpt2-small/11-mlp_128k-oai
 gemma-scope-2b-pt-res:
   repo_id: google/gemma-scope-2b-pt-res
   model: gemma-2-2b
