@@ -2,6 +2,25 @@
 
 
 
+## v3.20.3 (2024-09-13)
+
+### Fix
+
+* fix: Improve error message for Gemma Scope non-canonical ID not found (#288)
+
+* Update sae.py as a nicer Gemma Scope error encouraging canonical
+
+* Update sae.py
+
+* Update sae.py
+
+* format
+
+---------
+
+Co-authored-by: jbloomAus &lt;jbloomaus@gmail.com&gt; ([`9d34598`](https://github.com/jbloomAus/SAELens/commit/9d34598385cc8ae023dad7f21f3fdc490a0f981d))
+
+
 ## v3.20.2 (2024-09-13)
 
 ### Fix
