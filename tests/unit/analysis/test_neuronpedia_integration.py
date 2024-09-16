@@ -80,7 +80,7 @@ async def test_neuronpedia_autointerp():
 def test_get_neuronpedia_quick_list(monkeypatch: pytest.MonkeyPatch):
     # Mock the webbrowser.open function
     mock_open = mock.Mock()
-    monkeypatch.setattr(webbrowser, "open", mock_open)
+    monkeypatch.setattr(webbrowser, 'open', mock_open)
 
     # Test with SaeInfo
     sae_info = SaeInfo(model_name="gpt2-small", neuronpedia_id="gpt2-small/0-res-jb")
@@ -96,26 +96,10 @@ def test_get_neuronpedia_quick_list(monkeypatch: pytest.MonkeyPatch):
 
     # Test with FeatureInfo
     features_info = [
-        FeatureInfo(
-            feature_index=0,
-            description="Feature 0",
-            model_name="gpt2-medium",
-            neuronpedia_id="gpt2-medium/1-res-jb",
-        ),
-        FeatureInfo(
-            feature_index=1,
-            description="Feature 1",
-            model_name="gpt2-large",
-            neuronpedia_id="gpt2-large/2-att-kk",
-        ),
+        FeatureInfo(feature_index=0, description="Feature 0", model_name="gpt2-medium", neuronpedia_id="gpt2-medium/1-res-jb"),
+        FeatureInfo(feature_index=1, description="Feature 1", model_name="gpt2-large", neuronpedia_id="gpt2-large/2-att-kk"),
     ]
-    url = get_neuronpedia_quick_list(
-        sae_info,
-        features_info,
-        name="Test List 2",
-        description="Test Description",
-        default_test_text="Hello, world!",
-    )
+    url = get_neuronpedia_quick_list(sae_info, features_info, name="Test List 2", description="Test Description", default_test_text="Hello, world!")
 
     expected_url = "https://neuronpedia.org/quick-list/?name=Test%20List%202&description=Test%20Description&default_test_text=Hello%2C%20world%21&features=%5B%7B%22modelId%22%3A%20%22gpt2-medium%22%2C%20%22layer%22%3A%20%221-res-jb%22%2C%20%22index%22%3A%20%220%22%2C%20%22description%22%3A%20%22Feature%200%22%7D%2C%20%7B%22modelId%22%3A%20%22gpt2-large%22%2C%20%22layer%22%3A%20%222-att-kk%22%2C%20%22index%22%3A%20%221%22%2C%20%22description%22%3A%20%22Feature%201%22%7D%5D"
     assert url == expected_url
