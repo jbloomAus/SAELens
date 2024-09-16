@@ -73,8 +73,8 @@ def open_neuronpedia_feature_dashboard(sae: SAE, index: int):
 class FeatureInfo(NamedTuple):
     feature_index: int
     description: str
-    model_name: Optional[str]
-    neuronpedia_id: Optional[str]
+    model_name: Optional[str] = None
+    neuronpedia_id: Optional[str] = None
 
 
 class SaeInfo(NamedTuple):
@@ -118,11 +118,12 @@ def get_neuronpedia_quick_list(
         list_feature = [
             {
                 "modelId": feature.model_name or model_name,
-                "layer": feature.neuronpedia_id.split("/")[1] or neuronpedia_id.split("/")[1],
+                "layer": feature.neuronpedia_id.split("/")[1] if feature.neuronpedia_id is not None else neuronpedia_id.split("/")[1],
                 "index": str(feature.feature_index),
                 "description": feature.description,
             }
             for feature in features
+            if isinstance(feature, FeatureInfo)
         ]
     else:
         list_feature = [
