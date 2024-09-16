@@ -77,7 +77,9 @@ async def test_neuronpedia_autointerp():
     )
 
 
-def test_get_neuronpedia_quick_list_works_with_int_features(monkeypatch: pytest.MonkeyPatch):
+def test_get_neuronpedia_quick_list_works_with_int_features(
+    monkeypatch: pytest.MonkeyPatch,
+):
     # Mock the webbrowser.open function
     mock_open = mock.Mock()
     monkeypatch.setattr(webbrowser, "open", mock_open)
@@ -91,7 +93,9 @@ def test_get_neuronpedia_quick_list_works_with_int_features(monkeypatch: pytest.
     mock_open.assert_called_once_with(expected_url)
 
 
-def test_get_neuronpedia_quick_list_works_with_detailed_feature_info(monkeypatch: pytest.MonkeyPatch):
+def test_get_neuronpedia_quick_list_works_with_detailed_feature_info(
+    monkeypatch: pytest.MonkeyPatch,
+):
     # Mock the webbrowser.open function
     mock_open = mock.Mock()
     monkeypatch.setattr(webbrowser, "open", mock_open)
