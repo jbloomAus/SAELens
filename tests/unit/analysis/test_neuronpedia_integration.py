@@ -77,12 +77,11 @@ async def test_neuronpedia_autointerp():
     )
 
 
-def test_get_neuronpedia_quick_list(monkeypatch: pytest.MonkeyPatch):
+def test_get_neuronpedia_quick_list_works_with_int_features(monkeypatch: pytest.MonkeyPatch):
     # Mock the webbrowser.open function
     mock_open = mock.Mock()
     monkeypatch.setattr(webbrowser, "open", mock_open)
 
-    # Test with SaeInfo
     sae_info = SaeInfo(model_name="gpt2-small", neuronpedia_id="gpt2-small/0-res-jb")
     features = [0, 1, 2]
     url = get_neuronpedia_quick_list(sae_info, features, name="Test List")
@@ -91,10 +90,13 @@ def test_get_neuronpedia_quick_list(monkeypatch: pytest.MonkeyPatch):
     assert url == expected_url
     mock_open.assert_called_once_with(expected_url)
 
-    # Reset mock
-    mock_open.reset_mock()
 
-    # Test with FeatureInfo
+def test_get_neuronpedia_quick_list_works_with_detailed_feature_info(monkeypatch: pytest.MonkeyPatch):
+    # Mock the webbrowser.open function
+    mock_open = mock.Mock()
+    monkeypatch.setattr(webbrowser, "open", mock_open)
+
+    sae_info = SaeInfo(model_name="gpt2-small", neuronpedia_id="gpt2-small/0-res-jb")
     features_info = [
         FeatureInfo(
             feature_index=0,
