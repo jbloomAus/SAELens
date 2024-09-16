@@ -90,18 +90,21 @@ def get_neuronpedia_quick_list(
     default_test_text: Optional[str] = None,
 ) -> str:
     if isinstance(sae, SaeInfo):
+        if sae.neuronpedia_id is None:
+            raise ValueError(
+                "SAE does not have a Neuronpedia ID. Either dashboards for this SAE do not exist (yet) on Neuronpedia, or the SAE was not loaded via the from_pretrained method"
+            )
+
         neuronpedia_id = sae.neuronpedia_id
         model_name = sae.model_name
     elif isinstance(sae, SAE):
+        if sae.cfg.neuronpedia_id is None:
+            raise ValueError("Neuronpedia ID was not provided in SaeInfo.")
+
         neuronpedia_id = sae.cfg.neuronpedia_id
         model_name = sae.cfg.model_name
     else:
         raise TypeError("sae must be either SaeInfo or SAE")
-
-    if isinstance(sae, SAE) and neuronpedia_id is None:
-        raise ValueError(
-            "SAE does not have a Neuronpedia ID. Either dashboards for this SAE do not exist (yet) on Neuronpedia, or the SAE was not loaded via the from_pretrained method"
-        )
 
     if len(features) == 0:
         raise ValueError("No features provided")
