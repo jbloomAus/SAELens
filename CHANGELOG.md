@@ -2,6 +2,21 @@
 
 
 
+## v3.20.4 (2024-09-18)
+
+### Chore
+
+* chore: Update README.md (#292) ([`d44c7c2`](https://github.com/jbloomAus/SAELens/commit/d44c7c21396fbfcf4a4a2c024987c810221c9cf4))
+
+### Fix
+
+* fix: Fix imports from huggingface_hub.utils.errors package (#296)
+
+* Fix imports from huggingface_hub.utils.errors package
+
+* Load huggingface error classes from huggingface_hub.utils ([`9d8ba77`](https://github.com/jbloomAus/SAELens/commit/9d8ba7716650fa86f8abd9af8587aba03f033e63))
+
+
 ## v3.20.3 (2024-09-13)
 
 ### Fix
