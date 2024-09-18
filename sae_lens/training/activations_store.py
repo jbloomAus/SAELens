@@ -9,7 +9,7 @@ import numpy as np
 import torch
 from datasets import Dataset, DatasetDict, IterableDataset, load_dataset
 from huggingface_hub import hf_hub_download
-from huggingface_hub.utils._errors import HfHubHTTPError
+from huggingface_hub.utils import HfHubHTTPError
 from requests import HTTPError
 from safetensors import safe_open
 from safetensors.torch import save_file

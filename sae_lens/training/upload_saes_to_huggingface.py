@@ -5,7 +5,7 @@ from textwrap import dedent
 from typing import Iterable
 
 from huggingface_hub import HfApi, create_repo, get_hf_file_metadata, hf_hub_url
-from huggingface_hub.utils._errors import EntryNotFoundError, RepositoryNotFoundError
+from huggingface_hub.utils import EntryNotFoundError, RepositoryNotFoundError
 from tqdm.autonotebook import tqdm
 
 from sae_lens.sae import SAE, SAE_CFG_PATH, SAE_WEIGHTS_PATH, SPARSITY_PATH
