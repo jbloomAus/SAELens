@@ -5,7 +5,7 @@ from typing import Any, Dict, Optional, Protocol, Tuple
 import numpy as np
 import torch
 from huggingface_hub import hf_hub_download
-from huggingface_hub.utils._errors import EntryNotFoundError
+from huggingface_hub.utils.errors import EntryNotFoundError
 from safetensors import safe_open
 
 
