@@ -6,7 +6,6 @@ from typing import Any, Literal, Optional, cast
 import torch
 import wandb
 from datasets import Dataset, DatasetDict, IterableDataset, IterableDatasetDict
-
 from sae_lens import __version__
 
 DTYPE_MAP = {
@@ -60,7 +59,6 @@ class LanguageModelSAERunnerConfig:
         store_batch_size_prompts (int): The batch size for storing activations. This controls how many prompts are in the batch of the language model when generating actiations.
         train_batch_size_tokens (int): The batch size for training. This controls the batch size of the SAE Training loop.
         normalize_activations (str): Activation Normalization Strategy. Either none, expected_average_only_in (estimate the average activation norm and divide activations by it -> this can be folded post training and set to None), or constant_norm_rescale (at runtime set activation norm to sqrt(d_in) and then scale up the SAE output).
-        seqpos_slice (tuple): Determines slicing of (batch, seq, d_in) activations when constructing batches, during training. Example: for Othello we sometimes use (5, -5).
         device (str): The device to use. Usually cuda.
         act_store_device (str): The device to use for the activation store. CPU is advised in order to save vram.
         seed (int): The seed to use.
@@ -149,10 +147,7 @@ class LanguageModelSAERunnerConfig:
     finetuning_tokens: int = 0
     store_batch_size_prompts: int = 32
     train_batch_size_tokens: int = 4096
-    normalize_activations: str = (
-        "none"  # none, expected_average_only_in (Anthropic April Update), constant_norm_rescale (Anthropic Feb Update)
-    )
-    seqpos_slice: tuple[int | None, ...] = (None,)
+    normalize_activations: str = "none"  # none, expected_average_only_in (Anthropic April Update), constant_norm_rescale (Anthropic Feb Update)
 
     # Misc
     device: str = "cpu"
@@ -233,7 +228,6 @@ class LanguageModelSAERunnerConfig:
     sae_lens_training_version: str = field(default_factory=lambda: __version__)
 
     def __post_init__(self):
-
         if self.resume:
             raise ValueError(
                 "Resuming is no longer supported. You can finetune a trained SAE using cfg.from_pretrained path."
@@ -398,7 +392,6 @@ class LanguageModelSAERunnerConfig:
         }
 
     def to_dict(self) -> dict[str, Any]:
-
         cfg_dict = {
             **self.__dict__,
             # some args may not be serializable by default
@@ -410,7 +403,6 @@ class LanguageModelSAERunnerConfig:
         return cfg_dict
 
     def to_json(self, path: str) -> None:
-
         if not os.path.exists(os.path.dirname(path)):
             os.makedirs(os.path.dirname(path))
 
@@ -455,7 +447,6 @@ class CacheActivationsRunnerConfig:
     store_batch_size_prompts: int = 32
     train_batch_size_tokens: int = 4096
     normalize_activations: str = "none"  # should always be none for activation caching
-    seqpos_slice: tuple[int | None, ...] = (None,)
 
     # Misc
     device: str = "cpu"
@@ -489,7 +480,6 @@ class CacheActivationsRunnerConfig:
 
 @dataclass
 class ToyModelSAERunnerConfig:
-
     architecture: Literal["standard", "gated"] = "standard"
 
     # ReLu Model Parameters
