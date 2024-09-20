@@ -388,6 +388,7 @@ class LanguageModelSAERunnerConfig:
             "normalize_activations": self.normalize_activations,
             "activation_fn_kwargs": self.activation_fn_kwargs,
             "model_from_pretrained_kwargs": self.model_from_pretrained_kwargs,
+            "seqpos_slice": self.seqpos_slice,
         }
 
     def get_training_sae_cfg_dict(self) -> dict[str, Any]:
