@@ -75,6 +75,7 @@ class TrainingSAEConfig(SAEConfig):
             context_size=cfg.context_size,
             dataset_path=cfg.dataset_path,
             prepend_bos=cfg.prepend_bos,
+            seqpos_slice=cfg.seqpos_slice,
             # Training cfg
             l1_coefficient=cfg.l1_coefficient,
             lp_norm=cfg.lp_norm,
