@@ -123,6 +123,7 @@ class ActivationsStore:
             dataset_trust_remote_code=sae.cfg.dataset_trust_remote_code,
             dtype=sae.cfg.dtype,
             device=torch.device(device),
+            seqpos_slice=sae.cfg.seqpos_slice,
         )
 
     def __init__(
@@ -147,7 +148,7 @@ class ActivationsStore:
         model_kwargs: dict[str, Any] | None = None,
         autocast_lm: bool = False,
         dataset_trust_remote_code: bool | None = None,
-        seqpos_slice: tuple[int | None, ...] = (None,)
+        seqpos_slice: tuple[int | None, ...] = (None,),
     ):
         self.model = model
         if model_kwargs is None:

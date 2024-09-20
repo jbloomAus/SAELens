@@ -462,3 +462,26 @@ def test_validate_pretokenized_dataset_tokenizer_does_nothing_if_the_dataset_pat
     model_tokenizer = ts_model.tokenizer
     assert model_tokenizer is not None
     validate_pretokenized_dataset_tokenizer(ds_path, model_tokenizer)
+
+
+def test_activations_store_respects_seqpos_slice(ts_model: HookedTransformer):
+    cfg = build_sae_cfg(
+        context_size=10,
+        seqpos_slice=(2, 8),  # Only consider positions 2 to 7 (inclusive)
+    )
+    dataset = Dataset.from_list(
+        [
+            {"text": "This is a test sentence for slicing."},
+        ]
+        * 100
+    )
+
+    activation_store = ActivationsStore.from_config(
+        ts_model, cfg, override_dataset=dataset
+    )
+
+    batch = activation_store.get_batch_tokens(1)
+    activations = activation_store.get_activations(batch)
+
+    assert batch.shape == (1, 10)  # Full context size
+    assert activations.shape == (1, 6, 1, cfg.d_in)  # Only 6 positions (2 to 7)

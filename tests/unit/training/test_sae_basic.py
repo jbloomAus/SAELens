@@ -228,6 +228,23 @@ def test_sae_save_and_load_from_pretrained_topk(tmp_path: Path) -> None:
     assert torch.allclose(sae_out_1, sae_out_2)
 
 
+def test_sae_seqpos(tmp_path: Path) -> None:
+    cfg = build_sae_cfg(
+        seqpos_slice=(1, 3),
+        device="cpu",
+    )
+    model_path = str(tmp_path)
+    sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
+
+    assert sae.cfg.seqpos_slice == (1, 3)
+
+    sae.save_model(model_path)
+
+    sae_loaded = SAE.load_from_pretrained(model_path, device="cpu")
+
+    assert sae_loaded.cfg.seqpos_slice == (1, 3)
+
+
 # TODO: Handle scaling factor in saeBase
 # def test_sae_save_and_load_from_pretrained_lacks_scaling_factor(
 #     tmp_path: Path,
