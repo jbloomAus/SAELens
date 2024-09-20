@@ -440,7 +440,9 @@ class ActivationsStore:
                 **self.model_kwargs,
             )[1]
 
-        layerwise_activations = layerwise_activations_cache[self.hook_name][:, slice(*self.seqpos_slice)]
+        layerwise_activations = layerwise_activations_cache[self.hook_name][
+            :, slice(*self.seqpos_slice)
+        ]
         n_batches, n_context = layerwise_activations.shape[:2]
 
         stacked_activations = torch.zeros((n_batches, n_context, 1, self.d_in))
@@ -449,15 +451,17 @@ class ActivationsStore:
             stacked_activations[:, :, 0] = layerwise_activations[
                 :, :, self.hook_head_index
             ]
-        elif (
-            layerwise_activations.ndim > 3
-        ):  # if we have a head dimension
+        elif layerwise_activations.ndim > 3:  # if we have a head dimension
             try:
-                stacked_activations[:, :, 0] = layerwise_activations.view(n_batches, n_context, -1)
+                stacked_activations[:, :, 0] = layerwise_activations.view(
+                    n_batches, n_context, -1
+                )
             except RuntimeError as e:
                 print(f"Error during view operation: {e}")
                 print("Attempting to use reshape instead...")
-                stacked_activations[:, :, 0] = layerwise_activations.reshape(n_batches, n_context, -1)
+                stacked_activations[:, :, 0] = layerwise_activations.reshape(
+                    n_batches, n_context, -1
+                )
         else:
             stacked_activations[:, :, 0] = layerwise_activations
 
