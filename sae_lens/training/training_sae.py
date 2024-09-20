@@ -100,6 +100,18 @@ class TrainingSAEConfig(SAEConfig):
         valid_config_dict = {
             key: val for key, val in config_dict.items() if key in valid_field_names
         }
+
+        # ensure seqpos slice is tuple
+        # ensure that seqpos slices is a tuple
+        # Ensure seqpos_slice is a tuple
+        if "seqpos_slice" in valid_config_dict:
+            if isinstance(valid_config_dict["seqpos_slice"], list):
+                valid_config_dict["seqpos_slice"] = tuple(
+                    valid_config_dict["seqpos_slice"]
+                )
+            elif not isinstance(valid_config_dict["seqpos_slice"], tuple):
+                valid_config_dict["seqpos_slice"] = (valid_config_dict["seqpos_slice"],)
+
         return TrainingSAEConfig(**valid_config_dict)
 
     def to_dict(self) -> dict[str, Any]:
