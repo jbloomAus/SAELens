@@ -2,6 +2,15 @@
 
 
 
+## v3.20.5 (2024-09-20)
+
+### Fix
+
+* fix: removing missing layer 11, 16k, l0=79 sae (#293)
+
+Thanks! ([`e20e21f`](https://github.com/jbloomAus/SAELens/commit/e20e21f7942f889daf78d88a59dc23dda7d3f0e8))
+
+
 ## v3.20.4 (2024-09-18)
 
 ### Chore
