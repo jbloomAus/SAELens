@@ -422,6 +422,15 @@ class LanguageModelSAERunnerConfig:
     def from_json(cls, path: str) -> "LanguageModelSAERunnerConfig":
         with open(path + "cfg.json", "r") as f:
             cfg = json.load(f)
+
+        # ensure that seqpos slices is a tuple
+        # Ensure seqpos_slice is a tuple
+        if "seqpos_slice" in cfg:
+            if isinstance(cfg["seqpos_slice"], list):
+                cfg["seqpos_slice"] = tuple(cfg["seqpos_slice"])
+            elif not isinstance(cfg["seqpos_slice"], tuple):
+                cfg["seqpos_slice"] = (cfg["seqpos_slice"],)
+
         return cls(**cfg)
 
 
