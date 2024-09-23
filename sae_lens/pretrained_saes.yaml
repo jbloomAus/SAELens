@@ -730,6 +730,14 @@ gemma-scope-2b-pt-res:
   model: gemma-2-2b
   conversion_func: gemma_2
   saes:
+  - id: embedding/width_4k/average_l0_6
+    path: embedding/width_4k/average_l0_6
+  - id: embedding/width_4k/average_l0_44
+    path: embedding/width_4k/average_l0_44
+  - id: embedding/width_4k/average_l0_21
+    path: embedding/width_4k/average_l0_21
+  - id: embedding/width_4k/average_l0_111
+    path: embedding/width_4k/average_l0_111
   - id: layer_0/width_16k/average_l0_105
     path: layer_0/width_16k/average_l0_105
     l0: 105
@@ -3728,6 +3736,14 @@ gemma-scope-9b-pt-res:
   model: gemma-2-9b
   conversion_func: gemma_2
   saes:
+  - id: embedding/width_4k/average_l0_14
+    path: embedding/width_4k/average_l0_14
+  - id: embedding/width_4k/average_l0_22
+    path: embedding/width_4k/average_l0_22
+  - id: embedding/width_4k/average_l0_7
+    path: embedding/width_4k/average_l0_7
+  - id: embedding/width_4k/average_l0_80
+    path: embedding/width_4k/average_l0_80
   - id: layer_0/width_131k/average_l0_11
     path: layer_0/width_131k/average_l0_11
     l0: 11
@@ -5687,8 +5703,6 @@ gemma-scope-9b-pt-res-canonical:
     path: layer_20/width_65k/average_l0_55
     neuronpedia: gemma-2-9b/20-gemmascope-res-65k
     l0: 55
-
-
 gemma-scope-9b-pt-att:
   repo_id: google/gemma-scope-9b-pt-att
   model: gemma-2-9b

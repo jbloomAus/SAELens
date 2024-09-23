@@ -630,7 +630,9 @@ def process_results(eval_results: list[defaultdict[Any, Any]], output_dir: str):
 
     # Save individual JSON files
     for result in eval_results:
-        json_filename = f"{result['unique_id']}_{result['eval_cfg']['context_size']}_{result['eval_cfg']['dataset'].replace('/', '_')}.json"
+        json_filename = f"{result['unique_id']}_{result['eval_cfg']['context_size']}_{result['eval_cfg']['dataset']}.json".replace(
+            "/", "_"
+        )
         json_path = output_path / json_filename
         with open(json_path, "w") as f:
             json.dump(result, f, indent=2)

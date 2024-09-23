@@ -271,6 +271,7 @@ def get_gemma_2_config(
 ) -> Dict[str, Any]:
     # Detect width from folder_name
     width_map = {
+        "width_4k": 4096,
         "width_16k": 16384,
         "width_32k": 32768,
         "width_65k": 65536,
@@ -291,7 +292,10 @@ def get_gemma_2_config(
     match = re.search(r"layer_(\d+)", folder_name)
     layer = int(match.group(1)) if match else layer_override
     if layer is None:
-        raise ValueError("Layer not found in folder_name and no override provided.")
+        if "embedding" in folder_name:
+            layer = 0
+        else:
+            raise ValueError("Layer not found in folder_name and no override provided.")
 
     # Model specific parameters
     model_params = {
@@ -311,8 +315,10 @@ def get_gemma_2_config(
     model_name, d_in = model_info["name"], model_info["d_in"]
 
     # Hook specific parameters
-    if "res" in repo_id:
+    if "res" in repo_id and "embedding" not in folder_name:
         hook_name = f"blocks.{layer}.hook_resid_post"
+    elif "res" in repo_id and "embedding" in folder_name:
+        hook_name = "hook_embed"
     elif "mlp" in repo_id:
         hook_name = f"blocks.{layer}.hook_mlp_out"
     elif "att" in repo_id:
@@ -397,6 +403,12 @@ def gemma_2_sae_loader(
 
     # No sparsity tensor for Gemma 2 SAEs
     log_sparsity = None
+
+    # if it is an embedding SAE, then we need to adjust for the scale of d_model because of how they trained it
+    if "embedding" in folder_name:
+        print("Adjusting for d_model in embedding SAE")
+        state_dict["W_enc"].data = state_dict["W_enc"].data / np.sqrt(cfg_dict["d_in"])
+        state_dict["W_dec"].data = state_dict["W_dec"].data * np.sqrt(cfg_dict["d_in"])
 
     return cfg_dict, state_dict, log_sparsity
 
