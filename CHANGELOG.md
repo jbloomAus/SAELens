@@ -2,6 +2,13 @@
 
 
 
+## v3.21.1 (2024-09-23)
+
+### Fix
+
+* fix: log-spaced-checkpoints-instead (#300) ([`cdc64c1`](https://github.com/jbloomAus/SAELens/commit/cdc64c137fd6da5c201c33740d64a2e4514ab6b2))
+
+
 ## v3.21.0 (2024-09-23)
 
 ### Feature
