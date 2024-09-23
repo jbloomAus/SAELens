@@ -315,7 +315,7 @@ def get_gemma_2_config(
     model_name, d_in = model_info["name"], model_info["d_in"]
 
     # Hook specific parameters
-    if "res" in repo_id and not "embedding" in folder_name:
+    if "res" in repo_id and "embedding" not in folder_name:
         hook_name = f"blocks.{layer}.hook_resid_post"
     elif "res" in repo_id and "embedding" in folder_name:
         hook_name = "hook_embed"
