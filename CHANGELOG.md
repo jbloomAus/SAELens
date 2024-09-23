@@ -2,6 +2,35 @@
 
 
 
+## v3.21.0 (2024-09-23)
+
+### Feature
+
+* feat: Add experimental Gemma Scope embedding SAEs (#299)
+
+* add experimental embedding gemmascope SAEs
+
+* format and lint ([`bb9ebbc`](https://github.com/jbloomAus/SAELens/commit/bb9ebbc72ed70b2485a581f86fee50645549f048))
+
+### Unknown
+
+* Fix gated forward functions (#295)
+
+* support seqpos slicing
+
+* fix forward functions for gated
+
+* remove seqpos changes
+
+* fix formatting (remove my changes)
+
+* format
+
+---------
+
+Co-authored-by: jbloomAus &lt;jbloomaus@gmail.com&gt; ([`a708220`](https://github.com/jbloomAus/SAELens/commit/a70822074c94c3bafe8502b54bc6e553483d08e3))
+
+
 ## v3.20.5 (2024-09-20)
 
 ### Fix
