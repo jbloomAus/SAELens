@@ -9,7 +9,7 @@ TINYSTORIES_MODEL = "tiny-stories-1M"
 TINYSTORIES_DATASET = "roneneldan/TinyStories"
 
 
-class ConfigKwargsType(TypedDict, total=False):
+class LanguageModelSAERunnerConfigDict(TypedDict, total=False):
     model_name: str
     hook_name: str
     hook_layer: int
@@ -45,7 +45,7 @@ def build_sae_cfg(**kwargs: Any) -> LanguageModelSAERunnerConfig:
     """
     Helper to create a mock instance of LanguageModelSAERunnerConfig.
     """
-    config_kwargs: ConfigKwargsType = {
+    mock_config_dict: LanguageModelSAERunnerConfigDict = {
         "model_name": TINYSTORIES_MODEL,
         "hook_name": "blocks.0.hook_mlp_out",
         "hook_layer": 0,
@@ -78,9 +78,9 @@ def build_sae_cfg(**kwargs: Any) -> LanguageModelSAERunnerConfig:
     }
 
     for key, value in kwargs.items():
-        config_kwargs[key] = value
+        mock_config_dict[key] = value
 
-    mock_config = LanguageModelSAERunnerConfig(**config_kwargs)
+    mock_config = LanguageModelSAERunnerConfig(**mock_config_dict)
 
     # reset checkpoint path (as we add an id to each each time)
     mock_config.checkpoint_path = (
