@@ -1,11 +1,13 @@
 import argparse
 import json
 import re
+import subprocess
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import partial
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Mapping, Optional
 
 import einops
 import pandas as pd
@@ -17,6 +19,34 @@ from transformer_lens.hook_points import HookedRootModule
 from sae_lens.sae import SAE
 from sae_lens.toolkit.pretrained_saes_directory import get_pretrained_saes_directory
 from sae_lens.training.activations_store import ActivationsStore
+
+
+def get_library_version() -> str:
+    try:
+        return version("sae_lens")
+    except PackageNotFoundError:
+        return "unknown"
+
+
+def get_git_hash() -> str:
+    """
+    Retrieves the current Git commit hash.
+    Returns 'unknown' if the hash cannot be determined.
+    """
+    try:
+        # Ensure the command is run in the directory where .git exists
+        git_dir = Path(__file__).resolve().parent.parent  # Adjust if necessary
+        result = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=git_dir,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=True,
+        )
+        return result.stdout.strip()
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+        return "unknown"
 
 
 # Everything by default is false so the user can just set the ones they want to true
@@ -35,6 +65,8 @@ class EvalConfig:
     compute_sparsity_metrics: bool = False
     compute_variance_metrics: bool = False
 
+    library_version: str = field(default_factory=get_library_version)
+    git_hash: str = field(default_factory=get_git_hash)
 
 def get_eval_everything_config(
     batch_size_prompts: int | None = None,
@@ -132,7 +164,7 @@ def run_evals(
         * eval_config.n_eval_reconstruction_batches
         * actual_batch_size
     )
-    metrics["metrics/total_tokens_evaluated"] = total_tokens_evaluated
+    metrics["total_tokens_evaluated"] = total_tokens_evaluated
 
     return metrics
 
@@ -571,6 +603,10 @@ def multiple_evals(
                 eval_metrics["sae_id"] = f"{sae_id}"
                 eval_metrics["eval_cfg"]["context_size"] = ctx_len
                 eval_metrics["eval_cfg"]["dataset"] = dataset
+                eval_metrics["eval_cfg"][
+                    "library_version"
+                ] = eval_config.library_version
+                eval_metrics["eval_cfg"]["git_hash"] = eval_config.git_hash
 
                 run_eval_metrics = run_evals(
                     sae=sae,
