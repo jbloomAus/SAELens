@@ -198,7 +198,6 @@ def test_sae_save_and_load_from_pretrained_gated(tmp_path: Path) -> None:
 
 def test_sae_save_and_load_from_pretrained_topk(tmp_path: Path) -> None:
     cfg = build_sae_cfg(
-        # activation_fn_str="topk", activation_fn_kwargs={"k": 30}, device="cpu"
         activation_fn_kwargs={"k": 30},
         device="cpu",
     )
