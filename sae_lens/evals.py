@@ -185,21 +185,17 @@ def get_downstream_reconstruction_metrics(
 
     metrics: dict[str, float] = {}
     for metric_name, metric_values in metrics_dict.items():
-        metrics[f"metrics/{metric_name}"] = torch.cat(metric_values).mean().item()
+        metrics[f"{metric_name}"] = torch.cat(metric_values).mean().item()
 
     if compute_kl:
-        metrics["metrics/kl_div_score"] = (
-            metrics["metrics/kl_div_with_ablation"] - metrics["metrics/kl_div_with_sae"]
-        ) / metrics["metrics/kl_div_with_ablation"]
+        metrics["kl_div_score"] = (
+            metrics["kl_div_with_ablation"] - metrics["kl_div_with_sae"]
+        ) / metrics["kl_div_with_ablation"]
 
     if compute_ce_loss:
-        metrics["metrics/ce_loss_score"] = (
-            metrics["metrics/ce_loss_with_ablation"]
-            - metrics["metrics/ce_loss_with_sae"]
-        ) / (
-            metrics["metrics/ce_loss_with_ablation"]
-            - metrics["metrics/ce_loss_without_sae"]
-        )
+        metrics["ce_loss_score"] = (
+            metrics["ce_loss_with_ablation"] - metrics["ce_loss_with_sae"]
+        ) / (metrics["ce_loss_with_ablation"] - metrics["ce_loss_without_sae"])
 
     return metrics
 
@@ -322,7 +318,7 @@ def get_sparsity_and_variance_metrics(
     for metric_name, metric_values in metric_dict.items():
         # since we're masking, we need to flatten but may not have n_ctx for all metrics
         # in all batches.
-        metrics[f"metrics/{metric_name}"] = torch.cat(metric_values).mean().item()
+        metrics[f"{metric_name}"] = torch.cat(metric_values).mean().item()
 
     return metrics
 

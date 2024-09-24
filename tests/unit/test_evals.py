@@ -107,20 +107,20 @@ def training_sae(cfg: LanguageModelSAERunnerConfig):
 
 
 all_expected_keys = [
-    "metrics/l2_norm_in",
-    "metrics/l2_ratio",
-    "metrics/l2_norm_out",
-    "metrics/explained_variance",
-    "metrics/l0",
-    "metrics/l1",
-    "metrics/mse",
-    "metrics/ce_loss_score",
-    "metrics/ce_loss_without_sae",
-    "metrics/ce_loss_with_sae",
-    "metrics/ce_loss_with_ablation",
-    "metrics/kl_div_score",
-    "metrics/kl_div_with_sae",
-    "metrics/kl_div_with_ablation",
+    "l2_norm_in",
+    "l2_ratio",
+    "l2_norm_out",
+    "explained_variance",
+    "l0",
+    "l1",
+    "mse",
+    "ce_loss_score",
+    "ce_loss_without_sae",
+    "ce_loss_with_sae",
+    "ce_loss_with_ablation",
+    "kl_div_score",
+    "kl_div_with_sae",
+    "kl_div_with_ablation",
 ]
 
 
@@ -139,7 +139,7 @@ def test_run_evals_base_sae(
 
     # results will be garbage without a real model.
     for key in all_expected_keys:
-        assert key in eval_metrics
+        assert key in eval_metrics, f"{key} not in {eval_metrics}"
 
 
 def test_run_evals_training_sae(
@@ -196,13 +196,13 @@ def test_training_eval_config(
     model: HookedTransformer,
 ):
     expected_keys = [
-        "metrics/l2_norm_in",
-        "metrics/l2_ratio",
-        "metrics/l2_norm_out",
-        "metrics/ce_loss_score",
-        "metrics/ce_loss_without_sae",
-        "metrics/ce_loss_with_sae",
-        "metrics/ce_loss_with_ablation",
+        "l2_norm_in",
+        "l2_ratio",
+        "l2_norm_out",
+        "ce_loss_score",
+        "ce_loss_without_sae",
+        "ce_loss_with_sae",
+        "ce_loss_with_ablation",
     ]
     eval_config = TRAINER_EVAL_CONFIG
     eval_metrics = run_evals(
@@ -224,13 +224,13 @@ def test_training_eval_config_ignore_control_tokens(
     model: HookedTransformer,
 ):
     expected_keys = [
-        "metrics/l2_norm_in",
-        "metrics/l2_ratio",
-        "metrics/l2_norm_out",
-        "metrics/ce_loss_score",
-        "metrics/ce_loss_without_sae",
-        "metrics/ce_loss_with_sae",
-        "metrics/ce_loss_with_ablation",
+        "l2_norm_in",
+        "l2_ratio",
+        "l2_norm_out",
+        "ce_loss_score",
+        "ce_loss_without_sae",
+        "ce_loss_with_sae",
+        "ce_loss_with_ablation",
     ]
     eval_config = TRAINER_EVAL_CONFIG
     eval_metrics = run_evals(
