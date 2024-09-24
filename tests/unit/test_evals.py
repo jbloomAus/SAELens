@@ -33,7 +33,6 @@ TRAINER_EVAL_CONFIG = EvalConfig(
         {
             "model_name": "tiny-stories-1M",
             "dataset_path": "roneneldan/TinyStories",
-            "tokenized": False,
             "hook_name": "blocks.1.hook_resid_pre",
             "hook_layer": 1,
             "d_in": 64,
@@ -41,7 +40,6 @@ TRAINER_EVAL_CONFIG = EvalConfig(
         {
             "model_name": "tiny-stories-1M",
             "dataset_path": "roneneldan/TinyStories",
-            "tokenized": False,
             "hook_name": "blocks.1.hook_resid_pre",
             "hook_layer": 1,
             "d_in": 64,
@@ -51,7 +49,6 @@ TRAINER_EVAL_CONFIG = EvalConfig(
         {
             "model_name": "tiny-stories-1M",
             "dataset_path": "apollo-research/roneneldan-TinyStories-tokenizer-gpt2",
-            "tokenized": False,
             "hook_name": "blocks.1.hook_resid_pre",
             "hook_layer": 1,
             "d_in": 64,
@@ -59,7 +56,6 @@ TRAINER_EVAL_CONFIG = EvalConfig(
         {
             "model_name": "tiny-stories-1M",
             "dataset_path": "roneneldan/TinyStories",
-            "tokenized": False,
             "hook_name": "blocks.1.attn.hook_z",
             "hook_layer": 1,
             "d_in": 16 * 4,
@@ -67,7 +63,6 @@ TRAINER_EVAL_CONFIG = EvalConfig(
         {
             "model_name": "tiny-stories-1M",
             "dataset_path": "roneneldan/TinyStories",
-            "tokenized": False,
             "hook_name": "blocks.1.attn.hook_q",
             "hook_layer": 1,
             "d_in": 16 * 4,

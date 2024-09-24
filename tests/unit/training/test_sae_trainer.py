@@ -204,7 +204,6 @@ def test_train_sae_group_on_language_model__runs(
     checkpoint_dir = tmp_path / "checkpoint"
     cfg = build_sae_cfg(
         checkpoint_path=str(checkpoint_dir),
-        train_batch_size=32,
         training_tokens=100,
         context_size=8,
     )

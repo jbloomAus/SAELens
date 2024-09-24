@@ -79,3 +79,15 @@ def test_sae_training_runner_config_raises_error_if_resume_true():
     with pytest.raises(ValueError):
         _ = LanguageModelSAERunnerConfig(resume=True)
     assert True
+
+
+def test_sae_training_runner_config_raises_error_if_d_sae_and_expansion_factor_not_none():
+    with pytest.raises(ValueError):
+        _ = LanguageModelSAERunnerConfig(d_sae=128, expansion_factor=4)
+    assert True
+
+
+def test_sae_training_runner_config_expansion_factor():
+    cfg = LanguageModelSAERunnerConfig()
+
+    assert cfg.expansion_factor == 4

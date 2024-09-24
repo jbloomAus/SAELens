@@ -65,7 +65,7 @@ def test_SparseAutoencoder_initialization_gated():
 
 
 def test_SparseAutoencoder_initialization_orthogonal_enc_dec():
-    cfg = build_sae_cfg(decoder_orthogonal_init=True)
+    cfg = build_sae_cfg(decoder_orthogonal_init=True, expansion_factor=2)
 
     sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
     projections = sae.W_dec.T @ sae.W_dec

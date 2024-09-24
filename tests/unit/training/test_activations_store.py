@@ -28,7 +28,6 @@ def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
         {
             "model_name": "tiny-stories-1M",
             "dataset_path": "roneneldan/TinyStories",
-            "tokenized": False,
             "hook_name": "blocks.1.hook_resid_pre",
             "hook_layer": 1,
             "d_in": 64,
@@ -37,7 +36,6 @@ def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
         {
             "model_name": "tiny-stories-1M",
             "dataset_path": "roneneldan/TinyStories",
-            "tokenized": False,
             "hook_name": "blocks.1.attn.hook_z",
             "hook_layer": 1,
             "d_in": 64,
@@ -45,7 +43,6 @@ def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
         {
             "model_name": "gelu-2l",
             "dataset_path": "NeelNanda/c4-tokenized-2b",
-            "tokenized": True,
             "hook_name": "blocks.1.hook_resid_pre",
             "hook_layer": 1,
             "d_in": 512,
@@ -54,7 +51,6 @@ def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
         {
             "model_name": "gpt2",
             "dataset_path": "apollo-research/Skylion007-openwebtext-tokenizer-gpt2",
-            "tokenized": True,
             "hook_name": "blocks.1.hook_resid_pre",
             "hook_layer": 1,
             "d_in": 768,
@@ -63,7 +59,6 @@ def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
         {
             "model_name": "gpt2",
             "dataset_path": "Skylion007/openwebtext",
-            "tokenized": False,
             "hook_name": "blocks.1.hook_resid_pre",
             "hook_layer": 1,
             "d_in": 768,
