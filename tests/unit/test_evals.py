@@ -121,6 +121,8 @@ all_expected_keys = [
     "kl_div_score",
     "kl_div_with_sae",
     "kl_div_with_ablation",
+    "cossim",
+    "relative_reconstruction_bias",
 ]
 
 
@@ -203,6 +205,8 @@ def test_training_eval_config(
         "ce_loss_without_sae",
         "ce_loss_with_sae",
         "ce_loss_with_ablation",
+        # "cossim",
+        "relative_reconstruction_bias",
     ]
     eval_config = TRAINER_EVAL_CONFIG
     eval_metrics = run_evals(
@@ -231,6 +235,7 @@ def test_training_eval_config_ignore_control_tokens(
         "ce_loss_without_sae",
         "ce_loss_with_sae",
         "ce_loss_with_ablation",
+        "relative_reconstruction_bias",
     ]
     eval_config = TRAINER_EVAL_CONFIG
     eval_metrics = run_evals(

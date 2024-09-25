@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from functools import partial
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
-from typing import Any, Mapping, Optional
+from typing import Any, Mapping
 
 import einops
 import pandas as pd
@@ -67,6 +67,7 @@ class EvalConfig:
 
     library_version: str = field(default_factory=get_library_version)
     git_hash: str = field(default_factory=get_git_hash)
+
 
 def get_eval_everything_config(
     batch_size_prompts: int | None = None,
@@ -253,12 +254,14 @@ def get_sparsity_and_variance_metrics(
         metric_dict["l2_norm_in"] = []
         metric_dict["l2_norm_out"] = []
         metric_dict["l2_ratio"] = []
+        metric_dict["relative_reconstruction_bias"] = []
     if compute_sparsity_metrics:
         metric_dict["l0"] = []
         metric_dict["l1"] = []
     if compute_variance_metrics:
         metric_dict["explained_variance"] = []
         metric_dict["mse"] = []
+        metric_dict["cossim"] = []
 
     for _ in range(n_batches):
         batch_tokens = activation_store.get_batch_tokens(eval_batch_size_prompts)
@@ -324,9 +327,21 @@ def get_sparsity_and_variance_metrics(
             l2_norm_in_for_div = l2_norm_in.clone()
             l2_norm_in_for_div[torch.abs(l2_norm_in_for_div) < 0.0001] = 1
             l2_norm_ratio = l2_norm_out / l2_norm_in_for_div
+
+            # Equation 10 from https://arxiv.org/abs/2404.16014
+            # https://github.com/saprmarks/dictionary_learning/blob/main/evaluation.py
+            x_hat_norm_squared = torch.norm(flattened_sae_out, dim=-1) ** 2
+            x_dot_x_hat = (flattened_sae_input * flattened_sae_out).sum(dim=-1)
+            relative_reconstruction_bias = (
+                x_hat_norm_squared.mean() / x_dot_x_hat.mean()
+            ).unsqueeze(0)
+
             metric_dict["l2_norm_in"].append(l2_norm_in)
             metric_dict["l2_norm_out"].append(l2_norm_out)
             metric_dict["l2_ratio"].append(l2_norm_ratio)
+            metric_dict["relative_reconstruction_bias"].append(
+                relative_reconstruction_bias
+            )
 
         if compute_sparsity_metrics:
             l0 = (flattened_sae_feature_acts > 0).sum(dim=-1).float()
@@ -341,10 +356,21 @@ def get_sparsity_and_variance_metrics(
             total_sum_of_squares = (
                 (flattened_sae_input - flattened_sae_input.mean(dim=0)).pow(2).sum(-1)
             )
+
             mse = resid_sum_of_squares / flattened_mask.sum()
             explained_variance = 1 - resid_sum_of_squares / total_sum_of_squares
+
+            x_normed = flattened_sae_input / torch.norm(
+                flattened_sae_input, dim=-1, keepdim=True
+            )
+            x_hat_normed = flattened_sae_out / torch.norm(
+                flattened_sae_out, dim=-1, keepdim=True
+            )
+            cossim = (x_normed * x_hat_normed).sum(dim=-1)
+
             metric_dict["explained_variance"].append(explained_variance)
             metric_dict["mse"].append(mse)
+            metric_dict["cossim"].append(cossim)
 
     metrics: dict[str, float] = {}
     for metric_name, metric_values in metric_dict.items():
