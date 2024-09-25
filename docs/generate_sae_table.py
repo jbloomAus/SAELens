@@ -9,6 +9,7 @@ from tqdm import tqdm
 
 from sae_lens import SAEConfig
 from sae_lens.toolkit.pretrained_sae_loaders import (
+    get_dictionary_learning_config_1,
     get_gemma_2_config,
     get_sae_config_from_hf,
     handle_config_defaulting,
@@ -100,6 +101,16 @@ def generate_sae_table():
                 cfg = handle_config_defaulting(cfg)
                 cfg = SAEConfig.from_dict(cfg).to_dict()
                 info.update(cfg)
+            elif model_info["conversion_func"] == "dictionary_learning_1":
+                repo_id = model_info["repo_id"]
+                folder_name = info["path"]
+                config_path = hf_hub_download(
+                    repo_id=repo_id,
+                    filename=f"{folder_name}/config.json",
+                )
+                with open(config_path, "r") as f:
+                    cfg = get_dictionary_learning_config_1(json.load(f))
+                cfg = SAEConfig.from_dict(cfg).to_dict()
 
             elif model_info["conversion_func"] == "gemma_2":
                 repo_id = model_info["repo_id"]
