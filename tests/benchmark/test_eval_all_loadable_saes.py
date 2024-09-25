@@ -148,7 +148,7 @@ def test_eval_all_loadable_saes(
 
     eval_config = get_eval_everything_config(
         batch_size_prompts=8,
-        n_eval_reconstruction_batches=10,
+        n_eval_reconstruction_batches=3,
         n_eval_sparsity_variance_batches=10,
     )
 

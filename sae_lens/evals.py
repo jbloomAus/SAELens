@@ -68,7 +68,6 @@ class EvalConfig:
     library_version: str = field(default_factory=get_library_version)
     git_hash: str = field(default_factory=get_git_hash)
 
-
 def get_eval_everything_config(
     batch_size_prompts: int | None = None,
     n_eval_reconstruction_batches: int = 10,
@@ -160,12 +159,24 @@ def run_evals(
         elif not previous_hook_z_reshaping_mode and sae.hook_z_reshaping_mode:
             sae.turn_off_forward_pass_hook_z_reshaping()
 
-    total_tokens_evaluated = (
+    total_tokens_evaluated_eval_reconstruction = (
         activation_store.context_size
         * eval_config.n_eval_reconstruction_batches
         * actual_batch_size
     )
-    metrics["total_tokens_evaluated"] = total_tokens_evaluated
+
+    total_tokens_evaluated_eval_sparsity_variance = (
+        activation_store.context_size
+        * eval_config.n_eval_sparsity_variance_batches
+        * actual_batch_size
+    )
+
+    metrics["total_tokens_eval_reconstruction"] = (
+        total_tokens_evaluated_eval_reconstruction
+    )
+    metrics["total_tokens_eval_sparsity_variance"] = (
+        total_tokens_evaluated_eval_sparsity_variance
+    )
 
     return metrics
 
