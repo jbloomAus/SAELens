@@ -2,6 +2,19 @@
 
 
 
+## v3.22.0 (2024-09-25)
+
+### Feature
+
+* feat: Add value error if both d sae and expansion factor set (#301)
+
+* adds ValueError if both d_sae and expansion_factor set
+
+* renames class
+
+* removes commented out line ([`999ffe8`](https://github.com/jbloomAus/SAELens/commit/999ffe80c263d58232e2a9c03d1223695c08b8ce))
+
+
 ## v3.21.1 (2024-09-23)
 
 ### Fix
