@@ -16,7 +16,6 @@ from tests.unit.helpers import build_sae_cfg
         {
             "model_name": "tiny-stories-1M",
             "dataset_path": "roneneldan/TinyStories",
-            "tokenized": False,
             "hook_name": "blocks.1.hook_resid_pre",
             "hook_layer": 1,
             "d_in": 64,
@@ -24,7 +23,6 @@ from tests.unit.helpers import build_sae_cfg
         {
             "model_name": "tiny-stories-1M",
             "dataset_path": "roneneldan/TinyStories",
-            "tokenized": False,
             "hook_name": "blocks.1.hook_resid_pre",
             "hook_layer": 1,
             "d_in": 64,
@@ -34,7 +32,6 @@ from tests.unit.helpers import build_sae_cfg
         {
             "model_name": "tiny-stories-1M",
             "dataset_path": "apollo-research/roneneldan-TinyStories-tokenizer-gpt2",
-            "tokenized": False,
             "hook_name": "blocks.1.hook_resid_pre",
             "hook_layer": 1,
             "d_in": 64,
@@ -42,7 +39,6 @@ from tests.unit.helpers import build_sae_cfg
         {
             "model_name": "tiny-stories-1M",
             "dataset_path": "roneneldan/TinyStories",
-            "tokenized": False,
             "hook_name": "blocks.1.attn.hook_z",
             "hook_layer": 1,
             "d_in": 64,
@@ -202,7 +198,8 @@ def test_sae_save_and_load_from_pretrained_gated(tmp_path: Path) -> None:
 
 def test_sae_save_and_load_from_pretrained_topk(tmp_path: Path) -> None:
     cfg = build_sae_cfg(
-        activation_fn_str="topk", activation_fn_kwargs={"k": 30}, device="cpu"
+        activation_fn_kwargs={"k": 30},
+        device="cpu",
     )
     model_path = str(tmp_path)
     sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())

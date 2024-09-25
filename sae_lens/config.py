@@ -131,7 +131,9 @@ class LanguageModelSAERunnerConfig:
     d_in: int = 512
     d_sae: Optional[int] = None
     b_dec_init_method: str = "geometric_median"
-    expansion_factor: int = 4
+    expansion_factor: Optional[int] = (
+        None  # defaults to 4 if d_sae and expansion_factor is None
+    )
     activation_fn: str = "relu"  # relu, tanh-relu, topk
     activation_fn_kwargs: dict[str, Any] = field(default_factory=dict)  # for topk
     normalize_sae_decoder: bool = True
@@ -246,7 +248,13 @@ class LanguageModelSAERunnerConfig:
                 self.hook_head_index,
             )
 
-        if not isinstance(self.expansion_factor, list):
+        if self.d_sae is not None and self.expansion_factor is not None:
+            raise ValueError("You can't set both d_sae and expansion_factor.")
+
+        if self.d_sae is None and self.expansion_factor is None:
+            self.expansion_factor = 4
+
+        if self.d_sae is None and self.expansion_factor is not None:
             self.d_sae = self.d_in * self.expansion_factor
         self.tokens_per_buffer = (
             self.train_batch_size_tokens * self.context_size * self.n_batches_in_buffer
