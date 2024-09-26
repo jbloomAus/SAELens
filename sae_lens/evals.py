@@ -67,8 +67,12 @@ class EvalConfig:
     # compute featurewise density statistics
     compute_featurewise_density_statistics: bool = False
 
+    # compute featurewise_weight_based_metrics
+    compute_featurewise_weight_based_metrics: bool = False
+
     library_version: str = field(default_factory=get_library_version)
     git_hash: str = field(default_factory=get_git_hash)
+
 
 def get_eval_everything_config(
     batch_size_prompts: int | None = None,
@@ -88,6 +92,7 @@ def get_eval_everything_config(
         compute_sparsity_metrics=True,
         compute_variance_metrics=True,
         compute_featurewise_density_statistics=True,
+        compute_featurewise_weight_based_metrics=True,
     )
 
 
@@ -154,6 +159,11 @@ def run_evals(
     else:
         feature_metrics = {}
 
+    if eval_config.compute_featurewise_weight_based_metrics:
+        feature_metrics |= get_featurewise_weight_based_metrics(
+            sae,
+        )
+
     if len(all_metrics) == 0:
         raise ValueError(
             "No metrics were computed, please set at least one metric to True."
@@ -186,6 +196,25 @@ def run_evals(
     )
 
     return all_metrics, feature_metrics
+
+
+def get_featurewise_weight_based_metrics(sae: SAE) -> dict[str, Any]:
+
+    unit_norm_encoders = (sae.W_enc / sae.W_enc.norm(dim=0, keepdim=True)).cpu()
+    unit_norm_decoder = (sae.W_dec.T / sae.W_dec.T.norm(dim=0, keepdim=True)).cpu()
+
+    encoder_norms = sae.W_enc.norm(dim=-2).cpu()
+    encoder_bias = sae.b_enc.cpu()
+    encoder_decoder_cosine_sim = torch.nn.functional.cosine_similarity(
+        unit_norm_decoder,
+        unit_norm_encoders,
+    )
+
+    return {
+        "encoder_bias": encoder_bias,
+        "encoder_norm": encoder_norms,
+        "encoder_decoder_cosine_sim": encoder_decoder_cosine_sim,
+    }
 
 
 def get_downstream_reconstruction_metrics(
@@ -416,7 +445,7 @@ def get_sparsity_and_variance_metrics(
         metrics[f"{metric_name}"] = torch.cat(metric_values).mean().item()
 
     # Aggregate feature-wise metrics
-    feature_metrics: dict[str, torch.Tensor] = {}
+    feature_metrics: dict[str, list[float]] = {}
     feature_metrics["feature_density"] = (total_feature_acts / total_tokens).tolist()
     feature_metrics["consistent_activation_heuristic"] = (
         total_feature_acts / total_feature_prompts

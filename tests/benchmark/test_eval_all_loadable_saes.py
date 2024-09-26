@@ -162,7 +162,7 @@ def test_eval_all_loadable_saes(
         n_eval_sparsity_variance_batches=100,
     )
 
-    metrics = run_evals(
+    metrics, _ = run_evals(
         sae=sae,
         activation_store=activation_store,
         model=model,
@@ -208,6 +208,7 @@ def test_run_evaluations_process_results(mock_evals_simple_args: argparse.Namesp
 
     # open and validate the files
     combined_json_path = output_files["combined_json"]
+    assert isinstance(combined_json_path, Path)
     assert combined_json_path.exists()
     with open(combined_json_path, "r") as f:
         data = json.load(f)[0]

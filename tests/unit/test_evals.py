@@ -123,6 +123,16 @@ all_expected_keys = [
     "kl_div_with_ablation",
     "cossim",
     "relative_reconstruction_bias",
+    "total_tokens_eval_sparsity_variance",
+    "total_tokens_eval_reconstruction",
+]
+
+all_featurewise_keys_expected = [
+    "feature_density",
+    "consistent_activation_heuristic",
+    "encoder_bias",
+    "encoder_decoder_cosine_sim",
+    "encoder_norm",
 ]
 
 
@@ -150,15 +160,16 @@ def test_run_evals_training_sae(
     model: HookedTransformer,
 ):
 
-    eval_metrics, _ = run_evals(
+    eval_metrics, feature_metrics = run_evals(
         sae=training_sae,
         activation_store=activation_store,
         model=model,
         eval_config=get_eval_everything_config(),
     )
 
-    for key in all_expected_keys:
-        assert key in eval_metrics
+    print(eval_metrics)
+    assert set(all_expected_keys) == set(eval_metrics.keys())
+    assert set(all_featurewise_keys_expected) == set(feature_metrics.keys())
 
 
 def test_run_evals_training_sae_ignore_bos(
