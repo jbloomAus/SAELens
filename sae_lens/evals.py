@@ -203,11 +203,15 @@ def get_featurewise_weight_based_metrics(sae: SAE) -> dict[str, Any]:
     unit_norm_encoders = (sae.W_enc / sae.W_enc.norm(dim=0, keepdim=True)).cpu()
     unit_norm_decoder = (sae.W_dec.T / sae.W_dec.T.norm(dim=0, keepdim=True)).cpu()
 
-    encoder_norms = sae.W_enc.norm(dim=-2).cpu()
-    encoder_bias = sae.b_enc.cpu()
-    encoder_decoder_cosine_sim = torch.nn.functional.cosine_similarity(
-        unit_norm_decoder,
-        unit_norm_encoders,
+    encoder_norms = sae.W_enc.norm(dim=-2).cpu().tolist()
+    encoder_bias = sae.b_enc.cpu().tolist()
+    encoder_decoder_cosine_sim = (
+        torch.nn.functional.cosine_similarity(
+            unit_norm_decoder,
+            unit_norm_encoders,
+        )
+        .cpu()
+        .tolist()
     )
 
     return {
