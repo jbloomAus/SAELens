@@ -2,6 +2,17 @@
 
 
 
+## v3.22.1 (2024-09-26)
+
+### Chore
+
+* chore: delete dashboard_runner.py (#303) ([`df0aba7`](https://github.com/jbloomAus/SAELens/commit/df0aba7e89efa1bcfa049a1053c3e29d0b111258))
+
+### Fix
+
+* fix: fixing canrager SAEs in SAEs table docs (#304) ([`54cfc67`](https://github.com/jbloomAus/SAELens/commit/54cfc67796ccec25e6157a1c66a06d260a63902c))
+
+
 ## v3.22.0 (2024-09-25)
 
 ### Feature
