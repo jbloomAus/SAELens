@@ -1,12 +1,22 @@
 # import pandas as pd
 # import plotly.express as px
 # import numpy as np
+import argparse
+import json
+from pathlib import Path
+
 import pytest
 import torch
 
 from sae_lens import SAE, ActivationsStore
 from sae_lens.analysis.neuronpedia_integration import open_neuronpedia_feature_dashboard
-from sae_lens.evals import all_loadable_saes, get_eval_everything_config, run_evals
+from sae_lens.evals import (
+    all_loadable_saes,
+    get_eval_everything_config,
+    process_results,
+    run_evals,
+    run_evaluations,
+)
 from sae_lens.toolkit.pretrained_sae_loaders import (
     SAEConfigLoadOptions,
     get_sae_config_from_hf,
@@ -149,7 +159,7 @@ def test_eval_all_loadable_saes(
     eval_config = get_eval_everything_config(
         batch_size_prompts=8,
         n_eval_reconstruction_batches=3,
-        n_eval_sparsity_variance_batches=10,
+        n_eval_sparsity_variance_batches=100,
     )
 
     metrics = run_evals(
@@ -168,3 +178,38 @@ def test_eval_all_loadable_saes(
     assert (
         pytest.approx(metrics["explained_variance"], abs=0.1) == expected_var_explained
     )
+
+
+@pytest.fixture
+def mock_evals_simple_args(tmp_path: Path):
+    class Args:
+        sae_regex_pattern = "gpt2-small-res-jb"
+        sae_block_pattern = "blocks.0.hook_resid_pre"
+        num_eval_batches = 1
+        eval_batch_size_prompts = 2
+        datasets = ["Skylion007/openwebtext"]
+        ctx_lens = [128]
+        output_dir = str(tmp_path)
+
+    return Args()
+
+
+def test_run_evaluations_process_results(mock_evals_simple_args: argparse.Namespace):
+    """
+    This test is more like an acceptance test for the evals code than a benchmark.
+    """
+    eval_results = run_evaluations(mock_evals_simple_args)
+    output_files = process_results(eval_results, mock_evals_simple_args.output_dir)
+
+    print("Evaluation complete. Output files:")
+    print(f"Individual JSONs: {len(output_files['individual_jsons'])}")  # type: ignore
+    print(f"Combined JSON: {output_files['combined_json']}")
+    print(f"CSV: {output_files['csv']}")
+
+    # open and validate the files
+    combined_json_path = output_files["combined_json"]
+    assert combined_json_path.exists()
+    with open(combined_json_path, "r") as f:
+        data = json.load(f)[0]
+        assert "metrics" in data
+        assert "feature_metrics" in data
