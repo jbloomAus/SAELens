@@ -142,6 +142,7 @@ class SAETrainer:
             compute_sparsity_metrics=True,
             compute_variance_metrics=True,
             compute_kl=False,
+            compute_featurewise_weight_based_metrics=False,
         )
 
     @property
@@ -333,13 +334,13 @@ class SAETrainer:
             self.cfg.wandb_log_frequency * self.cfg.eval_every_n_wandb_logs
         ) == 0:
             self.sae.eval()
-            eval_metrics = run_evals(
+            eval_metrics, _ = run_evals(
                 sae=self.sae,
                 activation_store=self.activation_store,
                 model=self.model,
                 eval_config=self.trainer_eval_config,
                 model_kwargs=self.cfg.model_kwargs,
-            )
+            )  # not calculating featurwise metrics here.
 
             # Remove eval metrics that are already logged during training
             eval_metrics.pop("metrics/explained_variance", None)
