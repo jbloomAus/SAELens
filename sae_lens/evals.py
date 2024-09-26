@@ -650,7 +650,8 @@ def dict_to_nested(flat_dict: dict[str, Any]) -> defaultdict[Any, Any]:
 def multiple_evals(
     sae_regex_pattern: str,
     sae_block_pattern: str,
-    num_eval_batches: int = 10,
+    n_eval_reconstruction_batches: int,
+    n_eval_sparsity_variance_batches: int,
     eval_batch_size_prompts: int = 8,
     datasets: list[str] = ["Skylion007/openwebtext", "lighteval/MATH"],
     ctx_lens: list[int] = [128],
@@ -669,8 +670,8 @@ def multiple_evals(
 
     eval_config = get_eval_everything_config(
         batch_size_prompts=eval_batch_size_prompts,
-        n_eval_reconstruction_batches=num_eval_batches,
-        n_eval_sparsity_variance_batches=num_eval_batches,
+        n_eval_reconstruction_batches=n_eval_reconstruction_batches,
+        n_eval_sparsity_variance_batches=n_eval_sparsity_variance_batches,
     )
 
     current_model = None
@@ -750,8 +751,9 @@ def run_evaluations(args: argparse.Namespace) -> list[defaultdict[Any, Any]]:
     eval_results = multiple_evals(
         sae_regex_pattern=args.sae_regex_pattern,
         sae_block_pattern=args.sae_block_pattern,
-        num_eval_batches=args.num_eval_batches,
-        eval_batch_size_prompts=args.eval_batch_size_prompts,
+        n_eval_reconstruction_batches=args.n_eval_reconstruction_batches,
+        n_eval_sparsity_variance_batches=args.n_eval_sparsity_variance_batches,
+        eval_batch_size_prompts=args.batch_size_prompts,
         datasets=args.datasets,
         ctx_lens=args.ctx_lens,
         output_dir=args.output_dir,
@@ -787,6 +789,7 @@ def process_results(eval_results: list[defaultdict[Any, Any]], output_dir: str):
         "csv": output_path / "all_eval_results.csv",
     }
 
+# ... existing code ...
 
 if __name__ == "__main__":
     arg_parser = argparse.ArgumentParser(description="Run evaluations on SAEs")
@@ -801,16 +804,57 @@ if __name__ == "__main__":
         help="Regex pattern to match SAE block names. Can be an entire block name to match a specific block.",
     )
     arg_parser.add_argument(
-        "--num_eval_batches",
+        "--batch_size_prompts",
         type=int,
-        default=10,
-        help="Number of evaluation batches to run.",
+        default=16,
+        help="Batch size for evaluation prompts.",
     )
     arg_parser.add_argument(
-        "--eval_batch_size_prompts",
+        "--n_eval_reconstruction_batches",
         type=int,
-        default=8,
-        help="Batch size for evaluation prompts.",
+        default=10,
+        help="Number of evaluation batches for reconstruction metrics.",
+    )
+    arg_parser.add_argument(
+        "--compute_kl",
+        action="store_true",
+        help="Compute KL divergence.",
+    )
+    arg_parser.add_argument(
+        "--compute_ce_loss",
+        action="store_true",
+        help="Compute cross-entropy loss.",
+    )
+    arg_parser.add_argument(
+        "--n_eval_sparsity_variance_batches",
+        type=int,
+        default=1,
+        help="Number of evaluation batches for sparsity and variance metrics.",
+    )
+    arg_parser.add_argument(
+        "--compute_l2_norms",
+        action="store_true",
+        help="Compute L2 norms.",
+    )
+    arg_parser.add_argument(
+        "--compute_sparsity_metrics",
+        action="store_true",
+        help="Compute sparsity metrics.",
+    )
+    arg_parser.add_argument(
+        "--compute_variance_metrics",
+        action="store_true",
+        help="Compute variance metrics.",
+    )
+    arg_parser.add_argument(
+        "--compute_featurewise_density_statistics",
+        action="store_true",
+        help="Compute featurewise density statistics.",
+    )
+    arg_parser.add_argument(
+        "--compute_featurewise_weight_based_metrics",
+        action="store_true",
+        help="Compute featurewise weight-based metrics.",
     )
     arg_parser.add_argument(
         "--datasets",
@@ -833,7 +877,18 @@ if __name__ == "__main__":
 
     args = arg_parser.parse_args()
 
-    #  poetry run python sae_lens/evals.py "sae_bench_pythia70m_sweep_standard.*" "blocks.4.*" --save_path "pythia_70m.csv"
+    eval_config = EvalConfig(
+        batch_size_prompts=args.batch_size_prompts,
+        n_eval_reconstruction_batches=args.n_eval_reconstruction_batches,
+        compute_kl=args.compute_kl,
+        compute_ce_loss=args.compute_ce_loss,
+        n_eval_sparsity_variance_batches=args.n_eval_sparsity_variance_batches,
+        compute_l2_norms=args.compute_l2_norms,
+        compute_sparsity_metrics=args.compute_sparsity_metrics,
+        compute_variance_metrics=args.compute_variance_metrics,
+        compute_featurewise_density_statistics=args.compute_featurewise_density_statistics,
+        compute_featurewise_weight_based_metrics=args.compute_featurewise_weight_based_metrics,
+    )
 
     eval_results = run_evaluations(args)
     output_files = process_results(eval_results, args.output_dir)
