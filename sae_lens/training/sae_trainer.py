@@ -136,9 +136,12 @@ class SAETrainer:
         self.trainer_eval_config = EvalConfig(
             batch_size_prompts=self.cfg.eval_batch_size_prompts,
             n_eval_reconstruction_batches=self.cfg.n_eval_batches,
+            n_eval_sparsity_variance_batches=self.cfg.n_eval_batches,
             compute_ce_loss=True,
-            n_eval_sparsity_variance_batches=1,
             compute_l2_norms=True,
+            compute_sparsity_metrics=True,
+            compute_variance_metrics=True,
+            compute_kl=False,
         )
 
     @property
