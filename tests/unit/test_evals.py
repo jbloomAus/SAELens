@@ -132,7 +132,7 @@ def test_run_evals_base_sae(
     model: HookedTransformer,
 ):
 
-    eval_metrics = run_evals(
+    eval_metrics, _ = run_evals(
         sae=base_sae,
         activation_store=activation_store,
         model=model,
@@ -150,7 +150,7 @@ def test_run_evals_training_sae(
     model: HookedTransformer,
 ):
 
-    eval_metrics = run_evals(
+    eval_metrics, _ = run_evals(
         sae=training_sae,
         activation_store=activation_store,
         model=model,
@@ -167,7 +167,7 @@ def test_run_evals_training_sae_ignore_bos(
     model: HookedTransformer,
 ):
 
-    eval_metrics = run_evals(
+    eval_metrics, _ = run_evals(
         sae=training_sae,
         activation_store=activation_store,
         model=model,
@@ -209,7 +209,7 @@ def test_training_eval_config(
         "relative_reconstruction_bias",
     ]
     eval_config = TRAINER_EVAL_CONFIG
-    eval_metrics = run_evals(
+    eval_metrics, _ = run_evals(
         sae=base_sae,
         activation_store=activation_store,
         model=model,
@@ -238,7 +238,7 @@ def test_training_eval_config_ignore_control_tokens(
         "relative_reconstruction_bias",
     ]
     eval_config = TRAINER_EVAL_CONFIG
-    eval_metrics = run_evals(
+    eval_metrics, _ = run_evals(
         sae=base_sae,
         activation_store=activation_store,
         model=model,
