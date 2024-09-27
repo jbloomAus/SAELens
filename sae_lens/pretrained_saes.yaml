@@ -11687,7 +11687,6 @@ llama-3-8b-it-res-jh:
   model: "meta-llama/Meta-Llama-3-8B-Instruct"
   conversion_func: null
   links:
-    model: https://huggingface.co/gpt2
     dashboards: https://www.neuronpedia.org/llama3-8b-it-res-jh
   saes:
   - id: blocks.25.hook_resid_post
