@@ -9,6 +9,7 @@ from tqdm import tqdm
 
 from sae_lens import SAEConfig
 from sae_lens.toolkit.pretrained_sae_loaders import (
+    get_connor_rob_hook_z_layer_config,
     get_dictionary_learning_config_1,
     get_gemma_2_config,
     get_sae_config_from_hf,
@@ -74,30 +75,9 @@ def generate_sae_table():
             if model_info["conversion_func"] == "connor_rob_hook_z":
                 repo_id = model_info["repo_id"]
                 folder_name = info["path"]
-                config_path = folder_name.split(".pt")[0] + "_cfg.json"
-                config_path = hf_hub_download(repo_id, config_path)
-                old_cfg_dict = json.load(open(config_path, "r"))
-
-                cfg = {
-                    "architecture": "standard",
-                    "d_in": old_cfg_dict["act_size"],
-                    "d_sae": old_cfg_dict["dict_size"],
-                    "dtype": "float32",
-                    "device": "cpu",
-                    "model_name": "gpt2-small",
-                    "hook_name": old_cfg_dict["act_name"],
-                    "hook_layer": old_cfg_dict["layer"],
-                    "hook_head_index": None,
-                    "activation_fn_str": "relu",
-                    "apply_b_dec_to_input": True,
-                    "finetuning_scaling_factor": False,
-                    "sae_lens_training_version": None,
-                    "prepend_bos": True,
-                    "dataset_path": "Skylion007/openwebtext",
-                    "context_size": 128,
-                    "normalize_activations": "none",
-                    "dataset_trust_remote_code": True,
-                }
+                cfg = get_connor_rob_hook_z_layer_config(
+                    repo_id, folder_name=folder_name, device=None
+                )
                 cfg = handle_config_defaulting(cfg)
                 cfg = SAEConfig.from_dict(cfg).to_dict()
                 info.update(cfg)
