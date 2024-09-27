@@ -1,10 +1,8 @@
 # type: ignore
-import json
 from pathlib import Path
 
 import pandas as pd
 import yaml
-from huggingface_hub import hf_hub_download
 from tqdm import tqdm
 
 from sae_lens import SAEConfig
@@ -84,12 +82,7 @@ def generate_sae_table():
             elif model_info["conversion_func"] == "dictionary_learning_1":
                 repo_id = model_info["repo_id"]
                 folder_name = info["path"]
-                config_path = hf_hub_download(
-                    repo_id=repo_id,
-                    filename=f"{folder_name}/config.json",
-                )
-                with open(config_path, "r") as f:
-                    cfg = get_dictionary_learning_config_1(json.load(f))
+                cfg = get_dictionary_learning_config_1(repo_id, folder_name=folder_name)
                 cfg = SAEConfig.from_dict(cfg).to_dict()
 
             elif model_info["conversion_func"] == "gemma_2":

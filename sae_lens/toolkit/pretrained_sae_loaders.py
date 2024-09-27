@@ -368,10 +368,20 @@ def gemma_2_sae_loader(
     return cfg_dict, state_dict, log_sparsity
 
 
-def get_dictionary_learning_config_1(config: dict[str, Any]) -> dict[str, Any]:
+def get_dictionary_learning_config_1(
+    repo_id: str, folder_name: str, force_download: bool = False
+) -> dict[str, Any]:
     """
     Suitable for SAEs from https://huggingface.co/canrager/lm_sae.
     """
+    config_path = hf_hub_download(
+        repo_id=repo_id,
+        filename=f"{folder_name}/config.json",
+        force_download=force_download,
+    )
+    with open(config_path, "r") as f:
+        config = json.load(f)
+
     trainer = config["trainer"]
     buffer = config["buffer"]
 
@@ -416,19 +426,13 @@ def dictionary_learning_sae_loader_1(
     """
     Suitable for SAEs from https://huggingface.co/canrager/lm_sae.
     """
-    config_path = hf_hub_download(
-        repo_id=repo_id,
-        filename=f"{folder_name}/config.json",
-        force_download=force_download,
-    )
     encoder_path = hf_hub_download(
         repo_id=repo_id, filename=f"{folder_name}/ae.pt", force_download=force_download
     )
 
-    with open(config_path, "r") as f:
-        config = json.load(f)
-
-    cfg_dict = get_dictionary_learning_config_1(config)
+    cfg_dict = get_dictionary_learning_config_1(
+        repo_id, folder_name=folder_name, force_download=force_download
+    )
     if cfg_overrides:
         cfg_dict.update(cfg_overrides)
 
