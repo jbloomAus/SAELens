@@ -2,6 +2,23 @@
 
 
 
+## v3.22.2 (2024-09-27)
+
+### Fix
+
+* fix: force new build for adding llama-3-8b-it ([`ed23343`](https://github.com/jbloomAus/SAELens/commit/ed2334382c87d6245bb826d92aee5693ced48eb8))
+
+### Unknown
+
+* Merge pull request #307 from jbloomAus/feature/llama-3-8b-it
+
+Feature/llama 3 8b it ([`f786712`](https://github.com/jbloomAus/SAELens/commit/f7867128818ec58922840ff59e919c6a4b22f614))
+
+* corrected entry ([`0415c93`](https://github.com/jbloomAus/SAELens/commit/0415c93584cbc8156154d4e8ace4ec85cd85c34b))
+
+* added support through yaml ([`57e4a52`](https://github.com/jbloomAus/SAELens/commit/57e4a529e311317053458ebe53437c5a931c15f8))
+
+
 ## v3.22.1 (2024-09-26)
 
 ### Chore
