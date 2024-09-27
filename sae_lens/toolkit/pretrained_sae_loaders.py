@@ -422,7 +422,7 @@ def get_dictionary_learning_config_1(config: dict[str, Any]) -> dict[str, Any]:
 
     hook_point_name = f"blocks.{trainer['layer']}.hook_resid_post"
 
-    activation_fn_str = "topk" if "topk" in config.get("path", "") else "relu"
+    activation_fn_str = "topk" if trainer["dict_class"] == "AutoEncoderTopK" else "relu"
     activation_fn_kwargs = {"k": trainer["k"]} if activation_fn_str == "topk" else {}
 
     return {
