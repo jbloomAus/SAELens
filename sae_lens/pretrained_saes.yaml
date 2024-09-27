@@ -11682,3 +11682,13 @@ sae_bench_pythia70m_sweep_topk_ctx128_0730:
     path: pythia70m_sweep_topk_ctx128_0730/resid_post_layer_4/trainer_8
   - id: blocks.4.hook_resid_post__trainer_9
     path: pythia70m_sweep_topk_ctx128_0730/resid_post_layer_4/trainer_9
+llama-3-8b-it-res-jh:
+  repo_id: Juliushanhanhan/llama-3-8b-it-res
+  model: "meta-llama/Meta-Llama-3-8B-Instruct"
+  conversion_func: null
+  links:
+    dashboards: https://www.neuronpedia.org/llama3-8b-it-res-jh
+  saes:
+  - id: blocks.25.hook_resid_post
+    path: blocks.25.hook_resid_post
+    neuronpedia: llama3-8b-it/25-res-jh
