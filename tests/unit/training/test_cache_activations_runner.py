@@ -25,17 +25,12 @@ def test_cache_activations_runner(tmp_path: Path):
 
     # total_training_steps = 20_000
     context_size = 1024
-    print(f"n tokens per context: {context_size}")
     n_batches_in_buffer = 32
-    print(f"n batches in buffer: {n_batches_in_buffer}")
     store_batch_size = 1
-    print(f"store_batch_size: {store_batch_size}")
     n_buffers = 3
-    print(f"n_buffers: {n_buffers}")
 
     tokens_in_buffer = n_batches_in_buffer * store_batch_size * context_size
     total_training_tokens = n_buffers * tokens_in_buffer
-    print(f"Total Training Tokens: {total_training_tokens}")
 
     # better if we can look at the files (change tmp_path to a real path to look at the files)
     # tmp_path = os.path.join(os.path.dirname(__file__), "tmp")
@@ -103,13 +98,9 @@ def test_load_cached_activations():
 
     # total_training_steps = 20_000
     context_size = 256
-    print(f"n tokens per context: {context_size}")
     n_batches_in_buffer = 32
-    print(f"n batches in buffer: {n_batches_in_buffer}")
     store_batch_size = 1
-    print(f"store_batch_size: {store_batch_size}")
     n_buffers = 3
-    print(f"n_buffers: {n_buffers}")
 
     tokens_in_buffer = n_batches_in_buffer * store_batch_size * context_size
     total_training_tokens = n_buffers * tokens_in_buffer

@@ -155,7 +155,6 @@ def test_run_evals_training_sae(
         eval_config=get_eval_everything_config(),
     )
 
-    print(eval_metrics)
     for key in all_expected_keys:
         assert key in eval_metrics
 
@@ -178,7 +177,6 @@ def test_run_evals_training_sae_ignore_bos(
         },  # type: ignore
     )
 
-    print(eval_metrics)
     for key in all_expected_keys:
         assert key in eval_metrics
 
