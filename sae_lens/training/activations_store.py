@@ -221,10 +221,10 @@ class ActivationsStore:
             ds_context_size = len(dataset_sample[self.tokens_column])
             if ds_context_size < self.context_size:
                 raise ValueError(
-                    f"""pretokenized dataset has context_size {ds_context_size}, but the provided context_size is {self.context_size}. 
-                        The context_size {ds_context_size} is expected to be larger than or equal to the provided context size {self.context_size}."""
+                    f"""pretokenized dataset has context_size {ds_context_size}, but the provided context_size is {self.context_size}.
+                    The context_size {ds_context_size} is expected to be larger than or equal to the provided context size {self.context_size}."""
                 )
-            if self.context_size<0:
+            if self.context_size < 0:
                 raise ValueError(
                     f"The provided context_size is {self.context_size} is negative. Expecting positive context_size"
                 )
