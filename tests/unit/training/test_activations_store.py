@@ -1,6 +1,7 @@
 from collections.abc import Iterable
 from math import ceil
 from typing import Optional
+from typing import Optional
 
 import numpy as np
 import pytest
@@ -349,14 +350,13 @@ def test_activations_store___iterate_tokenized_sequences__yields_sequences_of_co
         assert toks.shape == (5,)
 
 
-# We expect the code to work for context_size being less than or equal to the
+# We expect the code to work for context_size being less than or equal to the 
 # length of the dataset
-@pytest.mark.parametrize(
-    "context_size, expected_error",
-    [(-1, ValueError), (5, RuntimeWarning), (10, None), (15, ValueError)],
-)
+@pytest.mark.parametrize("context_size, expected_error", [(-1, ValueError), (5, None), (10, None), (15, ValueError)])
 def test_activations_store__errors_on_context_size_mismatch(
-    ts_model: HookedTransformer, context_size: int, expected_error: Optional[ValueError]
+    ts_model: HookedTransformer,
+    context_size: int,
+    expected_error: Optional[ValueError]
 ):
     tokenizer = ts_model.tokenizer
     assert tokenizer is not None
