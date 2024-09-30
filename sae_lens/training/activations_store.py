@@ -219,6 +219,10 @@ class ActivationsStore:
                     f"""pretokenized dataset has context_size {ds_context_size}, but the provided context_size is {self.context_size}. 
                         The context_size {ds_context_size} is expected to be larger than or equal to the provided context size {self.context_size}."""
                 )
+            if self.context_size<0:
+                raise ValueError(
+                    f"The provided context_size is {self.context_size} is negative. Expecting positive context_size"
+                )
             # TODO: investigate if this can work for iterable datasets, or if this is even worthwhile as a perf improvement
             if hasattr(self.dataset, "set_format"):
                 self.dataset.set_format(type="torch", columns=[self.tokens_column])  # type: ignore
