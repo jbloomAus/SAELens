@@ -349,13 +349,14 @@ def test_activations_store___iterate_tokenized_sequences__yields_sequences_of_co
         assert toks.shape == (5,)
 
 
-# We expect the code to work for context_size being less than or equal to the 
+# We expect the code to work for context_size being less than or equal to the
 # length of the dataset
-@pytest.mark.parametrize("context_size, expected_error", [(-1, ValueError), (5, None), (10, None), (15, ValueError)])
+@pytest.mark.parametrize(
+    "context_size, expected_error",
+    [(-1, ValueError), (5, None), (10, None), (15, ValueError)],
+)
 def test_activations_store__errors_on_context_size_mismatch(
-    ts_model: HookedTransformer,
-    context_size: int,
-    expected_error: Optional[ValueError]
+    ts_model: HookedTransformer, context_size: int, expected_error: Optional[ValueError]
 ):
     tokenizer = ts_model.tokenizer
     assert tokenizer is not None
@@ -371,14 +372,14 @@ def test_activations_store__errors_on_context_size_mismatch(
     pretokenize_cfg = PretokenizeRunnerConfig(context_size=10)
     tokenized_dataset = pretokenize_dataset(dataset, tokenizer, cfg=pretokenize_cfg)
 
-    # This context_size should raise an error since it's larger than the 
-    # dataset size
+    # This context_size should raise an error since it's larger than the dataset size
     if expected_error is ValueError:
         with pytest.raises(ValueError):
-            ActivationsStore.from_config(ts_model, cfg, override_dataset=tokenized_dataset)
+            ActivationsStore.from_config(
+                ts_model, cfg, override_dataset=tokenized_dataset
+            )
     else:
-    # If the context_size is greater than zero and less than the dataset size 
-    # the function should pass
+        # If the context_size is greater than zero and less than the dataset size the function should pass
         ActivationsStore.from_config(ts_model, cfg, override_dataset=tokenized_dataset)
 
 
