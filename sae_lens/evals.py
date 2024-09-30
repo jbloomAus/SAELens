@@ -805,7 +805,6 @@ def process_results(eval_results: list[defaultdict[Any, Any]], output_dir: str):
         "csv": output_path / "all_eval_results.csv",
     }
 
-# ... existing code ...
 
 if __name__ == "__main__":
     arg_parser = argparse.ArgumentParser(description="Run evaluations on SAEs")
