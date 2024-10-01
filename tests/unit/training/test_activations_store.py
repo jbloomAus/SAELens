@@ -1,5 +1,6 @@
 from collections.abc import Iterable
 from math import ceil
+from typing import Optional
 
 import numpy as np
 import pytest
@@ -348,12 +349,18 @@ def test_activations_store___iterate_tokenized_sequences__yields_sequences_of_co
         assert toks.shape == (5,)
 
 
-def test_activations_store__errors_if_pretokenized_context_size_doesnt_match_cfg(
-    ts_model: HookedTransformer,
+# We expect the code to work for context_size being less than or equal to the
+# length of the dataset
+@pytest.mark.parametrize(
+    "context_size, expected_error",
+    [(-1, ValueError), (5, RuntimeWarning), (10, None), (15, ValueError)],
+)
+def test_activations_store__errors_on_context_size_mismatch(
+    ts_model: HookedTransformer, context_size: int, expected_error: Optional[ValueError]
 ):
     tokenizer = ts_model.tokenizer
     assert tokenizer is not None
-    cfg = build_sae_cfg(prepend_bos=True, context_size=5)
+    cfg = build_sae_cfg(prepend_bos=True, context_size=context_size)
     dataset = Dataset.from_list(
         [
             {"text": "hello world1"},
@@ -364,7 +371,21 @@ def test_activations_store__errors_if_pretokenized_context_size_doesnt_match_cfg
     )
     pretokenize_cfg = PretokenizeRunnerConfig(context_size=10)
     tokenized_dataset = pretokenize_dataset(dataset, tokenizer, cfg=pretokenize_cfg)
-    with pytest.raises(ValueError):
+
+    # This context_size should raise an error or a warning if it mismatches the dataset size
+    if expected_error is ValueError:
+        with pytest.raises(expected_error):
+            ActivationsStore.from_config(
+                ts_model, cfg, override_dataset=tokenized_dataset
+            )
+    elif expected_error is RuntimeWarning:
+        # If the context_size is smaller than the dataset size we should output a RuntimeWarning
+        with pytest.warns(expected_error):
+            ActivationsStore.from_config(
+                ts_model, cfg, override_dataset=tokenized_dataset
+            )
+    else:
+        # If the context_size is equal to the dataset size the function should pass
         ActivationsStore.from_config(ts_model, cfg, override_dataset=tokenized_dataset)
 
 

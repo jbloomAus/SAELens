@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import json
 import os
+import warnings
 from typing import Any, Generator, Iterator, Literal, cast
 
 import numpy as np
@@ -214,9 +215,19 @@ class ActivationsStore:
             )
         if self.is_dataset_tokenized:
             ds_context_size = len(dataset_sample[self.tokens_column])
-            if ds_context_size != self.context_size:
+            if ds_context_size < self.context_size:
                 raise ValueError(
-                    f"pretokenized dataset has context_size {ds_context_size}, but the provided context_size is {self.context_size}."
+                    f"""pretokenized dataset has context_size {ds_context_size}, but the provided context_size is {self.context_size}.
+                    The context_size {ds_context_size} is expected to be larger than or equal to the provided context size {self.context_size}."""
+                )
+            if self.context_size < 0:
+                raise ValueError(
+                    f"The provided context_size is {self.context_size} is negative. Expecting positive context_size"
+                )
+            if self.context_size != ds_context_size:
+                warnings.warn(
+                    f"""pretokenized dataset has context_size {ds_context_size}, but the provided context_size is {self.context_size}. Some data will be discarded in this case.""",
+                    RuntimeWarning,
                 )
             # TODO: investigate if this can work for iterable datasets, or if this is even worthwhile as a perf improvement
             if hasattr(self.dataset, "set_format"):
@@ -276,12 +287,14 @@ class ActivationsStore:
         """
         Generator which iterates over full sequence of context_size tokens
         """
-        # If the datset is pretokenized, we can just return each row as a tensor, no further processing is needed.
+        # If the datset is pretokenized, we will slice the dataset to the length of the context window if needed. Otherwise, no further processing is needed.
         # We assume that all necessary BOS/EOS/SEP tokens have been added during pretokenization.
         if self.is_dataset_tokenized:
             for row in self._iterate_raw_dataset():
                 yield torch.tensor(
-                    row,
+                    row[
+                        : self.context_size
+                    ],  # If self.context_size = None, this line simply returns the whole row
                     dtype=torch.long,
                     device=self.device,
                     requires_grad=False,
