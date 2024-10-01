@@ -89,6 +89,7 @@ class SAETrainingRunner:
         if self.cfg.log_to_wandb:
             wandb.init(
                 project=self.cfg.wandb_project,
+                entity=self.cfg.wandb_entity,
                 config=cast(Any, self.cfg),
                 name=self.cfg.run_name,
                 id=self.cfg.wandb_id,
