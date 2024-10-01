@@ -122,6 +122,8 @@ class LanguageModelSAERunnerConfig:
     streaming: bool = True
     is_dataset_tokenized: bool = True
     context_size: int = 128
+    start_pos_offset: int = 0 # set to n if you want to exclude first n seq positions from sae training
+    end_pos_offset: int = 0 # set to n if you want to exclude last n seq positions from sae training
     use_cached_activations: bool = False
     cached_activations_path: Optional[str] = (
         None  # Defaults to "activations/{dataset}/{model}/{full_hook_name}_{hook_head_index}"
@@ -356,6 +358,14 @@ class LanguageModelSAERunnerConfig:
 
         if self.use_ghost_grads:
             print("Using Ghost Grads.")
+        
+        if (self.start_pos_offset < 0) or (self.start_pos_offset > self.context_size):
+            raise ValueError(f"Start position offset {self.start_pos_offset} should be in range [0,{self.context_size}]")
+        if (self.end_pos_offset < 0) or (self.end_pos_offset >= self.context_size):
+            raise ValueError(f"End position offset {self.end_pos_offset} should be in range [0,{self.context_size-1}]")
+        if self.start_pos_offset + self.end_pos_offset > self.context_size:
+            raise ValueError(f"""Choice of start and end position overlap. Obtained
+                             {self.start_pos_offset, self.end_pos_offset} with context size {self.context_size}""")
 
     @property
     def total_training_tokens(self) -> int:
