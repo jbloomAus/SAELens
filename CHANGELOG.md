@@ -2,6 +2,35 @@
 
 
 
+## v3.23.0 (2024-10-01)
+
+### Chore
+
+* chore: deletes print() in unit tests (#306) ([`7d9fe10`](https://github.com/jbloomAus/SAELens/commit/7d9fe10d4173ea90030866bf7621151fdbf7d24c))
+
+### Feature
+
+* feat: allow smaller context size of a tokenized dataset (#310)
+
+* fix: Changing the activations store to handle context sizes smaller than dataset lengths for tokenized datasets.
+
+* fix: Found bug which allowed for negative context lengths. Removed the bug
+
+* Update pytest to test new logic for context size of tokenized dataset
+
+* Reformat code to pass CI tests
+
+* Add warning for when context_size is smaller than the dataset context_size
+
+---------
+
+Co-authored-by: liuman &lt;zhenninghimme@gmail.com&gt; ([`f04c0f9`](https://github.com/jbloomAus/SAELens/commit/f04c0f92df19922f38d41bb9e7dd623ff7818073))
+
+### Fix
+
+* fix: Add entity argument to wandb.init (#309) ([`305e576`](https://github.com/jbloomAus/SAELens/commit/305e576290b1e82412d1c0376e63084271cce3d3))
+
+
 ## v3.22.2 (2024-09-27)
 
 ### Fix
