@@ -353,7 +353,7 @@ def test_activations_store___iterate_tokenized_sequences__yields_sequences_of_co
 # length of the dataset
 @pytest.mark.parametrize(
     "context_size, expected_error",
-    [(-1, ValueError), (5, None), (10, None), (15, ValueError)],
+    [(-1, ValueError), (5, RuntimeWarning), (10, None), (15, ValueError)],
 )
 def test_activations_store__errors_on_context_size_mismatch(
     ts_model: HookedTransformer, context_size: int, expected_error: Optional[ValueError]
@@ -372,14 +372,20 @@ def test_activations_store__errors_on_context_size_mismatch(
     pretokenize_cfg = PretokenizeRunnerConfig(context_size=10)
     tokenized_dataset = pretokenize_dataset(dataset, tokenizer, cfg=pretokenize_cfg)
 
-    # This context_size should raise an error since it's larger than the dataset size
+    # This context_size should raise an error or a warning if it mismatches the dataset size
     if expected_error is ValueError:
-        with pytest.raises(ValueError):
+        with pytest.raises(expected_error):
+            ActivationsStore.from_config(
+                ts_model, cfg, override_dataset=tokenized_dataset
+            )
+    elif expected_error is RuntimeWarning:
+        # If the context_size is smaller than the dataset size we should output a RuntimeWarning
+        with pytest.warns(expected_error):
             ActivationsStore.from_config(
                 ts_model, cfg, override_dataset=tokenized_dataset
             )
     else:
-        # If the context_size is greater than zero and less than the dataset size the function should pass
+        # If the context_size is equal to the dataset size the function should pass
         ActivationsStore.from_config(ts_model, cfg, override_dataset=tokenized_dataset)
 
 
