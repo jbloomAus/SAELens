@@ -3,7 +3,7 @@ from typing import Optional
 import pytest
 
 from sae_lens import __version__
-from sae_lens.config import LanguageModelSAERunnerConfig
+from sae_lens.config import CacheActivationsRunnerConfig, LanguageModelSAERunnerConfig
 
 TINYSTORIES_MODEL = "tiny-stories-1M"
 TINYSTORIES_DATASET = "roneneldan/TinyStories"
@@ -124,6 +124,40 @@ def test_sae_training_runner_config_start_end_pos_offset(
             )
     else:
         LanguageModelSAERunnerConfig(
+            start_pos_offset=start_pos_offset,
+            end_pos_offset=end_pos_offset,
+            context_size=context_size,
+        )
+
+
+@pytest.mark.parametrize(
+    "start_pos_offset, end_pos_offset, expected_error",
+    [
+        (-1, 0, ValueError),
+        (0, 0, None),
+        (10, 0, None),
+        (11, 0, ValueError),
+        (0, -1, ValueError),
+        (0, 10, ValueError),
+        (0, 11, ValueError),
+        (5, 5, None),
+        (6, 5, ValueError),
+        (3, 4, None),
+    ],
+)
+def test_cache_activations_runner_config_start_end_pos_offset(
+    start_pos_offset: int, end_pos_offset: int, expected_error: Optional[ValueError]
+):
+    context_size = 10
+    if expected_error is ValueError:
+        with pytest.raises(expected_error):
+            CacheActivationsRunnerConfig(
+                start_pos_offset=start_pos_offset,
+                end_pos_offset=end_pos_offset,
+                context_size=context_size,
+            )
+    else:
+        CacheActivationsRunnerConfig(
             start_pos_offset=start_pos_offset,
             end_pos_offset=end_pos_offset,
             context_size=context_size,
