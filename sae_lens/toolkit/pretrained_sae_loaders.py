@@ -448,7 +448,7 @@ def get_dictionary_learning_config_1(config: dict[str, Any]) -> dict[str, Any]:
         "context_size": buffer["ctx_len"],
         "normalize_activations": "none",
         "neuronpedia_id": None,
-        "trust_remote_code": True,
+        "dataset_trust_remote_code": True,
     }
 
 
