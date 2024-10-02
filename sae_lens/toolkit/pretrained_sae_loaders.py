@@ -101,10 +101,9 @@ def get_sae_config_from_hf(
     Returns:
         Dict[str, Any]: The configuration dictionary for the SAE.
     """
-    force_download = params.force_download
     cfg_filename = f"{folder_name}/cfg.json"
     cfg_path = hf_hub_download(
-        repo_id=repo_id, filename=cfg_filename, force_download=force_download
+        repo_id=repo_id, filename=cfg_filename, force_download=params.force_download
     )
 
     with open(cfg_path, "r") as f:
@@ -243,9 +242,6 @@ def get_gemma_2_config(
     folder_name: str,
     params: SAEConfigParams,
 ) -> Dict[str, Any]:
-    d_sae_override = params.d_sae_override
-    layer_override = params.layer_override
-
     # Detect width from folder_name
     width_map = {
         "width_4k": 4096,
@@ -260,6 +256,7 @@ def get_gemma_2_config(
     d_sae = next(
         (width for key, width in width_map.items() if key in folder_name), None
     )
+    d_sae_override = params.d_sae_override
     if d_sae is None:
         if not d_sae_override:
             raise ValueError("Width not found in folder_name and no override provided.")
@@ -267,7 +264,7 @@ def get_gemma_2_config(
 
     # Detect layer from folder_name
     match = re.search(r"layer_(\d+)", folder_name)
-    layer = int(match.group(1)) if match else layer_override
+    layer = int(match.group(1)) if match else params.layer_override
     if layer is None:
         if "embedding" in folder_name:
             layer = 0
@@ -408,11 +405,10 @@ def get_dictionary_learning_config_1(
     """
     Suitable for SAEs from https://huggingface.co/canrager/lm_sae.
     """
-    force_download = params.force_download
     config_path = hf_hub_download(
         repo_id=repo_id,
         filename=f"{folder_name}/config.json",
-        force_download=force_download,
+        force_download=params.force_download,
     )
     with open(config_path, "r") as f:
         config = json.load(f)
