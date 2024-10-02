@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 from sae_lens import SAEConfig
 from sae_lens.toolkit.pretrained_sae_loaders import (
-    get_connor_rob_hook_z_layer_config,
+    get_connor_rob_hook_z_config,
     get_dictionary_learning_config_1,
     get_gemma_2_config,
     get_sae_config_from_hf,
@@ -72,7 +72,7 @@ def generate_sae_table():
             folder_name = info["path"]
             # can remove this by explicitly overriding config in yaml. Do this later.
             if model_info["conversion_func"] == "connor_rob_hook_z":
-                cfg = get_connor_rob_hook_z_layer_config(
+                cfg = get_connor_rob_hook_z_config(
                     repo_id, folder_name=folder_name, device=None
                 )
                 cfg = handle_config_defaulting(cfg)
