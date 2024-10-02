@@ -415,6 +415,21 @@ def get_dictionary_learning_config_1(
         "neuronpedia_id": None,
     }
 
+def get_sae_config(model_info: dict[str, Any], folder_name: str, **kwargs: Any) -> dict[str, Any]:
+    repo_id = model_info["repo_id"]
+    conversion_func = model_info["conversion_func"]
+
+    if conversion_func == "connor_rob_hook_z":
+        cfg = get_connor_rob_hook_z_config(
+            repo_id, folder_name=folder_name, device=None
+        )
+    elif conversion_func == "dictionary_learning_1":
+        cfg = get_dictionary_learning_config_1(repo_id, folder_name=folder_name)
+    elif conversion_func == "gemma_2":
+        cfg = get_gemma_2_config(repo_id, folder_name=folder_name)
+    else:
+        cfg = get_sae_config_from_hf(repo_id, folder_name=folder_name)
+    return cfg
 
 def dictionary_learning_sae_loader_1(
     repo_id: str,
