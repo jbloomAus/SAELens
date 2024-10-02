@@ -505,7 +505,9 @@ class ActivationsStore:
         total_size = batch_size * n_batches_in_buffer
         num_layers = 1
         # Calculate the effective context size
-        context_window = list(range(self.start_pos_offset, context_size-self.end_pos_offset))
+        context_window = list(
+            range(self.start_pos_offset, context_size - self.end_pos_offset)
+        )
         effective_context_size = len(context_window)
 
         if self.cached_activations_path is not None:
