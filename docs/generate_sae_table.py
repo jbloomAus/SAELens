@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 from sae_lens import SAEConfig
 from sae_lens.toolkit.pretrained_sae_loaders import (
-    get_sae_config
+    get_sae_config,
     handle_config_defaulting,
 )
 
@@ -56,11 +56,11 @@ def generate_sae_table():
         markdown_content += "\n"
 
         for info in tqdm(model_info["saes"]):
-            repo_id = model_info["repo_id"]
             folder_name = info["path"]
             # can remove this by explicitly overriding config in yaml. Do this later.
             cfg = get_sae_config(
-                model_info, folder_name=folder_name,
+                model_info,
+                folder_name=folder_name,
             )
             cfg = handle_config_defaulting(cfg)
             cfg = SAEConfig.from_dict(cfg).to_dict()

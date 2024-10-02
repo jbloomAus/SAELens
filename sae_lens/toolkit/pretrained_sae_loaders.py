@@ -32,11 +32,10 @@ def sae_lens_loader(
     """
     Get's SAEs from HF, loads them.
     """
+    model_info = {"repo_id": repo_id, "conversion_func": "sae_lens"}
     # Get the config
-    cfg_dict = get_sae_config_from_hf(
-        repo_id,
-        folder_name,
-        force_download,
+    cfg_dict = get_sae_config(
+        model_info, folder_name=folder_name, force_download=force_download
     )
     # Apply overrides if provided
     if cfg_overrides is not None:
@@ -77,7 +76,7 @@ def sae_lens_loader(
 def get_sae_config_from_hf(
     repo_id: str,
     folder_name: str,
-    force_download: bool = False,
+    **kwargs: Any,
 ) -> Dict[str, Any]:
     """
     Retrieve the configuration for a Sparse Autoencoder (SAE) from a Hugging Face repository.
@@ -91,6 +90,7 @@ def get_sae_config_from_hf(
     Returns:
         Dict[str, Any]: The configuration dictionary for the SAE.
     """
+    force_download = kwargs.get("force_download", False)
     cfg_filename = f"{folder_name}/cfg.json"
     cfg_path = hf_hub_download(
         repo_id=repo_id, filename=cfg_filename, force_download=force_download
@@ -131,8 +131,9 @@ def handle_config_defaulting(cfg_dict: dict[str, Any]) -> dict[str, Any]:
 
 
 def get_connor_rob_hook_z_config(
-    repo_id: str, folder_name: str, device: Optional[str]
+    repo_id: str, folder_name: str, **kwargs: Any
 ) -> dict[str, Any]:
+    device = kwargs.get("device", None)
     config_path = folder_name.split(".pt")[0] + "_cfg.json"
     config_path = hf_hub_download(repo_id, config_path)
 
@@ -167,14 +168,20 @@ def connor_rob_hook_z_loader(
     force_download: bool = False,
     cfg_overrides: Optional[dict[str, Any]] = None,
 ) -> tuple[dict[str, Any], dict[str, torch.Tensor], None]:
+    model_info = {
+        "repo_id": repo_id,
+        "conversion_func": "connor_rob_hook_z",
+    }
+    cfg_dict = get_sae_config(
+        model_info,
+        folder_name=folder_name,
+        device=device,
+        force_download=force_download,
+    )
 
     file_path = hf_hub_download(
         repo_id=repo_id, filename=folder_name, force_download=force_download
     )
-    cfg_dict = get_connor_rob_hook_z_config(
-        repo_id, folder_name=folder_name, device=device
-    )
-
     weights = torch.load(file_path, map_location=device)
 
     return cfg_dict, weights, None
@@ -221,9 +228,11 @@ def read_sae_from_disk(
 def get_gemma_2_config(
     repo_id: str,
     folder_name: str,
-    d_sae_override: Optional[int] = None,
-    layer_override: Optional[int] = None,
+    **kwargs: Any,
 ) -> Dict[str, Any]:
+    d_sae_override = kwargs.get("d_sae_override", None)
+    layer_override = kwargs.get("layer_override", None)
+
     # Detect width from folder_name
     width_map = {
         "width_4k": 4096,
@@ -317,7 +326,16 @@ def gemma_2_sae_loader(
     """
     Custom loader for Gemma 2 SAEs.
     """
-    cfg_dict = get_gemma_2_config(repo_id, folder_name, d_sae_override, layer_override)
+    model_info = {
+        "repo_id": repo_id,
+        "conversion_func": "gemma_2",
+    }
+    cfg_dict = get_sae_config(
+        model_info,
+        folder_name=folder_name,
+        d_sae_override=d_sae_override,
+        layer_override=layer_override,
+    )
     cfg_dict["device"] = device
 
     # Apply overrides if provided
@@ -369,11 +387,12 @@ def gemma_2_sae_loader(
 
 
 def get_dictionary_learning_config_1(
-    repo_id: str, folder_name: str, force_download: bool = False
+    repo_id: str, folder_name: str, **kwargs: Any
 ) -> dict[str, Any]:
     """
     Suitable for SAEs from https://huggingface.co/canrager/lm_sae.
     """
+    force_download = kwargs.get("force_download", False)
     config_path = hf_hub_download(
         repo_id=repo_id,
         filename=f"{folder_name}/config.json",
@@ -415,21 +434,25 @@ def get_dictionary_learning_config_1(
         "neuronpedia_id": None,
     }
 
-def get_sae_config(model_info: dict[str, Any], folder_name: str, **kwargs: Any) -> dict[str, Any]:
+
+def get_sae_config(
+    model_info: dict[str, Any], folder_name: str, **kwargs: Any
+) -> dict[str, Any]:
     repo_id = model_info["repo_id"]
     conversion_func = model_info["conversion_func"]
 
     if conversion_func == "connor_rob_hook_z":
-        cfg = get_connor_rob_hook_z_config(
-            repo_id, folder_name=folder_name, device=None
-        )
+        cfg = get_connor_rob_hook_z_config(repo_id, folder_name=folder_name, **kwargs)
     elif conversion_func == "dictionary_learning_1":
-        cfg = get_dictionary_learning_config_1(repo_id, folder_name=folder_name)
+        cfg = get_dictionary_learning_config_1(
+            repo_id, folder_name=folder_name, **kwargs
+        )
     elif conversion_func == "gemma_2":
-        cfg = get_gemma_2_config(repo_id, folder_name=folder_name)
+        cfg = get_gemma_2_config(repo_id, folder_name=folder_name, **kwargs)
     else:
-        cfg = get_sae_config_from_hf(repo_id, folder_name=folder_name)
+        cfg = get_sae_config_from_hf(repo_id, folder_name=folder_name, **kwargs)
     return cfg
+
 
 def dictionary_learning_sae_loader_1(
     repo_id: str,
