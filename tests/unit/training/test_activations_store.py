@@ -354,7 +354,7 @@ def test_activations_store___iterate_tokenized_sequences__yields_sequences_of_co
 # length of the dataset
 @pytest.mark.parametrize(
     "context_size, expected_error",
-    [(-1, ValueError), (5, RuntimeWarning), (10, None), (15, ValueError)],
+    [(5, RuntimeWarning), (10, None), (15, ValueError)],
 )
 def test_activations_store__errors_on_context_size_mismatch(
     ts_model: HookedTransformer, context_size: int, expected_error: Optional[ValueError]
@@ -388,6 +388,12 @@ def test_activations_store__errors_on_context_size_mismatch(
     else:
         # If the context_size is equal to the dataset size the function should pass
         ActivationsStore.from_config(ts_model, cfg, override_dataset=tokenized_dataset)
+
+
+def test_activations_store__errors_on_negative_context_size():
+    with pytest.raises(ValueError):
+        # We should raise an error when the context_size is negative
+        build_sae_cfg(prepend_bos=True, context_size=-1)
 
 
 def test_activations_store___iterate_tokenized_sequences__yields_identical_results_with_and_without_pretokenizing(

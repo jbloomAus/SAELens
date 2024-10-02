@@ -40,6 +40,8 @@ class LanguageModelSAERunnerConfig:
         streaming (bool): Whether to stream the dataset. Streaming large datasets is usually practical.
         is_dataset_tokenized (bool): NOT IN USE. We used to use this but now automatically detect if the dataset is tokenized.
         context_size (int): The context size to use when generating activations on which to train the SAE.
+        start_pos_offset (int): A positive offset to cut off the start of the sequences used to train the SAE.
+        end_pos_offset (int): A positive offset to cut off the end of the sequences used to train the SAE.
         use_cached_activations (bool): Whether to use cached activations. This is useful when doing sweeps over the same activations.
         cached_activations_path (str, optional): The path to the cached activations.
         d_in (int): The input dimension of the SAE.
@@ -363,18 +365,22 @@ class LanguageModelSAERunnerConfig:
         if self.use_ghost_grads:
             print("Using Ghost Grads.")
 
+        if self.context_size < 0:
+            raise ValueError(
+                f"The provided context_size is {self.context_size} is negative. Expecting positive context_size."
+            )
+
         if (self.start_pos_offset < 0) or (self.start_pos_offset > self.context_size):
             raise ValueError(
-                f"Start position offset {self.start_pos_offset} should be in range [0,{self.context_size}]"
+                f"Start position offset {self.start_pos_offset} should be in range [0, {self.context_size}]"
             )
         if (self.end_pos_offset < 0) or (self.end_pos_offset >= self.context_size):
             raise ValueError(
-                f"End position offset {self.end_pos_offset} should be in range [0,{self.context_size-1}]"
+                f"End position offset {self.end_pos_offset} should be in range [0, {self.context_size-1}]"
             )
         if self.start_pos_offset + self.end_pos_offset > self.context_size:
             raise ValueError(
-                f"""Choice of start and end position overlap. Obtained
-                             {self.start_pos_offset, self.end_pos_offset} with context size {self.context_size}"""
+                f"Choice of {self.start_pos_offset=} and {self.end_pos_offset=} is incompatible with {self.context_size=}. We expect start_pos_offset + end_pos_offset < context_size."
             )
 
     @property
@@ -479,6 +485,12 @@ class CacheActivationsRunnerConfig:
     streaming: bool = True
     is_dataset_tokenized: bool = True
     context_size: int = 128
+    start_pos_offset: int = (
+        0  # set to n if you want to exclude first n seq positions from sae training
+    )
+    end_pos_offset: int = (
+        0  # set to n if you want to exclude last n seq positions from sae training
+    )
     new_cached_activations_path: Optional[str] = (
         None  # Defaults to "activations/{dataset}/{model}/{full_hook_name}_{hook_head_index}"
     )
@@ -523,6 +535,23 @@ class CacheActivationsRunnerConfig:
 
         if self.act_store_device == "with_model":
             self.act_store_device = self.device
+
+        if self.context_size < 0:
+            raise ValueError(
+                f"The provided context_size is {self.context_size} is negative. Expecting positive context_size."
+            )
+        if (self.start_pos_offset < 0) or (self.start_pos_offset > self.context_size):
+            raise ValueError(
+                f"Start position offset {self.start_pos_offset} should be in range [0, {self.context_size}]"
+            )
+        if (self.end_pos_offset < 0) or (self.end_pos_offset >= self.context_size):
+            raise ValueError(
+                f"End position offset {self.end_pos_offset} should be in range [0, {self.context_size-1}]"
+            )
+        if self.start_pos_offset + self.end_pos_offset > self.context_size:
+            raise ValueError(
+                f"Choice of {self.start_pos_offset=} and {self.end_pos_offset=} is incompatible with {self.context_size=}. We expect start_pos_offset + end_pos_offset < context_size."
+            )
 
 
 @dataclass
