@@ -168,8 +168,8 @@ class ActivationsStore:
             n_samples = len(self.dataset)
 
             if n_samples < total_training_tokens:
-                print(
-                    f"Warning: the training dataset contains fewer samples ({n_samples}) than the number of samples required by your training configuration ({total_training_tokens}). This will result in multiple training epochs and some samples being used more than once."
+                warnings.warn(
+                    f"The training dataset contains fewer samples ({n_samples}) than the number of samples required by your training configuration ({total_training_tokens}). This will result in multiple training epochs and some samples being used more than once."
                 )
 
         self.hook_name = hook_name
@@ -242,8 +242,8 @@ class ActivationsStore:
                     dataset_path=dataset, model_tokenizer=model.tokenizer
                 )
         else:
-            print(
-                "Warning: Dataset is not tokenized. Pre-tokenizing will improve performance and allows for more control over special tokens. See https://jbloomaus.github.io/SAELens/training_saes/#pretokenizing-datasets for more info."
+            warnings.warn(
+                "Dataset is not tokenized. Pre-tokenizing will improve performance and allows for more control over special tokens. See https://jbloomaus.github.io/SAELens/training_saes/#pretokenizing-datasets for more info."
             )
 
         self.iterable_sequences = self._iterate_tokenized_sequences()
@@ -508,8 +508,8 @@ class ActivationsStore:
                 if not os.path.exists(
                     f"{self.cached_activations_path}/{self.next_cache_idx}.safetensors"
                 ):
-                    print(
-                        "\n\nWarning: Ran out of cached activation files earlier than expected."
+                    warnings.warn(
+                        "Ran out of cached activation files earlier than expected."
                     )
                     print(
                         f"Expected to have {buffer_size} activations, but only found {n_tokens_filled}."
@@ -607,8 +607,8 @@ class ActivationsStore:
                 self.half_buffer_size, raise_on_epoch_end=True
             )
         except StopIteration:
-            print(
-                "Warning: All samples in the training dataset have been exhausted, we are now beginning a new epoch with the same samples."
+            warnings.warn(
+                "All samples in the training dataset have been exhausted, we are now beginning a new epoch with the same samples."
             )
             self._storage_buffer = (
                 None  # dump the current buffer so samples do not leak between epochs
