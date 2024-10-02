@@ -39,6 +39,8 @@ class LanguageModelSAERunnerConfigDict(TypedDict, total=False):
     checkpoint_path: str
     dtype: str
     prepend_bos: bool
+    start_pos_offset: int
+    end_pos_offset: int
 
 
 def build_sae_cfg(**kwargs: Any) -> LanguageModelSAERunnerConfig:
@@ -75,6 +77,8 @@ def build_sae_cfg(**kwargs: Any) -> LanguageModelSAERunnerConfig:
         "checkpoint_path": "test/checkpoints",
         "dtype": "float32",
         "prepend_bos": True,
+        "start_pos_offset": 0,
+        "end_pos_offset": 0,
     }
 
     for key, value in kwargs.items():
