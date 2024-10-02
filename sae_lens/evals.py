@@ -699,6 +699,9 @@ def multiple_evals(
             device=device,
         )[0]
 
+        # move SAE to device if not there already
+        sae.to(device)
+
         if current_model_str != sae.cfg.model_name:
             del current_model  # potentially saves GPU memory
             current_model_str = sae.cfg.model_name
