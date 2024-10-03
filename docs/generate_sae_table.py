@@ -57,8 +57,8 @@ def generate_sae_table():
         markdown_content += "\n"
 
         for info in tqdm(model_info["saes"]):
-            folder_name = info["path"]
             # can remove this by explicitly overriding config in yaml. Do this later.
+            folder_name = info["path"]
             cfg = get_sae_config(
                 model_info,
                 folder_name=folder_name,
