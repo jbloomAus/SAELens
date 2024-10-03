@@ -1,7 +1,6 @@
 from collections.abc import Iterable
 from math import ceil
 from typing import Optional
-from typing import Optional
 
 import numpy as np
 import pytest
