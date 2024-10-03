@@ -354,7 +354,7 @@ def test_language_model_sae_runner_othellogpt():
         # Resampling protocol
         use_ghost_grads=False,  # we don't use ghost grads anymore.
         feature_sampling_window=500,  # this controls our reporting of feature sparsity stats
-        dead_feature_window=1e6,  # would effect resampling or ghost grads if we were using it.
+        dead_feature_window=1000000,  # would effect resampling or ghost grads if we were using it.
         dead_feature_threshold=1e-4,  # would effect resampling or ghost grads if we were using it.
         # WANDB
         log_to_wandb=False,  # always use wandb unless you are just testing code.
