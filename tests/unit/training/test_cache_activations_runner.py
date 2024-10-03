@@ -232,7 +232,7 @@ def test_cache_activations_runner_with_valid_start_end_pos_offset(tmp_path: Path
     context_size = 1024
     start_pos_offset = 12
     end_pos_offset = 12
-    effective_context_size = context_size - start_pos_offset - end_pos_offset
+    training_context_size = context_size - start_pos_offset - end_pos_offset
     print(f"n tokens per context: {context_size}")
     n_batches_in_buffer = 32
     print(f"n batches in buffer: {n_batches_in_buffer}")
@@ -241,7 +241,7 @@ def test_cache_activations_runner_with_valid_start_end_pos_offset(tmp_path: Path
     n_buffers = 3
     print(f"n_buffers: {n_buffers}")
 
-    tokens_in_buffer = n_batches_in_buffer * store_batch_size * effective_context_size
+    tokens_in_buffer = n_batches_in_buffer * store_batch_size * training_context_size
     total_training_tokens = n_buffers * tokens_in_buffer
     print(f"Total Training Tokens: {total_training_tokens}")
 

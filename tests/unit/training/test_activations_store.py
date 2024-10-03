@@ -487,7 +487,7 @@ def test_validate_pretokenized_dataset_tokenizer_does_nothing_if_the_dataset_pat
     validate_pretokenized_dataset_tokenizer(ds_path, model_tokenizer)
 
 
-def test_activations_store_respects_seqpos_slice(ts_model: HookedTransformer):
+def test_activations_store_respects_position_offsets(ts_model: HookedTransformer):
     cfg = build_sae_cfg(
         context_size=10,
         seqpos_slice=(2, 8),  # Only consider positions 2 to 7 (inclusive)
