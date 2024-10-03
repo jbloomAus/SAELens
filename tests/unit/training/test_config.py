@@ -60,6 +60,8 @@ def test_sae_training_runner_config_get_sae_base_parameters():
         "hook_head_index": None,
         "device": "cpu",
         "context_size": 128,
+        "start_pos_offset": 0,
+        "end_pos_offset": 0,
         "prepend_bos": True,
         "finetuning_scaling_factor": False,
         "dataset_path": "",
