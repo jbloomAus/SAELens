@@ -2,6 +2,17 @@
 
 
 
+## v3.23.1 (2024-10-03)
+
+### Chore
+
+* chore: Change print warning messages to warnings.warn messages in activations-store (#314) ([`606f464`](https://github.com/jbloomAus/SAELens/commit/606f4648db6dd5fdee377d5c9e6a5f54a4a848b4))
+
+### Fix
+
+* fix: Correctly load SAE Bench TopK SAEs (#308) ([`4fb5bbe`](https://github.com/jbloomAus/SAELens/commit/4fb5bbe4f066ede1f0bc13bf0146dea2ffd29ea9))
+
+
 ## v3.23.0 (2024-10-01)
 
 ### Chore
