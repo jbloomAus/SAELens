@@ -304,11 +304,13 @@ def test_sae_change_dtype() -> None:
 
 
 def test_sae_position_offsets(tmp_path: Path) -> None:
-    cfg = build_sae_cfg(device="cpu", 
-                        context_size = 10,
-                        start_pos_offset = 2,
-                        end_pos_offset = 2,
-                        dtype="float64")
+    cfg = build_sae_cfg(
+        device="cpu",
+        context_size=10,
+        start_pos_offset=2,
+        end_pos_offset=2,
+        dtype="float64",
+    )
     model_path = str(tmp_path)
     sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
 
@@ -318,6 +320,6 @@ def test_sae_position_offsets(tmp_path: Path) -> None:
     sae.save_model(model_path)
 
     sae_loaded = sae.load_from_pretrained(model_path, device="cpu")
-    
+
     assert sae_loaded.cfg.start_pos_offset == 2
     assert sae_loaded.cfg.end_pos_offset == 2
