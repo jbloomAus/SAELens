@@ -24,7 +24,7 @@ class PretrainedSaeLoader(Protocol):
 
 
 @dataclass
-class SAEConfigParams:
+class SAEConfigLoadOptions:
     device: Optional[str] = None
     force_download: bool = False
     d_sae_override: Optional[int] = None
@@ -43,11 +43,11 @@ def sae_lens_loader(
     Get's SAEs from HF, loads them.
     """
     model_info = {"repo_id": repo_id, "conversion_func": "sae_lens"}
-    params = SAEConfigParams(
+    options = SAEConfigLoadOptions(
         force_download=force_download,
     )
     # Get the config
-    cfg_dict = get_sae_config(model_info, folder_name=folder_name, params=params)
+    cfg_dict = get_sae_config(model_info, folder_name=folder_name, options=options)
     # Apply overrides if provided
     if cfg_overrides is not None:
         cfg_dict.update(cfg_overrides)
@@ -87,7 +87,7 @@ def sae_lens_loader(
 def get_sae_config_from_hf(
     repo_id: str,
     folder_name: str,
-    params: SAEConfigParams,
+    options: SAEConfigLoadOptions,
 ) -> Dict[str, Any]:
     """
     Retrieve the configuration for a Sparse Autoencoder (SAE) from a Hugging Face repository.
@@ -103,7 +103,7 @@ def get_sae_config_from_hf(
     """
     cfg_filename = f"{folder_name}/cfg.json"
     cfg_path = hf_hub_download(
-        repo_id=repo_id, filename=cfg_filename, force_download=params.force_download
+        repo_id=repo_id, filename=cfg_filename, force_download=options.force_download
     )
 
     with open(cfg_path, "r") as f:
@@ -141,9 +141,9 @@ def handle_config_defaulting(cfg_dict: dict[str, Any]) -> dict[str, Any]:
 
 
 def get_connor_rob_hook_z_config(
-    repo_id: str, folder_name: str, params: SAEConfigParams
+    repo_id: str, folder_name: str, options: SAEConfigLoadOptions
 ) -> dict[str, Any]:
-    device = params.device
+    device = options.device
     config_path = folder_name.split(".pt")[0] + "_cfg.json"
     config_path = hf_hub_download(repo_id, config_path)
 
@@ -182,13 +182,13 @@ def connor_rob_hook_z_loader(
         "repo_id": repo_id,
         "conversion_func": "connor_rob_hook_z",
     }
-    params = SAEConfigParams(
+    options = SAEConfigLoadOptions(
         force_download=force_download,
     )
     cfg_dict = get_sae_config(
         model_info,
         folder_name=folder_name,
-        params=params,
+        options=options,
     )
 
     file_path = hf_hub_download(
@@ -240,7 +240,7 @@ def read_sae_from_disk(
 def get_gemma_2_config(
     repo_id: str,
     folder_name: str,
-    params: SAEConfigParams,
+    options: SAEConfigLoadOptions,
 ) -> Dict[str, Any]:
     # Detect width from folder_name
     width_map = {
@@ -256,7 +256,7 @@ def get_gemma_2_config(
     d_sae = next(
         (width for key, width in width_map.items() if key in folder_name), None
     )
-    d_sae_override = params.d_sae_override
+    d_sae_override = options.d_sae_override
     if d_sae is None:
         if not d_sae_override:
             raise ValueError("Width not found in folder_name and no override provided.")
@@ -264,7 +264,7 @@ def get_gemma_2_config(
 
     # Detect layer from folder_name
     match = re.search(r"layer_(\d+)", folder_name)
-    layer = int(match.group(1)) if match else params.layer_override
+    layer = int(match.group(1)) if match else options.layer_override
     if layer is None:
         if "embedding" in folder_name:
             layer = 0
@@ -340,14 +340,14 @@ def gemma_2_sae_loader(
         "repo_id": repo_id,
         "conversion_func": "gemma_2",
     }
-    params = SAEConfigParams(
+    options = SAEConfigLoadOptions(
         d_sae_override=d_sae_override,
         layer_override=layer_override,
     )
     cfg_dict = get_sae_config(
         model_info,
         folder_name=folder_name,
-        params=params,
+        options=options,
     )
     cfg_dict["device"] = device
 
@@ -400,7 +400,7 @@ def gemma_2_sae_loader(
 
 
 def get_dictionary_learning_config_1(
-    repo_id: str, folder_name: str, params: SAEConfigParams
+    repo_id: str, folder_name: str, options: SAEConfigLoadOptions
 ) -> dict[str, Any]:
     """
     Suitable for SAEs from https://huggingface.co/canrager/lm_sae.
@@ -408,7 +408,7 @@ def get_dictionary_learning_config_1(
     config_path = hf_hub_download(
         repo_id=repo_id,
         filename=f"{folder_name}/config.json",
-        force_download=params.force_download,
+        force_download=options.force_download,
     )
     with open(config_path, "r") as f:
         config = json.load(f)
@@ -448,23 +448,23 @@ def get_dictionary_learning_config_1(
 
 
 def get_sae_config(
-    model_info: dict[str, Any], folder_name: str, params: SAEConfigParams
+    model_info: dict[str, Any], folder_name: str, options: SAEConfigLoadOptions
 ) -> dict[str, Any]:
     repo_id = model_info["repo_id"]
     conversion_func = model_info["conversion_func"]
 
     if conversion_func == "connor_rob_hook_z":
         cfg = get_connor_rob_hook_z_config(
-            repo_id, folder_name=folder_name, params=params
+            repo_id, folder_name=folder_name, options=options
         )
     elif conversion_func == "dictionary_learning_1":
         cfg = get_dictionary_learning_config_1(
-            repo_id, folder_name=folder_name, params=params
+            repo_id, folder_name=folder_name, options=options
         )
     elif conversion_func == "gemma_2":
-        cfg = get_gemma_2_config(repo_id, folder_name=folder_name, params=params)
+        cfg = get_gemma_2_config(repo_id, folder_name=folder_name, options=options)
     else:
-        cfg = get_sae_config_from_hf(repo_id, folder_name=folder_name, params=params)
+        cfg = get_sae_config_from_hf(repo_id, folder_name=folder_name, options=options)
     return cfg
 
 
@@ -483,10 +483,10 @@ def dictionary_learning_sae_loader_1(
         "conversion_func": "dictionary_learning_1",
     }
 
-    params = SAEConfigParams(
+    options = SAEConfigLoadOptions(
         force_download=force_download,
     )
-    cfg_dict = get_sae_config(model_info, folder_name=folder_name, params=params)
+    cfg_dict = get_sae_config(model_info, folder_name=folder_name, options=options)
     if cfg_overrides:
         cfg_dict.update(cfg_overrides)
 

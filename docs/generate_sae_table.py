@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 from sae_lens import SAEConfig
 from sae_lens.toolkit.pretrained_sae_loaders import (
-    SAEConfigParams,
+    SAEConfigLoadOptions,
     get_sae_config,
     handle_config_defaulting,
 )
@@ -62,7 +62,7 @@ def generate_sae_table():
             cfg = get_sae_config(
                 model_info,
                 folder_name=folder_name,
-                params=SAEConfigParams(),
+                options=SAEConfigLoadOptions(),
             )
             cfg = handle_config_defaulting(cfg)
             cfg = SAEConfig.from_dict(cfg).to_dict()

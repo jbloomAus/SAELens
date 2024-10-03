@@ -8,7 +8,7 @@ from sae_lens.analysis.neuronpedia_integration import open_neuronpedia_feature_d
 from sae_lens.evals import all_loadable_saes
 from sae_lens.sae import SAE
 from sae_lens.toolkit.pretrained_sae_loaders import (
-    SAEConfigParams,
+    SAEConfigLoadOptions,
     get_sae_config_from_hf,
 )
 
@@ -33,7 +33,9 @@ because they just didn't hold with such nonsense.
 def test_get_sae_config():
     repo_id = "jbloom/GPT2-Small-SAEs-Reformatted"
     cfg = get_sae_config_from_hf(
-        repo_id=repo_id, folder_name="blocks.0.hook_resid_pre", params=SAEConfigParams()
+        repo_id=repo_id,
+        folder_name="blocks.0.hook_resid_pre",
+        options=SAEConfigLoadOptions(),
     )
     assert cfg is not None
 
