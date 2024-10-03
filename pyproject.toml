@@ -41,7 +41,7 @@ typing-extensions = "^4.10.0"
 
 
 [tool.poetry.group.dev.dependencies]
-black = "24.4.0"
+black = { version = "24.4.0", extras = ["jupyter"] }
 pytest = "^8.0.2"
 pytest-cov = "^4.1.0"
 pre-commit = "^3.6.2"
