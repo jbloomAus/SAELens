@@ -306,13 +306,10 @@ def test_language_model_sae_runner_othellogpt():
     total_training_steps = 500
     batch_size = 4096
     total_training_tokens = total_training_steps * batch_size
-    print(f"Total Training Tokens: {total_training_tokens}")
 
     lr_warm_up_steps = 0
     lr_decay_steps = 40_000
-    print(f"lr_decay_steps: {lr_decay_steps}")
     l1_warmup_steps = 10_000
-    print(f"l1_warmup_steps: {l1_warmup_steps}")
 
     cfg = LanguageModelSAERunnerConfig(
         # Data Generating Function (Model + Training Distibuion)
@@ -345,8 +342,7 @@ def test_language_model_sae_runner_othellogpt():
         lp_norm=1.0,  # the L1 penalty (and not a Lp for p < 1)
         train_batch_size_tokens=batch_size,
         context_size=59,  # will control the length of the prompts we feed to the model. Larger is better but slower. so for the tutorial we'll use a short one.
-        start_pos_offset=5,
-        end_pos_offset=5,
+        seqpos_slice=(5, -5),
         # Activation Store Parameters
         n_batches_in_buffer=32,  # controls how many activations we store / shuffle.
         training_tokens=total_training_tokens,  # 100 million tokens is quite a few, but we want to see good stats. Get a coffee, come back.

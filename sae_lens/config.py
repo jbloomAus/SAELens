@@ -40,8 +40,6 @@ class LanguageModelSAERunnerConfig:
         streaming (bool): Whether to stream the dataset. Streaming large datasets is usually practical.
         is_dataset_tokenized (bool): NOT IN USE. We used to use this but now automatically detect if the dataset is tokenized.
         context_size (int): The context size to use when generating activations on which to train the SAE.
-        start_pos_offset (int): A positive offset to cut off the start of the sequences used to train the SAE.
-        end_pos_offset (int): A positive offset to cut off the end of the sequences used to train the SAE.
         use_cached_activations (bool): Whether to use cached activations. This is useful when doing sweeps over the same activations.
         cached_activations_path (str, optional): The path to the cached activations.
         d_in (int): The input dimension of the SAE.
@@ -62,7 +60,7 @@ class LanguageModelSAERunnerConfig:
         store_batch_size_prompts (int): The batch size for storing activations. This controls how many prompts are in the batch of the language model when generating actiations.
         train_batch_size_tokens (int): The batch size for training. This controls the batch size of the SAE Training loop.
         normalize_activations (str): Activation Normalization Strategy. Either none, expected_average_only_in (estimate the average activation norm and divide activations by it -> this can be folded post training and set to None), or constant_norm_rescale (at runtime set activation norm to sqrt(d_in) and then scale up the SAE output).
-        seqpos_slice (tuple): Determines slicing of (batch, seq, d_in) activations when constructing batches, during training. Example: for Othello we sometimes use (5, -5).
+        seqpos_slice (tuple): Determines slicing of activations when constructing batches during training. The slice should be (start_pos, end_pos, step_size), e.g. for Othello we sometimes use (5, -5).
         device (str): The device to use. Usually cuda.
         act_store_device (str): The device to use for the activation store. CPU is advised in order to save vram.
         seed (int): The seed to use.
@@ -124,12 +122,6 @@ class LanguageModelSAERunnerConfig:
     streaming: bool = True
     is_dataset_tokenized: bool = True
     context_size: int = 128
-    start_pos_offset: int = (
-        0  # set to n if you want to exclude first n seq positions from sae training
-    )
-    end_pos_offset: int = (
-        0  # set to n if you want to exclude last n seq positions from sae training
-    )
     use_cached_activations: bool = False
     cached_activations_path: Optional[str] = (
         None  # Defaults to "activations/{dataset}/{model}/{full_hook_name}_{hook_head_index}"
@@ -370,18 +362,7 @@ class LanguageModelSAERunnerConfig:
                 f"The provided context_size is {self.context_size} is negative. Expecting positive context_size."
             )
 
-        if (self.start_pos_offset < 0) or (self.start_pos_offset > self.context_size):
-            raise ValueError(
-                f"Start position offset {self.start_pos_offset} should be in range [0, {self.context_size}]"
-            )
-        if (self.end_pos_offset < 0) or (self.end_pos_offset >= self.context_size):
-            raise ValueError(
-                f"End position offset {self.end_pos_offset} should be in range [0, {self.context_size-1}]"
-            )
-        if self.start_pos_offset + self.end_pos_offset > self.context_size:
-            raise ValueError(
-                f"Choice of {self.start_pos_offset=} and {self.end_pos_offset=} is incompatible with {self.context_size=}. We expect start_pos_offset + end_pos_offset < context_size."
-            )
+        _validate_seqpos(seqpos=self.seqpos_slice, context_size=self.context_size)
 
     @property
     def total_training_tokens(self) -> int:
@@ -406,8 +387,6 @@ class LanguageModelSAERunnerConfig:
             "activation_fn_str": self.activation_fn,
             "apply_b_dec_to_input": self.apply_b_dec_to_input,
             "context_size": self.context_size,
-            "start_pos_offset": self.start_pos_offset,
-            "end_pos_offset": self.end_pos_offset,
             "prepend_bos": self.prepend_bos,
             "dataset_path": self.dataset_path,
             "dataset_trust_remote_code": self.dataset_trust_remote_code,
@@ -487,12 +466,6 @@ class CacheActivationsRunnerConfig:
     streaming: bool = True
     is_dataset_tokenized: bool = True
     context_size: int = 128
-    start_pos_offset: int = (
-        0  # set to n if you want to exclude first n seq positions from sae training
-    )
-    end_pos_offset: int = (
-        0  # set to n if you want to exclude last n seq positions from sae training
-    )
     new_cached_activations_path: Optional[str] = (
         None  # Defaults to "activations/{dataset}/{model}/{full_hook_name}_{hook_head_index}"
     )
@@ -542,18 +515,8 @@ class CacheActivationsRunnerConfig:
             raise ValueError(
                 f"The provided context_size is {self.context_size} is negative. Expecting positive context_size."
             )
-        if (self.start_pos_offset < 0) or (self.start_pos_offset > self.context_size):
-            raise ValueError(
-                f"Start position offset {self.start_pos_offset} should be in range [0, {self.context_size}]"
-            )
-        if (self.end_pos_offset < 0) or (self.end_pos_offset >= self.context_size):
-            raise ValueError(
-                f"End position offset {self.end_pos_offset} should be in range [0, {self.context_size-1}]"
-            )
-        if self.start_pos_offset + self.end_pos_offset > self.context_size:
-            raise ValueError(
-                f"Choice of {self.start_pos_offset=} and {self.end_pos_offset=} is incompatible with {self.context_size=}. We expect start_pos_offset + end_pos_offset < context_size."
-            )
+
+        _validate_seqpos(seqpos=self.seqpos_slice, context_size=self.context_size)
 
 
 @dataclass
@@ -638,6 +601,17 @@ def _default_cached_activations_path(
     if hook_head_index is not None:
         path += f"_{hook_head_index}"
     return path
+
+
+def _validate_seqpos(seqpos: tuple[int | None, ...], context_size: int) -> None:
+    # Ensure that the step-size is larger or equal to 1
+    if len(seqpos) == 3:
+        step_size = seqpos[2] or 1
+        assert (
+            step_size > 1
+        ), f"Ensure the step_size {seqpos[2]=} for sequence slicing is positive."
+    # Ensure that the choice of seqpos doesn't end up with an empty list
+    assert len(list(range(context_size))[slice(*seqpos)]) > 0
 
 
 @dataclass

@@ -219,7 +219,7 @@ def test_activations_store_refreshes_dataset_when_it_runs_out():
 
 # The way to run this with this command:
 # poetry run py.test tests/unit/test_cache_activations_runner.py --profile-svg -s
-def test_cache_activations_runner_with_valid_start_end_pos_offset(tmp_path: Path):
+def test_cache_activations_runner_with_valid_seqpos(tmp_path: Path):
     if torch.cuda.is_available():
         device = "cuda"
     elif torch.backends.mps.is_available():
@@ -229,9 +229,8 @@ def test_cache_activations_runner_with_valid_start_end_pos_offset(tmp_path: Path
 
     # total_training_steps = 20_000
     context_size = 1024
-    start_pos_offset = 12
-    end_pos_offset = 12
-    training_context_size = context_size - start_pos_offset - end_pos_offset
+    seqpos_slice = (12, -12)
+    training_context_size = len(range(context_size)[slice(*seqpos_slice)])
     n_batches_in_buffer = 32
     store_batch_size = 1
     n_buffers = 3
@@ -259,9 +258,8 @@ def test_cache_activations_runner_with_valid_start_end_pos_offset(tmp_path: Path
         prepend_bos=True,  # I used to train GPT2 SAEs with a prepended-bos but no longer think we should do this.
         training_tokens=total_training_tokens,  # For initial testing I think this is a good number.
         train_batch_size_tokens=4096,
-        # Test the start and end pos offset
-        start_pos_offset=start_pos_offset,
-        end_pos_offset=end_pos_offset,
+        # Test the sequence slicing
+        seqpos_slice=seqpos_slice,
         # Loss Function
         ## Reconstruction Coefficient.
         # Buffer details won't matter in we cache / shuffle our activations ahead of time.

@@ -75,8 +75,6 @@ class ActivationsStore:
             hook_layer=cfg.hook_layer,
             hook_head_index=cfg.hook_head_index,
             context_size=cfg.context_size,
-            start_pos_offset=cfg.start_pos_offset,
-            end_pos_offset=cfg.end_pos_offset,
             d_in=cfg.d_in,
             n_batches_in_buffer=cfg.n_batches_in_buffer,
             total_training_tokens=cfg.training_tokens,
@@ -116,8 +114,6 @@ class ActivationsStore:
             hook_layer=sae.cfg.hook_layer,
             hook_head_index=sae.cfg.hook_head_index,
             context_size=sae.cfg.context_size if context_size is None else context_size,
-            start_pos_offset=sae.cfg.start_pos_offset,
-            end_pos_offset=sae.cfg.end_pos_offset,
             prepend_bos=sae.cfg.prepend_bos,
             streaming=streaming,
             store_batch_size_prompts=store_batch_size_prompts,
@@ -140,8 +136,6 @@ class ActivationsStore:
         hook_layer: int,
         hook_head_index: int | None,
         context_size: int,
-        start_pos_offset: int,
-        end_pos_offset: int,
         d_in: int,
         n_batches_in_buffer: int,
         total_training_tokens: int,
@@ -185,8 +179,6 @@ class ActivationsStore:
         self.hook_layer = hook_layer
         self.hook_head_index = hook_head_index
         self.context_size = context_size
-        self.start_pos_offset = start_pos_offset
-        self.end_pos_offset = end_pos_offset
         self.d_in = d_in
         self.n_batches_in_buffer = n_batches_in_buffer
         self.half_buffer_size = n_batches_in_buffer // 2
@@ -457,7 +449,11 @@ class ActivationsStore:
                 **self.model_kwargs,
             )[1]
 
-        n_batches, n_context = batch_tokens.shape
+        layerwise_activations = layerwise_activations_cache[self.hook_name][
+            :, slice(*self.seqpos_slice)
+        ]
+
+        n_batches, n_context = layerwise_activations.shape[:2]
 
         stacked_activations = torch.zeros((n_batches, n_context, 1, self.d_in))
 
@@ -498,11 +494,6 @@ class ActivationsStore:
         d_in = self.d_in
         total_size = batch_size * n_batches_in_buffer
         num_layers = 1
-        # Calculate the effective context size
-        training_context_slice = list(
-            range(self.start_pos_offset, context_size - self.end_pos_offset)
-        )
-        training_context_size = len(training_context_slice)
 
         if self.cached_activations_path is not None:
             # Load the activations from disk

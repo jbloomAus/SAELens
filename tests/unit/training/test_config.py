@@ -60,8 +60,6 @@ def test_sae_training_runner_config_get_sae_base_parameters():
         "hook_head_index": None,
         "device": "cpu",
         "context_size": 128,
-        "start_pos_offset": 0,
-        "end_pos_offset": 0,
         "prepend_bos": True,
         "finetuning_scaling_factor": False,
         "dataset_path": "",
@@ -98,69 +96,45 @@ def test_sae_training_runner_config_expansion_factor():
     assert cfg.expansion_factor == 4
 
 
-@pytest.mark.parametrize(
-    "start_pos_offset, end_pos_offset, expected_error",
-    [
-        (-1, 0, ValueError),
-        (0, 0, None),
-        (10, 0, None),
-        (11, 0, ValueError),
-        (0, -1, ValueError),
-        (0, 10, ValueError),
-        (0, 11, ValueError),
-        (5, 5, None),
-        (6, 5, ValueError),
-        (3, 4, None),
-    ],
-)
-def test_sae_training_runner_config_start_end_pos_offset(
-    start_pos_offset: int, end_pos_offset: int, expected_error: Optional[ValueError]
+test_cases_for_seqpos = [
+    ((None, 10, -1), AssertionError),
+    ((None, 10, 0), AssertionError),
+    ((5, 5, None), AssertionError),
+    ((6, 3, None), AssertionError),
+]
+
+
+@pytest.mark.parametrize("seqpos_slice, expected_error", test_cases_for_seqpos)
+def test_sae_training_runner_config_seqpos(
+    seqpos_slice: tuple[int, int], expected_error: Optional[AssertionError]
 ):
     context_size = 10
-    if expected_error is ValueError:
+    if expected_error is AssertionError:
         with pytest.raises(expected_error):
             LanguageModelSAERunnerConfig(
-                start_pos_offset=start_pos_offset,
-                end_pos_offset=end_pos_offset,
+                seqpos_slice=seqpos_slice,
                 context_size=context_size,
             )
     else:
         LanguageModelSAERunnerConfig(
-            start_pos_offset=start_pos_offset,
-            end_pos_offset=end_pos_offset,
+            seqpos_slice=seqpos_slice,
             context_size=context_size,
         )
 
 
-@pytest.mark.parametrize(
-    "start_pos_offset, end_pos_offset, expected_error",
-    [
-        (-1, 0, ValueError),
-        (0, 0, None),
-        (10, 0, None),
-        (11, 0, ValueError),
-        (0, -1, ValueError),
-        (0, 10, ValueError),
-        (0, 11, ValueError),
-        (5, 5, None),
-        (6, 5, ValueError),
-        (3, 4, None),
-    ],
-)
-def test_cache_activations_runner_config_start_end_pos_offset(
-    start_pos_offset: int, end_pos_offset: int, expected_error: Optional[ValueError]
+@pytest.mark.parametrize("seqpos_slice, expected_error", test_cases_for_seqpos)
+def test_cache_activations_runner_config_seqpos(
+    seqpos_slice: tuple[int, int], expected_error: Optional[AssertionError]
 ):
     context_size = 10
-    if expected_error is ValueError:
+    if expected_error is AssertionError:
         with pytest.raises(expected_error):
             CacheActivationsRunnerConfig(
-                start_pos_offset=start_pos_offset,
-                end_pos_offset=end_pos_offset,
+                seqpos_slice=seqpos_slice,
                 context_size=context_size,
             )
     else:
         CacheActivationsRunnerConfig(
-            start_pos_offset=start_pos_offset,
-            end_pos_offset=end_pos_offset,
+            seqpos_slice=seqpos_slice,
             context_size=context_size,
         )
