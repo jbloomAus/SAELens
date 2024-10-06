@@ -465,10 +465,10 @@ class CacheActivationsRunnerConfig:
     autocast_lm: bool = False  # autocast lm during activation fetching
 
     # Activation caching stuff
-    shuffle_every_n_buffers: int = 10
-    n_shuffles_with_last_section: int = 10
-    n_shuffles_in_entire_dir: int = 10
-    n_shuffles_final: int = 100
+    shuffle_every_n_buffers: int = 10  # DEPRECATED
+    n_shuffles_with_last_section: int = 10  # DEPRECATED
+    n_shuffles_in_entire_dir: int = 10  # DEPRECATED
+    n_shuffles_final: int = 100  # DEPRECATED
     shuffle: bool = True
     model_kwargs: dict[str, Any] = field(default_factory=dict)
     model_from_pretrained_kwargs: dict[str, Any] = field(default_factory=dict)

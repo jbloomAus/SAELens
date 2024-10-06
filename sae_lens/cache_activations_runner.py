@@ -123,7 +123,9 @@ class CacheActivationsRunner:
         for i in tqdm(range(self.n_buffers), desc="Caching activations"):
             try:
                 # num activations in a single shard: n_batches_in_buffer * store_batch_size_prompts
-                buffer = self.activations_store.get_buffer(self.cfg.n_batches_in_buffer)
+                buffer = self.activations_store.get_buffer(
+                    self.cfg.n_batches_in_buffer, shuffle=self.cfg.shuffle
+                )
                 shard = self._create_shard(buffer)
                 shard.save_to_disk(f"{temp_shards_dir}/{i}", num_shards=1)
                 del buffer, shard
@@ -142,13 +144,16 @@ class CacheActivationsRunner:
             for i in range(self.n_buffers)
         ]
 
+        print("Concatenating shards...")
         dataset = concatenate_datasets(dataset_shards)
         # for better performance:
         # .to_iterable_dataset( num_shards=self.n_buffers)
 
         if self.cfg.shuffle:
+            print("Shuffling...")
             dataset = dataset.shuffle(seed=self.cfg.seed)
 
+        print("Writing to disk...")
         dataset.save_to_disk(new_cached_activations_path, num_shards=self.n_buffers)
 
         del dataset_shards

@@ -526,7 +526,10 @@ class ActivationsStore:
 
     @torch.no_grad()
     def get_buffer(
-        self, n_batches_in_buffer: int, raise_on_epoch_end: bool = False
+        self,
+        n_batches_in_buffer: int,
+        raise_on_epoch_end: bool = False,
+        shuffle: bool = True,
     ) -> torch.Tensor:
         """
         Loads the next n_batches_in_buffer batches of activations into a tensor and returns half of it.
@@ -569,7 +572,8 @@ class ActivationsStore:
             # pbar.update(1)
 
         new_buffer = new_buffer.reshape(-1, num_layers, d_in)
-        new_buffer = new_buffer[torch.randperm(new_buffer.shape[0])]
+        if shuffle:
+            new_buffer = new_buffer[torch.randperm(new_buffer.shape[0])]
 
         # every buffer should be normalized:
         if self.normalize_activations == "expected_average_only_in":
