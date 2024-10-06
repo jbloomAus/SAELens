@@ -15,12 +15,6 @@ from huggingface_hub import hf_hub_download
 from huggingface_hub.utils import HfHubHTTPError
 from jaxtyping import Float
 from requests import HTTPError
-from safetensors.torch import save_file
-from torch.utils.data import DataLoader
-from tqdm import tqdm
-from transformer_lens.hook_points import HookedRootModule
-from transformers import AutoTokenizer, PreTrainedTokenizerBase
-
 from sae_lens.config import (
     DTYPE_MAP,
     CacheActivationsRunnerConfig,
@@ -29,6 +23,11 @@ from sae_lens.config import (
 )
 from sae_lens.sae import SAE
 from sae_lens.tokenization_and_batching import concat_and_batch_sequences
+from safetensors.torch import save_file
+from torch.utils.data import DataLoader
+from tqdm import tqdm
+from transformer_lens.hook_points import HookedRootModule
+from transformers import AutoTokenizer, PreTrainedTokenizerBase
 
 
 # TODO: Make an activation store config class to be consistent with the rest of the code.
@@ -106,7 +105,6 @@ class ActivationsStore:
         total_tokens: int = 10**9,
         device: str = "cpu",
     ) -> "ActivationsStore":
-
         return cls(
             model=model,
             dataset=sae.cfg.dataset_path if dataset is None else dataset,
@@ -250,7 +248,7 @@ class ActivationsStore:
 
         self.iterable_sequences = self._iterate_tokenized_sequences()
 
-        self.check_cached_activations_against_config()
+        self.cached_activation_dataset = self.load_cached_activations()
 
         # TODO add support for "mixed loading" (ie use cache until you run out, then switch over to streaming from HF)
 
@@ -315,31 +313,40 @@ class ActivationsStore:
                 ),
             )
 
-    def check_cached_activations_against_config(self):
+    def load_cached_activations(self) -> Dataset | None:
+        if self.cached_activations_path is None:
+            return None
 
-        if self.cached_activations_path is not None:  # EDIT: load from multi-layer acts
-            assert self.cached_activations_path is not None  # keep pyright happy
-            # Sanity check: does the cache directory exist?
-            assert os.path.exists(
-                self.cached_activations_path
-            ), f"Cache directory {self.cached_activations_path} does not exist. Consider double-checking your dataset, model, and hook names."
+        assert self.cached_activations_path is not None  # keep pyright happy
+        # Sanity check: does the cache directory exist?
+        assert os.path.exists(
+            self.cached_activations_path
+        ), f"Cache directory {self.cached_activations_path} does not exist. Consider double-checking your dataset, model, and hook names."
 
-            self.next_cache_idx = 0  # which file to open next
-            self.next_idx_within_buffer = 0  # where to start reading from in that file
+        self.current_row_idx = 0
 
-            # Check that we have enough data on disk
-            first_buffer: Dataset = datasets.load_from_disk(f"{self.cached_activations_path}/{self.next_cache_idx}") # type: ignore
-            buffer_size_on_disk = first_buffer.features[self.hook_name].shape[0]
-            del first_buffer
+        # we can just load the entire dataset, mem-mapped and sharded by default
+        activations_dataset: Dataset = datasets.load_from_disk(
+            self.cached_activations_path
+        )  # type: ignore
+        activations_dataset.set_format(
+            type="torch", columns=[self.hook_name], device=self.device, dtype=self.dtype
+        )
 
-            n_buffers_on_disk = len(os.listdir(self.cached_activations_path))
+        assert (
+            self.hook_name in activations_dataset
+        ), f"loaded dataset does not include hook activations, got {self.cached_activation_dataset.column_names}"
+        assert (
+            activations_dataset.features[self.hook_name].shape
+            == (self.context_size, self.d_in)
+        ), f"Given dataset of shape ({self.cached_activation_dataset.features[self.hook_name].shape}) does not match context_size ({self.context_size}) and d_in ({self.d_in})"
 
-            # Note: we're assuming all files have the same number of tokens
-            # (which seems reasonable imo since that's what our script does)
-            n_activations_on_disk = buffer_size_on_disk * n_buffers_on_disk
-            assert (
-                n_activations_on_disk >= self.total_training_tokens
-            ), f"Only {n_activations_on_disk/1e6:.1f}M activations on disk, but total_training_tokens is {self.total_training_tokens/1e6:.1f}M."
+        n_activations_on_disk = len(activations_dataset) * self.context_size
+        assert (
+            n_activations_on_disk >= self.total_training_tokens
+        ), f"Only {n_activations_on_disk/1e6:.1f}M activations on disk, but total_training_tokens is {self.total_training_tokens/1e6:.1f}M."
+
+        return activations_dataset
 
     def apply_norm_scaling_factor(self, activations: torch.Tensor) -> torch.Tensor:
         return activations * self.estimated_norm_scaling_factor
@@ -352,7 +359,6 @@ class ActivationsStore:
 
     @torch.no_grad()
     def estimate_norm_scaling_factor(self, n_batches_for_norm_estimate: int = int(1e3)):
-
         norms_per_batch = []
         for _ in tqdm(
             range(n_batches_for_norm_estimate), desc="Estimating norm scaling factor"
@@ -476,7 +482,9 @@ class ActivationsStore:
 
         return stacked_activations
 
-    def _load_activations_from_disk(self, total_size: int, context_size: int, num_layers: int, d_in: int) -> Float[torch.Tensor, "(nrows context_size) num_layers d_in"]:
+    def _load_buffer_from_cached(
+        self, total_size: int, context_size: int, num_layers: int, d_in: int
+    ) -> Float[torch.Tensor, "(total_size context_size) num_layers d_in"]:
         """
         Dataset has schema
         {
@@ -485,16 +493,23 @@ class ActivationsStore:
 
         - num_layers is always 1 for now
         """
-        # type Dataset | DatsetDict -> Dataset
-        dset: Dataset = datasets.load_from_disk(f"{self.cached_activations_path}/{self.next_cache_idx}", keep_in_memory=True) # type: ignore
-        dset.set_format(type="torch", device=self.device, dtype=self.dtype)
-        assert [self.hook_name] == dset.column_names # single hook, single layer only
-        assert isinstance(dset[self.hook_name], torch.Tensor)
-        new_buffer: torch.Tensor = dset[self.hook_name] # type: ignore
-        del dset
+        assert self.cached_activation_dataset is not None
+        assert [self.hook_name] == self.cached_activation_dataset.column_names
 
-        new_buffer = einops.rearrange(new_buffer, "nrows context_size d_in -> (nrows context_size) num_layers d_in", num_layers=num_layers)
-        assert new_buffer.shape == (total_size * context_size, num_layers, d_in)
+        # usually faster to slice dataset then pick column
+        # shape: (total_size, context_size, d_in)
+        new_buffer = self.cached_activation_dataset[
+            self.current_row_idx : self.current_row_idx + total_size
+        ][self.hook_name]
+        self.current_row_idx += total_size
+        assert new_buffer.shape == (total_size, context_size, num_layers, d_in)
+
+        # make new dimension for num_layers, (always 1 layer for now)
+        assert num_layers == 1
+        new_buffer = einops.rearrange(
+            new_buffer,
+            "total_size context_size d_in -> (total_size context_size) () d_in",
+        )
         return new_buffer
 
     @torch.no_grad()
@@ -515,7 +530,9 @@ class ActivationsStore:
         num_layers = 1
 
         if self.cached_activations_path is not None:
-            return self._load_activations_from_disk(total_size, context_size, num_layers, d_in)
+            return self._load_buffer_from_cached(
+                total_size, context_size, num_layers, d_in
+            )
 
         refill_iterator = range(0, batch_size * n_batches_in_buffer, batch_size)
         # Initialize empty tensor buffer of the maximum required size with an additional dimension for layers
