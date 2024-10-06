@@ -95,7 +95,7 @@ class CacheActivationsRunner:
         new_cached_activations_path = self.cfg.new_cached_activations_path
         assert new_cached_activations_path is not None
 
-        ### Path setup
+        ### Paths setup
 
         # if the activations directory exists and has files in it, raise an exception
         if os.path.exists(new_cached_activations_path):
@@ -116,7 +116,7 @@ class CacheActivationsRunner:
         else:
             os.makedirs(temp_shards_dir)
 
-        ### Create temp shard activation datasets
+        ### Create temporary sharded datasets
 
         print(f"Started caching {self.cfg.training_tokens} activations")
 
@@ -134,19 +134,22 @@ class CacheActivationsRunner:
                 )
                 break
 
-        ### Concat shards and save together, cleanup temp shards
+        ### Concat sharded datasets and save together, cleanup
 
         # mem mapped
         dataset_shards = [
             Dataset.load_from_disk(f"{temp_shards_dir}/{i}")
             for i in range(self.n_buffers)
         ]
-        dataset = concatenate_datasets(dataset_shards)
-        dataset = dataset.shuffle(seed=self.cfg.seed)
 
-        # TODO: might be a better way than resaving the entire dataset
+        # for better performance:
+        # .to_iterable_dataset(num_shards=self.n_buffers)
+        dataset = concatenate_datasets(dataset_shards)
+
+        dataset = dataset.shuffle(seed=self.cfg.seed)
         dataset.save_to_disk(new_cached_activations_path, num_shards=self.n_buffers)
 
         del dataset_shards
         shutil.rmtree(temp_shards_dir)
+
         return dataset
