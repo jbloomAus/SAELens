@@ -74,7 +74,7 @@ class CacheActivationsRunner:
         buffer = einops.rearrange(
             buffer,
             "(bs context_size) num_layers d_in -> num_layers bs context_size d_in",
-            bs=self.cfg.n_batches_in_buffer,
+            bs=self.cfg.n_batches_in_buffer * self.cfg.store_batch_size_prompts,
             context_size=self.cfg.context_size,
             d_in=self.cfg.d_in,
             num_layers=len(hook_names),
@@ -122,7 +122,7 @@ class CacheActivationsRunner:
 
         for i in tqdm(range(self.n_buffers), desc="Caching activations"):
             try:
-                # n_batches_in_buffer: num activations in a single shard
+                # num activations in a single shard: n_batches_in_buffer * store_batch_size_prompts
                 buffer = self.activations_store.get_buffer(self.cfg.n_batches_in_buffer)
                 shard = self._create_shard(buffer)
                 shard.save_to_disk(f"{temp_shards_dir}/{i}", num_shards=1)
@@ -142,11 +142,13 @@ class CacheActivationsRunner:
             for i in range(self.n_buffers)
         ]
 
-        # for better performance:
-        # .to_iterable_dataset(num_shards=self.n_buffers)
         dataset = concatenate_datasets(dataset_shards)
+        # for better performance:
+        # .to_iterable_dataset( num_shards=self.n_buffers)
 
-        dataset = dataset.shuffle(seed=self.cfg.seed)
+        if self.cfg.shuffle:
+            dataset = dataset.shuffle(seed=self.cfg.seed)
+
         dataset.save_to_disk(new_cached_activations_path, num_shards=self.n_buffers)
 
         del dataset_shards

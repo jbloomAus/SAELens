@@ -6,7 +6,6 @@ from typing import Any, Literal, Optional, cast
 import torch
 import wandb
 from datasets import Dataset, DatasetDict, IterableDataset, IterableDatasetDict
-
 from sae_lens import __version__
 
 DTYPE_MAP = {
@@ -150,9 +149,7 @@ class LanguageModelSAERunnerConfig:
     finetuning_tokens: int = 0
     store_batch_size_prompts: int = 32
     train_batch_size_tokens: int = 4096
-    normalize_activations: str = (
-        "none"  # none, expected_average_only_in (Anthropic April Update), constant_norm_rescale (Anthropic Feb Update)
-    )
+    normalize_activations: str = "none"  # none, expected_average_only_in (Anthropic April Update), constant_norm_rescale (Anthropic Feb Update)
 
     # Misc
     device: str = "cpu"
@@ -233,7 +230,6 @@ class LanguageModelSAERunnerConfig:
     sae_lens_training_version: str = field(default_factory=lambda: __version__)
 
     def __post_init__(self):
-
         if self.resume:
             raise ValueError(
                 "Resuming is no longer supported. You can finetune a trained SAE using cfg.from_pretrained path."
@@ -404,7 +400,6 @@ class LanguageModelSAERunnerConfig:
         }
 
     def to_dict(self) -> dict[str, Any]:
-
         cfg_dict = {
             **self.__dict__,
             # some args may not be serializable by default
@@ -416,7 +411,6 @@ class LanguageModelSAERunnerConfig:
         return cfg_dict
 
     def to_json(self, path: str) -> None:
-
         if not os.path.exists(os.path.dirname(path)):
             os.makedirs(os.path.dirname(path))
 
@@ -475,6 +469,7 @@ class CacheActivationsRunnerConfig:
     n_shuffles_with_last_section: int = 10
     n_shuffles_in_entire_dir: int = 10
     n_shuffles_final: int = 100
+    shuffle: bool = True
     model_kwargs: dict[str, Any] = field(default_factory=dict)
     model_from_pretrained_kwargs: dict[str, Any] = field(default_factory=dict)
 
@@ -494,7 +489,6 @@ class CacheActivationsRunnerConfig:
 
 @dataclass
 class ToyModelSAERunnerConfig:
-
     architecture: Literal["standard", "gated"] = "standard"
 
     # ReLu Model Parameters

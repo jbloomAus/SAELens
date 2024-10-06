@@ -4,11 +4,11 @@ from typing import Any, Tuple
 
 import pytest
 import torch
-from datasets import Dataset
+from datasets import Dataset, load_dataset
+from jaxtyping import Float
 from sae_lens.cache_activations_runner import CacheActivationsRunner
 from sae_lens.config import CacheActivationsRunnerConfig, LanguageModelSAERunnerConfig
 from sae_lens.training.activations_store import ActivationsStore
-from safetensors import safe_open
 from transformer_lens import HookedTransformer
 
 
@@ -217,3 +217,79 @@ def test_activations_store_refreshes_dataset_when_it_runs_out():
     # no errors are ever raised if we do not ask for raise_at_epoch_end
     for _ in range(32):
         _ = activations_store.get_batch_tokens(batch_size, raise_at_epoch_end=False)
+
+
+def test_compare_cached_activations_with_ground_truth(tmp_path: Path):
+    """
+    Creates activations using CacheActivationsRunner and compares them with ground truth
+    model.run_with_cache
+    """
+
+    model_name = "gelu-1l"
+    hook_name = "blocks.0.hook_mlp_out"
+    dataset_path = "NeelNanda/c4-tokenized-2b"
+    batch_size = 8
+    batches_in_buffer = 4
+    num_tokens = batches_in_buffer * batch_size * 4  # 4 buffers
+
+    # Setup configuration for CacheActivationsRunner
+    cfg = CacheActivationsRunnerConfig(
+        new_cached_activations_path=str(tmp_path),
+        model_name=model_name,
+        hook_name=hook_name,
+        dataset_path=dataset_path,
+        training_tokens=num_tokens,
+        shuffle=False,
+        train_batch_size_tokens=batch_size,
+        n_batches_in_buffer=batches_in_buffer,
+        ###
+        hook_layer=0,
+        d_in=512,
+        context_size=256,
+        is_dataset_tokenized=True,
+        prepend_bos=True,
+        store_batch_size_prompts=16,
+        normalize_activations="none",
+        device="cpu",
+        seed=42,
+        dtype="float16",
+    )
+
+    runner = CacheActivationsRunner(cfg)
+    activation_dataset = runner.run()
+    activation_dataset.set_format("torch", device=cfg.device)
+
+    model = HookedTransformer.from_pretrained(model_name, device=cfg.device)
+    token_dataset: Dataset = load_dataset(dataset_path, split=f"train[:{num_tokens}]")  # type: ignore
+    token_dataset.set_format("torch", device=cfg.device)
+
+    tokens = token_dataset["tokens"][:, : cfg.context_size]
+    ground_truth_acts = []
+
+    for i in range(0, num_tokens, batch_size):
+        _, layerwise_activations = model.run_with_cache(
+            tokens[i : i + batch_size],
+            names_filter=[cfg.hook_name],
+            stop_at_layer=cfg.hook_layer + 1,
+            prepend_bos=False,
+            **cfg.model_kwargs,
+        )
+        acts = layerwise_activations[cfg.hook_name]
+        ground_truth_acts.append(acts)
+
+    ground_truth_acts = torch.cat(ground_truth_acts, dim=0)
+
+    print(ground_truth_acts.shape)
+    print(activation_dataset[cfg.hook_name].shape)
+
+    assert torch.allclose(ground_truth_acts, activation_dataset[cfg.hook_name])
+
+    # # Compare cached activations with ground truth
+    # for cached_act, gt_act in zip(cached_dataset, ground_truth_activations):
+    #     cached_activation = cached_act[cfg.hook_name]
+    #     assert torch.allclose(
+    #         cached_activation, gt_act, atol=1e-4
+    #     ), "Cached activations do not match ground truth activations."
+
+    # # Cleanup if necessary
+    # shutil.rmtree(tmp_path)
