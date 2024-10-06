@@ -248,7 +248,7 @@ class ActivationsStore:
 
         self.iterable_sequences = self._iterate_tokenized_sequences()
 
-        self.cached_activation_dataset = self.load_cached_activations()
+        self.cached_activation_dataset = self.load_cached_activation_dataset()
 
         # TODO add support for "mixed loading" (ie use cache until you run out, then switch over to streaming from HF)
 
@@ -313,7 +313,13 @@ class ActivationsStore:
                 ),
             )
 
-    def load_cached_activations(self) -> Dataset | None:
+    def load_cached_activation_dataset(self) -> Dataset | None:
+        """
+        Load the cached activation dataset from disk.
+
+        - If cached_activations_path is set, returns Huggingface Dataset else None
+        - Checks that the loaded dataset has current has activations for hooks in config and that shapes match.
+        """
         if self.cached_activations_path is None:
             return None
 
@@ -323,23 +329,27 @@ class ActivationsStore:
             self.cached_activations_path
         ), f"Cache directory {self.cached_activations_path} does not exist. Consider double-checking your dataset, model, and hook names."
 
-        self.current_row_idx = 0
+        self.current_row_idx = 0  # idx to load next batch from
 
-        # we can just load the entire dataset, mem-mapped and sharded by default
-        activations_dataset: Dataset = datasets.load_from_disk(
-            self.cached_activations_path
-        )  # type: ignore
+        # We can just load the entire dataset, mem-mapped and sharded by default
+        activations_dataset = datasets.load_from_disk(self.cached_activations_path)
         activations_dataset.set_format(
             type="torch", columns=[self.hook_name], device=self.device, dtype=self.dtype
         )
+        assert isinstance(activations_dataset, Dataset)
 
-        assert (
-            self.hook_name in activations_dataset.column_names
-        ), f"loaded dataset does not include hook activations, got {activations_dataset.column_names}"
-        assert (
-            activations_dataset.features[self.hook_name].shape
-            == (self.context_size, self.d_in)
-        ), f"Given dataset of shape ({activations_dataset.features[self.hook_name].shape}) does not match context_size ({self.context_size}) and d_in ({self.d_in})"
+        if self.hook_name not in activations_dataset.column_names:
+            raise ValueError(
+                f"loaded dataset does not include hook activations, got {activations_dataset.column_names}"
+            )
+
+        if activations_dataset.features[self.hook_name].shape != (
+            self.context_size,
+            self.d_in,
+        ):
+            raise ValueError(
+                f"Given dataset of shape ({activations_dataset.features[self.hook_name].shape}) does not match context_size ({self.context_size}) and d_in ({self.d_in})"
+            )
 
         n_activations_on_disk = len(activations_dataset) * self.context_size
         assert (
