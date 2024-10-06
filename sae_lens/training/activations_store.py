@@ -475,6 +475,58 @@ class ActivationsStore:
 
         return stacked_activations
 
+    def load_cached_activations_from_disk(self, total_size: int, context_size: int, num_layers: int, d_in: int):
+        buffer_size = total_size * context_size
+        # Initialize an empty tensor with an additional dimension for layers
+        new_buffer = torch.zeros(
+            (buffer_size, num_layers, d_in),
+            dtype=self.dtype,  # type: ignore
+            device=self.device,
+        )
+        n_tokens_filled = 0
+
+        # Assume activations for different layers are stored separately and need to be combined
+        while n_tokens_filled < buffer_size:
+            if not os.path.exists(
+                f"{self.cached_activations_path}/{self.next_cache_idx}.safetensors"
+            ):
+                warnings.warn(
+                    "Ran out of cached activation files earlier than expected."
+                )
+                print(
+                    f"Expected to have {buffer_size} activations, but only found {n_tokens_filled}."
+                )
+                if buffer_size % self.total_training_tokens != 0:
+                    print(
+                        "This might just be a rounding error — your batch_size * n_batches_in_buffer * context_size is not divisible by your total_training_tokens"
+                    )
+                print(f"Returning a buffer of size {n_tokens_filled} instead.")
+                print("\n\n")
+                new_buffer = new_buffer[:n_tokens_filled, ...]
+                return new_buffer
+
+            activations = self.load_buffer(
+                f"{self.cached_activations_path}/{self.next_cache_idx}.safetensors"
+            )
+            taking_subset_of_file = False
+            if n_tokens_filled + activations.shape[0] > buffer_size:
+                activations = activations[: buffer_size - n_tokens_filled, ...]
+                taking_subset_of_file = True
+
+            new_buffer[
+                n_tokens_filled : n_tokens_filled + activations.shape[0], ...
+            ] = activations
+
+            if taking_subset_of_file:
+                self.next_idx_within_buffer = activations.shape[0]
+            else:
+                self.next_cache_idx += 1
+                self.next_idx_within_buffer = 0
+
+            n_tokens_filled += activations.shape[0]
+
+        return new_buffer
+
     @torch.no_grad()
     def get_buffer(
         self, n_batches_in_buffer: int, raise_on_epoch_end: bool = False
@@ -493,57 +545,7 @@ class ActivationsStore:
         num_layers = 1
 
         if self.cached_activations_path is not None:
-            # Load the activations from disk
-            buffer_size = total_size * context_size
-            # Initialize an empty tensor with an additional dimension for layers
-            new_buffer = torch.zeros(
-                (buffer_size, num_layers, d_in),
-                dtype=self.dtype,  # type: ignore
-                device=self.device,
-            )
-            n_tokens_filled = 0
-
-            # Assume activations for different layers are stored separately and need to be combined
-            while n_tokens_filled < buffer_size:
-                if not os.path.exists(
-                    f"{self.cached_activations_path}/{self.next_cache_idx}.safetensors"
-                ):
-                    warnings.warn(
-                        "Ran out of cached activation files earlier than expected."
-                    )
-                    print(
-                        f"Expected to have {buffer_size} activations, but only found {n_tokens_filled}."
-                    )
-                    if buffer_size % self.total_training_tokens != 0:
-                        print(
-                            "This might just be a rounding error — your batch_size * n_batches_in_buffer * context_size is not divisible by your total_training_tokens"
-                        )
-                    print(f"Returning a buffer of size {n_tokens_filled} instead.")
-                    print("\n\n")
-                    new_buffer = new_buffer[:n_tokens_filled, ...]
-                    return new_buffer
-
-                activations = self.load_buffer(
-                    f"{self.cached_activations_path}/{self.next_cache_idx}.safetensors"
-                )
-                taking_subset_of_file = False
-                if n_tokens_filled + activations.shape[0] > buffer_size:
-                    activations = activations[: buffer_size - n_tokens_filled, ...]
-                    taking_subset_of_file = True
-
-                new_buffer[
-                    n_tokens_filled : n_tokens_filled + activations.shape[0], ...
-                ] = activations
-
-                if taking_subset_of_file:
-                    self.next_idx_within_buffer = activations.shape[0]
-                else:
-                    self.next_cache_idx += 1
-                    self.next_idx_within_buffer = 0
-
-                n_tokens_filled += activations.shape[0]
-
-            return new_buffer
+            return self.load_cached_activations_from_disk(total_size, context_size, num_layers, d_in)
 
         refill_iterator = range(0, batch_size * n_batches_in_buffer, batch_size)
         # Initialize empty tensor buffer of the maximum required size with an additional dimension for layers
