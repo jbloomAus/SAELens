@@ -1,0 +1,48 @@
+{
+  "_data_files": [
+    {
+      "filename": "data-00000-of-00012.arrow"
+    },
+    {
+      "filename": "data-00001-of-00012.arrow"
+    },
+    {
+      "filename": "data-00002-of-00012.arrow"
+    },
+    {
+      "filename": "data-00003-of-00012.arrow"
+    },
+    {
+      "filename": "data-00004-of-00012.arrow"
+    },
+    {
+      "filename": "data-00005-of-00012.arrow"
+    },
+    {
+      "filename": "data-00006-of-00012.arrow"
+    },
+    {
+      "filename": "data-00007-of-00012.arrow"
+    },
+    {
+      "filename": "data-00008-of-00012.arrow"
+    },
+    {
+      "filename": "data-00009-of-00012.arrow"
+    },
+    {
+      "filename": "data-00010-of-00012.arrow"
+    },
+    {
+      "filename": "data-00011-of-00012.arrow"
+    }
+  ],
+  "_fingerprint": "09928ebd5e00bbc2",
+  "_format_columns": [
+    "blocks.0.hook_mlp_out"
+  ],
+  "_format_kwargs": {},
+  "_format_type": null,
+  "_output_all_columns": false,
+  "_split": null
+}

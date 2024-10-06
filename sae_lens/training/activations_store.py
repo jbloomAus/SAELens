@@ -334,12 +334,12 @@ class ActivationsStore:
         )
 
         assert (
-            self.hook_name in activations_dataset
-        ), f"loaded dataset does not include hook activations, got {self.cached_activation_dataset.column_names}"
+            self.hook_name in activations_dataset.column_names
+        ), f"loaded dataset does not include hook activations, got {activations_dataset.column_names}"
         assert (
             activations_dataset.features[self.hook_name].shape
             == (self.context_size, self.d_in)
-        ), f"Given dataset of shape ({self.cached_activation_dataset.features[self.hook_name].shape}) does not match context_size ({self.context_size}) and d_in ({self.d_in})"
+        ), f"Given dataset of shape ({activations_dataset.features[self.hook_name].shape}) does not match context_size ({self.context_size}) and d_in ({self.d_in})"
 
         n_activations_on_disk = len(activations_dataset) * self.context_size
         assert (
@@ -502,7 +502,9 @@ class ActivationsStore:
             self.current_row_idx : self.current_row_idx + total_size
         ][self.hook_name]
         self.current_row_idx += total_size
-        assert new_buffer.shape == (total_size, context_size, num_layers, d_in)
+        assert (
+            new_buffer.shape == (total_size, context_size, d_in)
+        ), f"new_buffer.shape = {new_buffer.shape} != (total_size, context_size, num_layers, d_in) = ({total_size}, {context_size}, {d_in})"
 
         # make new dimension for num_layers, (always 1 layer for now)
         assert num_layers == 1

@@ -1,0 +1,16 @@
+{
+  "citation": "",
+  "description": "",
+  "features": {
+    "blocks.0.hook_mlp_out": {
+      "shape": [
+        256,
+        512
+      ],
+      "dtype": "float16",
+      "_type": "Array2D"
+    }
+  },
+  "homepage": "",
+  "license": ""
+}
