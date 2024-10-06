@@ -6,13 +6,15 @@ import os
 import warnings
 from typing import Any, Generator, Iterator, Literal, cast
 
+import datasets
+import einops
 import numpy as np
 import torch
 from datasets import Dataset, DatasetDict, IterableDataset, load_dataset
 from huggingface_hub import hf_hub_download
 from huggingface_hub.utils import HfHubHTTPError
+from jaxtyping import Float
 from requests import HTTPError
-from safetensors import safe_open
 from safetensors.torch import save_file
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -326,11 +328,10 @@ class ActivationsStore:
             self.next_idx_within_buffer = 0  # where to start reading from in that file
 
             # Check that we have enough data on disk
-            first_buffer = self.load_buffer(
-                f"{self.cached_activations_path}/{self.next_cache_idx}.safetensors"
-            )
+            first_buffer: Dataset = datasets.load_from_disk(f"{self.cached_activations_path}/{self.next_cache_idx}") # type: ignore
+            buffer_size_on_disk = first_buffer.features[self.hook_name].shape[0]
+            del first_buffer
 
-            buffer_size_on_disk = first_buffer.shape[0]
             n_buffers_on_disk = len(os.listdir(self.cached_activations_path))
 
             # Note: we're assuming all files have the same number of tokens
@@ -475,56 +476,25 @@ class ActivationsStore:
 
         return stacked_activations
 
-    def load_cached_activations_from_disk(self, total_size: int, context_size: int, num_layers: int, d_in: int):
-        buffer_size = total_size * context_size
-        # Initialize an empty tensor with an additional dimension for layers
-        new_buffer = torch.zeros(
-            (buffer_size, num_layers, d_in),
-            dtype=self.dtype,  # type: ignore
-            device=self.device,
-        )
-        n_tokens_filled = 0
+    def _load_activations_from_disk(self, total_size: int, context_size: int, num_layers: int, d_in: int) -> Float[torch.Tensor, "(nrows context_size) num_layers d_in"]:
+        """
+        Dataset has schema
+        {
+          hook_name: Array2D(shape=(context_size, d_in))
+        }
 
-        # Assume activations for different layers are stored separately and need to be combined
-        while n_tokens_filled < buffer_size:
-            if not os.path.exists(
-                f"{self.cached_activations_path}/{self.next_cache_idx}.safetensors"
-            ):
-                warnings.warn(
-                    "Ran out of cached activation files earlier than expected."
-                )
-                print(
-                    f"Expected to have {buffer_size} activations, but only found {n_tokens_filled}."
-                )
-                if buffer_size % self.total_training_tokens != 0:
-                    print(
-                        "This might just be a rounding error — your batch_size * n_batches_in_buffer * context_size is not divisible by your total_training_tokens"
-                    )
-                print(f"Returning a buffer of size {n_tokens_filled} instead.")
-                print("\n\n")
-                new_buffer = new_buffer[:n_tokens_filled, ...]
-                return new_buffer
+        - num_layers is always 1 for now
+        """
+        # type Dataset | DatsetDict -> Dataset
+        dset: Dataset = datasets.load_from_disk(f"{self.cached_activations_path}/{self.next_cache_idx}", keep_in_memory=True) # type: ignore
+        dset.set_format(type="torch", device=self.device, dtype=self.dtype)
+        assert [self.hook_name] == dset.column_names # single hook, single layer only
+        assert isinstance(dset[self.hook_name], torch.Tensor)
+        new_buffer: torch.Tensor = dset[self.hook_name] # type: ignore
+        del dset
 
-            activations = self.load_buffer(
-                f"{self.cached_activations_path}/{self.next_cache_idx}.safetensors"
-            )
-            taking_subset_of_file = False
-            if n_tokens_filled + activations.shape[0] > buffer_size:
-                activations = activations[: buffer_size - n_tokens_filled, ...]
-                taking_subset_of_file = True
-
-            new_buffer[
-                n_tokens_filled : n_tokens_filled + activations.shape[0], ...
-            ] = activations
-
-            if taking_subset_of_file:
-                self.next_idx_within_buffer = activations.shape[0]
-            else:
-                self.next_cache_idx += 1
-                self.next_idx_within_buffer = 0
-
-            n_tokens_filled += activations.shape[0]
-
+        new_buffer = einops.rearrange(new_buffer, "nrows context_size d_in -> (nrows context_size) num_layers d_in", num_layers=num_layers)
+        assert new_buffer.shape == (total_size * context_size, num_layers, d_in)
         return new_buffer
 
     @torch.no_grad()
@@ -545,7 +515,7 @@ class ActivationsStore:
         num_layers = 1
 
         if self.cached_activations_path is not None:
-            return self.load_cached_activations_from_disk(total_size, context_size, num_layers, d_in)
+            return self._load_activations_from_disk(total_size, context_size, num_layers, d_in)
 
         refill_iterator = range(0, batch_size * n_batches_in_buffer, batch_size)
         # Initialize empty tensor buffer of the maximum required size with an additional dimension for layers
@@ -577,19 +547,6 @@ class ActivationsStore:
             new_buffer = self.apply_norm_scaling_factor(new_buffer)
 
         return new_buffer
-
-    def save_buffer(self, buffer: torch.Tensor, path: str):
-        """
-        Used by cached activations runner to save a buffer to disk.
-        For reuse by later workflows.
-        """
-        save_file({"activations": buffer}, path)
-
-    def load_buffer(self, path: str) -> torch.Tensor:
-
-        with safe_open(path, framework="pt", device=str(self.device)) as f:  # type: ignore
-            buffer = f.get_tensor("activations")
-        return buffer
 
     def get_data_loader(
         self,
