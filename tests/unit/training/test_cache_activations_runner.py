@@ -5,11 +5,12 @@ from typing import Any, Tuple
 import pytest
 import torch
 from datasets import Dataset, load_dataset
+from tqdm import trange
+from transformer_lens import HookedTransformer
+
 from sae_lens.cache_activations_runner import CacheActivationsRunner
 from sae_lens.config import CacheActivationsRunnerConfig, LanguageModelSAERunnerConfig
 from sae_lens.training.activations_store import ActivationsStore
-from tqdm import trange
-from transformer_lens import HookedTransformer
 
 
 # The way to run this with this command:
@@ -200,8 +201,10 @@ def test_activations_store_refreshes_dataset_when_it_runs_out():
 
     model = MockModel()
     activations_store = ActivationsStore.from_config(
-        model, cfg, override_dataset=dataset
-    )  # type: ignore
+        model,  # type: ignore
+        cfg,
+        override_dataset=dataset,
+    )
     for _ in range(16):
         _ = activations_store.get_batch_tokens(batch_size, raise_at_epoch_end=True)
 
@@ -265,6 +268,7 @@ def test_compare_cached_activations_with_ground_truth(tmp_path: Path):
     runner = CacheActivationsRunner(cfg)
     activation_dataset = runner.run()
     activation_dataset.set_format("torch", device=cfg.device)
+    dataset_acts: torch.Tensor = activation_dataset[cfg.hook_name]  # type: ignore
 
     model = HookedTransformer.from_pretrained(model_name, device=cfg.device)
     token_dataset: Dataset = load_dataset(dataset_path, split=f"train[:{num_tokens}]")  # type: ignore
@@ -287,14 +291,12 @@ def test_compare_cached_activations_with_ground_truth(tmp_path: Path):
     ground_truth_acts = torch.cat(ground_truth_acts, dim=0)
 
     print("Ground truth shape:", ground_truth_acts.shape)
-    print("Cached activations shape:", activation_dataset[cfg.hook_name].shape)
+    print("Cached activations shape:", dataset_acts.shape)
     print("Ground truth sample:", ground_truth_acts[0, 0, :10])
-    print("Cached activations sample:", activation_dataset[cfg.hook_name][0, 0, :10])
+    print("Cached activations sample:", dataset_acts[0, 0, :10])
     print(
         "Max difference:",
         torch.max(torch.abs(ground_truth_acts - activation_dataset[cfg.hook_name])),
     )
 
-    assert torch.allclose(
-        ground_truth_acts, activation_dataset[cfg.hook_name], rtol=1e-3, atol=5e-2
-    )
+    assert torch.allclose(ground_truth_acts, dataset_acts, rtol=1e-3, atol=5e-2)

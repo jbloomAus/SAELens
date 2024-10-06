@@ -7,7 +7,6 @@ import warnings
 from typing import Any, Generator, Iterator, Literal, cast
 
 import datasets
-import einops
 import numpy as np
 import torch
 from datasets import Dataset, DatasetDict, IterableDataset, load_dataset
@@ -15,6 +14,12 @@ from huggingface_hub import hf_hub_download
 from huggingface_hub.utils import HfHubHTTPError
 from jaxtyping import Float
 from requests import HTTPError
+from safetensors.torch import save_file
+from torch.utils.data import DataLoader
+from tqdm import tqdm
+from transformer_lens.hook_points import HookedRootModule
+from transformers import AutoTokenizer, PreTrainedTokenizerBase
+
 from sae_lens.config import (
     DTYPE_MAP,
     CacheActivationsRunnerConfig,
@@ -23,11 +28,6 @@ from sae_lens.config import (
 )
 from sae_lens.sae import SAE
 from sae_lens.tokenization_and_batching import concat_and_batch_sequences
-from safetensors.torch import save_file
-from torch.utils.data import DataLoader
-from tqdm import tqdm
-from transformer_lens.hook_points import HookedRootModule
-from transformers import AutoTokenizer, PreTrainedTokenizerBase
 
 
 # TODO: Make an activation store config class to be consistent with the rest of the code.

@@ -6,10 +6,11 @@ import einops
 import torch
 from datasets import Array2D, Dataset, Features, concatenate_datasets
 from jaxtyping import Float
+from tqdm import tqdm
+
 from sae_lens.config import DTYPE_MAP, CacheActivationsRunnerConfig
 from sae_lens.load_model import load_model
 from sae_lens.training.activations_store import ActivationsStore
-from tqdm import tqdm
 
 
 class CacheActivationsRunner:
