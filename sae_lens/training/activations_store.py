@@ -486,33 +486,33 @@ class ActivationsStore:
         self, total_size: int, context_size: int, num_layers: int, d_in: int
     ) -> Float[torch.Tensor, "(total_size context_size) num_layers d_in"]:
         """
-        Dataset has schema
-        {
-          hook_name: Array2D(shape=(context_size, d_in))
-        }
+        Loads `total_size` activations from `cached_activation_dataset`
 
-        - num_layers is always 1 for now
+        The dataset has columns for each hook_name,
+        each containing activations of shape (context_size, d_in).
         """
         assert self.cached_activation_dataset is not None
-        assert [self.hook_name] == self.cached_activation_dataset.column_names
+        # In future, could be a list of multiple hook names
+        hook_names = [self.hook_name]
+        assert set(hook_names).issubset(self.cached_activation_dataset.column_names)
 
-        # usually faster to slice dataset then pick column
-        # shape: (total_size, context_size, d_in)
-        new_buffer = self.cached_activation_dataset[
-            self.current_row_idx : self.current_row_idx + total_size
-        ][self.hook_name]
+        new_buffer = []
+        for hook_name in hook_names:
+            # Load activations for each hook.
+            # Usually faster to first slice dataset then pick column
+            _hook_buffer = self.cached_activation_dataset[
+                self.current_row_idx : self.current_row_idx + total_size
+            ][hook_name]
+            assert _hook_buffer.shape == (total_size, context_size, d_in)
+            new_buffer.append(_hook_buffer)
+
+        # Stack across num_layers dimension
+        # list of num_layers; shape: (total_size, context_size, d_in) -> (total_size, context_size, num_layers, d_in)
+        new_buffer = torch.stack(new_buffer, dim=2)
+        assert new_buffer.shape == (total_size, context_size, num_layers, d_in)
+
         self.current_row_idx += total_size
-        assert (
-            new_buffer.shape == (total_size, context_size, d_in)
-        ), f"new_buffer.shape = {new_buffer.shape} != (total_size, context_size, num_layers, d_in) = ({total_size}, {context_size}, {d_in})"
-
-        # make new dimension for num_layers, (always 1 layer for now)
-        assert num_layers == 1
-        new_buffer = einops.rearrange(
-            new_buffer,
-            "total_size context_size d_in -> (total_size context_size) () d_in",
-        )
-        return new_buffer
+        return new_buffer.reshape(total_size * context_size, num_layers, d_in)
 
     @torch.no_grad()
     def get_buffer(
