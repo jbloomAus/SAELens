@@ -5,10 +5,10 @@ from typing import Any, Tuple
 import pytest
 import torch
 from datasets import Dataset, load_dataset
-from jaxtyping import Float
 from sae_lens.cache_activations_runner import CacheActivationsRunner
 from sae_lens.config import CacheActivationsRunnerConfig, LanguageModelSAERunnerConfig
 from sae_lens.training.activations_store import ActivationsStore
+from tqdm import trange
 from transformer_lens import HookedTransformer
 
 
@@ -230,9 +230,14 @@ def test_compare_cached_activations_with_ground_truth(tmp_path: Path):
     dataset_path = "NeelNanda/c4-tokenized-2b"
     batch_size = 8
     batches_in_buffer = 4
-    num_tokens = batches_in_buffer * batch_size * 4  # 4 buffers
+    context_size = 32
+    num_buffers = 4
 
-    # Setup configuration for CacheActivationsRunner
+    train_batch_size_tokens = 4096
+
+    tokens_in_buffer = batches_in_buffer * batch_size * context_size
+    num_tokens = tokens_in_buffer * num_buffers
+
     cfg = CacheActivationsRunnerConfig(
         new_cached_activations_path=str(tmp_path),
         model_name=model_name,
@@ -240,19 +245,19 @@ def test_compare_cached_activations_with_ground_truth(tmp_path: Path):
         dataset_path=dataset_path,
         training_tokens=num_tokens,
         shuffle=False,
-        train_batch_size_tokens=batch_size,
+        store_batch_size_prompts=batch_size,
+        train_batch_size_tokens=train_batch_size_tokens,
         n_batches_in_buffer=batches_in_buffer,
         ###
         hook_layer=0,
         d_in=512,
-        context_size=256,
+        context_size=context_size,
         is_dataset_tokenized=True,
         prepend_bos=True,
-        store_batch_size_prompts=16,
         normalize_activations="none",
         device="cpu",
         seed=42,
-        dtype="float16",
+        dtype="float32",
     )
 
     runner = CacheActivationsRunner(cfg)
@@ -263,15 +268,15 @@ def test_compare_cached_activations_with_ground_truth(tmp_path: Path):
     token_dataset: Dataset = load_dataset(dataset_path, split=f"train[:{num_tokens}]")  # type: ignore
     token_dataset.set_format("torch", device=cfg.device)
 
-    tokens = token_dataset["tokens"][:, : cfg.context_size]
-    ground_truth_acts = []
+    total_rows = batch_size * batches_in_buffer * num_buffers
 
-    for i in range(0, num_tokens, batch_size):
+    ground_truth_acts = []
+    for i in trange(0, total_rows, batch_size):
         _, layerwise_activations = model.run_with_cache(
-            tokens[i : i + batch_size],
+            token_dataset[i : i + batch_size]["tokens"][:, :context_size],
             names_filter=[cfg.hook_name],
             stop_at_layer=cfg.hook_layer + 1,
-            prepend_bos=False,
+            prepend_bos=cfg.prepend_bos,
             **cfg.model_kwargs,
         )
         acts = layerwise_activations[cfg.hook_name]
@@ -283,13 +288,3 @@ def test_compare_cached_activations_with_ground_truth(tmp_path: Path):
     print(activation_dataset[cfg.hook_name].shape)
 
     assert torch.allclose(ground_truth_acts, activation_dataset[cfg.hook_name])
-
-    # # Compare cached activations with ground truth
-    # for cached_act, gt_act in zip(cached_dataset, ground_truth_activations):
-    #     cached_activation = cached_act[cfg.hook_name]
-    #     assert torch.allclose(
-    #         cached_activation, gt_act, atol=1e-4
-    #     ), "Cached activations do not match ground truth activations."
-
-    # # Cleanup if necessary
-    # shutil.rmtree(tmp_path)
