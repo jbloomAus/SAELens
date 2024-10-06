@@ -2,8 +2,10 @@ import math
 import os
 import shutil
 
+import einops
 import torch
 from datasets import Array2D, Dataset, Features, concatenate_datasets
+from jaxtyping import Float
 from sae_lens.config import DTYPE_MAP, CacheActivationsRunnerConfig
 from sae_lens.load_model import load_model
 from sae_lens.training.activations_store import ActivationsStore
@@ -23,7 +25,6 @@ class CacheActivationsRunner:
             self.model,
             cfg,
         )
-
         self.features = Features(
             {
                 f"{self.cfg.hook_name}": Array2D(
@@ -31,7 +32,6 @@ class CacheActivationsRunner:
                 )
             }
         )
-
         self.tokens_in_buffer = (
             self.cfg.n_batches_in_buffer
             * self.cfg.store_batch_size_prompts
@@ -65,10 +65,37 @@ class CacheActivationsRunner:
             f"{self.cfg}"
         )
 
+    def _create_shard(
+        self,
+        buffer: Float[torch.Tensor, "(bs context_size) num_layers d_in"],
+    ) -> Dataset:
+        hook_names = [self.cfg.hook_name]  # allow multiple hooks in future
+
+        buffer = einops.rearrange(
+            buffer,
+            "(bs context_size) num_layers d_in -> num_layers bs context_size d_in",
+            bs=self.cfg.n_batches_in_buffer,
+            context_size=self.cfg.context_size,
+            d_in=self.cfg.d_in,
+            num_layers=len(hook_names),
+        )
+        layerwise_activations = torch.unbind(buffer, dim=0)
+
+        shard = Dataset.from_dict(
+            {
+                hook_name: act
+                for hook_name, act in zip(hook_names, layerwise_activations)
+            },
+            features=self.features,
+        )
+        return shard
+
     @torch.no_grad()
-    def run(self):
+    def run(self) -> Dataset:
         new_cached_activations_path = self.cfg.new_cached_activations_path
         assert new_cached_activations_path is not None
+
+        ### Path setup
 
         # if the activations directory exists and has files in it, raise an exception
         if os.path.exists(new_cached_activations_path):
@@ -79,6 +106,7 @@ class CacheActivationsRunner:
         else:
             os.makedirs(new_cached_activations_path)
 
+        # save shards to this temp dir, then save to final location once finished
         temp_shards_dir = f"{new_cached_activations_path}/temp_shards"
         if os.path.exists(temp_shards_dir):
             if len(os.listdir(temp_shards_dir)) > 0:
@@ -88,33 +116,17 @@ class CacheActivationsRunner:
         else:
             os.makedirs(temp_shards_dir)
 
+        ### Create temp shard activation datasets
+
         print(f"Started caching {self.cfg.training_tokens} activations")
 
         for i in tqdm(range(self.n_buffers), desc="Caching activations"):
             try:
+                # n_batches_in_buffer: num activations in a single shard
                 buffer = self.activations_store.get_buffer(self.cfg.n_batches_in_buffer)
-                # bs * context_size, num_layers, d_in -> bs, context_size, num_layers, d_in
-                buffer = buffer.reshape(-1, self.cfg.context_size, 1, self.cfg.d_in)
-                layerwise_activations = torch.unbind(buffer, dim=2)  # num_layers
-
-                # num_layers is always 1 for now -- single hook layer
-                assert (
-                    len(layerwise_activations) == 1
-                ), f"Expected 1 layer, got {len(layerwise_activations)}, shape of buffer: {buffer.shape}"
-                hook_names = [self.cfg.hook_name]
-
-                dataset = Dataset.from_dict(
-                    {
-                        hook_name: act
-                        for hook_name, act in zip(hook_names, layerwise_activations)
-                    },
-                    features=self.features,
-                )
-                dataset.save_to_disk(
-                    f"{temp_shards_dir}/{i}", num_shards=1
-                )  # saving single shard
-
-                del buffer, layerwise_activations, dataset
+                shard = self._create_shard(buffer)
+                shard.save_to_disk(f"{temp_shards_dir}/{i}", num_shards=1)
+                del buffer, shard
 
             except StopIteration:
                 print(
@@ -122,16 +134,19 @@ class CacheActivationsRunner:
                 )
                 break
 
-        # TODO: iterable dataset?
+        ### Concat shards and save together, cleanup temp shards
+
+        # mem mapped
         dataset_shards = [
             Dataset.load_from_disk(f"{temp_shards_dir}/{i}")
             for i in range(self.n_buffers)
-        ]  # mem mapped
+        ]
         dataset = concatenate_datasets(dataset_shards)
         dataset = dataset.shuffle(seed=self.cfg.seed)
-        dataset.save_to_disk(
-            new_cached_activations_path, num_shards=self.n_buffers
-        )  # TODO: different path needed?
+
+        # TODO: might be a better way than resaving the entire dataset
+        dataset.save_to_disk(new_cached_activations_path, num_shards=self.n_buffers)
 
         del dataset_shards
         shutil.rmtree(temp_shards_dir)
+        return dataset
