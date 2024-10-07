@@ -405,7 +405,8 @@ def test_cache_activations_runner_load_dataset_with_incorrect_config(tmp_path: P
     )
 
     # Run with correct configuration first
-    CacheActivationsRunner(correct_cfg).run()
+    dataset = CacheActivationsRunner(correct_cfg).run()
+    dataset.save_to_disk(correct_cfg.new_cached_activations_path) # type: ignore
 
     ###
 
