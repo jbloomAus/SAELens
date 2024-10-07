@@ -343,9 +343,12 @@ class ActivationsStore:
             type="torch", columns=[self.hook_name], device=self.device, dtype=self.dtype
         )
 
-        assert activations_dataset.features[self.hook_name].shape == (
-            self.context_size,
-            self.d_in,
+        assert (
+            activations_dataset.features[self.hook_name].shape
+            == (
+                self.context_size,
+                self.d_in,
+            )
         ), f"Given dataset of shape ({activations_dataset.features[self.hook_name].shape}) does not match context_size ({self.context_size}) and d_in ({self.d_in})"
 
         n_activations_on_disk = len(activations_dataset) * self.context_size
@@ -490,18 +493,30 @@ class ActivationsStore:
         return stacked_activations
 
     def _load_buffer_from_cached(
-        self, total_size: int, context_size: int, num_layers: int, d_in: int
+        self,
+        total_size: int,
+        context_size: int,
+        num_layers: int,
+        d_in: int,
+        raise_on_epoch_end: bool,
     ) -> Float[torch.Tensor, "(total_size context_size) num_layers d_in"]:
         """
         Loads `total_size` activations from `cached_activation_dataset`
 
         The dataset has columns for each hook_name,
         each containing activations of shape (context_size, d_in).
+
+        raises StopIteration
         """
         assert self.cached_activation_dataset is not None
         # In future, could be a list of multiple hook names
         hook_names = [self.hook_name]
         assert set(hook_names).issubset(self.cached_activation_dataset.column_names)
+
+        if self.current_row_idx > len(self.cached_activation_dataset):
+            self.current_row_idx = 0
+            if raise_on_epoch_end:
+                raise StopIteration
 
         new_buffer = []
         for hook_name in hook_names:
@@ -543,7 +558,7 @@ class ActivationsStore:
 
         if self.cached_activations_path is not None:
             return self._load_buffer_from_cached(
-                total_size, context_size, num_layers, d_in
+                total_size, context_size, num_layers, d_in, raise_on_epoch_end
             )
 
         refill_iterator = range(0, batch_size * n_batches_in_buffer, batch_size)
