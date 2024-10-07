@@ -1,18 +1,18 @@
+import dataclasses
 import os
 from pathlib import Path
 from typing import Any, Tuple
-import dataclasses
-import shutil
 
+import datasets
 import pytest
 import torch
-import datasets
 from datasets import Dataset, load_dataset
 from tqdm import trange
 from transformer_lens import HookedTransformer
 
 from sae_lens.cache_activations_runner import CacheActivationsRunner
 from sae_lens.config import CacheActivationsRunnerConfig, LanguageModelSAERunnerConfig
+from sae_lens.load_model import load_model
 from sae_lens.training.activations_store import ActivationsStore
 
 
@@ -297,16 +297,13 @@ def test_compare_cached_activations_with_ground_truth(tmp_path: Path):
     assert torch.allclose(ground_truth_acts, dataset_acts, rtol=1e-3, atol=5e-2)
 
 
-def test_cache_activations_runner_raises_invalid_config(
-    tmp_path: Path,
-):
+def test_load_activations_store_with_nonexistent_dataset(tmp_path: Path):
     cfg = CacheActivationsRunnerConfig(
         model_name="gelu-1l",
         hook_name="blocks.0.hook_mlp_out",
         dataset_path="NeelNanda/c4-tokenized-2b",
         cached_activations_path=str(tmp_path),
     )
-    from sae_lens.load_model import load_model
 
     model = load_model(
         model_class_name=cfg.model_class_name,
@@ -322,10 +319,8 @@ def test_cache_activations_runner_raises_invalid_config(
     ):
         ActivationsStore.from_config(model, cfg)
 
-    # directory is non-empty
-    with open(tmp_path / "some_file.txt", "w") as f:
-        f.write("test")
 
+def test_cache_activations_runner_with_nonempty_directory(tmp_path: Path):
     cfg = CacheActivationsRunnerConfig(
         new_cached_activations_path=str(tmp_path),
         model_name="gelu-1l",
@@ -334,17 +329,22 @@ def test_cache_activations_runner_raises_invalid_config(
     )
     runner = CacheActivationsRunner(cfg)
 
+    # Create a file to make the directory non-empty
+    with open(tmp_path / "some_file.txt", "w") as f:
+        f.write("test")
+
     with pytest.raises(
         Exception, match="is not empty. Please delete it or specify a different path."
     ):
         runner.run()
 
+    # Clean up
     os.remove(tmp_path / "some_file.txt")
 
-    ####
+
+def test_cache_activations_runner_with_incorrect_d_in(tmp_path: Path):
     d_in = 512
     context_size = 32
-
     n_batches_in_buffer = 4
     batch_size = 8
     num_buffers = 4
@@ -354,7 +354,6 @@ def test_cache_activations_runner_raises_invalid_config(
         new_cached_activations_path=str(tmp_path),
         d_in=d_in,
         context_size=context_size,
-        ###
         model_name="gelu-1l",
         hook_name="blocks.0.hook_mlp_out",
         dataset_path="NeelNanda/c4-tokenized-2b",
@@ -380,11 +379,37 @@ def test_cache_activations_runner_raises_invalid_config(
     ):
         runner.run()
 
-    shutil.rmtree(tmp_path / "temp_shards")
 
-    # Context size different from dataset
+def test_cache_activations_runner_load_dataset_with_incorrect_shape(tmp_path: Path):
+    d_in = 512
+    context_size = 32
+    n_batches_in_buffer = 4
+    batch_size = 8
+    num_buffers = 4
+    num_tokens = batch_size * context_size * n_batches_in_buffer * num_buffers
+
+    correct_cfg = CacheActivationsRunnerConfig(
+        new_cached_activations_path=str(tmp_path),
+        d_in=d_in,
+        context_size=context_size,
+        model_name="gelu-1l",
+        hook_name="blocks.0.hook_mlp_out",
+        dataset_path="NeelNanda/c4-tokenized-2b",
+        training_tokens=num_tokens,
+        n_batches_in_buffer=n_batches_in_buffer,
+        store_batch_size_prompts=batch_size,
+        normalize_activations="none",
+        device="cpu",
+        seed=42,
+        dtype="float32",
+    )
+
+    # Run with correct configuration first
     CacheActivationsRunner(correct_cfg).run()
 
+    ###
+
+    # Context size different from dataset
     wrong_context_size_cfg = CacheActivationsRunnerConfig(
         **dataclasses.asdict(correct_cfg),
     )
@@ -396,9 +421,13 @@ def test_cache_activations_runner_raises_invalid_config(
         ValueError,
         match=r"Given dataset of shape \(\(32, 512\)\) does not match context_size \(33\) and d_in \(512\)",
     ):
-        runner = CacheActivationsRunner(wrong_context_size_cfg)
+        CacheActivationsRunner(wrong_context_size_cfg).run()
 
     # d_in different from dataset
+    wrong_d_in_cfg = CacheActivationsRunnerConfig(
+        **dataclasses.asdict(correct_cfg),
+    )
+    wrong_d_in_cfg.d_in = 513
     wrong_d_in_cfg.new_cached_activations_path = None
     wrong_d_in_cfg.cached_activations_path = str(tmp_path)
 
@@ -406,4 +435,4 @@ def test_cache_activations_runner_raises_invalid_config(
         ValueError,
         match=r"Given dataset of shape \(\(32, 512\)\) does not match context_size \(32\) and d_in \(513\)",
     ):
-        runner = CacheActivationsRunner(wrong_d_in_cfg)
+        CacheActivationsRunner(wrong_d_in_cfg).run()
