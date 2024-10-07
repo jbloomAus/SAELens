@@ -87,8 +87,8 @@ def test_hf_dataset_save_vs_safetensors(tmp_path: Path):
     d_in = 512
     context_size = 32
     n_batches_in_buffer = 32
-    batch_size = 512
-    num_buffers = 4 * niters + 1
+    batch_size = 8
+    num_buffers = 4 * niters
     num_tokens = batch_size * context_size * n_batches_in_buffer * num_buffers
 
     cfg = CacheActivationsRunnerConfig(
@@ -118,7 +118,7 @@ def test_hf_dataset_save_vs_safetensors(tmp_path: Path):
 
     print("Warmup")
 
-    for i in trange(niters, leave=False):
+    for i in trange(niters // 2, leave=False):
         buffer = store.get_buffer(n_batches_in_buffer)
 
     start_time = time.perf_counter()

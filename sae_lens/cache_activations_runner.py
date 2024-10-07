@@ -1,6 +1,7 @@
 import math
 import os
 import shutil
+from pathlib import Path
 
 import einops
 import torch
@@ -113,10 +114,11 @@ class CacheActivationsRunner:
                 buffer = self.activations_store.get_buffer(
                     self.cfg.n_batches_in_buffer, shuffle=self.cfg.shuffle
                 )
-                save_buffer(buffer, f"{new_cached_activations_path}/{i}")
-                # shard = self._create_shard(buffer)
-                # shard.save_to_disk(f"{new_cached_activations_path}/{i}", num_shards=1)
-                # del buffer, shard
+                shard = self._create_shard(buffer)
+                shard.save_to_disk(
+                    f"{new_cached_activations_path}/shard_{i}", num_shards=1
+                )
+                del buffer, shard
 
             except StopIteration:
                 print(
@@ -128,7 +130,7 @@ class CacheActivationsRunner:
 
         # mem mapped
         dataset_shards = [
-            Dataset.load_from_disk(f"{new_cached_activations_path}/{i}")
+            Dataset.load_from_disk(f"{new_cached_activations_path}/shard_{i}")
             for i in range(self.n_buffers)
         ]
 
@@ -141,9 +143,17 @@ class CacheActivationsRunner:
             print("Shuffling...")
             dataset = dataset.shuffle(seed=self.cfg.seed)
 
-        # print("Writing to disk...")
-        # dataset.save_to_disk(new_cached_activations_path, num_shards=self.n_buffers)
-        # del dataset_shards
-        # shutil.rmtree(temp_shards_dir)
+        if self.cfg.new_cached_activations_hub_repo:
+            print("Writing to disk...")
+            # creates a better formatted dataset
+            dataset.save_to_disk(new_cached_activations_path, num_shards=self.n_buffers)
+
+            print("Cleaning up shards...")
+            # clean up old shards (from _create_shard)
+            for shard_dir in Path(new_cached_activations_path).glob("shard_*"):
+                shutil.rmtree(shard_dir)
+
+            print("Pushing to hub...")
+            dataset.push_to_hub(self.cfg.new_cached_activations_hub_repo)
 
         return dataset

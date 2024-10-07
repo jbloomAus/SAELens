@@ -150,9 +150,7 @@ class LanguageModelSAERunnerConfig:
     finetuning_tokens: int = 0
     store_batch_size_prompts: int = 32
     train_batch_size_tokens: int = 4096
-    normalize_activations: str = (
-        "none"  # none, expected_average_only_in (Anthropic April Update), constant_norm_rescale (Anthropic Feb Update)
-    )
+    normalize_activations: str = "none"  # none, expected_average_only_in (Anthropic April Update), constant_norm_rescale (Anthropic Feb Update)
 
     # Misc
     device: str = "cpu"
@@ -447,6 +445,8 @@ class CacheActivationsRunnerConfig:
     new_cached_activations_path: Optional[str] = (
         None  # Defaults to "activations/{dataset}/{model}/{full_hook_name}_{hook_head_index}"
     )
+    new_cached_activations_hub_repo: Optional[str] = None
+
     # dont' specify this since you don't want to load from disk with the cache runner.
     cached_activations_path: Optional[str] = None
     # SAE Parameters
