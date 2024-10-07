@@ -137,7 +137,7 @@ class CacheActivationsRunner:
         print("Concatenating shards...")
         dataset = concatenate_datasets(dataset_shards)
         # for better performance:
-        # .to_iterable_dataset( num_shards=self.n_buffers)
+        # .to_iterable_dataset(num_shards=self.n_buffers)
 
         if self.cfg.shuffle:
             print("Shuffling...")

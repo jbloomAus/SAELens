@@ -329,10 +329,12 @@ class ActivationsStore:
             self.cached_activations_path
         ), f"Cache directory {self.cached_activations_path} does not exist. Consider double-checking your dataset, model, and hook names."
 
-        self.current_row_idx = 0  # idx to load next batch from
-
-        # We can just load the entire dataset, mem-mapped and sharded by default
+        # ---
+        # Actual code
         activations_dataset = datasets.load_from_disk(self.cached_activations_path)
+        self.current_row_idx = 0  # idx to load next batch from
+        # ---
+
         assert isinstance(activations_dataset, Dataset)
 
         assert (
