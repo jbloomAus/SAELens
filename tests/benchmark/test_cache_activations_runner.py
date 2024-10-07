@@ -1,14 +1,13 @@
-import time
 import os
 import shutil
+import time
 from pathlib import Path
-from safetensors.torch import save_file, safe_open
-from sae_lens.load_model import load_model
-from tqdm import trange
 
 import torch
+from safetensors.torch import save_file
+from tqdm import trange
 
-from sae_lens.cache_activations_runner import CacheActivationsRunner, ActivationsStore
+from sae_lens.cache_activations_runner import CacheActivationsRunner
 from sae_lens.config import CacheActivationsRunnerConfig
 
 os.environ["WANDB_MODE"] = "offline"  # turn this off if you want to see the output

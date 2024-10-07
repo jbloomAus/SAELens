@@ -150,7 +150,9 @@ class LanguageModelSAERunnerConfig:
     finetuning_tokens: int = 0
     store_batch_size_prompts: int = 32
     train_batch_size_tokens: int = 4096
-    normalize_activations: str = "none"  # none, expected_average_only_in (Anthropic April Update), constant_norm_rescale (Anthropic Feb Update)
+    normalize_activations: str = (
+        "none"  # none, expected_average_only_in (Anthropic April Update), constant_norm_rescale (Anthropic Feb Update)
+    )
 
     # Misc
     device: str = "cpu"

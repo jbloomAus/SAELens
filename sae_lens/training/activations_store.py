@@ -343,12 +343,9 @@ class ActivationsStore:
             type="torch", columns=[self.hook_name], device=self.device, dtype=self.dtype
         )
 
-        assert (
-            activations_dataset.features[self.hook_name].shape
-            == (
-                self.context_size,
-                self.d_in,
-            )
+        assert activations_dataset.features[self.hook_name].shape == (
+            self.context_size,
+            self.d_in,
         ), f"Given dataset of shape ({activations_dataset.features[self.hook_name].shape}) does not match context_size ({self.context_size}) and d_in ({self.d_in})"
 
         n_activations_on_disk = len(activations_dataset) * self.context_size
