@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sae-lens"
-version = "3.23.1"
+version = "3.23.2"
 description = "Training and Analyzing Sparse Autoencoders (SAEs)"
 authors = ["Joseph Bloom"]
 readme = "README.md"
@@ -41,7 +41,7 @@ typing-extensions = "^4.10.0"
 
 
 [tool.poetry.group.dev.dependencies]
-black = { version = "24.4.0", extras = ["jupyter"] }
+black = { version = "3.23.2", extras = ["jupyter"] }
 pytest = "^8.0.2"
 pytest-cov = "^4.1.0"
 pre-commit = "^3.6.2"

@@ -2,6 +2,25 @@
 
 
 
+## v3.23.2 (2024-10-07)
+
+### Chore
+
+* chore: adds black-jupyter to dependencies (#318)
+
+* adds black-jupyter to dependencies
+
+* formats notebooks ([`ed5d791`](https://github.com/jbloomAus/SAELens/commit/ed5d79148fa161c2e69e959f4ea7a8d9d3a87290))
+
+### Fix
+
+* fix: `hook_sae_acts_post` for Gated models should be post-masking (#322)
+
+* first commit
+
+* formatting ([`5e70edc`](https://github.com/jbloomAus/SAELens/commit/5e70edc0a167d895931cf85a4b068970599128b8))
+
+
 ## v3.23.1 (2024-10-03)
 
 ### Chore
