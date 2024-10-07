@@ -217,7 +217,7 @@ def test_activations_store_refreshes_dataset_when_it_runs_out():
         _ = activations_store.get_batch_tokens(batch_size, raise_at_epoch_end=False)
 
 
-def test_compare_cached_activations_with_ground_truth(tmp_path: Path):
+def test_compare_cached_activations_end_to_end_with_ground_truth(tmp_path: Path):
     """
     Creates activations using CacheActivationsRunner and compares them with ground truth
     model.run_with_cache
