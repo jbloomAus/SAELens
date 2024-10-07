@@ -1,9 +1,12 @@
 import os
 from pathlib import Path
 from typing import Any, Tuple
+import dataclasses
+import shutil
 
 import pytest
 import torch
+import datasets
 from datasets import Dataset, load_dataset
 from tqdm import trange
 from transformer_lens import HookedTransformer
@@ -31,6 +34,7 @@ def test_cache_activations_runner(tmp_path: Path):
 
     tokens_in_buffer = n_batches_in_buffer * store_batch_size * context_size
     total_training_tokens = n_buffers * tokens_in_buffer
+    total_rows = store_batch_size * n_batches_in_buffer * n_buffers
 
     # better if we can look at the files (change tmp_path to a real path to look at the files)
     # tmp_path = os.path.join(os.path.dirname(__file__), "tmp")
@@ -70,22 +74,13 @@ def test_cache_activations_runner(tmp_path: Path):
     )
 
     # look at the next cell to see some instruction for what to do while this is running.
-    CacheActivationsRunner(cfg).run()
+    dataset = CacheActivationsRunner(cfg).run()
+    assert len(dataset) == total_rows
+    assert dataset.num_columns == 1 and dataset.column_names == [cfg.hook_name]
 
-    assert os.path.exists(tmp_path)
-
-    # assert that there are n_buffer files in the directory.
-    # assert len(os.listdir(tmp_path)) == n_buffers
-
-    # for _, buffer_file in enumerate(os.listdir(tmp_path)):
-    #     path_to_file = Path(tmp_path) / buffer_file
-    #     with safe_open(path_to_file, framework="pt", device=str(device)) as f:  # type: ignore
-    #         buffer = f.get_tensor("activations")
-    #         assert buffer.shape == (
-    #             tokens_in_buffer,
-    #             1,
-    #             cfg.d_in,
-    #         )
+    features = dataset.features
+    assert isinstance(features[cfg.hook_name], datasets.Array2D)
+    assert features[cfg.hook_name].shape == (context_size, cfg.d_in)
 
 
 def test_load_cached_activations():
@@ -300,3 +295,115 @@ def test_compare_cached_activations_with_ground_truth(tmp_path: Path):
     )
 
     assert torch.allclose(ground_truth_acts, dataset_acts, rtol=1e-3, atol=5e-2)
+
+
+def test_cache_activations_runner_raises_invalid_config(
+    tmp_path: Path,
+):
+    cfg = CacheActivationsRunnerConfig(
+        model_name="gelu-1l",
+        hook_name="blocks.0.hook_mlp_out",
+        dataset_path="NeelNanda/c4-tokenized-2b",
+        cached_activations_path=str(tmp_path),
+    )
+    from sae_lens.load_model import load_model
+
+    model = load_model(
+        model_class_name=cfg.model_class_name,
+        model_name=cfg.model_name,
+        device=cfg.device,
+        model_from_pretrained_kwargs=cfg.model_from_pretrained_kwargs,
+    )
+
+    # Attempt to load from a non-existent dataset
+    with pytest.raises(
+        FileNotFoundError,
+        match="is neither a `Dataset` directory nor a `DatasetDict` directory.",
+    ):
+        ActivationsStore.from_config(model, cfg)
+
+    # directory is non-empty
+    with open(tmp_path / "some_file.txt", "w") as f:
+        f.write("test")
+
+    cfg = CacheActivationsRunnerConfig(
+        new_cached_activations_path=str(tmp_path),
+        model_name="gelu-1l",
+        hook_name="blocks.0.hook_mlp_out",
+        dataset_path="NeelNanda/c4-tokenized-2b",
+    )
+    runner = CacheActivationsRunner(cfg)
+
+    with pytest.raises(
+        Exception, match="is not empty. Please delete it or specify a different path."
+    ):
+        runner.run()
+
+    os.remove(tmp_path / "some_file.txt")
+
+    ####
+    d_in = 512
+    context_size = 32
+
+    n_batches_in_buffer = 4
+    batch_size = 8
+    num_buffers = 4
+    num_tokens = batch_size * context_size * n_batches_in_buffer * num_buffers
+
+    correct_cfg = CacheActivationsRunnerConfig(
+        new_cached_activations_path=str(tmp_path),
+        d_in=d_in,
+        context_size=context_size,
+        ###
+        model_name="gelu-1l",
+        hook_name="blocks.0.hook_mlp_out",
+        dataset_path="NeelNanda/c4-tokenized-2b",
+        training_tokens=num_tokens,
+        n_batches_in_buffer=n_batches_in_buffer,
+        store_batch_size_prompts=batch_size,
+        normalize_activations="none",
+        device="cpu",
+        seed=42,
+        dtype="float32",
+    )
+
+    # d_in different from hook
+    wrong_d_in_cfg = CacheActivationsRunnerConfig(
+        **dataclasses.asdict(correct_cfg),
+    )
+    wrong_d_in_cfg.d_in = 513
+
+    runner = CacheActivationsRunner(wrong_d_in_cfg)
+    with pytest.raises(
+        RuntimeError,
+        match=r"The expanded size of the tensor \(513\) must match the existing size \(512\) at non-singleton dimension 2",
+    ):
+        runner.run()
+
+    shutil.rmtree(tmp_path / "temp_shards")
+
+    # Context size different from dataset
+    CacheActivationsRunner(correct_cfg).run()
+
+    wrong_context_size_cfg = CacheActivationsRunnerConfig(
+        **dataclasses.asdict(correct_cfg),
+    )
+    wrong_context_size_cfg.context_size = 33
+    wrong_context_size_cfg.new_cached_activations_path = None
+    wrong_context_size_cfg.cached_activations_path = str(tmp_path)
+
+    with pytest.raises(
+        ValueError,
+        match=r"Given dataset of shape \(\(32, 512\)\) does not match context_size \(33\) and d_in \(512\)",
+    ):
+        runner = CacheActivationsRunner(wrong_context_size_cfg)
+
+    # d_in different from dataset
+    wrong_d_in_cfg.new_cached_activations_path = None
+    wrong_d_in_cfg.cached_activations_path = str(tmp_path)
+
+    with pytest.raises(
+        ValueError,
+        match=r"Given dataset of shape \(\(32, 512\)\) does not match context_size \(32\) and d_in \(513\)",
+    ):
+        runner = CacheActivationsRunner(wrong_d_in_cfg)

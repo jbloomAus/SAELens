@@ -94,7 +94,8 @@ class CacheActivationsRunner:
     @torch.no_grad()
     def run(self) -> Dataset:
         new_cached_activations_path = self.cfg.new_cached_activations_path
-        assert new_cached_activations_path is not None
+        if new_cached_activations_path is None:
+            raise ValueError("run(): new_cached_activations_path must be specified")
 
         ### Paths setup
 
