@@ -66,6 +66,7 @@ class CacheActivationsRunner:
             f"{self.cfg}"
         )
 
+    @torch.no_grad()
     def _create_shard(
         self,
         buffer: Float[torch.Tensor, "(bs context_size) num_layers d_in"],
@@ -80,13 +81,8 @@ class CacheActivationsRunner:
             d_in=self.cfg.d_in,
             num_layers=len(hook_names),
         )
-        layerwise_activations = torch.unbind(buffer, dim=0)
-
         shard = Dataset.from_dict(
-            {
-                hook_name: act
-                for hook_name, act in zip(hook_names, layerwise_activations)
-            },
+            {hook_name: act for hook_name, act in zip(hook_names, buffer)},
             features=self.features,
         )
         return shard
@@ -107,16 +103,6 @@ class CacheActivationsRunner:
         else:
             os.makedirs(new_cached_activations_path)
 
-        # save shards to this temp dir, then save to final location once finished
-        temp_shards_dir = f"{new_cached_activations_path}/temp_shards"
-        if os.path.exists(temp_shards_dir):
-            if len(os.listdir(temp_shards_dir)) > 0:
-                raise Exception(
-                    f"Temp shards directory ({temp_shards_dir}) is not empty. Please delete it or specify a different path. Exiting the script to prevent accidental deletion of files."
-                )
-        else:
-            os.makedirs(temp_shards_dir)
-
         ### Create temporary sharded datasets
 
         print(f"Started caching {self.cfg.training_tokens} activations")
@@ -127,9 +113,10 @@ class CacheActivationsRunner:
                 buffer = self.activations_store.get_buffer(
                     self.cfg.n_batches_in_buffer, shuffle=self.cfg.shuffle
                 )
-                shard = self._create_shard(buffer)
-                shard.save_to_disk(f"{temp_shards_dir}/{i}", num_shards=1)
-                del buffer, shard
+                save_buffer(buffer, f"{new_cached_activations_path}/{i}")
+                # shard = self._create_shard(buffer)
+                # shard.save_to_disk(f"{new_cached_activations_path}/{i}", num_shards=1)
+                # del buffer, shard
 
             except StopIteration:
                 print(
@@ -141,7 +128,7 @@ class CacheActivationsRunner:
 
         # mem mapped
         dataset_shards = [
-            Dataset.load_from_disk(f"{temp_shards_dir}/{i}")
+            Dataset.load_from_disk(f"{new_cached_activations_path}/{i}")
             for i in range(self.n_buffers)
         ]
 
@@ -154,10 +141,9 @@ class CacheActivationsRunner:
             print("Shuffling...")
             dataset = dataset.shuffle(seed=self.cfg.seed)
 
-        print("Writing to disk...")
-        dataset.save_to_disk(new_cached_activations_path, num_shards=self.n_buffers)
-
-        del dataset_shards
-        shutil.rmtree(temp_shards_dir)
+        # print("Writing to disk...")
+        # dataset.save_to_disk(new_cached_activations_path, num_shards=self.n_buffers)
+        # del dataset_shards
+        # shutil.rmtree(temp_shards_dir)
 
         return dataset
