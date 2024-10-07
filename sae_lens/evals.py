@@ -883,6 +883,7 @@ if __name__ == "__main__":
     arg_parser.add_argument(
         "--ctx_lens",
         nargs="+",
+        type=int,
         default=[128],
         help="Context lengths to evaluate on.",
     )
