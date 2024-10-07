@@ -442,7 +442,9 @@ class SAE(HookedRootModule):
                     sae_in @ (self.W_enc * self.r_mag.exp()) + self.b_mag
                 )
                 feature_magnitudes = self.activation_fn(magnitude_pre_activation)
-                feature_acts_clean = self.hook_sae_acts_post(active_features * feature_magnitudes)
+                feature_acts_clean = self.hook_sae_acts_post(
+                    active_features * feature_magnitudes
+                )
                 x_reconstruct_clean = self.reshape_fn_out(
                     self.apply_finetuning_scaling_factor(feature_acts_clean)
                     @ self.W_dec
