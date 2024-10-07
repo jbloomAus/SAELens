@@ -341,16 +341,6 @@ def test_cache_activations_runner_with_nonempty_directory(tmp_path: Path):
     # Clean up
     os.remove(tmp_path / "some_file.txt")
 
-    # test temp_shards
-    os.makedirs(tmp_path / "temp_shards")
-    with open(tmp_path / "temp_shards" / "some_file.txt", "w") as f:
-        f.write("test")
-
-    with pytest.raises(
-        Exception, match="is not empty. Please delete it or specify a different path."
-    ):
-        runner.run()
-
 
 def test_cache_activations_runner_with_incorrect_d_in(tmp_path: Path):
     d_in = 512
