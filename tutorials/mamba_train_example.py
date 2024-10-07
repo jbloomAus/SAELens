@@ -27,7 +27,7 @@ cfg = LanguageModelSAERunnerConfig(
     l1_coefficient=0.00006 * 0.2,
     lr_scheduler_name="cosineannealingwarmrestarts",
     train_batch_size_tokens=4096,
-    context_size=128,
+    context_size=1024,
     lr_warm_up_steps=5000,
     # Activation Store Parameters
     n_batches_in_buffer=128,
@@ -52,6 +52,7 @@ cfg = LanguageModelSAERunnerConfig(
         "fast_ssm": True,
         "fast_conv": True,
     },
+    model_from_pretrained_kwargs={},
 )
 
 SAETrainingRunner(cfg).run()
