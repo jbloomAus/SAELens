@@ -273,10 +273,14 @@ def mock_args():
     args.sae_regex_pattern = "test_pattern"
     args.sae_block_pattern = "test_block"
     args.num_eval_batches = 2
+    args.batch_size_prompts = 4
     args.eval_batch_size_prompts = 4
+    args.n_eval_reconstruction_batches = 1
+    args.n_eval_sparsity_variance_batches = 1
     args.datasets = ["test_dataset"]
     args.ctx_lens = [64]
     args.output_dir = "test_output"
+    args.verbose = False
     return args
 
 
@@ -301,11 +305,13 @@ def test_run_evaluations(
     mock_multiple_evals.assert_called_once_with(
         sae_regex_pattern=mock_args.sae_regex_pattern,
         sae_block_pattern=mock_args.sae_block_pattern,
-        num_eval_batches=mock_args.num_eval_batches,
         eval_batch_size_prompts=mock_args.eval_batch_size_prompts,
+        n_eval_reconstruction_batches=mock_args.n_eval_reconstruction_batches,
+        n_eval_sparsity_variance_batches=mock_args.n_eval_sparsity_variance_batches,
         datasets=mock_args.datasets,
         ctx_lens=mock_args.ctx_lens,
         output_dir=mock_args.output_dir,
+        verbose=mock_args.verbose,
     )
     assert result == [{"test": "result"}]
 

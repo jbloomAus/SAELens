@@ -900,20 +900,6 @@ if __name__ == "__main__":
     )
 
     args = arg_parser.parse_args()
-
-    eval_config = EvalConfig(
-        batch_size_prompts=args.batch_size_prompts,
-        n_eval_reconstruction_batches=args.n_eval_reconstruction_batches,
-        compute_kl=args.compute_kl,
-        compute_ce_loss=args.compute_ce_loss,
-        n_eval_sparsity_variance_batches=args.n_eval_sparsity_variance_batches,
-        compute_l2_norms=args.compute_l2_norms,
-        compute_sparsity_metrics=args.compute_sparsity_metrics,
-        compute_variance_metrics=args.compute_variance_metrics,
-        compute_featurewise_density_statistics=args.compute_featurewise_density_statistics,
-        compute_featurewise_weight_based_metrics=args.compute_featurewise_weight_based_metrics,
-    )
-
     eval_results = run_evaluations(args)
     output_files = process_results(eval_results, args.output_dir)
 
