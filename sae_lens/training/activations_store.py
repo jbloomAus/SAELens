@@ -333,23 +333,20 @@ class ActivationsStore:
 
         # We can just load the entire dataset, mem-mapped and sharded by default
         activations_dataset = datasets.load_from_disk(self.cached_activations_path)
+        assert isinstance(activations_dataset, Dataset)
+
+        assert (
+            self.hook_name in activations_dataset.column_names
+        ), f"loaded dataset does not include hook activations, got {activations_dataset.column_names}"
+
         activations_dataset.set_format(
             type="torch", columns=[self.hook_name], device=self.device, dtype=self.dtype
         )
-        assert isinstance(activations_dataset, Dataset)
 
-        if self.hook_name not in activations_dataset.column_names:
-            raise ValueError(
-                f"loaded dataset does not include hook activations, got {activations_dataset.column_names}"
-            )
-
-        if activations_dataset.features[self.hook_name].shape != (
+        assert activations_dataset.features[self.hook_name].shape == (
             self.context_size,
             self.d_in,
-        ):
-            raise ValueError(
-                f"Given dataset of shape ({activations_dataset.features[self.hook_name].shape}) does not match context_size ({self.context_size}) and d_in ({self.d_in})"
-            )
+        ), f"Given dataset of shape ({activations_dataset.features[self.hook_name].shape}) does not match context_size ({self.context_size}) and d_in ({self.d_in})"
 
         n_activations_on_disk = len(activations_dataset) * self.context_size
         assert (

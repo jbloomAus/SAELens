@@ -341,6 +341,14 @@ def test_cache_activations_runner_with_nonempty_directory(tmp_path: Path):
     # Clean up
     os.remove(tmp_path / "some_file.txt")
 
+    with open(tmp_path / "temp_shards" / "some_file.txt", "w") as f:
+        f.write("test")
+
+    with pytest.raises(
+        Exception, match="is not empty. Please delete it or specify a different path."
+    ):
+        runner.run()
+
 
 def test_cache_activations_runner_with_incorrect_d_in(tmp_path: Path):
     d_in = 512
@@ -380,12 +388,12 @@ def test_cache_activations_runner_with_incorrect_d_in(tmp_path: Path):
         runner.run()
 
 
-def test_cache_activations_runner_load_dataset_with_incorrect_shape(tmp_path: Path):
+def test_cache_activations_runner_load_dataset_with_incorrect_config(tmp_path: Path):
     d_in = 512
     context_size = 32
     n_batches_in_buffer = 4
     batch_size = 8
-    num_buffers = 4
+    num_buffers = 2
     num_tokens = batch_size * context_size * n_batches_in_buffer * num_buffers
 
     correct_cfg = CacheActivationsRunnerConfig(
@@ -418,7 +426,7 @@ def test_cache_activations_runner_load_dataset_with_incorrect_shape(tmp_path: Pa
     wrong_context_size_cfg.cached_activations_path = str(tmp_path)
 
     with pytest.raises(
-        ValueError,
+        AssertionError,
         match=r"Given dataset of shape \(\(32, 512\)\) does not match context_size \(33\) and d_in \(512\)",
     ):
         CacheActivationsRunner(wrong_context_size_cfg).run()
@@ -432,7 +440,21 @@ def test_cache_activations_runner_load_dataset_with_incorrect_shape(tmp_path: Pa
     wrong_d_in_cfg.cached_activations_path = str(tmp_path)
 
     with pytest.raises(
-        ValueError,
+        AssertionError,
         match=r"Given dataset of shape \(\(32, 512\)\) does not match context_size \(32\) and d_in \(513\)",
     ):
         CacheActivationsRunner(wrong_d_in_cfg).run()
+
+    # d_in different from dataset
+    wrong_hook_cfg = CacheActivationsRunnerConfig(
+        **dataclasses.asdict(correct_cfg),
+    )
+    wrong_hook_cfg.hook_name = "blocks.1.hook_mlp_out"
+    wrong_hook_cfg.new_cached_activations_path = None
+    wrong_hook_cfg.cached_activations_path = str(tmp_path)
+
+    with pytest.raises(
+        AssertionError,
+        match="loaded dataset does not include hook activations",
+    ):
+        CacheActivationsRunner(wrong_hook_cfg).run()
