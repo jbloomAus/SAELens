@@ -186,10 +186,14 @@ def mock_evals_simple_args(tmp_path: Path):
         sae_regex_pattern = "gpt2-small-res-jb"
         sae_block_pattern = "blocks.0.hook_resid_pre"
         num_eval_batches = 1
+        n_eval_reconstruction_batches = 1
+        n_eval_sparsity_variance_batches = 1
+
         eval_batch_size_prompts = 2
         datasets = ["Skylion007/openwebtext"]
         ctx_lens = [128]
         output_dir = str(tmp_path)
+        verbose = False
 
     return Args()
 
