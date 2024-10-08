@@ -2,6 +2,13 @@
 
 
 
+## v3.23.3 (2024-10-08)
+
+### Fix
+
+* fix: properly manage pyproject.toml version (#325) ([`432df87`](https://github.com/jbloomAus/SAELens/commit/432df87d97c5e5b4fd62ba835a01acd4ffd1758a))
+
+
 ## v3.23.2 (2024-10-07)
 
 ### Chore
