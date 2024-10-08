@@ -448,7 +448,7 @@ class CacheActivationsRunnerConfig:
 
     # if saving to huggingface, set hf_repo_id
     hf_repo_id: Optional[str] = None
-    hf_num_shards: int = 64
+    hf_num_shards: int | None = None
     hf_revision: str = "main"
     hf_is_private_repo: bool = False
 

@@ -1,7 +1,5 @@
 import math
 import os
-import shutil
-from pathlib import Path
 
 import einops
 import torch
@@ -147,7 +145,7 @@ class CacheActivationsRunner:
             print("Pushing to hub...")
             dataset.push_to_hub(
                 repo_id=self.cfg.hf_repo_id,
-                num_shards=self.cfg.hf_num_shards,
+                num_shards=self.cfg.hf_num_shards or self.n_buffers,
                 private=self.cfg.hf_is_private_repo,
                 revision=self.cfg.hf_revision,
             )
