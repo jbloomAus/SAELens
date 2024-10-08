@@ -126,7 +126,7 @@ class CacheActivationsRunner:
                 )
                 break
 
-        ### Concat sharded datasets and save together, cleanup
+        ### Concat sharded datasets together, shuffle and push to hub
 
         # mem mapped
         dataset_shards = [
@@ -143,8 +143,13 @@ class CacheActivationsRunner:
             print("Shuffling...")
             dataset = dataset.shuffle(seed=self.cfg.seed)
 
-        if self.cfg.new_cached_activations_hub_repo:
+        if self.cfg.hf_repo_id:
             print("Pushing to hub...")
-            dataset.push_to_hub(self.cfg.new_cached_activations_hub_repo)
+            dataset.push_to_hub(
+                repo_id=self.cfg.hf_repo_id,
+                num_shards=self.cfg.hf_num_shards,
+                private=self.cfg.hf_is_private_repo,
+                revision=self.cfg.hf_revision,
+            )
 
         return dataset
