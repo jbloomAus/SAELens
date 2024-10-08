@@ -144,15 +144,6 @@ class CacheActivationsRunner:
             dataset = dataset.shuffle(seed=self.cfg.seed)
 
         if self.cfg.new_cached_activations_hub_repo:
-            print("Writing to disk...")
-            # creates a better formatted dataset
-            dataset.save_to_disk(new_cached_activations_path, num_shards=self.n_buffers)
-
-            print("Cleaning up shards...")
-            # clean up old shards (from _create_shard)
-            for shard_dir in Path(new_cached_activations_path).glob("shard_*"):
-                shutil.rmtree(shard_dir)
-
             print("Pushing to hub...")
             dataset.push_to_hub(self.cfg.new_cached_activations_hub_repo)
 
