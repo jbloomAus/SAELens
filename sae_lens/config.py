@@ -472,7 +472,7 @@ class CacheActivationsRunnerConfig:
     prepend_bos: bool = True
     autocast_lm: bool = False  # autocast lm during activation fetching
 
-    # Activation caching stuff
+    # Shuffle activations
     shuffle: bool = True
 
     ### DEPRECATED
