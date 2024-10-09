@@ -1,9 +1,10 @@
 import math
 import os
 
+import shutil
 import einops
 import torch
-from datasets import Array2D, Dataset, Features, concatenate_datasets
+from datasets import Array2D, Dataset, Features, concatenate_datasets, load_from_disk
 from jaxtyping import Float
 from tqdm import tqdm
 
@@ -127,9 +128,11 @@ class CacheActivationsRunner:
         ### Concat sharded datasets together, shuffle and push to hub
 
         # mem mapped
+        dataset_shard_paths = [
+            f"{new_cached_activations_path}/shard_{i}" for i in range(self.n_buffers)
+        ]
         dataset_shards = [
-            Dataset.load_from_disk(f"{new_cached_activations_path}/shard_{i}")
-            for i in range(self.n_buffers)
+            Dataset.load_from_disk(shard_path) for shard_path in dataset_shard_paths
         ]
 
         print("Concatenating shards...")
@@ -140,6 +143,14 @@ class CacheActivationsRunner:
         if self.cfg.shuffle:
             print("Shuffling...")
             dataset = dataset.shuffle(seed=self.cfg.seed)
+
+        dataset.save_to_disk(new_cached_activations_path)
+
+        for shard_path in dataset_shard_paths:
+            shutil.rmtree(shard_path)
+
+        dataset = load_from_disk(new_cached_activations_path)
+        assert isinstance(dataset, Dataset)
 
         if self.cfg.hf_repo_id:
             print("Pushing to hub...")
