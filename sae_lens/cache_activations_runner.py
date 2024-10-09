@@ -1,10 +1,20 @@
 import math
 import os
 
+import io
+import json
+from dataclasses import asdict
 import shutil
 import einops
 import torch
-from datasets import Array2D, Dataset, Features, concatenate_datasets, load_from_disk
+from datasets import (
+    Array2D,
+    Dataset,
+    Features,
+    concatenate_datasets,
+    load_from_disk,
+)
+from huggingface_hub import HfApi
 from jaxtyping import Float
 from tqdm import tqdm
 
@@ -159,6 +169,22 @@ class CacheActivationsRunner:
                 num_shards=self.cfg.hf_num_shards or self.n_buffers,
                 private=self.cfg.hf_is_private_repo,
                 revision=self.cfg.hf_revision,
+            )
+
+            meta_io = io.BytesIO()
+            meta_contents = json.dumps(
+                asdict(self.cfg), indent=2, ensure_ascii=False
+            ).encode("utf-8")
+            meta_io.write(meta_contents)
+            meta_io.seek(0)
+
+            api = HfApi()
+            api.upload_file(
+                path_or_fileobj=meta_io,
+                path_in_repo="cache_activations_runner_cfg.json",
+                repo_id=self.cfg.hf_repo_id,
+                repo_type="dataset",
+                commit_message="Add cache_activations_runner metadata",
             )
 
         return dataset
