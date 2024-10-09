@@ -59,6 +59,10 @@ def load_model(
 
 
 class HookedProxyLM(HookedRootModule):
+    """
+    A HookedRootModule that wraps a Huggingface AutoModelForCausalLM.
+    """
+
     tokenizer: PreTrainedTokenizerBase
     model: torch.nn.Module
 
