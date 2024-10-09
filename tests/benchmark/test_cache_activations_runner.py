@@ -64,10 +64,6 @@ def test_cache_activations_runner():
         store_batch_size_prompts=16,
         normalize_activations="none",
         #
-        shuffle_every_n_buffers=8,
-        n_shuffles_with_last_section=1,
-        n_shuffles_in_entire_dir=1,
-        n_shuffles_final=1,
         # Misc
         device=device,
         seed=42,
