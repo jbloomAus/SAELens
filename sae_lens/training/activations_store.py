@@ -40,6 +40,7 @@ class ActivationsStore:
     model: HookedRootModule
     dataset: HfDataset
     cached_activations_path: str | None
+    cached_activation_dataset: Dataset | None = None
     tokens_column: Literal["tokens", "input_ids", "text", "problem"]
     hook_name: str
     hook_layer: int
@@ -337,23 +338,19 @@ class ActivationsStore:
 
         assert isinstance(activations_dataset, Dataset)
 
-        assert (
-            self.hook_name in activations_dataset.column_names
-        ), f"loaded dataset does not include hook activations, got {activations_dataset.column_names}"
+        # multiple in hooks future
+        if not set([self.hook_name]).issubset(activations_dataset.column_names):
+            raise ValueError(
+                f"loaded dataset does not include hook activations, got {activations_dataset.column_names}"
+            )
 
-        activations_dataset.set_format(
-            type="torch", columns=[self.hook_name], device=self.device, dtype=self.dtype
-        )
-
-        assert activations_dataset.features[self.hook_name].shape == (
+        if activations_dataset.features[self.hook_name].shape != (
             self.context_size,
             self.d_in,
-        ), f"Given dataset of shape ({activations_dataset.features[self.hook_name].shape}) does not match context_size ({self.context_size}) and d_in ({self.d_in})"
-
-        n_activations_on_disk = len(activations_dataset) * self.context_size
-        assert (
-            n_activations_on_disk >= self.total_training_tokens
-        ), f"Only {n_activations_on_disk/1e6:.1f}M activations on disk, but total_training_tokens is {self.total_training_tokens/1e6:.1f}M."
+        ):
+            raise ValueError(
+                f"Given dataset of shape ({activations_dataset.features[self.hook_name].shape}) does not match context_size ({self.context_size}) and d_in ({self.d_in})"
+            )
 
         return activations_dataset
 
@@ -555,7 +552,7 @@ class ActivationsStore:
         total_size = batch_size * n_batches_in_buffer
         num_layers = 1
 
-        if self.cached_activations_path is not None:
+        if self.cached_activation_dataset is not None:
             return self._load_buffer_from_cached(
                 total_size, context_size, num_layers, d_in, raise_on_epoch_end
             )
