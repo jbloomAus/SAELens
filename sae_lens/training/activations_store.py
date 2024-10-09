@@ -333,6 +333,9 @@ class ActivationsStore:
         # ---
         # Actual code
         activations_dataset = datasets.load_from_disk(self.cached_activations_path)
+        activations_dataset.set_format(
+            type="torch", columns=[self.hook_name], device=self.device, dtype=self.dtype
+        )
         self.current_row_idx = 0  # idx to load next batch from
         # ---
 
