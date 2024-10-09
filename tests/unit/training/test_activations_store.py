@@ -7,8 +7,10 @@ import pytest
 import torch
 from datasets import Dataset, IterableDataset
 from transformer_lens import HookedTransformer
+from transformers import GPT2LMHeadModel, PreTrainedTokenizerBase
 
 from sae_lens.config import LanguageModelSAERunnerConfig, PretokenizeRunnerConfig
+from sae_lens.load_model import HookedProxyLM, load_model
 from sae_lens.pretokenize_runner import pretokenize_dataset
 from sae_lens.training.activations_store import (
     ActivationsStore,
@@ -344,6 +346,28 @@ def test_activations_store___iterate_tokenized_sequences__yields_sequences_of_co
     )
     activation_store = ActivationsStore.from_config(
         ts_model, cfg, override_dataset=dataset
+    )
+    for toks in activation_store._iterate_tokenized_sequences():
+        assert toks.shape == (5,)
+
+
+def test_activations_store___iterate_tokenized_sequences__works_with_huggingface_models():
+    hf_model = load_model(
+        model_class_name="AutoModelForCausalLM",
+        model_name="gpt2",
+        device="cpu",
+    )
+    cfg = build_sae_cfg(prepend_bos=True, context_size=5)
+    dataset = Dataset.from_list(
+        [
+            {"text": "hello world1"},
+            {"text": "hello world2"},
+            {"text": "hello world3"},
+        ]
+        * 20
+    )
+    activation_store = ActivationsStore.from_config(
+        hf_model, cfg, override_dataset=dataset
     )
     for toks in activation_store._iterate_tokenized_sequences():
         assert toks.shape == (5,)

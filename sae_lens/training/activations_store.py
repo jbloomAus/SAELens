@@ -272,7 +272,7 @@ class ActivationsStore:
                 self.model.to_tokens(
                     row,
                     truncate=False,
-                    move_to_device=True,
+                    move_to_device=False,  # we move to device below
                     prepend_bos=False,
                 )
                 .squeeze(0)

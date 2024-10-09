@@ -1,8 +1,14 @@
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 import torch
 from transformer_lens import HookedTransformer
 from transformer_lens.hook_points import HookedRootModule, HookPoint
+from transformer_lens.HookedTransformer import Loss, Output
+from transformer_lens.utils import (
+    USE_DEFAULT_VALUE,
+    get_tokens_with_bos_removed,
+    lm_cross_entropy_loss,
+)
 from transformers import AutoModelForCausalLM, AutoTokenizer, PreTrainedTokenizerBase
 
 
@@ -78,8 +84,63 @@ class HookedProxyLM(HookedRootModule):
             self.hook_dict[name] = hook_point
             self.mod_dict[name] = hook_point
 
-    def forward(self, *args: Any, **kwargs: Any):
-        return self.model(*args, **kwargs)
+    def forward(
+        self,
+        tokens: torch.Tensor,
+        return_type: Literal["both"] = "both",
+        loss_per_token: bool = False,
+        # TODO: implement real support for stop_at_layer
+        stop_at_layer: int | None = None,
+        **kwargs: Any,
+    ) -> tuple[torch.Tensor, Loss]:
+        # This is just what's needed for evals, not everything that HookedTransformer has
+        assert (
+            return_type == "both"
+        ), "Only return_type supported is 'both' to match what's in evals.py"
+        output = self.model(tokens)
+        logits = output if isinstance(output, torch.Tensor) else output.logits
+
+        if tokens.device != logits.device:
+            tokens = tokens.to(logits.device)
+        loss = lm_cross_entropy_loss(logits, tokens, per_token=loss_per_token)
+        return Output(logits, loss)
+
+    def to_tokens(
+        self,
+        input: str | list[str],
+        prepend_bos: bool | None = USE_DEFAULT_VALUE,
+        padding_side: Literal["left", "right"] | None = USE_DEFAULT_VALUE,
+        move_to_device: bool = True,
+        truncate: bool = True,
+    ) -> torch.Tensor:
+        # Hackily modified version of HookedTransformer.to_tokens to work with ActivationsStore
+        # Assumes that prepend_bos is always False, move_to_device is always False, and truncate is always False
+        # copied from HookedTransformer.to_tokens
+
+        assert (
+            prepend_bos is False
+        ), "Only works with prepend_bos=False, to match ActivationsStore usage"
+        assert (
+            padding_side is None
+        ), "Only works with padding_side=None, to match ActivationsStore usage"
+        assert (
+            truncate is False
+        ), "Only works with truncate=False, to match ActivationsStore usage"
+        assert (
+            move_to_device is False
+        ), "Only works with move_to_device=False, to match ActivationsStore usage"
+
+        tokens = self.tokenizer(
+            input,
+            return_tensors="pt",
+            truncation=False,
+            max_length=None,
+        )["input_ids"]
+
+        # We don't want to prepend bos but the tokenizer does it automatically, so we remove it manually
+        if hasattr(self.tokenizer, "add_bos_token") and self.tokenizer.add_bos_token:  # type: ignore
+            tokens = get_tokens_with_bos_removed(self.tokenizer, tokens)
+        return tokens  # type: ignore
 
 
 def get_hook_fn(hook_point: HookPoint):
