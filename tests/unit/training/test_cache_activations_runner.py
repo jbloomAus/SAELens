@@ -413,7 +413,7 @@ def test_cache_activations_runner_with_incorrect_d_in(tmp_path: Path):
     runner = CacheActivationsRunner(wrong_d_in_cfg)
     with pytest.raises(
         RuntimeError,
-        match=r"Given dataset of shape \(\(32, 512\)\) does not match context_size \(33\) and d_in \(512\)",
+        match=r"The expanded size of the tensor \(513\) must match the existing size \(512\) at non-singleton dimension 2.",
     ):
         runner.run()
 
