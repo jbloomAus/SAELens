@@ -475,13 +475,6 @@ class CacheActivationsRunnerConfig:
     # Shuffle activations
     shuffle: bool = True
 
-    ### DEPRECATED
-    shuffle_every_n_buffers: int = -1  # DEPRECATED
-    n_shuffles_with_last_section: int = -1  # DEPRECATED
-    n_shuffles_in_entire_dir: int = -1  # DEPRECATED
-    n_shuffles_final: int = -1  # DEPRECATED
-    ###
-
     model_kwargs: dict[str, Any] = field(default_factory=dict)
     model_from_pretrained_kwargs: dict[str, Any] = field(default_factory=dict)
 
