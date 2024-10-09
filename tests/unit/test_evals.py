@@ -10,11 +10,14 @@ from transformer_lens import HookedTransformer
 from sae_lens.config import LanguageModelSAERunnerConfig
 from sae_lens.evals import (
     EvalConfig,
+    get_downstream_reconstruction_metrics,
     get_eval_everything_config,
+    get_sparsity_and_variance_metrics,
     process_results,
     run_evals,
     run_evaluations,
 )
+from sae_lens.load_model import load_model
 from sae_lens.sae import SAE
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.training_sae import TrainingSAE
@@ -322,3 +325,113 @@ def test_process_results(tmp_path: Path):
     # Check if CSV file is created
     csv_path = output_dir / "all_eval_results.csv"
     assert csv_path.exists()
+
+
+def test_get_downstream_reconstruction_metrics_with_hf_model_gives_same_results_as_tlens_model():
+    sae = SAE.from_pretrained(
+        release="gpt2-small-res-jb",
+        sae_id="blocks.4.hook_resid_pre",
+        device="cpu",
+    )[0]
+    hf_model = load_model(
+        model_class_name="AutoModelForCausalLM",
+        model_name="gpt2",
+        device="cpu",
+    )
+    tlens_model = HookedTransformer.from_pretrained_no_processing("gpt2", device="cpu")
+
+    example_ds = Dataset.from_list(
+        [
+            {"text": "hello world1"},
+            {"text": "hello world2"},
+            {"text": "hello world3"},
+        ]
+        * 20
+    )
+    cfg = build_sae_cfg(hook_name="transformer.h.3")
+    sae.cfg.hook_name = "transformer.h.3"
+    hf_store = ActivationsStore.from_config(hf_model, cfg, override_dataset=example_ds)
+    hf_metrics = get_downstream_reconstruction_metrics(
+        sae=sae,
+        model=hf_model,
+        activation_store=hf_store,
+        compute_kl=True,
+        compute_ce_loss=True,
+        n_batches=1,
+        eval_batch_size_prompts=4,
+    )
+
+    cfg = build_sae_cfg(hook_name="blocks.4.hook_resid_pre")
+    sae.cfg.hook_name = "blocks.4.hook_resid_pre"
+    tlens_store = ActivationsStore.from_config(
+        tlens_model, cfg, override_dataset=example_ds
+    )
+    tlens_metrics = get_downstream_reconstruction_metrics(
+        sae=sae,
+        model=tlens_model,
+        activation_store=tlens_store,
+        compute_kl=True,
+        compute_ce_loss=True,
+        n_batches=1,
+        eval_batch_size_prompts=4,
+    )
+
+    for key in hf_metrics.keys():
+        assert hf_metrics[key] == pytest.approx(tlens_metrics[key], abs=1e-3)
+
+
+def test_get_sparsity_and_variance_metrics_with_hf_model_gives_same_results_as_tlens_model():
+    sae = SAE.from_pretrained(
+        release="gpt2-small-res-jb",
+        sae_id="blocks.4.hook_resid_pre",
+        device="cpu",
+    )[0]
+    hf_model = load_model(
+        model_class_name="AutoModelForCausalLM",
+        model_name="gpt2",
+        device="cpu",
+    )
+    tlens_model = HookedTransformer.from_pretrained_no_processing("gpt2", device="cpu")
+
+    example_ds = Dataset.from_list(
+        [
+            {"text": "hello world1"},
+            {"text": "hello world2"},
+            {"text": "hello world3"},
+        ]
+        * 20
+    )
+    cfg = build_sae_cfg(hook_name="transformer.h.3")
+    sae.cfg.hook_name = "transformer.h.3"
+    hf_store = ActivationsStore.from_config(hf_model, cfg, override_dataset=example_ds)
+    hf_metrics = get_sparsity_and_variance_metrics(
+        sae=sae,
+        model=hf_model,
+        activation_store=hf_store,
+        n_batches=1,
+        compute_l2_norms=True,
+        compute_sparsity_metrics=True,
+        compute_variance_metrics=True,
+        eval_batch_size_prompts=4,
+        model_kwargs={},
+    )
+
+    cfg = build_sae_cfg(hook_name="blocks.4.hook_resid_pre")
+    sae.cfg.hook_name = "blocks.4.hook_resid_pre"
+    tlens_store = ActivationsStore.from_config(
+        tlens_model, cfg, override_dataset=example_ds
+    )
+    tlens_metrics = get_sparsity_and_variance_metrics(
+        sae=sae,
+        model=tlens_model,
+        activation_store=tlens_store,
+        n_batches=1,
+        compute_l2_norms=True,
+        compute_sparsity_metrics=True,
+        compute_variance_metrics=True,
+        eval_batch_size_prompts=4,
+        model_kwargs={},
+    )
+
+    for key in hf_metrics.keys():
+        assert hf_metrics[key] == pytest.approx(tlens_metrics[key], rel=1e-4)

@@ -420,7 +420,7 @@ class ActivationsStore:
                 else:
                     sequences.append(next(self.iterable_sequences))
 
-        return torch.stack(sequences, dim=0).to(self.model.W_E.device)
+        return torch.stack(sequences, dim=0).to(_get_model_device(self.model))
 
     @torch.no_grad()
     def get_activations(self, batch_tokens: torch.Tensor):
@@ -694,3 +694,12 @@ def validate_pretokenized_dataset_tokenizer(
         raise ValueError(
             f"Dataset tokenizer {tokenizer_name} does not match model tokenizer {model_tokenizer}."
         )
+
+
+def _get_model_device(model: HookedRootModule) -> torch.device:
+    if hasattr(model, "W_E"):
+        return model.W_E.device
+    elif hasattr(model, "cfg") and hasattr(model.cfg, "device"):
+        return model.cfg.device
+    else:
+        return next(model.parameters()).device

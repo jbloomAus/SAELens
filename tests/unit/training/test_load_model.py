@@ -65,6 +65,25 @@ def test_HookedProxyLM_gives_same_cached_states_as_original_implementation():
         )
 
 
+def test_HookedProxyLM_gives_same_cached_states_as_tlens_implementation():
+    hf_model = load_model(
+        model_class_name="AutoModelForCausalLM",
+        model_name="gpt2",
+        device="cpu",
+    )
+    tlens_model = HookedTransformer.from_pretrained_no_processing("gpt2", device="cpu")
+
+    input_ids = tlens_model.to_tokens("hi")
+    hf_cache = hf_model.run_with_cache(input_ids)[1]
+    tlens_cache = tlens_model.run_with_cache(input_ids)[1]
+    for i in range(12):
+        assert torch.allclose(
+            hf_cache[f"transformer.h.{i}"],
+            tlens_cache[f"blocks.{i}.hook_resid_post"],
+            atol=1e-3,
+        )
+
+
 def test_HookedProxyLM_forward_gives_same_output_as_tlens():
     hf_model = load_model(
         model_class_name="AutoModelForCausalLM",
