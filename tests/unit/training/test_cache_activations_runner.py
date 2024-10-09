@@ -16,6 +16,48 @@ from sae_lens.load_model import load_model
 from sae_lens.training.activations_store import ActivationsStore
 
 
+def _create_dataset(tmp_path: Path) -> Dataset:
+    torch.manual_seed(42)
+
+    model_name = "gelu-1l"
+    hook_name = "blocks.0.hook_mlp_out"
+    dataset_path = "NeelNanda/c4-tokenized-2b"
+    batch_size = 1
+    batches_in_buffer = 4
+    context_size = 256
+    num_buffers = 4
+
+    train_batch_size_tokens = 4096
+
+    tokens_in_buffer = batches_in_buffer * batch_size * context_size
+    num_tokens = tokens_in_buffer * num_buffers
+
+    cfg = CacheActivationsRunnerConfig(
+        new_cached_activations_path=str(tmp_path),
+        model_name=model_name,
+        hook_name=hook_name,
+        dataset_path=dataset_path,
+        training_tokens=num_tokens,
+        shuffle=False,
+        store_batch_size_prompts=batch_size,
+        train_batch_size_tokens=train_batch_size_tokens,
+        n_batches_in_buffer=batches_in_buffer,
+        ###
+        hook_layer=0,
+        d_in=512,
+        context_size=context_size,
+        is_dataset_tokenized=True,
+        prepend_bos=False,
+        normalize_activations="none",
+        device="cpu",
+        seed=42,
+        dtype="float32",
+    )
+
+    runner = CacheActivationsRunner(cfg)
+    return runner.run()
+
+
 # The way to run this with this command:
 # poetry run py.test tests/unit/test_cache_activations_runner.py --profile-svg -s
 def test_cache_activations_runner(tmp_path: Path):
@@ -62,11 +104,6 @@ def test_cache_activations_runner(tmp_path: Path):
         n_batches_in_buffer=n_batches_in_buffer,
         store_batch_size_prompts=store_batch_size,
         normalize_activations="none",
-        #
-        shuffle_every_n_buffers=2,
-        n_shuffles_with_last_section=1,
-        n_shuffles_in_entire_dir=1,
-        n_shuffles_final=1,
         # Misc
         device=device,
         seed=42,
@@ -83,7 +120,7 @@ def test_cache_activations_runner(tmp_path: Path):
     assert features[cfg.hook_name].shape == (context_size, cfg.d_in)
 
 
-def test_load_cached_activations():
+def test_load_cached_activations(tmp_path: Path):
     if torch.cuda.is_available():
         device = "cuda"
     elif torch.backends.mps.is_available():
@@ -93,21 +130,18 @@ def test_load_cached_activations():
 
     # total_training_steps = 20_000
     context_size = 256
-    n_batches_in_buffer = 32
+    n_batches_in_buffer = 4
     store_batch_size = 1
-    n_buffers = 3
+    n_buffers = 4
 
     tokens_in_buffer = n_batches_in_buffer * store_batch_size * context_size
     total_training_tokens = n_buffers * tokens_in_buffer
     print(f"Total Training Tokens: {total_training_tokens}")
 
-    # better if we can look at the files
-    cached_activations_fixture_path = os.path.join(
-        os.path.dirname(__file__), "fixtures", "cached_activations"
-    )
+    _create_dataset(tmp_path)
 
     cfg = LanguageModelSAERunnerConfig(
-        cached_activations_path=cached_activations_fixture_path,
+        cached_activations_path=str(tmp_path),
         use_cached_activations=True,
         # Pick a tiny model to make this easier.
         model_name="gelu-1l",
@@ -141,25 +175,29 @@ def test_load_cached_activations():
     activations_store = ActivationsStore.from_config(model, cfg)
 
     for _ in range(n_buffers):
-        buffer = activations_store.get_buffer(32)
-        assert buffer.shape == (tokens_in_buffer, 1, cfg.d_in)
+        buffer = activations_store.get_buffer(
+            cfg.n_batches_in_buffer
+        )  # Adjusted to use n_batches_in_buffer
+        assert buffer.shape == (
+            cfg.n_batches_in_buffer * cfg.store_batch_size_prompts * cfg.context_size,
+            1,
+            cfg.d_in,
+        )
 
-    # assert sparse_autoencoder_dictionary is not None
-    # know whether or not this works by looking at the dashboard!
 
+def test_activations_store_refreshes_dataset_when_it_runs_out(tmp_path: Path):
 
-def test_activations_store_refreshes_dataset_when_it_runs_out():
-    cached_activations_fixture_path = os.path.join(
-        os.path.dirname(__file__), "fixtures", "cached_activations"
-    )
-
+    context_size = 256
+    n_batches_in_buffer = 4
+    store_batch_size = 1
     total_training_steps = 200
     batch_size = 4
     total_training_tokens = total_training_steps * batch_size
 
-    context_size = 256
+    _create_dataset(tmp_path)
+
     cfg = LanguageModelSAERunnerConfig(
-        cached_activations_path=cached_activations_fixture_path,
+        cached_activations_path=str(tmp_path),
         use_cached_activations=True,
         model_name="gelu-1l",
         hook_name="blocks.0.hook_mlp_out",
@@ -171,8 +209,8 @@ def test_activations_store_refreshes_dataset_when_it_runs_out():
         prepend_bos=True,
         training_tokens=total_training_tokens,
         train_batch_size_tokens=4096,
-        n_batches_in_buffer=2,
-        store_batch_size_prompts=batch_size,
+        n_batches_in_buffer=n_batches_in_buffer,
+        store_batch_size_prompts=store_batch_size,
         normalize_activations="none",
         device="cpu",
         seed=42,
@@ -375,7 +413,7 @@ def test_cache_activations_runner_with_incorrect_d_in(tmp_path: Path):
     runner = CacheActivationsRunner(wrong_d_in_cfg)
     with pytest.raises(
         RuntimeError,
-        match=r"The expanded size of the tensor \(513\) must match the existing size \(512\) at non-singleton dimension 2",
+        match=r"Given dataset of shape \(\(32, 512\)\) does not match context_size \(33\) and d_in \(512\)",
     ):
         runner.run()
 
@@ -405,8 +443,7 @@ def test_cache_activations_runner_load_dataset_with_incorrect_config(tmp_path: P
     )
 
     # Run with correct configuration first
-    dataset = CacheActivationsRunner(correct_cfg).run()
-    dataset.save_to_disk(correct_cfg.new_cached_activations_path)  # type: ignore
+    CacheActivationsRunner(correct_cfg).run()
 
     ###
 
@@ -419,8 +456,8 @@ def test_cache_activations_runner_load_dataset_with_incorrect_config(tmp_path: P
     wrong_context_size_cfg.cached_activations_path = str(tmp_path)
 
     with pytest.raises(
-        AssertionError,
-        match=r"Given dataset of shape \(\(32, 512\)\) does not match context_size \(33\) and d_in \(512\)",
+        ValueError,
+        match=r"Given dataset of shape \(32, 512\) does not match context_size \(33\) and d_in \(512\)",
     ):
         CacheActivationsRunner(wrong_context_size_cfg).run()
 
@@ -433,12 +470,12 @@ def test_cache_activations_runner_load_dataset_with_incorrect_config(tmp_path: P
     wrong_d_in_cfg.cached_activations_path = str(tmp_path)
 
     with pytest.raises(
-        AssertionError,
-        match=r"Given dataset of shape \(\(32, 512\)\) does not match context_size \(32\) and d_in \(513\)",
+        ValueError,
+        match=r"Given dataset of shape \(32, 512\) does not match context_size \(32\) and d_in \(513\)",
     ):
         CacheActivationsRunner(wrong_d_in_cfg).run()
 
-    # d_in different from dataset
+    # Incorrect hook_name
     wrong_hook_cfg = CacheActivationsRunnerConfig(
         **dataclasses.asdict(correct_cfg),
     )
@@ -447,7 +484,7 @@ def test_cache_activations_runner_load_dataset_with_incorrect_config(tmp_path: P
     wrong_hook_cfg.cached_activations_path = str(tmp_path)
 
     with pytest.raises(
-        AssertionError,
-        match="loaded dataset does not include hook activations",
+        ValueError,
+        match=r"Columns \['blocks.1.hook_mlp_out'\] not in the dataset. Current columns in the dataset: \['blocks.0.hook_mlp_out'\]",
     ):
         CacheActivationsRunner(wrong_hook_cfg).run()

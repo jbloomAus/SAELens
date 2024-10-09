@@ -352,7 +352,7 @@ class ActivationsStore:
             self.d_in,
         ):
             raise ValueError(
-                f"Given dataset of shape ({activations_dataset.features[self.hook_name].shape}) does not match context_size ({self.context_size}) and d_in ({self.d_in})"
+                f"Given dataset of shape {activations_dataset.features[self.hook_name].shape} does not match context_size ({self.context_size}) and d_in ({self.d_in})"
             )
 
         return activations_dataset
