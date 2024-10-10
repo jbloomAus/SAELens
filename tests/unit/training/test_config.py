@@ -1,7 +1,9 @@
+from typing import Optional
+
 import pytest
 
 from sae_lens import __version__
-from sae_lens.config import LanguageModelSAERunnerConfig
+from sae_lens.config import CacheActivationsRunnerConfig, LanguageModelSAERunnerConfig
 
 TINYSTORIES_MODEL = "tiny-stories-1M"
 TINYSTORIES_DATASET = "roneneldan/TinyStories"
@@ -67,6 +69,7 @@ def test_sae_training_runner_config_get_sae_base_parameters():
         "model_from_pretrained_kwargs": {
             "center_writing_weights": False,
         },
+        "seqpos_slice": (None,),
     }
     assert expected_config == cfg.get_base_sae_cfg_dict()
 
@@ -91,3 +94,47 @@ def test_sae_training_runner_config_expansion_factor():
     cfg = LanguageModelSAERunnerConfig()
 
     assert cfg.expansion_factor == 4
+
+
+test_cases_for_seqpos = [
+    ((None, 10, -1), AssertionError),
+    ((None, 10, 0), AssertionError),
+    ((5, 5, None), AssertionError),
+    ((6, 3, None), AssertionError),
+]
+
+
+@pytest.mark.parametrize("seqpos_slice, expected_error", test_cases_for_seqpos)
+def test_sae_training_runner_config_seqpos(
+    seqpos_slice: tuple[int, int], expected_error: Optional[AssertionError]
+):
+    context_size = 10
+    if expected_error is AssertionError:
+        with pytest.raises(expected_error):
+            LanguageModelSAERunnerConfig(
+                seqpos_slice=seqpos_slice,
+                context_size=context_size,
+            )
+    else:
+        LanguageModelSAERunnerConfig(
+            seqpos_slice=seqpos_slice,
+            context_size=context_size,
+        )
+
+
+@pytest.mark.parametrize("seqpos_slice, expected_error", test_cases_for_seqpos)
+def test_cache_activations_runner_config_seqpos(
+    seqpos_slice: tuple[int, int], expected_error: Optional[AssertionError]
+):
+    context_size = 10
+    if expected_error is AssertionError:
+        with pytest.raises(expected_error):
+            CacheActivationsRunnerConfig(
+                seqpos_slice=seqpos_slice,
+                context_size=context_size,
+            )
+    else:
+        CacheActivationsRunnerConfig(
+            seqpos_slice=seqpos_slice,
+            context_size=context_size,
+        )
