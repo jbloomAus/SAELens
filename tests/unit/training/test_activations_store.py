@@ -9,6 +9,7 @@ from datasets import Dataset, IterableDataset
 from transformer_lens import HookedTransformer
 
 from sae_lens.config import LanguageModelSAERunnerConfig, PretokenizeRunnerConfig
+from sae_lens.load_model import load_model
 from sae_lens.pretokenize_runner import pretokenize_dataset
 from sae_lens.training.activations_store import (
     ActivationsStore,
@@ -181,6 +182,35 @@ def test_activations_store__get_activations_head_hook(ts_model: HookedTransforme
     assert activations.device == activation_store_head_hook.device
 
 
+def test_activations_store__get_activations__gives_same_results_with_hf_model_and_tlens_model():
+    hf_model = load_model(
+        model_class_name="AutoModelForCausalLM",
+        model_name="gpt2",
+        device="cpu",
+    )
+    tlens_model = HookedTransformer.from_pretrained_no_processing("gpt2", device="cpu")
+    dataset = Dataset.from_list(
+        [
+            {"text": "hello world"},
+        ]
+        * 100
+    )
+
+    cfg = build_sae_cfg(hook_name="blocks.4.hook_resid_post", hook_layer=4, d_in=768)
+    store_tlens = ActivationsStore.from_config(
+        tlens_model, cfg, override_dataset=dataset
+    )
+    batch_tlens = store_tlens.get_batch_tokens()
+    activations_tlens = store_tlens.get_activations(batch_tlens)
+
+    cfg = build_sae_cfg(hook_name="transformer.h.4", hook_layer=4, d_in=768)
+    store_hf = ActivationsStore.from_config(hf_model, cfg, override_dataset=dataset)
+    batch_hf = store_hf.get_batch_tokens()
+    activations_hf = store_hf.get_activations(batch_hf)
+
+    assert torch.allclose(activations_hf, activations_tlens, atol=1e-3)
+
+
 # 12 is divisible by the length of "hello world", 11 and 13 are not
 @pytest.mark.parametrize("context_size", [11, 12, 13])
 def test_activations_store__get_batch_tokens__fills_the_context_separated_by_bos(
@@ -344,6 +374,28 @@ def test_activations_store___iterate_tokenized_sequences__yields_sequences_of_co
     )
     activation_store = ActivationsStore.from_config(
         ts_model, cfg, override_dataset=dataset
+    )
+    for toks in activation_store._iterate_tokenized_sequences():
+        assert toks.shape == (5,)
+
+
+def test_activations_store___iterate_tokenized_sequences__works_with_huggingface_models():
+    hf_model = load_model(
+        model_class_name="AutoModelForCausalLM",
+        model_name="gpt2",
+        device="cpu",
+    )
+    cfg = build_sae_cfg(prepend_bos=True, context_size=5)
+    dataset = Dataset.from_list(
+        [
+            {"text": "hello world1"},
+            {"text": "hello world2"},
+            {"text": "hello world3"},
+        ]
+        * 20
+    )
+    activation_store = ActivationsStore.from_config(
+        hf_model, cfg, override_dataset=dataset
     )
     for toks in activation_store._iterate_tokenized_sequences():
         assert toks.shape == (5,)
