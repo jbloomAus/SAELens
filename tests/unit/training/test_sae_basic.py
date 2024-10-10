@@ -7,7 +7,7 @@ import torch
 from torch import nn
 
 from sae_lens.config import LanguageModelSAERunnerConfig
-from sae_lens.sae import SAE
+from sae_lens.sae import SAE, _disable_hooks
 from tests.unit.helpers import build_sae_cfg
 
 
@@ -392,7 +392,6 @@ def test_sae_gated_forward(use_error_term: bool):
     assert torch.allclose(cache["hook_sae_input"], sae_in, atol=1e-3)
     assert torch.allclose(cache["hook_sae_output"], out, atol=1e-3)
     assert torch.allclose(cache["hook_sae_recons"], expected_recons, atol=1e-3)
-
     assert torch.allclose(
         cache["hook_sae_acts_pre"], torch.tensor([[2.6310, 5.4334, 13.0513]]), atol=1e-3
     )
@@ -402,3 +401,24 @@ def test_sae_gated_forward(use_error_term: bool):
         torch.tensor([[0.0, 5.4334, 13.0513]]),
         atol=1e-3,
     )
+    if use_error_term:
+        assert torch.allclose(
+            cache["hook_sae_error"], expected_output - expected_recons
+        )
+
+
+def test_disable_hooks_temporarily_stops_hooks_from_running():
+    cfg = build_sae_cfg(d_in=2, d_sae=3)
+    sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
+    sae_in = torch.randn(10, cfg.d_in)
+
+    orig_out, orig_cache = sae.run_with_cache(sae_in)
+    with _disable_hooks(sae):
+        disabled_out, disabled_cache = sae.run_with_cache(sae_in)
+    subseq_out, subseq_cache = sae.run_with_cache(sae_in)
+
+    assert torch.allclose(orig_out, disabled_out)
+    assert torch.allclose(orig_out, subseq_out)
+    assert disabled_cache.keys() == set()
+    for key in orig_cache.keys():
+        assert torch.allclose(orig_cache[key], subseq_cache[key])
