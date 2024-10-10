@@ -2,6 +2,13 @@
 
 
 
+## v3.23.4 (2024-10-10)
+
+### Fix
+
+* fix: add-neuronpedia-ids-correct-gemma-2-2b-model-name (#327) ([`6ed1400`](https://github.com/jbloomAus/SAELens/commit/6ed1400709a20e5813324c7cd2c4bfb62a881fe6))
+
+
 ## v3.23.3 (2024-10-08)
 
 ### Fix
