@@ -192,6 +192,10 @@ def test_activations_store_refreshes_dataset_when_it_runs_out():
         def W_E(self) -> torch.Tensor:
             return torch.ones(16, 16)
 
+        @property
+        def cfg(self) -> LanguageModelSAERunnerConfig:
+            return cfg
+
     dataset = Dataset.from_list(
         [
             {"text": "hello world1"},

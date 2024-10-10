@@ -107,20 +107,32 @@ def training_sae(cfg: LanguageModelSAERunnerConfig):
 
 
 all_expected_keys = [
-    "metrics/l2_norm_in",
-    "metrics/l2_ratio",
-    "metrics/l2_norm_out",
-    "metrics/explained_variance",
-    "metrics/l0",
-    "metrics/l1",
-    "metrics/mse",
-    "metrics/ce_loss_score",
-    "metrics/ce_loss_without_sae",
-    "metrics/ce_loss_with_sae",
-    "metrics/ce_loss_with_ablation",
-    "metrics/kl_div_score",
-    "metrics/kl_div_with_sae",
-    "metrics/kl_div_with_ablation",
+    "l2_norm_in",
+    "l2_ratio",
+    "l2_norm_out",
+    "explained_variance",
+    "l0",
+    "l1",
+    "mse",
+    "ce_loss_score",
+    "ce_loss_without_sae",
+    "ce_loss_with_sae",
+    "ce_loss_with_ablation",
+    "kl_div_score",
+    "kl_div_with_sae",
+    "kl_div_with_ablation",
+    "cossim",
+    "relative_reconstruction_bias",
+    "total_tokens_eval_sparsity_variance",
+    "total_tokens_eval_reconstruction",
+]
+
+all_featurewise_keys_expected = [
+    "feature_density",
+    "consistent_activation_heuristic",
+    "encoder_bias",
+    "encoder_decoder_cosine_sim",
+    "encoder_norm",
 ]
 
 
@@ -130,7 +142,7 @@ def test_run_evals_base_sae(
     model: HookedTransformer,
 ):
 
-    eval_metrics = run_evals(
+    eval_metrics, _ = run_evals(
         sae=base_sae,
         activation_store=activation_store,
         model=model,
@@ -139,7 +151,7 @@ def test_run_evals_base_sae(
 
     # results will be garbage without a real model.
     for key in all_expected_keys:
-        assert key in eval_metrics
+        assert key in eval_metrics, f"{key} not in {eval_metrics}"
 
 
 def test_run_evals_training_sae(
@@ -148,15 +160,16 @@ def test_run_evals_training_sae(
     model: HookedTransformer,
 ):
 
-    eval_metrics = run_evals(
+    eval_metrics, feature_metrics = run_evals(
         sae=training_sae,
         activation_store=activation_store,
         model=model,
         eval_config=get_eval_everything_config(),
     )
 
-    for key in all_expected_keys:
-        assert key in eval_metrics
+    print(eval_metrics)
+    assert set(all_expected_keys) == set(eval_metrics.keys())
+    assert set(all_featurewise_keys_expected) == set(feature_metrics.keys())
 
 
 def test_run_evals_training_sae_ignore_bos(
@@ -165,7 +178,7 @@ def test_run_evals_training_sae_ignore_bos(
     model: HookedTransformer,
 ):
 
-    eval_metrics = run_evals(
+    eval_metrics, _ = run_evals(
         sae=training_sae,
         activation_store=activation_store,
         model=model,
@@ -196,16 +209,18 @@ def test_training_eval_config(
     model: HookedTransformer,
 ):
     expected_keys = [
-        "metrics/l2_norm_in",
-        "metrics/l2_ratio",
-        "metrics/l2_norm_out",
-        "metrics/ce_loss_score",
-        "metrics/ce_loss_without_sae",
-        "metrics/ce_loss_with_sae",
-        "metrics/ce_loss_with_ablation",
+        "l2_norm_in",
+        "l2_ratio",
+        "l2_norm_out",
+        "ce_loss_score",
+        "ce_loss_without_sae",
+        "ce_loss_with_sae",
+        "ce_loss_with_ablation",
+        # "cossim",
+        "relative_reconstruction_bias",
     ]
     eval_config = TRAINER_EVAL_CONFIG
-    eval_metrics = run_evals(
+    eval_metrics, _ = run_evals(
         sae=base_sae,
         activation_store=activation_store,
         model=model,
@@ -224,16 +239,17 @@ def test_training_eval_config_ignore_control_tokens(
     model: HookedTransformer,
 ):
     expected_keys = [
-        "metrics/l2_norm_in",
-        "metrics/l2_ratio",
-        "metrics/l2_norm_out",
-        "metrics/ce_loss_score",
-        "metrics/ce_loss_without_sae",
-        "metrics/ce_loss_with_sae",
-        "metrics/ce_loss_with_ablation",
+        "l2_norm_in",
+        "l2_ratio",
+        "l2_norm_out",
+        "ce_loss_score",
+        "ce_loss_without_sae",
+        "ce_loss_with_sae",
+        "ce_loss_with_ablation",
+        "relative_reconstruction_bias",
     ]
     eval_config = TRAINER_EVAL_CONFIG
-    eval_metrics = run_evals(
+    eval_metrics, _ = run_evals(
         sae=base_sae,
         activation_store=activation_store,
         model=model,
@@ -257,10 +273,14 @@ def mock_args():
     args.sae_regex_pattern = "test_pattern"
     args.sae_block_pattern = "test_block"
     args.num_eval_batches = 2
+    args.batch_size_prompts = 4
     args.eval_batch_size_prompts = 4
+    args.n_eval_reconstruction_batches = 1
+    args.n_eval_sparsity_variance_batches = 1
     args.datasets = ["test_dataset"]
     args.ctx_lens = [64]
     args.output_dir = "test_output"
+    args.verbose = False
     return args
 
 
@@ -285,11 +305,13 @@ def test_run_evaluations(
     mock_multiple_evals.assert_called_once_with(
         sae_regex_pattern=mock_args.sae_regex_pattern,
         sae_block_pattern=mock_args.sae_block_pattern,
-        num_eval_batches=mock_args.num_eval_batches,
         eval_batch_size_prompts=mock_args.eval_batch_size_prompts,
+        n_eval_reconstruction_batches=mock_args.n_eval_reconstruction_batches,
+        n_eval_sparsity_variance_batches=mock_args.n_eval_sparsity_variance_batches,
         datasets=mock_args.datasets,
         ctx_lens=mock_args.ctx_lens,
         output_dir=mock_args.output_dir,
+        verbose=mock_args.verbose,
     )
     assert result == [{"test": "result"}]
 
