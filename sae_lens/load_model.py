@@ -91,18 +91,22 @@ class HookedProxyLM(HookedRootModule):
     def forward(
         self,
         tokens: torch.Tensor,
-        return_type: Literal["both"] = "both",
+        return_type: Literal["both", "logits"] = "logits",
         loss_per_token: bool = False,
         # TODO: implement real support for stop_at_layer
         stop_at_layer: int | None = None,
         **kwargs: Any,
-    ) -> tuple[torch.Tensor, Loss]:
+    ) -> Output | torch.Tensor:
         # This is just what's needed for evals, not everything that HookedTransformer has
-        assert (
-            return_type == "both"
-        ), "Only return_type supported is 'both' to match what's in evals.py"
+        assert return_type in (
+            "both",
+            "logits",
+        ), "Only return_type supported is 'both' or 'logits' to match what's in evals.py and ActivationsStore"
         output = self.model(tokens)
         logits = output if isinstance(output, torch.Tensor) else output.logits
+
+        if return_type == "logits":
+            return logits
 
         if tokens.device != logits.device:
             tokens = tokens.to(logits.device)
