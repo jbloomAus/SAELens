@@ -3,7 +3,7 @@ from mamba_lens import HookedMamba
 from transformer_lens import HookedTransformer
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from sae_lens.load_model import HookedProxyLM, load_model
+from sae_lens.load_model import HookedProxyLM, _extract_logits_from_output, load_model
 
 
 def test_load_model_works_with_mamba():
@@ -101,6 +101,19 @@ def test_HookedProxyLM_forward_gives_same_output_as_tlens():
 
     assert torch.allclose(tlens_output[0], hf_logits_normed, atol=1e-3)
     assert torch.allclose(tlens_output[1], hf_output[1], atol=1e-3)
+
+
+def test_extract_logits_from_output_works_with_multiple_return_types():
+    model = AutoModelForCausalLM.from_pretrained("gpt2")
+    tokenizer = AutoTokenizer.from_pretrained("gpt2")
+    tokens = tokenizer.encode("hi there", return_tensors="pt")
+    out_dict = model(tokens, return_dict=True)
+    out_tuple = model(tokens, return_dict=False)
+
+    logits_dict = _extract_logits_from_output(out_dict)
+    logits_tuple = _extract_logits_from_output(out_tuple)
+
+    assert torch.allclose(logits_dict, logits_tuple)
 
 
 def test_HookedProxyLM_to_tokens_gives_same_output_as_tlens():

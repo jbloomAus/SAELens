@@ -96,14 +96,14 @@ class HookedProxyLM(HookedRootModule):
         # TODO: implement real support for stop_at_layer
         stop_at_layer: int | None = None,
         **kwargs: Any,
-    ) -> Output | torch.Tensor:
+    ) -> Output | Loss:
         # This is just what's needed for evals, not everything that HookedTransformer has
         assert return_type in (
             "both",
             "logits",
         ), "Only return_type supported is 'both' or 'logits' to match what's in evals.py and ActivationsStore"
         output = self.model(tokens)
-        logits = output if isinstance(output, torch.Tensor) else output.logits
+        logits = _extract_logits_from_output(output)
 
         if return_type == "logits":
             return logits
@@ -149,6 +149,17 @@ class HookedProxyLM(HookedRootModule):
         if hasattr(self.tokenizer, "add_bos_token") and self.tokenizer.add_bos_token:  # type: ignore
             tokens = get_tokens_with_bos_removed(self.tokenizer, tokens)
         return tokens  # type: ignore
+
+
+def _extract_logits_from_output(output: Any) -> torch.Tensor:
+    if isinstance(output, torch.Tensor):
+        return output
+    elif isinstance(output, tuple) and isinstance(output[0], torch.Tensor):
+        return output[0]
+    elif isinstance(output, dict) and "logits" in output:
+        return output["logits"]
+    else:
+        raise ValueError(f"Unknown output type: {type(output)}")
 
 
 def get_hook_fn(hook_point: HookPoint):
