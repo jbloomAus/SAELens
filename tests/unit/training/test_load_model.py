@@ -54,11 +54,11 @@ def test_HookedProxyLM_gives_same_cached_states_as_original_implementation():
     tokenizer = AutoTokenizer.from_pretrained("gpt2")
     hooked_model = HookedProxyLM(hf_model, tokenizer)
     input_ids = tokenizer.encode("hi", return_tensors="pt")
-    output, cache = hooked_model.run_with_cache(input_ids)
+    proxy_logits, cache = hooked_model.run_with_cache(input_ids)
 
     hf_output = hf_model(input_ids, output_hidden_states=True)
 
-    assert torch.allclose(output.logits, hf_output.logits)
+    assert torch.allclose(proxy_logits, hf_output.logits)
     for i in range(len(hf_output.hidden_states) - 2):
         assert torch.allclose(
             cache[f"transformer.h.{i}"], hf_output.hidden_states[i + 1]
