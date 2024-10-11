@@ -60,6 +60,7 @@ class LanguageModelSAERunnerConfig:
         store_batch_size_prompts (int): The batch size for storing activations. This controls how many prompts are in the batch of the language model when generating actiations.
         train_batch_size_tokens (int): The batch size for training. This controls the batch size of the SAE Training loop.
         normalize_activations (str): Activation Normalization Strategy. Either none, expected_average_only_in (estimate the average activation norm and divide activations by it -> this can be folded post training and set to None), or constant_norm_rescale (at runtime set activation norm to sqrt(d_in) and then scale up the SAE output).
+        seqpos_slice (tuple): Determines slicing of (batch, seq, d_in) activations when constructing batches, during training. Example: for Othello we sometimes use (5, -5).
         device (str): The device to use. Usually cuda.
         act_store_device (str): The device to use for the activation store. CPU is advised in order to save vram.
         seed (int): The seed to use.
@@ -153,6 +154,7 @@ class LanguageModelSAERunnerConfig:
     normalize_activations: str = (
         "none"  # none, expected_average_only_in (Anthropic April Update), constant_norm_rescale (Anthropic Feb Update)
     )
+    seqpos_slice: tuple[int | None, ...] = (None,)
 
     # Misc
     device: str = "cpu"
@@ -386,6 +388,7 @@ class LanguageModelSAERunnerConfig:
             "normalize_activations": self.normalize_activations,
             "activation_fn_kwargs": self.activation_fn_kwargs,
             "model_from_pretrained_kwargs": self.model_from_pretrained_kwargs,
+            "seqpos_slice": self.seqpos_slice,
         }
 
     def get_training_sae_cfg_dict(self) -> dict[str, Any]:
@@ -427,6 +430,15 @@ class LanguageModelSAERunnerConfig:
     def from_json(cls, path: str) -> "LanguageModelSAERunnerConfig":
         with open(path + "cfg.json", "r") as f:
             cfg = json.load(f)
+
+        # ensure that seqpos slices is a tuple
+        # Ensure seqpos_slice is a tuple
+        if "seqpos_slice" in cfg:
+            if isinstance(cfg["seqpos_slice"], list):
+                cfg["seqpos_slice"] = tuple(cfg["seqpos_slice"])
+            elif not isinstance(cfg["seqpos_slice"], tuple):
+                cfg["seqpos_slice"] = (cfg["seqpos_slice"],)
+
         return cls(**cfg)
 
 
@@ -461,6 +473,7 @@ class CacheActivationsRunnerConfig:
     store_batch_size_prompts: int = 32
     train_batch_size_tokens: int = 4096
     normalize_activations: str = "none"  # should always be none for activation caching
+    seqpos_slice: tuple[int | None, ...] = (None,)
 
     # Misc
     device: str = "cpu"

@@ -67,6 +67,7 @@ def test_sae_training_runner_config_get_sae_base_parameters():
         "model_from_pretrained_kwargs": {
             "center_writing_weights": False,
         },
+        "seqpos_slice": (None,),
     }
     assert expected_config == cfg.get_base_sae_cfg_dict()
 
