@@ -703,8 +703,6 @@ class SAE(HookedRootModule):
                 + value_suffix
             )
         sae_info = sae_directory.get(release, None)
-        hf_repo_id = sae_info.repo_id if sae_info is not None else release
-        hf_path = sae_info.saes_map[sae_id] if sae_info is not None else sae_id
         config_overrides = sae_info.config_overrides if sae_info is not None else None
         neuronpedia_id = (
             sae_info.neuronpedia_id[sae_id] if sae_info is not None else None
@@ -720,8 +718,8 @@ class SAE(HookedRootModule):
         conversion_loader = NAMED_PRETRAINED_SAE_LOADERS[conversion_loader_name]
 
         cfg_dict, state_dict, log_sparsities = conversion_loader(
-            repo_id=hf_repo_id,
-            folder_name=hf_path,
+            release,
+            sae_id=sae_id,
             device=device,
             force_download=False,
             cfg_overrides=config_overrides,

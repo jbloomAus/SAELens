@@ -43,9 +43,9 @@ def generate_sae_table():
     markdown_content += "*This file contains the contents of `sae_lens/pretrained_saes.yaml` in Markdown*\n\n"
 
     # Generate content for each model
-    for model_name, model_info in tqdm(data.items()):
+    for release, model_info in tqdm(data.items()):
         repo_link = f"https://huggingface.co/{model_info['repo_id']}"
-        markdown_content += f"## [{model_name}]({repo_link})\n\n"
+        markdown_content += f"## [{release}]({repo_link})\n\n"
         markdown_content += f"- **Huggingface Repo**: {model_info['repo_id']}\n"
         markdown_content += f"- **model**: {model_info['model']}\n"
 
@@ -58,10 +58,10 @@ def generate_sae_table():
 
         for info in tqdm(model_info["saes"]):
             # can remove this by explicitly overriding config in yaml. Do this later.
-            folder_name = info["path"]
+            sae_id = info["id"]
             cfg = get_sae_config(
-                model_info,
-                folder_name=folder_name,
+                release,
+                sae_id=sae_id,
                 options=SAEConfigLoadOptions(),
             )
             cfg = handle_config_defaulting(cfg)

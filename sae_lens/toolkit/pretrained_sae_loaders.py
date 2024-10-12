@@ -9,14 +9,16 @@ from huggingface_hub import hf_hub_download
 from huggingface_hub.utils import EntryNotFoundError
 from safetensors import safe_open
 
+from sae_lens.toolkit.pretrained_saes_directory import get_pretrained_saes_directory
 
-# loaders take in a repo_id, folder_name, device, and whether to force download, and returns a tuple of config and state_dict
+
+# loaders take in a release, sae_id, device, and whether to force download, and returns a tuple of config, state_dict, and log sparsity
 class PretrainedSaeLoader(Protocol):
 
     def __call__(
         self,
-        repo_id: str,
-        folder_name: str,
+        release: str,
+        sae_id: str,
         device: str | torch.device | None = None,
         force_download: bool = False,
         cfg_overrides: dict[str, Any] | None = None,
@@ -33,8 +35,8 @@ class SAEConfigLoadOptions:
 
 
 def sae_lens_loader(
-    repo_id: str,
-    folder_name: str,
+    release: str,
+    sae_id: str,
     device: str = "cpu",
     force_download: bool = False,
     cfg_overrides: Optional[dict[str, Any]] = None,
@@ -42,12 +44,14 @@ def sae_lens_loader(
     """
     Get's SAEs from HF, loads them.
     """
-    model_info = {"repo_id": repo_id, "conversion_func": "sae_lens"}
+    saes_directory = get_pretrained_saes_directory()
+    sae_info = saes_directory.get(release, None)
+    repo_id = sae_info.repo_id if sae_info is not None else release
+    folder_name = sae_info.saes_map[sae_id] if sae_info is not None else sae_id
     options = SAEConfigLoadOptions(
         force_download=force_download,
     )
-    # Get the config
-    cfg_dict = get_sae_config(model_info, folder_name=folder_name, options=options)
+    cfg_dict = get_sae_config(release, sae_id=sae_id, options=options)
     # Apply overrides if provided
     if cfg_overrides is not None:
         cfg_dict.update(cfg_overrides)
@@ -172,22 +176,22 @@ def get_connor_rob_hook_z_config(
 
 
 def connor_rob_hook_z_loader(
-    repo_id: str,
-    folder_name: str,
+    release: str,
+    sae_id: str,
     device: Optional[str] = None,
     force_download: bool = False,
     cfg_overrides: Optional[dict[str, Any]] = None,
 ) -> tuple[dict[str, Any], dict[str, torch.Tensor], None]:
-    model_info = {
-        "repo_id": repo_id,
-        "conversion_func": "connor_rob_hook_z",
-    }
+    saes_directory = get_pretrained_saes_directory()
+    sae_info = saes_directory.get(release, None)
+    repo_id = sae_info.repo_id if sae_info is not None else release
+    folder_name = sae_info.saes_map[sae_id] if sae_info is not None else sae_id
     options = SAEConfigLoadOptions(
         force_download=force_download,
     )
     cfg_dict = get_sae_config(
-        model_info,
-        folder_name=folder_name,
+        release,
+        sae_id=sae_id,
         options=options,
     )
 
@@ -325,8 +329,8 @@ def get_gemma_2_config(
 
 
 def gemma_2_sae_loader(
-    repo_id: str,
-    folder_name: str,
+    release: str,
+    sae_id: str,
     device: str = "cpu",
     force_download: bool = False,
     cfg_overrides: Optional[Dict[str, Any]] = None,
@@ -336,17 +340,17 @@ def gemma_2_sae_loader(
     """
     Custom loader for Gemma 2 SAEs.
     """
-    model_info = {
-        "repo_id": repo_id,
-        "conversion_func": "gemma_2",
-    }
+    saes_directory = get_pretrained_saes_directory()
+    sae_info = saes_directory.get(release, None)
+    repo_id = sae_info.repo_id if sae_info is not None else release
+    folder_name = sae_info.saes_map[sae_id] if sae_info is not None else sae_id
     options = SAEConfigLoadOptions(
         d_sae_override=d_sae_override,
         layer_override=layer_override,
     )
     cfg_dict = get_sae_config(
-        model_info,
-        folder_name=folder_name,
+        release,
+        sae_id=sae_id,
         options=options,
     )
     cfg_dict["device"] = device
@@ -448,20 +452,30 @@ def get_dictionary_learning_config_1(
 
 
 def get_sae_config(
-    model_info: dict[str, Any], folder_name: str, options: SAEConfigLoadOptions
+    release: str, sae_id: str, options: SAEConfigLoadOptions
 ) -> dict[str, Any]:
-    repo_id = model_info["repo_id"]
-    conversion_func = model_info["conversion_func"]
+    saes_directory = get_pretrained_saes_directory()
+    sae_info = saes_directory.get(release, None)
+    repo_id = sae_info.repo_id if sae_info is not None else release
+    folder_name = sae_info.saes_map[sae_id] if sae_info is not None else sae_id
 
-    if conversion_func == "connor_rob_hook_z":
+    conversion_loader_name = "sae_lens"
+    if sae_info is not None and sae_info.conversion_func is not None:
+        conversion_loader_name = sae_info.conversion_func
+    if conversion_loader_name not in NAMED_PRETRAINED_SAE_LOADERS:
+        raise ValueError(
+            f"Conversion func {conversion_loader_name} not found in NAMED_PRETRAINED_SAE_LOADERS."
+        )
+
+    if conversion_loader_name == "connor_rob_hook_z":
         cfg = get_connor_rob_hook_z_config(
             repo_id, folder_name=folder_name, options=options
         )
-    elif conversion_func == "dictionary_learning_1":
+    elif conversion_loader_name == "dictionary_learning_1":
         cfg = get_dictionary_learning_config_1(
             repo_id, folder_name=folder_name, options=options
         )
-    elif conversion_func == "gemma_2":
+    elif conversion_loader_name == "gemma_2":
         cfg = get_gemma_2_config(repo_id, folder_name=folder_name, options=options)
     else:
         cfg = get_sae_config_from_hf(repo_id, folder_name=folder_name, options=options)
@@ -469,8 +483,8 @@ def get_sae_config(
 
 
 def dictionary_learning_sae_loader_1(
-    repo_id: str,
-    folder_name: str,
+    release: str,
+    sae_id: str,
     device: str = "cpu",
     force_download: bool = False,
     cfg_overrides: Optional[dict[str, Any]] = None,
@@ -478,15 +492,14 @@ def dictionary_learning_sae_loader_1(
     """
     Suitable for SAEs from https://huggingface.co/canrager/lm_sae.
     """
-    model_info = {
-        "repo_id": repo_id,
-        "conversion_func": "dictionary_learning_1",
-    }
-
+    saes_directory = get_pretrained_saes_directory()
+    sae_info = saes_directory.get(release, None)
+    repo_id = sae_info.repo_id if sae_info is not None else release
+    folder_name = sae_info.saes_map[sae_id] if sae_info is not None else sae_id
     options = SAEConfigLoadOptions(
         force_download=force_download,
     )
-    cfg_dict = get_sae_config(model_info, folder_name=folder_name, options=options)
+    cfg_dict = get_sae_config(release, sae_id=sae_id, options=options)
     if cfg_overrides:
         cfg_dict.update(cfg_overrides)
 
