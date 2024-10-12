@@ -9,7 +9,10 @@ from huggingface_hub import hf_hub_download
 from huggingface_hub.utils import EntryNotFoundError
 from safetensors import safe_open
 
-from sae_lens.toolkit.pretrained_saes_directory import get_pretrained_saes_directory
+from sae_lens.toolkit.pretrained_saes_directory import (
+    PretrainedSAELookup,
+    get_pretrained_saes_directory,
+)
 
 
 # loaders take in a release, sae_id, device, and whether to force download, and returns a tuple of config, state_dict, and log sparsity
@@ -451,6 +454,17 @@ def get_dictionary_learning_config_1(
     }
 
 
+def get_conversion_loader_name(sae_info: Optional[PretrainedSAELookup]):
+    conversion_loader_name = "sae_lens"
+    if sae_info is not None and sae_info.conversion_func is not None:
+        conversion_loader_name = sae_info.conversion_func
+    if conversion_loader_name not in NAMED_PRETRAINED_SAE_LOADERS:
+        raise ValueError(
+            f"Conversion func '{conversion_loader_name}' not found in NAMED_PRETRAINED_SAE_LOADERS."
+        )
+    return conversion_loader_name
+
+
 def get_sae_config(
     release: str, sae_id: str, options: SAEConfigLoadOptions
 ) -> dict[str, Any]:
@@ -458,14 +472,7 @@ def get_sae_config(
     sae_info = saes_directory.get(release, None)
     repo_id = sae_info.repo_id if sae_info is not None else release
     folder_name = sae_info.saes_map[sae_id] if sae_info is not None else sae_id
-
-    conversion_loader_name = "sae_lens"
-    if sae_info is not None and sae_info.conversion_func is not None:
-        conversion_loader_name = sae_info.conversion_func
-    if conversion_loader_name not in NAMED_PRETRAINED_SAE_LOADERS:
-        raise ValueError(
-            f"Conversion func {conversion_loader_name} not found in NAMED_PRETRAINED_SAE_LOADERS."
-        )
+    conversion_loader_name = get_conversion_loader_name(sae_info)
 
     if conversion_loader_name == "connor_rob_hook_z":
         cfg = get_connor_rob_hook_z_config(

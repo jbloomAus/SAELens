@@ -19,6 +19,7 @@ from transformer_lens.hook_points import HookedRootModule, HookPoint
 from sae_lens.config import DTYPE_MAP
 from sae_lens.toolkit.pretrained_sae_loaders import (
     NAMED_PRETRAINED_SAE_LOADERS,
+    get_conversion_loader_name,
     handle_config_defaulting,
     read_sae_from_disk,
 )
@@ -708,13 +709,7 @@ class SAE(HookedRootModule):
             sae_info.neuronpedia_id[sae_id] if sae_info is not None else None
         )
 
-        conversion_loader_name = "sae_lens"
-        if sae_info is not None and sae_info.conversion_func is not None:
-            conversion_loader_name = sae_info.conversion_func
-        if conversion_loader_name not in NAMED_PRETRAINED_SAE_LOADERS:
-            raise ValueError(
-                f"Conversion func {conversion_loader_name} not found in NAMED_PRETRAINED_SAE_LOADERS."
-            )
+        conversion_loader_name = get_conversion_loader_name(sae_info)
         conversion_loader = NAMED_PRETRAINED_SAE_LOADERS[conversion_loader_name]
 
         cfg_dict, state_dict, log_sparsities = conversion_loader(
