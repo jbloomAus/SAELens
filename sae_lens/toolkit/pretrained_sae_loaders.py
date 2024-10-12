@@ -473,20 +473,8 @@ def get_sae_config(
     repo_id = sae_info.repo_id if sae_info is not None else release
     folder_name = sae_info.saes_map[sae_id] if sae_info is not None else sae_id
     conversion_loader_name = get_conversion_loader_name(sae_info)
-
-    if conversion_loader_name == "connor_rob_hook_z":
-        cfg = get_connor_rob_hook_z_config(
-            repo_id, folder_name=folder_name, options=options
-        )
-    elif conversion_loader_name == "dictionary_learning_1":
-        cfg = get_dictionary_learning_config_1(
-            repo_id, folder_name=folder_name, options=options
-        )
-    elif conversion_loader_name == "gemma_2":
-        cfg = get_gemma_2_config(repo_id, folder_name=folder_name, options=options)
-    else:
-        cfg = get_sae_config_from_hf(repo_id, folder_name=folder_name, options=options)
-    return cfg
+    config_getter = NAMED_PRETRAINED_SAE_CONFIG_GETTERS[conversion_loader_name]
+    return config_getter(repo_id, folder_name=folder_name, options=options)
 
 
 def dictionary_learning_sae_loader_1(
@@ -549,4 +537,11 @@ NAMED_PRETRAINED_SAE_LOADERS: dict[str, PretrainedSaeLoader] = {
     "connor_rob_hook_z": connor_rob_hook_z_loader,  # type: ignore
     "gemma_2": gemma_2_sae_loader,
     "dictionary_learning_1": dictionary_learning_sae_loader_1,
+}
+
+NAMED_PRETRAINED_SAE_CONFIG_GETTERS = {
+    "sae_lens": get_sae_config_from_hf,
+    "connor_rob_hook_z": get_connor_rob_hook_z_config,
+    "gemma_2": get_gemma_2_config,
+    "dictionary_learning_1": get_dictionary_learning_config_1,
 }
