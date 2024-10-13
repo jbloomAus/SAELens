@@ -1,4 +1,4 @@
-__version__ = "3.23.1"
+__version__ = "3.23.4"
 
 
 from .analysis.hooked_sae_transformer import HookedSAETransformer

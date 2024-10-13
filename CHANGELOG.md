@@ -2,6 +2,39 @@
 
 
 
+## v3.23.4 (2024-10-10)
+
+### Fix
+
+* fix: add-neuronpedia-ids-correct-gemma-2-2b-model-name (#327) ([`6ed1400`](https://github.com/jbloomAus/SAELens/commit/6ed1400709a20e5813324c7cd2c4bfb62a881fe6))
+
+
+## v3.23.3 (2024-10-08)
+
+### Fix
+
+* fix: properly manage pyproject.toml version (#325) ([`432df87`](https://github.com/jbloomAus/SAELens/commit/432df87d97c5e5b4fd62ba835a01acd4ffd1758a))
+
+
+## v3.23.2 (2024-10-07)
+
+### Chore
+
+* chore: adds black-jupyter to dependencies (#318)
+
+* adds black-jupyter to dependencies
+
+* formats notebooks ([`ed5d791`](https://github.com/jbloomAus/SAELens/commit/ed5d79148fa161c2e69e959f4ea7a8d9d3a87290))
+
+### Fix
+
+* fix: `hook_sae_acts_post` for Gated models should be post-masking (#322)
+
+* first commit
+
+* formatting ([`5e70edc`](https://github.com/jbloomAus/SAELens/commit/5e70edc0a167d895931cf85a4b068970599128b8))
+
+
 ## v3.23.1 (2024-10-03)
 
 ### Chore
