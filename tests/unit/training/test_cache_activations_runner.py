@@ -136,7 +136,6 @@ def test_load_cached_activations(tmp_path: Path):
 
     tokens_in_buffer = n_batches_in_buffer * store_batch_size * context_size
     total_training_tokens = n_buffers * tokens_in_buffer
-    print(f"Total Training Tokens: {total_training_tokens}")
 
     _create_dataset(tmp_path)
 
@@ -322,15 +321,6 @@ def test_compare_cached_activations_end_to_end_with_ground_truth(tmp_path: Path)
         ground_truth_acts.append(acts)
 
     ground_truth_acts = torch.cat(ground_truth_acts, dim=0)
-
-    print("Ground truth shape:", ground_truth_acts.shape)
-    print("Cached activations shape:", dataset_acts.shape)
-    print("Ground truth sample:", ground_truth_acts[0, 0, :10])
-    print("Cached activations sample:", dataset_acts[0, 0, :10])
-    print(
-        "Max difference:",
-        torch.max(torch.abs(ground_truth_acts - activation_dataset[cfg.hook_name])),
-    )
 
     assert torch.allclose(ground_truth_acts, dataset_acts, rtol=1e-3, atol=5e-2)
 
