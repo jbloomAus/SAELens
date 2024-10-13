@@ -512,7 +512,7 @@ class ActivationsStore:
         hook_names = [self.hook_name]
         assert set(hook_names).issubset(self.cached_activation_dataset.column_names)
 
-        if self.current_row_idx > len(self.cached_activation_dataset):
+        if self.current_row_idx > len(self.cached_activation_dataset) - total_size:
             self.current_row_idx = 0
             if raise_on_epoch_end:
                 raise StopIteration

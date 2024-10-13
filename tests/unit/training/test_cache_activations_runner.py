@@ -23,11 +23,11 @@ def _create_dataset(tmp_path: Path) -> Dataset:
     hook_name = "blocks.0.hook_mlp_out"
     dataset_path = "NeelNanda/c4-tokenized-2b"
     batch_size = 1
-    batches_in_buffer = 4
-    context_size = 256
+    batches_in_buffer = 2
+    context_size = 32
     num_buffers = 4
 
-    train_batch_size_tokens = 4096
+    train_batch_size_tokens = 512
 
     tokens_in_buffer = batches_in_buffer * batch_size * context_size
     num_tokens = tokens_in_buffer * num_buffers
@@ -129,7 +129,7 @@ def test_load_cached_activations(tmp_path: Path):
         device = "cpu"
 
     # total_training_steps = 20_000
-    context_size = 256
+    context_size = 32
     n_batches_in_buffer = 4
     store_batch_size = 1
     n_buffers = 4
@@ -154,7 +154,7 @@ def test_load_cached_activations(tmp_path: Path):
         is_dataset_tokenized=True,
         prepend_bos=True,  # I used to train GPT2 SAEs with a prepended-bos but no longer think we should do this.
         training_tokens=total_training_tokens,  # For initial testing I think this is a good number.
-        train_batch_size_tokens=4096,
+        train_batch_size_tokens=total_training_tokens // 2,
         # Loss Function
         ## Reconstruction Coefficient.
         # Buffer details won't matter in we cache / shuffle our activations ahead of time.
@@ -187,7 +187,7 @@ def test_load_cached_activations(tmp_path: Path):
 
 def test_activations_store_refreshes_dataset_when_it_runs_out(tmp_path: Path):
 
-    context_size = 256
+    context_size = 32
     n_batches_in_buffer = 4
     store_batch_size = 1
     total_training_steps = 200
@@ -207,8 +207,8 @@ def test_activations_store_refreshes_dataset_when_it_runs_out(tmp_path: Path):
         context_size=context_size,
         is_dataset_tokenized=True,
         prepend_bos=True,
-        training_tokens=total_training_tokens,
-        train_batch_size_tokens=4096,
+        training_tokens=total_training_tokens // 2,
+        train_batch_size_tokens=512,
         n_batches_in_buffer=n_batches_in_buffer,
         store_batch_size_prompts=store_batch_size,
         normalize_activations="none",
