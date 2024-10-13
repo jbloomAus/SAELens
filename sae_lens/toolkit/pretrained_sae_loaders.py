@@ -47,10 +47,6 @@ def sae_lens_loader(
     """
     Get's SAEs from HF, loads them.
     """
-    saes_directory = get_pretrained_saes_directory()
-    sae_info = saes_directory.get(release, None)
-    repo_id = sae_info.repo_id if sae_info is not None else release
-    folder_name = sae_info.saes_map[sae_id] if sae_info is not None else sae_id
     options = SAEConfigLoadOptions(
         force_download=force_download,
     )
@@ -60,6 +56,11 @@ def sae_lens_loader(
         cfg_dict.update(cfg_overrides)
     cfg_dict["device"] = device
     cfg_dict = handle_config_defaulting(cfg_dict)
+
+    saes_directory = get_pretrained_saes_directory()
+    sae_info = saes_directory.get(release, None)
+    repo_id = sae_info.repo_id if sae_info is not None else release
+    folder_name = sae_info.saes_map[sae_id] if sae_info is not None else sae_id
 
     weights_filename = f"{folder_name}/sae_weights.safetensors"
     sae_path = hf_hub_download(
@@ -185,10 +186,6 @@ def connor_rob_hook_z_loader(
     force_download: bool = False,
     cfg_overrides: Optional[dict[str, Any]] = None,
 ) -> tuple[dict[str, Any], dict[str, torch.Tensor], None]:
-    saes_directory = get_pretrained_saes_directory()
-    sae_info = saes_directory.get(release, None)
-    repo_id = sae_info.repo_id if sae_info is not None else release
-    folder_name = sae_info.saes_map[sae_id] if sae_info is not None else sae_id
     options = SAEConfigLoadOptions(
         force_download=force_download,
     )
@@ -197,6 +194,11 @@ def connor_rob_hook_z_loader(
         sae_id=sae_id,
         options=options,
     )
+
+    saes_directory = get_pretrained_saes_directory()
+    sae_info = saes_directory.get(release, None)
+    repo_id = sae_info.repo_id if sae_info is not None else release
+    folder_name = sae_info.saes_map[sae_id] if sae_info is not None else sae_id
 
     file_path = hf_hub_download(
         repo_id=repo_id, filename=folder_name, force_download=force_download
@@ -343,10 +345,6 @@ def gemma_2_sae_loader(
     """
     Custom loader for Gemma 2 SAEs.
     """
-    saes_directory = get_pretrained_saes_directory()
-    sae_info = saes_directory.get(release, None)
-    repo_id = sae_info.repo_id if sae_info is not None else release
-    folder_name = sae_info.saes_map[sae_id] if sae_info is not None else sae_id
     options = SAEConfigLoadOptions(
         d_sae_override=d_sae_override,
         layer_override=layer_override,
@@ -361,6 +359,11 @@ def gemma_2_sae_loader(
     # Apply overrides if provided
     if cfg_overrides is not None:
         cfg_dict.update(cfg_overrides)
+
+    saes_directory = get_pretrained_saes_directory()
+    sae_info = saes_directory.get(release, None)
+    repo_id = sae_info.repo_id if sae_info is not None else release
+    folder_name = sae_info.saes_map[sae_id] if sae_info is not None else sae_id
 
     # Download the SAE weights
     sae_path = hf_hub_download(
@@ -487,16 +490,17 @@ def dictionary_learning_sae_loader_1(
     """
     Suitable for SAEs from https://huggingface.co/canrager/lm_sae.
     """
-    saes_directory = get_pretrained_saes_directory()
-    sae_info = saes_directory.get(release, None)
-    repo_id = sae_info.repo_id if sae_info is not None else release
-    folder_name = sae_info.saes_map[sae_id] if sae_info is not None else sae_id
     options = SAEConfigLoadOptions(
         force_download=force_download,
     )
     cfg_dict = get_sae_config(release, sae_id=sae_id, options=options)
     if cfg_overrides:
         cfg_dict.update(cfg_overrides)
+
+    saes_directory = get_pretrained_saes_directory()
+    sae_info = saes_directory.get(release, None)
+    repo_id = sae_info.repo_id if sae_info is not None else release
+    folder_name = sae_info.saes_map[sae_id] if sae_info is not None else sae_id
 
     encoder_path = hf_hub_download(
         repo_id=repo_id, filename=f"{folder_name}/ae.pt", force_download=force_download
