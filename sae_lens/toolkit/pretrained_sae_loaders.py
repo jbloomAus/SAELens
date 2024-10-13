@@ -12,6 +12,7 @@ from safetensors import safe_open
 from sae_lens.toolkit.pretrained_saes_directory import (
     PretrainedSAELookup,
     get_pretrained_saes_directory,
+    get_repo_id_and_folder_name,
 )
 
 
@@ -57,10 +58,7 @@ def sae_lens_loader(
     cfg_dict["device"] = device
     cfg_dict = handle_config_defaulting(cfg_dict)
 
-    saes_directory = get_pretrained_saes_directory()
-    sae_info = saes_directory.get(release, None)
-    repo_id = sae_info.repo_id if sae_info is not None else release
-    folder_name = sae_info.saes_map[sae_id] if sae_info is not None else sae_id
+    repo_id, folder_name = get_repo_id_and_folder_name(release, sae_id=sae_id)
 
     weights_filename = f"{folder_name}/sae_weights.safetensors"
     sae_path = hf_hub_download(
@@ -195,10 +193,7 @@ def connor_rob_hook_z_loader(
         options=options,
     )
 
-    saes_directory = get_pretrained_saes_directory()
-    sae_info = saes_directory.get(release, None)
-    repo_id = sae_info.repo_id if sae_info is not None else release
-    folder_name = sae_info.saes_map[sae_id] if sae_info is not None else sae_id
+    repo_id, folder_name = get_repo_id_and_folder_name(release, sae_id=sae_id)
 
     file_path = hf_hub_download(
         repo_id=repo_id, filename=folder_name, force_download=force_download
@@ -360,10 +355,7 @@ def gemma_2_sae_loader(
     if cfg_overrides is not None:
         cfg_dict.update(cfg_overrides)
 
-    saes_directory = get_pretrained_saes_directory()
-    sae_info = saes_directory.get(release, None)
-    repo_id = sae_info.repo_id if sae_info is not None else release
-    folder_name = sae_info.saes_map[sae_id] if sae_info is not None else sae_id
+    repo_id, folder_name = get_repo_id_and_folder_name(release, sae_id=sae_id)
 
     # Download the SAE weights
     sae_path = hf_hub_download(
@@ -473,8 +465,7 @@ def get_sae_config(
 ) -> dict[str, Any]:
     saes_directory = get_pretrained_saes_directory()
     sae_info = saes_directory.get(release, None)
-    repo_id = sae_info.repo_id if sae_info is not None else release
-    folder_name = sae_info.saes_map[sae_id] if sae_info is not None else sae_id
+    repo_id, folder_name = get_repo_id_and_folder_name(release, sae_id=sae_id)
     conversion_loader_name = get_conversion_loader_name(sae_info)
     config_getter = NAMED_PRETRAINED_SAE_CONFIG_GETTERS[conversion_loader_name]
     return config_getter(repo_id, folder_name=folder_name, options=options)
@@ -497,10 +488,7 @@ def dictionary_learning_sae_loader_1(
     if cfg_overrides:
         cfg_dict.update(cfg_overrides)
 
-    saes_directory = get_pretrained_saes_directory()
-    sae_info = saes_directory.get(release, None)
-    repo_id = sae_info.repo_id if sae_info is not None else release
-    folder_name = sae_info.saes_map[sae_id] if sae_info is not None else sae_id
+    repo_id, folder_name = get_repo_id_and_folder_name(release, sae_id=sae_id)
 
     encoder_path = hf_hub_download(
         repo_id=repo_id, filename=f"{folder_name}/ae.pt", force_download=force_download
