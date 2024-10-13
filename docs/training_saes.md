@@ -96,7 +96,7 @@ As you can see, the training setup provides a large number of options to explore
 
 For any real training run, you should be logging to Weights and Biases (WandB). This will allow you to track your training progress and compare different runs. To enable WandB, set `log_to_wandb=True`. The `wandb_project` parameter in the config controls the project name in WandB. You can also control the logging frequency with `wandb_log_frequency` and `eval_every_n_wandb_logs`.
 
-A number of helpful metrics are logged to WandB, including the sparsity of the SAE, the mean squared error (MSE) of the SAE, dead features, and explained variance. These metrics can be used to monitor the training progress and adjust the training parameters. Below is a screenshot from one training run. 
+A number of helpful metrics are logged to WandB, including the sparsity of the SAE, the mean squared error (MSE) of the SAE, dead features, and explained variance. These metrics can be used to monitor the training progress and adjust the training parameters. Below is a screenshot from one training run.
 
 ![screenshot](dashboard_screenshot.png)
 
@@ -180,8 +180,9 @@ cfg = CacheActivationsRunnerConfig(
     model_name="tiny-stories-1L-21M",
     hook_name="blocks.0.hook_mlp_out",
     dataset_path="apollo-research/roneneldan-TinyStories-tokenizer-gpt2",
-    # ... 
-    new_cached_activations_path="./tiny-stories-1L-21M-cache"
+    # ...
+    new_cached_activations_path="./tiny-stories-1L-21M-cache",
+    hf_repo_id="your-username/tiny-stories-1L-21M-cache", # To push to hub
 )
 
 CacheActivationsRunner(cfg).run()
