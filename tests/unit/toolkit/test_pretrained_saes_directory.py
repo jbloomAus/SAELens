@@ -138,8 +138,6 @@ def test_get_repo_id_and_folder_name_release_not_found():
     assert folder_name == "sae1"
 
 
-@patch("sae_lens.toolkit.pretrained_saes_directory.get_pretrained_saes_directory")
 def test_get_repo_id_and_folder_name_raises_error_if_sae_id_not_found():
-
     with pytest.raises(ValueError):
         get_repo_id_and_folder_name("gpt2-small-res-jb", sae_id="sae1")
