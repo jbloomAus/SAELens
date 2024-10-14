@@ -1,9 +1,15 @@
+import webbrowser
+from unittest import mock
+
 import pytest
 
 from sae_lens.analysis.neuronpedia_integration import (
+    FeatureInfo,
     NeuronpediaFeature,
+    SaeInfo,
     autointerp_neuronpedia_features,
     get_neuronpedia_feature,
+    get_neuronpedia_quick_list,
     make_neuronpedia_list_with_features,
 )
 
@@ -70,3 +76,54 @@ async def test_neuronpedia_autointerp():
         save_to_disk=False,
         upload_to_neuronpedia=True,
     )
+
+
+def test_get_neuronpedia_quick_list_works_with_int_features(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    # Mock the webbrowser.open function
+    mock_open = mock.Mock()
+    monkeypatch.setattr(webbrowser, "open", mock_open)
+
+    sae_info = SaeInfo(model_name="gpt2-small", neuronpedia_id="gpt2-small/0-res-jb")
+    features = [0, 1, 2]
+    url = get_neuronpedia_quick_list(sae_info, features, name="Test List")
+
+    expected_url = "https://neuronpedia.org/quick-list/?name=Test%20List&features=%5B%7B%22modelId%22%3A%20%22gpt2-small%22%2C%20%22layer%22%3A%20%220-res-jb%22%2C%20%22index%22%3A%20%220%22%7D%2C%20%7B%22modelId%22%3A%20%22gpt2-small%22%2C%20%22layer%22%3A%20%220-res-jb%22%2C%20%22index%22%3A%20%221%22%7D%2C%20%7B%22modelId%22%3A%20%22gpt2-small%22%2C%20%22layer%22%3A%20%220-res-jb%22%2C%20%22index%22%3A%20%222%22%7D%5D"
+    assert url == expected_url
+    mock_open.assert_called_once_with(expected_url)
+
+
+def test_get_neuronpedia_quick_list_works_with_detailed_feature_info(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    # Mock the webbrowser.open function
+    mock_open = mock.Mock()
+    monkeypatch.setattr(webbrowser, "open", mock_open)
+
+    sae_info = SaeInfo(model_name="gpt2-small", neuronpedia_id="gpt2-small/0-res-jb")
+    features_info = [
+        FeatureInfo(
+            feature_index=0,
+            description="Feature 0",
+            model_name="gpt2-medium",
+            neuronpedia_id="gpt2-medium/1-res-jb",
+        ),
+        FeatureInfo(
+            feature_index=1,
+            description="Feature 1",
+            model_name="gpt2-large",
+            neuronpedia_id="gpt2-large/2-att-kk",
+        ),
+    ]
+    url = get_neuronpedia_quick_list(
+        sae_info,
+        features_info,
+        name="Test List 2",
+        description="Test Description",
+        default_test_text="Hello, world!",
+    )
+
+    expected_url = "https://neuronpedia.org/quick-list/?name=Test%20List%202&description=Test%20Description&default_test_text=Hello%2C%20world%21&features=%5B%7B%22modelId%22%3A%20%22gpt2-medium%22%2C%20%22layer%22%3A%20%221-res-jb%22%2C%20%22index%22%3A%20%220%22%2C%20%22description%22%3A%20%22Feature%200%22%7D%2C%20%7B%22modelId%22%3A%20%22gpt2-large%22%2C%20%22layer%22%3A%20%222-att-kk%22%2C%20%22index%22%3A%20%221%22%2C%20%22description%22%3A%20%22Feature%201%22%7D%5D"
+    assert url == expected_url
+    mock_open.assert_called_once_with(expected_url)
