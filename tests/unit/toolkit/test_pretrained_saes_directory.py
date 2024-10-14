@@ -1,8 +1,12 @@
+from unittest.mock import MagicMock, patch
+
 import pandas as pd
+import pytest
 
 from sae_lens.toolkit.pretrained_saes_directory import (
     PretrainedSAELookup,
     get_pretrained_saes_directory,
+    get_repo_id_and_folder_name,
 )
 
 
@@ -118,3 +122,53 @@ def test_get_pretrained_saes_directory_unique_np_ids():
     assert (
         duplicate_ids.max() == 1
     ), f"Duplicate IDs found: {duplicate_ids[duplicate_ids > 1]}"
+
+
+@pytest.fixture
+def mock_saes_directory() -> dict[str, PretrainedSAELookup]:
+    return {
+        "release1": PretrainedSAELookup(
+            release="release1",
+            repo_id="repo1",
+            model="model1",
+            conversion_func=None,
+            saes_map={"sae1": "folder1"},
+            expected_var_explained={},
+            expected_l0={},
+            neuronpedia_id={},
+            config_overrides={},
+        ),
+    }
+
+
+@patch("sae_lens.toolkit.pretrained_saes_directory.get_pretrained_saes_directory")
+def test_get_repo_id_and_folder_name_release_found(
+    mock_get_pretrained_saes_directory: MagicMock,
+    mock_saes_directory: dict[str, PretrainedSAELookup],
+):
+    mock_get_pretrained_saes_directory.return_value = mock_saes_directory
+
+    repo_id, folder_name = get_repo_id_and_folder_name("release1", "sae1")
+    assert repo_id == "repo1"
+    assert folder_name == "folder1"
+
+
+@patch("sae_lens.toolkit.pretrained_saes_directory.get_pretrained_saes_directory")
+def test_get_repo_id_and_folder_name_release_not_found(
+    mock_get_directory: MagicMock, mock_saes_directory: dict[str, PretrainedSAELookup]
+):
+    mock_get_directory.return_value = mock_saes_directory
+
+    repo_id, folder_name = get_repo_id_and_folder_name("release2", "sae5")
+    assert repo_id == "release2"
+    assert folder_name == "sae5"
+
+
+@patch("sae_lens.toolkit.pretrained_saes_directory.get_pretrained_saes_directory")
+def test_get_repo_id_and_folder_name_raises_error_if_sae_id_not_found(
+    mock_get_directory: MagicMock, mock_saes_directory: dict[str, PretrainedSAELookup]
+):
+    mock_get_directory.return_value = mock_saes_directory
+
+    with pytest.raises(ValueError):
+        get_repo_id_and_folder_name("release1", "sae2")
