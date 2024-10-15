@@ -235,7 +235,6 @@ class LanguageModelSAERunnerConfig:
     sae_lens_training_version: str = field(default_factory=lambda: __version__)
 
     def __post_init__(self):
-
         if self.resume:
             raise ValueError(
                 "Resuming is no longer supported. You can finetune a trained SAE using cfg.from_pretrained path."
@@ -414,7 +413,6 @@ class LanguageModelSAERunnerConfig:
         }
 
     def to_dict(self) -> dict[str, Any]:
-
         cfg_dict = {
             **self.__dict__,
             # some args may not be serializable by default
@@ -426,7 +424,6 @@ class LanguageModelSAERunnerConfig:
         return cfg_dict
 
     def to_json(self, path: str) -> None:
-
         if not os.path.exists(os.path.dirname(path)):
             os.makedirs(os.path.dirname(path))
 
@@ -469,6 +466,13 @@ class CacheActivationsRunnerConfig:
     new_cached_activations_path: Optional[str] = (
         None  # Defaults to "activations/{dataset}/{model}/{full_hook_name}_{hook_head_index}"
     )
+
+    # if saving to huggingface, set hf_repo_id
+    hf_repo_id: Optional[str] = None
+    hf_num_shards: int | None = None
+    hf_revision: str = "main"
+    hf_is_private_repo: bool = False
+
     # dont' specify this since you don't want to load from disk with the cache runner.
     cached_activations_path: Optional[str] = None
     # SAE Parameters
@@ -490,11 +494,9 @@ class CacheActivationsRunnerConfig:
     prepend_bos: bool = True
     autocast_lm: bool = False  # autocast lm during activation fetching
 
-    # Activation caching stuff
-    shuffle_every_n_buffers: int = 10
-    n_shuffles_with_last_section: int = 10
-    n_shuffles_in_entire_dir: int = 10
-    n_shuffles_final: int = 100
+    # Shuffle activations
+    shuffle: bool = True
+
     model_kwargs: dict[str, Any] = field(default_factory=dict)
     model_from_pretrained_kwargs: dict[str, Any] = field(default_factory=dict)
 
@@ -521,7 +523,6 @@ class CacheActivationsRunnerConfig:
 
 @dataclass
 class ToyModelSAERunnerConfig:
-
     architecture: Literal["standard", "gated"] = "standard"
 
     # ReLu Model Parameters
