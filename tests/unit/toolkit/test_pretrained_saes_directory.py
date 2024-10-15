@@ -1,8 +1,10 @@
 import pandas as pd
+import pytest
 
 from sae_lens.toolkit.pretrained_saes_directory import (
     PretrainedSAELookup,
     get_pretrained_saes_directory,
+    get_repo_id_and_folder_name,
 )
 
 
@@ -118,3 +120,22 @@ def test_get_pretrained_saes_directory_unique_np_ids():
     assert (
         duplicate_ids.max() == 1
     ), f"Duplicate IDs found: {duplicate_ids[duplicate_ids > 1]}"
+
+
+def test_get_repo_id_and_folder_name_release_found():
+    repo_id, folder_name = get_repo_id_and_folder_name(
+        "gpt2-small-res-jb", sae_id="blocks.0.hook_resid_pre"
+    )
+    assert repo_id == "jbloom/GPT2-Small-SAEs-Reformatted"
+    assert folder_name == "blocks.0.hook_resid_pre"
+
+
+def test_get_repo_id_and_folder_name_release_not_found():
+    repo_id, folder_name = get_repo_id_and_folder_name("release1", "sae1")
+    assert repo_id == "release1"
+    assert folder_name == "sae1"
+
+
+def test_get_repo_id_and_folder_name_raises_error_if_sae_id_not_found():
+    with pytest.raises(ValueError):
+        get_repo_id_and_folder_name("gpt2-small-res-jb", sae_id="sae1")

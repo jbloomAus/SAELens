@@ -30,17 +30,16 @@ class CacheActivationsRunner:
             self.model,
             cfg,
         )
+        ctx_size = _get_sliced_context_size(self.cfg)
         self.features = Features(
             {
                 f"{self.cfg.hook_name}": Array2D(
-                    shape=(self.cfg.context_size, self.cfg.d_in), dtype=self.cfg.dtype
+                    shape=(ctx_size, self.cfg.d_in), dtype=self.cfg.dtype
                 )
             }
         )
         self.tokens_in_buffer = (
-            self.cfg.n_batches_in_buffer
-            * self.cfg.store_batch_size_prompts
-            * self.cfg.context_size
+            self.cfg.n_batches_in_buffer * self.cfg.store_batch_size_prompts * ctx_size
         )
         self.n_buffers = math.ceil(self.cfg.training_tokens / self.tokens_in_buffer)
 
@@ -81,7 +80,7 @@ class CacheActivationsRunner:
             buffer,
             "(bs context_size) num_layers d_in -> num_layers bs context_size d_in",
             bs=self.cfg.n_batches_in_buffer * self.cfg.store_batch_size_prompts,
-            context_size=self.cfg.context_size,
+            context_size=_get_sliced_context_size(self.cfg),
             d_in=self.cfg.d_in,
             num_layers=len(hook_names),
         )
@@ -180,3 +179,10 @@ class CacheActivationsRunner:
             )
 
         return dataset
+
+
+def _get_sliced_context_size(cfg: CacheActivationsRunnerConfig) -> int:
+    context_size = cfg.context_size
+    if cfg.seqpos_slice:
+        context_size = len(range(context_size)[slice(*cfg.seqpos_slice)])
+    return context_size

@@ -61,12 +61,6 @@ def _create_dataset(tmp_path: Path) -> Dataset:
 # The way to run this with this command:
 # poetry run py.test tests/unit/test_cache_activations_runner.py --profile-svg -s
 def test_cache_activations_runner(tmp_path: Path):
-    if torch.cuda.is_available():
-        device = "cuda"
-    elif torch.backends.mps.is_available():
-        device = "mps"
-    else:
-        device = "cpu"
 
     # total_training_steps = 20_000
     context_size = 1024
@@ -105,7 +99,7 @@ def test_cache_activations_runner(tmp_path: Path):
         store_batch_size_prompts=store_batch_size,
         normalize_activations="none",
         # Misc
-        device=device,
+        device="cpu",
         seed=42,
         dtype="float16",
     )
@@ -121,12 +115,6 @@ def test_cache_activations_runner(tmp_path: Path):
 
 
 def test_load_cached_activations(tmp_path: Path):
-    if torch.cuda.is_available():
-        device = "cuda"
-    elif torch.backends.mps.is_available():
-        device = "mps"
-    else:
-        device = "cpu"
 
     # total_training_steps = 20_000
     context_size = 32
@@ -165,7 +153,7 @@ def test_load_cached_activations(tmp_path: Path):
         # n_shuffles_in_entire_dir=1,
         # n_shuffles_final=1,
         # Misc
-        device=device,
+        device="cpu",
         seed=42,
         dtype="float16",
     )
@@ -478,3 +466,48 @@ def test_cache_activations_runner_load_dataset_with_incorrect_config(tmp_path: P
         match=r"Columns \['blocks.1.hook_mlp_out'\] not in the dataset. Current columns in the dataset: \['blocks.0.hook_mlp_out'\]",
     ):
         CacheActivationsRunner(wrong_hook_cfg).run()
+
+
+def test_cache_activations_runner_with_valid_seqpos(tmp_path: Path):
+    context_size = 1024
+    seqpos_slice = (12, -12)
+    training_context_size = len(range(context_size)[slice(*seqpos_slice)])
+    n_batches_in_buffer = 32
+    store_batch_size = 1
+    n_buffers = 3
+
+    tokens_in_buffer = n_batches_in_buffer * store_batch_size * training_context_size
+    total_training_tokens = n_buffers * tokens_in_buffer
+
+    cfg = CacheActivationsRunnerConfig(
+        new_cached_activations_path=str(tmp_path),
+        d_in=512,
+        context_size=context_size,
+        model_name="gelu-1l",
+        hook_name="blocks.0.hook_mlp_out",
+        dataset_path="NeelNanda/c4-tokenized-2b",
+        training_tokens=total_training_tokens,
+        n_batches_in_buffer=n_batches_in_buffer,
+        store_batch_size_prompts=store_batch_size,
+        normalize_activations="none",
+        device="cpu",
+        seed=42,
+        dtype="float32",
+        seqpos_slice=seqpos_slice,
+    )
+
+    runner = CacheActivationsRunner(cfg)
+
+    activation_dataset = runner.run()
+    activation_dataset.set_format("torch", device=cfg.device)
+    dataset_acts: torch.Tensor = activation_dataset[cfg.hook_name]  # type: ignore
+
+    assert os.path.exists(tmp_path)
+
+    # assert that there are n_buffer files in the directory.
+    assert len(os.listdir(tmp_path)) == n_buffers
+
+    assert len(dataset_acts) == n_buffers * n_batches_in_buffer
+    for act in dataset_acts:
+        # should be 1024 - 12 - 12 = 1000
+        assert act.shape == (1000, cfg.d_in)
