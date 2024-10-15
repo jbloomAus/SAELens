@@ -88,6 +88,7 @@ class ActivationsStore:
             model_kwargs=cfg.model_kwargs,
             autocast_lm=cfg.autocast_lm,
             dataset_trust_remote_code=cfg.dataset_trust_remote_code,
+            seqpos_slice=cfg.seqpos_slice,
         )
 
     @classmethod
@@ -123,6 +124,7 @@ class ActivationsStore:
             dataset_trust_remote_code=sae.cfg.dataset_trust_remote_code,
             dtype=sae.cfg.dtype,
             device=torch.device(device),
+            seqpos_slice=sae.cfg.seqpos_slice,
         )
 
     def __init__(
@@ -147,6 +149,7 @@ class ActivationsStore:
         model_kwargs: dict[str, Any] | None = None,
         autocast_lm: bool = False,
         dataset_trust_remote_code: bool | None = None,
+        seqpos_slice: tuple[int | None, ...] = (None,),
     ):
         self.model = model
         if model_kwargs is None:
@@ -188,6 +191,7 @@ class ActivationsStore:
         self.dtype = DTYPE_MAP[dtype]
         self.cached_activations_path = cached_activations_path
         self.autocast_lm = autocast_lm
+        self.seqpos_slice = seqpos_slice
 
         self.n_dataset_processed = 0
 
@@ -219,10 +223,6 @@ class ActivationsStore:
                 raise ValueError(
                     f"""pretokenized dataset has context_size {ds_context_size}, but the provided context_size is {self.context_size}.
                     The context_size {ds_context_size} is expected to be larger than or equal to the provided context size {self.context_size}."""
-                )
-            if self.context_size < 0:
-                raise ValueError(
-                    f"The provided context_size is {self.context_size} is negative. Expecting positive context_size"
                 )
             if self.context_size != ds_context_size:
                 warnings.warn(
@@ -441,7 +441,7 @@ class ActivationsStore:
             autocast_if_enabled = contextlib.nullcontext()
 
         with autocast_if_enabled:
-            layerwise_activations = self.model.run_with_cache(
+            layerwise_activations_cache = self.model.run_with_cache(
                 batch_tokens,
                 names_filter=[self.hook_name],
                 stop_at_layer=self.hook_layer + 1,
@@ -449,29 +449,31 @@ class ActivationsStore:
                 **self.model_kwargs,
             )[1]
 
-        n_batches, n_context = batch_tokens.shape
+        layerwise_activations = layerwise_activations_cache[self.hook_name][
+            :, slice(*self.seqpos_slice)
+        ]
+
+        n_batches, n_context = layerwise_activations.shape[:2]
 
         stacked_activations = torch.zeros((n_batches, n_context, 1, self.d_in))
 
         if self.hook_head_index is not None:
-            stacked_activations[:, :, 0] = layerwise_activations[self.hook_name][
+            stacked_activations[:, :, 0] = layerwise_activations[
                 :, :, self.hook_head_index
             ]
-        elif (
-            layerwise_activations[self.hook_name].ndim > 3
-        ):  # if we have a head dimension
+        elif layerwise_activations.ndim > 3:  # if we have a head dimension
             try:
-                stacked_activations[:, :, 0] = layerwise_activations[
-                    self.hook_name
-                ].view(n_batches, n_context, -1)
+                stacked_activations[:, :, 0] = layerwise_activations.view(
+                    n_batches, n_context, -1
+                )
             except RuntimeError as e:
                 print(f"Error during view operation: {e}")
                 print("Attempting to use reshape instead...")
-                stacked_activations[:, :, 0] = layerwise_activations[
-                    self.hook_name
-                ].reshape(n_batches, n_context, -1)
+                stacked_activations[:, :, 0] = layerwise_activations.reshape(
+                    n_batches, n_context, -1
+                )
         else:
-            stacked_activations[:, :, 0] = layerwise_activations[self.hook_name]
+            stacked_activations[:, :, 0] = layerwise_activations
 
         return stacked_activations
 
@@ -487,6 +489,7 @@ class ActivationsStore:
         If raise_on_epoch_end is True, when the dataset it exhausted it will automatically refill the dataset and then raise a StopIteration so that the caller has a chance to react.
         """
         context_size = self.context_size
+        training_context_size = len(range(context_size)[slice(*self.seqpos_slice)])
         batch_size = self.store_batch_size_prompts
         d_in = self.d_in
         total_size = batch_size * n_batches_in_buffer
@@ -494,7 +497,7 @@ class ActivationsStore:
 
         if self.cached_activations_path is not None:
             # Load the activations from disk
-            buffer_size = total_size * context_size
+            buffer_size = total_size * training_context_size
             # Initialize an empty tensor with an additional dimension for layers
             new_buffer = torch.zeros(
                 (buffer_size, num_layers, d_in),
@@ -548,7 +551,7 @@ class ActivationsStore:
         refill_iterator = range(0, batch_size * n_batches_in_buffer, batch_size)
         # Initialize empty tensor buffer of the maximum required size with an additional dimension for layers
         new_buffer = torch.zeros(
-            (total_size, context_size, num_layers, d_in),
+            (total_size, training_context_size, num_layers, d_in),
             dtype=self.dtype,  # type: ignore
             device=self.device,
         )

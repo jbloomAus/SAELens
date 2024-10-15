@@ -63,6 +63,7 @@ class SAEConfig:
     activation_fn_kwargs: dict[str, Any] = field(default_factory=dict)
     neuronpedia_id: Optional[str] = None
     model_from_pretrained_kwargs: dict[str, Any] = field(default_factory=dict)
+    seqpos_slice: tuple[int | None, ...] = (None,)
 
     @classmethod
     def from_dict(cls, config_dict: dict[str, Any]) -> "SAEConfig":
@@ -82,6 +83,10 @@ class SAEConfig:
             for k, v in config_dict.items()
             if k in cls.__dataclass_fields__  # pylint: disable=no-member
         }
+
+        if "seqpos_slice" in config_dict:
+            config_dict["seqpos_slice"] = tuple(config_dict["seqpos_slice"])
+
         return cls(**config_dict)
 
     # def __post_init__(self):
@@ -109,6 +114,7 @@ class SAEConfig:
             "normalize_activations": self.normalize_activations,
             "neuronpedia_id": self.neuronpedia_id,
             "model_from_pretrained_kwargs": self.model_from_pretrained_kwargs,
+            "seqpos_slice": self.seqpos_slice,
         }
 
 
