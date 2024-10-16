@@ -642,7 +642,6 @@ class SAE(HookedRootModule):
             cfg_dict=cfg_dict,
             weight_path=weight_path,
             device=device,
-            dtype=DTYPE_MAP[cfg_dict["dtype"]],
         )
 
         sae_cfg = SAEConfig.from_dict(cfg_dict)
