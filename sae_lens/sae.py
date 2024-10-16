@@ -503,8 +503,7 @@ class SAE(HookedRootModule):
         """
         Calculate SAE features from inputs
         """
-        if latents is None:
-            latents = slice(None)
+        latents_slice = slice(None) if latents is None else latents
 
         x = x.to(self.dtype)
         x = self.reshape_fn_in(x)
@@ -513,13 +512,15 @@ class SAE(HookedRootModule):
         sae_in = x - self.b_dec * self.cfg.apply_b_dec_to_input
 
         # Gating path
-        gating_pre_activation = sae_in @ self.W_enc[:, latents] + self.b_gate[latents]
+        gating_pre_activation = (
+            sae_in @ self.W_enc[:, latents_slice] + self.b_gate[latents_slice]
+        )
         active_features = (gating_pre_activation > 0).to(self.dtype)
 
         # Magnitude path with weight sharing
         magnitude_pre_activation = self.hook_sae_acts_pre(
-            sae_in @ (self.W_enc[:, latents] * self.r_mag[latents].exp())
-            + self.b_mag[latents]
+            sae_in @ (self.W_enc[:, latents_slice] * self.r_mag[latents_slice].exp())
+            + self.b_mag[latents_slice]
         )
         feature_magnitudes = self.activation_fn(magnitude_pre_activation)
 
@@ -533,8 +534,7 @@ class SAE(HookedRootModule):
         """
         Calculate SAE features from inputs
         """
-        if latents is None:
-            latents = slice(None)
+        latents_slice = slice(None) if latents is None else latents
 
         # move x to correct dtype
         x = x.to(self.dtype)
@@ -550,7 +550,7 @@ class SAE(HookedRootModule):
 
         # "... d_in, d_in d_sae -> ... d_sae",
         hidden_pre = self.hook_sae_acts_pre(
-            sae_in @ self.W_enc[:, latents] + self.b_enc[latents]
+            sae_in @ self.W_enc[:, latents_slice] + self.b_enc[latents_slice]
         )
 
         feature_acts = self.hook_sae_acts_post(
@@ -565,8 +565,7 @@ class SAE(HookedRootModule):
         """
         Calculate SAE features from inputs
         """
-        if latents is None:
-            latents = slice(None)
+        latents_slice = slice(None) if latents is None else latents
 
         x = x.to(self.dtype)
         x = self.reshape_fn_in(x)
@@ -578,7 +577,7 @@ class SAE(HookedRootModule):
 
         # "... d_in, d_in d_sae -> ... d_sae",
         hidden_pre = self.hook_sae_acts_pre(
-            sae_in @ self.W_enc[:, latents] + self.b_enc[latents]
+            sae_in @ self.W_enc[:, latents_slice] + self.b_enc[latents_slice]
         )
         feature_acts = self.hook_sae_acts_post(self.activation_fn(hidden_pre))
 
