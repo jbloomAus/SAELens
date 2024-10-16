@@ -6,16 +6,22 @@ import json
 import os
 import warnings
 from dataclasses import dataclass, field
-from typing import Any, Callable, Literal, Optional, Tuple, TypeVar, Union, overload
+from typing import (
+    Any,
+    Callable,
+    Iterable,
+    Literal,
+    Optional,
+    Tuple,
+    TypeVar,
+    Union,
+    overload,
+)
 
 T = TypeVar("T", bound="SAE")
 import einops
 import torch
 from jaxtyping import Float
-from safetensors.torch import save_file
-from torch import nn
-from transformer_lens.hook_points import HookedRootModule, HookPoint
-
 from sae_lens.config import DTYPE_MAP
 from sae_lens.toolkit.pretrained_sae_loaders import (
     NAMED_PRETRAINED_SAE_LOADERS,
@@ -27,6 +33,9 @@ from sae_lens.toolkit.pretrained_saes_directory import (
     get_norm_scaling_factor,
     get_pretrained_saes_directory,
 )
+from safetensors.torch import save_file
+from torch import nn
+from transformer_lens.hook_points import HookedRootModule, HookPoint
 
 SPARSITY_PATH = "sparsity.safetensors"
 SAE_WEIGHTS_PATH = "sae_weights.safetensors"
@@ -67,7 +76,6 @@ class SAEConfig:
 
     @classmethod
     def from_dict(cls, config_dict: dict[str, Any]) -> "SAEConfig":
-
         # rename dict:
         rename_dict = {  # old : new
             "hook_point": "hook_name",
@@ -196,7 +204,6 @@ class SAE(HookedRootModule):
 
         # handle run time activation normalization if needed:
         if self.cfg.normalize_activations == "constant_norm_rescale":
-
             #  we need to scale the norm of the input and store the scaling factor
             def run_time_activation_norm_fn_in(x: torch.Tensor) -> torch.Tensor:
                 self.x_norm_coeff = (self.cfg.d_in**0.5) / x.norm(dim=-1, keepdim=True)
@@ -212,7 +219,6 @@ class SAE(HookedRootModule):
             self.run_time_activation_norm_fn_out = run_time_activation_norm_fn_out
 
         elif self.cfg.normalize_activations == "layer_norm":
-
             #  we need to scale the norm of the input and store the scaling factor
             def run_time_activation_ln_in(
                 x: torch.Tensor, eps: float = 1e-5
@@ -237,7 +243,6 @@ class SAE(HookedRootModule):
         self.setup()  # Required for `HookedRootModule`s
 
     def initialize_weights_basic(self):
-
         # no config changes encoder bias init for now.
         self.b_enc = nn.Parameter(
             torch.zeros(self.cfg.d_sae, dtype=self.dtype, device=self.device)
@@ -492,8 +497,13 @@ class SAE(HookedRootModule):
         return self.hook_sae_output(sae_out)
 
     def encode_gated(
-        self, x: Float[torch.Tensor, "... d_in"]
+        self, x: Float[torch.Tensor, "... d_in"], latents: Iterable[int] | None = None
     ) -> Float[torch.Tensor, "... d_sae"]:
+        """
+        Calculate SAE features from inputs
+        """
+        if latents is None:
+            latents = slice(None)
 
         x = x.to(self.dtype)
         x = self.reshape_fn_in(x)
@@ -502,12 +512,13 @@ class SAE(HookedRootModule):
         sae_in = x - self.b_dec * self.cfg.apply_b_dec_to_input
 
         # Gating path
-        gating_pre_activation = sae_in @ self.W_enc + self.b_gate
+        gating_pre_activation = sae_in @ self.W_enc[:, latents] + self.b_gate[latents]
         active_features = (gating_pre_activation > 0).to(self.dtype)
 
         # Magnitude path with weight sharing
         magnitude_pre_activation = self.hook_sae_acts_pre(
-            sae_in @ (self.W_enc * self.r_mag.exp()) + self.b_mag
+            sae_in @ (self.W_enc[:, latents] * self.r_mag[latents].exp())
+            + self.b_mag[latents]
         )
         feature_magnitudes = self.activation_fn(magnitude_pre_activation)
 
@@ -516,11 +527,13 @@ class SAE(HookedRootModule):
         return feature_acts
 
     def encode_jumprelu(
-        self, x: Float[torch.Tensor, "... d_in"]
+        self, x: Float[torch.Tensor, "... d_in"], latents: Iterable[int] | None = None
     ) -> Float[torch.Tensor, "... d_sae"]:
         """
         Calculate SAE features from inputs
         """
+        if latents is None:
+            latents = slice(None)
 
         # move x to correct dtype
         x = x.to(self.dtype)
@@ -535,7 +548,9 @@ class SAE(HookedRootModule):
         sae_in = self.hook_sae_input(x - (self.b_dec * self.cfg.apply_b_dec_to_input))
 
         # "... d_in, d_in d_sae -> ... d_sae",
-        hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
+        hidden_pre = self.hook_sae_acts_pre(
+            sae_in @ self.W_enc[:, latents] + self.b_enc[latents]
+        )
 
         feature_acts = self.hook_sae_acts_post(
             self.activation_fn(hidden_pre) * (hidden_pre > self.threshold)
@@ -544,11 +559,13 @@ class SAE(HookedRootModule):
         return feature_acts
 
     def encode_standard(
-        self, x: Float[torch.Tensor, "... d_in"]
+        self, x: Float[torch.Tensor, "... d_in"], latents: Iterable[int] | None = None
     ) -> Float[torch.Tensor, "... d_sae"]:
         """
         Calculate SAE features from inputs
         """
+        if latents is None:
+            latents = slice(None)
 
         x = x.to(self.dtype)
         x = self.reshape_fn_in(x)
@@ -559,7 +576,9 @@ class SAE(HookedRootModule):
         sae_in = x - (self.b_dec * self.cfg.apply_b_dec_to_input)
 
         # "... d_in, d_in d_sae -> ... d_sae",
-        hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
+        hidden_pre = self.hook_sae_acts_pre(
+            sae_in @ self.W_enc[:, latents] + self.b_enc[latents]
+        )
         feature_acts = self.hook_sae_acts_post(self.activation_fn(hidden_pre))
 
         return feature_acts
@@ -606,7 +625,6 @@ class SAE(HookedRootModule):
         self.cfg.normalize_activations = "none"
 
     def save_model(self, path: str, sparsity: Optional[torch.Tensor] = None):
-
         if not os.path.exists(path):
             os.mkdir(path)
 
@@ -627,7 +645,6 @@ class SAE(HookedRootModule):
     def load_from_pretrained(
         cls, path: str, device: str = "cpu", dtype: str | None = None
     ) -> "SAE":
-
         # get the config
         config_path = os.path.join(path, SAE_CFG_PATH)
         with open(config_path, "r") as f:
@@ -752,7 +769,6 @@ class SAE(HookedRootModule):
         return cls(SAEConfig.from_dict(config_dict))
 
     def turn_on_forward_pass_hook_z_reshaping(self):
-
         assert self.cfg.hook_name.endswith(
             "_z"
         ), "This method should only be called for hook_z SAEs."
