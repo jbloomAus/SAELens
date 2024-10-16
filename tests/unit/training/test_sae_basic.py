@@ -72,6 +72,7 @@ def test_sae_init(cfg: LanguageModelSAERunnerConfig):
 
 def test_sae_encode_with_slicing(cfg: LanguageModelSAERunnerConfig):
     sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
+    assert isinstance(cfg.d_sae, int)
 
     activations = torch.randn(10, 4, cfg.d_in, device=cfg.device)
     latents = torch.randint(low=0, high=cfg.d_sae, size=(10,))

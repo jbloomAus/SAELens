@@ -5,7 +5,7 @@ https://github.com/ArthurConmy/sae/blob/main/sae/model.py
 import json
 import os
 from dataclasses import dataclass, fields
-from typing import Any, Optional
+from typing import Any, Iterable, Optional
 
 import einops
 import torch
@@ -38,7 +38,6 @@ class TrainStepOutput:
 
 @dataclass(kw_only=True)
 class TrainingSAEConfig(SAEConfig):
-
     # Sparsity Loss Calculations
     l1_coefficient: float
     lp_norm: float
@@ -55,7 +54,6 @@ class TrainingSAEConfig(SAEConfig):
     def from_sae_runner_config(
         cls, cfg: LanguageModelSAERunnerConfig
     ) -> "TrainingSAEConfig":
-
         return cls(
             # base config
             architecture=cfg.architecture,
@@ -168,7 +166,6 @@ class TrainingSAE(SAE):
     device: torch.device
 
     def __init__(self, cfg: TrainingSAEConfig, use_error_term: bool = False):
-
         base_sae_cfg = SAEConfig.from_dict(cfg.get_base_sae_cfg_dict())
         super().__init__(base_sae_cfg)
         self.cfg = cfg  # type: ignore
@@ -203,18 +200,20 @@ class TrainingSAE(SAE):
             assert self.use_error_term is False, "Gated SAEs do not support error terms"
 
     def encode_standard(
-        self, x: Float[torch.Tensor, "... d_in"]
+        self, x: Float[torch.Tensor, "... d_in"], latents: Iterable[int] | None = None
     ) -> Float[torch.Tensor, "... d_sae"]:
         """
         Calcuate SAE features from inputs
         """
+        assert (
+            latents is None
+        ), "Function `encode_standard` in training should always return activations for all latents"
         feature_acts, _ = self.encode_with_hidden_pre_fn(x)
         return feature_acts
 
     def encode_with_hidden_pre(
         self, x: Float[torch.Tensor, "... d_in"]
     ) -> tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
-
         x = x.to(self.dtype)
         x = self.reshape_fn_in(x)  # type: ignore
         x = self.hook_sae_input(x)
@@ -235,7 +234,6 @@ class TrainingSAE(SAE):
     def encode_with_hidden_pre_gated(
         self, x: Float[torch.Tensor, "... d_in"]
     ) -> tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
-
         x = x.to(self.dtype)
         x = self.reshape_fn_in(x)  # type: ignore
         x = self.hook_sae_input(x)
@@ -267,7 +265,6 @@ class TrainingSAE(SAE):
         self,
         x: Float[torch.Tensor, "... d_in"],
     ) -> Float[torch.Tensor, "... d_in"]:
-
         feature_acts, _ = self.encode_with_hidden_pre_fn(x)
         sae_out = self.decode(feature_acts)
 
@@ -279,7 +276,6 @@ class TrainingSAE(SAE):
         current_l1_coefficient: float,
         dead_neuron_mask: Optional[torch.Tensor] = None,
     ) -> TrainStepOutput:
-
         # do a forward pass to get SAE out, but we also need the
         # hidden pre.
         feature_acts, _ = self.encode_with_hidden_pre_fn(sae_in)
@@ -291,7 +287,6 @@ class TrainingSAE(SAE):
 
         # GHOST GRADS
         if self.cfg.use_ghost_grads and self.training and dead_neuron_mask is not None:
-
             # first half of second forward pass
             _, hidden_pre = self.encode_with_hidden_pre_fn(sae_in)
             ghost_grad_loss = self.calculate_ghost_grad_loss(
@@ -362,7 +357,6 @@ class TrainingSAE(SAE):
         hidden_pre: torch.Tensor,
         dead_neuron_mask: torch.Tensor,
     ) -> torch.Tensor:
-
         # 1.
         residual = x - sae_out
         l2_norm_residual = torch.norm(residual, dim=-1)
@@ -394,7 +388,6 @@ class TrainingSAE(SAE):
 
     @torch.no_grad()
     def _get_mse_loss_fn(self) -> Any:
-
         def standard_mse_loss_fn(
             preds: torch.Tensor, target: torch.Tensor
         ) -> torch.Tensor:
@@ -421,7 +414,6 @@ class TrainingSAE(SAE):
         device: str = "cpu",
         dtype: str | None = None,
     ) -> "TrainingSAE":
-
         # get the config
         config_path = os.path.join(path, SAE_CFG_PATH)
         with open(config_path, "r") as f:

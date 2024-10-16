@@ -503,7 +503,7 @@ class SAE(HookedRootModule):
         """
         Calculate SAE features from inputs
         """
-        latents_slice = slice(None) if latents is None else latents
+        latents_slice = slice(None) if latents is None else torch.tensor(latents)
 
         x = x.to(self.dtype)
         x = self.reshape_fn_in(x)
@@ -534,7 +534,7 @@ class SAE(HookedRootModule):
         """
         Calculate SAE features from inputs
         """
-        latents_slice = slice(None) if latents is None else latents
+        latents_slice = slice(None) if latents is None else torch.tensor(latents)
 
         # move x to correct dtype
         x = x.to(self.dtype)
@@ -565,7 +565,7 @@ class SAE(HookedRootModule):
         """
         Calculate SAE features from inputs
         """
-        latents_slice = slice(None) if latents is None else latents
+        latents_slice = slice(None) if latents is None else torch.tensor(latents)
 
         x = x.to(self.dtype)
         x = self.reshape_fn_in(x)
