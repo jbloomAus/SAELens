@@ -75,7 +75,7 @@ def test_sae_encode_with_slicing(cfg: LanguageModelSAERunnerConfig):
     assert isinstance(cfg.d_sae, int)
 
     activations = torch.randn(10, 4, cfg.d_in, device=cfg.device)
-    latents = torch.randint(low=0, high=cfg.d_sae, size=(10,))
+    latents = torch.randint(low=0, high=cfg.d_sae, size=(10,)).tolist()
     feature_activations = sae.encode(activations)
     feature_activations_slice = sae.encode(activations, latents=latents)
     torch.testing.assert_close(
