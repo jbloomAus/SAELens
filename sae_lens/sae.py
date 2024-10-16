@@ -22,6 +22,10 @@ T = TypeVar("T", bound="SAE")
 import einops
 import torch
 from jaxtyping import Float
+from safetensors.torch import save_file
+from torch import nn
+from transformer_lens.hook_points import HookedRootModule, HookPoint
+
 from sae_lens.config import DTYPE_MAP
 from sae_lens.toolkit.pretrained_sae_loaders import (
     NAMED_PRETRAINED_SAE_LOADERS,
@@ -33,9 +37,6 @@ from sae_lens.toolkit.pretrained_saes_directory import (
     get_norm_scaling_factor,
     get_pretrained_saes_directory,
 )
-from safetensors.torch import save_file
-from torch import nn
-from transformer_lens.hook_points import HookedRootModule, HookPoint
 
 SPARSITY_PATH = "sparsity.safetensors"
 SAE_WEIGHTS_PATH = "sae_weights.safetensors"
