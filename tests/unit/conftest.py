@@ -1,4 +1,6 @@
 import random
+import shutil
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -28,3 +30,15 @@ def reproducibility():
 @pytest.fixture
 def ts_model():
     return load_model_cached(TINYSTORIES_MODEL)
+
+
+# we started running out of space in CI, try cleaing up tmp paths after each test
+@pytest.fixture(autouse=True)
+def cleanup_tmp_path(tmp_path: Path):
+    yield  # This line allows the test to run and use tmp_path
+    # After the test is done, clean up the directory
+    for item in tmp_path.iterdir():
+        if item.is_file():
+            item.unlink()
+        elif item.is_dir():
+            shutil.rmtree(item)

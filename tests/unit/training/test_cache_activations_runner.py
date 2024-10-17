@@ -21,13 +21,13 @@ def _create_dataset(tmp_path: Path) -> Dataset:
 
     model_name = "gelu-1l"
     hook_name = "blocks.0.hook_mlp_out"
-    dataset_path = "NeelNanda/c4-tokenized-2b"
+    dataset_path = "chanind/c4-10k-mini-tokenized-16-ctx-gelu-1l-tests"
     batch_size = 1
     batches_in_buffer = 2
-    context_size = 32
+    context_size = 8
     num_buffers = 4
 
-    train_batch_size_tokens = 512
+    train_batch_size_tokens = 32
 
     tokens_in_buffer = batches_in_buffer * batch_size * context_size
     num_tokens = tokens_in_buffer * num_buffers
@@ -63,7 +63,7 @@ def _create_dataset(tmp_path: Path) -> Dataset:
 def test_cache_activations_runner(tmp_path: Path):
 
     # total_training_steps = 20_000
-    context_size = 1024
+    context_size = 8
     n_batches_in_buffer = 32
     store_batch_size = 1
     n_buffers = 3
@@ -86,12 +86,12 @@ def test_cache_activations_runner(tmp_path: Path):
         hook_name="blocks.0.hook_mlp_out",
         hook_layer=0,
         d_in=512,
-        dataset_path="NeelNanda/c4-tokenized-2b",
+        dataset_path="chanind/c4-10k-mini-tokenized-16-ctx-gelu-1l-tests",
         context_size=context_size,  # Speed things up.
         is_dataset_tokenized=True,
         prepend_bos=True,  # I used to train GPT2 SAEs with a prepended-bos but no longer think we should do this.
         training_tokens=total_training_tokens,  # For initial testing I think this is a good number.
-        train_batch_size_tokens=4096,
+        train_batch_size_tokens=32,
         # Loss Function
         ## Reconstruction Coefficient.
         # Buffer details won't matter in we cache / shuffle our activations ahead of time.
@@ -117,7 +117,7 @@ def test_cache_activations_runner(tmp_path: Path):
 def test_load_cached_activations(tmp_path: Path):
 
     # total_training_steps = 20_000
-    context_size = 32
+    context_size = 8
     n_batches_in_buffer = 4
     store_batch_size = 1
     n_buffers = 4
@@ -136,7 +136,7 @@ def test_load_cached_activations(tmp_path: Path):
         hook_name="blocks.0.hook_mlp_out",
         hook_layer=0,
         d_in=512,
-        dataset_path="NeelNanda/c4-10k",
+        dataset_path="chanind/c4-10k-mini-tokenized-16-ctx-gelu-1l-tests",
         context_size=context_size,
         is_dataset_tokenized=True,
         prepend_bos=True,  # I used to train GPT2 SAEs with a prepended-bos but no longer think we should do this.
@@ -174,10 +174,10 @@ def test_load_cached_activations(tmp_path: Path):
 
 def test_activations_store_refreshes_dataset_when_it_runs_out(tmp_path: Path):
 
-    context_size = 32
+    context_size = 8
     n_batches_in_buffer = 4
     store_batch_size = 1
-    total_training_steps = 200
+    total_training_steps = 4
     batch_size = 4
     total_training_tokens = total_training_steps * batch_size
 
@@ -195,7 +195,7 @@ def test_activations_store_refreshes_dataset_when_it_runs_out(tmp_path: Path):
         is_dataset_tokenized=True,
         prepend_bos=True,
         training_tokens=total_training_tokens // 2,
-        train_batch_size_tokens=512,
+        train_batch_size_tokens=8,
         n_batches_in_buffer=n_batches_in_buffer,
         store_batch_size_prompts=store_batch_size,
         normalize_activations="none",
@@ -252,13 +252,13 @@ def test_compare_cached_activations_end_to_end_with_ground_truth(tmp_path: Path)
 
     model_name = "gelu-1l"
     hook_name = "blocks.0.hook_mlp_out"
-    dataset_path = "NeelNanda/c4-tokenized-2b"
+    dataset_path = "chanind/c4-10k-mini-tokenized-16-ctx-gelu-1l-tests"
     batch_size = 8
     batches_in_buffer = 4
-    context_size = 32
+    context_size = 8
     num_buffers = 4
 
-    train_batch_size_tokens = 4096
+    train_batch_size_tokens = 8
 
     tokens_in_buffer = batches_in_buffer * batch_size * context_size
     num_tokens = tokens_in_buffer * num_buffers
@@ -298,7 +298,7 @@ def test_compare_cached_activations_end_to_end_with_ground_truth(tmp_path: Path)
 
     ground_truth_acts = []
     for i in trange(0, total_rows, batch_size):
-        tokens = token_dataset[i : i + batch_size]["tokens"][:, :context_size]
+        tokens = token_dataset[i : i + batch_size]["input_ids"][:, :context_size]
         _, layerwise_activations = model.run_with_cache(
             tokens,
             names_filter=[cfg.hook_name],
@@ -317,8 +317,9 @@ def test_load_activations_store_with_nonexistent_dataset(tmp_path: Path):
     cfg = CacheActivationsRunnerConfig(
         model_name="gelu-1l",
         hook_name="blocks.0.hook_mlp_out",
-        dataset_path="NeelNanda/c4-tokenized-2b",
+        dataset_path="chanind/c4-10k-mini-tokenized-16-ctx-gelu-1l-tests",
         cached_activations_path=str(tmp_path),
+        context_size=16,
     )
 
     model = load_model(
@@ -341,7 +342,8 @@ def test_cache_activations_runner_with_nonempty_directory(tmp_path: Path):
         new_cached_activations_path=str(tmp_path),
         model_name="gelu-1l",
         hook_name="blocks.0.hook_mlp_out",
-        dataset_path="NeelNanda/c4-tokenized-2b",
+        dataset_path="chanind/c4-10k-mini-tokenized-16-ctx-gelu-1l-tests",
+        context_size=16,
     )
     runner = CacheActivationsRunner(cfg)
 
@@ -360,7 +362,7 @@ def test_cache_activations_runner_with_nonempty_directory(tmp_path: Path):
 
 def test_cache_activations_runner_with_incorrect_d_in(tmp_path: Path):
     d_in = 512
-    context_size = 32
+    context_size = 8
     n_batches_in_buffer = 4
     batch_size = 8
     num_buffers = 4
@@ -372,7 +374,7 @@ def test_cache_activations_runner_with_incorrect_d_in(tmp_path: Path):
         context_size=context_size,
         model_name="gelu-1l",
         hook_name="blocks.0.hook_mlp_out",
-        dataset_path="NeelNanda/c4-tokenized-2b",
+        dataset_path="chanind/c4-10k-mini-tokenized-16-ctx-gelu-1l-tests",
         training_tokens=num_tokens,
         n_batches_in_buffer=n_batches_in_buffer,
         store_batch_size_prompts=batch_size,
@@ -398,7 +400,7 @@ def test_cache_activations_runner_with_incorrect_d_in(tmp_path: Path):
 
 def test_cache_activations_runner_load_dataset_with_incorrect_config(tmp_path: Path):
     d_in = 512
-    context_size = 32
+    context_size = 16
     n_batches_in_buffer = 4
     batch_size = 8
     num_buffers = 2
@@ -410,7 +412,7 @@ def test_cache_activations_runner_load_dataset_with_incorrect_config(tmp_path: P
         context_size=context_size,
         model_name="gelu-1l",
         hook_name="blocks.0.hook_mlp_out",
-        dataset_path="NeelNanda/c4-tokenized-2b",
+        dataset_path="chanind/c4-10k-mini-tokenized-16-ctx-gelu-1l-tests",
         training_tokens=num_tokens,
         n_batches_in_buffer=n_batches_in_buffer,
         store_batch_size_prompts=batch_size,
@@ -429,13 +431,13 @@ def test_cache_activations_runner_load_dataset_with_incorrect_config(tmp_path: P
     wrong_context_size_cfg = CacheActivationsRunnerConfig(
         **dataclasses.asdict(correct_cfg),
     )
-    wrong_context_size_cfg.context_size = 33
+    wrong_context_size_cfg.context_size = 13
     wrong_context_size_cfg.new_cached_activations_path = None
     wrong_context_size_cfg.cached_activations_path = str(tmp_path)
 
     with pytest.raises(
         ValueError,
-        match=r"Given dataset of shape \(32, 512\) does not match context_size \(33\) and d_in \(512\)",
+        match=r"Given dataset of shape \(16, 512\) does not match context_size \(13\) and d_in \(512\)",
     ):
         CacheActivationsRunner(wrong_context_size_cfg).run()
 
@@ -449,7 +451,7 @@ def test_cache_activations_runner_load_dataset_with_incorrect_config(tmp_path: P
 
     with pytest.raises(
         ValueError,
-        match=r"Given dataset of shape \(32, 512\) does not match context_size \(32\) and d_in \(513\)",
+        match=r"Given dataset of shape \(16, 512\) does not match context_size \(16\) and d_in \(513\)",
     ):
         CacheActivationsRunner(wrong_d_in_cfg).run()
 
@@ -469,10 +471,10 @@ def test_cache_activations_runner_load_dataset_with_incorrect_config(tmp_path: P
 
 
 def test_cache_activations_runner_with_valid_seqpos(tmp_path: Path):
-    context_size = 1024
-    seqpos_slice = (12, -12)
+    context_size = 16
+    seqpos_slice = (3, -3)
     training_context_size = len(range(context_size)[slice(*seqpos_slice)])
-    n_batches_in_buffer = 32
+    n_batches_in_buffer = 4
     store_batch_size = 1
     n_buffers = 3
 
@@ -485,7 +487,7 @@ def test_cache_activations_runner_with_valid_seqpos(tmp_path: Path):
         context_size=context_size,
         model_name="gelu-1l",
         hook_name="blocks.0.hook_mlp_out",
-        dataset_path="NeelNanda/c4-tokenized-2b",
+        dataset_path="chanind/c4-10k-mini-tokenized-16-ctx-gelu-1l-tests",
         training_tokens=total_training_tokens,
         n_batches_in_buffer=n_batches_in_buffer,
         store_batch_size_prompts=store_batch_size,
@@ -509,5 +511,5 @@ def test_cache_activations_runner_with_valid_seqpos(tmp_path: Path):
 
     assert len(dataset_acts) == n_buffers * n_batches_in_buffer
     for act in dataset_acts:
-        # should be 1024 - 12 - 12 = 1000
-        assert act.shape == (1000, cfg.d_in)
+        # should be 16 - 3 - 3 = 10
+        assert act.shape == (10, cfg.d_in)
