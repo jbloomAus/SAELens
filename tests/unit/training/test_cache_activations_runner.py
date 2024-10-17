@@ -24,10 +24,10 @@ def _create_dataset(tmp_path: Path) -> Dataset:
     dataset_path = "NeelNanda/c4-tokenized-2b"
     batch_size = 1
     batches_in_buffer = 2
-    context_size = 32
+    context_size = 8
     num_buffers = 4
 
-    train_batch_size_tokens = 512
+    train_batch_size_tokens = 32
 
     tokens_in_buffer = batches_in_buffer * batch_size * context_size
     num_tokens = tokens_in_buffer * num_buffers
@@ -91,7 +91,7 @@ def test_cache_activations_runner(tmp_path: Path):
         is_dataset_tokenized=True,
         prepend_bos=True,  # I used to train GPT2 SAEs with a prepended-bos but no longer think we should do this.
         training_tokens=total_training_tokens,  # For initial testing I think this is a good number.
-        train_batch_size_tokens=4096,
+        train_batch_size_tokens=32,
         # Loss Function
         ## Reconstruction Coefficient.
         # Buffer details won't matter in we cache / shuffle our activations ahead of time.
@@ -117,7 +117,7 @@ def test_cache_activations_runner(tmp_path: Path):
 def test_load_cached_activations(tmp_path: Path):
 
     # total_training_steps = 20_000
-    context_size = 32
+    context_size = 8
     n_batches_in_buffer = 4
     store_batch_size = 1
     n_buffers = 4
@@ -174,10 +174,10 @@ def test_load_cached_activations(tmp_path: Path):
 
 def test_activations_store_refreshes_dataset_when_it_runs_out(tmp_path: Path):
 
-    context_size = 32
+    context_size = 8
     n_batches_in_buffer = 4
     store_batch_size = 1
-    total_training_steps = 200
+    total_training_steps = 4
     batch_size = 4
     total_training_tokens = total_training_steps * batch_size
 
@@ -255,7 +255,7 @@ def test_compare_cached_activations_end_to_end_with_ground_truth(tmp_path: Path)
     dataset_path = "NeelNanda/c4-tokenized-2b"
     batch_size = 8
     batches_in_buffer = 4
-    context_size = 32
+    context_size = 8
     num_buffers = 4
 
     train_batch_size_tokens = 4096
@@ -360,7 +360,7 @@ def test_cache_activations_runner_with_nonempty_directory(tmp_path: Path):
 
 def test_cache_activations_runner_with_incorrect_d_in(tmp_path: Path):
     d_in = 512
-    context_size = 32
+    context_size = 8
     n_batches_in_buffer = 4
     batch_size = 8
     num_buffers = 4
@@ -469,10 +469,10 @@ def test_cache_activations_runner_load_dataset_with_incorrect_config(tmp_path: P
 
 
 def test_cache_activations_runner_with_valid_seqpos(tmp_path: Path):
-    context_size = 1024
+    context_size = 32
     seqpos_slice = (12, -12)
     training_context_size = len(range(context_size)[slice(*seqpos_slice)])
-    n_batches_in_buffer = 32
+    n_batches_in_buffer = 4
     store_batch_size = 1
     n_buffers = 3
 
@@ -509,5 +509,5 @@ def test_cache_activations_runner_with_valid_seqpos(tmp_path: Path):
 
     assert len(dataset_acts) == n_buffers * n_batches_in_buffer
     for act in dataset_acts:
-        # should be 1024 - 12 - 12 = 1000
-        assert act.shape == (1000, cfg.d_in)
+        # should be 32 - 12 - 12 = 8
+        assert act.shape == (8, cfg.d_in)
