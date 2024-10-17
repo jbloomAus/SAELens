@@ -63,7 +63,7 @@ def _create_dataset(tmp_path: Path) -> Dataset:
 def test_cache_activations_runner(tmp_path: Path):
 
     # total_training_steps = 20_000
-    context_size = 1024
+    context_size = 8
     n_batches_in_buffer = 32
     store_batch_size = 1
     n_buffers = 3
@@ -195,7 +195,7 @@ def test_activations_store_refreshes_dataset_when_it_runs_out(tmp_path: Path):
         is_dataset_tokenized=True,
         prepend_bos=True,
         training_tokens=total_training_tokens // 2,
-        train_batch_size_tokens=512,
+        train_batch_size_tokens=8,
         n_batches_in_buffer=n_batches_in_buffer,
         store_batch_size_prompts=store_batch_size,
         normalize_activations="none",
@@ -258,7 +258,7 @@ def test_compare_cached_activations_end_to_end_with_ground_truth(tmp_path: Path)
     context_size = 8
     num_buffers = 4
 
-    train_batch_size_tokens = 4096
+    train_batch_size_tokens = 8
 
     tokens_in_buffer = batches_in_buffer * batch_size * context_size
     num_tokens = tokens_in_buffer * num_buffers
