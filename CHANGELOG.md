@@ -2,6 +2,235 @@
 
 
 
+## v4.0.0 (2024-10-15)
+
+### Breaking
+
+* feat: Use hf datasets for activation store (#321)
+
+BREAKING CHANGE: use huggingface for cached activations
+
+* refactored load activations into new function
+
+* activation store
+
+* cache activation runner
+
+* formatting and get total_size
+
+* doing tests
+
+* cleaner load buffer
+
+* cleaner load dataset
+
+* cleanup cache activation runner
+
+* add comments
+
+* failing test
+
+* update
+
+* fixed! set shuffle param in get_buffer
+
+* fixed linting
+
+* added more tests
+
+* refactor tests &amp; cleanup
+
+* format config.py
+
+* added hook name mismatch test
+
+* set deperacted to -1
+
+* fix tempshards test
+
+* update test name
+
+* add benchmark: safetensors vs dataset
+
+* added stop iteration at end of dataset
+
+* don&#39;t double save
+
+* add push to hub
+
+* fix save
+
+* fomatting
+
+* comments
+
+* removed unecessary write
+
+* cleanup pushing to hub, same as PretokenizeRunnerConfig
+
+* use num_buffers by default (rather than 64)
+
+* update comment
+
+* shuffle and save to disk
+
+* cleanup error checking
+
+* added cfg info
+
+* delete to iterable
+
+* formatting
+
+* delete deprectated params
+
+* set format of dataset
+
+* fix tests
+
+* delete shuffle args
+
+* fix test
+
+* made dynamic dataset creation shorter
+
+* removed print statements
+
+* showcase hf_repo_id in docs
+
+---------
+
+Co-authored-by: Tom Pollak &lt;tompollak100@gmail.com&gt;
+Co-authored-by: David Chanin &lt;chanindav@gmail.com&gt; ([`ff335f0`](https://github.com/jbloomAus/SAELens/commit/ff335f0a5dad1b2348854a3f20254f9de7310d83))
+
+### Feature
+
+* feat: support othellogpt in SAELens (#317)
+
+* support seqpos slicing
+
+* add basic tests, ensure it&#39;s in the SAE config
+
+* format
+
+* fix tests
+
+* fix tests 2
+
+* fix: Changing the activations store to handle context sizes smaller than dataset lengths for tokenized datasets.
+
+* fix: Found bug which allowed for negative context lengths. Removed the bug
+
+* Update pytest to test new logic for context size of tokenized dataset
+
+* Reformat code to pass CI tests
+
+* Add warning for when context_size is smaller than the dataset context_size
+
+* feat: adding support for start and end position offsets for token sequences
+
+* Add start_pos_offset and end_pos_offset to the SAERunnerConfig
+
+* Add tests for start_pos_offset and end_pos_offset in the LanguageModelSAERunnerConfig
+
+* feat: start and end position offset support for SAELens.
+
+* Add test for CacheActivationsRunnerConfig with start and end pos offset
+
+* Test cache activation runner wtih valid start and end pos offset
+
+* feat: Enabling loading of start and end pos offset from saes. Adding
+tests for this
+
+* fix: Renaming variables and a test
+
+* adds test for position offests for saes
+
+* reformats files with black
+
+* Add start and end pos offset to the base sae dict
+
+* fix test for sae training runner config with position offsets
+
+* add a benchmark test to train an SAE on OthelloGPT
+
+* Remove double import from typing
+
+* change dead_feature_window to int
+
+* remove print statements from test file
+
+* Rebase on seqpos tuple implementation and remove start/end pos offset
+
+* Reword docstring for seqpos to be clearer.
+
+* Added script to train an SAE on othelloGPT
+
+---------
+
+Co-authored-by: callummcdougall &lt;cal.s.mcdougall@gmail.com&gt;
+Co-authored-by: jbloomAus &lt;jbloomaus@gmail.com&gt;
+Co-authored-by: liuman &lt;zhenninghimme@gmail.com&gt; ([`7047f87`](https://github.com/jbloomAus/SAELens/commit/7047f877979952836e6778827248918818716b96))
+
+* feat: add get_sae_config() function (#331)
+
+* extracts code to get_connor_rob_hook_z_config()
+
+* extracts code into get_dictionary_learning_config_1()
+
+* extract repeated lines to above conditions
+
+* fixes incorrect function name
+
+* extracts code in generate_sae_table.py to function
+
+* removes unnecessary update()
+
+* replaces calls to specific loaders with get_sae_config()
+
+* replaces **kwargs with dataclass
+
+* refactors attribute access
+
+* renames SAEConfigParams to SAEConfigLoadOptions
+
+* gets rid of indent
+
+* replaces repo_id, folder_name with release, sae_id
+
+* extracts to get_conversion_loader_name()
+
+* extracts if-else to dict
+
+* move blocks to sensible place
+
+* extracts to get_repo_id_and_folder_name()
+
+* adds tests for get_repo_id_and_folder_name()
+
+* adds tests for get_sae_config()
+
+* removes mocking
+
+* fixes test
+
+* removes unused import ([`d451b1d`](https://github.com/jbloomAus/SAELens/commit/d451b1dbad5ebd273bd69bbebfff89c6b947634e))
+
+### Fix
+
+* fix: force new build ([`26fead6`](https://github.com/jbloomAus/SAELens/commit/26fead6ce86e7595d2a78e0a2a9fa5c2fe6961b3))
+
+* fix: add neuronpedia links for gemmascope 32plus ([`1087f19`](https://github.com/jbloomAus/SAELens/commit/1087f1999d04ee281be8cfda9832a6376151d0d1))
+
+### Unknown
+
+* Merge pull request #332 from jbloomAus/pretrained_yaml_gs_32plus
+
+fix: add neuronpedia links for gemmascope 32plus ([`42ba557`](https://github.com/jbloomAus/SAELens/commit/42ba5575f1e786a860f073943daf817e882ba76c))
+
+* Add Curt to citation (#329) ([`24b8560`](https://github.com/jbloomAus/SAELens/commit/24b8560c9272530c0090c6bb945653cacc68b7f5))
+
+
 ## v3.23.4 (2024-10-10)
 
 ### Fix
