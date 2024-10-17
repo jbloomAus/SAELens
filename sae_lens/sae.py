@@ -11,7 +11,7 @@ from typing import Any, Callable, Literal, Optional, Tuple, TypeVar, Union, over
 T = TypeVar("T", bound="SAE")
 import einops
 import torch
-from jaxtyping import Float, Int
+from jaxtyping import Float
 from safetensors.torch import save_file
 from torch import nn
 from transformer_lens.hook_points import HookedRootModule, HookPoint
@@ -509,7 +509,7 @@ class SAE(HookedRootModule):
     def encode_gated(
         self,
         x: Float[torch.Tensor, "... d_in"],
-        latents: Int[torch.Tensor, "latents"] | None = None,
+        latents: torch.Tensor | None = None,
     ) -> Float[torch.Tensor, "... d_sae"]:
         """
         Computes the latent values of the Sparse Autoencoder (SAE) using a gated architecture. The activation values are
@@ -548,7 +548,7 @@ class SAE(HookedRootModule):
     def encode_jumprelu(
         self,
         x: Float[torch.Tensor, "... d_in"],
-        latents: Int[torch.Tensor, "latents"] | None = None,
+        latents: torch.Tensor | None = None,
     ) -> Float[torch.Tensor, "... d_sae"]:
         """
         Computes the latent values of the Sparse Autoencoder (SAE) using a gated architecture. The activation values are
@@ -588,7 +588,7 @@ class SAE(HookedRootModule):
     def encode_standard(
         self,
         x: Float[torch.Tensor, "... d_in"],
-        latents: Int[torch.Tensor, "latents"] | None = None,
+        latents: torch.Tensor | None = None,
     ) -> Float[torch.Tensor, "... d_sae"]:
         """
         Computes the latent values of the Sparse Autoencoder (SAE) using a gated architecture. The activation values are
