@@ -70,12 +70,14 @@ def test_sae_init(cfg: LanguageModelSAERunnerConfig):
     assert sae.b_dec.shape == (cfg.d_in,)
 
 
-def test_sae_encode_with_slicing(cfg: LanguageModelSAERunnerConfig):
+@pytest.mark.parametrize("architecture", ["standard", "gated", "jumprelu"])
+def test_sae_encode_with_different_architectures(architecture: str) -> None:
+    cfg = build_sae_cfg(architecture=architecture)
     sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
     assert isinstance(cfg.d_sae, int)
 
     activations = torch.randn(10, 4, cfg.d_in, device=cfg.device)
-    latents = torch.randint(low=0, high=cfg.d_sae, size=(10,)).tolist()
+    latents = torch.randint(low=0, high=cfg.d_sae, size=(10,))
     feature_activations = sae.encode(activations)
     feature_activations_slice = sae.encode(activations, latents=latents)
     torch.testing.assert_close(
