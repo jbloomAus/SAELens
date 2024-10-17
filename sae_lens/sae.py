@@ -19,6 +19,7 @@ from transformer_lens.hook_points import HookedRootModule, HookPoint
 from sae_lens.config import DTYPE_MAP
 from sae_lens.toolkit.pretrained_sae_loaders import (
     NAMED_PRETRAINED_SAE_LOADERS,
+    get_conversion_loader_name,
     handle_config_defaulting,
     read_sae_from_disk,
 )
@@ -64,6 +65,7 @@ class SAEConfig:
     activation_fn_kwargs: dict[str, Any] = field(default_factory=dict)
     neuronpedia_id: Optional[str] = None
     model_from_pretrained_kwargs: dict[str, Any] = field(default_factory=dict)
+    seqpos_slice: tuple[int | None, ...] = (None,)
 
     @classmethod
     def from_dict(cls, config_dict: dict[str, Any]) -> "SAEConfig":
@@ -83,6 +85,10 @@ class SAEConfig:
             for k, v in config_dict.items()
             if k in cls.__dataclass_fields__  # pylint: disable=no-member
         }
+
+        if "seqpos_slice" in config_dict:
+            config_dict["seqpos_slice"] = tuple(config_dict["seqpos_slice"])
+
         return cls(**config_dict)
 
     # def __post_init__(self):
@@ -110,6 +116,7 @@ class SAEConfig:
             "normalize_activations": self.normalize_activations,
             "neuronpedia_id": self.neuronpedia_id,
             "model_from_pretrained_kwargs": self.model_from_pretrained_kwargs,
+            "seqpos_slice": self.seqpos_slice,
         }
 
 
@@ -611,25 +618,17 @@ class SAE(HookedRootModule):
                 + value_suffix
             )
         sae_info = sae_directory.get(release, None)
-        hf_repo_id = sae_info.repo_id if sae_info is not None else release
-        hf_path = sae_info.saes_map[sae_id] if sae_info is not None else sae_id
         config_overrides = sae_info.config_overrides if sae_info is not None else None
         neuronpedia_id = (
             sae_info.neuronpedia_id[sae_id] if sae_info is not None else None
         )
 
-        conversion_loader_name = "sae_lens"
-        if sae_info is not None and sae_info.conversion_func is not None:
-            conversion_loader_name = sae_info.conversion_func
-        if conversion_loader_name not in NAMED_PRETRAINED_SAE_LOADERS:
-            raise ValueError(
-                f"Conversion func {conversion_loader_name} not found in NAMED_PRETRAINED_SAE_LOADERS."
-            )
+        conversion_loader_name = get_conversion_loader_name(sae_info)
         conversion_loader = NAMED_PRETRAINED_SAE_LOADERS[conversion_loader_name]
 
         cfg_dict, state_dict, log_sparsities = conversion_loader(
-            repo_id=hf_repo_id,
-            folder_name=hf_path,
+            release,
+            sae_id=sae_id,
             device=device,
             force_download=False,
             cfg_overrides=config_overrides,
