@@ -21,7 +21,7 @@ def _create_dataset(tmp_path: Path) -> Dataset:
 
     model_name = "gelu-1l"
     hook_name = "blocks.0.hook_mlp_out"
-    dataset_path = "NeelNanda/c4-tokenized-2b"
+    dataset_path = "NeelNanda/c4-10k"
     batch_size = 1
     batches_in_buffer = 2
     context_size = 8
@@ -46,7 +46,7 @@ def _create_dataset(tmp_path: Path) -> Dataset:
         hook_layer=0,
         d_in=512,
         context_size=context_size,
-        is_dataset_tokenized=True,
+        is_dataset_tokenized=False,
         prepend_bos=False,
         normalize_activations="none",
         device="cpu",
@@ -86,9 +86,9 @@ def test_cache_activations_runner(tmp_path: Path):
         hook_name="blocks.0.hook_mlp_out",
         hook_layer=0,
         d_in=512,
-        dataset_path="NeelNanda/c4-tokenized-2b",
+        dataset_path="NeelNanda/c4-10k",
         context_size=context_size,  # Speed things up.
-        is_dataset_tokenized=True,
+        is_dataset_tokenized=False,
         prepend_bos=True,  # I used to train GPT2 SAEs with a prepended-bos but no longer think we should do this.
         training_tokens=total_training_tokens,  # For initial testing I think this is a good number.
         train_batch_size_tokens=32,
@@ -138,7 +138,7 @@ def test_load_cached_activations(tmp_path: Path):
         d_in=512,
         dataset_path="NeelNanda/c4-10k",
         context_size=context_size,
-        is_dataset_tokenized=True,
+        is_dataset_tokenized=False,
         prepend_bos=True,  # I used to train GPT2 SAEs with a prepended-bos but no longer think we should do this.
         training_tokens=total_training_tokens,  # For initial testing I think this is a good number.
         train_batch_size_tokens=total_training_tokens // 2,
@@ -317,7 +317,7 @@ def test_load_activations_store_with_nonexistent_dataset(tmp_path: Path):
     cfg = CacheActivationsRunnerConfig(
         model_name="gelu-1l",
         hook_name="blocks.0.hook_mlp_out",
-        dataset_path="NeelNanda/c4-tokenized-2b",
+        dataset_path="NeelNanda/c4-10k",
         cached_activations_path=str(tmp_path),
     )
 
@@ -341,7 +341,7 @@ def test_cache_activations_runner_with_nonempty_directory(tmp_path: Path):
         new_cached_activations_path=str(tmp_path),
         model_name="gelu-1l",
         hook_name="blocks.0.hook_mlp_out",
-        dataset_path="NeelNanda/c4-tokenized-2b",
+        dataset_path="NeelNanda/c4-10k",
     )
     runner = CacheActivationsRunner(cfg)
 
@@ -372,7 +372,7 @@ def test_cache_activations_runner_with_incorrect_d_in(tmp_path: Path):
         context_size=context_size,
         model_name="gelu-1l",
         hook_name="blocks.0.hook_mlp_out",
-        dataset_path="NeelNanda/c4-tokenized-2b",
+        dataset_path="NeelNanda/c4-10k",
         training_tokens=num_tokens,
         n_batches_in_buffer=n_batches_in_buffer,
         store_batch_size_prompts=batch_size,
@@ -410,7 +410,7 @@ def test_cache_activations_runner_load_dataset_with_incorrect_config(tmp_path: P
         context_size=context_size,
         model_name="gelu-1l",
         hook_name="blocks.0.hook_mlp_out",
-        dataset_path="NeelNanda/c4-tokenized-2b",
+        dataset_path="NeelNanda/c4-10k",
         training_tokens=num_tokens,
         n_batches_in_buffer=n_batches_in_buffer,
         store_batch_size_prompts=batch_size,
@@ -485,7 +485,7 @@ def test_cache_activations_runner_with_valid_seqpos(tmp_path: Path):
         context_size=context_size,
         model_name="gelu-1l",
         hook_name="blocks.0.hook_mlp_out",
-        dataset_path="NeelNanda/c4-tokenized-2b",
+        dataset_path="NeelNanda/c4-10k",
         training_tokens=total_training_tokens,
         n_batches_in_buffer=n_batches_in_buffer,
         store_batch_size_prompts=store_batch_size,
