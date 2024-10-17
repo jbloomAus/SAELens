@@ -199,10 +199,7 @@ def test_sae_save_and_load_from_pretrained_gated(tmp_path: Path) -> None:
 
 
 def test_sae_save_and_load_from_pretrained_topk(tmp_path: Path) -> None:
-    cfg = build_sae_cfg(
-        activation_fn_kwargs={"k": 30},
-        device="cpu",
-    )
+    cfg = build_sae_cfg(activation_fn_kwargs={"k": 30})
     model_path = str(tmp_path)
     sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
     sae_state_dict = sae.state_dict()
@@ -228,10 +225,7 @@ def test_sae_save_and_load_from_pretrained_topk(tmp_path: Path) -> None:
 
 
 def test_sae_seqpos(tmp_path: Path) -> None:
-    cfg = build_sae_cfg(
-        seqpos_slice=(1, 3),
-        device="cpu",
-    )
+    cfg = build_sae_cfg(seqpos_slice=(1, 3))
     model_path = str(tmp_path)
     sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
 
@@ -297,7 +291,7 @@ def test_sae_move_between_devices() -> None:
 
 
 def test_sae_change_dtype() -> None:
-    cfg = build_sae_cfg(device="cpu", dtype="float64")
+    cfg = build_sae_cfg(dtype="float64")
     sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
 
     sae.to(dtype=torch.float16)
@@ -330,7 +324,7 @@ def test_sae_jumprelu_initialization():
 
 @pytest.mark.parametrize("use_error_term", [True, False])
 def test_sae_jumprelu_forward(use_error_term: bool):
-    cfg = build_sae_cfg(architecture="jumprelu", device="cpu", d_in=2, d_sae=3)
+    cfg = build_sae_cfg(architecture="jumprelu", d_in=2, d_sae=3)
     sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
     sae.use_error_term = use_error_term
     sae.threshold.data = torch.tensor([1.0, 0.5, 0.25])
@@ -359,7 +353,7 @@ def test_sae_jumprelu_forward(use_error_term: bool):
 
 
 def test_sae_gated_initialization():
-    cfg = build_sae_cfg(architecture="gated", device="cpu")
+    cfg = build_sae_cfg(architecture="gated")
     sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
     assert isinstance(sae.W_enc, nn.Parameter)
     assert isinstance(sae.W_dec, nn.Parameter)
@@ -385,7 +379,7 @@ def test_sae_gated_initialization():
 
 @pytest.mark.parametrize("use_error_term", [True, False])
 def test_sae_gated_forward(use_error_term: bool):
-    cfg = build_sae_cfg(architecture="gated", device="cpu", d_in=2, d_sae=3)
+    cfg = build_sae_cfg(architecture="gated", d_in=2, d_sae=3)
     sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
     sae.use_error_term = use_error_term
     sae.W_enc.data = torch.ones_like(sae.W_enc.data)
