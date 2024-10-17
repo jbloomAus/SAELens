@@ -32,16 +32,16 @@ jobs:
       - name: Cache Huggingface assets
         uses: actions/cache@v4
         with:
-          key: huggingface-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml') }}
+          key: huggingface-0-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml') }}
           path: ~/.cache/huggingface
           restore-keys: |
-            huggingface-${{ runner.os }}-${{ matrix.python-version }}-
+            huggingface-0-${{ runner.os }}-${{ matrix.python-version }}-
       - name: Load cached Poetry installation
         id: cached-poetry
         uses: actions/cache@v4
         with:
           path: ~/.local  # the path depends on the OS
-          key: poetry-${{ runner.os }}-${{ matrix.python-version }}-0  # increment to reset cache
+          key: poetry-${{ runner.os }}-${{ matrix.python-version }}-1  # increment to reset cache
       - name: Install Poetry
         if: steps.cached-poetry.outputs.cache-hit != 'true'
         uses: snok/install-poetry@v1
@@ -54,9 +54,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .venv
-          key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml') }}
+          key: venv-0-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml') }}
           restore-keys: |
-            venv-${{ runner.os }}-${{ matrix.python-version }}-
+            venv-0-${{ runner.os }}-${{ matrix.python-version }}-
       - name: Install dependencies
         if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
         run: poetry install --no-interaction
