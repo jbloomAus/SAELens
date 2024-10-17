@@ -5,7 +5,7 @@ https://github.com/ArthurConmy/sae/blob/main/sae/model.py
 import json
 import os
 from dataclasses import dataclass, fields
-from typing import Any, Iterable, Optional
+from typing import Any, Optional
 
 import einops
 import torch
@@ -200,10 +200,11 @@ class TrainingSAE(SAE):
             assert self.use_error_term is False, "Gated SAEs do not support error terms"
 
     def encode_standard(
-        self, x: Float[torch.Tensor, "... d_in"], latents: Iterable[int] | None = None
+        self, x: Float[torch.Tensor, "... d_in"], latents: torch.Tensor | None = None
     ) -> Float[torch.Tensor, "... d_sae"]:
         """
-        Calcuate SAE features from inputs
+        Calcuate SAE features from inputs. The `latents` argument is ignored (this is just so the type signature matches
+        the parent class, which uses this argument to compute only a subset of the SAE hidden values)
         """
         assert (
             latents is None
