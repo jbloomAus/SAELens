@@ -143,21 +143,31 @@ def run_evals(
             ignore_tokens=ignore_tokens,
             verbose=verbose,
         )
-        
+
         if eval_config.compute_kl:
-            all_metrics["model_behavior_preservation"].update({
-                "kl_div_score": reconstruction_metrics["kl_div_score"],
-                "kl_div_with_ablation": reconstruction_metrics["kl_div_with_ablation"],
-                "kl_div_with_sae": reconstruction_metrics["kl_div_with_sae"],
-            })
-        
+            all_metrics["model_behavior_preservation"].update(
+                {
+                    "kl_div_score": reconstruction_metrics["kl_div_score"],
+                    "kl_div_with_ablation": reconstruction_metrics[
+                        "kl_div_with_ablation"
+                    ],
+                    "kl_div_with_sae": reconstruction_metrics["kl_div_with_sae"],
+                }
+            )
+
         if eval_config.compute_ce_loss:
-            all_metrics["model_performance_preservation"].update({
-                "ce_loss_score": reconstruction_metrics["ce_loss_score"],
-                "ce_loss_with_ablation": reconstruction_metrics["ce_loss_with_ablation"],
-                "ce_loss_with_sae": reconstruction_metrics["ce_loss_with_sae"],
-                "ce_loss_without_sae": reconstruction_metrics["ce_loss_without_sae"],
-            })
+            all_metrics["model_performance_preservation"].update(
+                {
+                    "ce_loss_score": reconstruction_metrics["ce_loss_score"],
+                    "ce_loss_with_ablation": reconstruction_metrics[
+                        "ce_loss_with_ablation"
+                    ],
+                    "ce_loss_with_sae": reconstruction_metrics["ce_loss_with_sae"],
+                    "ce_loss_without_sae": reconstruction_metrics[
+                        "ce_loss_without_sae"
+                    ],
+                }
+            )
 
         activation_store.reset_input_dataset()
 
@@ -181,27 +191,37 @@ def run_evals(
             ignore_tokens=ignore_tokens,
             verbose=verbose,
         )
-        
+
         if eval_config.compute_l2_norms:
-            all_metrics["shrinkage"].update({
-                "l2_norm_in": sparsity_variance_metrics["l2_norm_in"],
-                "l2_norm_out": sparsity_variance_metrics["l2_norm_out"],
-                "l2_ratio": sparsity_variance_metrics["l2_ratio"],
-                "relative_reconstruction_bias": sparsity_variance_metrics["relative_reconstruction_bias"],
-            })
-        
+            all_metrics["shrinkage"].update(
+                {
+                    "l2_norm_in": sparsity_variance_metrics["l2_norm_in"],
+                    "l2_norm_out": sparsity_variance_metrics["l2_norm_out"],
+                    "l2_ratio": sparsity_variance_metrics["l2_ratio"],
+                    "relative_reconstruction_bias": sparsity_variance_metrics[
+                        "relative_reconstruction_bias"
+                    ],
+                }
+            )
+
         if eval_config.compute_sparsity_metrics:
-            all_metrics["sparsity"].update({
-                "l0": sparsity_variance_metrics["l0"],
-                "l1": sparsity_variance_metrics["l1"],
-            })
-        
+            all_metrics["sparsity"].update(
+                {
+                    "l0": sparsity_variance_metrics["l0"],
+                    "l1": sparsity_variance_metrics["l1"],
+                }
+            )
+
         if eval_config.compute_variance_metrics:
-            all_metrics["reconstruction_quality"].update({
-                "explained_variance": sparsity_variance_metrics["explained_variance"],
-                "mse": sparsity_variance_metrics["mse"],
-                "cossim": sparsity_variance_metrics["cossim"],
-            })
+            all_metrics["reconstruction_quality"].update(
+                {
+                    "explained_variance": sparsity_variance_metrics[
+                        "explained_variance"
+                    ],
+                    "mse": sparsity_variance_metrics["mse"],
+                    "cossim": sparsity_variance_metrics["cossim"],
+                }
+            )
     else:
         feature_metrics = {}
 
@@ -712,7 +732,7 @@ def multiple_evals(
     ctx_lens: list[int] = [128],
     output_dir: str = "eval_results",
     verbose: bool = False,
-) -> list[defaultdict[Any, Any]]:
+) -> List[Dict[str, Any]]:
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -797,7 +817,7 @@ def multiple_evals(
     return eval_results
 
 
-def run_evaluations(args: argparse.Namespace) -> list[defaultdict[Any, Any]]:
+def run_evaluations(args: argparse.Namespace) -> List[Dict[str, Any]]:
     # Filter SAEs based on regex patterns
     filtered_saes = get_saes_from_regex(args.sae_regex_pattern, args.sae_block_pattern)
 
@@ -834,12 +854,16 @@ def replace_nans_with_negative_one(obj: Any) -> Any:
         return obj
 
 
-def process_results(eval_results: List[Dict[str, Any]], output_dir: str) -> Dict[str, Union[List[Path], Path]]:
+def process_results(
+    eval_results: List[Dict[str, Any]], output_dir: str
+) -> Dict[str, Union[List[Path], Path]]:
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
     # Replace NaNs with -1 in each result
-    cleaned_results = [replace_nans_with_negative_one(result) for result in eval_results]
+    cleaned_results = [
+        replace_nans_with_negative_one(result) for result in eval_results
+    ]
 
     # Save individual JSON files
     for result in cleaned_results:
