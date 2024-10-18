@@ -2,7 +2,6 @@
 from pathlib import Path
 
 import pandas as pd
-import yaml
 from tqdm import tqdm
 
 from sae_lens import SAEConfig
@@ -11,6 +10,7 @@ from sae_lens.toolkit.pretrained_sae_loaders import (
     get_sae_config,
     handle_config_defaulting,
 )
+from sae_lens.toolkit.pretrained_saes_directory import load_pretrained_saes_yaml
 
 INCLUDED_CFG = [
     "id",
@@ -32,10 +32,7 @@ def on_pre_build(config):
 
 
 def generate_sae_table():
-    # Read the YAML file
-    yaml_path = Path("sae_lens/pretrained_saes.yaml")
-    with open(yaml_path, "r") as file:
-        data = yaml.safe_load(file)
+    data = load_pretrained_saes_yaml()
 
     # Start the Markdown content
     markdown_content = "# Pretrained SAEs\n\n"
