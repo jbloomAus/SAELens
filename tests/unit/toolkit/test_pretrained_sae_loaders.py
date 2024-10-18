@@ -140,7 +140,7 @@ def test_get_sae_config_dictionary_learning_1():
         "sae_lens_training_version": None,
         "prepend_bos": True,
         "dataset_path": "monology/pile-uncopyrighted",
-        "dataset_trust_remote_code": False,
+        "dataset_trust_remote_code": True,
         "context_size": 128,
         "normalize_activations": "none",
         "neuronpedia_id": None,
