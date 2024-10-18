@@ -1,11 +1,14 @@
 import argparse
 import json
+import math
 import re
+import subprocess
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import partial
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Dict, List, Mapping, Union
 
 import einops
 import pandas as pd
@@ -17,6 +20,34 @@ from transformer_lens.hook_points import HookedRootModule
 from sae_lens.sae import SAE
 from sae_lens.toolkit.pretrained_saes_directory import get_pretrained_saes_directory
 from sae_lens.training.activations_store import ActivationsStore
+
+
+def get_library_version() -> str:
+    try:
+        return version("sae_lens")
+    except PackageNotFoundError:
+        return "unknown"
+
+
+def get_git_hash() -> str:
+    """
+    Retrieves the current Git commit hash.
+    Returns 'unknown' if the hash cannot be determined.
+    """
+    try:
+        # Ensure the command is run in the directory where .git exists
+        git_dir = Path(__file__).resolve().parent.parent  # Adjust if necessary
+        result = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=git_dir,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=True,
+        )
+        return result.stdout.strip()
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+        return "unknown"
 
 
 # Everything by default is false so the user can just set the ones they want to true
@@ -34,6 +65,14 @@ class EvalConfig:
     compute_l2_norms: bool = False
     compute_sparsity_metrics: bool = False
     compute_variance_metrics: bool = False
+    # compute featurewise density statistics
+    compute_featurewise_density_statistics: bool = False
+
+    # compute featurewise_weight_based_metrics
+    compute_featurewise_weight_based_metrics: bool = False
+
+    library_version: str = field(default_factory=get_library_version)
+    git_hash: str = field(default_factory=get_git_hash)
 
 
 def get_eval_everything_config(
@@ -53,6 +92,8 @@ def get_eval_everything_config(
         n_eval_sparsity_variance_batches=n_eval_sparsity_variance_batches,
         compute_sparsity_metrics=True,
         compute_variance_metrics=True,
+        compute_featurewise_density_statistics=True,
+        compute_featurewise_weight_based_metrics=True,
     )
 
 
@@ -64,7 +105,8 @@ def run_evals(
     eval_config: EvalConfig = EvalConfig(),
     model_kwargs: Mapping[str, Any] = {},
     ignore_tokens: set[int | None] = set(),
-) -> dict[str, Any]:
+    verbose: bool = False,
+) -> tuple[dict[str, Any], dict[str, Any]]:
 
     hook_name = sae.cfg.hook_name
     actual_batch_size = (
@@ -79,11 +121,18 @@ def run_evals(
     else:
         previous_hook_z_reshaping_mode = None
 
-    metrics = {}
+    all_metrics = {
+        "model_behavior_preservation": {},
+        "model_performance_preservation": {},
+        "reconstruction_quality": {},
+        "shrinkage": {},
+        "sparsity": {},
+        "token_stats": {},
+    }
 
     if eval_config.compute_kl or eval_config.compute_ce_loss:
         assert eval_config.n_eval_reconstruction_batches > 0
-        metrics |= get_downstream_reconstruction_metrics(
+        reconstruction_metrics = get_downstream_reconstruction_metrics(
             sae,
             model,
             activation_store,
@@ -92,7 +141,33 @@ def run_evals(
             n_batches=eval_config.n_eval_reconstruction_batches,
             eval_batch_size_prompts=actual_batch_size,
             ignore_tokens=ignore_tokens,
+            verbose=verbose,
         )
+
+        if eval_config.compute_kl:
+            all_metrics["model_behavior_preservation"].update(
+                {
+                    "kl_div_score": reconstruction_metrics["kl_div_score"],
+                    "kl_div_with_ablation": reconstruction_metrics[
+                        "kl_div_with_ablation"
+                    ],
+                    "kl_div_with_sae": reconstruction_metrics["kl_div_with_sae"],
+                }
+            )
+
+        if eval_config.compute_ce_loss:
+            all_metrics["model_performance_preservation"].update(
+                {
+                    "ce_loss_score": reconstruction_metrics["ce_loss_score"],
+                    "ce_loss_with_ablation": reconstruction_metrics[
+                        "ce_loss_with_ablation"
+                    ],
+                    "ce_loss_with_sae": reconstruction_metrics["ce_loss_with_sae"],
+                    "ce_loss_without_sae": reconstruction_metrics[
+                        "ce_loss_without_sae"
+                    ],
+                }
+            )
 
         activation_store.reset_input_dataset()
 
@@ -102,20 +177,58 @@ def run_evals(
         or eval_config.compute_variance_metrics
     ):
         assert eval_config.n_eval_sparsity_variance_batches > 0
-        metrics |= get_sparsity_and_variance_metrics(
+        sparsity_variance_metrics, feature_metrics = get_sparsity_and_variance_metrics(
             sae,
             model,
             activation_store,
             compute_l2_norms=eval_config.compute_l2_norms,
             compute_sparsity_metrics=eval_config.compute_sparsity_metrics,
             compute_variance_metrics=eval_config.compute_variance_metrics,
+            compute_featurewise_density_statistics=eval_config.compute_featurewise_density_statistics,
             n_batches=eval_config.n_eval_sparsity_variance_batches,
             eval_batch_size_prompts=actual_batch_size,
             model_kwargs=model_kwargs,
             ignore_tokens=ignore_tokens,
+            verbose=verbose,
         )
 
-    if len(metrics) == 0:
+        if eval_config.compute_l2_norms:
+            all_metrics["shrinkage"].update(
+                {
+                    "l2_norm_in": sparsity_variance_metrics["l2_norm_in"],
+                    "l2_norm_out": sparsity_variance_metrics["l2_norm_out"],
+                    "l2_ratio": sparsity_variance_metrics["l2_ratio"],
+                    "relative_reconstruction_bias": sparsity_variance_metrics[
+                        "relative_reconstruction_bias"
+                    ],
+                }
+            )
+
+        if eval_config.compute_sparsity_metrics:
+            all_metrics["sparsity"].update(
+                {
+                    "l0": sparsity_variance_metrics["l0"],
+                    "l1": sparsity_variance_metrics["l1"],
+                }
+            )
+
+        if eval_config.compute_variance_metrics:
+            all_metrics["reconstruction_quality"].update(
+                {
+                    "explained_variance": sparsity_variance_metrics[
+                        "explained_variance"
+                    ],
+                    "mse": sparsity_variance_metrics["mse"],
+                    "cossim": sparsity_variance_metrics["cossim"],
+                }
+            )
+    else:
+        feature_metrics = {}
+
+    if eval_config.compute_featurewise_weight_based_metrics:
+        feature_metrics |= get_featurewise_weight_based_metrics(sae)
+
+    if len(all_metrics) == 0:
         raise ValueError(
             "No metrics were computed, please set at least one metric to True."
         )
@@ -127,14 +240,50 @@ def run_evals(
         elif not previous_hook_z_reshaping_mode and sae.hook_z_reshaping_mode:
             sae.turn_off_forward_pass_hook_z_reshaping()
 
-    total_tokens_evaluated = (
+    total_tokens_evaluated_eval_reconstruction = (
         activation_store.context_size
         * eval_config.n_eval_reconstruction_batches
         * actual_batch_size
     )
-    metrics["metrics/total_tokens_evaluated"] = total_tokens_evaluated
 
-    return metrics
+    total_tokens_evaluated_eval_sparsity_variance = (
+        activation_store.context_size
+        * eval_config.n_eval_sparsity_variance_batches
+        * actual_batch_size
+    )
+
+    all_metrics["token_stats"] = {
+        "total_tokens_eval_reconstruction": total_tokens_evaluated_eval_reconstruction,
+        "total_tokens_eval_sparsity_variance": total_tokens_evaluated_eval_sparsity_variance,
+    }
+
+    # Remove empty metric groups
+    all_metrics = {k: v for k, v in all_metrics.items() if v}
+
+    return all_metrics, feature_metrics
+
+
+def get_featurewise_weight_based_metrics(sae: SAE) -> dict[str, Any]:
+
+    unit_norm_encoders = (sae.W_enc / sae.W_enc.norm(dim=0, keepdim=True)).cpu()
+    unit_norm_decoder = (sae.W_dec.T / sae.W_dec.T.norm(dim=0, keepdim=True)).cpu()
+
+    encoder_norms = sae.W_enc.norm(dim=-2).cpu().tolist()
+    encoder_bias = sae.b_enc.cpu().tolist()
+    encoder_decoder_cosine_sim = (
+        torch.nn.functional.cosine_similarity(
+            unit_norm_decoder.T,
+            unit_norm_encoders.T,
+        )
+        .cpu()
+        .tolist()
+    )
+
+    return {
+        "encoder_bias": encoder_bias,
+        "encoder_norm": encoder_norms,
+        "encoder_decoder_cosine_sim": encoder_decoder_cosine_sim,
+    }
 
 
 def get_downstream_reconstruction_metrics(
@@ -146,6 +295,7 @@ def get_downstream_reconstruction_metrics(
     n_batches: int,
     eval_batch_size_prompts: int,
     ignore_tokens: set[int | None] = set(),
+    verbose: bool = False,
 ):
     metrics_dict = {}
     if compute_kl:
@@ -156,7 +306,11 @@ def get_downstream_reconstruction_metrics(
         metrics_dict["ce_loss_without_sae"] = []
         metrics_dict["ce_loss_with_ablation"] = []
 
-    for _ in range(n_batches):
+    batch_iter = range(n_batches)
+    if verbose:
+        batch_iter = tqdm(batch_iter, desc="Reconstruction Batches")
+
+    for _ in batch_iter:
         batch_tokens = activation_store.get_batch_tokens(eval_batch_size_prompts)
         for metric_name, metric_value in get_recons_loss(
             sae,
@@ -185,21 +339,17 @@ def get_downstream_reconstruction_metrics(
 
     metrics: dict[str, float] = {}
     for metric_name, metric_values in metrics_dict.items():
-        metrics[f"metrics/{metric_name}"] = torch.cat(metric_values).mean().item()
+        metrics[f"{metric_name}"] = torch.cat(metric_values).mean().item()
 
     if compute_kl:
-        metrics["metrics/kl_div_score"] = (
-            metrics["metrics/kl_div_with_ablation"] - metrics["metrics/kl_div_with_sae"]
-        ) / metrics["metrics/kl_div_with_ablation"]
+        metrics["kl_div_score"] = (
+            metrics["kl_div_with_ablation"] - metrics["kl_div_with_sae"]
+        ) / metrics["kl_div_with_ablation"]
 
     if compute_ce_loss:
-        metrics["metrics/ce_loss_score"] = (
-            metrics["metrics/ce_loss_with_ablation"]
-            - metrics["metrics/ce_loss_with_sae"]
-        ) / (
-            metrics["metrics/ce_loss_with_ablation"]
-            - metrics["metrics/ce_loss_without_sae"]
-        )
+        metrics["ce_loss_score"] = (
+            metrics["ce_loss_with_ablation"] - metrics["ce_loss_with_sae"]
+        ) / (metrics["ce_loss_with_ablation"] - metrics["ce_loss_without_sae"])
 
     return metrics
 
@@ -212,27 +362,44 @@ def get_sparsity_and_variance_metrics(
     compute_l2_norms: bool,
     compute_sparsity_metrics: bool,
     compute_variance_metrics: bool,
+    compute_featurewise_density_statistics: bool,
     eval_batch_size_prompts: int,
     model_kwargs: Mapping[str, Any],
     ignore_tokens: set[int | None] = set(),
-):
+    verbose: bool = False,
+) -> tuple[dict[str, Any], dict[str, Any]]:
 
     hook_name = sae.cfg.hook_name
     hook_head_index = sae.cfg.hook_head_index
 
     metric_dict = {}
+    feature_metric_dict = {}
+
     if compute_l2_norms:
         metric_dict["l2_norm_in"] = []
         metric_dict["l2_norm_out"] = []
         metric_dict["l2_ratio"] = []
+        metric_dict["relative_reconstruction_bias"] = []
     if compute_sparsity_metrics:
         metric_dict["l0"] = []
         metric_dict["l1"] = []
     if compute_variance_metrics:
         metric_dict["explained_variance"] = []
         metric_dict["mse"] = []
+        metric_dict["cossim"] = []
+    if compute_featurewise_density_statistics:
+        feature_metric_dict["feature_density"] = []
+        feature_metric_dict["consistent_activation_heuristic"] = []
 
-    for _ in range(n_batches):
+    total_feature_acts = torch.zeros(sae.cfg.d_sae, device=sae.device)
+    total_feature_prompts = torch.zeros(sae.cfg.d_sae, device=sae.device)
+    total_tokens = 0
+
+    batch_iter = range(n_batches)
+    if verbose:
+        batch_iter = tqdm(batch_iter, desc="Sparsity and Variance Batches")
+
+    for _ in batch_iter:
         batch_tokens = activation_store.get_batch_tokens(eval_batch_size_prompts)
 
         if len(ignore_tokens) > 0:
@@ -285,7 +452,9 @@ def get_sparsity_and_variance_metrics(
         )
         flattened_sae_out = einops.rearrange(sae_out, "b ctx d -> (b ctx) d")
 
+        # TODO: Clean this up.
         # apply mask
+        masked_sae_feature_activations = sae_feature_activations * mask.unsqueeze(-1)
         flattened_sae_input = flattened_sae_input[flattened_mask]
         flattened_sae_feature_acts = flattened_sae_feature_acts[flattened_mask]
         flattened_sae_out = flattened_sae_out[flattened_mask]
@@ -296,9 +465,21 @@ def get_sparsity_and_variance_metrics(
             l2_norm_in_for_div = l2_norm_in.clone()
             l2_norm_in_for_div[torch.abs(l2_norm_in_for_div) < 0.0001] = 1
             l2_norm_ratio = l2_norm_out / l2_norm_in_for_div
+
+            # Equation 10 from https://arxiv.org/abs/2404.16014
+            # https://github.com/saprmarks/dictionary_learning/blob/main/evaluation.py
+            x_hat_norm_squared = torch.norm(flattened_sae_out, dim=-1) ** 2
+            x_dot_x_hat = (flattened_sae_input * flattened_sae_out).sum(dim=-1)
+            relative_reconstruction_bias = (
+                x_hat_norm_squared.mean() / x_dot_x_hat.mean()
+            ).unsqueeze(0)
+
             metric_dict["l2_norm_in"].append(l2_norm_in)
             metric_dict["l2_norm_out"].append(l2_norm_out)
             metric_dict["l2_ratio"].append(l2_norm_ratio)
+            metric_dict["relative_reconstruction_bias"].append(
+                relative_reconstruction_bias
+            )
 
         if compute_sparsity_metrics:
             l0 = (flattened_sae_feature_acts > 0).sum(dim=-1).float()
@@ -313,18 +494,43 @@ def get_sparsity_and_variance_metrics(
             total_sum_of_squares = (
                 (flattened_sae_input - flattened_sae_input.mean(dim=0)).pow(2).sum(-1)
             )
+
             mse = resid_sum_of_squares / flattened_mask.sum()
             explained_variance = 1 - resid_sum_of_squares / total_sum_of_squares
+
+            x_normed = flattened_sae_input / torch.norm(
+                flattened_sae_input, dim=-1, keepdim=True
+            )
+            x_hat_normed = flattened_sae_out / torch.norm(
+                flattened_sae_out, dim=-1, keepdim=True
+            )
+            cossim = (x_normed * x_hat_normed).sum(dim=-1)
+
             metric_dict["explained_variance"].append(explained_variance)
             metric_dict["mse"].append(mse)
+            metric_dict["cossim"].append(cossim)
 
+        if compute_featurewise_density_statistics:
+            sae_feature_activations_bool = (masked_sae_feature_activations > 0).float()
+            total_feature_acts += sae_feature_activations_bool.sum(dim=1).sum(dim=0)
+            total_feature_prompts += (sae_feature_activations_bool.sum(dim=1) > 0).sum(
+                dim=0
+            )
+            total_tokens += mask.sum()
+
+    # Aggregate scalar metrics
     metrics: dict[str, float] = {}
     for metric_name, metric_values in metric_dict.items():
-        # since we're masking, we need to flatten but may not have n_ctx for all metrics
-        # in all batches.
-        metrics[f"metrics/{metric_name}"] = torch.cat(metric_values).mean().item()
+        metrics[f"{metric_name}"] = torch.cat(metric_values).mean().item()
 
-    return metrics
+    # Aggregate feature-wise metrics
+    feature_metrics: dict[str, list[float]] = {}
+    feature_metrics["feature_density"] = (total_feature_acts / total_tokens).tolist()
+    feature_metrics["consistent_activation_heuristic"] = (
+        total_feature_acts / total_feature_prompts
+    ).tolist()
+
+    return metrics, feature_metrics
 
 
 @torch.no_grad()
@@ -519,12 +725,14 @@ def dict_to_nested(flat_dict: dict[str, Any]) -> defaultdict[Any, Any]:
 def multiple_evals(
     sae_regex_pattern: str,
     sae_block_pattern: str,
-    num_eval_batches: int = 10,
+    n_eval_reconstruction_batches: int,
+    n_eval_sparsity_variance_batches: int,
     eval_batch_size_prompts: int = 8,
     datasets: list[str] = ["Skylion007/openwebtext", "lighteval/MATH"],
     ctx_lens: list[int] = [128],
     output_dir: str = "eval_results",
-) -> list[defaultdict[Any, Any]]:
+    verbose: bool = False,
+) -> List[Dict[str, Any]]:
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -538,8 +746,8 @@ def multiple_evals(
 
     eval_config = get_eval_everything_config(
         batch_size_prompts=eval_batch_size_prompts,
-        n_eval_reconstruction_batches=num_eval_batches,
-        n_eval_sparsity_variance_batches=num_eval_batches,
+        n_eval_reconstruction_batches=n_eval_reconstruction_batches,
+        n_eval_sparsity_variance_batches=n_eval_sparsity_variance_batches,
     )
 
     current_model = None
@@ -552,6 +760,9 @@ def multiple_evals(
             sae_id=sae_id,  # won't always be a hook point
             device=device,
         )[0]
+
+        # move SAE to device if not there already
+        sae.to(device)
 
         if current_model_str != sae.cfg.model_name:
             del current_model  # potentially saves GPU memory
@@ -575,8 +786,12 @@ def multiple_evals(
                 eval_metrics["sae_id"] = f"{sae_id}"
                 eval_metrics["eval_cfg"]["context_size"] = ctx_len
                 eval_metrics["eval_cfg"]["dataset"] = dataset
+                eval_metrics["eval_cfg"][
+                    "library_version"
+                ] = eval_config.library_version
+                eval_metrics["eval_cfg"]["git_hash"] = eval_config.git_hash
 
-                run_eval_metrics = run_evals(
+                scalar_metrics, feature_metrics = run_evals(
                     sae=sae,
                     activation_store=activation_store,
                     model=current_model,
@@ -586,8 +801,10 @@ def multiple_evals(
                         current_model.tokenizer.eos_token_id,  # type: ignore
                         current_model.tokenizer.bos_token_id,  # type: ignore
                     },
+                    verbose=verbose,
                 )
-                eval_metrics["metrics"] = run_eval_metrics
+                eval_metrics["metrics"] = scalar_metrics
+                eval_metrics["feature_metrics"] = feature_metrics
 
                 # Add SAE config
                 eval_metrics["sae_cfg"] = sae.cfg.to_dict()
@@ -600,7 +817,7 @@ def multiple_evals(
     return eval_results
 
 
-def run_evaluations(args: argparse.Namespace) -> list[defaultdict[Any, Any]]:
+def run_evaluations(args: argparse.Namespace) -> List[Dict[str, Any]]:
     # Filter SAEs based on regex patterns
     filtered_saes = get_saes_from_regex(args.sae_regex_pattern, args.sae_block_pattern)
 
@@ -614,22 +831,42 @@ def run_evaluations(args: argparse.Namespace) -> list[defaultdict[Any, Any]]:
     eval_results = multiple_evals(
         sae_regex_pattern=args.sae_regex_pattern,
         sae_block_pattern=args.sae_block_pattern,
-        num_eval_batches=args.num_eval_batches,
-        eval_batch_size_prompts=args.eval_batch_size_prompts,
+        n_eval_reconstruction_batches=args.n_eval_reconstruction_batches,
+        n_eval_sparsity_variance_batches=args.n_eval_sparsity_variance_batches,
+        eval_batch_size_prompts=args.batch_size_prompts,
         datasets=args.datasets,
         ctx_lens=args.ctx_lens,
         output_dir=args.output_dir,
+        verbose=args.verbose,
     )
 
     return eval_results
 
 
-def process_results(eval_results: list[defaultdict[Any, Any]], output_dir: str):
+def replace_nans_with_negative_one(obj: Any) -> Any:
+    if isinstance(obj, dict):
+        return {k: replace_nans_with_negative_one(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [replace_nans_with_negative_one(item) for item in obj]
+    elif isinstance(obj, float) and math.isnan(obj):
+        return -1
+    else:
+        return obj
+
+
+def process_results(
+    eval_results: List[Dict[str, Any]], output_dir: str
+) -> Dict[str, Union[List[Path], Path]]:
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
+    # Replace NaNs with -1 in each result
+    cleaned_results = [
+        replace_nans_with_negative_one(result) for result in eval_results
+    ]
+
     # Save individual JSON files
-    for result in eval_results:
+    for result in cleaned_results:
         json_filename = f"{result['unique_id']}_{result['eval_cfg']['context_size']}_{result['eval_cfg']['dataset']}.json".replace(
             "/", "_"
         )
@@ -639,10 +876,10 @@ def process_results(eval_results: list[defaultdict[Any, Any]], output_dir: str):
 
     # Save all results in a single JSON file
     with open(output_path / "all_eval_results.json", "w") as f:
-        json.dump(eval_results, f, indent=2)
+        json.dump(cleaned_results, f, indent=2)
 
     # Convert to DataFrame and save as CSV
-    df = pd.json_normalize(eval_results)  # type: ignore
+    df = pd.json_normalize(cleaned_results)
     df.to_csv(output_path / "all_eval_results.csv", index=False)
 
     return {
@@ -665,16 +902,57 @@ if __name__ == "__main__":
         help="Regex pattern to match SAE block names. Can be an entire block name to match a specific block.",
     )
     arg_parser.add_argument(
-        "--num_eval_batches",
+        "--batch_size_prompts",
         type=int,
-        default=10,
-        help="Number of evaluation batches to run.",
+        default=16,
+        help="Batch size for evaluation prompts.",
     )
     arg_parser.add_argument(
-        "--eval_batch_size_prompts",
+        "--n_eval_reconstruction_batches",
         type=int,
-        default=8,
-        help="Batch size for evaluation prompts.",
+        default=10,
+        help="Number of evaluation batches for reconstruction metrics.",
+    )
+    arg_parser.add_argument(
+        "--compute_kl",
+        action="store_true",
+        help="Compute KL divergence.",
+    )
+    arg_parser.add_argument(
+        "--compute_ce_loss",
+        action="store_true",
+        help="Compute cross-entropy loss.",
+    )
+    arg_parser.add_argument(
+        "--n_eval_sparsity_variance_batches",
+        type=int,
+        default=1,
+        help="Number of evaluation batches for sparsity and variance metrics.",
+    )
+    arg_parser.add_argument(
+        "--compute_l2_norms",
+        action="store_true",
+        help="Compute L2 norms.",
+    )
+    arg_parser.add_argument(
+        "--compute_sparsity_metrics",
+        action="store_true",
+        help="Compute sparsity metrics.",
+    )
+    arg_parser.add_argument(
+        "--compute_variance_metrics",
+        action="store_true",
+        help="Compute variance metrics.",
+    )
+    arg_parser.add_argument(
+        "--compute_featurewise_density_statistics",
+        action="store_true",
+        help="Compute featurewise density statistics.",
+    )
+    arg_parser.add_argument(
+        "--compute_featurewise_weight_based_metrics",
+        action="store_true",
+        help="Compute featurewise weight-based metrics.",
     )
     arg_parser.add_argument(
         "--datasets",
@@ -685,6 +963,7 @@ if __name__ == "__main__":
     arg_parser.add_argument(
         "--ctx_lens",
         nargs="+",
+        type=int,
         default=[128],
         help="Context lengths to evaluate on.",
     )
@@ -694,9 +973,13 @@ if __name__ == "__main__":
         default="eval_results",
         help="Directory to save evaluation results",
     )
+    arg_parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Enable verbose output with tqdm loaders.",
+    )
 
     args = arg_parser.parse_args()
-
     eval_results = run_evaluations(args)
     output_files = process_results(eval_results, args.output_dir)
 

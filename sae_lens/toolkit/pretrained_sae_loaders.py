@@ -442,10 +442,10 @@ def get_dictionary_learning_config_1(
         "sae_lens_training_version": None,
         "prepend_bos": True,
         "dataset_path": "monology/pile-uncopyrighted",
-        "dataset_trust_remote_code": False,
         "context_size": buffer["ctx_len"],
         "normalize_activations": "none",
         "neuronpedia_id": None,
+        "dataset_trust_remote_code": True,
     }
 
 

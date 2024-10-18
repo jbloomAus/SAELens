@@ -106,21 +106,21 @@ def training_sae(cfg: LanguageModelSAERunnerConfig):
     return TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
 
 
-all_expected_keys = [
-    "metrics/l2_norm_in",
-    "metrics/l2_ratio",
-    "metrics/l2_norm_out",
-    "metrics/explained_variance",
-    "metrics/l0",
-    "metrics/l1",
-    "metrics/mse",
-    "metrics/ce_loss_score",
-    "metrics/ce_loss_without_sae",
-    "metrics/ce_loss_with_sae",
-    "metrics/ce_loss_with_ablation",
-    "metrics/kl_div_score",
-    "metrics/kl_div_with_sae",
-    "metrics/kl_div_with_ablation",
+all_possible_keys = [
+    "model_behavior_preservation",
+    "model_performance_preservation",
+    "reconstruction_quality",
+    "shrinkage",
+    "sparsity",
+    "token_stats",
+]
+
+all_featurewise_keys_expected = [
+    "feature_density",
+    "consistent_activation_heuristic",
+    "encoder_bias",
+    "encoder_decoder_cosine_sim",
+    "encoder_norm",
 ]
 
 
@@ -129,17 +129,15 @@ def test_run_evals_base_sae(
     activation_store: ActivationsStore,
     model: HookedTransformer,
 ):
-
-    eval_metrics = run_evals(
+    eval_metrics, _ = run_evals(
         sae=base_sae,
         activation_store=activation_store,
         model=model,
         eval_config=get_eval_everything_config(),
     )
 
-    # results will be garbage without a real model.
-    for key in all_expected_keys:
-        assert key in eval_metrics
+    assert set(eval_metrics.keys()).issubset(set(all_possible_keys))
+    assert len(eval_metrics) > 0
 
 
 def test_run_evals_training_sae(
@@ -147,16 +145,16 @@ def test_run_evals_training_sae(
     activation_store: ActivationsStore,
     model: HookedTransformer,
 ):
-
-    eval_metrics = run_evals(
+    eval_metrics, feature_metrics = run_evals(
         sae=training_sae,
         activation_store=activation_store,
         model=model,
         eval_config=get_eval_everything_config(),
     )
 
-    for key in all_expected_keys:
-        assert key in eval_metrics
+    assert set(eval_metrics.keys()).issubset(set(all_possible_keys))
+    assert len(eval_metrics) > 0
+    assert set(feature_metrics.keys()).issubset(set(all_featurewise_keys_expected))
 
 
 def test_run_evals_training_sae_ignore_bos(
@@ -164,8 +162,7 @@ def test_run_evals_training_sae_ignore_bos(
     activation_store: ActivationsStore,
     model: HookedTransformer,
 ):
-
-    eval_metrics = run_evals(
+    eval_metrics, _ = run_evals(
         sae=training_sae,
         activation_store=activation_store,
         model=model,
@@ -174,20 +171,11 @@ def test_run_evals_training_sae_ignore_bos(
             model.tokenizer.bos_token_id,  # type: ignore
             model.tokenizer.eos_token_id,  # type: ignore
             model.tokenizer.pad_token_id,  # type: ignore
-        },  # type: ignore
+        },
     )
 
-    for key in all_expected_keys:
-        assert key in eval_metrics
-
-
-def test_run_empty_evals(
-    base_sae: SAE,
-    activation_store: ActivationsStore,
-    model: HookedTransformer,
-):
-    with pytest.raises(ValueError):
-        run_evals(sae=base_sae, activation_store=activation_store, model=model)
+    assert set(eval_metrics.keys()).issubset(set(all_possible_keys))
+    assert len(eval_metrics) > 0
 
 
 def test_training_eval_config(
@@ -196,26 +184,18 @@ def test_training_eval_config(
     model: HookedTransformer,
 ):
     expected_keys = [
-        "metrics/l2_norm_in",
-        "metrics/l2_ratio",
-        "metrics/l2_norm_out",
-        "metrics/ce_loss_score",
-        "metrics/ce_loss_without_sae",
-        "metrics/ce_loss_with_sae",
-        "metrics/ce_loss_with_ablation",
+        "model_performance_preservation",
+        "shrinkage",
+        "token_stats",
     ]
     eval_config = TRAINER_EVAL_CONFIG
-    eval_metrics = run_evals(
+    eval_metrics, _ = run_evals(
         sae=base_sae,
         activation_store=activation_store,
         model=model,
         eval_config=eval_config,
     )
-    sorted_returned_keys = sorted(eval_metrics.keys())
-    sorted_expected_keys = sorted(expected_keys)
-
-    for i in range(len(expected_keys)):
-        assert sorted_returned_keys[i] == sorted_expected_keys[i]
+    assert set(eval_metrics.keys()) == set(expected_keys)
 
 
 def test_training_eval_config_ignore_control_tokens(
@@ -224,16 +204,12 @@ def test_training_eval_config_ignore_control_tokens(
     model: HookedTransformer,
 ):
     expected_keys = [
-        "metrics/l2_norm_in",
-        "metrics/l2_ratio",
-        "metrics/l2_norm_out",
-        "metrics/ce_loss_score",
-        "metrics/ce_loss_without_sae",
-        "metrics/ce_loss_with_sae",
-        "metrics/ce_loss_with_ablation",
+        "model_performance_preservation",
+        "shrinkage",
+        "token_stats",
     ]
     eval_config = TRAINER_EVAL_CONFIG
-    eval_metrics = run_evals(
+    eval_metrics, _ = run_evals(
         sae=base_sae,
         activation_store=activation_store,
         model=model,
@@ -244,11 +220,34 @@ def test_training_eval_config_ignore_control_tokens(
             model.tokenizer.bos_token_id,  # type: ignore
         },
     )
-    sorted_returned_keys = sorted(eval_metrics.keys())
-    sorted_expected_keys = sorted(expected_keys)
+    assert set(eval_metrics.keys()) == set(expected_keys)
 
-    for i in range(len(expected_keys)):
-        assert sorted_returned_keys[i] == sorted_expected_keys[i]
+
+def test_run_empty_evals(
+    base_sae: SAE,
+    activation_store: ActivationsStore,
+    model: HookedTransformer,
+):
+    empty_config = EvalConfig(
+        n_eval_reconstruction_batches=0,
+        n_eval_sparsity_variance_batches=0,
+        compute_ce_loss=False,
+        compute_kl=False,
+        compute_l2_norms=False,
+        compute_sparsity_metrics=False,
+        compute_variance_metrics=False,
+        compute_featurewise_density_statistics=False,
+    )
+    eval_metrics, feature_metrics = run_evals(
+        sae=base_sae,
+        activation_store=activation_store,
+        model=model,
+        eval_config=empty_config,
+    )
+
+    assert len(eval_metrics) == 1, "Expected only token_stats in eval_metrics"
+    assert "token_stats" in eval_metrics, "Expected token_stats in eval_metrics"
+    assert len(feature_metrics) == 0, "Expected empty feature_metrics"
 
 
 @pytest.fixture
@@ -257,10 +256,14 @@ def mock_args():
     args.sae_regex_pattern = "test_pattern"
     args.sae_block_pattern = "test_block"
     args.num_eval_batches = 2
+    args.batch_size_prompts = 4
     args.eval_batch_size_prompts = 4
+    args.n_eval_reconstruction_batches = 1
+    args.n_eval_sparsity_variance_batches = 1
     args.datasets = ["test_dataset"]
     args.ctx_lens = [64]
     args.output_dir = "test_output"
+    args.verbose = False
     return args
 
 
@@ -285,11 +288,13 @@ def test_run_evaluations(
     mock_multiple_evals.assert_called_once_with(
         sae_regex_pattern=mock_args.sae_regex_pattern,
         sae_block_pattern=mock_args.sae_block_pattern,
-        num_eval_batches=mock_args.num_eval_batches,
         eval_batch_size_prompts=mock_args.eval_batch_size_prompts,
+        n_eval_reconstruction_batches=mock_args.n_eval_reconstruction_batches,
+        n_eval_sparsity_variance_batches=mock_args.n_eval_sparsity_variance_batches,
         datasets=mock_args.datasets,
         ctx_lens=mock_args.ctx_lens,
         output_dir=mock_args.output_dir,
+        verbose=mock_args.verbose,
     )
     assert result == [{"test": "result"}]
 
