@@ -485,6 +485,7 @@ def dictionary_learning_sae_loader_1(
         force_download=force_download,
     )
     cfg_dict = get_sae_config(release, sae_id=sae_id, options=options)
+    cfg_dict["device"] = device
     if cfg_overrides:
         cfg_dict.update(cfg_overrides)
 

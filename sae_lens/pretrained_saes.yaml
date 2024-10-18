@@ -12247,8 +12247,8 @@ sae_bench_gemma-2-2b_sweep_topk_ctx128_ef8_0824:
 sae_bench_pythia70m_sweep_gated_ctx128_0730:
   conversion_func: dictionary_learning_1
   links:
-    model: https://huggingface.co/EleutherAI/pythia-70m
-  model: pythia-70m
+    model: https://huggingface.co/EleutherAI/pythia-70m-deduped
+  model: pythia-70m-deduped
   repo_id: canrager/lm_sae
   saes:
   - id: blocks.3.hook_resid_post__trainer_0
@@ -12374,8 +12374,8 @@ sae_bench_pythia70m_sweep_gated_ctx128_0730:
 sae_bench_pythia70m_sweep_panneal_ctx128_0730:
   conversion_func: dictionary_learning_1
   links:
-    model: https://huggingface.co/EleutherAI/pythia-70m
-  model: pythia-70m
+    model: https://huggingface.co/EleutherAI/pythia-70m-deduped
+  model: pythia-70m-deduped
   repo_id: canrager/lm_sae
   saes:
   - id: blocks.3.hook_resid_post__trainer_16
@@ -12549,8 +12549,8 @@ sae_bench_pythia70m_sweep_panneal_ctx128_0730:
 sae_bench_pythia70m_sweep_standard_ctx128_0712:
   conversion_func: dictionary_learning_1
   links:
-    model: https://huggingface.co/EleutherAI/pythia-70m
-  model: pythia-70m
+    model: https://huggingface.co/EleutherAI/pythia-70m-deduped
+  model: pythia-70m-deduped
   repo_id: canrager/lm_sae
   saes:
   - id: blocks.3.hook_resid_post__trainer_10
@@ -12688,8 +12688,8 @@ sae_bench_pythia70m_sweep_standard_ctx128_0712:
 sae_bench_pythia70m_sweep_topk_ctx128_0730:
   conversion_func: dictionary_learning_1
   links:
-    model: https://huggingface.co/EleutherAI/pythia-70m
-  model: pythia-70m
+    model: https://huggingface.co/EleutherAI/pythia-70m-deduped
+  model: pythia-70m-deduped
   repo_id: canrager/lm_sae
   saes:
   - id: blocks.3.hook_resid_post__trainer_0
