@@ -70,6 +70,14 @@ TRAINER_EVAL_CONFIG = EvalConfig(
             "hook_layer": 1,
             "d_in": 16 * 4,
         },
+        {
+            "model_name": "tiny-stories-1M",
+            "dataset_path": "roneneldan/TinyStories",
+            "hook_name": "blocks..attn.hook_q",
+            "hook_layer": 1,
+            "d_in": 4,
+            "hook_head_index": 2,
+        },
     ],
     ids=[
         "tiny-stories-1M-resid-pre",
@@ -77,6 +85,7 @@ TRAINER_EVAL_CONFIG = EvalConfig(
         "tiny-stories-1M-resid-pre-pretokenized",
         "tiny-stories-1M-hook-z",
         "tiny-stories-1M-hook-q",
+        "tiny-stories-1M-hook-q-head-index-2",
     ],
 )
 def cfg(request: pytest.FixtureRequest):
