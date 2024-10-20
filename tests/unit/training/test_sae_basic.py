@@ -70,6 +70,21 @@ def test_sae_init(cfg: LanguageModelSAERunnerConfig):
     assert sae.b_dec.shape == (cfg.d_in,)
 
 
+@pytest.mark.parametrize("architecture", ["standard", "gated", "jumprelu"])
+def test_sae_encode_with_different_architectures(architecture: str) -> None:
+    cfg = build_sae_cfg(architecture=architecture)
+    sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
+    assert isinstance(cfg.d_sae, int)
+
+    activations = torch.randn(10, 4, cfg.d_in, device=cfg.device)
+    latents = torch.randint(low=0, high=cfg.d_sae, size=(10,))
+    feature_activations = sae.encode(activations)
+    feature_activations_slice = sae.encode(activations, latents=latents)
+    torch.testing.assert_close(
+        feature_activations[..., latents], feature_activations_slice
+    )
+
+
 def test_sae_fold_w_dec_norm(cfg: LanguageModelSAERunnerConfig):
     sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
     sae.turn_off_forward_pass_hook_z_reshaping()  # hook z reshaping not needed here.
@@ -106,7 +121,6 @@ def test_sae_fold_w_dec_norm(cfg: LanguageModelSAERunnerConfig):
 
 
 def test_sae_fold_norm_scaling_factor(cfg: LanguageModelSAERunnerConfig):
-
     norm_scaling_factor = 3.0
 
     sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())

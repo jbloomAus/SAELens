@@ -67,7 +67,6 @@ class SAEConfig:
 
     @classmethod
     def from_dict(cls, config_dict: dict[str, Any]) -> "SAEConfig":
-
         # rename dict:
         rename_dict = {  # old : new
             "hook_point": "hook_name",
@@ -155,17 +154,8 @@ class SAE(HookedRootModule):
         self.device = torch.device(cfg.device)
         self.use_error_term = use_error_term
 
-        if self.cfg.architecture == "standard":
-            self.initialize_weights_basic()
-            self.encode = self.encode_standard
-        elif self.cfg.architecture == "gated":
-            self.initialize_weights_gated()
-            self.encode = self.encode_gated
-        elif self.cfg.architecture == "jumprelu":
-            self.initialize_weights_jumprelu()
-            self.encode = self.encode_jumprelu
-        else:
-            raise (ValueError)
+        if self.cfg.architecture not in ["standard", "gated", "jumprelu"]:
+            raise ValueError(f"Architecture {self.cfg.architecture} not supported")
 
         # handle presence / absence of scaling factor.
         if self.cfg.finetuning_scaling_factor:
@@ -196,7 +186,6 @@ class SAE(HookedRootModule):
 
         # handle run time activation normalization if needed:
         if self.cfg.normalize_activations == "constant_norm_rescale":
-
             #  we need to scale the norm of the input and store the scaling factor
             def run_time_activation_norm_fn_in(x: torch.Tensor) -> torch.Tensor:
                 self.x_norm_coeff = (self.cfg.d_in**0.5) / x.norm(dim=-1, keepdim=True)
@@ -212,7 +201,6 @@ class SAE(HookedRootModule):
             self.run_time_activation_norm_fn_out = run_time_activation_norm_fn_out
 
         elif self.cfg.normalize_activations == "layer_norm":
-
             #  we need to scale the norm of the input and store the scaling factor
             def run_time_activation_ln_in(
                 x: torch.Tensor, eps: float = 1e-5
@@ -236,8 +224,17 @@ class SAE(HookedRootModule):
 
         self.setup()  # Required for `HookedRootModule`s
 
-    def initialize_weights_basic(self):
+    def initialize_weights(self):
+        if self.cfg.architecture == "standard":
+            self.initialize_weights_basic()
+        elif self.cfg.architecture == "gated":
+            self.initialize_weights_gated()
+        elif self.cfg.architecture == "jumprelu":
+            self.initialize_weights_jumprelu()
+        else:
+            raise (ValueError)
 
+    def initialize_weights_basic(self):
         # no config changes encoder bias init for now.
         self.b_enc = nn.Parameter(
             torch.zeros(self.cfg.d_sae, dtype=self.dtype, device=self.device)
@@ -491,9 +488,39 @@ class SAE(HookedRootModule):
 
         return self.hook_sae_output(sae_out)
 
+    def encode(
+        self, x: torch.Tensor, latents: torch.Tensor | None = None
+    ) -> torch.Tensor:
+        """
+        Calculate SAE latents from inputs. Includes optional `latents` argument to only calculate a subset. Note that
+        this won't make sense for topk SAEs, because we need to compute all hidden values to apply the topk masking.
+        """
+        if self.cfg.activation_fn_str == "topk":
+            assert (
+                latents is None
+            ), "Computing a slice of SAE hidden values doesn't make sense in topk SAEs."
+
+        return {
+            "standard": self.encode_standard,
+            "gated": self.encode_gated,
+            "jumprelu": self.encode_jumprelu,
+        }[self.cfg.architecture](x, latents)
+
     def encode_gated(
-        self, x: Float[torch.Tensor, "... d_in"]
+        self,
+        x: Float[torch.Tensor, "... d_in"],
+        latents: torch.Tensor | None = None,
     ) -> Float[torch.Tensor, "... d_sae"]:
+        """
+        Computes the latent values of the Sparse Autoencoder (SAE) using a gated architecture. The activation values are
+        computed as the product of the masking term & the post-activation function magnitude term:
+
+            1[(x - b_dec) @ W_gate + b_gate > 0] * activation_fn((x - b_dec) @ W_enc + b_enc)
+
+        The `latents` argument allows for the computation of a specific subset of the hidden values. If `latents` is not
+        provided, all latent values will be computed.
+        """
+        latents_tensor = torch.arange(self.cfg.d_sae) if latents is None else latents
 
         x = x.to(self.dtype)
         x = self.reshape_fn_in(x)
@@ -502,12 +529,15 @@ class SAE(HookedRootModule):
         sae_in = x - self.b_dec * self.cfg.apply_b_dec_to_input
 
         # Gating path
-        gating_pre_activation = sae_in @ self.W_enc + self.b_gate
+        gating_pre_activation = (
+            sae_in @ self.W_enc[:, latents_tensor] + self.b_gate[latents_tensor]
+        )
         active_features = (gating_pre_activation > 0).to(self.dtype)
 
         # Magnitude path with weight sharing
         magnitude_pre_activation = self.hook_sae_acts_pre(
-            sae_in @ (self.W_enc * self.r_mag.exp()) + self.b_mag
+            sae_in @ (self.W_enc[:, latents_tensor] * self.r_mag[latents_tensor].exp())
+            + self.b_mag[latents_tensor]
         )
         feature_magnitudes = self.activation_fn(magnitude_pre_activation)
 
@@ -516,11 +546,20 @@ class SAE(HookedRootModule):
         return feature_acts
 
     def encode_jumprelu(
-        self, x: Float[torch.Tensor, "... d_in"]
+        self,
+        x: Float[torch.Tensor, "... d_in"],
+        latents: torch.Tensor | None = None,
     ) -> Float[torch.Tensor, "... d_sae"]:
         """
-        Calculate SAE features from inputs
+        Computes the latent values of the Sparse Autoencoder (SAE) using a gated architecture. The activation values are
+        computed as:
+
+            activation_fn((x - b_dec) @ W_enc + b_enc) * 1[(x - b_dec) @ W_enc + b_enc > threshold]
+
+        The `latents` argument allows for the computation of a specific subset of the hidden values. If `latents` is not
+        provided, all latent values will be computed.
         """
+        latents_tensor = torch.arange(self.cfg.d_sae) if latents is None else latents
 
         # move x to correct dtype
         x = x.to(self.dtype)
@@ -535,20 +574,32 @@ class SAE(HookedRootModule):
         sae_in = self.hook_sae_input(x - (self.b_dec * self.cfg.apply_b_dec_to_input))
 
         # "... d_in, d_in d_sae -> ... d_sae",
-        hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
+        hidden_pre = self.hook_sae_acts_pre(
+            sae_in @ self.W_enc[:, latents_tensor] + self.b_enc[latents_tensor]
+        )
 
         feature_acts = self.hook_sae_acts_post(
-            self.activation_fn(hidden_pre) * (hidden_pre > self.threshold)
+            self.activation_fn(hidden_pre)
+            * (hidden_pre > self.threshold[latents_tensor])
         )
 
         return feature_acts
 
     def encode_standard(
-        self, x: Float[torch.Tensor, "... d_in"]
+        self,
+        x: Float[torch.Tensor, "... d_in"],
+        latents: torch.Tensor | None = None,
     ) -> Float[torch.Tensor, "... d_sae"]:
         """
-        Calculate SAE features from inputs
+        Computes the latent values of the Sparse Autoencoder (SAE) using a gated architecture. The activation values are
+        computed as:
+
+            activation_fn((x - b_dec) @ W_enc + b_enc)
+
+        The `latents` argument allows for the computation of a specific subset of the hidden values. If `latents` is not
+        provided, all latent values will be computed.
         """
+        latents_tensor = torch.arange(self.cfg.d_sae) if latents is None else latents
 
         x = x.to(self.dtype)
         x = self.reshape_fn_in(x)
@@ -559,7 +610,9 @@ class SAE(HookedRootModule):
         sae_in = x - (self.b_dec * self.cfg.apply_b_dec_to_input)
 
         # "... d_in, d_in d_sae -> ... d_sae",
-        hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
+        hidden_pre = self.hook_sae_acts_pre(
+            sae_in @ self.W_enc[:, latents_tensor] + self.b_enc[latents_tensor]
+        )
         feature_acts = self.hook_sae_acts_post(self.activation_fn(hidden_pre))
 
         return feature_acts
@@ -606,7 +659,6 @@ class SAE(HookedRootModule):
         self.cfg.normalize_activations = "none"
 
     def save_model(self, path: str, sparsity: Optional[torch.Tensor] = None):
-
         if not os.path.exists(path):
             os.mkdir(path)
 
@@ -627,7 +679,6 @@ class SAE(HookedRootModule):
     def load_from_pretrained(
         cls, path: str, device: str = "cpu", dtype: str | None = None
     ) -> "SAE":
-
         # get the config
         config_path = os.path.join(path, SAE_CFG_PATH)
         with open(config_path, "r") as f:
@@ -751,7 +802,6 @@ class SAE(HookedRootModule):
         return cls(SAEConfig.from_dict(config_dict))
 
     def turn_on_forward_pass_hook_z_reshaping(self):
-
         assert self.cfg.hook_name.endswith(
             "_z"
         ), "This method should only be called for hook_z SAEs."
