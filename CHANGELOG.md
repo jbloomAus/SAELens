@@ -2,6 +2,91 @@
 
 
 
+## v4.0.1 (2024-10-20)
+
+### Chore
+
+* chore: reduce test space usage in CI (#336)
+
+* chore: reduce test space usage in CI
+
+* busting caches
+
+* try reducing sizes further
+
+* try using smaller datasets where possible
+
+* tokenizing a super tiny dataset for tests ([`36e1d86`](https://github.com/jbloomAus/SAELens/commit/36e1d8662329981772b5b205f1a811b35e7f1d50))
+
+### Fix
+
+* fix: changes dtype default value in read_sae_from_disk() (#340) ([`5820585`](https://github.com/jbloomAus/SAELens/commit/5820585c33d880391fbdeb3faa69771889663f25))
+
+### Unknown
+
+* Merge pull request #339 from jbloomAus/fix/saeb-bench-model-names
+
+updated SAE Bench pythia model names (and loader device cfg) ([`2057455`](https://github.com/jbloomAus/SAELens/commit/20574550118726d9e1c54f7ae1204e5e0f9daa9e))
+
+* Merge pull request #324 from jbloomAus/improving-evals
+
+chore: Misc basic evals improvements (eg: consistent activation heuristic, cli args) ([`10f4773`](https://github.com/jbloomAus/SAELens/commit/10f4773bae2f18c37af72b3192403903e9425caa))
+
+* Updated tests to be correct ([`d1b4f5d`](https://github.com/jbloomAus/SAELens/commit/d1b4f5d973e4c6715e404bf3e084102ff94fe24a))
+
+* Organized basic eval metrics and eliminated NaNs ([`f6be1a6`](https://github.com/jbloomAus/SAELens/commit/f6be1a67725be22b64ad1b926e0c21a0556d0348))
+
+* format with updated env ([`97622b5`](https://github.com/jbloomAus/SAELens/commit/97622b5e335fd7e866e908fc247ca1ec3c4c2bf8))
+
+* format ([`31b2e9d`](https://github.com/jbloomAus/SAELens/commit/31b2e9df67d9c7f769cb99a592a1c02595421e52))
+
+* fix other test from rebase ([`530a426`](https://github.com/jbloomAus/SAELens/commit/530a426424c0eddf6bbd961808753de05ba26b69))
+
+* fix tests ([`92019ac`](https://github.com/jbloomAus/SAELens/commit/92019acc03356c3e8435cbb2ad59242b06c648cf))
+
+* set type to int for ctx lens ([`e4b5be6`](https://github.com/jbloomAus/SAELens/commit/e4b5be6464e2959411e31611c87d72215d5a782a))
+
+* update evaluating SAEs tutorial ([`d2bebbc`](https://github.com/jbloomAus/SAELens/commit/d2bebbc589482d782ddc11a11c9698a7bd1d29d1))
+
+* moving SAE to correct device ([`b881b05`](https://github.com/jbloomAus/SAELens/commit/b881b05194e88ab831eafb71a4d75947c1711ddf))
+
+* Added dataset_trust_remote_code arg ([`53dbde6`](https://github.com/jbloomAus/SAELens/commit/53dbde6ee1520494e12009bb1a39fe603d1a55de))
+
+* Added trust_remote_code arg ([`b738924`](https://github.com/jbloomAus/SAELens/commit/b738924c2122ce6abece6ac584c0733af4e84a6e))
+
+* Updated eval config explanations ([`d439927`](https://github.com/jbloomAus/SAELens/commit/d439927db290c1a4dc8c84b9fa9c36db559e997a))
+
+* Added updated plots for feature metrics ([`7a4ce2d`](https://github.com/jbloomAus/SAELens/commit/7a4ce2de34d351e9beaee3a73edaad4846dcfe1c))
+
+* Initial draft of evals tutorial ([`42309c8`](https://github.com/jbloomAus/SAELens/commit/42309c872173666518eb89c82d4313f43cc2d625))
+
+* first pass evals notebook ([`8005ff9`](https://github.com/jbloomAus/SAELens/commit/8005ff91e6d722b412cd53505c956991a362e6d2))
+
+* add verbose mode ([`15f1b59`](https://github.com/jbloomAus/SAELens/commit/15f1b59ec6506eeea7d0c5695681aaa7fe2b6244))
+
+* add more cli args ([`bc17fa5`](https://github.com/jbloomAus/SAELens/commit/bc17fa502c67fd94609ecdafd46bdd048e93db3a))
+
+* fix featurewise weight based metric type ([`d504a96`](https://github.com/jbloomAus/SAELens/commit/d504a963e37afe4d3f50fcb0daf9227027b3a97f))
+
+* add featurewise weight based metrics ([`ed365c4`](https://github.com/jbloomAus/SAELens/commit/ed365c4889dd4e0ed39eff9e386472c4edbe8bc7))
+
+* fix during training eval config ([`333d71c`](https://github.com/jbloomAus/SAELens/commit/333d71cb7b187a21fb1b6c5fd384c8a6dbd72aca))
+
+* add feature density histogram to evals + consistent activation heuristic ([`9341398`](https://github.com/jbloomAus/SAELens/commit/9341398f2e16406acb166e09489909b474b57d17))
+
+* keep track of tokens used seperately ([`c168c2b`](https://github.com/jbloomAus/SAELens/commit/c168c2b88af9102192848869a2b7fc879313cf5d))
+
+* use evals code in CI ([`87601ba`](https://github.com/jbloomAus/SAELens/commit/87601ba7ee0b0e9a0626b349551401cda34e3daa))
+
+* add cossim and relative reconstruction bias ([`c028072`](https://github.com/jbloomAus/SAELens/commit/c028072c2d6f0321f73950142e4cf3657c1d7d5d))
+
+* add sae_lens version ([`a3123c8`](https://github.com/jbloomAus/SAELens/commit/a3123c84d767bf78f3d49d8d0ae16d2e47ae5989))
+
+* remove redundant string in keys ([`a2dd2e0`](https://github.com/jbloomAus/SAELens/commit/a2dd2e029138cf22fdebb8bd20926cce9b1f3a89))
+
+* updated SAE Bench pythia model names (and loader device cfg) ([`2078eac`](https://github.com/jbloomAus/SAELens/commit/2078eaca0811356ecef1e84e5d9446032dcd59f1))
+
+
 ## v4.0.0 (2024-10-15)
 
 ### Breaking
