@@ -12,7 +12,7 @@ import torch
 from jaxtyping import Float
 from torch import nn
 
-from sae_lens.config import DTYPE_MAP, LanguageModelSAERunnerConfig
+from sae_lens.config import LanguageModelSAERunnerConfig
 from sae_lens.sae import SAE, SAEConfig
 from sae_lens.toolkit.pretrained_sae_loaders import (
     handle_config_defaulting,
@@ -436,7 +436,6 @@ class TrainingSAE(SAE):
             cfg_dict=cfg_dict,
             weight_path=weight_path,
             device=device,
-            dtype=DTYPE_MAP[cfg_dict["dtype"]],
         )
         sae_cfg = TrainingSAEConfig.from_dict(cfg_dict)
 

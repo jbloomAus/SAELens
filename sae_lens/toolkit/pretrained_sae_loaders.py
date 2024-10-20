@@ -9,6 +9,7 @@ from huggingface_hub import hf_hub_download
 from huggingface_hub.utils import EntryNotFoundError
 from safetensors import safe_open
 
+from sae_lens.config import DTYPE_MAP
 from sae_lens.toolkit.pretrained_saes_directory import (
     PretrainedSAELookup,
     get_pretrained_saes_directory,
@@ -207,11 +208,13 @@ def read_sae_from_disk(
     cfg_dict: dict[str, Any],
     weight_path: str,
     device: str = "cpu",
-    dtype: torch.dtype = torch.float32,
+    dtype: Optional[torch.dtype] = None,
 ) -> tuple[dict[str, Any], dict[str, torch.Tensor]]:
     """
     Given a loaded dictionary and a path to a weight file, load the weights and return the state_dict.
     """
+    if dtype is None:
+        dtype = DTYPE_MAP[cfg_dict["dtype"]]
 
     state_dict = {}
     with safe_open(weight_path, framework="pt", device=device) as f:  # type: ignore
@@ -515,14 +518,6 @@ def dictionary_learning_sae_loader_1(
         state_dict["r_mag"] = encoder["r_mag"]
 
     return cfg_dict, state_dict, None
-
-
-# Helper function to get dtype from string
-DTYPE_MAP = {
-    "float32": torch.float32,
-    "float16": torch.float16,
-    "bfloat16": torch.bfloat16,
-}
 
 
 NAMED_PRETRAINED_SAE_LOADERS: dict[str, PretrainedSaeLoader] = {
