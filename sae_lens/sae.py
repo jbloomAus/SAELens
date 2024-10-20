@@ -5,10 +5,10 @@ https://github.com/ArthurConmy/sae/blob/main/sae/model.py
 import json
 import os
 import warnings
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Any, Callable, Literal, Optional, Tuple, TypeVar, Union, overload
 
-T = TypeVar("T", bound="SAE")
 import einops
 import torch
 from jaxtyping import Float
@@ -31,6 +31,8 @@ from sae_lens.toolkit.pretrained_saes_directory import (
 SPARSITY_PATH = "sparsity.safetensors"
 SAE_WEIGHTS_PATH = "sae_weights.safetensors"
 SAE_CFG_PATH = "cfg.json"
+
+T = TypeVar("T", bound="SAE")
 
 
 @dataclass
@@ -165,7 +167,7 @@ class SAE(HookedRootModule):
             self.initialize_weights_jumprelu()
             self.encode = self.encode_jumprelu
         else:
-            raise (ValueError)
+            raise ValueError(f"Invalid architecture: {self.cfg.architecture}")
 
         # handle presence / absence of scaling factor.
         if self.cfg.finetuning_scaling_factor:
@@ -397,109 +399,23 @@ class SAE(HookedRootModule):
         sae_out = self.decode(feature_acts)
 
         # TEMP
-        if self.use_error_term and self.cfg.architecture == "standard":
+        if self.use_error_term:
             with torch.no_grad():
                 # Recompute everything without hooks to get true error term
                 # Otherwise, the output with error term will always equal input, even for causal interventions that affect x_reconstruct
                 # This is in a no_grad context to detach the error, so we can compute SAE feature gradients (eg for attribution patching). See A.3 in https://arxiv.org/pdf/2403.19647.pdf for more detail
                 # NOTE: we can't just use `sae_error = input - x_reconstruct.detach()` or something simpler, since this would mean intervening on features would mean ablating features still results in perfect reconstruction.
-
-                # move x to correct dtype
-                x = x.to(self.dtype)
-
-                # handle hook z reshaping if needed.
-                sae_in = self.reshape_fn_in(x)  # type: ignore
-
-                # handle run time activation normalization if needed
-                sae_in = self.run_time_activation_norm_fn_in(sae_in)
-
-                # apply b_dec_to_input if using that method.
-                sae_in_cent = sae_in - (self.b_dec * self.cfg.apply_b_dec_to_input)
-
-                # "... d_in, d_in d_sae -> ... d_sae",
-                hidden_pre = sae_in_cent @ self.W_enc + self.b_enc
-                feature_acts = self.activation_fn(hidden_pre)
-                x_reconstruct_clean = self.reshape_fn_out(
-                    self.apply_finetuning_scaling_factor(feature_acts) @ self.W_dec
-                    + self.b_dec,
-                    d_head=self.d_head,
-                )
-
-                sae_out = self.run_time_activation_norm_fn_out(sae_out)
+                with _disable_hooks(self):
+                    feature_acts_clean = self.encode(x)
+                    x_reconstruct_clean = self.decode(feature_acts_clean)
                 sae_error = self.hook_sae_error(x - x_reconstruct_clean)
-            return self.hook_sae_output(sae_out + sae_error)
-
-        # TODO: Add tests
-        elif self.use_error_term and self.cfg.architecture == "gated":
-            with torch.no_grad():
-                x = x.to(self.dtype)
-                sae_in = self.reshape_fn_in(x)  # type: ignore
-
-                # handle run time activation normalization if needed
-                sae_in = self.run_time_activation_norm_fn_in(sae_in)
-
-                # apply b_dec_to_input if using that method.
-                sae_in = sae_in - (self.b_dec * self.cfg.apply_b_dec_to_input)
-
-                gating_pre_activation = sae_in @ self.W_enc + self.b_gate
-                active_features = (gating_pre_activation > 0).float()
-
-                # Magnitude path with weight sharing
-                magnitude_pre_activation = self.hook_sae_acts_pre(
-                    sae_in @ (self.W_enc * self.r_mag.exp()) + self.b_mag
-                )
-                feature_magnitudes = self.activation_fn(magnitude_pre_activation)
-                feature_acts_clean = self.hook_sae_acts_post(
-                    active_features * feature_magnitudes
-                )
-                x_reconstruct_clean = self.reshape_fn_out(
-                    self.apply_finetuning_scaling_factor(feature_acts_clean)
-                    @ self.W_dec
-                    + self.b_dec,
-                    d_head=self.d_head,
-                )
-
-                sae_error = self.hook_sae_error(x - x_reconstruct_clean)
-            return self.hook_sae_output(sae_out + sae_error)
-
-        # TODO: Add tests
-        elif self.use_error_term and self.cfg.architecture == "jumprelu":
-            with torch.no_grad():
-                x = x.to(self.dtype)
-                sae_in = self.reshape_fn_in(x)  # type: ignore
-
-                # handle run time activation normalization if needed
-                sae_in = self.run_time_activation_norm_fn_in(sae_in)
-
-                # apply b_dec_to_input if using that method.
-                sae_in = sae_in - (self.b_dec * self.cfg.apply_b_dec_to_input)
-
-                # "... d_in, d_in d_sae -> ... d_sae",
-                hidden_pre = sae_in @ self.W_enc + self.b_enc
-                feature_acts = self.hook_sae_acts_post(
-                    self.activation_fn(hidden_pre) * (hidden_pre > self.threshold)
-                )
-                x_reconstruct_clean = self.reshape_fn_out(
-                    self.apply_finetuning_scaling_factor(feature_acts) @ self.W_dec
-                    + self.b_dec,
-                    d_head=self.d_head,  # TODO(conmy): d_head?! Eh?
-                )
-                sae_error = self.hook_sae_error(x - x_reconstruct_clean)
-            return self.hook_sae_output(sae_out + sae_error)
-        elif self.use_error_term:
-            raise ValueError(f"No error term implemented for {self.cfg.architecture=}")
-
+            sae_out = sae_out + sae_error
         return self.hook_sae_output(sae_out)
 
     def encode_gated(
         self, x: Float[torch.Tensor, "... d_in"]
     ) -> Float[torch.Tensor, "... d_sae"]:
-
-        x = x.to(self.dtype)
-        x = self.reshape_fn_in(x)
-        x = self.hook_sae_input(x)
-        x = self.run_time_activation_norm_fn_in(x)
-        sae_in = x - self.b_dec * self.cfg.apply_b_dec_to_input
+        sae_in = self.process_sae_in(x)
 
         # Gating path
         gating_pre_activation = sae_in @ self.W_enc + self.b_gate
@@ -521,18 +437,7 @@ class SAE(HookedRootModule):
         """
         Calculate SAE features from inputs
         """
-
-        # move x to correct dtype
-        x = x.to(self.dtype)
-
-        # handle hook z reshaping if needed.
-        x = self.reshape_fn_in(x)  # type: ignore
-
-        # handle run time activation normalization if needed
-        x = self.run_time_activation_norm_fn_in(x)
-
-        # apply b_dec_to_input if using that method.
-        sae_in = self.hook_sae_input(x - (self.b_dec * self.cfg.apply_b_dec_to_input))
+        sae_in = self.process_sae_in(x)
 
         # "... d_in, d_in d_sae -> ... d_sae",
         hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
@@ -549,20 +454,23 @@ class SAE(HookedRootModule):
         """
         Calculate SAE features from inputs
         """
-
-        x = x.to(self.dtype)
-        x = self.reshape_fn_in(x)
-        x = self.hook_sae_input(x)
-        x = self.run_time_activation_norm_fn_in(x)
-
-        # apply b_dec_to_input if using that method.
-        sae_in = x - (self.b_dec * self.cfg.apply_b_dec_to_input)
+        sae_in = self.process_sae_in(x)
 
         # "... d_in, d_in d_sae -> ... d_sae",
         hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
         feature_acts = self.hook_sae_acts_post(self.activation_fn(hidden_pre))
 
         return feature_acts
+
+    def process_sae_in(
+        self, sae_in: Float[torch.Tensor, "... d_in"]
+    ) -> Float[torch.Tensor, "... d_sae"]:
+        sae_in = sae_in.to(self.dtype)
+        sae_in = self.reshape_fn_in(sae_in)
+        sae_in = self.hook_sae_input(sae_in)
+        sae_in = self.run_time_activation_norm_fn_in(sae_in)
+        sae_in = sae_in - (self.b_dec * self.cfg.apply_b_dec_to_input)
+        return sae_in
 
     def decode(
         self, feature_acts: Float[torch.Tensor, "... d_sae"]
@@ -816,3 +724,20 @@ def get_activation_fn(
         return TopK(k, postact_fn)
     else:
         raise ValueError(f"Unknown activation function: {activation_fn}")
+
+
+_blank_hook = nn.Identity()
+
+
+@contextmanager
+def _disable_hooks(sae: SAE):
+    """
+    Temporarily disable hooks for the SAE. Swaps out all the hooks with a fake modules that does nothing.
+    """
+    try:
+        for hook_name in sae.hook_dict.keys():
+            setattr(sae, hook_name, _blank_hook)
+        yield
+    finally:
+        for hook_name, hook in sae.hook_dict.items():
+            setattr(sae, hook_name, hook)

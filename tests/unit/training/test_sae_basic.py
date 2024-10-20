@@ -4,9 +4,11 @@ from pathlib import Path
 
 import pytest
 import torch
+from torch import nn
+from transformer_lens.hook_points import HookPoint
 
 from sae_lens.config import LanguageModelSAERunnerConfig
-from sae_lens.sae import SAE
+from sae_lens.sae import SAE, _disable_hooks
 from tests.unit.helpers import build_sae_cfg
 
 
@@ -145,7 +147,7 @@ def test_sae_fold_norm_scaling_factor(cfg: LanguageModelSAERunnerConfig):
 
 
 def test_sae_save_and_load_from_pretrained(tmp_path: Path) -> None:
-    cfg = build_sae_cfg(device="cpu")
+    cfg = build_sae_cfg()
     model_path = str(tmp_path)
     sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
     sae_state_dict = sae.state_dict()
@@ -171,7 +173,7 @@ def test_sae_save_and_load_from_pretrained(tmp_path: Path) -> None:
 
 
 def test_sae_save_and_load_from_pretrained_gated(tmp_path: Path) -> None:
-    cfg = build_sae_cfg(architecture="gated", device="cpu")
+    cfg = build_sae_cfg(architecture="gated")
     model_path = str(tmp_path)
     sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
     sae_state_dict = sae.state_dict()
@@ -197,10 +199,7 @@ def test_sae_save_and_load_from_pretrained_gated(tmp_path: Path) -> None:
 
 
 def test_sae_save_and_load_from_pretrained_topk(tmp_path: Path) -> None:
-    cfg = build_sae_cfg(
-        activation_fn_kwargs={"k": 30},
-        device="cpu",
-    )
+    cfg = build_sae_cfg(activation_fn_kwargs={"k": 30})
     model_path = str(tmp_path)
     sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
     sae_state_dict = sae.state_dict()
@@ -226,10 +225,7 @@ def test_sae_save_and_load_from_pretrained_topk(tmp_path: Path) -> None:
 
 
 def test_sae_seqpos(tmp_path: Path) -> None:
-    cfg = build_sae_cfg(
-        seqpos_slice=(1, 3),
-        device="cpu",
-    )
+    cfg = build_sae_cfg(seqpos_slice=(1, 3))
     model_path = str(tmp_path)
     sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
 
@@ -246,7 +242,7 @@ def test_sae_seqpos(tmp_path: Path) -> None:
 # def test_sae_save_and_load_from_pretrained_lacks_scaling_factor(
 #     tmp_path: Path,
 # ) -> None:
-#     cfg = build_sae_cfg(device="cpu")
+#     cfg = build_sae_cfg()
 #     model_path = str(tmp_path)
 #     sparse_autoencoder = saeBase(**cfg.get_sae_base_parameters())
 #     sparse_autoencoder_state_dict = sparse_autoencoder.state_dict()
@@ -285,7 +281,7 @@ def test_sae_get_name_returns_correct_name_from_cfg_vals() -> None:
 
 
 def test_sae_move_between_devices() -> None:
-    cfg = build_sae_cfg(device="cpu")
+    cfg = build_sae_cfg()
     sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
 
     sae.to("meta")
@@ -295,9 +291,168 @@ def test_sae_move_between_devices() -> None:
 
 
 def test_sae_change_dtype() -> None:
-    cfg = build_sae_cfg(device="cpu", dtype="float64")
+    cfg = build_sae_cfg(dtype="float64")
     sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
 
     sae.to(dtype=torch.float16)
     assert sae.dtype == torch.float16
     assert sae.cfg.dtype == "torch.float16"
+
+
+def test_sae_jumprelu_initialization():
+    cfg = build_sae_cfg(architecture="jumprelu", device="cpu")
+    sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
+    assert isinstance(sae.W_enc, nn.Parameter)
+    assert isinstance(sae.W_dec, nn.Parameter)
+    assert isinstance(sae.b_enc, nn.Parameter)
+    assert isinstance(sae.b_dec, nn.Parameter)
+    assert isinstance(sae.threshold, nn.Parameter)
+
+    assert sae.W_enc.shape == (cfg.d_in, cfg.d_sae)
+    assert sae.W_dec.shape == (cfg.d_sae, cfg.d_in)
+    assert sae.b_enc.shape == (cfg.d_sae,)
+    assert sae.b_dec.shape == (cfg.d_in,)
+    assert sae.threshold.shape == (cfg.d_sae,)
+
+    # encoder/decoder should be initialized, everything else should be 0s
+    assert not torch.allclose(sae.W_enc, torch.zeros_like(sae.W_enc))
+    assert not torch.allclose(sae.W_dec, torch.zeros_like(sae.W_dec))
+    assert torch.allclose(sae.b_dec, torch.zeros_like(sae.b_dec))
+    assert torch.allclose(sae.b_enc, torch.zeros_like(sae.b_enc))
+    assert torch.allclose(sae.threshold, torch.zeros_like(sae.threshold))
+
+
+@pytest.mark.parametrize("use_error_term", [True, False])
+def test_sae_jumprelu_forward(use_error_term: bool):
+    cfg = build_sae_cfg(architecture="jumprelu", d_in=2, d_sae=3)
+    sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
+    sae.use_error_term = use_error_term
+    sae.threshold.data = torch.tensor([1.0, 0.5, 0.25])
+    sae.W_enc.data = torch.ones_like(sae.W_enc.data)
+    sae.W_dec.data = torch.ones_like(sae.W_dec.data)
+    sae.b_enc.data = torch.zeros_like(sae.b_enc.data)
+    sae.b_dec.data = torch.zeros_like(sae.b_dec.data)
+
+    sae_in = 0.3 * torch.ones(1, 2)
+    expected_recons = torch.tensor([[1.2, 1.2]])
+    # if we use error term, we should always get the same output as what we put in
+    expected_output = sae_in if use_error_term else expected_recons
+    out, cache = sae.run_with_cache(sae_in)
+    assert torch.allclose(out, expected_output)
+    assert torch.allclose(cache["hook_sae_input"], sae_in)
+    assert torch.allclose(cache["hook_sae_output"], out)
+    assert torch.allclose(cache["hook_sae_recons"], expected_recons)
+    if use_error_term:
+        assert torch.allclose(
+            cache["hook_sae_error"], expected_output - expected_recons
+        )
+
+    assert torch.allclose(cache["hook_sae_acts_pre"], torch.tensor([[0.6, 0.6, 0.6]]))
+    # the threshold of 1.0 should block the first latent from firing
+    assert torch.allclose(cache["hook_sae_acts_post"], torch.tensor([[0.0, 0.6, 0.6]]))
+
+
+def test_sae_gated_initialization():
+    cfg = build_sae_cfg(architecture="gated")
+    sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
+    assert isinstance(sae.W_enc, nn.Parameter)
+    assert isinstance(sae.W_dec, nn.Parameter)
+    assert isinstance(sae.b_dec, nn.Parameter)
+    assert isinstance(sae.b_gate, nn.Parameter)
+    assert isinstance(sae.r_mag, nn.Parameter)
+    assert isinstance(sae.b_mag, nn.Parameter)
+
+    assert sae.W_enc.shape == (cfg.d_in, cfg.d_sae)
+    assert sae.W_dec.shape == (cfg.d_sae, cfg.d_in)
+    assert sae.b_dec.shape == (cfg.d_in,)
+    assert sae.b_gate.shape == (cfg.d_sae,)
+    assert sae.r_mag.shape == (cfg.d_sae,)
+    assert sae.b_mag.shape == (cfg.d_sae,)
+
+    assert not torch.allclose(sae.W_enc, torch.zeros_like(sae.W_enc))
+    assert not torch.allclose(sae.W_dec, torch.zeros_like(sae.W_dec))
+    assert torch.allclose(sae.b_dec, torch.zeros_like(sae.b_dec))
+    assert torch.allclose(sae.b_gate, torch.zeros_like(sae.b_gate))
+    assert torch.allclose(sae.r_mag, torch.zeros_like(sae.r_mag))
+    assert torch.allclose(sae.b_mag, torch.zeros_like(sae.b_mag))
+
+
+@pytest.mark.parametrize("use_error_term", [True, False])
+def test_sae_gated_forward(use_error_term: bool):
+    cfg = build_sae_cfg(architecture="gated", d_in=2, d_sae=3)
+    sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
+    sae.use_error_term = use_error_term
+    sae.W_enc.data = torch.ones_like(sae.W_enc.data)
+    sae.W_dec.data = torch.ones_like(sae.W_dec.data)
+    sae.b_dec.data = torch.zeros_like(sae.b_dec.data)
+    sae.b_gate.data = torch.tensor([-2.0, 0.0, 1.0])
+    sae.r_mag.data = torch.tensor([1.0, 2.0, 3.0])
+    sae.b_mag.data = torch.tensor([1.0, 1.0, 1.0])
+
+    sae_in = torch.tensor([[0.3, 0.3]])
+
+    # expected gating pre acts: [0.6 - 2 = -1.4, 0.6, 0.6 + 1 = 1.6]
+    # so the first gate should be off
+    # mags should be [0.6 * exp(1), 0.6 * exp(2), 0.6 * exp(3)] + b_mag => [2.6310,  5.4334, 13.0513]
+
+    expected_recons = torch.tensor([[18.4848, 18.4848]])
+    # if we use error term, we should always get the same output as what we put in
+    expected_output = sae_in if use_error_term else expected_recons
+    out, cache = sae.run_with_cache(sae_in)
+
+    assert torch.allclose(out, expected_output, atol=1e-3)
+    assert torch.allclose(cache["hook_sae_input"], sae_in, atol=1e-3)
+    assert torch.allclose(cache["hook_sae_output"], out, atol=1e-3)
+    assert torch.allclose(cache["hook_sae_recons"], expected_recons, atol=1e-3)
+    assert torch.allclose(
+        cache["hook_sae_acts_pre"], torch.tensor([[2.6310, 5.4334, 13.0513]]), atol=1e-3
+    )
+    # the threshold of 1.0 should block the first latent from firing
+    assert torch.allclose(
+        cache["hook_sae_acts_post"],
+        torch.tensor([[0.0, 5.4334, 13.0513]]),
+        atol=1e-3,
+    )
+    if use_error_term:
+        assert torch.allclose(
+            cache["hook_sae_error"], expected_output - expected_recons
+        )
+
+
+def test_disable_hooks_temporarily_stops_hooks_from_running():
+    cfg = build_sae_cfg(d_in=2, d_sae=3)
+    sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
+    sae_in = torch.randn(10, cfg.d_in)
+
+    orig_out, orig_cache = sae.run_with_cache(sae_in)
+    with _disable_hooks(sae):
+        disabled_out, disabled_cache = sae.run_with_cache(sae_in)
+    subseq_out, subseq_cache = sae.run_with_cache(sae_in)
+
+    assert torch.allclose(orig_out, disabled_out)
+    assert torch.allclose(orig_out, subseq_out)
+    assert disabled_cache.keys() == set()
+    for key in orig_cache.keys():
+        assert torch.allclose(orig_cache[key], subseq_cache[key])
+
+
+@pytest.mark.parametrize("architecture", ["standard", "gated", "jumprelu"])
+def test_sae_forward_pass_works_with_error_term_and_hooks(architecture: str):
+    cfg = build_sae_cfg(architecture=architecture, d_in=32, d_sae=64)
+    sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
+    sae.use_error_term = True
+    sae_in = torch.randn(10, cfg.d_in)
+    original_out, original_cache = sae.run_with_cache(sae_in)
+
+    def ablate_hooked_sae(acts: torch.Tensor, hook: HookPoint):
+        acts[:, :] = 20
+        return acts
+
+    with sae.hooks(fwd_hooks=[("hook_sae_acts_post", ablate_hooked_sae)]):
+        ablated_out, ablated_cache = sae.run_with_cache(sae_in)
+
+    assert not torch.allclose(original_out, ablated_out, rtol=1e-2)
+    assert torch.all(ablated_cache["hook_sae_acts_post"] == 20)
+    assert torch.allclose(
+        original_cache["hook_sae_error"], ablated_cache["hook_sae_error"], rtol=1e-4
+    )
