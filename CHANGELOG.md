@@ -2,6 +2,19 @@
 
 
 
+## v4.0.4 (2024-10-22)
+
+### Fix
+
+* fix: np ids should contain model id ([`da5c622`](https://github.com/jbloomAus/SAELens/commit/da5c6224cd91027367cc3842be885a4f6ef5af78))
+
+### Unknown
+
+* Merge pull request #344 from jbloomAus/fix_np_ids_again
+
+fix: np ids should contain model id ([`88d9a0b`](https://github.com/jbloomAus/SAELens/commit/88d9a0baec99596f0fb346a26c257758c9187662))
+
+
 ## v4.0.3 (2024-10-22)
 
 ### Fix
