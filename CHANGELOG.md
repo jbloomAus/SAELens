@@ -2,6 +2,19 @@
 
 
 
+## v4.0.5 (2024-10-22)
+
+### Fix
+
+* fix: last NP id fix, hopefully ([`a470460`](https://github.com/jbloomAus/SAELens/commit/a47046055664ee7a42322c41e1067d286e475d9b))
+
+### Unknown
+
+* Merge pull request #345 from jbloomAus/last_np_id_fix
+
+fix: last NP id fix, hopefully ([`d5a7906`](https://github.com/jbloomAus/SAELens/commit/d5a7906a676d688c44ff71245c1f3f3ba8419b1a))
+
+
 ## v4.0.4 (2024-10-22)
 
 ### Fix
