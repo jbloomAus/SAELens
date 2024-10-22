@@ -2,6 +2,19 @@
 
 
 
+## v4.0.2 (2024-10-22)
+
+### Fix
+
+* fix: previous saebench yaml fixes were incomplete for pythia-70m-deduped ([`b0adf2d`](https://github.com/jbloomAus/SAELens/commit/b0adf2ddc39cd4ffd3bf9e4fa4eda8505e2ce17b))
+
+### Unknown
+
+* Merge pull request #341 from jbloomAus/fix_pythia70md_again
+
+fix: previous saebench yaml fixes were incomplete for pythia-70m-deduped ([`72e3ef4`](https://github.com/jbloomAus/SAELens/commit/72e3ef4488f517e0992ff2648cb270fd2c4454ee))
+
+
 ## v4.0.1 (2024-10-20)
 
 ### Chore
