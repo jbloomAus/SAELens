@@ -2,6 +2,25 @@
 
 
 
+## v4.0.3 (2024-10-22)
+
+### Fix
+
+* fix: fix duplicate np ids ([`bcaf802`](https://github.com/jbloomAus/SAELens/commit/bcaf80291dc4ef5247df5c1223ee53bb38085da6))
+
+* fix: yaml was missing some gemmascope np ids, update np id formats ([`3f43590`](https://github.com/jbloomAus/SAELens/commit/3f435903ff436ce93e78b444e8fd6bb63636ebf0))
+
+### Unknown
+
+* Merge pull request #343 from jbloomAus/fix_duplicate_np_ids
+
+fix: fix duplicate np ids ([`4060d07`](https://github.com/jbloomAus/SAELens/commit/4060d0705903f5eb6c991ae9601a986af7c9c48d))
+
+* Merge pull request #342 from jbloomAus/fix_yaml_missing_gemmascope_and_np_ids
+
+fix: yaml was missing some gemmascope np ids, update np id formats ([`db2fa5f`](https://github.com/jbloomAus/SAELens/commit/db2fa5fd0e462c48b25005a9b49010cc6a962cce))
+
+
 ## v4.0.2 (2024-10-22)
 
 ### Fix
