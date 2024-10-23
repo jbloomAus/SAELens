@@ -19,7 +19,6 @@ from sae_lens.toolkit.pretrained_saes_directory import (
 
 # loaders take in a release, sae_id, device, and whether to force download, and returns a tuple of config, state_dict, and log sparsity
 class PretrainedSaeLoader(Protocol):
-
     def __call__(
         self,
         release: str,
@@ -50,6 +49,7 @@ def sae_lens_loader(
     Get's SAEs from HF, loads them.
     """
     options = SAEConfigLoadOptions(
+        device=device,
         force_download=force_download,
     )
     cfg_dict = get_sae_config(release, sae_id=sae_id, options=options)
@@ -120,7 +120,6 @@ def get_sae_config_from_hf(
 
 
 def handle_config_defaulting(cfg_dict: dict[str, Any]) -> dict[str, Any]:
-
     # Set default values for backwards compatibility
     cfg_dict.setdefault("prepend_bos", True)
     cfg_dict.setdefault("dataset_trust_remote_code", True)
@@ -186,6 +185,7 @@ def connor_rob_hook_z_loader(
     cfg_overrides: Optional[dict[str, Any]] = None,
 ) -> tuple[dict[str, Any], dict[str, torch.Tensor], None]:
     options = SAEConfigLoadOptions(
+        device=device,
         force_download=force_download,
     )
     cfg_dict = get_sae_config(
@@ -344,6 +344,7 @@ def gemma_2_sae_loader(
     Custom loader for Gemma 2 SAEs.
     """
     options = SAEConfigLoadOptions(
+        device=device,
         d_sae_override=d_sae_override,
         layer_override=layer_override,
     )
@@ -485,6 +486,7 @@ def dictionary_learning_sae_loader_1(
     Suitable for SAEs from https://huggingface.co/canrager/lm_sae.
     """
     options = SAEConfigLoadOptions(
+        device=device,
         force_download=force_download,
     )
     cfg_dict = get_sae_config(release, sae_id=sae_id, options=options)
