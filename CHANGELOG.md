@@ -2,6 +2,23 @@
 
 
 
+## v4.0.6 (2024-10-23)
+
+### Chore
+
+* chore: Add tests for evals (#346)
+
+* add unit tests for untested functions
+
+* adds test to increase coverage
+
+* fixes typo ([`06594f9`](https://github.com/jbloomAus/SAELens/commit/06594f97cb56f9f013ae420c147db09300ef9be4))
+
+### Fix
+
+* fix: pass device through to SAEConfigLoadOptions properly (#347) ([`531b1c7`](https://github.com/jbloomAus/SAELens/commit/531b1c7cac6971a3a5e9178710e9b3773d415a00))
+
+
 ## v4.0.5 (2024-10-22)
 
 ### Fix
