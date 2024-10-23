@@ -214,14 +214,7 @@ class TrainingSAE(SAE):
     def encode_with_hidden_pre(
         self, x: Float[torch.Tensor, "... d_in"]
     ) -> tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
-
-        x = x.to(self.dtype)
-        x = self.reshape_fn_in(x)  # type: ignore
-        x = self.hook_sae_input(x)
-        x = self.run_time_activation_norm_fn_in(x)
-
-        # apply b_dec_to_input if using that method.
-        sae_in = x - (self.b_dec * self.cfg.apply_b_dec_to_input)
+        sae_in = self.process_sae_in(x)
 
         # "... d_in, d_in d_sae -> ... d_sae",
         hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
@@ -235,11 +228,7 @@ class TrainingSAE(SAE):
     def encode_with_hidden_pre_gated(
         self, x: Float[torch.Tensor, "... d_in"]
     ) -> tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
-
-        x = x.to(self.dtype)
-        x = self.reshape_fn_in(x)  # type: ignore
-        x = self.hook_sae_input(x)
-        x = self.run_time_activation_norm_fn_in(x)
+        sae_in = self.process_sae_in(x)
 
         # apply b_dec_to_input if using that method.
         sae_in = x - (self.b_dec * self.cfg.apply_b_dec_to_input)
