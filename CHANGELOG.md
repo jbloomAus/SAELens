@@ -2,6 +2,25 @@
 
 
 
+## v4.0.7 (2024-10-23)
+
+### Fix
+
+* fix: Test JumpReLU/Gated SAE and fix sae forward with error term (#328)
+
+* chore: adding tests a slight refactoring for SAE forward methods
+
+* refactoring forward methods using a helper to avoid firing hooks
+
+* rewording intermediate var
+
+* use process_sae_in helper in training sae encode
+
+* testing that sae.forward() with error term works with hooks
+
+* cleaning up more unneeded device=cpu in tests ([`ae345b6`](https://github.com/jbloomAus/SAELens/commit/ae345b642ceeeb87851af1ffa180979cc3670c9b))
+
+
 ## v4.0.6 (2024-10-23)
 
 ### Chore
