@@ -2,6 +2,19 @@
 
 
 
+## v4.0.9 (2024-10-24)
+
+### Fix
+
+* fix: typo in layer 12 YAML ([`d634c8b`](https://github.com/jbloomAus/SAELens/commit/d634c8b2e8665bc3156c46fc8b1b439e26c289c9))
+
+### Unknown
+
+* Merge pull request #349 from jbloomAus/np_id_fix_2
+
+fix: use the correct layer for new gemma scope SAE sparsities ([`4c32de0`](https://github.com/jbloomAus/SAELens/commit/4c32de0de3efe9f35007df00c6b5aad102552150))
+
+
 ## v4.0.8 (2024-10-24)
 
 ### Fix
