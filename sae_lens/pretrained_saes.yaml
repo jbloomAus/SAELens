@@ -1437,19 +1437,19 @@ gemma-scope-2b-pt-res:
     l0: 70
   - id: layer_12/width_65k/average_l0_141
     path: layer_12/width_65k/average_l0_141
-    neuronpedia: gemma-2-2b/12-gemmascope-res-16k__l0-141
+    neuronpedia: gemma-2-2b/12-gemmascope-res-65k__l0-141
     l0: 141
   - id: layer_12/width_65k/average_l0_21
     path: layer_12/width_65k/average_l0_21
-    neuronpedia: gemma-2-2b/12-gemmascope-res-16k__l0-21
+    neuronpedia: gemma-2-2b/12-gemmascope-res-65k__l0-21
     l0: 21
   - id: layer_12/width_65k/average_l0_297
     path: layer_12/width_65k/average_l0_297
-    neuronpedia: gemma-2-2b/12-gemmascope-res-16k__l0-297
+    neuronpedia: gemma-2-2b/12-gemmascope-res-65k__l0-297
     l0: 297
   - id: layer_12/width_65k/average_l0_38
     path: layer_12/width_65k/average_l0_38
-    neuronpedia: gemma-2-2b/12-gemmascope-res-16k__l0-38
+    neuronpedia: gemma-2-2b/12-gemmascope-res-65k__l0-38
     l0: 38
   - id: layer_12/width_65k/average_l0_72
     path: layer_12/width_65k/average_l0_72
