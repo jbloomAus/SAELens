@@ -2,6 +2,19 @@
 
 
 
+## v4.0.8 (2024-10-24)
+
+### Fix
+
+* fix: use the correct layer for new gemma scope SAE sparsities ([`a78b93e`](https://github.com/jbloomAus/SAELens/commit/a78b93e33ecfee5ff5e5b08cdf9076cdeabec573))
+
+### Unknown
+
+* Merge pull request #348 from jbloomAus/np_id_fix
+
+fix: use the correct layer for new gemma scope SAE sparsities ([`1f6823a`](https://github.com/jbloomAus/SAELens/commit/1f6823a4881a26df18b7c23e2f3a29a8cc93bcf6))
+
+
 ## v4.0.7 (2024-10-23)
 
 ### Fix
