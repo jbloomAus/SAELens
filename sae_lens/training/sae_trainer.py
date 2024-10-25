@@ -287,9 +287,6 @@ class SAETrainer:
         sae_in = output.sae_in
         sae_out = output.sae_out
         feature_acts = output.feature_acts
-        mse_loss = output.mse_loss
-        l1_loss = output.l1_loss
-        ghost_grad_loss = output.ghost_grad_loss
         loss = output.loss.item()
 
         # metrics for currents acts
@@ -302,10 +299,6 @@ class SAETrainer:
 
         log_dict = {
             # losses
-            "losses/mse_loss": mse_loss,
-            "losses/l1_loss": l1_loss
-            / self.current_l1_coefficient,  # normalize by l1 coefficient
-            "losses/auxiliary_reconstruction_loss": output.auxiliary_reconstruction_loss,
             "losses/overall_loss": loss,
             # variance explained
             "metrics/explained_variance": explained_variance.mean().item(),
@@ -318,12 +311,14 @@ class SAETrainer:
             "details/current_l1_coefficient": self.current_l1_coefficient,
             "details/n_training_tokens": n_training_tokens,
         }
-        # Log ghost grad if we're using them
-        if self.cfg.use_ghost_grads:
-            if isinstance(ghost_grad_loss, torch.Tensor):
-                ghost_grad_loss = ghost_grad_loss.item()
-
-            log_dict["losses/ghost_grad_loss"] = ghost_grad_loss
+        for loss_name, loss_value in output.losses.items():
+            # special case for l1 loss, which we normalize by the l1 coefficient
+            if loss_name == "l1_loss":
+                log_dict[f"losses/{loss_name}"] = (
+                    loss_value / self.current_l1_coefficient
+                )
+            else:
+                log_dict[f"losses/{loss_name}"] = loss_value
 
         return log_dict
 
