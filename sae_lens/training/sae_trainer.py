@@ -312,13 +312,14 @@ class SAETrainer:
             "details/n_training_tokens": n_training_tokens,
         }
         for loss_name, loss_value in output.losses.items():
+            loss_item = _unwrap_item(loss_value)
             # special case for l1 loss, which we normalize by the l1 coefficient
             if loss_name == "l1_loss":
                 log_dict[f"losses/{loss_name}"] = (
-                    loss_value / self.current_l1_coefficient
+                    loss_item / self.current_l1_coefficient
                 )
             else:
-                log_dict[f"losses/{loss_name}"] = loss_value
+                log_dict[f"losses/{loss_name}"] = loss_item
 
         return log_dict
 
@@ -403,7 +404,7 @@ class SAETrainer:
 
         if self.n_training_steps % update_interval == 0:
             loss_strs = " | ".join(
-                f"{loss_name}: {loss_value:.5f}"
+                f"{loss_name}: {_unwrap_item(loss_value):.5f}"
                 for loss_name, loss_value in step_output.losses.items()
             )
             pbar.set_description(f"{self.n_training_steps}| {loss_strs}")
@@ -427,3 +428,7 @@ class SAETrainer:
                     param.requires_grad = False
 
             self.finetuning = True
+
+
+def _unwrap_item(item: float | torch.Tensor) -> float:
+    return item.item() if isinstance(item, torch.Tensor) else item

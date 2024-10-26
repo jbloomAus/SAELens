@@ -30,7 +30,7 @@ class TrainStepOutput:
     sae_out: torch.Tensor
     feature_acts: torch.Tensor
     loss: torch.Tensor  # we need to call backwards on this
-    losses: dict[str, float]
+    losses: dict[str, float | torch.Tensor]
 
 
 @dataclass(kw_only=True)
@@ -275,9 +275,7 @@ class TrainingSAE(SAE):
         per_item_mse_loss = self.mse_loss_fn(sae_out, sae_in)
         mse_loss = per_item_mse_loss.sum(dim=-1).mean()
 
-        losses: dict[str, float] = {
-            "mse_loss": mse_loss.item(),
-        }
+        losses: dict[str, float | torch.Tensor] = {"mse_loss": mse_loss}
 
         # GHOST GRADS
         if self.cfg.use_ghost_grads and self.training and dead_neuron_mask is not None:
@@ -291,7 +289,7 @@ class TrainingSAE(SAE):
                 hidden_pre=hidden_pre,
                 dead_neuron_mask=dead_neuron_mask,
             )
-            losses["ghost_grad_loss"] = ghost_grad_loss.item()
+            losses["ghost_grad_loss"] = ghost_grad_loss
         else:
             ghost_grad_loss = 0.0
 
@@ -316,7 +314,7 @@ class TrainingSAE(SAE):
             aux_reconstruction_loss = torch.sum(
                 (via_gate_reconstruction - sae_in) ** 2, dim=-1
             ).mean()
-            losses["auxiliary_reconstruction_loss"] = aux_reconstruction_loss.item()
+            losses["auxiliary_reconstruction_loss"] = aux_reconstruction_loss
             loss = mse_loss + l1_loss + aux_reconstruction_loss
         else:
             # default SAE sparsity loss
@@ -328,7 +326,7 @@ class TrainingSAE(SAE):
             l1_loss = (current_l1_coefficient * sparsity).mean()
             loss = mse_loss + l1_loss + ghost_grad_loss
 
-        losses["l1_loss"] = l1_loss.item()
+        losses["l1_loss"] = l1_loss
 
         return TrainStepOutput(
             sae_in=sae_in,
