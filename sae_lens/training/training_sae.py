@@ -36,7 +36,7 @@ class Step(torch.autograd.Function):
         return (x > threshold).to(x)
 
     @staticmethod
-    def backward(ctx: Any, grad_output: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]: # type: ignore[override]
+    def backward(ctx: Any, grad_output: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:  # type: ignore[override]
         x, threshold = ctx.saved_tensors
         grad_input = torch.zeros_like(x)  # No gradient for x
         grad_threshold = torch.sum(
@@ -55,16 +55,24 @@ class JumpReLU(torch.autograd.Function):
         return (x * (x > threshold)).to(x)
 
     @staticmethod
-    def backward(ctx: Any, grad_output: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]: # type: ignore[override]
+    def setup_context(
+        ctx: Any, inputs: tuple[torch.Tensor, torch.Tensor], output: torch.Tensor
+    ) -> None:
+        x, threshold = inputs
+        del output
+        ctx.save_for_backward(x, threshold)
+
+    @staticmethod
+    def backward(ctx: Any, grad_output: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:  # type: ignore[override]
         x, threshold = ctx.saved_tensors
-        grad_input = (x > threshold).to(x) * grad_output  # Gradient flows through x > threshold
-        grad_threshold = torch.sum(
+        x_grad = (x > threshold) * grad_output  # We don't apply STE to x input
+        threshold_grad = torch.sum(
             -(threshold / BANDWIDTH)
             * rectangle_pt((x - threshold) / BANDWIDTH)
             * grad_output,
             dim=0,
         )
-        return grad_input, grad_threshold
+        return x_grad, threshold_grad
 
 
 @dataclass

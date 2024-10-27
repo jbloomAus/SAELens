@@ -9,7 +9,7 @@ from transformer_lens import HookedTransformer
 from sae_lens.config import LanguageModelSAERunnerConfig
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.sae_trainer import SAETrainer
-from sae_lens.training.training_sae import TrainingSAE
+from sae_lens.training.training_sae import BANDWIDTH, JumpReLU, TrainingSAE
 from tests.unit.helpers import build_sae_cfg
 
 
@@ -388,3 +388,45 @@ def test_SparseAutoencoder_set_decoder_norm_to_unit_norm(
     assert torch.allclose(
         torch.norm(sae.W_dec, dim=1), torch.ones_like(sae.W_dec[:, 0])
     )
+
+
+def test_jumprelu_forward():
+    x = torch.tensor([-1.0, 0.5, 1.5, 2.5])
+    threshold = torch.tensor(1.0)
+    expected_output = torch.tensor([0.0, 0.0, 1.5, 2.5])
+    output = JumpReLU.apply(x, threshold)
+    assert torch.allclose(output, expected_output)  # type: ignore
+
+
+def test_jumprelu_backward():
+    x = torch.tensor([-1.0, 0.5, 1.5, 2.5], requires_grad=True)
+    threshold = torch.tensor(1.0)
+    output = JumpReLU.apply(x, threshold)
+    output.sum().backward()  # type: ignore
+    expected_grad_x = torch.tensor([0.0, 0.0, 1.0, 1.0])
+    assert torch.allclose(x.grad, expected_grad_x)  # type: ignore
+
+
+def test_jumprelu_backward_with_threshold_grad():
+    BANDWIDTH = 1e-3
+    threshold_value = 1.0
+    threshold = torch.tensor(threshold_value, requires_grad=True)
+
+    epsilon = 1e-8
+    x = torch.tensor(
+        [
+            threshold_value - BANDWIDTH / 2 + epsilon,
+            threshold_value + BANDWIDTH / 2 - epsilon,
+        ],
+        requires_grad=True,
+    )
+
+    output = JumpReLU.apply(x, threshold)
+    output.sum().backward()  # type: ignore
+
+    expected_grad_x = torch.tensor([0.0, 1.0])
+    expected_grad_threshold = torch.tensor(-2000.0)
+
+    atol = 1e-2
+    assert torch.allclose(x.grad, expected_grad_x, atol=atol), "Gradient w.r.t x does not match expected"  # type: ignore
+    assert torch.isclose(threshold.grad, expected_grad_threshold, atol=atol), "Gradient w.r.t threshold does not match expected"  # type: ignore
