@@ -31,27 +31,33 @@ def rectangle_pt(x: torch.Tensor) -> torch.Tensor:
 
 class Step(torch.autograd.Function):
     @staticmethod
-    def forward(ctx: Any, x: torch.Tensor, threshold: torch.Tensor) -> torch.Tensor:
-        ctx.save_for_backward(x, threshold)
+    def forward(x: torch.Tensor, threshold: torch.Tensor) -> torch.Tensor:
         return (x > threshold).to(x)
+
+    @staticmethod
+    def setup_context(
+        ctx: Any, inputs: tuple[torch.Tensor, torch.Tensor], output: torch.Tensor
+    ) -> None:
+        x, threshold = inputs
+        del output
+        ctx.save_for_backward(x, threshold)
 
     @staticmethod
     def backward(ctx: Any, grad_output: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:  # type: ignore[override]
         x, threshold = ctx.saved_tensors
-        grad_input = torch.zeros_like(x)  # No gradient for x
-        grad_threshold = torch.sum(
+        x_grad = 0.0 * grad_output  # We don't apply STE to x input
+        threshold_grad = torch.sum(
             -(1.0 / BANDWIDTH)
             * rectangle_pt((x - threshold) / BANDWIDTH)
             * grad_output,
             dim=0,
         )
-        return grad_input, grad_threshold
+        return x_grad, threshold_grad
 
 
 class JumpReLU(torch.autograd.Function):
     @staticmethod
-    def forward(ctx: Any, x: torch.Tensor, threshold: torch.Tensor) -> torch.Tensor:
-        ctx.save_for_backward(x, threshold)
+    def forward(x: torch.Tensor, threshold: torch.Tensor) -> torch.Tensor:
         return (x * (x > threshold)).to(x)
 
     @staticmethod
