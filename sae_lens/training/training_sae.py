@@ -8,6 +8,7 @@ from dataclasses import dataclass, fields
 from typing import Any, Optional
 
 import einops
+import numpy as np
 import torch
 from jaxtyping import Float
 from torch import nn
@@ -112,7 +113,7 @@ class TrainingSAEConfig(SAEConfig):
     decoder_heuristic_init: bool = False
     init_encoder_as_decoder_transpose: bool = False
     scale_sparsity_penalty_by_decoder_norm: bool = False
-    sparsity_coefficient: float = 1e-4
+    initial_threshold: float = 0.5
 
     @classmethod
     def from_sae_runner_config(
@@ -153,6 +154,7 @@ class TrainingSAEConfig(SAEConfig):
             normalize_activations=cfg.normalize_activations,
             dataset_trust_remote_code=cfg.dataset_trust_remote_code,
             model_from_pretrained_kwargs=cfg.model_from_pretrained_kwargs,
+            initial_threshold=cfg.initial_threshold,
         )
 
     @classmethod
@@ -236,20 +238,20 @@ class TrainingSAE(SAE):
         super().__init__(base_sae_cfg)
         self.cfg = cfg  # type: ignore
 
-        if self.cfg.architecture == "jumprelu":
-            self.log_threshold: torch.nn.Parameter = nn.Parameter(
-                torch.log(torch.tensor(1.0, dtype=self.dtype, device=self.device))
+        if cfg.architecture == "standard":
+            self.encode_with_hidden_pre_fn = self.encode_with_hidden_pre
+        elif cfg.architecture == "gated":
+            self.encode_with_hidden_pre_fn = self.encode_with_hidden_pre_gated
+        elif cfg.architecture == "jumprelu":
+            self.encode_with_hidden_pre_fn = self.encode_with_hidden_pre_jumprelu
+            initial_threshold = cfg.initial_threshold
+            self.log_threshold = nn.Parameter(
+                torch.tensor(
+                    np.log(initial_threshold), dtype=self.dtype, device=self.device
+                )
             )
-
-        self.encode_with_hidden_pre_fn = (
-            self.encode_with_hidden_pre_jumprelu
-            if cfg.architecture == "jumprelu"
-            else (
-                self.encode_with_hidden_pre_gated
-                if cfg.architecture == "gated"
-                else self.encode_with_hidden_pre
-            )
-        )
+        else:
+            raise ValueError(f"Unknown architecture: {cfg.architecture}")
 
         self.check_cfg_compatibility()
 
@@ -286,14 +288,19 @@ class TrainingSAE(SAE):
     def encode_with_hidden_pre_jumprelu(
         self, x: Float[torch.Tensor, "... d_in"]
     ) -> tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
-        x = self.to_dtype_device(x)
-        sae_in = self.reshape_fn_in(x)
-        sae_in = self.run_time_activation_norm_fn_in(sae_in)
-        sae_in = sae_in - (self.b_dec * self.cfg.apply_b_dec_to_input)
+        sae_in = self.process_sae_in(x)
 
-        hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
+        hidden_pre = sae_in @ self.W_enc + self.b_enc
+
+        if self.training:
+            hidden_pre = (
+                hidden_pre + torch.randn_like(hidden_pre) * self.cfg.noise_scale
+            )
+
         threshold = torch.exp(self.log_threshold)
+
         feature_acts = JumpReLU.apply(hidden_pre, threshold)
+
         return feature_acts, hidden_pre  # type: ignore
 
     def encode_with_hidden_pre(
@@ -363,20 +370,9 @@ class TrainingSAE(SAE):
         per_item_mse_loss = self.mse_loss_fn(sae_out, sae_in)
         mse_loss = per_item_mse_loss.sum(dim=-1).mean()
 
-        # GHOST GRADS
-        if self.cfg.use_ghost_grads and self.training and dead_neuron_mask is not None:
-
-            # first half of second forward pass
-            # _, hidden_pre = self.encode_with_hidden_pre_fn(sae_in)
-            ghost_grad_loss = self.calculate_ghost_grad_loss(
-                x=sae_in,
-                sae_out=sae_out,
-                per_item_mse_loss=per_item_mse_loss,
-                hidden_pre=hidden_pre,
-                dead_neuron_mask=dead_neuron_mask,
-            )
-        else:
-            ghost_grad_loss = 0.0
+        l1_loss = torch.tensor(0.0, device=sae_in.device)
+        aux_reconstruction_loss = torch.tensor(0.0, device=sae_in.device)
+        ghost_grad_loss = torch.tensor(0.0, device=sae_in.device)
 
         if self.cfg.architecture == "gated":
             # Gated SAE Loss Calculation
@@ -404,11 +400,8 @@ class TrainingSAE(SAE):
         elif self.cfg.architecture == "jumprelu":
             threshold = torch.exp(self.log_threshold)
             l0 = torch.sum(Step.apply(hidden_pre, threshold), dim=-1)  # type: ignore
-            sparsity_loss = self.cfg.sparsity_coefficient * l0.mean()
-
-            loss = mse_loss + sparsity_loss + ghost_grad_loss
-            l1_loss = torch.tensor(0.0)
-            aux_reconstruction_loss = torch.tensor(0.0)
+            l1_loss = (current_l1_coefficient * l0).mean()
+            loss = mse_loss + l1_loss
         else:
             # default SAE sparsity loss
             weighted_feature_acts = feature_acts * self.W_dec.norm(dim=1)
@@ -419,7 +412,19 @@ class TrainingSAE(SAE):
             l1_loss = (current_l1_coefficient * sparsity).mean()
             loss = mse_loss + l1_loss + ghost_grad_loss
 
-            aux_reconstruction_loss = torch.tensor(0.0)
+            if (
+                self.cfg.use_ghost_grads
+                and self.training
+                and dead_neuron_mask is not None
+            ):
+                ghost_grad_loss = self.calculate_ghost_grad_loss(
+                    x=sae_in,
+                    sae_out=sae_out,
+                    per_item_mse_loss=per_item_mse_loss,
+                    hidden_pre=hidden_pre,
+                    dead_neuron_mask=dead_neuron_mask,
+                )
+            loss = loss + ghost_grad_loss
 
         return TrainStepOutput(
             sae_in=sae_in,
