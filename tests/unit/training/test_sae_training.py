@@ -408,15 +408,15 @@ def test_jumprelu_backward():
 
 
 def test_jumprelu_backward_with_threshold_grad():
-    BANDWIDTH = 1e-3
+    bandwidth = 1e-3
     threshold_value = 1.0
     threshold = torch.tensor(threshold_value, requires_grad=True)
 
     epsilon = 1e-8
     x = torch.tensor(
         [
-            threshold_value - BANDWIDTH / 2 + epsilon,
-            threshold_value + BANDWIDTH / 2 - epsilon,
+            threshold_value - bandwidth / 2 + epsilon,
+            threshold_value + bandwidth / 2 - epsilon,
         ],
         requires_grad=True,
     )
@@ -428,5 +428,5 @@ def test_jumprelu_backward_with_threshold_grad():
     expected_grad_threshold = torch.tensor(-2000.0)
 
     atol = 1e-2
-    assert torch.allclose(x.grad, expected_grad_x, atol=atol), "Gradient w.r.t x does not match expected"  # type: ignore
-    assert torch.isclose(threshold.grad, expected_grad_threshold, atol=atol), "Gradient w.r.t threshold does not match expected"  # type: ignore
+    assert torch.allclose(x.grad, expected_grad_x, atol=atol)  # type: ignore
+    assert torch.isclose(threshold.grad, expected_grad_threshold, atol=atol)  # type: ignore

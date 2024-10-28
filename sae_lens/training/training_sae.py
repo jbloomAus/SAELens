@@ -22,63 +22,68 @@ from sae_lens.toolkit.pretrained_sae_loaders import (
 SPARSITY_PATH = "sparsity.safetensors"
 SAE_WEIGHTS_PATH = "sae_weights.safetensors"
 SAE_CFG_PATH = "cfg.json"
-BANDWIDTH = 0.001
 
 
-def rectangle_pt(x: torch.Tensor) -> torch.Tensor:
+def rectangle(x: torch.Tensor) -> torch.Tensor:
     return ((x > -0.5) & (x < 0.5)).to(x)
 
 
 class Step(torch.autograd.Function):
     @staticmethod
-    def forward(x: torch.Tensor, threshold: torch.Tensor) -> torch.Tensor:
+    def forward(
+        x: torch.Tensor, threshold: torch.Tensor, bandwidth: float = 0.001
+    ) -> torch.Tensor:
         return (x > threshold).to(x)
 
     @staticmethod
     def setup_context(
-        ctx: Any, inputs: tuple[torch.Tensor, torch.Tensor], output: torch.Tensor
+        ctx: Any, inputs: tuple[torch.Tensor, torch.Tensor, float], output: torch.Tensor
     ) -> None:
-        x, threshold = inputs
+        x, threshold, bandwidth = inputs
         del output
         ctx.save_for_backward(x, threshold)
+        ctx.bandwidth = bandwidth
 
     @staticmethod
-    def backward(ctx: Any, grad_output: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:  # type: ignore[override]
+    def backward(ctx: Any, grad_output: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, None]:  # type: ignore[override]
         x, threshold = ctx.saved_tensors
+        bandwidth = ctx.bandwidth
         x_grad = 0.0 * grad_output  # We don't apply STE to x input
         threshold_grad = torch.sum(
-            -(1.0 / BANDWIDTH)
-            * rectangle_pt((x - threshold) / BANDWIDTH)
-            * grad_output,
+            -(1.0 / bandwidth) * rectangle((x - threshold) / bandwidth) * grad_output,
             dim=0,
         )
-        return x_grad, threshold_grad
+        return x_grad, threshold_grad, None
 
 
 class JumpReLU(torch.autograd.Function):
     @staticmethod
-    def forward(x: torch.Tensor, threshold: torch.Tensor) -> torch.Tensor:
+    def forward(
+        x: torch.Tensor, threshold: torch.Tensor, bandwidth: float = 0.001
+    ) -> torch.Tensor:
         return (x * (x > threshold)).to(x)
 
     @staticmethod
     def setup_context(
-        ctx: Any, inputs: tuple[torch.Tensor, torch.Tensor], output: torch.Tensor
+        ctx: Any, inputs: tuple[torch.Tensor, torch.Tensor, float], output: torch.Tensor
     ) -> None:
-        x, threshold = inputs
+        x, threshold, bandwidth = inputs
         del output
         ctx.save_for_backward(x, threshold)
+        ctx.bandwidth = bandwidth
 
     @staticmethod
-    def backward(ctx: Any, grad_output: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:  # type: ignore[override]
+    def backward(ctx: Any, grad_output: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, None]:  # type: ignore[override]
         x, threshold = ctx.saved_tensors
+        bandwidth = ctx.bandwidth
         x_grad = (x > threshold) * grad_output  # We don't apply STE to x input
         threshold_grad = torch.sum(
-            -(threshold / BANDWIDTH)
-            * rectangle_pt((x - threshold) / BANDWIDTH)
+            -(threshold / bandwidth)
+            * rectangle((x - threshold) / bandwidth)
             * grad_output,
             dim=0,
         )
-        return x_grad, threshold_grad
+        return x_grad, threshold_grad, None
 
 
 @dataclass
