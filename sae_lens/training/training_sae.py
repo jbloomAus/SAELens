@@ -11,6 +11,7 @@ import einops
 import numpy as np
 import torch
 from jaxtyping import Float
+from safetensors.torch import save_file
 from torch import nn
 
 from sae_lens.config import LanguageModelSAERunnerConfig
@@ -500,6 +501,28 @@ class TrainingSAE(SAE):
             return batch_norm_mse_loss_fn
         else:
             return standard_mse_loss_fn
+
+    def save_model(self, path: str, sparsity: Optional[torch.Tensor] = None):
+        if not os.path.exists(path):
+            os.mkdir(path)
+
+        state_dict = self.state_dict().copy()
+
+        if self.cfg.architecture == "jumprelu":
+            threshold = torch.exp(self.log_threshold).detach()
+            del state_dict["log_threshold"]
+            state_dict["threshold"] = threshold
+
+        save_file(state_dict, f"{path}/{SAE_WEIGHTS_PATH}")
+
+        # Save the config
+        config = self.cfg.to_dict()
+        with open(f"{path}/{SAE_CFG_PATH}", "w") as f:
+            json.dump(config, f)
+
+        if sparsity is not None:
+            sparsity_in_dict = {"sparsity": sparsity}
+            save_file(sparsity_in_dict, f"{path}/{SPARSITY_PATH}")
 
     @classmethod
     def load_from_pretrained(
