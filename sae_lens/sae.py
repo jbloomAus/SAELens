@@ -509,6 +509,7 @@ class SAE(HookedRootModule):
         self.W_enc.data = self.W_enc.data * activation_norm_scaling_factor
         # previously weren't doing this.
         self.W_dec.data = self.W_dec.data / activation_norm_scaling_factor
+        self.b_dec.data = self.b_dec.data / activation_norm_scaling_factor
 
         # once we normalize, we shouldn't need to scale activations.
         self.cfg.normalize_activations = "none"

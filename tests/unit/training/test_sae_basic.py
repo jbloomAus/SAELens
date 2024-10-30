@@ -107,11 +107,15 @@ def test_sae_fold_w_dec_norm(cfg: LanguageModelSAERunnerConfig):
     torch.testing.assert_close(sae_out_1, sae_out_2)
 
 
+@torch.no_grad()
 def test_sae_fold_norm_scaling_factor(cfg: LanguageModelSAERunnerConfig):
 
     norm_scaling_factor = 3.0
 
     sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
+    # make sure b_dec and b_enc are not 0s
+    sae.b_dec.data = torch.randn(cfg.d_in, device=cfg.device)
+    sae.b_enc.data = torch.randn(cfg.d_sae, device=cfg.device)  # type: ignore
     sae.turn_off_forward_pass_hook_z_reshaping()  # hook z reshaping not needed here.
 
     sae2 = deepcopy(sae)
