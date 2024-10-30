@@ -144,7 +144,7 @@ def test_sae_fold_norm_scaling_factor(cfg: LanguageModelSAERunnerConfig):
     torch.testing.assert_close(feature_activations_2, feature_activations_1)
 
     sae_out_1 = sae.decode(feature_activations_1)
-    sae_out_2 = sae2.decode(feature_activations_2 * norm_scaling_factor)
+    sae_out_2 = norm_scaling_factor * sae2.decode(feature_activations_2)
 
     # but actual outputs should be the same
     torch.testing.assert_close(sae_out_1, sae_out_2)
