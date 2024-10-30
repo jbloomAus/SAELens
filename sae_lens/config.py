@@ -162,7 +162,7 @@ class LanguageModelSAERunnerConfig:
     seed: int = 42
     dtype: str = "float32"  # type: ignore #
     prepend_bos: bool = True
-    initial_threshold: float = 0.5
+    initial_threshold: float = 0.001
 
     # Performance - see compilation section of lm_runner.py for info
     autocast: bool = False  # autocast to autocast_dtype during training
@@ -411,6 +411,7 @@ class LanguageModelSAERunnerConfig:
             "decoder_heuristic_init": self.decoder_heuristic_init,
             "init_encoder_as_decoder_transpose": self.init_encoder_as_decoder_transpose,
             "normalize_activations": self.normalize_activations,
+            "initial_threshold": self.initial_threshold,
         }
 
     def to_dict(self) -> dict[str, Any]:

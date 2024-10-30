@@ -114,7 +114,7 @@ class TrainingSAEConfig(SAEConfig):
     decoder_heuristic_init: bool = False
     init_encoder_as_decoder_transpose: bool = False
     scale_sparsity_penalty_by_decoder_norm: bool = False
-    initial_threshold: float = 0.5
+    initial_threshold: float = 0.001
 
     @classmethod
     def from_sae_runner_config(
@@ -247,9 +247,8 @@ class TrainingSAE(SAE):
             self.encode_with_hidden_pre_fn = self.encode_with_hidden_pre_jumprelu
             initial_threshold = cfg.initial_threshold
             self.log_threshold = nn.Parameter(
-                torch.tensor(
-                    np.log(initial_threshold), dtype=self.dtype, device=self.device
-                )
+                torch.ones(cfg.d_sae, dtype=self.dtype, device=self.device)
+                * np.log(initial_threshold)
             )
         else:
             raise ValueError(f"Unknown architecture: {cfg.architecture}")
