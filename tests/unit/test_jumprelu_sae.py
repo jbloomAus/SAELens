@@ -26,7 +26,7 @@ def test_jumprelu_sae_encoding():
     threshold = torch.exp(sae.log_threshold)
     expected_feature_acts = JumpReLU.apply(expected_hidden_pre, threshold)
 
-    assert torch.allclose(feature_acts, expected_feature_acts, atol=1e-6) #type: ignore
+    assert torch.allclose(feature_acts, expected_feature_acts, atol=1e-6)  # type: ignore
 
 
 def test_jumprelu_sae_training_forward_pass():
@@ -45,8 +45,7 @@ def test_jumprelu_sae_training_forward_pass():
     assert train_step_output.sae_out.shape == (batch_size, d_in)
     assert train_step_output.feature_acts.shape == (batch_size, sae.cfg.d_sae)
     assert pytest.approx(train_step_output.loss.detach(), rel=1e-3) == (
-        train_step_output.mse_loss
-        + train_step_output.l1_loss
+        train_step_output.mse_loss + train_step_output.l1_loss
     )
 
     expected_mse_loss = (

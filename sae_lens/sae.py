@@ -556,17 +556,6 @@ class SAE(HookedRootModule):
 
         sae = cls(sae_cfg)
 
-        if sae_cfg.architecture == "jumprelu":
-            # Ensure 'threshold' is in state_dict
-            if "threshold" in state_dict:
-                sae.threshold = nn.Parameter(state_dict["threshold"])
-                # Remove 'threshold' from state_dict to prevent errors during load_state_dict
-                del state_dict["threshold"]
-            else:
-                raise ValueError(
-                    "Threshold not found in state_dict for 'jumprelu' architecture."
-                )
-
         sae.load_state_dict(state_dict)
 
         return sae
