@@ -6,8 +6,7 @@ from tests.unit.helpers import build_sae_cfg
 
 
 def test_jumprelu_sae_encoding():
-    cfg = build_sae_cfg()
-    setattr(cfg, "architecture", "jumprelu")
+    cfg = build_sae_cfg(architecture="jumprelu")
     sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
 
     batch_size = 32
