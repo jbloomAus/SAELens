@@ -2,6 +2,17 @@
 
 
 
+## v4.0.10 (2024-10-30)
+
+### Fix
+
+* fix: normalize decoder bias in fold_norm_scaling_factor (#355)
+
+* WIP: fix fold_norm_scaling
+
+* fixing test ([`6951e74`](https://github.com/jbloomAus/SAELens/commit/6951e7437f0bf9a33727c2929982917d9f51e7d2))
+
+
 ## v4.0.9 (2024-10-24)
 
 ### Fix
