@@ -9,6 +9,7 @@ from transformer_lens.hook_points import HookPoint
 
 from sae_lens.config import LanguageModelSAERunnerConfig
 from sae_lens.sae import SAE, _disable_hooks
+from sae_lens.training.training_sae import TrainingSAE
 from tests.unit.helpers import build_sae_cfg
 
 
@@ -107,11 +108,15 @@ def test_sae_fold_w_dec_norm(cfg: LanguageModelSAERunnerConfig):
     torch.testing.assert_close(sae_out_1, sae_out_2)
 
 
+@torch.no_grad()
 def test_sae_fold_norm_scaling_factor(cfg: LanguageModelSAERunnerConfig):
 
     norm_scaling_factor = 3.0
 
     sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
+    # make sure b_dec and b_enc are not 0s
+    sae.b_dec.data = torch.randn(cfg.d_in, device=cfg.device)
+    sae.b_enc.data = torch.randn(cfg.d_sae, device=cfg.device)  # type: ignore
     sae.turn_off_forward_pass_hook_z_reshaping()  # hook z reshaping not needed here.
 
     sae2 = deepcopy(sae)
@@ -140,7 +145,7 @@ def test_sae_fold_norm_scaling_factor(cfg: LanguageModelSAERunnerConfig):
     torch.testing.assert_close(feature_activations_2, feature_activations_1)
 
     sae_out_1 = sae.decode(feature_activations_1)
-    sae_out_2 = sae2.decode(feature_activations_2 * norm_scaling_factor)
+    sae_out_2 = norm_scaling_factor * sae2.decode(feature_activations_2)
 
     # but actual outputs should be the same
     torch.testing.assert_close(sae_out_1, sae_out_2)
@@ -176,6 +181,32 @@ def test_sae_save_and_load_from_pretrained_gated(tmp_path: Path) -> None:
     cfg = build_sae_cfg(architecture="gated")
     model_path = str(tmp_path)
     sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
+    sae_state_dict = sae.state_dict()
+    sae.save_model(model_path)
+
+    assert os.path.exists(model_path)
+
+    sae_loaded = SAE.load_from_pretrained(model_path, device="cpu")
+
+    sae_loaded_state_dict = sae_loaded.state_dict()
+
+    # check state_dict matches the original
+    for key in sae.state_dict().keys():
+        assert torch.allclose(
+            sae_state_dict[key],
+            sae_loaded_state_dict[key],
+        )
+
+    sae_in = torch.randn(10, cfg.d_in, device=cfg.device)
+    sae_out_1 = sae(sae_in)
+    sae_out_2 = sae_loaded(sae_in)
+    assert torch.allclose(sae_out_1, sae_out_2)
+
+
+def test_sae_save_and_load_from_pretrained_jumprelu(tmp_path: Path) -> None:
+    cfg = build_sae_cfg(architecture="gated")
+    model_path = str(tmp_path)
+    sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
     sae_state_dict = sae.state_dict()
     sae.save_model(model_path)
 
