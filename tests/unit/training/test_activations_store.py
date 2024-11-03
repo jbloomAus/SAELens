@@ -405,7 +405,7 @@ def test_activations_store___iterate_tokenized_sequences__works_with_huggingface
 # length of the dataset
 @pytest.mark.parametrize(
     "context_size, expected_error",
-    [(-1, ValueError), (5, RuntimeWarning), (10, None), (15, ValueError)],
+    [(5, RuntimeWarning), (10, None), (15, ValueError)],
 )
 def test_activations_store__errors_on_context_size_mismatch(
     ts_model: HookedTransformer, context_size: int, expected_error: Optional[ValueError]
@@ -439,6 +439,12 @@ def test_activations_store__errors_on_context_size_mismatch(
     else:
         # If the context_size is equal to the dataset size the function should pass
         ActivationsStore.from_config(ts_model, cfg, override_dataset=tokenized_dataset)
+
+
+def test_activations_store__errors_on_negative_context_size():
+    with pytest.raises(ValueError):
+        # We should raise an error when the context_size is negative
+        build_sae_cfg(prepend_bos=True, context_size=-1)
 
 
 def test_activations_store___iterate_tokenized_sequences__yields_identical_results_with_and_without_pretokenizing(
@@ -530,3 +536,26 @@ def test_validate_pretokenized_dataset_tokenizer_does_nothing_if_the_dataset_pat
     model_tokenizer = ts_model.tokenizer
     assert model_tokenizer is not None
     validate_pretokenized_dataset_tokenizer(ds_path, model_tokenizer)
+
+
+def test_activations_store_respects_position_offsets(ts_model: HookedTransformer):
+    cfg = build_sae_cfg(
+        context_size=10,
+        seqpos_slice=(2, 8),  # Only consider positions 2 to 7 (inclusive)
+    )
+    dataset = Dataset.from_list(
+        [
+            {"text": "This is a test sentence for slicing."},
+        ]
+        * 100
+    )
+
+    activation_store = ActivationsStore.from_config(
+        ts_model, cfg, override_dataset=dataset
+    )
+
+    batch = activation_store.get_batch_tokens(1)
+    activations = activation_store.get_activations(batch)
+
+    assert batch.shape == (1, 10)  # Full context size
+    assert activations.shape == (1, 6, 1, cfg.d_in)  # Only 6 positions (2 to 7)

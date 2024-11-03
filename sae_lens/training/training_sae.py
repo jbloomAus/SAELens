@@ -12,7 +12,7 @@ import torch
 from jaxtyping import Float
 from torch import nn
 
-from sae_lens.config import DTYPE_MAP, LanguageModelSAERunnerConfig
+from sae_lens.config import LanguageModelSAERunnerConfig
 from sae_lens.sae import SAE, SAEConfig
 from sae_lens.toolkit.pretrained_sae_loaders import (
     handle_config_defaulting,
@@ -75,6 +75,7 @@ class TrainingSAEConfig(SAEConfig):
             context_size=cfg.context_size,
             dataset_path=cfg.dataset_path,
             prepend_bos=cfg.prepend_bos,
+            seqpos_slice=cfg.seqpos_slice,
             # Training cfg
             l1_coefficient=cfg.l1_coefficient,
             lp_norm=cfg.lp_norm,
@@ -99,6 +100,18 @@ class TrainingSAEConfig(SAEConfig):
         valid_config_dict = {
             key: val for key, val in config_dict.items() if key in valid_field_names
         }
+
+        # ensure seqpos slice is tuple
+        # ensure that seqpos slices is a tuple
+        # Ensure seqpos_slice is a tuple
+        if "seqpos_slice" in valid_config_dict:
+            if isinstance(valid_config_dict["seqpos_slice"], list):
+                valid_config_dict["seqpos_slice"] = tuple(
+                    valid_config_dict["seqpos_slice"]
+                )
+            elif not isinstance(valid_config_dict["seqpos_slice"], tuple):
+                valid_config_dict["seqpos_slice"] = (valid_config_dict["seqpos_slice"],)
+
         return TrainingSAEConfig(**valid_config_dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -201,14 +214,7 @@ class TrainingSAE(SAE):
     def encode_with_hidden_pre(
         self, x: Float[torch.Tensor, "... d_in"]
     ) -> tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
-
-        x = x.to(self.dtype)
-        x = self.reshape_fn_in(x)  # type: ignore
-        x = self.hook_sae_input(x)
-        x = self.run_time_activation_norm_fn_in(x)
-
-        # apply b_dec_to_input if using that method.
-        sae_in = x - (self.b_dec * self.cfg.apply_b_dec_to_input)
+        sae_in = self.process_sae_in(x)
 
         # "... d_in, d_in d_sae -> ... d_sae",
         hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
@@ -222,11 +228,7 @@ class TrainingSAE(SAE):
     def encode_with_hidden_pre_gated(
         self, x: Float[torch.Tensor, "... d_in"]
     ) -> tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
-
-        x = x.to(self.dtype)
-        x = self.reshape_fn_in(x)  # type: ignore
-        x = self.hook_sae_input(x)
-        x = self.run_time_activation_norm_fn_in(x)
+        sae_in = self.process_sae_in(x)
 
         # apply b_dec_to_input if using that method.
         sae_in = x - (self.b_dec * self.cfg.apply_b_dec_to_input)
@@ -423,7 +425,6 @@ class TrainingSAE(SAE):
             cfg_dict=cfg_dict,
             weight_path=weight_path,
             device=device,
-            dtype=DTYPE_MAP[cfg_dict["dtype"]],
         )
         sae_cfg = TrainingSAEConfig.from_dict(cfg_dict)
 

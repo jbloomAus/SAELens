@@ -74,3 +74,18 @@ def get_norm_scaling_factor(release: str, sae_id: str) -> Optional[float]:
                 if sae_info["id"] == sae_id:
                     return sae_info.get("norm_scaling_factor")
     return None
+
+
+def get_repo_id_and_folder_name(release: str, sae_id: str) -> tuple[str, str]:
+    saes_directory = get_pretrained_saes_directory()
+    sae_info = saes_directory.get(release, None)
+
+    if sae_info is None:
+        return release, sae_id
+
+    if sae_id not in sae_info.saes_map:
+        raise ValueError(f"SAE ID '{sae_id}' not found in release '{release}'")
+
+    repo_id = sae_info.repo_id
+    folder_name = sae_info.saes_map[sae_id]
+    return repo_id, folder_name

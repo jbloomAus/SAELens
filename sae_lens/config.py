@@ -60,6 +60,7 @@ class LanguageModelSAERunnerConfig:
         store_batch_size_prompts (int): The batch size for storing activations. This controls how many prompts are in the batch of the language model when generating actiations.
         train_batch_size_tokens (int): The batch size for training. This controls the batch size of the SAE Training loop.
         normalize_activations (str): Activation Normalization Strategy. Either none, expected_average_only_in (estimate the average activation norm and divide activations by it -> this can be folded post training and set to None), or constant_norm_rescale (at runtime set activation norm to sqrt(d_in) and then scale up the SAE output).
+        seqpos_slice (tuple): Determines slicing of activations when constructing batches during training. The slice should be (start_pos, end_pos, optional[step_size]), e.g. for Othello we sometimes use (5, -5). Note, step_size > 0.
         device (str): The device to use. Usually cuda.
         act_store_device (str): The device to use for the activation store. CPU is advised in order to save vram.
         seed (int): The seed to use.
@@ -153,6 +154,7 @@ class LanguageModelSAERunnerConfig:
     normalize_activations: str = (
         "none"  # none, expected_average_only_in (Anthropic April Update), constant_norm_rescale (Anthropic Feb Update)
     )
+    seqpos_slice: tuple[int | None, ...] = (None,)
 
     # Misc
     device: str = "cpu"
@@ -233,7 +235,6 @@ class LanguageModelSAERunnerConfig:
     sae_lens_training_version: str = field(default_factory=lambda: __version__)
 
     def __post_init__(self):
-
         if self.resume:
             raise ValueError(
                 "Resuming is no longer supported. You can finetune a trained SAE using cfg.from_pretrained path."
@@ -355,6 +356,13 @@ class LanguageModelSAERunnerConfig:
         if self.use_ghost_grads:
             print("Using Ghost Grads.")
 
+        if self.context_size < 0:
+            raise ValueError(
+                f"The provided context_size is {self.context_size} is negative. Expecting positive context_size."
+            )
+
+        _validate_seqpos(seqpos=self.seqpos_slice, context_size=self.context_size)
+
     @property
     def total_training_tokens(self) -> int:
         return self.training_tokens + self.finetuning_tokens
@@ -386,6 +394,7 @@ class LanguageModelSAERunnerConfig:
             "normalize_activations": self.normalize_activations,
             "activation_fn_kwargs": self.activation_fn_kwargs,
             "model_from_pretrained_kwargs": self.model_from_pretrained_kwargs,
+            "seqpos_slice": self.seqpos_slice,
         }
 
     def get_training_sae_cfg_dict(self) -> dict[str, Any]:
@@ -404,7 +413,6 @@ class LanguageModelSAERunnerConfig:
         }
 
     def to_dict(self) -> dict[str, Any]:
-
         cfg_dict = {
             **self.__dict__,
             # some args may not be serializable by default
@@ -416,7 +424,6 @@ class LanguageModelSAERunnerConfig:
         return cfg_dict
 
     def to_json(self, path: str) -> None:
-
         if not os.path.exists(os.path.dirname(path)):
             os.makedirs(os.path.dirname(path))
 
@@ -427,6 +434,15 @@ class LanguageModelSAERunnerConfig:
     def from_json(cls, path: str) -> "LanguageModelSAERunnerConfig":
         with open(path + "cfg.json", "r") as f:
             cfg = json.load(f)
+
+        # ensure that seqpos slices is a tuple
+        # Ensure seqpos_slice is a tuple
+        if "seqpos_slice" in cfg:
+            if isinstance(cfg["seqpos_slice"], list):
+                cfg["seqpos_slice"] = tuple(cfg["seqpos_slice"])
+            elif not isinstance(cfg["seqpos_slice"], tuple):
+                cfg["seqpos_slice"] = (cfg["seqpos_slice"],)
+
         return cls(**cfg)
 
 
@@ -450,6 +466,13 @@ class CacheActivationsRunnerConfig:
     new_cached_activations_path: Optional[str] = (
         None  # Defaults to "activations/{dataset}/{model}/{full_hook_name}_{hook_head_index}"
     )
+
+    # if saving to huggingface, set hf_repo_id
+    hf_repo_id: Optional[str] = None
+    hf_num_shards: int | None = None
+    hf_revision: str = "main"
+    hf_is_private_repo: bool = False
+
     # dont' specify this since you don't want to load from disk with the cache runner.
     cached_activations_path: Optional[str] = None
     # SAE Parameters
@@ -461,6 +484,7 @@ class CacheActivationsRunnerConfig:
     store_batch_size_prompts: int = 32
     train_batch_size_tokens: int = 4096
     normalize_activations: str = "none"  # should always be none for activation caching
+    seqpos_slice: tuple[int | None, ...] = (None,)
 
     # Misc
     device: str = "cpu"
@@ -470,11 +494,9 @@ class CacheActivationsRunnerConfig:
     prepend_bos: bool = True
     autocast_lm: bool = False  # autocast lm during activation fetching
 
-    # Activation caching stuff
-    shuffle_every_n_buffers: int = 10
-    n_shuffles_with_last_section: int = 10
-    n_shuffles_in_entire_dir: int = 10
-    n_shuffles_final: int = 100
+    # Shuffle activations
+    shuffle: bool = True
+
     model_kwargs: dict[str, Any] = field(default_factory=dict)
     model_from_pretrained_kwargs: dict[str, Any] = field(default_factory=dict)
 
@@ -491,10 +513,16 @@ class CacheActivationsRunnerConfig:
         if self.act_store_device == "with_model":
             self.act_store_device = self.device
 
+        if self.context_size < 0:
+            raise ValueError(
+                f"The provided context_size is {self.context_size} is negative. Expecting positive context_size."
+            )
+
+        _validate_seqpos(seqpos=self.seqpos_slice, context_size=self.context_size)
+
 
 @dataclass
 class ToyModelSAERunnerConfig:
-
     architecture: Literal["standard", "gated"] = "standard"
 
     # ReLu Model Parameters
@@ -574,6 +602,17 @@ def _default_cached_activations_path(
     if hook_head_index is not None:
         path += f"_{hook_head_index}"
     return path
+
+
+def _validate_seqpos(seqpos: tuple[int | None, ...], context_size: int) -> None:
+    # Ensure that the step-size is larger or equal to 1
+    if len(seqpos) == 3:
+        step_size = seqpos[2] or 1
+        assert (
+            step_size > 1
+        ), f"Ensure the step_size {seqpos[2]=} for sequence slicing is positive."
+    # Ensure that the choice of seqpos doesn't end up with an empty list
+    assert len(list(range(context_size))[slice(*seqpos)]) > 0
 
 
 @dataclass

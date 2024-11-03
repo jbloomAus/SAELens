@@ -2,6 +2,458 @@
 
 
 
+## v4.0.10 (2024-10-30)
+
+### Fix
+
+* fix: normalize decoder bias in fold_norm_scaling_factor (#355)
+
+* WIP: fix fold_norm_scaling
+
+* fixing test ([`6951e74`](https://github.com/jbloomAus/SAELens/commit/6951e7437f0bf9a33727c2929982917d9f51e7d2))
+
+
+## v4.0.9 (2024-10-24)
+
+### Fix
+
+* fix: typo in layer 12 YAML ([`d634c8b`](https://github.com/jbloomAus/SAELens/commit/d634c8b2e8665bc3156c46fc8b1b439e26c289c9))
+
+### Unknown
+
+* Merge pull request #349 from jbloomAus/np_id_fix_2
+
+fix: use the correct layer for new gemma scope SAE sparsities ([`4c32de0`](https://github.com/jbloomAus/SAELens/commit/4c32de0de3efe9f35007df00c6b5aad102552150))
+
+
+## v4.0.8 (2024-10-24)
+
+### Fix
+
+* fix: use the correct layer for new gemma scope SAE sparsities ([`a78b93e`](https://github.com/jbloomAus/SAELens/commit/a78b93e33ecfee5ff5e5b08cdf9076cdeabec573))
+
+### Unknown
+
+* Merge pull request #348 from jbloomAus/np_id_fix
+
+fix: use the correct layer for new gemma scope SAE sparsities ([`1f6823a`](https://github.com/jbloomAus/SAELens/commit/1f6823a4881a26df18b7c23e2f3a29a8cc93bcf6))
+
+
+## v4.0.7 (2024-10-23)
+
+### Fix
+
+* fix: Test JumpReLU/Gated SAE and fix sae forward with error term (#328)
+
+* chore: adding tests a slight refactoring for SAE forward methods
+
+* refactoring forward methods using a helper to avoid firing hooks
+
+* rewording intermediate var
+
+* use process_sae_in helper in training sae encode
+
+* testing that sae.forward() with error term works with hooks
+
+* cleaning up more unneeded device=cpu in tests ([`ae345b6`](https://github.com/jbloomAus/SAELens/commit/ae345b642ceeeb87851af1ffa180979cc3670c9b))
+
+
+## v4.0.6 (2024-10-23)
+
+### Chore
+
+* chore: Add tests for evals (#346)
+
+* add unit tests for untested functions
+
+* adds test to increase coverage
+
+* fixes typo ([`06594f9`](https://github.com/jbloomAus/SAELens/commit/06594f97cb56f9f013ae420c147db09300ef9be4))
+
+### Fix
+
+* fix: pass device through to SAEConfigLoadOptions properly (#347) ([`531b1c7`](https://github.com/jbloomAus/SAELens/commit/531b1c7cac6971a3a5e9178710e9b3773d415a00))
+
+
+## v4.0.5 (2024-10-22)
+
+### Fix
+
+* fix: last NP id fix, hopefully ([`a470460`](https://github.com/jbloomAus/SAELens/commit/a47046055664ee7a42322c41e1067d286e475d9b))
+
+### Unknown
+
+* Merge pull request #345 from jbloomAus/last_np_id_fix
+
+fix: last NP id fix, hopefully ([`d5a7906`](https://github.com/jbloomAus/SAELens/commit/d5a7906a676d688c44ff71245c1f3f3ba8419b1a))
+
+
+## v4.0.4 (2024-10-22)
+
+### Fix
+
+* fix: np ids should contain model id ([`da5c622`](https://github.com/jbloomAus/SAELens/commit/da5c6224cd91027367cc3842be885a4f6ef5af78))
+
+### Unknown
+
+* Merge pull request #344 from jbloomAus/fix_np_ids_again
+
+fix: np ids should contain model id ([`88d9a0b`](https://github.com/jbloomAus/SAELens/commit/88d9a0baec99596f0fb346a26c257758c9187662))
+
+
+## v4.0.3 (2024-10-22)
+
+### Fix
+
+* fix: fix duplicate np ids ([`bcaf802`](https://github.com/jbloomAus/SAELens/commit/bcaf80291dc4ef5247df5c1223ee53bb38085da6))
+
+* fix: yaml was missing some gemmascope np ids, update np id formats ([`3f43590`](https://github.com/jbloomAus/SAELens/commit/3f435903ff436ce93e78b444e8fd6bb63636ebf0))
+
+### Unknown
+
+* Merge pull request #343 from jbloomAus/fix_duplicate_np_ids
+
+fix: fix duplicate np ids ([`4060d07`](https://github.com/jbloomAus/SAELens/commit/4060d0705903f5eb6c991ae9601a986af7c9c48d))
+
+* Merge pull request #342 from jbloomAus/fix_yaml_missing_gemmascope_and_np_ids
+
+fix: yaml was missing some gemmascope np ids, update np id formats ([`db2fa5f`](https://github.com/jbloomAus/SAELens/commit/db2fa5fd0e462c48b25005a9b49010cc6a962cce))
+
+
+## v4.0.2 (2024-10-22)
+
+### Fix
+
+* fix: previous saebench yaml fixes were incomplete for pythia-70m-deduped ([`b0adf2d`](https://github.com/jbloomAus/SAELens/commit/b0adf2ddc39cd4ffd3bf9e4fa4eda8505e2ce17b))
+
+### Unknown
+
+* Merge pull request #341 from jbloomAus/fix_pythia70md_again
+
+fix: previous saebench yaml fixes were incomplete for pythia-70m-deduped ([`72e3ef4`](https://github.com/jbloomAus/SAELens/commit/72e3ef4488f517e0992ff2648cb270fd2c4454ee))
+
+
+## v4.0.1 (2024-10-20)
+
+### Chore
+
+* chore: reduce test space usage in CI (#336)
+
+* chore: reduce test space usage in CI
+
+* busting caches
+
+* try reducing sizes further
+
+* try using smaller datasets where possible
+
+* tokenizing a super tiny dataset for tests ([`36e1d86`](https://github.com/jbloomAus/SAELens/commit/36e1d8662329981772b5b205f1a811b35e7f1d50))
+
+### Fix
+
+* fix: changes dtype default value in read_sae_from_disk() (#340) ([`5820585`](https://github.com/jbloomAus/SAELens/commit/5820585c33d880391fbdeb3faa69771889663f25))
+
+### Unknown
+
+* Merge pull request #339 from jbloomAus/fix/saeb-bench-model-names
+
+updated SAE Bench pythia model names (and loader device cfg) ([`2057455`](https://github.com/jbloomAus/SAELens/commit/20574550118726d9e1c54f7ae1204e5e0f9daa9e))
+
+* Merge pull request #324 from jbloomAus/improving-evals
+
+chore: Misc basic evals improvements (eg: consistent activation heuristic, cli args) ([`10f4773`](https://github.com/jbloomAus/SAELens/commit/10f4773bae2f18c37af72b3192403903e9425caa))
+
+* Updated tests to be correct ([`d1b4f5d`](https://github.com/jbloomAus/SAELens/commit/d1b4f5d973e4c6715e404bf3e084102ff94fe24a))
+
+* Organized basic eval metrics and eliminated NaNs ([`f6be1a6`](https://github.com/jbloomAus/SAELens/commit/f6be1a67725be22b64ad1b926e0c21a0556d0348))
+
+* format with updated env ([`97622b5`](https://github.com/jbloomAus/SAELens/commit/97622b5e335fd7e866e908fc247ca1ec3c4c2bf8))
+
+* format ([`31b2e9d`](https://github.com/jbloomAus/SAELens/commit/31b2e9df67d9c7f769cb99a592a1c02595421e52))
+
+* fix other test from rebase ([`530a426`](https://github.com/jbloomAus/SAELens/commit/530a426424c0eddf6bbd961808753de05ba26b69))
+
+* fix tests ([`92019ac`](https://github.com/jbloomAus/SAELens/commit/92019acc03356c3e8435cbb2ad59242b06c648cf))
+
+* set type to int for ctx lens ([`e4b5be6`](https://github.com/jbloomAus/SAELens/commit/e4b5be6464e2959411e31611c87d72215d5a782a))
+
+* update evaluating SAEs tutorial ([`d2bebbc`](https://github.com/jbloomAus/SAELens/commit/d2bebbc589482d782ddc11a11c9698a7bd1d29d1))
+
+* moving SAE to correct device ([`b881b05`](https://github.com/jbloomAus/SAELens/commit/b881b05194e88ab831eafb71a4d75947c1711ddf))
+
+* Added dataset_trust_remote_code arg ([`53dbde6`](https://github.com/jbloomAus/SAELens/commit/53dbde6ee1520494e12009bb1a39fe603d1a55de))
+
+* Added trust_remote_code arg ([`b738924`](https://github.com/jbloomAus/SAELens/commit/b738924c2122ce6abece6ac584c0733af4e84a6e))
+
+* Updated eval config explanations ([`d439927`](https://github.com/jbloomAus/SAELens/commit/d439927db290c1a4dc8c84b9fa9c36db559e997a))
+
+* Added updated plots for feature metrics ([`7a4ce2d`](https://github.com/jbloomAus/SAELens/commit/7a4ce2de34d351e9beaee3a73edaad4846dcfe1c))
+
+* Initial draft of evals tutorial ([`42309c8`](https://github.com/jbloomAus/SAELens/commit/42309c872173666518eb89c82d4313f43cc2d625))
+
+* first pass evals notebook ([`8005ff9`](https://github.com/jbloomAus/SAELens/commit/8005ff91e6d722b412cd53505c956991a362e6d2))
+
+* add verbose mode ([`15f1b59`](https://github.com/jbloomAus/SAELens/commit/15f1b59ec6506eeea7d0c5695681aaa7fe2b6244))
+
+* add more cli args ([`bc17fa5`](https://github.com/jbloomAus/SAELens/commit/bc17fa502c67fd94609ecdafd46bdd048e93db3a))
+
+* fix featurewise weight based metric type ([`d504a96`](https://github.com/jbloomAus/SAELens/commit/d504a963e37afe4d3f50fcb0daf9227027b3a97f))
+
+* add featurewise weight based metrics ([`ed365c4`](https://github.com/jbloomAus/SAELens/commit/ed365c4889dd4e0ed39eff9e386472c4edbe8bc7))
+
+* fix during training eval config ([`333d71c`](https://github.com/jbloomAus/SAELens/commit/333d71cb7b187a21fb1b6c5fd384c8a6dbd72aca))
+
+* add feature density histogram to evals + consistent activation heuristic ([`9341398`](https://github.com/jbloomAus/SAELens/commit/9341398f2e16406acb166e09489909b474b57d17))
+
+* keep track of tokens used seperately ([`c168c2b`](https://github.com/jbloomAus/SAELens/commit/c168c2b88af9102192848869a2b7fc879313cf5d))
+
+* use evals code in CI ([`87601ba`](https://github.com/jbloomAus/SAELens/commit/87601ba7ee0b0e9a0626b349551401cda34e3daa))
+
+* add cossim and relative reconstruction bias ([`c028072`](https://github.com/jbloomAus/SAELens/commit/c028072c2d6f0321f73950142e4cf3657c1d7d5d))
+
+* add sae_lens version ([`a3123c8`](https://github.com/jbloomAus/SAELens/commit/a3123c84d767bf78f3d49d8d0ae16d2e47ae5989))
+
+* remove redundant string in keys ([`a2dd2e0`](https://github.com/jbloomAus/SAELens/commit/a2dd2e029138cf22fdebb8bd20926cce9b1f3a89))
+
+* updated SAE Bench pythia model names (and loader device cfg) ([`2078eac`](https://github.com/jbloomAus/SAELens/commit/2078eaca0811356ecef1e84e5d9446032dcd59f1))
+
+
+## v4.0.0 (2024-10-15)
+
+### Breaking
+
+* feat: Use hf datasets for activation store (#321)
+
+BREAKING CHANGE: use huggingface for cached activations
+
+* refactored load activations into new function
+
+* activation store
+
+* cache activation runner
+
+* formatting and get total_size
+
+* doing tests
+
+* cleaner load buffer
+
+* cleaner load dataset
+
+* cleanup cache activation runner
+
+* add comments
+
+* failing test
+
+* update
+
+* fixed! set shuffle param in get_buffer
+
+* fixed linting
+
+* added more tests
+
+* refactor tests &amp; cleanup
+
+* format config.py
+
+* added hook name mismatch test
+
+* set deperacted to -1
+
+* fix tempshards test
+
+* update test name
+
+* add benchmark: safetensors vs dataset
+
+* added stop iteration at end of dataset
+
+* don&#39;t double save
+
+* add push to hub
+
+* fix save
+
+* fomatting
+
+* comments
+
+* removed unecessary write
+
+* cleanup pushing to hub, same as PretokenizeRunnerConfig
+
+* use num_buffers by default (rather than 64)
+
+* update comment
+
+* shuffle and save to disk
+
+* cleanup error checking
+
+* added cfg info
+
+* delete to iterable
+
+* formatting
+
+* delete deprectated params
+
+* set format of dataset
+
+* fix tests
+
+* delete shuffle args
+
+* fix test
+
+* made dynamic dataset creation shorter
+
+* removed print statements
+
+* showcase hf_repo_id in docs
+
+---------
+
+Co-authored-by: Tom Pollak &lt;tompollak100@gmail.com&gt;
+Co-authored-by: David Chanin &lt;chanindav@gmail.com&gt; ([`ff335f0`](https://github.com/jbloomAus/SAELens/commit/ff335f0a5dad1b2348854a3f20254f9de7310d83))
+
+### Feature
+
+* feat: support othellogpt in SAELens (#317)
+
+* support seqpos slicing
+
+* add basic tests, ensure it&#39;s in the SAE config
+
+* format
+
+* fix tests
+
+* fix tests 2
+
+* fix: Changing the activations store to handle context sizes smaller than dataset lengths for tokenized datasets.
+
+* fix: Found bug which allowed for negative context lengths. Removed the bug
+
+* Update pytest to test new logic for context size of tokenized dataset
+
+* Reformat code to pass CI tests
+
+* Add warning for when context_size is smaller than the dataset context_size
+
+* feat: adding support for start and end position offsets for token sequences
+
+* Add start_pos_offset and end_pos_offset to the SAERunnerConfig
+
+* Add tests for start_pos_offset and end_pos_offset in the LanguageModelSAERunnerConfig
+
+* feat: start and end position offset support for SAELens.
+
+* Add test for CacheActivationsRunnerConfig with start and end pos offset
+
+* Test cache activation runner wtih valid start and end pos offset
+
+* feat: Enabling loading of start and end pos offset from saes. Adding
+tests for this
+
+* fix: Renaming variables and a test
+
+* adds test for position offests for saes
+
+* reformats files with black
+
+* Add start and end pos offset to the base sae dict
+
+* fix test for sae training runner config with position offsets
+
+* add a benchmark test to train an SAE on OthelloGPT
+
+* Remove double import from typing
+
+* change dead_feature_window to int
+
+* remove print statements from test file
+
+* Rebase on seqpos tuple implementation and remove start/end pos offset
+
+* Reword docstring for seqpos to be clearer.
+
+* Added script to train an SAE on othelloGPT
+
+---------
+
+Co-authored-by: callummcdougall &lt;cal.s.mcdougall@gmail.com&gt;
+Co-authored-by: jbloomAus &lt;jbloomaus@gmail.com&gt;
+Co-authored-by: liuman &lt;zhenninghimme@gmail.com&gt; ([`7047f87`](https://github.com/jbloomAus/SAELens/commit/7047f877979952836e6778827248918818716b96))
+
+* feat: add get_sae_config() function (#331)
+
+* extracts code to get_connor_rob_hook_z_config()
+
+* extracts code into get_dictionary_learning_config_1()
+
+* extract repeated lines to above conditions
+
+* fixes incorrect function name
+
+* extracts code in generate_sae_table.py to function
+
+* removes unnecessary update()
+
+* replaces calls to specific loaders with get_sae_config()
+
+* replaces **kwargs with dataclass
+
+* refactors attribute access
+
+* renames SAEConfigParams to SAEConfigLoadOptions
+
+* gets rid of indent
+
+* replaces repo_id, folder_name with release, sae_id
+
+* extracts to get_conversion_loader_name()
+
+* extracts if-else to dict
+
+* move blocks to sensible place
+
+* extracts to get_repo_id_and_folder_name()
+
+* adds tests for get_repo_id_and_folder_name()
+
+* adds tests for get_sae_config()
+
+* removes mocking
+
+* fixes test
+
+* removes unused import ([`d451b1d`](https://github.com/jbloomAus/SAELens/commit/d451b1dbad5ebd273bd69bbebfff89c6b947634e))
+
+### Fix
+
+* fix: force new build ([`26fead6`](https://github.com/jbloomAus/SAELens/commit/26fead6ce86e7595d2a78e0a2a9fa5c2fe6961b3))
+
+* fix: add neuronpedia links for gemmascope 32plus ([`1087f19`](https://github.com/jbloomAus/SAELens/commit/1087f1999d04ee281be8cfda9832a6376151d0d1))
+
+### Unknown
+
+* Merge pull request #332 from jbloomAus/pretrained_yaml_gs_32plus
+
+fix: add neuronpedia links for gemmascope 32plus ([`42ba557`](https://github.com/jbloomAus/SAELens/commit/42ba5575f1e786a860f073943daf817e882ba76c))
+
+* Add Curt to citation (#329) ([`24b8560`](https://github.com/jbloomAus/SAELens/commit/24b8560c9272530c0090c6bb945653cacc68b7f5))
+
+
+## v3.23.4 (2024-10-10)
+
+### Fix
+
+* fix: add-neuronpedia-ids-correct-gemma-2-2b-model-name (#327) ([`6ed1400`](https://github.com/jbloomAus/SAELens/commit/6ed1400709a20e5813324c7cd2c4bfb62a881fe6))
+
+
 ## v3.23.3 (2024-10-08)
 
 ### Fix
