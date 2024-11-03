@@ -556,6 +556,7 @@ class SAE(HookedRootModule):
         sae_cfg = SAEConfig.from_dict(cfg_dict)
 
         sae = cls(sae_cfg)
+
         sae.load_state_dict(state_dict)
 
         return sae
