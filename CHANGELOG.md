@@ -2,6 +2,49 @@
 
 
 
+## v4.1.0 (2024-11-03)
+
+### Feature
+
+* feat: Support training JumpReLU SAEs (#352)
+
+* adds JumpReLU logic to TrainingSAE
+
+* adds unit tests for JumpReLU
+
+* changes classes to match tutorial
+
+* replaces bandwidth constant with param
+
+* re-add logic to JumpReLU logic to TrainingSAE
+
+* adds TrainingSAE.save_model()
+
+* changes threshold to match paper
+
+* add tests for TrainingSAE when archicture is jumprelu
+
+* adds test for SAE.load_from_pretrained() for JumpReLU
+
+* removes code causing test to fail
+
+* renames initial_threshold to threshold
+
+* removes setattr()
+
+* adds test for TrainingSAE.save_model()
+
+* renames threshold to jumprelu_init_threshold
+
+* adds jumprelu_bandwidth
+
+* removes default value for jumprelu_init_threshold downstream
+
+* replaces zero tensor with None in Step.backward()
+
+* adds jumprelu to architecture type ([`0b56d03`](https://github.com/jbloomAus/SAELens/commit/0b56d035ce0fa12722d62cc1bc559bd4fd35e9f3))
+
+
 ## v4.0.10 (2024-10-30)
 
 ### Fix
