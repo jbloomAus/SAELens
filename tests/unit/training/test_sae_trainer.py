@@ -186,6 +186,7 @@ def test_build_train_step_log_dict(trainer: SAETrainer) -> None:
         "losses/mse_loss": 0.25,
         # l1 loss is scaled by l1_coefficient
         "losses/l1_loss": train_output.losses["l1_loss"] / trainer.cfg.l1_coefficient,
+        "losses/raw_l1_loss": train_output.losses["l1_loss"],
         "losses/overall_loss": 0.5,
         "losses/ghost_grad_loss": 0.15,
         "metrics/explained_variance": 0.75,

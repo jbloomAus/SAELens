@@ -318,6 +318,7 @@ class SAETrainer:
                 log_dict[f"losses/{loss_name}"] = (
                     loss_item / self.current_l1_coefficient
                 )
+                log_dict[f"losses/raw_{loss_name}"] = loss_item
             else:
                 log_dict[f"losses/{loss_name}"] = loss_item
 
