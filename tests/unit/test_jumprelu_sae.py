@@ -23,7 +23,9 @@ def test_jumprelu_sae_encoding():
     sae_in = sae.process_sae_in(x)
     expected_hidden_pre = sae_in @ sae.W_enc + sae.b_enc
     threshold = torch.exp(sae.log_threshold)
-    expected_feature_acts = JumpReLU.apply(expected_hidden_pre, threshold)
+    expected_feature_acts = JumpReLU.apply(
+        expected_hidden_pre, threshold, sae.bandwidth
+    )
 
     assert torch.allclose(feature_acts, expected_feature_acts, atol=1e-6)  # type: ignore
 

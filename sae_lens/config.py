@@ -67,6 +67,7 @@ class LanguageModelSAERunnerConfig:
         dtype (str): The data type to use.
         prepend_bos (bool): Whether to prepend the beginning of sequence token. You should use whatever the model was trained with.
         jumprelu_init_threshold (float): The threshold to initialize for training JumpReLU SAEs.
+        jumprelu_bandwidth (float): Bandwidth for training JumpReLU SAEs.
         autocast (bool): Whether to use autocast during training. Saves vram.
         autocast_lm (bool): Whether to use autocast during activation fetching.
         compile_llm (bool): Whether to compile the LLM.
@@ -164,6 +165,7 @@ class LanguageModelSAERunnerConfig:
     dtype: str = "float32"  # type: ignore #
     prepend_bos: bool = True
     jumprelu_init_threshold: float = 0.001
+    jumprelu_bandwidth: float = 0.001
 
     # Performance - see compilation section of lm_runner.py for info
     autocast: bool = False  # autocast to autocast_dtype during training
@@ -413,6 +415,7 @@ class LanguageModelSAERunnerConfig:
             "init_encoder_as_decoder_transpose": self.init_encoder_as_decoder_transpose,
             "normalize_activations": self.normalize_activations,
             "jumprelu_init_threshold": self.jumprelu_init_threshold,
+            "jumprelu_bandwidth": self.jumprelu_bandwidth,
         }
 
     def to_dict(self) -> dict[str, Any]:

@@ -33,7 +33,7 @@ def rectangle(x: torch.Tensor) -> torch.Tensor:
 class Step(torch.autograd.Function):
     @staticmethod
     def forward(
-        x: torch.Tensor, threshold: torch.Tensor, bandwidth: float = 0.001
+        x: torch.Tensor, threshold: torch.Tensor, bandwidth: float
     ) -> torch.Tensor:
         return (x > threshold).to(x)
 
@@ -61,7 +61,7 @@ class Step(torch.autograd.Function):
 class JumpReLU(torch.autograd.Function):
     @staticmethod
     def forward(
-        x: torch.Tensor, threshold: torch.Tensor, bandwidth: float = 0.001
+        x: torch.Tensor, threshold: torch.Tensor, bandwidth: float
     ) -> torch.Tensor:
         return (x * (x > threshold)).to(x)
 
@@ -115,6 +115,7 @@ class TrainingSAEConfig(SAEConfig):
     init_encoder_as_decoder_transpose: bool = False
     scale_sparsity_penalty_by_decoder_norm: bool = False
     jumprelu_init_threshold: float = 0.001
+    jumprelu_bandwidth: float
 
     @classmethod
     def from_sae_runner_config(
@@ -156,6 +157,7 @@ class TrainingSAEConfig(SAEConfig):
             dataset_trust_remote_code=cfg.dataset_trust_remote_code,
             model_from_pretrained_kwargs=cfg.model_from_pretrained_kwargs,
             jumprelu_init_threshold=cfg.jumprelu_init_threshold,
+            jumprelu_bandwidth=cfg.jumprelu_bandwidth,
         )
 
     @classmethod
@@ -249,6 +251,7 @@ class TrainingSAE(SAE):
                 torch.ones(cfg.d_sae, dtype=self.dtype, device=self.device)
                 * np.log(cfg.jumprelu_init_threshold)
             )
+            self.bandwidth = cfg.jumprelu_bandwidth
         else:
             raise ValueError(f"Unknown architecture: {cfg.architecture}")
 
@@ -298,7 +301,7 @@ class TrainingSAE(SAE):
 
         threshold = torch.exp(self.log_threshold)
 
-        feature_acts = JumpReLU.apply(hidden_pre, threshold)
+        feature_acts = JumpReLU.apply(hidden_pre, threshold, self.bandwidth)
 
         return feature_acts, hidden_pre  # type: ignore
 
@@ -398,7 +401,7 @@ class TrainingSAE(SAE):
             loss = mse_loss + l1_loss + aux_reconstruction_loss
         elif self.cfg.architecture == "jumprelu":
             threshold = torch.exp(self.log_threshold)
-            l0 = torch.sum(Step.apply(hidden_pre, threshold), dim=-1)  # type: ignore
+            l0 = torch.sum(Step.apply(hidden_pre, threshold, self.bandwidth), dim=-1)  # type: ignore
             l1_loss = (current_l1_coefficient * l0).mean()
             loss = mse_loss + l1_loss
         else:

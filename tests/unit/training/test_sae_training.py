@@ -394,14 +394,14 @@ def test_jumprelu_forward():
     x = torch.tensor([-1.0, 0.5, 1.5, 2.5])
     threshold = torch.tensor(1.0)
     expected_output = torch.tensor([0.0, 0.0, 1.5, 2.5])
-    output = JumpReLU.apply(x, threshold)
+    output = JumpReLU.apply(x, threshold, 0.001)
     assert torch.allclose(output, expected_output)  # type: ignore
 
 
 def test_jumprelu_backward():
     x = torch.tensor([-1.0, 0.5, 1.5, 2.5], requires_grad=True)
     threshold = torch.tensor(1.0)
-    output = JumpReLU.apply(x, threshold)
+    output = JumpReLU.apply(x, threshold, 0.001)
     output.sum().backward()  # type: ignore
     expected_grad_x = torch.tensor([0.0, 0.0, 1.0, 1.0])
     assert torch.allclose(x.grad, expected_grad_x)  # type: ignore
@@ -421,7 +421,7 @@ def test_jumprelu_backward_with_threshold_grad():
         requires_grad=True,
     )
 
-    output = JumpReLU.apply(x, threshold)
+    output = JumpReLU.apply(x, threshold, bandwidth)
     output.sum().backward()  # type: ignore
 
     expected_grad_x = torch.tensor([0.0, 1.0])
