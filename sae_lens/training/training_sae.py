@@ -114,7 +114,7 @@ class TrainingSAEConfig(SAEConfig):
     decoder_heuristic_init: bool = False
     init_encoder_as_decoder_transpose: bool = False
     scale_sparsity_penalty_by_decoder_norm: bool = False
-    jumprelu_init_threshold: float = 0.001
+    jumprelu_init_threshold: float
     jumprelu_bandwidth: float
 
     @classmethod
