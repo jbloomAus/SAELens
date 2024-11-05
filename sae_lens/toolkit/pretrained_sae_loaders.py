@@ -51,14 +51,9 @@ def sae_lens_loader(
     options = SAEConfigLoadOptions(
         device=device,
         force_download=force_download,
+        cfg_overrides=cfg_overrides,
     )
     cfg_dict = get_sae_config(release, sae_id=sae_id, options=options)
-    # Apply overrides if provided
-    if cfg_overrides is not None:
-        cfg_dict.update(cfg_overrides)
-    cfg_dict["device"] = device
-    cfg_dict = handle_config_defaulting(cfg_dict)
-
     repo_id, folder_name = get_repo_id_and_folder_name(release, sae_id=sae_id)
 
     weights_filename = f"{folder_name}/sae_weights.safetensors"
@@ -115,6 +110,9 @@ def get_sae_config_from_hf(
 
     with open(cfg_path, "r") as f:
         cfg_dict = json.load(f)
+
+    if options.device is not None:
+        cfg_dict["device"] = options.device
 
     return cfg_dict
 
@@ -310,7 +308,7 @@ def get_gemma_2_config(
     else:
         raise ValueError("Hook name not found in folder_name.")
 
-    return {
+    cfg = {
         "architecture": "jumprelu",
         "d_in": d_in,
         "d_sae": d_sae,
@@ -329,6 +327,10 @@ def get_gemma_2_config(
         "apply_b_dec_to_input": False,
         "normalize_activations": None,
     }
+    if options.device is not None:
+        cfg["device"] = options.device
+
+    return cfg
 
 
 def gemma_2_sae_loader(
@@ -470,9 +472,17 @@ def get_sae_config(
     saes_directory = get_pretrained_saes_directory()
     sae_info = saes_directory.get(release, None)
     repo_id, folder_name = get_repo_id_and_folder_name(release, sae_id=sae_id)
+    cfg_overrides = options.cfg_overrides or {}
+    if sae_info is not None:
+        cfg_overrides = {**(sae_info.config_overrides or {}), **cfg_overrides}
+
     conversion_loader_name = get_conversion_loader_name(sae_info)
     config_getter = NAMED_PRETRAINED_SAE_CONFIG_GETTERS[conversion_loader_name]
-    return config_getter(repo_id, folder_name=folder_name, options=options)
+    cfg = {
+        **config_getter(repo_id, folder_name=folder_name, options=options),
+        **cfg_overrides,
+    }
+    return handle_config_defaulting(cfg)
 
 
 def dictionary_learning_sae_loader_1(

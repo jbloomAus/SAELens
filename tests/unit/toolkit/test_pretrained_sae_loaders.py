@@ -1,3 +1,4 @@
+from sae_lens.sae import SAE
 from sae_lens.toolkit.pretrained_sae_loaders import SAEConfigLoadOptions, get_sae_config
 
 
@@ -9,11 +10,15 @@ def test_get_sae_config_sae_lens():
     )
 
     expected_cfg_dict = {
+        "activation_fn_str": "relu",
+        "apply_b_dec_to_input": True,
+        "architecture": "standard",
         "model_name": "gpt2-small",
         "hook_point": "blocks.0.hook_resid_pre",
         "hook_point_layer": 0,
         "hook_point_head_index": None,
         "dataset_path": "Skylion007/openwebtext",
+        "dataset_trust_remote_code": True,
         "is_dataset_tokenized": False,
         "context_size": 128,
         "use_cached_activations": False,
@@ -32,9 +37,13 @@ def test_get_sae_config_sae_lens():
         "lr": 0.0004,
         "lr_scheduler_name": None,
         "lr_warm_up_steps": 5000,
+        "model_from_pretrained_kwargs": {
+            "center_writing_weights": True,
+        },
         "train_batch_size": 4096,
         "use_ghost_grads": False,
         "feature_sampling_window": 1000,
+        "finetuning_scaling_factor": False,
         "feature_sampling_method": None,
         "resample_batches": 1028,
         "feature_reinit_scale": 0.2,
@@ -50,6 +59,10 @@ def test_get_sae_config_sae_lens():
         "d_sae": 24576,
         "tokens_per_buffer": 67108864,
         "run_name": "24576-L1-8e-05-LR-0.0004-Tokens-3.000e+08",
+        "neuronpedia": None,
+        "normalize_activations": "none",
+        "prepend_bos": True,
+        "sae_lens_training_version": None,
     }
 
     assert cfg_dict == expected_cfg_dict
@@ -81,6 +94,7 @@ def test_get_sae_config_connor_rob_hook_z():
         "context_size": 128,
         "normalize_activations": "none",
         "dataset_trust_remote_code": True,
+        "neuronpedia": None,
     }
 
     assert cfg_dict == expected_cfg_dict
@@ -111,6 +125,8 @@ def test_get_sae_config_gemma_2():
         "dataset_trust_remote_code": True,
         "apply_b_dec_to_input": False,
         "normalize_activations": None,
+        "device": "cpu",
+        "neuronpedia": None,
     }
 
     assert cfg_dict == expected_cfg_dict
@@ -144,6 +160,22 @@ def test_get_sae_config_dictionary_learning_1():
         "context_size": 128,
         "normalize_activations": "none",
         "neuronpedia_id": None,
+        "neuronpedia": None,
     }
 
     assert cfg_dict == expected_cfg_dict
+
+
+def test_get_sae_config_matches_from_pretrained():
+    from_pretrained_cfg_dict = SAE.from_pretrained(
+        "gpt2-small-res-jb",
+        sae_id="blocks.0.hook_resid_pre",
+        device="cpu",
+    )[1]
+    direct_sae_cfg = get_sae_config(
+        "gpt2-small-res-jb",
+        sae_id="blocks.0.hook_resid_pre",
+        options=SAEConfigLoadOptions(device="cpu"),
+    )
+
+    assert direct_sae_cfg == from_pretrained_cfg_dict
