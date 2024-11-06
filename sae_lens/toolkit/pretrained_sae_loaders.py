@@ -474,7 +474,8 @@ def get_sae_config(
     repo_id, folder_name = get_repo_id_and_folder_name(release, sae_id=sae_id)
     cfg_overrides = options.cfg_overrides or {}
     if sae_info is not None:
-        sae_info_overrides: dict[str, Any] = sae_info.config_overrides or {}
+        # avoid modifying the original dict
+        sae_info_overrides: dict[str, Any] = {**(sae_info.config_overrides or {})}
         if sae_info.neuronpedia_id is not None:
             sae_info_overrides["neuronpedia_id"] = sae_info.neuronpedia_id.get(sae_id)
         cfg_overrides = {**sae_info_overrides, **cfg_overrides}
