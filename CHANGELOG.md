@@ -2,6 +2,25 @@
 
 
 
+## v4.1.1 (2024-11-06)
+
+### Chore
+
+* chore: Update training_a_sparse_autoencoder.ipynb (#358)
+
+Changed &#34;She lived in a big, happy little girl.&#34; to &#34;She lived in a big, happy little town.&#34; ([`b8703fe`](https://github.com/jbloomAus/SAELens/commit/b8703fe8332b6eb6c49df778f6550c59d2276458))
+
+### Fix
+
+* fix: load the same config from_pretrained and get_sae_config (#361)
+
+* fix: load the same config from_pretrained and get_sae_config
+
+* merge neuronpedia_id into get_sae_config
+
+* fixing test ([`8e09458`](https://github.com/jbloomAus/SAELens/commit/8e094581c4772e33ec4577349ed0d02c6c90ed27))
+
+
 ## v4.1.0 (2024-11-03)
 
 ### Feature
