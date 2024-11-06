@@ -126,7 +126,7 @@ def handle_config_defaulting(cfg_dict: dict[str, Any]) -> dict[str, Any]:
     cfg_dict.setdefault("sae_lens_training_version", None)
     cfg_dict.setdefault("activation_fn_str", cfg_dict.get("activation_fn", "relu"))
     cfg_dict.setdefault("architecture", "standard")
-    cfg_dict.setdefault("neuronpedia", None)
+    cfg_dict.setdefault("neuronpedia_id", None)
 
     if "normalize_activations" in cfg_dict and isinstance(
         cfg_dict["normalize_activations"], bool
@@ -474,7 +474,10 @@ def get_sae_config(
     repo_id, folder_name = get_repo_id_and_folder_name(release, sae_id=sae_id)
     cfg_overrides = options.cfg_overrides or {}
     if sae_info is not None:
-        cfg_overrides = {**(sae_info.config_overrides or {}), **cfg_overrides}
+        sae_info_overrides: dict[str, Any] = sae_info.config_overrides or {}
+        if sae_info.neuronpedia_id is not None:
+            sae_info_overrides["neuronpedia_id"] = sae_info.neuronpedia_id.get(sae_id)
+        cfg_overrides = {**sae_info_overrides, **cfg_overrides}
 
     conversion_loader_name = get_conversion_loader_name(sae_info)
     config_getter = NAMED_PRETRAINED_SAE_CONFIG_GETTERS[conversion_loader_name]

@@ -59,7 +59,7 @@ def test_get_sae_config_sae_lens():
         "d_sae": 24576,
         "tokens_per_buffer": 67108864,
         "run_name": "24576-L1-8e-05-LR-0.0004-Tokens-3.000e+08",
-        "neuronpedia": None,
+        "neuronpedia_id": "gpt2-small/0-res-jb",
         "normalize_activations": "none",
         "prepend_bos": True,
         "sae_lens_training_version": None,
@@ -94,7 +94,7 @@ def test_get_sae_config_connor_rob_hook_z():
         "context_size": 128,
         "normalize_activations": "none",
         "dataset_trust_remote_code": True,
-        "neuronpedia": None,
+        "neuronpedia_id": "gpt2-small/0-att-kk",
     }
 
     assert cfg_dict == expected_cfg_dict
@@ -126,7 +126,7 @@ def test_get_sae_config_gemma_2():
         "apply_b_dec_to_input": False,
         "normalize_activations": None,
         "device": "cpu",
-        "neuronpedia": None,
+        "neuronpedia_id": None,
     }
 
     assert cfg_dict == expected_cfg_dict
@@ -159,8 +159,7 @@ def test_get_sae_config_dictionary_learning_1():
         "dataset_trust_remote_code": True,
         "context_size": 128,
         "normalize_activations": "none",
-        "neuronpedia_id": None,
-        "neuronpedia": None,
+        "neuronpedia_id": "gemma-2-2b/3-sae_bench-standard-res-4k__trainer_1_step_29292",
     }
 
     assert cfg_dict == expected_cfg_dict
