@@ -2,6 +2,68 @@
 
 
 
+## v4.1.1 (2024-11-06)
+
+### Chore
+
+* chore: Update training_a_sparse_autoencoder.ipynb (#358)
+
+Changed &#34;She lived in a big, happy little girl.&#34; to &#34;She lived in a big, happy little town.&#34; ([`b8703fe`](https://github.com/jbloomAus/SAELens/commit/b8703fe8332b6eb6c49df778f6550c59d2276458))
+
+### Fix
+
+* fix: load the same config from_pretrained and get_sae_config (#361)
+
+* fix: load the same config from_pretrained and get_sae_config
+
+* merge neuronpedia_id into get_sae_config
+
+* fixing test ([`8e09458`](https://github.com/jbloomAus/SAELens/commit/8e094581c4772e33ec4577349ed0d02c6c90ed27))
+
+
+## v4.1.0 (2024-11-03)
+
+### Feature
+
+* feat: Support training JumpReLU SAEs (#352)
+
+* adds JumpReLU logic to TrainingSAE
+
+* adds unit tests for JumpReLU
+
+* changes classes to match tutorial
+
+* replaces bandwidth constant with param
+
+* re-add logic to JumpReLU logic to TrainingSAE
+
+* adds TrainingSAE.save_model()
+
+* changes threshold to match paper
+
+* add tests for TrainingSAE when archicture is jumprelu
+
+* adds test for SAE.load_from_pretrained() for JumpReLU
+
+* removes code causing test to fail
+
+* renames initial_threshold to threshold
+
+* removes setattr()
+
+* adds test for TrainingSAE.save_model()
+
+* renames threshold to jumprelu_init_threshold
+
+* adds jumprelu_bandwidth
+
+* removes default value for jumprelu_init_threshold downstream
+
+* replaces zero tensor with None in Step.backward()
+
+* adds jumprelu to architecture type ([`0b56d03`](https://github.com/jbloomAus/SAELens/commit/0b56d035ce0fa12722d62cc1bc559bd4fd35e9f3))
+
+
 ## v4.0.10 (2024-10-30)
 
 ### Fix
