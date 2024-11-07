@@ -1,5 +1,6 @@
 # type: ignore
 from pathlib import Path
+from textwrap import dedent
 
 import pandas as pd
 import yaml
@@ -77,9 +78,23 @@ def generate_sae_table():
         # Keep only 'id' and 'path' columns
         df = df[INCLUDED_CFG]
 
+        def style_id(val):
+            return f"<div>{val}</div><a class=\"saetable-loadSaeId\" onclick=\"SaeTable.showCode('{release}', '{val}')\">Load this SAE</a>"
+
+        df["id"] = df["id"].apply(style_id)
         table = df.to_markdown(index=False)
         markdown_content += table + "\n\n"
-
+    markdown_content += dedent(
+        """
+        <div id="codeModal" class="saetable-modal">
+            <div class="saetable-modalContent">
+                <span class="saetable-close" onclick="SaeTable.closeCode()">&times;</span>
+                <pre><code id="codeContent" onclick="SaeTable.selectCode(this)"></code></pre>
+                <button onclick="SaeTable.copyCode()" class="saetable-copyButton">Copy Code</button>
+            </div>
+        </div>
+        """
+    )
     # Write the content to a Markdown file
     output_path = Path("docs/sae_table.md")
     with open(output_path, "w") as file:
