@@ -405,7 +405,9 @@ class TrainingSAE(SAE):
             loss = mse_loss + l1_loss
         else:
             # default SAE sparsity loss
-            weighted_feature_acts = feature_acts * self.W_dec.norm(dim=1)
+            weighted_feature_acts = feature_acts
+            if self.cfg.scale_sparsity_penalty_by_decoder_norm:
+                weighted_feature_acts = feature_acts * self.W_dec.norm(dim=1)
             sparsity = weighted_feature_acts.norm(
                 p=self.cfg.lp_norm, dim=-1
             )  # sum over the feature dimension
