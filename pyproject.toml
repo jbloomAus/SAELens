@@ -38,6 +38,7 @@ pyyaml = "^6.0.1"
 pytest-profiling = "^1.7.0"
 zstandard = "^0.22.0"
 typing-extensions = "^4.10.0"
+simple-parsing = "^0.1.6"
 
 
 [tool.poetry.group.dev.dependencies]

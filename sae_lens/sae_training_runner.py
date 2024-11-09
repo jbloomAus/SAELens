@@ -2,11 +2,13 @@ import json
 import logging
 import os
 import signal
-from typing import Any, cast
+import sys
+from typing import Any, Sequence, cast
 
 import torch
 import wandb
 from safetensors.torch import save_file
+from simple_parsing import ArgumentParser
 from transformer_lens.hook_points import HookedRootModule
 
 from sae_lens.config import HfDataset, LanguageModelSAERunnerConfig
@@ -235,3 +237,21 @@ class SAETrainingRunner:
             wandb.log_artifact(sparsity_artifact)  # type: ignore
 
         return checkpoint_path
+
+
+def _parse_cfg_args(args: Sequence[str]) -> LanguageModelSAERunnerConfig:
+    if len(args) == 0:
+        args = ["--help"]
+    parser = ArgumentParser()
+    parser.add_arguments(LanguageModelSAERunnerConfig, dest="cfg")
+    return parser.parse_args(args).cfg
+
+
+# moved into its own function to make it easier to test
+def _run_cli(args: Sequence[str]):
+    cfg = _parse_cfg_args(args)
+    SAETrainingRunner(cfg=cfg).run()
+
+
+if __name__ == "__main__":
+    _run_cli(args=sys.argv[1:])
