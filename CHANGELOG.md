@@ -2,6 +2,29 @@
 
 
 
+## v4.2.0 (2024-11-09)
+
+### Chore
+
+* chore: adding &#39;Load this SAE&#39; popup to docs table (#362) ([`1866aa7`](https://github.com/jbloomAus/SAELens/commit/1866aa75350b18d48c4f382fd395e68c0b098574))
+
+* chore: more flexible training losses (#357)
+
+* retun and log a dict from train step
+
+* updating trainer loss pbar
+
+* avoid unnecessary gpu sync
+
+* fixing tests
+
+* adding logging for unnormalized l1 loss ([`0c1179c`](https://github.com/jbloomAus/SAELens/commit/0c1179cc668d8ccea2cd8b4653ccc9ceabadec19))
+
+### Feature
+
+* feat: adding a CLI training runner (#359) ([`998c277`](https://github.com/jbloomAus/SAELens/commit/998c2779ebd4dda2375cc1d1f24f77889ec2cafc))
+
+
 ## v4.1.1 (2024-11-06)
 
 ### Chore

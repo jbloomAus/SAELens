@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sae-lens"
-version = "4.1.1"
+version = "4.2.0"
 description = "Training and Analyzing Sparse Autoencoders (SAEs)"
 authors = ["Joseph Bloom"]
 readme = "README.md"
