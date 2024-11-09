@@ -287,9 +287,6 @@ class SAETrainer:
         sae_in = output.sae_in
         sae_out = output.sae_out
         feature_acts = output.feature_acts
-        mse_loss = output.mse_loss
-        l1_loss = output.l1_loss
-        ghost_grad_loss = output.ghost_grad_loss
         loss = output.loss.item()
 
         # metrics for currents acts
@@ -302,10 +299,6 @@ class SAETrainer:
 
         log_dict = {
             # losses
-            "losses/mse_loss": mse_loss,
-            "losses/l1_loss": l1_loss
-            / self.current_l1_coefficient,  # normalize by l1 coefficient
-            "losses/auxiliary_reconstruction_loss": output.auxiliary_reconstruction_loss,
             "losses/overall_loss": loss,
             # variance explained
             "metrics/explained_variance": explained_variance.mean().item(),
@@ -318,12 +311,16 @@ class SAETrainer:
             "details/current_l1_coefficient": self.current_l1_coefficient,
             "details/n_training_tokens": n_training_tokens,
         }
-        # Log ghost grad if we're using them
-        if self.cfg.use_ghost_grads:
-            if isinstance(ghost_grad_loss, torch.Tensor):
-                ghost_grad_loss = ghost_grad_loss.item()
-
-            log_dict["losses/ghost_grad_loss"] = ghost_grad_loss
+        for loss_name, loss_value in output.losses.items():
+            loss_item = _unwrap_item(loss_value)
+            # special case for l1 loss, which we normalize by the l1 coefficient
+            if loss_name == "l1_loss":
+                log_dict[f"losses/{loss_name}"] = (
+                    loss_item / self.current_l1_coefficient
+                )
+                log_dict[f"losses/raw_{loss_name}"] = loss_item
+            else:
+                log_dict[f"losses/{loss_name}"] = loss_item
 
         return log_dict
 
@@ -407,9 +404,11 @@ class SAETrainer:
     def _update_pbar(self, step_output: TrainStepOutput, pbar: tqdm, update_interval: int = 100):  # type: ignore
 
         if self.n_training_steps % update_interval == 0:
-            pbar.set_description(
-                f"{self.n_training_steps}| MSE Loss {step_output.mse_loss:.3f} | L1 {step_output.l1_loss:.3f}"
+            loss_strs = " | ".join(
+                f"{loss_name}: {_unwrap_item(loss_value):.5f}"
+                for loss_name, loss_value in step_output.losses.items()
             )
+            pbar.set_description(f"{self.n_training_steps}| {loss_strs}")
             pbar.update(update_interval * self.cfg.train_batch_size_tokens)
 
     def _begin_finetuning_if_needed(self):
@@ -430,3 +429,7 @@ class SAETrainer:
                     param.requires_grad = False
 
             self.finetuning = True
+
+
+def _unwrap_item(item: float | torch.Tensor) -> float:
+    return item.item() if isinstance(item, torch.Tensor) else item

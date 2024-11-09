@@ -45,8 +45,11 @@ def test_jumprelu_sae_training_forward_pass():
 
     assert train_step_output.sae_out.shape == (batch_size, d_in)
     assert train_step_output.feature_acts.shape == (batch_size, sae.cfg.d_sae)
-    assert pytest.approx(train_step_output.loss.detach(), rel=1e-3) == (
-        train_step_output.mse_loss + train_step_output.l1_loss
+    assert (
+        pytest.approx(train_step_output.loss.detach(), rel=1e-3)
+        == (
+            train_step_output.losses["mse_loss"] + train_step_output.losses["l0_loss"]
+        ).item()  # type: ignore
     )
 
     expected_mse_loss = (
@@ -57,4 +60,6 @@ def test_jumprelu_sae_training_forward_pass():
         .float()
     )
 
-    assert pytest.approx(train_step_output.mse_loss) == expected_mse_loss
+    assert (
+        pytest.approx(train_step_output.losses["mse_loss"].item()) == expected_mse_loss  # type: ignore
+    )

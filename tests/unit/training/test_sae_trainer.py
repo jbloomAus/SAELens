@@ -112,7 +112,7 @@ def test_train_step__output_looks_reasonable(trainer: SAETrainer) -> None:
     assert output.sae_out.shape == output.sae_in.shape
     assert output.feature_acts.shape == (4, 128)  # batch_size, d_sae
     # ghots grads shouldn't trigger until dead_feature_window, which hasn't been reached yet
-    assert output.ghost_grad_loss == 0
+    assert output.losses.get("ghost_grad_loss", 0) == 0
     assert trainer.n_frac_active_tokens == 4
     assert trainer.act_freq_scores.sum() > 0  # at least SOME acts should have fired
     assert torch.allclose(
@@ -169,9 +169,11 @@ def test_build_train_step_log_dict(trainer: SAETrainer) -> None:
         sae_out=torch.tensor([[0, 0], [0, 2], [0.5, 1]]).float(),
         feature_acts=torch.tensor([[0, 0, 0, 1], [1, 0, 0, 1], [1, 0, 1, 1]]).float(),
         loss=torch.tensor(0.5),
-        mse_loss=0.25,
-        l1_loss=0.1,
-        ghost_grad_loss=0.15,
+        losses={
+            "mse_loss": 0.25,
+            "l1_loss": 0.1,
+            "ghost_grad_loss": 0.15,
+        },
     )
 
     # we're relying on the trainer only for some of the metrics here
@@ -183,9 +185,10 @@ def test_build_train_step_log_dict(trainer: SAETrainer) -> None:
     assert log_dict == {
         "losses/mse_loss": 0.25,
         # l1 loss is scaled by l1_coefficient
-        "losses/l1_loss": train_output.l1_loss / trainer.cfg.l1_coefficient,
-        "losses/auxiliary_reconstruction_loss": 0.0,
+        "losses/l1_loss": train_output.losses["l1_loss"] / trainer.cfg.l1_coefficient,
+        "losses/raw_l1_loss": train_output.losses["l1_loss"],
         "losses/overall_loss": 0.5,
+        "losses/ghost_grad_loss": 0.15,
         "metrics/explained_variance": 0.75,
         "metrics/explained_variance_std": 0.25,
         "metrics/l0": 2.0,

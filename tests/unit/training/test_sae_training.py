@@ -154,10 +154,16 @@ def test_sae_forward(training_sae: TrainingSAE):
 
     assert train_step_output.sae_out.shape == (batch_size, d_in)
     assert train_step_output.feature_acts.shape == (batch_size, d_sae)
-    assert pytest.approx(train_step_output.loss.detach(), rel=1e-3) == (
-        train_step_output.mse_loss
-        + train_step_output.l1_loss
-        + train_step_output.ghost_grad_loss
+    assert (
+        pytest.approx(train_step_output.loss.detach(), rel=1e-3)
+        == (
+            train_step_output.losses["mse_loss"]
+            + train_step_output.losses["l1_loss"]
+            + train_step_output.losses.get("ghost_grad_loss", 0.0)
+        )
+        .detach()  # type: ignore
+        .cpu()
+        .numpy()
     )
 
     expected_mse_loss = (
@@ -168,7 +174,9 @@ def test_sae_forward(training_sae: TrainingSAE):
         .float()
     )
 
-    assert pytest.approx(train_step_output.mse_loss) == expected_mse_loss
+    assert (
+        pytest.approx(train_step_output.losses["mse_loss"].item()) == expected_mse_loss  # type: ignore
+    )
 
     if not training_sae.cfg.scale_sparsity_penalty_by_decoder_norm:
         expected_l1_loss = train_step_output.feature_acts.sum(dim=1).mean(dim=(0,))
@@ -179,7 +187,7 @@ def test_sae_forward(training_sae: TrainingSAE):
             .mean()
         )
     assert (
-        pytest.approx(train_step_output.l1_loss, rel=1e-3)
+        pytest.approx(train_step_output.losses["l1_loss"].item(), rel=1e-3)  # type: ignore
         == training_sae.cfg.l1_coefficient * expected_l1_loss.detach().float()
     )
 
@@ -203,7 +211,7 @@ def test_sae_forward_with_mse_loss_norm(
 
     assert train_step_output.sae_out.shape == (batch_size, d_in)
     assert train_step_output.feature_acts.shape == (batch_size, d_sae)
-    assert train_step_output.ghost_grad_loss == 0.0
+    assert "ghost_grad_loss" not in train_step_output.losses
 
     x_centred = x - x.mean(dim=0, keepdim=True)
     expected_mse_loss = (
@@ -217,12 +225,17 @@ def test_sae_forward_with_mse_loss_norm(
         .item()
     )
 
-    assert pytest.approx(train_step_output.mse_loss) == expected_mse_loss
+    assert pytest.approx(train_step_output.losses["mse_loss"].item()) == expected_mse_loss  # type: ignore
 
-    assert pytest.approx(train_step_output.loss.detach(), rel=1e-3) == (
-        train_step_output.mse_loss
-        + train_step_output.l1_loss
-        + train_step_output.ghost_grad_loss
+    assert (
+        pytest.approx(train_step_output.loss.detach(), rel=1e-3)
+        == (
+            train_step_output.losses["mse_loss"]
+            + train_step_output.losses["l1_loss"]
+            + train_step_output.losses.get("ghost_grad_loss", 0.0)
+        )
+        .detach()  # type: ignore
+        .numpy()
     )
 
     if not training_sae.cfg.scale_sparsity_penalty_by_decoder_norm:
@@ -234,7 +247,7 @@ def test_sae_forward_with_mse_loss_norm(
             .mean()
         )
     assert (
-        pytest.approx(train_step_output.l1_loss, rel=1e-3)
+        pytest.approx(train_step_output.losses["l1_loss"].item(), rel=1e-3)  # type: ignore
         == training_sae.cfg.l1_coefficient * expected_l1_loss.detach().float()
     )
 
@@ -255,7 +268,7 @@ def test_SparseAutoencoder_forward_ghost_grad_loss_non_zero(
         ).bool(),  # all neurons are dead.
     )
 
-    assert train_step_output.ghost_grad_loss != 0.0
+    assert train_step_output.losses["ghost_grad_loss"] != 0.0
 
 
 def test_calculate_ghost_grad_loss(

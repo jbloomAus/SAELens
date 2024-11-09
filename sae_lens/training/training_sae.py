@@ -93,10 +93,7 @@ class TrainStepOutput:
     sae_out: torch.Tensor
     feature_acts: torch.Tensor
     loss: torch.Tensor  # we need to call backwards on this
-    mse_loss: float
-    l1_loss: float
-    ghost_grad_loss: float
-    auxiliary_reconstruction_loss: float = 0.0
+    losses: dict[str, float | torch.Tensor]
 
 
 @dataclass(kw_only=True)
@@ -371,9 +368,7 @@ class TrainingSAE(SAE):
         per_item_mse_loss = self.mse_loss_fn(sae_out, sae_in)
         mse_loss = per_item_mse_loss.sum(dim=-1).mean()
 
-        l1_loss = torch.tensor(0.0, device=sae_in.device)
-        aux_reconstruction_loss = torch.tensor(0.0, device=sae_in.device)
-        ghost_grad_loss = torch.tensor(0.0, device=sae_in.device)
+        losses: dict[str, float | torch.Tensor] = {}
 
         if self.cfg.architecture == "gated":
             # Gated SAE Loss Calculation
@@ -396,13 +391,15 @@ class TrainingSAE(SAE):
             aux_reconstruction_loss = torch.sum(
                 (via_gate_reconstruction - sae_in) ** 2, dim=-1
             ).mean()
-
             loss = mse_loss + l1_loss + aux_reconstruction_loss
+            losses["auxiliary_reconstruction_loss"] = aux_reconstruction_loss
+            losses["l1_loss"] = l1_loss
         elif self.cfg.architecture == "jumprelu":
             threshold = torch.exp(self.log_threshold)
             l0 = torch.sum(Step.apply(hidden_pre, threshold, self.bandwidth), dim=-1)  # type: ignore
-            l1_loss = (current_l1_coefficient * l0).mean()
-            loss = mse_loss + l1_loss
+            l0_loss = (current_l1_coefficient * l0).mean()
+            loss = mse_loss + l0_loss
+            losses["l0_loss"] = l0_loss
         else:
             # default SAE sparsity loss
             weighted_feature_acts = feature_acts * self.W_dec.norm(dim=1)
@@ -411,8 +408,7 @@ class TrainingSAE(SAE):
             )  # sum over the feature dimension
 
             l1_loss = (current_l1_coefficient * sparsity).mean()
-            loss = mse_loss + l1_loss + ghost_grad_loss
-
+            loss = mse_loss + l1_loss
             if (
                 self.cfg.use_ghost_grads
                 and self.training
@@ -425,21 +421,18 @@ class TrainingSAE(SAE):
                     hidden_pre=hidden_pre,
                     dead_neuron_mask=dead_neuron_mask,
                 )
-            loss = loss + ghost_grad_loss
+                losses["ghost_grad_loss"] = ghost_grad_loss
+                loss = loss + ghost_grad_loss
+            losses["l1_loss"] = l1_loss
+
+        losses["mse_loss"] = mse_loss
 
         return TrainStepOutput(
             sae_in=sae_in,
             sae_out=sae_out,
             feature_acts=feature_acts,
             loss=loss,
-            mse_loss=mse_loss.item(),
-            l1_loss=l1_loss.item(),
-            ghost_grad_loss=(
-                ghost_grad_loss.item()
-                if isinstance(ghost_grad_loss, torch.Tensor)
-                else ghost_grad_loss
-            ),
-            auxiliary_reconstruction_loss=aux_reconstruction_loss.item(),
+            losses=losses,
         )
 
     def calculate_ghost_grad_loss(
