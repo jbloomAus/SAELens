@@ -2,6 +2,51 @@
 
 
 
+## v4.3.0 (2024-11-10)
+
+### Chore
+
+* chore: updating training docs with tips / jumprelu (#366)
+
+* chore: updating training docs with tips / jumprelu
+
+* fixing missing space char ([`f739500`](https://github.com/jbloomAus/SAELens/commit/f73950052fe96e4cd07453b3393722b3f0c5da62))
+
+### Feature
+
+* feat: Support arbitrary huggingface causal LM models (#226)
+
+* adding load_model helper for huggingface causal LM models
+
+* polishing huggingface integration
+
+* adding more tests
+
+* updating docs
+
+* tweaking docstrings
+
+* perf fix: dont calculate loss by default
+
+* better handling of HF tuple outputs
+
+* fixing test
+
+* changes from CR
+
+* fixing default model params for huggingface models
+
+* move hf model to device on load ([`044d4be`](https://github.com/jbloomAus/SAELens/commit/044d4be8b75f487da6f278adda657a6dcb7dbe7c))
+
+### Performance
+
+* perf: faster cleanup of datasets when caching activations (#367)
+
+previously I used dataset.save_to_disk to write the final dataset, but
+this can be slow. Instead I manually move the shards to the standard hf
+format which allows us not to resave the entire dataset ([`a3663b7`](https://github.com/jbloomAus/SAELens/commit/a3663b79b4889f58e402790afb5701879392279c))
+
+
 ## v4.2.0 (2024-11-09)
 
 ### Chore
