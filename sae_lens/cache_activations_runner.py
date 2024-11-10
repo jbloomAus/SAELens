@@ -1,13 +1,14 @@
 import io
 import json
 import math
-import os
 import shutil
 from dataclasses import asdict
+from pathlib import Path
 
 import einops
 import torch
-from datasets import Array2D, Dataset, Features, concatenate_datasets, load_from_disk
+from datasets import Array2D, Dataset, Features
+from datasets.fingerprint import generate_fingerprint
 from huggingface_hub import HfApi
 from jaxtyping import Float
 from tqdm import tqdm
@@ -69,6 +70,125 @@ class CacheActivationsRunner:
             f"{self.cfg}"
         )
 
+    @staticmethod
+    def _consolidate_shards(
+        source_dir: Path, output_dir: Path, copy_files: bool = True
+    ) -> Dataset:
+        """Consolidate sharded datasets into a single directory without rewriting data.
+
+        Each of the shards must be of the same format, aka the full dataset must be able to
+        be recreated like so:
+
+        ```
+        ds = concatenate_datasets(
+            [Dataset.load_from_disk(str(shard_dir)) for shard_dir in sorted(source_dir.iterdir())]
+        )
+
+        ```
+
+        Sharded dataset format:
+        ```
+        source_dir/
+            shard_00000/
+                dataset_info.json
+                state.json
+                data-00000-of-00002.arrow
+                data-00001-of-00002.arrow
+            shard_00001/
+                dataset_info.json
+                state.json
+                data-00000-of-00001.arrow
+        ```
+
+        And flattens them into the format:
+
+        ```
+        output_dir/
+            dataset_info.json
+            state.json
+            data-00000-of-00003.arrow
+            data-00001-of-00003.arrow
+            data-00002-of-00003.arrow
+        ```
+
+        allowing the dataset to be loaded like so:
+
+        ```
+        ds = datasets.load_from_disk(output_dir)
+        ```
+
+        Args:
+            source_dir: Directory containing the sharded datasets
+            output_dir: Directory to consolidate the shards into
+            copy_files: If True, copy files; if False, move them and delete source_dir
+        """
+        first_shard_dir_name = "shard_00000"  # shard_{i:05d}
+
+        assert source_dir.exists() and source_dir.is_dir()
+        assert (
+            output_dir.exists()
+            and output_dir.is_dir()
+            and not any(p for p in output_dir.iterdir() if not p.name == ".tmp_shards")
+        )
+        if not (source_dir / first_shard_dir_name).exists():
+            raise Exception(f"No shards in {source_dir} exist!")
+
+        transfer_fn = shutil.copy2 if copy_files else shutil.move
+
+        # Move dataset_info.json from any shard (all the same)
+        transfer_fn(
+            source_dir / first_shard_dir_name / "dataset_info.json",
+            output_dir / "dataset_info.json",
+        )
+
+        arrow_files = []
+        file_count = 0
+
+        for shard_dir in sorted(source_dir.iterdir()):
+            if not shard_dir.name.startswith("shard_"):
+                continue
+
+            # state.json contains arrow filenames
+            state = json.loads((shard_dir / "state.json").read_text())
+
+            for data_file in state["_data_files"]:
+                src = shard_dir / data_file["filename"]
+                new_name = f"data-{file_count:05d}-of-{len(list(source_dir.iterdir())):05d}.arrow"
+                dst = output_dir / new_name
+                transfer_fn(src, dst)
+                arrow_files.append({"filename": new_name})
+                file_count += 1
+
+        new_state = {
+            "_data_files": arrow_files,
+            "_fingerprint": None,  # temporary
+            "_format_columns": None,
+            "_format_kwargs": {},
+            "_format_type": None,
+            "_output_all_columns": False,
+            "_split": None,
+        }
+
+        # fingerprint is generated from dataset.__getstate__ (not includeing _fingerprint)
+        with open(output_dir / "state.json", "w") as f:
+            json.dump(new_state, f, indent=2)
+
+        ds = Dataset.load_from_disk(str(output_dir))
+        fingerprint = generate_fingerprint(ds)
+        del ds
+
+        with open(output_dir / "state.json", "r+") as f:
+            state = json.loads(f.read())
+            state["_fingerprint"] = fingerprint
+            f.seek(0)
+            json.dump(state, f, indent=2)
+            f.truncate()
+
+        if not copy_files:  # cleanup source dir
+            shutil.rmtree(source_dir)
+
+        return Dataset.load_from_disk(output_dir)
+
     @torch.no_grad()
     def _create_shard(
         self,
@@ -92,19 +212,17 @@ class CacheActivationsRunner:
 
     @torch.no_grad()
     def run(self) -> Dataset:
-        new_cached_activations_path = self.cfg.new_cached_activations_path
-        assert new_cached_activations_path is not None
-
         ### Paths setup
+        assert self.cfg.new_cached_activations_path is not None
+        final_cached_activation_path = Path(self.cfg.new_cached_activations_path)
+        final_cached_activation_path.mkdir(exist_ok=True, parents=True)
+        if any(final_cached_activation_path.iterdir()):
+            raise Exception(
+                f"Activations directory ({final_cached_activation_path}) is not empty. Please delete it or specify a different path. Exiting the script to prevent accidental deletion of files."
+            )
 
-        # if the activations directory exists and has files in it, raise an exception
-        if os.path.exists(new_cached_activations_path):
-            if len(os.listdir(new_cached_activations_path)) > 0:
-                raise Exception(
-                    f"Activations directory ({new_cached_activations_path}) is not empty. Please delete it or specify a different path. Exiting the script to prevent accidental deletion of files."
-                )
-        else:
-            os.makedirs(new_cached_activations_path)
+        tmp_cached_activation_path = final_cached_activation_path / ".tmp_shards/"
+        tmp_cached_activation_path.mkdir(exist_ok=False, parents=False)
 
         ### Create temporary sharded datasets
 
@@ -118,7 +236,7 @@ class CacheActivationsRunner:
                 )
                 shard = self._create_shard(buffer)
                 shard.save_to_disk(
-                    f"{new_cached_activations_path}/shard_{i}", num_shards=1
+                    f"{tmp_cached_activation_path}/shard_{i:05d}", num_shards=1
                 )
                 del buffer, shard
 
@@ -130,28 +248,13 @@ class CacheActivationsRunner:
 
         ### Concat sharded datasets together, shuffle and push to hub
 
-        # mem mapped
-        dataset_shard_paths = [
-            f"{new_cached_activations_path}/shard_{i}" for i in range(self.n_buffers)
-        ]
-        dataset_shards = [
-            Dataset.load_from_disk(shard_path) for shard_path in dataset_shard_paths
-        ]
-
-        print("Concatenating shards...")
-        dataset = concatenate_datasets(dataset_shards)
+        dataset = self._consolidate_shards(
+            tmp_cached_activation_path, final_cached_activation_path, copy_files=False
+        )
 
         if self.cfg.shuffle:
             print("Shuffling...")
             dataset = dataset.shuffle(seed=self.cfg.seed)
-
-        dataset.save_to_disk(new_cached_activations_path)
-
-        for shard_path in dataset_shard_paths:
-            shutil.rmtree(shard_path)
-
-        dataset = load_from_disk(new_cached_activations_path)
-        assert isinstance(dataset, Dataset)
 
         if self.cfg.hf_repo_id:
             print("Pushing to hub...")

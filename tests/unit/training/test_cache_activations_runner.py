@@ -511,7 +511,12 @@ def test_cache_activations_runner_with_valid_seqpos(tmp_path: Path):
     assert os.path.exists(tmp_path)
 
     # assert that there are n_buffer files in the directory.
-    assert len(os.listdir(tmp_path)) == n_buffers
+    buffer_files = [
+        f
+        for f in os.listdir(tmp_path)
+        if f.startswith("data-") and f.endswith(".arrow")
+    ]
+    assert len(buffer_files) == n_buffers
 
     assert len(dataset_acts) == n_buffers * n_batches_in_buffer
     for act in dataset_acts:

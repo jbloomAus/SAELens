@@ -70,8 +70,11 @@ def test_cache_activations_runner():
         dtype="float32",
     )
 
-    # look at the next cell to see some instruction for what to do while this is running.
+    start_time = time.perf_counter()
     CacheActivationsRunner(cfg).run()
+    end_time = time.perf_counter()
+    elapsed_time = end_time - start_time
+    print(f"Caching activations took: {elapsed_time:.4f}")
 
 
 def test_hf_dataset_save_vs_safetensors(tmp_path: Path):
