@@ -218,3 +218,41 @@ def test_run_cli_saves_config(tmp_path: Path):
     assert saved_cfg["train_batch_size_tokens"] == 4
     assert saved_cfg["store_batch_size_prompts"] == 4
     assert saved_cfg["model_name"] == TINYSTORIES_MODEL
+
+
+def test_sae_training_runner_works_with_huggingface_models(tmp_path: Path):
+    cfg = build_sae_cfg(
+        d_in=64,
+        d_sae=128,
+        hook_layer=0,
+        hook_name="transformer.h.0",
+        checkpoint_path=str(tmp_path),
+        model_class_name="AutoModelForCausalLM",
+        model_name="roneneldan/TinyStories-1M",
+        training_tokens=128,
+        train_batch_size_tokens=4,
+        store_batch_size_prompts=4,
+        n_checkpoints=1,
+        log_to_wandb=False,
+    )
+
+    runner = SAETrainingRunner(cfg)
+    runner.run()
+
+    # Check that checkpoint was saved
+    checkpoint_dirs = list(tmp_path.glob("*"))  # run dirs
+    assert len(checkpoint_dirs) == 1
+
+    # Load and verify saved config
+    with open(checkpoint_dirs[0] / "cfg.json") as f:
+        saved_cfg = json.load(f)
+
+    assert saved_cfg["model_name"] == "roneneldan/TinyStories-1M"
+    assert saved_cfg["training_tokens"] == 128
+    assert saved_cfg["train_batch_size_tokens"] == 4
+    assert saved_cfg["store_batch_size_prompts"] == 4
+    assert saved_cfg["log_to_wandb"] is False
+    assert saved_cfg["model_class_name"] == "AutoModelForCausalLM"
+
+    sae = SAE.load_from_pretrained(str(checkpoint_dirs[0]))
+    assert isinstance(sae, SAE)

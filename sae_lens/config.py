@@ -232,9 +232,7 @@ class LanguageModelSAERunnerConfig:
     checkpoint_path: str = "checkpoints"
     verbose: bool = True
     model_kwargs: dict[str, Any] = field(default_factory=dict)
-    model_from_pretrained_kwargs: dict[str, Any] = field(
-        default_factory=lambda: {"center_writing_weights": False}
-    )
+    model_from_pretrained_kwargs: dict[str, Any] | None = None
     sae_lens_version: str = field(default_factory=lambda: __version__)
     sae_lens_training_version: str = field(default_factory=lambda: __version__)
 
@@ -267,6 +265,12 @@ class LanguageModelSAERunnerConfig:
 
         if self.run_name is None:
             self.run_name = f"{self.d_sae}-L1-{self.l1_coefficient}-LR-{self.lr}-Tokens-{self.training_tokens:3.3e}"
+
+        if self.model_from_pretrained_kwargs is None:
+            if self.model_class_name == "HookedTransformer":
+                self.model_from_pretrained_kwargs = {"center_writing_weights": False}
+            else:
+                self.model_from_pretrained_kwargs = {}
 
         if self.b_dec_init_method not in ["geometric_median", "mean", "zeros"]:
             raise ValueError(

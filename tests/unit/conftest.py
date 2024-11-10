@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 import torch
 
+from sae_lens.sae import SAE
 from tests.unit.helpers import TINYSTORIES_MODEL, load_model_cached
 
 torch.set_grad_enabled(True)
@@ -44,3 +45,12 @@ def cleanup_tmp_path(tmp_path: Path):
             item.unlink()
         elif item.is_dir():
             shutil.rmtree(item)
+
+
+@pytest.fixture
+def gpt2_res_jb_l4_sae() -> SAE:
+    return SAE.from_pretrained(
+        release="gpt2-small-res-jb",
+        sae_id="blocks.4.hook_resid_pre",
+        device="cpu",
+    )[0]
