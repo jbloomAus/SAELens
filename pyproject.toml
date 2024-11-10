@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sae-lens"
-version = "4.0.10"
+version = "4.2.0"
 description = "Training and Analyzing Sparse Autoencoders (SAEs)"
 authors = ["Joseph Bloom"]
 readme = "README.md"
@@ -38,6 +38,7 @@ pyyaml = "^6.0.1"
 pytest-profiling = "^1.7.0"
 zstandard = "^0.22.0"
 typing-extensions = "^4.10.0"
+simple-parsing = "^0.1.6"
 
 
 [tool.poetry.group.dev.dependencies]

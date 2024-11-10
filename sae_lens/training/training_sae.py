@@ -8,8 +8,10 @@ from dataclasses import dataclass, fields
 from typing import Any, Optional
 
 import einops
+import numpy as np
 import torch
 from jaxtyping import Float
+from safetensors.torch import save_file
 from torch import nn
 
 from sae_lens.config import LanguageModelSAERunnerConfig
@@ -24,16 +26,74 @@ SAE_WEIGHTS_PATH = "sae_weights.safetensors"
 SAE_CFG_PATH = "cfg.json"
 
 
+def rectangle(x: torch.Tensor) -> torch.Tensor:
+    return ((x > -0.5) & (x < 0.5)).to(x)
+
+
+class Step(torch.autograd.Function):
+    @staticmethod
+    def forward(
+        x: torch.Tensor, threshold: torch.Tensor, bandwidth: float
+    ) -> torch.Tensor:
+        return (x > threshold).to(x)
+
+    @staticmethod
+    def setup_context(
+        ctx: Any, inputs: tuple[torch.Tensor, torch.Tensor, float], output: torch.Tensor
+    ) -> None:
+        x, threshold, bandwidth = inputs
+        del output
+        ctx.save_for_backward(x, threshold)
+        ctx.bandwidth = bandwidth
+
+    @staticmethod
+    def backward(ctx: Any, grad_output: torch.Tensor) -> tuple[None, torch.Tensor, None]:  # type: ignore[override]
+        x, threshold = ctx.saved_tensors
+        bandwidth = ctx.bandwidth
+        threshold_grad = torch.sum(
+            -(1.0 / bandwidth) * rectangle((x - threshold) / bandwidth) * grad_output,
+            dim=0,
+        )
+        return None, threshold_grad, None
+
+
+class JumpReLU(torch.autograd.Function):
+    @staticmethod
+    def forward(
+        x: torch.Tensor, threshold: torch.Tensor, bandwidth: float
+    ) -> torch.Tensor:
+        return (x * (x > threshold)).to(x)
+
+    @staticmethod
+    def setup_context(
+        ctx: Any, inputs: tuple[torch.Tensor, torch.Tensor, float], output: torch.Tensor
+    ) -> None:
+        x, threshold, bandwidth = inputs
+        del output
+        ctx.save_for_backward(x, threshold)
+        ctx.bandwidth = bandwidth
+
+    @staticmethod
+    def backward(ctx: Any, grad_output: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, None]:  # type: ignore[override]
+        x, threshold = ctx.saved_tensors
+        bandwidth = ctx.bandwidth
+        x_grad = (x > threshold) * grad_output  # We don't apply STE to x input
+        threshold_grad = torch.sum(
+            -(threshold / bandwidth)
+            * rectangle((x - threshold) / bandwidth)
+            * grad_output,
+            dim=0,
+        )
+        return x_grad, threshold_grad, None
+
+
 @dataclass
 class TrainStepOutput:
     sae_in: torch.Tensor
     sae_out: torch.Tensor
     feature_acts: torch.Tensor
     loss: torch.Tensor  # we need to call backwards on this
-    mse_loss: float
-    l1_loss: float
-    ghost_grad_loss: float
-    auxiliary_reconstruction_loss: float = 0.0
+    losses: dict[str, float | torch.Tensor]
 
 
 @dataclass(kw_only=True)
@@ -50,6 +110,8 @@ class TrainingSAEConfig(SAEConfig):
     decoder_heuristic_init: bool = False
     init_encoder_as_decoder_transpose: bool = False
     scale_sparsity_penalty_by_decoder_norm: bool = False
+    jumprelu_init_threshold: float
+    jumprelu_bandwidth: float
 
     @classmethod
     def from_sae_runner_config(
@@ -90,6 +152,8 @@ class TrainingSAEConfig(SAEConfig):
             normalize_activations=cfg.normalize_activations,
             dataset_trust_remote_code=cfg.dataset_trust_remote_code,
             model_from_pretrained_kwargs=cfg.model_from_pretrained_kwargs,
+            jumprelu_init_threshold=cfg.jumprelu_init_threshold,
+            jumprelu_bandwidth=cfg.jumprelu_bandwidth,
         )
 
     @classmethod
@@ -173,11 +237,19 @@ class TrainingSAE(SAE):
         super().__init__(base_sae_cfg)
         self.cfg = cfg  # type: ignore
 
-        self.encode_with_hidden_pre_fn = (
-            self.encode_with_hidden_pre
-            if cfg.architecture != "gated"
-            else self.encode_with_hidden_pre_gated
-        )
+        if cfg.architecture == "standard":
+            self.encode_with_hidden_pre_fn = self.encode_with_hidden_pre
+        elif cfg.architecture == "gated":
+            self.encode_with_hidden_pre_fn = self.encode_with_hidden_pre_gated
+        elif cfg.architecture == "jumprelu":
+            self.encode_with_hidden_pre_fn = self.encode_with_hidden_pre_jumprelu
+            self.log_threshold = nn.Parameter(
+                torch.ones(cfg.d_sae, dtype=self.dtype, device=self.device)
+                * np.log(cfg.jumprelu_init_threshold)
+            )
+            self.bandwidth = cfg.jumprelu_bandwidth
+        else:
+            raise ValueError(f"Unknown architecture: {cfg.architecture}")
 
         self.check_cfg_compatibility()
 
@@ -210,6 +282,24 @@ class TrainingSAE(SAE):
         """
         feature_acts, _ = self.encode_with_hidden_pre_fn(x)
         return feature_acts
+
+    def encode_with_hidden_pre_jumprelu(
+        self, x: Float[torch.Tensor, "... d_in"]
+    ) -> tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
+        sae_in = self.process_sae_in(x)
+
+        hidden_pre = sae_in @ self.W_enc + self.b_enc
+
+        if self.training:
+            hidden_pre = (
+                hidden_pre + torch.randn_like(hidden_pre) * self.cfg.noise_scale
+            )
+
+        threshold = torch.exp(self.log_threshold)
+
+        feature_acts = JumpReLU.apply(hidden_pre, threshold, self.bandwidth)
+
+        return feature_acts, hidden_pre  # type: ignore
 
     def encode_with_hidden_pre(
         self, x: Float[torch.Tensor, "... d_in"]
@@ -271,27 +361,14 @@ class TrainingSAE(SAE):
 
         # do a forward pass to get SAE out, but we also need the
         # hidden pre.
-        feature_acts, _ = self.encode_with_hidden_pre_fn(sae_in)
+        feature_acts, hidden_pre = self.encode_with_hidden_pre_fn(sae_in)
         sae_out = self.decode(feature_acts)
 
         # MSE LOSS
         per_item_mse_loss = self.mse_loss_fn(sae_out, sae_in)
         mse_loss = per_item_mse_loss.sum(dim=-1).mean()
 
-        # GHOST GRADS
-        if self.cfg.use_ghost_grads and self.training and dead_neuron_mask is not None:
-
-            # first half of second forward pass
-            _, hidden_pre = self.encode_with_hidden_pre_fn(sae_in)
-            ghost_grad_loss = self.calculate_ghost_grad_loss(
-                x=sae_in,
-                sae_out=sae_out,
-                per_item_mse_loss=per_item_mse_loss,
-                hidden_pre=hidden_pre,
-                dead_neuron_mask=dead_neuron_mask,
-            )
-        else:
-            ghost_grad_loss = 0.0
+        losses: dict[str, float | torch.Tensor] = {}
 
         if self.cfg.architecture == "gated":
             # Gated SAE Loss Calculation
@@ -314,8 +391,15 @@ class TrainingSAE(SAE):
             aux_reconstruction_loss = torch.sum(
                 (via_gate_reconstruction - sae_in) ** 2, dim=-1
             ).mean()
-
             loss = mse_loss + l1_loss + aux_reconstruction_loss
+            losses["auxiliary_reconstruction_loss"] = aux_reconstruction_loss
+            losses["l1_loss"] = l1_loss
+        elif self.cfg.architecture == "jumprelu":
+            threshold = torch.exp(self.log_threshold)
+            l0 = torch.sum(Step.apply(hidden_pre, threshold, self.bandwidth), dim=-1)  # type: ignore
+            l0_loss = (current_l1_coefficient * l0).mean()
+            loss = mse_loss + l0_loss
+            losses["l0_loss"] = l0_loss
         else:
             # default SAE sparsity loss
             weighted_feature_acts = feature_acts * self.W_dec.norm(dim=1)
@@ -324,23 +408,31 @@ class TrainingSAE(SAE):
             )  # sum over the feature dimension
 
             l1_loss = (current_l1_coefficient * sparsity).mean()
-            loss = mse_loss + l1_loss + ghost_grad_loss
+            loss = mse_loss + l1_loss
+            if (
+                self.cfg.use_ghost_grads
+                and self.training
+                and dead_neuron_mask is not None
+            ):
+                ghost_grad_loss = self.calculate_ghost_grad_loss(
+                    x=sae_in,
+                    sae_out=sae_out,
+                    per_item_mse_loss=per_item_mse_loss,
+                    hidden_pre=hidden_pre,
+                    dead_neuron_mask=dead_neuron_mask,
+                )
+                losses["ghost_grad_loss"] = ghost_grad_loss
+                loss = loss + ghost_grad_loss
+            losses["l1_loss"] = l1_loss
 
-            aux_reconstruction_loss = torch.tensor(0.0)
+        losses["mse_loss"] = mse_loss
 
         return TrainStepOutput(
             sae_in=sae_in,
             sae_out=sae_out,
             feature_acts=feature_acts,
             loss=loss,
-            mse_loss=mse_loss.item(),
-            l1_loss=l1_loss.item(),
-            ghost_grad_loss=(
-                ghost_grad_loss.item()
-                if isinstance(ghost_grad_loss, torch.Tensor)
-                else ghost_grad_loss
-            ),
-            auxiliary_reconstruction_loss=aux_reconstruction_loss.item(),
+            losses=losses,
         )
 
     def calculate_ghost_grad_loss(
@@ -402,6 +494,28 @@ class TrainingSAE(SAE):
             return batch_norm_mse_loss_fn
         else:
             return standard_mse_loss_fn
+
+    def save_model(self, path: str, sparsity: Optional[torch.Tensor] = None):
+        if not os.path.exists(path):
+            os.mkdir(path)
+
+        state_dict = self.state_dict().copy()
+
+        if self.cfg.architecture == "jumprelu":
+            threshold = torch.exp(self.log_threshold).detach()
+            del state_dict["log_threshold"]
+            state_dict["threshold"] = threshold
+
+        save_file(state_dict, f"{path}/{SAE_WEIGHTS_PATH}")
+
+        # Save the config
+        config = self.cfg.to_dict()
+        with open(f"{path}/{SAE_CFG_PATH}", "w") as f:
+            json.dump(config, f)
+
+        if sparsity is not None:
+            sparsity_in_dict = {"sparsity": sparsity}
+            save_file(sparsity_in_dict, f"{path}/{SPARSITY_PATH}")
 
     @classmethod
     def load_from_pretrained(

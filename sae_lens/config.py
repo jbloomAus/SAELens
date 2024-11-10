@@ -29,6 +29,7 @@ class LanguageModelSAERunnerConfig:
     Configuration for training a sparse autoencoder on a language model.
 
     Args:
+        architecture (str): The architecture to use, either "standard", "gated", or "jumprelu".
         model_name (str): The name of the model to use. This should be the name of the model in the Hugging Face model hub.
         model_class_name (str): The name of the class of the model to use. This should be either `HookedTransformer` or `HookedMamba`.
         hook_name (str): The name of the hook to use. This should be a valid TransformerLens hook.
@@ -45,7 +46,7 @@ class LanguageModelSAERunnerConfig:
         d_in (int): The input dimension of the SAE.
         d_sae (int, optional): The output dimension of the SAE. If None, defaults to `d_in * expansion_factor`.
         b_dec_init_method (str): The method to use to initialize the decoder bias. Zeros is likely fine.
-        expansion_factor (int): The expansion factor. Larger is better but more computationally expensive.
+        expansion_factor (int): The expansion factor. Larger is better but more computationally expensive. Default is 4.
         activation_fn (str): The activation function to use. Relu is standard.
         normalize_sae_decoder (bool): Whether to normalize the SAE decoder. Unit normed decoder weights used to be preferred.
         noise_scale (float): Using noise to induce sparsity is supported but not recommended.
@@ -59,20 +60,21 @@ class LanguageModelSAERunnerConfig:
         finetuning_tokens (int): The number of finetuning tokens. See [here](https://www.lesswrong.com/posts/3JuSjTZyMzaSeTxKk/addressing-feature-suppression-in-saes)
         store_batch_size_prompts (int): The batch size for storing activations. This controls how many prompts are in the batch of the language model when generating actiations.
         train_batch_size_tokens (int): The batch size for training. This controls the batch size of the SAE Training loop.
-        normalize_activations (str): Activation Normalization Strategy. Either none, expected_average_only_in (estimate the average activation norm and divide activations by it -> this can be folded post training and set to None), or constant_norm_rescale (at runtime set activation norm to sqrt(d_in) and then scale up the SAE output).
+        normalize_activations (str): Activation Normalization Strategy. Either none, expected_average_only_in (estimate the average activation norm and divide activations by it following Antrhopic April update -> this can be folded post training and set to None), or constant_norm_rescale (at runtime set activation norm to sqrt(d_in) and then scale up the SAE output).
         seqpos_slice (tuple): Determines slicing of activations when constructing batches during training. The slice should be (start_pos, end_pos, optional[step_size]), e.g. for Othello we sometimes use (5, -5). Note, step_size > 0.
         device (str): The device to use. Usually cuda.
         act_store_device (str): The device to use for the activation store. CPU is advised in order to save vram.
         seed (int): The seed to use.
         dtype (str): The data type to use.
         prepend_bos (bool): Whether to prepend the beginning of sequence token. You should use whatever the model was trained with.
+        jumprelu_init_threshold (float): The threshold to initialize for training JumpReLU SAEs.
+        jumprelu_bandwidth (float): Bandwidth for training JumpReLU SAEs.
         autocast (bool): Whether to use autocast during training. Saves vram.
         autocast_lm (bool): Whether to use autocast during activation fetching.
         compile_llm (bool): Whether to compile the LLM.
         llm_compilation_mode (str): The compilation mode to use for the LLM.
         compile_sae (bool): Whether to compile the SAE.
         sae_compilation_mode (str): The compilation mode to use for the SAE.
-        train_batch_size_tokens (int): The batch size for training.
         adam_beta1 (float): The beta1 parameter for Adam.
         adam_beta2 (float): The beta2 parameter for Adam.
         mse_loss_normalization (str): The normalization to use for the MSE loss.
@@ -83,7 +85,7 @@ class LanguageModelSAERunnerConfig:
         lr (float): The learning rate.
         lr_scheduler_name (str): The name of the learning rate scheduler to use.
         lr_warm_up_steps (int): The number of warm-up steps for the learning rate.
-        lr_end (float): The end learning rate for the cosine annealing scheduler.
+        lr_end (float): The end learning rate if lr_decay_steps is set. Default is lr / 10.
         lr_decay_steps (int): The number of decay steps for the learning rate.
         n_restart_cycles (int): The number of restart cycles for the cosine annealing warm restarts scheduler.
         finetuning_method (str): The method to use for finetuning.
@@ -128,7 +130,7 @@ class LanguageModelSAERunnerConfig:
     )
 
     # SAE Parameters
-    architecture: Literal["standard", "gated"] = "standard"
+    architecture: Literal["standard", "gated", "jumprelu"] = "standard"
     d_in: int = 512
     d_sae: Optional[int] = None
     b_dec_init_method: str = "geometric_median"
@@ -162,6 +164,8 @@ class LanguageModelSAERunnerConfig:
     seed: int = 42
     dtype: str = "float32"  # type: ignore #
     prepend_bos: bool = True
+    jumprelu_init_threshold: float = 0.001
+    jumprelu_bandwidth: float = 0.001
 
     # Performance - see compilation section of lm_runner.py for info
     autocast: bool = False  # autocast to autocast_dtype during training
@@ -292,7 +296,7 @@ class LanguageModelSAERunnerConfig:
             "layer_norm",
         ]:
             raise ValueError(
-                f"normalize_activations must be none, expected_average_only_in, or constant_norm_rescale. Got {self.normalize_activations}"
+                f"normalize_activations must be none, layer_norm, expected_average_only_in, or constant_norm_rescale. Got {self.normalize_activations}"
             )
 
         if self.act_store_device == "with_model":
@@ -410,6 +414,8 @@ class LanguageModelSAERunnerConfig:
             "decoder_heuristic_init": self.decoder_heuristic_init,
             "init_encoder_as_decoder_transpose": self.init_encoder_as_decoder_transpose,
             "normalize_activations": self.normalize_activations,
+            "jumprelu_init_threshold": self.jumprelu_init_threshold,
+            "jumprelu_bandwidth": self.jumprelu_bandwidth,
         }
 
     def to_dict(self) -> dict[str, Any]:

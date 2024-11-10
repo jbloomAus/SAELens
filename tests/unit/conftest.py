@@ -8,6 +8,8 @@ import torch
 
 from tests.unit.helpers import TINYSTORIES_MODEL, load_model_cached
 
+torch.set_grad_enabled(True)
+
 
 @pytest.fixture(autouse=True)
 def reproducibility():

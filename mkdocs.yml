@@ -36,12 +36,13 @@ theme:
 
     
 extra_javascript:
-  - javascript/custom_formatting.js
+  - assets/saetable.js
   # The below three make MathJax work, see https://squidfunk.github.io/mkdocs-material/reference/mathjax/
-  - javascript/mathjax.js
-  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  # - javascript/mathjax.js
   - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
 
+extra_css:
+  - assets/saetable.css
 nav:
   - Home: index.md
   - Roadmap: roadmap.md

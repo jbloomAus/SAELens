@@ -556,6 +556,7 @@ class SAE(HookedRootModule):
         sae_cfg = SAEConfig.from_dict(cfg_dict)
 
         sae = cls(sae_cfg)
+
         sae.load_state_dict(state_dict)
 
         return sae
@@ -619,9 +620,6 @@ class SAE(HookedRootModule):
             )
         sae_info = sae_directory.get(release, None)
         config_overrides = sae_info.config_overrides if sae_info is not None else None
-        neuronpedia_id = (
-            sae_info.neuronpedia_id[sae_id] if sae_info is not None else None
-        )
 
         conversion_loader_name = get_conversion_loader_name(sae_info)
         conversion_loader = NAMED_PRETRAINED_SAE_LOADERS[conversion_loader_name]
@@ -636,7 +634,6 @@ class SAE(HookedRootModule):
 
         sae = cls(SAEConfig.from_dict(cfg_dict))
         sae.load_state_dict(state_dict)
-        sae.cfg.neuronpedia_id = neuronpedia_id
 
         # Check if normalization is 'expected_average_only_in'
         if cfg_dict.get("normalize_activations") == "expected_average_only_in":
