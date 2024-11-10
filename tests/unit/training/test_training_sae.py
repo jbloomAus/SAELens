@@ -29,11 +29,11 @@ def test_TrainingSAE_training_forward_pass_can_scale_sparsity_penalty_by_decoder
 
     if scale_sparsity_penalty_by_decoder_norm:
         assert (
-            pytest.approx(train_step_output.l1_loss)
+            pytest.approx(train_step_output.losses["l1_loss"].detach().item())  # type: ignore
             == 2.0 * scaled_feature_acts.norm(p=1, dim=1).mean().detach().item()
         )
     else:
         assert (
-            pytest.approx(train_step_output.l1_loss)
+            pytest.approx(train_step_output.losses["l1_loss"].detach().item())  # type: ignore
             == 2.0 * feature_acts.norm(p=1, dim=1).mean().detach().item()
         )
