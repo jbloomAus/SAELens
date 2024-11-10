@@ -575,7 +575,7 @@ class ActivationsStore:
             # move batch toks to gpu for model
             refill_batch_tokens = self.get_batch_tokens(
                 raise_at_epoch_end=raise_on_epoch_end
-            ).to(self.model.cfg.device)
+            ).to(_get_model_device(self.model))
             refill_activations = self.get_activations(refill_batch_tokens)
             # move acts back to cpu
             refill_activations.to(self.device)

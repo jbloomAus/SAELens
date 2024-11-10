@@ -43,6 +43,7 @@ class SAETrainingRunner:
         cfg: LanguageModelSAERunnerConfig,
         override_dataset: HfDataset | None = None,
         override_model: HookedRootModule | None = None,
+        override_sae: TrainingSAE | None = None,
     ):
         if override_dataset is not None:
             logging.warning(
@@ -71,17 +72,20 @@ class SAETrainingRunner:
             override_dataset=override_dataset,
         )
 
-        if self.cfg.from_pretrained_path is not None:
-            self.sae = TrainingSAE.load_from_pretrained(
-                self.cfg.from_pretrained_path, self.cfg.device
-            )
-        else:
-            self.sae = TrainingSAE(
-                TrainingSAEConfig.from_dict(
-                    self.cfg.get_training_sae_cfg_dict(),
+        if override_sae is None:
+            if self.cfg.from_pretrained_path is not None:
+                self.sae = TrainingSAE.load_from_pretrained(
+                    self.cfg.from_pretrained_path, self.cfg.device
                 )
-            )
-            self._init_sae_group_b_decs()
+            else:
+                self.sae = TrainingSAE(
+                    TrainingSAEConfig.from_dict(
+                        self.cfg.get_training_sae_cfg_dict(),
+                    )
+                )
+                self._init_sae_group_b_decs()
+        else:
+            self.sae = override_sae
 
     def run(self):
         """
