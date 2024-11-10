@@ -2,6 +2,15 @@
 
 
 
+## v4.3.1 (2024-11-10)
+
+### Fix
+
+* fix: fixing type errors after bad merge ([`4a08d0d`](https://github.com/jbloomAus/SAELens/commit/4a08d0d4126a183a7516146de798fcc2030d40fa))
+
+* fix: only scale sparsity by dec norm if specified in the config (#365) ([`ceb2d3f`](https://github.com/jbloomAus/SAELens/commit/ceb2d3f8950fd0d0ed00a394fff56bc92aa93821))
+
+
 ## v4.3.0 (2024-11-10)
 
 ### Chore
