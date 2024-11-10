@@ -35,6 +35,18 @@ TRAINER_EVAL_CONFIG = EvalConfig(
 )
 
 
+@pytest.fixture
+def example_dataset() -> Dataset:
+    return Dataset.from_list(
+        [
+            {"text": "hello world1"},
+            {"text": "hello world2"},
+            {"text": "hello world3"},
+        ]
+        * 20
+    )
+
+
 # not sure why we have NaNs in the feature metrics, but this is a quick fix for tests
 def _replace_nan(list: list[float]) -> list[float]:
     return [0 if math.isnan(x) else x for x in list]
@@ -350,12 +362,9 @@ def test_process_results(tmp_path: Path):
     assert csv_path.exists()
 
 
-def test_get_downstream_reconstruction_metrics_with_hf_model_gives_same_results_as_tlens_model():
-    sae = SAE.from_pretrained(
-        release="gpt2-small-res-jb",
-        sae_id="blocks.4.hook_resid_pre",
-        device="cpu",
-    )[0]
+def test_get_downstream_reconstruction_metrics_with_hf_model_gives_same_results_as_tlens_model(
+    gpt2_res_jb_l4_sae: SAE, example_dataset: Dataset
+):
     hf_model = load_model(
         model_class_name="AutoModelForCausalLM",
         model_name="gpt2",
@@ -363,19 +372,13 @@ def test_get_downstream_reconstruction_metrics_with_hf_model_gives_same_results_
     )
     tlens_model = HookedTransformer.from_pretrained_no_processing("gpt2", device="cpu")
 
-    example_ds = Dataset.from_list(
-        [
-            {"text": "hello world1"},
-            {"text": "hello world2"},
-            {"text": "hello world3"},
-        ]
-        * 20
-    )
     cfg = build_sae_cfg(hook_name="transformer.h.3")
-    sae.cfg.hook_name = "transformer.h.3"
-    hf_store = ActivationsStore.from_config(hf_model, cfg, override_dataset=example_ds)
+    gpt2_res_jb_l4_sae.cfg.hook_name = "transformer.h.3"
+    hf_store = ActivationsStore.from_config(
+        hf_model, cfg, override_dataset=example_dataset
+    )
     hf_metrics = get_downstream_reconstruction_metrics(
-        sae=sae,
+        sae=gpt2_res_jb_l4_sae,
         model=hf_model,
         activation_store=hf_store,
         compute_kl=True,
@@ -385,12 +388,12 @@ def test_get_downstream_reconstruction_metrics_with_hf_model_gives_same_results_
     )
 
     cfg = build_sae_cfg(hook_name="blocks.4.hook_resid_pre")
-    sae.cfg.hook_name = "blocks.4.hook_resid_pre"
+    gpt2_res_jb_l4_sae.cfg.hook_name = "blocks.4.hook_resid_pre"
     tlens_store = ActivationsStore.from_config(
-        tlens_model, cfg, override_dataset=example_ds
+        tlens_model, cfg, override_dataset=example_dataset
     )
     tlens_metrics = get_downstream_reconstruction_metrics(
-        sae=sae,
+        sae=gpt2_res_jb_l4_sae,
         model=tlens_model,
         activation_store=tlens_store,
         compute_kl=True,
@@ -403,12 +406,10 @@ def test_get_downstream_reconstruction_metrics_with_hf_model_gives_same_results_
         assert hf_metrics[key] == pytest.approx(tlens_metrics[key], abs=1e-3)
 
 
-def test_get_sparsity_and_variance_metrics_with_hf_model_gives_same_results_as_tlens_model():
-    sae = SAE.from_pretrained(
-        release="gpt2-small-res-jb",
-        sae_id="blocks.4.hook_resid_pre",
-        device="cpu",
-    )[0]
+def test_get_sparsity_and_variance_metrics_with_hf_model_gives_same_results_as_tlens_model(
+    gpt2_res_jb_l4_sae: SAE,
+    example_dataset: Dataset,
+):
     hf_model = load_model(
         model_class_name="AutoModelForCausalLM",
         model_name="gpt2",
@@ -416,19 +417,13 @@ def test_get_sparsity_and_variance_metrics_with_hf_model_gives_same_results_as_t
     )
     tlens_model = HookedTransformer.from_pretrained_no_processing("gpt2", device="cpu")
 
-    example_ds = Dataset.from_list(
-        [
-            {"text": "hello world1"},
-            {"text": "hello world2"},
-            {"text": "hello world3"},
-        ]
-        * 20
-    )
     cfg = build_sae_cfg(hook_name="transformer.h.3")
-    sae.cfg.hook_name = "transformer.h.3"
-    hf_store = ActivationsStore.from_config(hf_model, cfg, override_dataset=example_ds)
+    gpt2_res_jb_l4_sae.cfg.hook_name = "transformer.h.3"
+    hf_store = ActivationsStore.from_config(
+        hf_model, cfg, override_dataset=example_dataset
+    )
     hf_metrics, hf_feat_metrics = get_sparsity_and_variance_metrics(
-        sae=sae,
+        sae=gpt2_res_jb_l4_sae,
         model=hf_model,
         activation_store=hf_store,
         n_batches=1,
@@ -441,12 +436,12 @@ def test_get_sparsity_and_variance_metrics_with_hf_model_gives_same_results_as_t
     )
 
     cfg = build_sae_cfg(hook_name="blocks.4.hook_resid_pre")
-    sae.cfg.hook_name = "blocks.4.hook_resid_pre"
+    gpt2_res_jb_l4_sae.cfg.hook_name = "blocks.4.hook_resid_pre"
     tlens_store = ActivationsStore.from_config(
-        tlens_model, cfg, override_dataset=example_ds
+        tlens_model, cfg, override_dataset=example_dataset
     )
     tlens_metrics, tlens_feat_metrics = get_sparsity_and_variance_metrics(
-        sae=sae,
+        sae=gpt2_res_jb_l4_sae,
         model=tlens_model,
         activation_store=tlens_store,
         n_batches=1,

@@ -98,10 +98,13 @@ class HookedProxyLM(HookedRootModule):
         **kwargs: Any,
     ) -> Output | Loss:
         # This is just what's needed for evals, not everything that HookedTransformer has
-        assert return_type in (
+        if return_type not in (
             "both",
             "logits",
-        ), "Only return_type supported is 'both' or 'logits' to match what's in evals.py and ActivationsStore"
+        ):
+            raise NotImplementedError(
+                "Only return_type supported is 'both' or 'logits' to match what's in evals.py and ActivationsStore"
+            )
         output = self.model(tokens)
         logits = _extract_logits_from_output(output)
 

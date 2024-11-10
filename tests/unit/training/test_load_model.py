@@ -1,3 +1,4 @@
+import pytest
 import torch
 from mamba_lens import HookedMamba
 from transformer_lens import HookedTransformer
@@ -6,13 +7,21 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from sae_lens.load_model import HookedProxyLM, _extract_logits_from_output, load_model
 
 
+@pytest.fixture
+def gpt2_proxy_model():
+    return load_model(
+        model_class_name="AutoModelForCausalLM",
+        model_name="gpt2",
+        device="cpu",
+    )
+
+
 def test_load_model_works_with_mamba():
     model = load_model(
         model_class_name="HookedMamba",
         model_name="state-spaces/mamba-370m",
         device="cpu",
     )
-    assert model is not None
     assert isinstance(model, HookedMamba)
 
 
@@ -22,7 +31,6 @@ def test_load_model_works_without_model_kwargs():
         model_name="pythia-14m",
         device="cpu",
     )
-    assert model is not None
     assert isinstance(model, HookedTransformer)
     assert model.cfg.checkpoint_index is None
 
@@ -34,7 +42,6 @@ def test_load_model_works_with_model_kwargs():
         device="cpu",
         model_from_pretrained_kwargs={"checkpoint_index": 0},
     )
-    assert model is not None
     assert isinstance(model, HookedTransformer)
     assert model.cfg.checkpoint_index == 0
 
@@ -45,7 +52,6 @@ def test_load_model_with_generic_huggingface_lm():
         model_name="gpt2",
         device="cpu",
     )
-    assert model is not None
     assert isinstance(model, HookedProxyLM)
 
 
@@ -65,16 +71,13 @@ def test_HookedProxyLM_gives_same_cached_states_as_original_implementation():
         )
 
 
-def test_HookedProxyLM_gives_same_cached_states_as_tlens_implementation():
-    hf_model = load_model(
-        model_class_name="AutoModelForCausalLM",
-        model_name="gpt2",
-        device="cpu",
-    )
+def test_HookedProxyLM_gives_same_cached_states_as_tlens_implementation(
+    gpt2_proxy_model: HookedProxyLM,
+):
     tlens_model = HookedTransformer.from_pretrained_no_processing("gpt2", device="cpu")
 
     input_ids = tlens_model.to_tokens("hi")
-    hf_cache = hf_model.run_with_cache(input_ids)[1]
+    hf_cache = gpt2_proxy_model.run_with_cache(input_ids)[1]
     tlens_cache = tlens_model.run_with_cache(input_ids)[1]
     for i in range(12):
         assert torch.allclose(
@@ -84,17 +87,14 @@ def test_HookedProxyLM_gives_same_cached_states_as_tlens_implementation():
         )
 
 
-def test_HookedProxyLM_forward_gives_same_output_as_tlens():
-    hf_model = load_model(
-        model_class_name="AutoModelForCausalLM",
-        model_name="gpt2",
-        device="cpu",
-    )
+def test_HookedProxyLM_forward_gives_same_output_as_tlens(
+    gpt2_proxy_model: HookedProxyLM,
+):
     tlens_model = HookedTransformer.from_pretrained("gpt2", device="cpu")
 
     batch_tokens = tlens_model.to_tokens("hi there")
     tlens_output = tlens_model(batch_tokens, return_type="both", loss_per_token=True)
-    hf_output = hf_model(batch_tokens, return_type="both", loss_per_token=True)
+    hf_output = gpt2_proxy_model(batch_tokens, return_type="both", loss_per_token=True)
 
     # Seems like tlens removes the means before softmaxing
     hf_logits_normed = hf_output[0] - hf_output[0].mean(dim=-1, keepdim=True)
@@ -116,18 +116,15 @@ def test_extract_logits_from_output_works_with_multiple_return_types():
     assert torch.allclose(logits_dict, logits_tuple)
 
 
-def test_HookedProxyLM_to_tokens_gives_same_output_as_tlens():
-    hf_model = load_model(
-        model_class_name="AutoModelForCausalLM",
-        model_name="gpt2",
-        device="cpu",
-    )
+def test_HookedProxyLM_to_tokens_gives_same_output_as_tlens(
+    gpt2_proxy_model: HookedProxyLM,
+):
     tlens_model = HookedTransformer.from_pretrained("gpt2", device="cpu")
 
     tl_tokens = tlens_model.to_tokens(
         "hi there", prepend_bos=False, truncate=False, move_to_device=False
     )
-    hf_tokens = hf_model.to_tokens(
+    hf_tokens = gpt2_proxy_model.to_tokens(
         "hi there", prepend_bos=False, truncate=False, move_to_device=False
     )
 
