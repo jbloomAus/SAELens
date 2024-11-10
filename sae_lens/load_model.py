@@ -50,7 +50,7 @@ def load_model(
     elif model_class_name == "AutoModelForCausalLM":
         hf_model = AutoModelForCausalLM.from_pretrained(
             model_name, **model_from_pretrained_kwargs
-        )
+        ).to(device)
         tokenizer = AutoTokenizer.from_pretrained(model_name)
         return HookedProxyLM(hf_model, tokenizer)
 
