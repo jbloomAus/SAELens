@@ -44,10 +44,10 @@ with open(f"./jobs/cache_acts/{job_name}/cache_acts.yml", "r") as file:
 if config is None:
     raise ValueError("Error: The config is not loaded.")
 
-print(f"Total Training Tokens: {config.training_tokens}")
+print(f"Total Training Tokens: {config.total_training_tokens}")
 
 # This is set by Ansible
-new_cached_activations_path = config.new_cached_activations_path
+new_cached_activations_path = config.activation_save_path
 if new_cached_activations_path is None:
     raise ValueError("Error: The new_cached_activations_path is not set.")
 
@@ -70,5 +70,5 @@ runner.run()
 end_time = time.time()
 print(f"Total time taken: {end_time - start_time:.2f} seconds")
 print(
-    f"{config.training_tokens / ((end_time - start_time)*10**6):.2f} Million Tokens / Second"
+    f"{config.total_training_tokens / ((end_time - start_time)*10**6):.2f} Million Tokens / Second"
 )
