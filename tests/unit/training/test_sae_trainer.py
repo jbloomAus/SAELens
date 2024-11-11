@@ -168,6 +168,7 @@ def test_build_train_step_log_dict(trainer: SAETrainer) -> None:
         sae_in=torch.tensor([[-1, 0], [0, 2], [1, 1]]).float(),
         sae_out=torch.tensor([[0, 0], [0, 2], [0.5, 1]]).float(),
         feature_acts=torch.tensor([[0, 0, 0, 1], [1, 0, 0, 1], [1, 0, 1, 1]]).float(),
+        hidden_pre=torch.tensor([[-1, 0, 0, 1], [1, -1, 0, 1], [1, -1, 1, 1]]).float(),
         loss=torch.tensor(0.5),
         losses={
             "mse_loss": 0.25,

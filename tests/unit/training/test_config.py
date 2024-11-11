@@ -138,3 +138,26 @@ def test_cache_activations_runner_config_seqpos(
             seqpos_slice=seqpos_slice,
             context_size=context_size,
         )
+
+
+def test_topk_architecture_requires_topk_activation():
+    with pytest.raises(
+        ValueError, match="If using topk architecture, activation_fn must be topk."
+    ):
+        LanguageModelSAERunnerConfig(architecture="topk", activation_fn="relu")
+
+
+def test_topk_architecture_requires_k_parameter():
+    with pytest.raises(
+        ValueError,
+        match="activation_fn_kwargs.k must be provided for topk architecture.",
+    ):
+        LanguageModelSAERunnerConfig(
+            architecture="topk", activation_fn="topk", activation_fn_kwargs={}
+        )
+
+
+def test_topk_architecture_sets_topk_defaults():
+    cfg = LanguageModelSAERunnerConfig(architecture="topk")
+    assert cfg.activation_fn == "topk"
+    assert cfg.activation_fn_kwargs == {"k": 100}

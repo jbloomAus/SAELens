@@ -238,7 +238,7 @@ class TrainingSAE(SAE):
         super().__init__(base_sae_cfg)
         self.cfg = cfg  # type: ignore
 
-        if cfg.architecture == "standard":
+        if cfg.architecture == "standard" or cfg.architecture == "topk":
             self.encode_with_hidden_pre_fn = self.encode_with_hidden_pre
         elif cfg.architecture == "gated":
             self.encode_with_hidden_pre_fn = self.encode_with_hidden_pre_gated
@@ -402,8 +402,9 @@ class TrainingSAE(SAE):
             losses["l0_loss"] = l0_loss
         elif self.cfg.architecture == "topk":
             topk_loss = self.calculate_topk_aux_loss(
-                hidden_pre=hidden_pre,
+                sae_in=sae_in,
                 sae_out=sae_out,
+                hidden_pre=hidden_pre,
                 dead_neuron_mask=dead_neuron_mask,
             )
             losses["auxiliary_reconstruction_loss"] = topk_loss
@@ -448,8 +449,9 @@ class TrainingSAE(SAE):
 
     def calculate_topk_aux_loss(
         self,
-        hidden_pre: torch.Tensor,
+        sae_in: torch.Tensor,
         sae_out: torch.Tensor,
+        hidden_pre: torch.Tensor,
         dead_neuron_mask: torch.Tensor | None,
     ) -> torch.Tensor:
         # Mostly taken from https://github.com/EleutherAI/sae/blob/main/sae/sae.py, except without variance normalization
@@ -458,6 +460,8 @@ class TrainingSAE(SAE):
             dead_neuron_mask is not None
             and (num_dead := int(dead_neuron_mask.sum())) > 0
         ):
+            residual = sae_in - sae_out
+
             # Heuristic from Appendix B.1 in the paper
             k_aux = hidden_pre.shape[-1] // 2
 
@@ -465,17 +469,16 @@ class TrainingSAE(SAE):
             scale = min(num_dead / k_aux, 1.0)
             k_aux = min(k_aux, num_dead)
 
-            # Don't include living latents in this loss
-            auxk_latents = torch.where(dead_neuron_mask[None], hidden_pre, -torch.inf)
-
-            # Top-k dead latents
-            auxk_indices = auxk_latents.topk(k_aux, sorted=False).indices
-            auxk_acts = torch.where(auxk_indices, hidden_pre, 0)
+            auxk_acts = _calculate_topk_aux_acts(
+                k_aux=k_aux,
+                hidden_pre=hidden_pre,
+                dead_neuron_mask=dead_neuron_mask,
+            )
 
             # Encourage the top ~50% of dead latents to predict the residual of the
             # top k living latents
             recons = self.decode(auxk_acts)
-            auxk_loss = (recons - sae_out).pow(2).sum()
+            auxk_loss = (recons - residual).pow(2).sum(dim=-1).mean()
             return scale * auxk_loss
         else:
             return sae_out.new_tensor(0.0)
@@ -683,3 +686,19 @@ class TrainingSAE(SAE):
             self.W_dec.data,
             "d_sae, d_sae d_in -> d_sae d_in",
         )
+
+
+def _calculate_topk_aux_acts(
+    k_aux: int,
+    hidden_pre: torch.Tensor,
+    dead_neuron_mask: torch.Tensor,
+) -> torch.Tensor:
+    # Don't include living latents in this loss
+    auxk_latents = torch.where(dead_neuron_mask[None], hidden_pre, -torch.inf)
+    # Top-k dead latents
+    auxk_topk = auxk_latents.topk(k_aux, sorted=False)
+    # Set the activations to zero for all but the top k_aux dead latents
+    auxk_acts = torch.zeros_like(hidden_pre)
+    auxk_acts.scatter_(-1, auxk_topk.indices, auxk_topk.values)
+    # Set activations to zero for all but top k_aux dead latents
+    return auxk_acts
