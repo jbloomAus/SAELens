@@ -1,0 +1,4 @@
+ignore:
+  - sae_lens/analysis/feature_statistics.py
+  - sae_lens/analysis/tsea.py
+  - sae_lens/toolkit/pretrained_saes.py
