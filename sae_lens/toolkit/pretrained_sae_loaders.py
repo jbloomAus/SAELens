@@ -407,6 +407,113 @@ def gemma_2_sae_loader(
     return cfg_dict, state_dict, log_sparsity
 
 
+def get_llama_scope_config(
+    repo_id: str,
+    folder_name: str,
+    options: SAEConfigLoadOptions,
+) -> Dict[str, Any]:
+    # Llama Scope SAEs
+    # repo_id: fnlp/Llama3_1-8B-Base-LX{sublayer}-{exp_factor}x
+    # folder_name: Llama3_1-8B-Base-L{layer}{sublayer}-{exp_factor}x
+    config_path = folder_name + "/hyperparams.json"
+    config_path = hf_hub_download(repo_id, config_path)
+
+    old_cfg_dict = json.load(open(config_path, "r"))
+
+    # Model specific parameters
+    model_name, d_in = "meta-llama/Llama-3.1-8B", old_cfg_dict["d_model"]
+
+    return {
+        "architecture": "jumprelu",
+        "jump_relu_threshold": old_cfg_dict["jump_relu_threshold"],
+        # We use a scalar jump_relu_threshold for all features
+        # This is different from Gemma Scope JumpReLU SAEs.
+        "d_in": d_in,
+        "d_sae": old_cfg_dict["d_sae"],
+        "dtype": "bfloat16",
+        "model_name": model_name,
+        "hook_name": old_cfg_dict["hook_point_in"],
+        "hook_layer": int(old_cfg_dict["hook_point_in"].split(".")[1]),
+        "hook_head_index": None,
+        "activation_fn_str": "relu",
+        "finetuning_scaling_factor": False,
+        "sae_lens_training_version": None,
+        "prepend_bos": True,
+        "dataset_path": "cerebras/SlimPajama-627B",
+        "context_size": 1024,
+        "dataset_trust_remote_code": True,
+        "apply_b_dec_to_input": False,
+        "normalize_activations": "expected_average_only_in",
+    }
+
+
+def llama_scope_sae_loader(
+    release: str,
+    sae_id: str,
+    device: str = "cpu",
+    force_download: bool = False,
+    cfg_overrides: Optional[Dict[str, Any]] = None,
+    d_sae_override: Optional[int] = None,
+    layer_override: Optional[int] = None,
+) -> Tuple[Dict[str, Any], Dict[str, torch.Tensor], Optional[torch.Tensor]]:
+    """
+    Custom loader for Llama Scope SAEs.
+    """
+    options = SAEConfigLoadOptions(
+        device=device,
+        d_sae_override=d_sae_override,
+        layer_override=layer_override,
+    )
+    cfg_dict = get_sae_config(
+        release,
+        sae_id=sae_id,
+        options=options,
+    )
+    cfg_dict["device"] = device
+
+    # Apply overrides if provided
+    if cfg_overrides is not None:
+        cfg_dict.update(cfg_overrides)
+
+    repo_id, folder_name = get_repo_id_and_folder_name(release, sae_id=sae_id)
+
+    # Download the SAE weights
+    sae_path = hf_hub_download(
+        repo_id=repo_id,
+        filename="final.safetensors",
+        subfolder=folder_name + "/checkpoints",
+        force_download=force_download,
+    )
+
+    # Load and convert the weights
+    with safe_open(sae_path, framework="pt", device=device) as f:
+        state_dict = {
+            "W_enc": f.get_tensor("encoder.weight")
+            .to(dtype=DTYPE_MAP[cfg_dict["dtype"]])
+            .T,
+            "W_dec": f.get_tensor("decoder.weight")
+            .to(dtype=DTYPE_MAP[cfg_dict["dtype"]])
+            .T,
+            "b_enc": f.get_tensor("encoder.bias").to(
+                dtype=DTYPE_MAP[cfg_dict["dtype"]]
+            ),
+            "b_dec": f.get_tensor("decoder.bias").to(
+                dtype=DTYPE_MAP[cfg_dict["dtype"]]
+            ),
+            "threshold": torch.ones(
+                cfg_dict["d_sae"],
+                dtype=DTYPE_MAP[cfg_dict["dtype"]],
+                device=cfg_dict["device"],
+            )
+            * cfg_dict["jump_relu_threshold"],
+        }
+
+    # No sparsity tensor for Llama Scope SAEs
+    log_sparsity = None
+
+    return cfg_dict, state_dict, log_sparsity
+
+
 def get_dictionary_learning_config_1(
     repo_id: str, folder_name: str, options: SAEConfigLoadOptions
 ) -> dict[str, Any]:
@@ -540,6 +647,7 @@ NAMED_PRETRAINED_SAE_LOADERS: dict[str, PretrainedSaeLoader] = {
     "sae_lens": sae_lens_loader,  # type: ignore
     "connor_rob_hook_z": connor_rob_hook_z_loader,  # type: ignore
     "gemma_2": gemma_2_sae_loader,
+    "llama_scope": llama_scope_sae_loader,
     "dictionary_learning_1": dictionary_learning_sae_loader_1,
 }
 
@@ -547,5 +655,6 @@ NAMED_PRETRAINED_SAE_CONFIG_GETTERS = {
     "sae_lens": get_sae_config_from_hf,
     "connor_rob_hook_z": get_connor_rob_hook_z_config,
     "gemma_2": get_gemma_2_config,
+    "llama_scope": get_llama_scope_config,
     "dictionary_learning_1": get_dictionary_learning_config_1,
 }
