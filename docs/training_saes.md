@@ -93,6 +93,47 @@ sparse_autoencoder = SAETrainingRunner(cfg).run()
 
 As you can see, the training setup provides a large number of options to explore. The full list of options can be found in the [LanguageModelSAERunnerConfig][sae_lens.LanguageModelSAERunnerConfig] class.
 
+### Training Topk SAEs
+
+By default, SAELens will train SAEs using a L1 loss term with ReLU activation. A popular alternative architecture is the [TopK](https://arxiv.org/abs/2406.04093) architecture, which fixes the L0 of the SAE using a TopK activation function. To train a TopK SAE, set the `architecture` parameter to `"topk"` in the config. You can set the `k` parameter via `activation_fn_kwargs`. If not set, the default is `k=100`. The TopK architecture ignores the `l1_coefficient` parameter.
+
+```python
+cfg = LanguageModelSAERunnerConfig(
+    architecture="topk",
+    activation_fn_kwargs={"k": 100},
+    # ...
+)
+sparse_autoencoder = SAETrainingRunner(cfg).run()
+```
+
+### Training JumpReLU SAEs
+
+[JumpReLU SAEs](https://arxiv.org/abs/2407.14435) are the current state-of-the-art SAE architecture, but are often more tricky to train than other architectures. To train a JumpReLU SAE, set the `architecture` parameter to `"jumprelu"` in the config. JumpReLU SAEs use an sparsity penalty that is controlled using the `l1_coefficient` parameter. This is technically a misnomer as the JumpReLU sparsity penalty is not a L1 penalty, but we keep the parameter name for consistency with the L1 penalty used by the standard architecture. The JumpReLU architecture also has two additional parameters: `jumprelu_bandwidth` and `jumprelu_init_threshold`. Both of these are likely fine at their default values, but may be worth experimenting with if JumpReLU training is too slow to converge.
+
+```python
+cfg = LanguageModelSAERunnerConfig(
+    architecture="jumprelu",
+    l1_coefficient=5.0,
+    jumprelu_bandwidth=0.001,
+    jumprelu_init_threshold=0.001,
+    # ...
+)
+sparse_autoencoder = SAETrainingRunner(cfg).run()
+```
+
+### Training Gated SAEs
+
+[Gated SAEs](https://arxiv.org/abs/2404.16014) are a precursor to JumpReLU SAEs, but using a simpler training procedure that should make them easier to train. To train a Gated SAE, set the `architecture` parameter to `"gated"` in the config. Gated SAEs use the `l1_coefficient` parameter to control the sparsity of the SAE, the same as standard SAEs. If JumpReLU training is too slow to converge, it may be worth trying a Gated SAE instead.
+
+```python
+cfg = LanguageModelSAERunnerConfig(
+    architecture="gated",
+    l1_coefficient=5.0,
+    # ...
+)
+sparse_autoencoder = SAETrainingRunner(cfg).run()
+```
+
 ## CLI Runner
 
 The SAE training runner can also be run from the command line via the `sae_lens.sae_training_runner` module. This can be useful for quickly testing different hyperparameters or running training on a remote server. The command line interface is shown below. All options to the CLI are the same as the [LanguageModelSAERunnerConfig][sae_lens.LanguageModelSAERunnerConfig] with a `--` prefix. E.g., `--model_name` is the same as `model_name` in the config.
