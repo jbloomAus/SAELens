@@ -55,11 +55,15 @@ def test_TrainingSAE_encode_returns_same_value_as_encode_with_hidden_pre(
 
 
 def test_TrainingSAE_initializes_only_with_log_threshold_if_jumprelu():
-    cfg = build_sae_cfg(architecture="jumprelu")
+    cfg = build_sae_cfg(architecture="jumprelu", jumprelu_init_threshold=0.01)
     sae = TrainingSAE(TrainingSAEConfig.from_sae_runner_config(cfg))
     param_names = dict(sae.named_parameters()).keys()
     assert "log_threshold" in param_names
     assert "threshold" not in param_names
+    assert torch.allclose(
+        sae.threshold,
+        torch.ones_like(sae.log_threshold.data) * cfg.jumprelu_init_threshold,
+    )
 
 
 def test_TrainingSAE_jumprelu_sae_encoding():

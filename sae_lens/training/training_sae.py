@@ -233,8 +233,8 @@ class TrainingSAE(SAE):
     device: torch.device
 
     def __init__(self, cfg: TrainingSAEConfig, use_error_term: bool = False):
-
-        super().__init__(cfg)
+        base_sae_cfg = SAEConfig.from_dict(cfg.get_base_sae_cfg_dict())
+        super().__init__(base_sae_cfg)
         self.cfg = cfg  # type: ignore
 
         if cfg.architecture == "standard":
@@ -244,6 +244,10 @@ class TrainingSAE(SAE):
         elif cfg.architecture == "jumprelu":
             self.encode_with_hidden_pre_fn = self.encode_with_hidden_pre_jumprelu
             self.bandwidth = cfg.jumprelu_bandwidth
+            self.log_threshold.data = torch.ones(
+                self.cfg.d_sae, dtype=self.dtype, device=self.device
+            ) * np.log(cfg.jumprelu_init_threshold)
+
         else:
             raise ValueError(f"Unknown architecture: {cfg.architecture}")
 
@@ -263,7 +267,6 @@ class TrainingSAE(SAE):
         # same as the superclass, except we use a log_threshold parameter instead of threshold
         self.log_threshold = nn.Parameter(
             torch.ones(self.cfg.d_sae, dtype=self.dtype, device=self.device)
-            * np.log(self.cfg.jumprelu_init_threshold)
         )
         self.b_enc = nn.Parameter(
             torch.zeros(self.cfg.d_sae, dtype=self.dtype, device=self.device)
