@@ -12854,801 +12854,802 @@ llama-3-8b-it-res-jh:
   - id: blocks.25.hook_resid_post
     path: blocks.25.hook_resid_post
     neuronpedia: llama3-8b-it/25-res-jh
-llama_scope_LXA_32x:
+llama_scope_lxa_32x:
   conversion_func: llama_scope
   model: meta-llama/Llama-3.1-8B
   repo_id: fnlp/Llama3_1-8B-Base-LXA-32x
   saes:
-  - id: L0A_32x
+  - id: l0a_32x
     l0: 50.0
     norm_scaling_factor: 112.21917808219177
     path: Llama3_1-8B-Base-L0A-32x
-  - id: L1A_32x
+  - id: l1a_32x
     l0: 50.0
     norm_scaling_factor: 94.70520231213872
     path: Llama3_1-8B-Base-L1A-32x
-  - id: L2A_32x
+  - id: l2a_32x
     l0: 50.0
     norm_scaling_factor: 73.14285714285714
     path: Llama3_1-8B-Base-L2A-32x
-  - id: L3A_32x
+  - id: l3a_32x
     l0: 50.0
     norm_scaling_factor: 55.72789115646258
     path: Llama3_1-8B-Base-L3A-32x
-  - id: L4A_32x
+  - id: l4a_32x
     l0: 50.0
     norm_scaling_factor: 45.76536312849162
     path: Llama3_1-8B-Base-L4A-32x
-  - id: L5A_32x
+  - id: l5a_32x
     l0: 50.0
     norm_scaling_factor: 39.9609756097561
     path: Llama3_1-8B-Base-L5A-32x
-  - id: L6A_32x
+  - id: l6a_32x
     l0: 50.0
     norm_scaling_factor: 33.436734693877554
     path: Llama3_1-8B-Base-L6A-32x
-  - id: L7A_32x
+  - id: l7a_32x
     l0: 50.0
     norm_scaling_factor: 27.30666666666667
     path: Llama3_1-8B-Base-L7A-32x
-  - id: L8A_32x
+  - id: l8a_32x
     l0: 50.0
     norm_scaling_factor: 27.675675675675677
     path: Llama3_1-8B-Base-L8A-32x
-  - id: L9A_32x
+  - id: l9a_32x
     l0: 50.0
     norm_scaling_factor: 25.440993788819874
     path: Llama3_1-8B-Base-L9A-32x
-  - id: L10A_32x
+  - id: l10a_32x
     l0: 50.0
     norm_scaling_factor: 26.5974025974026
     path: Llama3_1-8B-Base-L10A-32x
-  - id: L11A_32x
+  - id: l11a_32x
     l0: 50.0
     norm_scaling_factor: 25.761006289308177
     path: Llama3_1-8B-Base-L11A-32x
-  - id: L12A_32x
+  - id: l12a_32x
     l0: 50.0
     norm_scaling_factor: 22.14054054054054
     path: Llama3_1-8B-Base-L12A-32x
-  - id: L13A_32x
+  - id: l13a_32x
     l0: 50.0
     norm_scaling_factor: 20.582914572864322
     path: Llama3_1-8B-Base-L13A-32x
-  - id: L14A_32x
+  - id: l14a_32x
     l0: 50.0
     norm_scaling_factor: 20.177339901477833
     path: Llama3_1-8B-Base-L14A-32x
-  - id: L15A_32x
+  - id: l15a_32x
     l0: 50.0
     norm_scaling_factor: 20.582914572864322
     path: Llama3_1-8B-Base-L15A-32x
-  - id: L16A_32x
+  - id: l16a_32x
     l0: 50.0
     norm_scaling_factor: 19.32075471698113
     path: Llama3_1-8B-Base-L16A-32x
-  - id: L17A_32x
+  - id: l17a_32x
     l0: 50.0
     norm_scaling_factor: 21.005128205128205
     path: Llama3_1-8B-Base-L17A-32x
-  - id: L18A_32x
+  - id: l18a_32x
     l0: 50.0
     norm_scaling_factor: 24.674698795180724
     path: Llama3_1-8B-Base-L18A-32x
-  - id: L19A_32x
+  - id: l19a_32x
     l0: 50.0
     norm_scaling_factor: 28.248275862068965
     path: Llama3_1-8B-Base-L19A-32x
-  - id: L20A_32x
+  - id: l20a_32x
     l0: 50.0
     norm_scaling_factor: 27.30666666666667
     path: Llama3_1-8B-Base-L20A-32x
-  - id: L21A_32x
+  - id: l21a_32x
     l0: 50.0
     norm_scaling_factor: 19.14018691588785
     path: Llama3_1-8B-Base-L21A-32x
-  - id: L22A_32x
+  - id: l22a_32x
     l0: 50.0
     norm_scaling_factor: 24.38095238095238
     path: Llama3_1-8B-Base-L22A-32x
-  - id: L23A_32x
+  - id: l23a_32x
     l0: 50.0
     norm_scaling_factor: 22.14054054054054
     path: Llama3_1-8B-Base-L23A-32x
-  - id: L24A_32x
+  - id: l24a_32x
     l0: 50.0
     norm_scaling_factor: 21.67195767195767
     path: Llama3_1-8B-Base-L24A-32x
-  - id: L25A_32x
+  - id: l25a_32x
     l0: 50.0
     norm_scaling_factor: 18.367713004484305
     path: Llama3_1-8B-Base-L25A-32x
-  - id: L26A_32x
+  - id: l26a_32x
     l0: 50.0
     norm_scaling_factor: 13.837837837837839
     path: Llama3_1-8B-Base-L26A-32x
-  - id: L27A_32x
+  - id: l27a_32x
     l0: 50.0
     norm_scaling_factor: 13.931972789115646
     path: Llama3_1-8B-Base-L27A-32x
-  - id: L28A_32x
+  - id: l28a_32x
     l0: 50.0
     norm_scaling_factor: 10.95187165775401
     path: Llama3_1-8B-Base-L28A-32x
-  - id: L29A_32x
+  - id: l29a_32x
     l0: 50.0
     norm_scaling_factor: 8.569037656903765
     path: Llama3_1-8B-Base-L29A-32x
-  - id: L30A_32x
+  - id: l30a_32x
     l0: 50.0
     norm_scaling_factor: 5.953488372093023
     path: Llama3_1-8B-Base-L30A-32x
-  - id: L31A_32x
+  - id: l31a_32x
     l0: 50.0
     norm_scaling_factor: 3.5310344827586206
     path: Llama3_1-8B-Base-L31A-32x
-llama_scope_LXA_8x:
+llama_scope_lxa_8x:
   conversion_func: llama_scope
   model: meta-llama/Llama-3.1-8B
   repo_id: fnlp/Llama3_1-8B-Base-LXA-8x
   saes:
-  - id: L0A_8x
+  - id: l0a_8x
     l0: 50.0
     norm_scaling_factor: 112.21917808219177
     path: Llama3_1-8B-Base-L0A-8x
-  - id: L1A_8x
+  - id: l1a_8x
     l0: 50.0
     norm_scaling_factor: 94.70520231213872
     path: Llama3_1-8B-Base-L1A-8x
-  - id: L2A_8x
+  - id: l2a_8x
     l0: 50.0
     norm_scaling_factor: 72.81777777777778
     path: Llama3_1-8B-Base-L2A-8x
-  - id: L3A_8x
+  - id: l3a_8x
     l0: 50.0
     norm_scaling_factor: 55.72789115646258
     path: Llama3_1-8B-Base-L3A-8x
-  - id: L4A_8x
+  - id: l4a_8x
     l0: 50.0
     norm_scaling_factor: 45.76536312849162
     path: Llama3_1-8B-Base-L4A-8x
-  - id: L5A_8x
+  - id: l5a_8x
     l0: 50.0
     norm_scaling_factor: 39.9609756097561
     path: Llama3_1-8B-Base-L5A-8x
-  - id: L6A_8x
+  - id: l6a_8x
     l0: 50.0
     norm_scaling_factor: 33.436734693877554
     path: Llama3_1-8B-Base-L6A-8x
-  - id: L7A_8x
+  - id: l7a_8x
     l0: 50.0
     norm_scaling_factor: 27.30666666666667
     path: Llama3_1-8B-Base-L7A-8x
-  - id: L8A_8x
+  - id: l8a_8x
     l0: 50.0
     norm_scaling_factor: 27.675675675675677
     path: Llama3_1-8B-Base-L8A-8x
-  - id: L9A_8x
+  - id: l9a_8x
     l0: 50.0
     norm_scaling_factor: 25.28395061728395
     path: Llama3_1-8B-Base-L9A-8x
-  - id: L10A_8x
+  - id: l10a_8x
     l0: 50.0
     norm_scaling_factor: 26.5974025974026
     path: Llama3_1-8B-Base-L10A-8x
-  - id: L11A_8x
+  - id: l11a_8x
     l0: 50.0
     norm_scaling_factor: 25.761006289308177
     path: Llama3_1-8B-Base-L11A-8x
-  - id: L12A_8x
+  - id: l12a_8x
     l0: 50.0
     norm_scaling_factor: 22.14054054054054
     path: Llama3_1-8B-Base-L12A-8x
-  - id: L13A_8x
+  - id: l13a_8x
     l0: 50.0
     norm_scaling_factor: 20.48
     path: Llama3_1-8B-Base-L13A-8x
-  - id: L14A_8x
+  - id: l14a_8x
     l0: 50.0
     norm_scaling_factor: 20.177339901477833
     path: Llama3_1-8B-Base-L14A-8x
-  - id: L15A_8x
+  - id: l15a_8x
     l0: 50.0
     norm_scaling_factor: 20.582914572864322
     path: Llama3_1-8B-Base-L15A-8x
-  - id: L16A_8x
+  - id: l16a_8x
     l0: 50.0
     norm_scaling_factor: 19.32075471698113
     path: Llama3_1-8B-Base-L16A-8x
-  - id: L17A_8x
+  - id: l17a_8x
     l0: 50.0
     norm_scaling_factor: 20.897959183673468
     path: Llama3_1-8B-Base-L17A-8x
-  - id: L18A_8x
+  - id: l18a_8x
     l0: 50.0
     norm_scaling_factor: 24.674698795180724
     path: Llama3_1-8B-Base-L18A-8x
-  - id: L19A_8x
+  - id: l19a_8x
     l0: 50.0
     norm_scaling_factor: 28.248275862068965
     path: Llama3_1-8B-Base-L19A-8x
-  - id: L20A_8x
+  - id: l20a_8x
     l0: 50.0
     norm_scaling_factor: 27.125827814569536
     path: Llama3_1-8B-Base-L20A-8x
-  - id: L21A_8x
+  - id: l21a_8x
     l0: 50.0
     norm_scaling_factor: 19.14018691588785
     path: Llama3_1-8B-Base-L21A-8x
-  - id: L22A_8x
+  - id: l22a_8x
     l0: 50.0
     norm_scaling_factor: 24.38095238095238
     path: Llama3_1-8B-Base-L22A-8x
-  - id: L23A_8x
+  - id: l23a_8x
     l0: 50.0
     norm_scaling_factor: 22.14054054054054
     path: Llama3_1-8B-Base-L23A-8x
-  - id: L24A_8x
+  - id: l24a_8x
     l0: 50.0
     norm_scaling_factor: 21.557894736842105
     path: Llama3_1-8B-Base-L24A-8x
-  - id: L25A_8x
+  - id: l25a_8x
     l0: 50.0
     norm_scaling_factor: 18.533936651583712
     path: Llama3_1-8B-Base-L25A-8x
-  - id: L26A_8x
+  - id: l26a_8x
     l0: 50.0
     norm_scaling_factor: 13.837837837837839
     path: Llama3_1-8B-Base-L26A-8x
-  - id: L27A_8x
+  - id: l27a_8x
     l0: 50.0
     norm_scaling_factor: 13.931972789115646
     path: Llama3_1-8B-Base-L27A-8x
-  - id: L28A_8x
+  - id: l28a_8x
     l0: 50.0
     norm_scaling_factor: 10.95187165775401
     path: Llama3_1-8B-Base-L28A-8x
-  - id: L29A_8x
+  - id: l29a_8x
     l0: 50.0
     norm_scaling_factor: 8.569037656903765
     path: Llama3_1-8B-Base-L29A-8x
-  - id: L30A_8x
+  - id: l30a_8x
     l0: 50.0
     norm_scaling_factor: 5.953488372093023
     path: Llama3_1-8B-Base-L30A-8x
-  - id: L31A_8x
+  - id: l31a_8x
     l0: 50.0
     norm_scaling_factor: 3.5555555555555554
     path: Llama3_1-8B-Base-L31A-8x
-llama_scope_LXM_32x:
+llama_scope_lxm_32x:
   conversion_func: llama_scope
   model: meta-llama/Llama-3.1-8B
   repo_id: fnlp/Llama3_1-8B-Base-LXM-32x
   saes:
-  - id: L0M_32x
+  - id: l0m_32x
     l0: 50.0
     norm_scaling_factor: 80.31372549019608
     path: Llama3_1-8B-Base-L0M-32x
-  - id: L1M_32x
+  - id: l1m_32x
     l0: 50.0
     norm_scaling_factor: 71.85964912280701
     path: Llama3_1-8B-Base-L1M-32x
-  - id: L2M_32x
+  - id: l2m_32x
     l0: 50.0
     norm_scaling_factor: 47.90643274853801
     path: Llama3_1-8B-Base-L2M-32x
-  - id: L3M_32x
+  - id: l3m_32x
     l0: 50.0
     norm_scaling_factor: 35.46320346320346
     path: Llama3_1-8B-Base-L3M-32x
-  - id: L4M_32x
+  - id: l4m_32x
     l0: 50.0
     norm_scaling_factor: 27.86394557823129
     path: Llama3_1-8B-Base-L4M-32x
-  - id: L5M_32x
+  - id: l5m_32x
     l0: 50.0
     norm_scaling_factor: 23.01123595505618
     path: Llama3_1-8B-Base-L5M-32x
-  - id: L6M_32x
+  - id: l6m_32x
     l0: 50.0
     norm_scaling_factor: 20.48
     path: Llama3_1-8B-Base-L6M-32x
-  - id: L7M_32x
+  - id: l7m_32x
     l0: 50.0
     norm_scaling_factor: 19.692307692307693
     path: Llama3_1-8B-Base-L7M-32x
-  - id: L8M_32x
+  - id: l8m_32x
     l0: 50.0
     norm_scaling_factor: 18.87557603686636
     path: Llama3_1-8B-Base-L8M-32x
-  - id: L9M_32x
+  - id: l9m_32x
     l0: 50.0
     norm_scaling_factor: 17.88646288209607
     path: Llama3_1-8B-Base-L9M-32x
-  - id: L10M_32x
+  - id: l10m_32x
     l0: 50.0
     norm_scaling_factor: 17.5793991416309
     path: Llama3_1-8B-Base-L10M-32x
-  - id: L11M_32x
+  - id: l11m_32x
     l0: 50.0
     norm_scaling_factor: 16.855967078189302
     path: Llama3_1-8B-Base-L11M-32x
-  - id: L12M_32x
+  - id: l12m_32x
     l0: 50.0
     norm_scaling_factor: 16.125984251968504
     path: Llama3_1-8B-Base-L12M-32x
-  - id: L13M_32x
+  - id: l13m_32x
     l0: 50.0
     norm_scaling_factor: 14.840579710144928
     path: Llama3_1-8B-Base-L13M-32x
-  - id: L14M_32x
+  - id: l14m_32x
     l0: 50.0
     norm_scaling_factor: 13.74496644295302
     path: Llama3_1-8B-Base-L14M-32x
-  - id: L15M_32x
+  - id: l15m_32x
     l0: 50.0
     norm_scaling_factor: 12.118343195266272
     path: Llama3_1-8B-Base-L15M-32x
-  - id: L16M_32x
+  - id: l16m_32x
     l0: 50.0
     norm_scaling_factor: 11.702857142857143
     path: Llama3_1-8B-Base-L16M-32x
-  - id: L17M_32x
+  - id: l17m_32x
     l0: 50.0
     norm_scaling_factor: 10.666666666666666
     path: Llama3_1-8B-Base-L17M-32x
-  - id: L18M_32x
+  - id: l18m_32x
     l0: 50.0
     norm_scaling_factor: 10.778947368421052
     path: Llama3_1-8B-Base-L18M-32x
-  - id: L19M_32x
+  - id: l19m_32x
     l0: 50.0
     norm_scaling_factor: 10.502564102564103
     path: Llama3_1-8B-Base-L19M-32x
-  - id: L20M_32x
+  - id: l20m_32x
     l0: 50.0
     norm_scaling_factor: 10.088669950738916
     path: Llama3_1-8B-Base-L20M-32x
-  - id: L21M_32x
+  - id: l21m_32x
     l0: 50.0
     norm_scaling_factor: 9.102222222222222
     path: Llama3_1-8B-Base-L21M-32x
-  - id: L22M_32x
+  - id: l22m_32x
     l0: 50.0
     norm_scaling_factor: 8.865800865800866
     path: Llama3_1-8B-Base-L22M-32x
-  - id: L23M_32x
+  - id: l23m_32x
     l0: 50.0
     norm_scaling_factor: 8.677966101694915
     path: Llama3_1-8B-Base-L23M-32x
-  - id: L24M_32x
+  - id: l24m_32x
     l0: 50.0
     norm_scaling_factor: 8.39344262295082
     path: Llama3_1-8B-Base-L24M-32x
-  - id: L25M_32x
+  - id: l25m_32x
     l0: 50.0
     norm_scaling_factor: 8.126984126984127
     path: Llama3_1-8B-Base-L25M-32x
-  - id: L26M_32x
+  - id: l26m_32x
     l0: 50.0
     norm_scaling_factor: 7.5851851851851855
     path: Llama3_1-8B-Base-L26M-32x
-  - id: L27M_32x
+  - id: l27m_32x
     l0: 50.0
     norm_scaling_factor: 6.4
     path: Llama3_1-8B-Base-L27M-32x
-  - id: L28M_32x
+  - id: l28m_32x
     l0: 50.0
     norm_scaling_factor: 5.505376344086022
     path: Llama3_1-8B-Base-L28M-32x
-  - id: L29M_32x
+  - id: l29m_32x
     l0: 50.0
     norm_scaling_factor: 4.413793103448276
     path: Llama3_1-8B-Base-L29M-32x
-  - id: L30M_32x
+  - id: l30m_32x
     l0: 50.0
     norm_scaling_factor: 2.5472636815920398
     path: Llama3_1-8B-Base-L30M-32x
-  - id: L31M_32x
+  - id: l31m_32x
     l0: 50.0
     norm_scaling_factor: 1.0534979423868314
     path: Llama3_1-8B-Base-L31M-32x
-llama_scope_LXM_8x:
+llama_scope_lxm_8x:
   conversion_func: llama_scope
   model: meta-llama/Llama-3.1-8B
   repo_id: fnlp/Llama3_1-8B-Base-LXM-8x
   saes:
-  - id: L0M_8x
+  - id: l0m_8x
     l0: 50.0
     norm_scaling_factor: 80.31372549019608
     path: Llama3_1-8B-Base-L0M-8x
-  - id: L1M_8x
+  - id: l1m_8x
     l0: 50.0
     norm_scaling_factor: 72.1762114537445
     path: Llama3_1-8B-Base-L1M-8x
-  - id: L2M_8x
+  - id: l2m_8x
     l0: 50.0
     norm_scaling_factor: 47.90643274853801
     path: Llama3_1-8B-Base-L2M-8x
-  - id: L3M_8x
+  - id: l3m_8x
     l0: 50.0
     norm_scaling_factor: 35.46320346320346
     path: Llama3_1-8B-Base-L3M-8x
-  - id: L4M_8x
+  - id: l4m_8x
     l0: 50.0
     norm_scaling_factor: 27.86394557823129
     path: Llama3_1-8B-Base-L4M-8x
-  - id: L5M_8x
+  - id: l5m_8x
     l0: 50.0
     norm_scaling_factor: 23.01123595505618
     path: Llama3_1-8B-Base-L5M-8x
-  - id: L6M_8x
+  - id: l6m_8x
     l0: 50.0
     norm_scaling_factor: 20.48
     path: Llama3_1-8B-Base-L6M-8x
-  - id: L7M_8x
+  - id: l7m_8x
     l0: 50.0
     norm_scaling_factor: 19.692307692307693
     path: Llama3_1-8B-Base-L7M-8x
-  - id: L8M_8x
+  - id: l8m_8x
     l0: 50.0
     norm_scaling_factor: 18.87557603686636
     path: Llama3_1-8B-Base-L8M-8x
-  - id: L9M_8x
+  - id: l9m_8x
     l0: 50.0
     norm_scaling_factor: 17.88646288209607
     path: Llama3_1-8B-Base-L9M-8x
-  - id: L10M_8x
+  - id: l10m_8x
     l0: 50.0
     norm_scaling_factor: 17.5793991416309
     path: Llama3_1-8B-Base-L10M-8x
-  - id: L11M_8x
+  - id: l11m_8x
     l0: 50.0
     norm_scaling_factor: 16.855967078189302
     path: Llama3_1-8B-Base-L11M-8x
-  - id: L12M_8x
+  - id: l12m_8x
     l0: 50.0
     norm_scaling_factor: 16.125984251968504
     path: Llama3_1-8B-Base-L12M-8x
-  - id: L13M_8x
+  - id: l13m_8x
     l0: 50.0
     norm_scaling_factor: 14.733812949640289
     path: Llama3_1-8B-Base-L13M-8x
-  - id: L14M_8x
+  - id: l14m_8x
     l0: 50.0
     norm_scaling_factor: 13.74496644295302
     path: Llama3_1-8B-Base-L14M-8x
-  - id: L15M_8x
+  - id: l15m_8x
     l0: 50.0
     norm_scaling_factor: 12.118343195266272
     path: Llama3_1-8B-Base-L15M-8x
-  - id: L16M_8x
+  - id: l16m_8x
     l0: 50.0
     norm_scaling_factor: 11.702857142857143
     path: Llama3_1-8B-Base-L16M-8x
-  - id: L17M_8x
+  - id: l17m_8x
     l0: 50.0
     norm_scaling_factor: 10.666666666666666
     path: Llama3_1-8B-Base-L17M-8x
-  - id: L18M_8x
+  - id: l18m_8x
     l0: 50.0
     norm_scaling_factor: 10.778947368421052
     path: Llama3_1-8B-Base-L18M-8x
-  - id: L19M_8x
+  - id: l19m_8x
     l0: 50.0
     norm_scaling_factor: 10.502564102564103
     path: Llama3_1-8B-Base-L19M-8x
-  - id: L20M_8x
+  - id: l20m_8x
     l0: 50.0
     norm_scaling_factor: 10.138613861386139
     path: Llama3_1-8B-Base-L20M-8x
-  - id: L21M_8x
+  - id: l21m_8x
     l0: 50.0
     norm_scaling_factor: 9.142857142857142
     path: Llama3_1-8B-Base-L21M-8x
-  - id: L22M_8x
+  - id: l22m_8x
     l0: 50.0
     norm_scaling_factor: 8.904347826086957
     path: Llama3_1-8B-Base-L22M-8x
-  - id: L23M_8x
+  - id: l23m_8x
     l0: 50.0
     norm_scaling_factor: 8.641350210970463
     path: Llama3_1-8B-Base-L23M-8x
-  - id: L24M_8x
+  - id: l24m_8x
     l0: 50.0
     norm_scaling_factor: 8.39344262295082
     path: Llama3_1-8B-Base-L24M-8x
-  - id: L25M_8x
+  - id: l25m_8x
     l0: 50.0
     norm_scaling_factor: 8.126984126984127
     path: Llama3_1-8B-Base-L25M-8x
-  - id: L26M_8x
+  - id: l26m_8x
     l0: 50.0
     norm_scaling_factor: 7.5851851851851855
     path: Llama3_1-8B-Base-L26M-8x
-  - id: L27M_8x
+  - id: l27m_8x
     l0: 50.0
     norm_scaling_factor: 6.4
     path: Llama3_1-8B-Base-L27M-8x
-  - id: L28M_8x
+  - id: l28m_8x
     l0: 50.0
     norm_scaling_factor: 5.505376344086022
     path: Llama3_1-8B-Base-L28M-8x
-  - id: L29M_8x
+  - id: l29m_8x
     l0: 50.0
     norm_scaling_factor: 4.432900432900433
     path: Llama3_1-8B-Base-L29M-8x
-  - id: L30M_8x
+  - id: l30m_8x
     l0: 50.0
     norm_scaling_factor: 2.5472636815920398
     path: Llama3_1-8B-Base-L30M-8x
-  - id: L31M_8x
+  - id: l31m_8x
     l0: 50.0
     norm_scaling_factor: 1.0534979423868314
     path: Llama3_1-8B-Base-L31M-8x
-llama_scope_LXR_32x:
+llama_scope_lxr_32x:
   conversion_func: llama_scope
   model: meta-llama/Llama-3.1-8B
   repo_id: fnlp/Llama3_1-8B-Base-LXR-32x
   saes:
-  - id: L0R_32x
+  - id: l0r_32x
     l0: 50.0
     norm_scaling_factor: 58.935251798561154
     path: Llama3_1-8B-Base-L0R-32x
-  - id: L1R_32x
+  - id: l1r_32x
     l0: 50.0
     norm_scaling_factor: 39.9609756097561
     path: Llama3_1-8B-Base-L1R-32x
-  - id: L2R_32x
+  - id: l2r_32x
     l0: 50.0
     norm_scaling_factor: 27.30666666666667
     path: Llama3_1-8B-Base-L2R-32x
-  - id: L3R_32x
+  - id: l3r_32x
     l0: 50.0
     norm_scaling_factor: 20.177339901477833
     path: Llama3_1-8B-Base-L3R-32x
-  - id: L4R_32x
+  - id: l4r_32x
     l0: 50.0
     norm_scaling_factor: 16.125984251968504
     path: Llama3_1-8B-Base-L4R-32x
-  - id: L5R_32x
+  - id: l5r_32x
     l0: 50.0
     norm_scaling_factor: 13.653333333333334
     path: Llama3_1-8B-Base-L5R-32x
-  - id: L6R_32x
+  - id: l6r_32x
     l0: 50.0
     norm_scaling_factor: 11.976608187134502
     path: Llama3_1-8B-Base-L6R-32x
-  - id: L7R_32x
+  - id: l7r_32x
     l0: 50.0
     norm_scaling_factor: 10.835978835978835
     path: Llama3_1-8B-Base-L7R-32x
-  - id: L8R_32x
+  - id: l8r_32x
     l0: 50.0
     norm_scaling_factor: 10.138613861386139
     path: Llama3_1-8B-Base-L8R-32x
-  - id: L9R_32x
+  - id: l9r_32x
     l0: 50.0
     norm_scaling_factor: 9.266968325791856
     path: Llama3_1-8B-Base-L9R-32x
-  - id: L10R_32x
+  - id: l10r_32x
     l0: 50.0
     norm_scaling_factor: 8.827586206896552
     path: Llama3_1-8B-Base-L10R-32x
-  - id: L11R_32x
+  - id: l11r_32x
     l0: 50.0
     norm_scaling_factor: 8.427983539094651
     path: Llama3_1-8B-Base-L11R-32x
-  - id: L12R_32x
+  - id: l12r_32x
     l0: 50.0
     norm_scaling_factor: 7.937984496124031
     path: Llama3_1-8B-Base-L12R-32x
-  - id: L13R_32x
+  - id: l13r_32x
     l0: 50.0
     norm_scaling_factor: 7.26241134751773
     path: Llama3_1-8B-Base-L13R-32x
-  - id: L14R_32x
+  - id: l14r_32x
     l0: 50.0
     norm_scaling_factor: 6.69281045751634
     path: Llama3_1-8B-Base-L14R-32x
-  - id: L15R_32x
+  - id: l15r_32x
     l0: 50.0
     norm_scaling_factor: 5.91907514450867
     path: Llama3_1-8B-Base-L15R-32x
-  - id: L16R_32x
+  - id: l16r_32x
     l0: 50.0
     norm_scaling_factor: 5.278350515463917
     path: Llama3_1-8B-Base-L16R-32x
-  - id: L17R_32x
+  - id: l17r_32x
     l0: 50.0
     norm_scaling_factor: 4.633484162895928
     path: Llama3_1-8B-Base-L17R-32x
-  - id: L18R_32x
+  - id: l18r_32x
     l0: 50.0
     norm_scaling_factor: 4.129032258064516
     path: Llama3_1-8B-Base-L18R-32x
-  - id: L19R_32x
+  - id: l19r_32x
     l0: 50.0
     norm_scaling_factor: 3.7372262773722627
     path: Llama3_1-8B-Base-L19R-32x
-  - id: L20R_32x
+  - id: l20r_32x
     l0: 50.0
     norm_scaling_factor: 3.4133333333333336
     path: Llama3_1-8B-Base-L20R-32x
-  - id: L21R_32x
+  - id: l21r_32x
     l0: 50.0
     norm_scaling_factor: 2.9767441860465116
     path: Llama3_1-8B-Base-L21R-32x
-  - id: L22R_32x
+  - id: l22r_32x
     l0: 50.0
     norm_scaling_factor: 2.680628272251309
     path: Llama3_1-8B-Base-L22R-32x
-  - id: L23R_32x
+  - id: l23r_32x
     l0: 50.0
     norm_scaling_factor: 2.4150943396226414
     path: Llama3_1-8B-Base-L23R-32x
-  - id: L24R_32x
+  - id: l24r_32x
     l0: 50.0
     norm_scaling_factor: 2.1974248927038627
     path: Llama3_1-8B-Base-L24R-32x
-  - id: L25R_32x
+  - id: l25r_32x
     l0: 50.0
     norm_scaling_factor: 2.0237154150197627
     path: Llama3_1-8B-Base-L25R-32x
-  - id: L26R_32x
+  - id: l26r_32x
     l0: 50.0
     norm_scaling_factor: 1.8156028368794326
     path: Llama3_1-8B-Base-L26R-32x
-  - id: L27R_32x
+  - id: l27r_32x
     l0: 50.0
     norm_scaling_factor: 1.6623376623376624
     path: Llama3_1-8B-Base-L27R-32x
-  - id: L28R_32x
+  - id: l28r_32x
     l0: 50.0
     norm_scaling_factor: 1.5058823529411764
     path: Llama3_1-8B-Base-L28R-32x
-  - id: L29R_32x
+  - id: l29r_32x
     l0: 50.0
     norm_scaling_factor: 1.3763440860215055
     path: Llama3_1-8B-Base-L29R-32x
-  - id: L30R_32x
+  - id: l30r_32x
     l0: 50.0
     norm_scaling_factor: 1.2075471698113207
     path: Llama3_1-8B-Base-L30R-32x
-  - id: L31R_32x
+  - id: l31r_32x
     l0: 50.0
     norm_scaling_factor: 0.8648648648648649
     path: Llama3_1-8B-Base-L31R-32x
-llama_scope_LXR_8x:
+llama_scope_lxr_8x:
   conversion_func: llama_scope
   model: meta-llama/Llama-3.1-8B
   repo_id: fnlp/Llama3_1-8B-Base-LXR-8x
   saes:
-  - id: L0R_8x
+  - id: l0r_8x
     l0: 50.0
     norm_scaling_factor: 58.935251798561154
     path: Llama3_1-8B-Base-L0R-8x
-  - id: L1R_8x
+  - id: l1r_8x
     l0: 50.0
     norm_scaling_factor: 39.76699029126213
     path: Llama3_1-8B-Base-L1R-8x
-  - id: L2R_8x
+  - id: l2r_8x
     l0: 50.0
     norm_scaling_factor: 27.30666666666667
     path: Llama3_1-8B-Base-L2R-8x
-  - id: L3R_8x
+  - id: l3r_8x
     l0: 50.0
     norm_scaling_factor: 20.177339901477833
     path: Llama3_1-8B-Base-L3R-8x
-  - id: L4R_8x
+  - id: l4r_8x
     l0: 50.0
     norm_scaling_factor: 16.125984251968504
     path: Llama3_1-8B-Base-L4R-8x
-  - id: L5R_8x
+  - id: l5r_8x
     l0: 50.0
     norm_scaling_factor: 13.653333333333334
     path: Llama3_1-8B-Base-L5R-8x
-  - id: L6R_8x
+  - id: l6r_8x
     l0: 50.0
     norm_scaling_factor: 11.976608187134502
     path: Llama3_1-8B-Base-L6R-8x
-  - id: L7R_8x
+  - id: l7r_8x
     l0: 50.0
     norm_scaling_factor: 10.835978835978835
     path: Llama3_1-8B-Base-L7R-8x
-  - id: L8R_8x
+  - id: l8r_8x
     l0: 50.0
     norm_scaling_factor: 10.138613861386139
     path: Llama3_1-8B-Base-L8R-8x
-  - id: L9R_8x
+  - id: l9r_8x
     l0: 50.0
     norm_scaling_factor: 9.266968325791856
     path: Llama3_1-8B-Base-L9R-8x
-  - id: L10R_8x
+  - id: l10r_8x
     l0: 50.0
     norm_scaling_factor: 8.827586206896552
     path: Llama3_1-8B-Base-L10R-8x
-  - id: L11R_8x
+  - id: l11r_8x
     l0: 50.0
     norm_scaling_factor: 8.462809917355372
     path: Llama3_1-8B-Base-L11R-8x
-  - id: L12R_8x
+  - id: l12r_8x
     l0: 50.0
     norm_scaling_factor: 7.937984496124031
     path: Llama3_1-8B-Base-L12R-8x
-  - id: L13R_8x
+  - id: l13r_8x
     l0: 50.0
     norm_scaling_factor: 7.26241134751773
     path: Llama3_1-8B-Base-L13R-8x
-  - id: L14R_8x
+  - id: l14r_8x
     l0: 50.0
     norm_scaling_factor: 6.69281045751634
     path: Llama3_1-8B-Base-L14R-8x
-  - id: L15R_8x
+  - id: l15r_8x
     l0: 50.0
     norm_scaling_factor: 5.91907514450867
     path: Llama3_1-8B-Base-L15R-8x
-  - id: L16R_8x
+  - id: l16r_8x
     l0: 50.0
     norm_scaling_factor: 5.278350515463917
     path: Llama3_1-8B-Base-L16R-8x
-  - id: L17R_8x
+  - id: l17r_8x
     l0: 50.0
     norm_scaling_factor: 4.633484162895928
     path: Llama3_1-8B-Base-L17R-8x
-  - id: L18R_8x
+  - id: l18r_8x
     l0: 50.0
     norm_scaling_factor: 4.129032258064516
     path: Llama3_1-8B-Base-L18R-8x
-  - id: L19R_8x
+  - id: l19r_8x
     l0: 50.0
     norm_scaling_factor: 3.7372262773722627
     path: Llama3_1-8B-Base-L19R-8x
-  - id: L20R_8x
+  - id: l20r_8x
     l0: 50.0
     norm_scaling_factor: 3.4133333333333336
     path: Llama3_1-8B-Base-L20R-8x
-  - id: L21R_8x
+  - id: l21r_8x
     l0: 50.0
     norm_scaling_factor: 2.9767441860465116
     path: Llama3_1-8B-Base-L21R-8x
-  - id: L22R_8x
+  - id: l22r_8x
     l0: 50.0
     norm_scaling_factor: 2.680628272251309
     path: Llama3_1-8B-Base-L22R-8x
-  - id: L23R_8x
+  - id: l23r_8x
     l0: 50.0
     norm_scaling_factor: 2.4150943396226414
     path: Llama3_1-8B-Base-L23R-8x
-  - id: L24R_8x
+  - id: l24r_8x
     l0: 50.0
     norm_scaling_factor: 2.1880341880341883
     path: Llama3_1-8B-Base-L24R-8x
-  - id: L25R_8x
+  - id: l25r_8x
     l0: 50.0
     norm_scaling_factor: 2.0237154150197627
     path: Llama3_1-8B-Base-L25R-8x
-  - id: L26R_8x
+  - id: l26r_8x
     l0: 50.0
     norm_scaling_factor: 1.8156028368794326
     path: Llama3_1-8B-Base-L26R-8x
-  - id: L27R_8x
+  - id: l27r_8x
     l0: 50.0
     norm_scaling_factor: 1.673202614379085
     path: Llama3_1-8B-Base-L27R-8x
-  - id: L28R_8x
+  - id: l28r_8x
     l0: 50.0
     norm_scaling_factor: 1.5058823529411764
     path: Llama3_1-8B-Base-L28R-8x
-  - id: L29R_8x
+  - id: l29r_8x
     l0: 50.0
     norm_scaling_factor: 1.3763440860215055
     path: Llama3_1-8B-Base-L29R-8x
-  - id: L30R_8x
+  - id: l30r_8x
     l0: 50.0
     norm_scaling_factor: 1.2018779342723005
     path: Llama3_1-8B-Base-L30R-8x
-  - id: L31R_8x
+  - id: l31r_8x
     l0: 50.0
     norm_scaling_factor: 0.8590604026845637
     path: Llama3_1-8B-Base-L31R-8x
+
