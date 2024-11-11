@@ -486,7 +486,7 @@ def llama_scope_sae_loader(
     )
 
     # Load and convert the weights
-    with safe_open(sae_path, framework="pt", device=device) as f:
+    with safe_open(sae_path, framework="pt", device=device) as f:  # type: ignore
         state_dict = {
             "W_enc": f.get_tensor("encoder.weight")
             .to(dtype=DTYPE_MAP[cfg_dict["dtype"]])
