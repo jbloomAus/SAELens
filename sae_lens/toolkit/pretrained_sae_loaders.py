@@ -8,6 +8,7 @@ import torch
 from huggingface_hub import hf_hub_download
 from huggingface_hub.utils import EntryNotFoundError
 from safetensors import safe_open
+from safetensors.torch import load_file
 
 from sae_lens.config import DTYPE_MAP
 from sae_lens.toolkit.pretrained_saes_directory import (
@@ -458,6 +459,18 @@ def llama_scope_sae_loader(
 ) -> Tuple[Dict[str, Any], Dict[str, torch.Tensor], Optional[torch.Tensor]]:
     """
     Custom loader for Llama Scope SAEs.
+
+    Args:
+        release: Release identifier
+        sae_id: SAE identifier
+        device: Device to load tensors to
+        force_download: Whether to force download even if files exist
+        cfg_overrides: Optional configuration overrides
+        d_sae_override: Optional override for SAE dimension
+        layer_override: Optional override for layer number
+
+    Returns:
+        Tuple of (config dict, state dict, log sparsity tensor)
     """
     options = SAEConfigLoadOptions(
         device=device,
@@ -485,28 +498,30 @@ def llama_scope_sae_loader(
         force_download=force_download,
     )
 
-    # Load and convert the weights
-    with safe_open(sae_path, framework="pt", device=device) as f:
-        state_dict = {
-            "W_enc": f.get_tensor("encoder.weight")
-            .to(dtype=DTYPE_MAP[cfg_dict["dtype"]])
-            .T,
-            "W_dec": f.get_tensor("decoder.weight")
-            .to(dtype=DTYPE_MAP[cfg_dict["dtype"]])
-            .T,
-            "b_enc": f.get_tensor("encoder.bias").to(
-                dtype=DTYPE_MAP[cfg_dict["dtype"]]
-            ),
-            "b_dec": f.get_tensor("decoder.bias").to(
-                dtype=DTYPE_MAP[cfg_dict["dtype"]]
-            ),
-            "threshold": torch.ones(
-                cfg_dict["d_sae"],
-                dtype=DTYPE_MAP[cfg_dict["dtype"]],
-                device=cfg_dict["device"],
-            )
-            * cfg_dict["jump_relu_threshold"],
-        }
+    # Load the weights using load_file instead of safe_open
+    state_dict_loaded = load_file(sae_path, device=device)
+
+    # Convert and organize the weights
+    state_dict = {
+        "W_enc": state_dict_loaded["encoder.weight"]
+        .to(dtype=DTYPE_MAP[cfg_dict["dtype"]])
+        .T,
+        "W_dec": state_dict_loaded["decoder.weight"]
+        .to(dtype=DTYPE_MAP[cfg_dict["dtype"]])
+        .T,
+        "b_enc": state_dict_loaded["encoder.bias"].to(
+            dtype=DTYPE_MAP[cfg_dict["dtype"]]
+        ),
+        "b_dec": state_dict_loaded["decoder.bias"].to(
+            dtype=DTYPE_MAP[cfg_dict["dtype"]]
+        ),
+        "threshold": torch.ones(
+            cfg_dict["d_sae"],
+            dtype=DTYPE_MAP[cfg_dict["dtype"]],
+            device=cfg_dict["device"],
+        )
+        * cfg_dict["jump_relu_threshold"],
+    }
 
     # No sparsity tensor for Llama Scope SAEs
     log_sparsity = None
