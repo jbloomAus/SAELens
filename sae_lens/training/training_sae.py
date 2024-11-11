@@ -92,6 +92,7 @@ class TrainStepOutput:
     sae_in: torch.Tensor
     sae_out: torch.Tensor
     feature_acts: torch.Tensor
+    hidden_pre: torch.Tensor
     loss: torch.Tensor  # we need to call backwards on this
     losses: dict[str, float | torch.Tensor]
 
@@ -268,11 +269,10 @@ class TrainingSAE(SAE):
         return cls(TrainingSAEConfig.from_dict(config_dict))
 
     def check_cfg_compatibility(self):
-        if self.cfg.architecture == "gated":
-            assert (
-                self.cfg.use_ghost_grads is False
-            ), "Gated SAEs do not support ghost grads"
-            assert self.use_error_term is False, "Gated SAEs do not support error terms"
+        if self.cfg.architecture != "standard" and self.cfg.use_ghost_grads:
+            raise ValueError(f"{self.cfg.architecture} SAEs do not support ghost grads")
+        if self.cfg.architecture == "gated" and self.use_error_term:
+            raise ValueError("Gated SAEs do not support error terms")
 
     def encode_standard(
         self, x: Float[torch.Tensor, "... d_in"]
@@ -400,6 +400,14 @@ class TrainingSAE(SAE):
             l0_loss = (current_l1_coefficient * l0).mean()
             loss = mse_loss + l0_loss
             losses["l0_loss"] = l0_loss
+        elif self.cfg.architecture == "topk":
+            topk_loss = self.calculate_topk_aux_loss(
+                hidden_pre=hidden_pre,
+                sae_out=sae_out,
+                dead_neuron_mask=dead_neuron_mask,
+            )
+            losses["auxiliary_reconstruction_loss"] = topk_loss
+            loss = mse_loss + topk_loss
         else:
             # default SAE sparsity loss
             weighted_feature_acts = feature_acts
@@ -433,9 +441,44 @@ class TrainingSAE(SAE):
             sae_in=sae_in,
             sae_out=sae_out,
             feature_acts=feature_acts,
+            hidden_pre=hidden_pre,
             loss=loss,
             losses=losses,
         )
+
+    def calculate_topk_aux_loss(
+        self,
+        hidden_pre: torch.Tensor,
+        sae_out: torch.Tensor,
+        dead_neuron_mask: torch.Tensor | None,
+    ) -> torch.Tensor:
+        # Mostly taken from https://github.com/EleutherAI/sae/blob/main/sae/sae.py, except without variance normalization
+        # NOTE: checking the number of dead neurons will force a GPU sync, so performance can likely be improved here
+        if (
+            dead_neuron_mask is not None
+            and (num_dead := int(dead_neuron_mask.sum())) > 0
+        ):
+            # Heuristic from Appendix B.1 in the paper
+            k_aux = hidden_pre.shape[-1] // 2
+
+            # Reduce the scale of the loss if there are a small number of dead latents
+            scale = min(num_dead / k_aux, 1.0)
+            k_aux = min(k_aux, num_dead)
+
+            # Don't include living latents in this loss
+            auxk_latents = torch.where(dead_neuron_mask[None], hidden_pre, -torch.inf)
+
+            # Top-k dead latents
+            auxk_indices = auxk_latents.topk(k_aux, sorted=False).indices
+            auxk_acts = torch.where(auxk_indices, hidden_pre, 0)
+
+            # Encourage the top ~50% of dead latents to predict the residual of the
+            # top k living latents
+            recons = self.decode(auxk_acts)
+            auxk_loss = (recons - sae_out).pow(2).sum()
+            return scale * auxk_loss
+        else:
+            return sae_out.new_tensor(0.0)
 
     def calculate_ghost_grad_loss(
         self,

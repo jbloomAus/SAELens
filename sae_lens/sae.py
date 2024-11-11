@@ -38,7 +38,7 @@ T = TypeVar("T", bound="SAE")
 @dataclass
 class SAEConfig:
     # architecture details
-    architecture: Literal["standard", "gated", "jumprelu"]
+    architecture: Literal["standard", "gated", "jumprelu", "topk"]
 
     # forward pass details.
     d_in: int

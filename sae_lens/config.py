@@ -29,7 +29,7 @@ class LanguageModelSAERunnerConfig:
     Configuration for training a sparse autoencoder on a language model.
 
     Args:
-        architecture (str): The architecture to use, either "standard", "gated", or "jumprelu".
+        architecture (str): The architecture to use, either "standard", "gated", "topk", or "jumprelu".
         model_name (str): The name of the model to use. This should be the name of the model in the Hugging Face model hub.
         model_class_name (str): The name of the class of the model to use. This should be either `HookedTransformer` or `HookedMamba`.
         hook_name (str): The name of the hook to use. This should be a valid TransformerLens hook.
@@ -130,15 +130,15 @@ class LanguageModelSAERunnerConfig:
     )
 
     # SAE Parameters
-    architecture: Literal["standard", "gated", "jumprelu"] = "standard"
+    architecture: Literal["standard", "gated", "jumprelu", "topk"] = "standard"
     d_in: int = 512
     d_sae: Optional[int] = None
     b_dec_init_method: str = "geometric_median"
     expansion_factor: Optional[int] = (
         None  # defaults to 4 if d_sae and expansion_factor is None
     )
-    activation_fn: str = "relu"  # relu, tanh-relu, topk
-    activation_fn_kwargs: dict[str, Any] = field(default_factory=dict)  # for topk
+    activation_fn: str = None  # relu, tanh-relu, topk. Default is relu. # type: ignore
+    activation_fn_kwargs: dict[str, Any] = None  # for topk # type: ignore
     normalize_sae_decoder: bool = True
     noise_scale: float = 0.0
     from_pretrained_path: Optional[str] = None
@@ -164,6 +164,8 @@ class LanguageModelSAERunnerConfig:
     seed: int = 42
     dtype: str = "float32"  # type: ignore #
     prepend_bos: bool = True
+
+    # JumpReLU Parameters
     jumprelu_init_threshold: float = 0.001
     jumprelu_bandwidth: float = 0.001
 
@@ -249,6 +251,22 @@ class LanguageModelSAERunnerConfig:
                 self.model_name,
                 self.hook_name,
                 self.hook_head_index,
+            )
+
+        if self.activation_fn is None:
+            self.activation_fn = "topk" if self.architecture == "topk" else "relu"
+
+        if self.architecture == "topk" and self.activation_fn != "topk":
+            raise ValueError("If using topk architecture, activation_fn must be topk.")
+
+        if self.activation_fn_kwargs is None:
+            self.activation_fn_kwargs = (
+                {"k": 100} if self.activation_fn == "topk" else {}
+            )
+
+        if self.architecture == "topk" and self.activation_fn_kwargs.get("k") is None:
+            raise ValueError(
+                "activation_fn_kwargs.k must be provided for topk architecture."
             )
 
         if self.d_sae is not None and self.expansion_factor is not None:
