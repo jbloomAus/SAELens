@@ -415,18 +415,11 @@ def get_llama_scope_config(
     # folder_name: Llama3_1-8B-Base-L{layer}{sublayer}-{exp_factor}x
     config_path = folder_name + "/hyperparams.json"
     config_path = hf_hub_download(repo_id, config_path)
-    
+
     old_cfg_dict = json.load(open(config_path, "r"))
 
     # Model specific parameters
     model_name, d_in = "meta-llama/Llama-3.1-8B", old_cfg_dict["d_model"]
-    
-    hook_suffix = {
-        "M": "hook_mlp_out",
-        "A": "hook_attn_out",
-        "R": "hook_resid_post",
-        "TC": "ln2.hook_normalized",
-    }
 
     return {
         "architecture": "jumprelu",
@@ -448,7 +441,7 @@ def get_llama_scope_config(
         "context_size": 1024,
         "dataset_trust_remote_code": True,
         "apply_b_dec_to_input": False,
-        "normalize_activations": 'expected_average_only_in',
+        "normalize_activations": "expected_average_only_in",
     }
 
 
@@ -476,7 +469,6 @@ def llama_scope_sae_loader(
     )
     cfg_dict["device"] = device
 
-
     # Apply overrides if provided
     if cfg_overrides is not None:
         cfg_dict.update(cfg_overrides)
@@ -487,22 +479,31 @@ def llama_scope_sae_loader(
     sae_path = hf_hub_download(
         repo_id=repo_id,
         filename="final.safetensors",
-        subfolder=folder_name+"/checkpoints",
+        subfolder=folder_name + "/checkpoints",
         force_download=force_download,
     )
 
     # Load and convert the weights
     with safe_open(sae_path, framework="pt", device=device) as f:
         state_dict = {
-            'W_enc': f.get_tensor('encoder.weight').to(dtype=DTYPE_MAP[cfg_dict["dtype"]]).T,
-            'W_dec': f.get_tensor('decoder.weight').to(dtype=DTYPE_MAP[cfg_dict["dtype"]]).T,
-            'b_enc': f.get_tensor('encoder.bias').to(dtype=DTYPE_MAP[cfg_dict["dtype"]]),
-            'b_dec': f.get_tensor('decoder.bias').to(dtype=DTYPE_MAP[cfg_dict["dtype"]]),
-            'threshold': torch.ones(
-                cfg_dict['d_sae'], 
-                dtype=DTYPE_MAP[cfg_dict["dtype"]], 
-                device=cfg_dict["device"]
-            ) * cfg_dict["jump_relu_threshold"]
+            "W_enc": f.get_tensor("encoder.weight")
+            .to(dtype=DTYPE_MAP[cfg_dict["dtype"]])
+            .T,
+            "W_dec": f.get_tensor("decoder.weight")
+            .to(dtype=DTYPE_MAP[cfg_dict["dtype"]])
+            .T,
+            "b_enc": f.get_tensor("encoder.bias").to(
+                dtype=DTYPE_MAP[cfg_dict["dtype"]]
+            ),
+            "b_dec": f.get_tensor("decoder.bias").to(
+                dtype=DTYPE_MAP[cfg_dict["dtype"]]
+            ),
+            "threshold": torch.ones(
+                cfg_dict["d_sae"],
+                dtype=DTYPE_MAP[cfg_dict["dtype"]],
+                device=cfg_dict["device"],
+            )
+            * cfg_dict["jump_relu_threshold"],
         }
 
     # No sparsity tensor for Llama Scope SAEs

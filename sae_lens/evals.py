@@ -319,7 +319,7 @@ def get_downstream_reconstruction_metrics(
             activation_store,
             compute_kl=compute_kl,
             compute_ce_loss=compute_ce_loss,
-            ignore_tokens=ignore_tokens
+            ignore_tokens=ignore_tokens,
         ).items():
 
             if len(ignore_tokens) > 0:
@@ -551,13 +551,11 @@ def get_recons_loss(
     original_logits, original_ce_loss = model(
         batch_tokens, return_type="both", loss_per_token=True, **model_kwargs
     )
-    
+
     if len(ignore_tokens) > 0:
         mask = torch.logical_not(
             torch.any(
-                torch.stack(
-                    [batch_tokens == token for token in ignore_tokens], dim=0
-                ),
+                torch.stack([batch_tokens == token for token in ignore_tokens], dim=0),
                 dim=0,
             )
         )
@@ -582,7 +580,7 @@ def get_recons_loss(
         # Unscale if activations were scaled prior to going into the SAE
         if activation_store.normalize_activations == "expected_average_only_in":
             new_activations = activation_store.unscale(new_activations)
-        
+
         new_activations = torch.where(mask[..., None], new_activations, activations)
 
         return new_activations.to(original_device)
@@ -608,8 +606,6 @@ def get_recons_loss(
         # Unscale if activations were scaled prior to going into the SAE
         if activation_store.normalize_activations == "expected_average_only_in":
             new_activations = activation_store.unscale(new_activations)
-        
-        new_activations = torch.where(mask[..., None], new_activations, activations)
 
         return new_activations.to(original_device)
 
@@ -630,9 +626,7 @@ def get_recons_loss(
         # Unscale if activations were scaled prior to going into the SAE
         if activation_store.normalize_activations == "expected_average_only_in":
             activations = activation_store.unscale(activations)
-        
-        new_activations = torch.where(mask[..., None], new_activations, activations)
-        
+
         return activations.to(original_device)
 
     def standard_zero_ablate_hook(activations: torch.Tensor, hook: Any):
