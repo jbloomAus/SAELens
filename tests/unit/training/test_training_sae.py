@@ -97,7 +97,7 @@ def test_calculate_topk_aux_acts_k_less_than_dead():
     assert torch.allclose(result, expected)
 
 
-def test_calculate_topk_aux_loss():
+def test_TrainingSAE_calculate_topk_aux_loss():
     # Create a small test SAE with d_sae=4, d_in=3
     cfg = build_sae_cfg(
         d_in=3,
@@ -138,3 +138,41 @@ def test_calculate_topk_aux_loss():
     # and the mean of these is 314
 
     assert loss == 314
+
+
+def test_TrainingSAE_forward_includes_topk_loss_with_topk_architecture():
+    cfg = build_sae_cfg(
+        d_in=3,
+        d_sae=4,
+        architecture="topk",
+        activation_fn_kwargs={"k": 2},
+        normalize_sae_decoder=False,
+    )
+    sae = TrainingSAE(TrainingSAEConfig.from_sae_runner_config(cfg))
+    x = torch.randn(32, 3)
+    train_step_output = sae.training_forward_pass(
+        sae_in=x,
+        current_l1_coefficient=2.0,
+        dead_neuron_mask=None,
+    )
+    assert "auxiliary_reconstruction_loss" in train_step_output.losses
+    assert train_step_output.losses["auxiliary_reconstruction_loss"] == 0.0
+
+
+def test_TrainingSAE_forward_includes_topk_loss_is_nonzero_if_dead_neurons_present():
+    cfg = build_sae_cfg(
+        d_in=3,
+        d_sae=4,
+        architecture="topk",
+        activation_fn_kwargs={"k": 2},
+        normalize_sae_decoder=False,
+    )
+    sae = TrainingSAE(TrainingSAEConfig.from_sae_runner_config(cfg))
+    x = torch.randn(32, 3)
+    train_step_output = sae.training_forward_pass(
+        sae_in=x,
+        current_l1_coefficient=2.0,
+        dead_neuron_mask=torch.tensor([False, True, False, True]),
+    )
+    assert "auxiliary_reconstruction_loss" in train_step_output.losses
+    assert train_step_output.losses["auxiliary_reconstruction_loss"] > 0.0
