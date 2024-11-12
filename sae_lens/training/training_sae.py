@@ -266,29 +266,9 @@ class TrainingSAE(SAE):
     def initialize_weights_jumprelu(self):
         # same as the superclass, except we use a log_threshold parameter instead of threshold
         self.log_threshold = nn.Parameter(
-            torch.ones(self.cfg.d_sae, dtype=self.dtype, device=self.device)
+            torch.empty(self.cfg.d_sae, dtype=self.dtype, device=self.device)
         )
-        self.b_enc = nn.Parameter(
-            torch.zeros(self.cfg.d_sae, dtype=self.dtype, device=self.device)
-        )
-
-        self.W_dec = nn.Parameter(
-            torch.nn.init.kaiming_uniform_(
-                torch.empty(
-                    self.cfg.d_sae, self.cfg.d_in, dtype=self.dtype, device=self.device
-                )
-            )
-        )
-        self.W_enc = nn.Parameter(
-            torch.nn.init.kaiming_uniform_(
-                torch.empty(
-                    self.cfg.d_in, self.cfg.d_sae, dtype=self.dtype, device=self.device
-                )
-            )
-        )
-        self.b_dec = nn.Parameter(
-            torch.zeros(self.cfg.d_in, dtype=self.dtype, device=self.device)
-        )
+        self.initialize_weights_basic()
 
     @property
     def threshold(self) -> torch.Tensor:
