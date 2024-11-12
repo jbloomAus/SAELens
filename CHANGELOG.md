@@ -2,6 +2,19 @@
 
 
 
+## v4.3.3 (2024-11-12)
+
+### Fix
+
+* fix: fixing jumprelu encode and save/load (#373)
+
+* fix: jumprelu encode and save/load
+
+* fixing tests
+
+* changes from CR ([`17506ac`](https://github.com/jbloomAus/SAELens/commit/17506ac3d0a9401a766bf9ca7ad40f4ef26c85f4))
+
+
 ## v4.3.2 (2024-11-12)
 
 ### Chore
