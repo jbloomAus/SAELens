@@ -181,7 +181,7 @@ def test_TrainingSAE_forward_includes_topk_loss_is_nonzero_if_dead_neurons_prese
     assert train_step_output.losses["auxiliary_reconstruction_loss"] > 0.0
 
 
-@pytest.mark.parametrize("architecture", ["standard", "gated", "jumprelu"])
+@pytest.mark.parametrize("architecture", ["standard", "gated", "jumprelu", "topk"])
 def test_TrainingSAE_encode_returns_same_value_as_encode_with_hidden_pre(
     architecture: str,
 ):
