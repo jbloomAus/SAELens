@@ -314,27 +314,7 @@ class SAE(HookedRootModule):
         self.threshold = nn.Parameter(
             torch.zeros(self.cfg.d_sae, dtype=self.dtype, device=self.device)
         )
-        self.b_enc = nn.Parameter(
-            torch.zeros(self.cfg.d_sae, dtype=self.dtype, device=self.device)
-        )
-
-        self.W_dec = nn.Parameter(
-            torch.nn.init.kaiming_uniform_(
-                torch.empty(
-                    self.cfg.d_sae, self.cfg.d_in, dtype=self.dtype, device=self.device
-                )
-            )
-        )
-        self.W_enc = nn.Parameter(
-            torch.nn.init.kaiming_uniform_(
-                torch.empty(
-                    self.cfg.d_in, self.cfg.d_sae, dtype=self.dtype, device=self.device
-                )
-            )
-        )
-        self.b_dec = nn.Parameter(
-            torch.zeros(self.cfg.d_in, dtype=self.dtype, device=self.device)
-        )
+        self.initialize_weights_basic()
 
     @overload
     def to(
@@ -515,12 +495,13 @@ class SAE(HookedRootModule):
         self.cfg.normalize_activations = "none"
 
     def save_model(self, path: str, sparsity: Optional[torch.Tensor] = None):
-
         if not os.path.exists(path):
             os.mkdir(path)
 
         # generate the weights
-        save_file(self.state_dict(), f"{path}/{SAE_WEIGHTS_PATH}")
+        state_dict = self.state_dict()
+        self.process_state_dict_for_saving(state_dict)
+        save_file(state_dict, f"{path}/{SAE_WEIGHTS_PATH}")
 
         # save the config
         config = self.cfg.to_dict()
@@ -531,6 +512,14 @@ class SAE(HookedRootModule):
         if sparsity is not None:
             sparsity_in_dict = {"sparsity": sparsity}
             save_file(sparsity_in_dict, f"{path}/{SPARSITY_PATH}")  # type: ignore
+
+    # overwrite this in subclasses to modify the state_dict in-place before saving
+    def process_state_dict_for_saving(self, state_dict: dict[str, Any]) -> None:
+        pass
+
+    # overwrite this in subclasses to modify the state_dict in-place after loading
+    def process_state_dict_for_loading(self, state_dict: dict[str, Any]) -> None:
+        pass
 
     @classmethod
     def load_from_pretrained(
@@ -556,7 +545,7 @@ class SAE(HookedRootModule):
         sae_cfg = SAEConfig.from_dict(cfg_dict)
 
         sae = cls(sae_cfg)
-
+        sae.process_state_dict_for_loading(state_dict)
         sae.load_state_dict(state_dict)
 
         return sae
@@ -633,6 +622,7 @@ class SAE(HookedRootModule):
         )
 
         sae = cls(SAEConfig.from_dict(cfg_dict))
+        sae.process_state_dict_for_loading(state_dict)
         sae.load_state_dict(state_dict)
 
         # Check if normalization is 'expected_average_only_in'

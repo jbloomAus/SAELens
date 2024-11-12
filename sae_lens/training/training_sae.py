@@ -11,7 +11,6 @@ import einops
 import numpy as np
 import torch
 from jaxtyping import Float
-from safetensors.torch import save_file
 from torch import nn
 
 from sae_lens.config import LanguageModelSAERunnerConfig
@@ -108,11 +107,11 @@ class TrainingSAEConfig(SAEConfig):
     noise_scale: float
     decoder_orthogonal_init: bool
     mse_loss_normalization: Optional[str]
+    jumprelu_init_threshold: float
+    jumprelu_bandwidth: float
     decoder_heuristic_init: bool = False
     init_encoder_as_decoder_transpose: bool = False
     scale_sparsity_penalty_by_decoder_norm: bool = False
-    jumprelu_init_threshold: float
-    jumprelu_bandwidth: float
 
     @classmethod
     def from_sae_runner_config(
@@ -193,6 +192,8 @@ class TrainingSAEConfig(SAEConfig):
             "decoder_heuristic_init": self.decoder_heuristic_init,
             "scale_sparsity_penalty_by_decoder_norm": self.scale_sparsity_penalty_by_decoder_norm,
             "normalize_activations": self.normalize_activations,
+            "jumprelu_init_threshold": self.jumprelu_init_threshold,
+            "jumprelu_bandwidth": self.jumprelu_bandwidth,
         }
 
     # this needs to exist so we can initialize the parent sae cfg without the training specific
@@ -233,7 +234,6 @@ class TrainingSAE(SAE):
     device: torch.device
 
     def __init__(self, cfg: TrainingSAEConfig, use_error_term: bool = False):
-
         base_sae_cfg = SAEConfig.from_dict(cfg.get_base_sae_cfg_dict())
         super().__init__(base_sae_cfg)
         self.cfg = cfg  # type: ignore
@@ -244,11 +244,11 @@ class TrainingSAE(SAE):
             self.encode_with_hidden_pre_fn = self.encode_with_hidden_pre_gated
         elif cfg.architecture == "jumprelu":
             self.encode_with_hidden_pre_fn = self.encode_with_hidden_pre_jumprelu
-            self.log_threshold = nn.Parameter(
-                torch.ones(cfg.d_sae, dtype=self.dtype, device=self.device)
-                * np.log(cfg.jumprelu_init_threshold)
-            )
             self.bandwidth = cfg.jumprelu_bandwidth
+            self.log_threshold.data = torch.ones(
+                self.cfg.d_sae, dtype=self.dtype, device=self.device
+            ) * np.log(cfg.jumprelu_init_threshold)
+
         else:
             raise ValueError(f"Unknown architecture: {cfg.architecture}")
 
@@ -263,6 +263,19 @@ class TrainingSAE(SAE):
         self.turn_off_forward_pass_hook_z_reshaping()
 
         self.mse_loss_fn = self._get_mse_loss_fn()
+
+    def initialize_weights_jumprelu(self):
+        # same as the superclass, except we use a log_threshold parameter instead of threshold
+        self.log_threshold = nn.Parameter(
+            torch.empty(self.cfg.d_sae, dtype=self.dtype, device=self.device)
+        )
+        self.initialize_weights_basic()
+
+    @property
+    def threshold(self) -> torch.Tensor:
+        if self.cfg.architecture != "jumprelu":
+            raise ValueError("Threshold is only defined for Jumprelu SAEs")
+        return torch.exp(self.log_threshold)
 
     @classmethod
     def from_dict(cls, config_dict: dict[str, Any]) -> "TrainingSAE":
@@ -543,27 +556,17 @@ class TrainingSAE(SAE):
         else:
             return standard_mse_loss_fn
 
-    def save_model(self, path: str, sparsity: Optional[torch.Tensor] = None):
-        if not os.path.exists(path):
-            os.mkdir(path)
-
-        state_dict = self.state_dict().copy()
-
-        if self.cfg.architecture == "jumprelu":
-            threshold = torch.exp(self.log_threshold).detach()
+    def process_state_dict_for_saving(self, state_dict: dict[str, Any]) -> None:
+        if self.cfg.architecture == "jumprelu" and "log_threshold" in state_dict:
+            threshold = torch.exp(state_dict["log_threshold"]).detach().contiguous()
             del state_dict["log_threshold"]
             state_dict["threshold"] = threshold
 
-        save_file(state_dict, f"{path}/{SAE_WEIGHTS_PATH}")
-
-        # Save the config
-        config = self.cfg.to_dict()
-        with open(f"{path}/{SAE_CFG_PATH}", "w") as f:
-            json.dump(config, f)
-
-        if sparsity is not None:
-            sparsity_in_dict = {"sparsity": sparsity}
-            save_file(sparsity_in_dict, f"{path}/{SPARSITY_PATH}")
+    def process_state_dict_for_loading(self, state_dict: dict[str, Any]) -> None:
+        if self.cfg.architecture == "jumprelu" and "threshold" in state_dict:
+            threshold = state_dict["threshold"]
+            del state_dict["threshold"]
+            state_dict["log_threshold"] = torch.log(threshold).detach().contiguous()
 
     @classmethod
     def load_from_pretrained(
@@ -591,6 +594,7 @@ class TrainingSAE(SAE):
         sae_cfg = TrainingSAEConfig.from_dict(cfg_dict)
 
         sae = cls(sae_cfg)
+        sae.process_state_dict_for_loading(state_dict)
         sae.load_state_dict(state_dict)
 
         return sae

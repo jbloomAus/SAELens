@@ -2,6 +2,52 @@
 
 
 
+## v4.3.3 (2024-11-12)
+
+### Fix
+
+* fix: fixing jumprelu encode and save/load (#373)
+
+* fix: jumprelu encode and save/load
+
+* fixing tests
+
+* changes from CR ([`17506ac`](https://github.com/jbloomAus/SAELens/commit/17506ac3d0a9401a766bf9ca7ad40f4ef26c85f4))
+
+
+## v4.3.2 (2024-11-12)
+
+### Chore
+
+* chore: fixing whitespace so docs render as list not paragraph (#374) ([`156ddc9`](https://github.com/jbloomAus/SAELens/commit/156ddc9fbdc92217147257886f38a2d719e45bff))
+
+* chore: add codecov.yaml and exclude legacy files (#372) ([`aa98caf`](https://github.com/jbloomAus/SAELens/commit/aa98caf9658a99fcb5c4295719110475b46f5862))
+
+### Fix
+
+* fix: add neuronpedia ids for llamascope ([`23b4912`](https://github.com/jbloomAus/SAELens/commit/23b491246426e03cae522282c1d491696bfe6433))
+
+### Unknown
+
+* Merge pull request #375 from jbloomAus/add_np_llamascope
+
+fix: add neuronpedia ids for llamascope ([`60542fa`](https://github.com/jbloomAus/SAELens/commit/60542fa6f5c88ee9d08fc056f984863c9e07de66))
+
+* Merge pull request #371 from jbloomAus/fix-llamascope-details
+
+fixed llamascope sae names and loader ([`fecfe5d`](https://github.com/jbloomAus/SAELens/commit/fecfe5df8d478d1029b316071b3e05d08a5d4cf5))
+
+* fixed llamascope sae names and loader ([`8f6bcb0`](https://github.com/jbloomAus/SAELens/commit/8f6bcb0f54345de7d1416da1b84efd27ddeba6ff))
+
+* Merge pull request #369 from Hzfinfdu/main
+
+Add Llama Scope SAEs &amp; improvements to evaluating ce scores. ([`a1546e6`](https://github.com/jbloomAus/SAELens/commit/a1546e6a9eaa32fe3c2cad0301e5bbb0946b9000))
+
+* fix format for PR ([`1443b58`](https://github.com/jbloomAus/SAELens/commit/1443b58c45c314c803cd54af4a54ef96b373fdc2))
+
+* feature(evals): mask ignore_tokens in replacement hooks for evaluation ([`ae67eaa`](https://github.com/jbloomAus/SAELens/commit/ae67eaab3173cf028e22f242b0f56d9413277b23))
+
+
 ## v4.3.1 (2024-11-10)
 
 ### Fix
@@ -77,6 +123,10 @@ format which allows us not to resave the entire dataset ([`a3663b7`](https://git
 ### Feature
 
 * feat: adding a CLI training runner (#359) ([`998c277`](https://github.com/jbloomAus/SAELens/commit/998c2779ebd4dda2375cc1d1f24f77889ec2cafc))
+
+### Unknown
+
+* add support for Llama Scope SAEs ([`aaf2f29`](https://github.com/jbloomAus/SAELens/commit/aaf2f29bc45af69d6af791758b550cd38b063036))
 
 
 ## v4.1.1 (2024-11-06)
