@@ -94,21 +94,21 @@ def _get_main_lr_scheduler(
         return lr_scheduler.CosineAnnealingLR(optimizer, T_max=steps, eta_min=lr_end)  # type: ignore
     elif scheduler_name == "cosineannealingwarmrestarts":
         return lr_scheduler.CosineAnnealingWarmRestarts(
-            optimizer, T_0=steps // num_cycles, eta_min=lr_end  # type: ignore
+            optimizer,
+            T_0=steps // num_cycles,
+            eta_min=lr_end,  # type: ignore
         )
     else:
         raise ValueError(f"Unsupported scheduler: {scheduler_name}")
 
 
 class L1Scheduler:
-
     def __init__(
         self,
         l1_warm_up_steps: float,
         total_steps: int,
         final_l1_coefficient: float,
     ):
-
         self.l1_warmup_steps = l1_warm_up_steps
         # assume using warm-up
         if self.l1_warmup_steps != 0:
@@ -150,6 +150,64 @@ class L1Scheduler:
             "total_steps": self.total_steps,
             "current_l1_coefficient": self.current_l1_coefficient,
             "final_l1_coefficient": self.final_l1_coefficient,
+            "current_step": self.current_step,
+        }
+
+    def load_state_dict(self, state_dict: dict[str, Any]):
+        """Loads all state apart from attached SAE."""
+        for k in state_dict:
+            setattr(self, k, state_dict[k])
+
+
+class L0Scheduler:
+    def __init__(
+        self,
+        l0_warm_up_steps: float,
+        total_steps: int,
+        final_l0_lambda: float,
+    ):
+        assert isinstance(final_l0_lambda, float | int)
+        self.l0_warmup_steps = l0_warm_up_steps
+        # assume using warm-up
+        if self.l0_warmup_steps != 0:
+            self.current_l0_lambda = 0.0
+        else:
+            self.current_l0_lambda = final_l0_lambda
+
+        self.final_l0_lambda = final_l0_lambda
+
+        self.current_step = 0
+        self.total_steps = total_steps
+        assert isinstance(self.final_l0_lambda, float | int)
+
+    def __repr__(self) -> str:
+        return (
+            f"L0Scheduler(final_l0_value={self.final_l0_lambda}, "
+            f"l0_warmup_steps={self.l0_warmup_steps}, "
+            f"total_steps={self.total_steps})"
+        )
+
+    def step(self):
+        """
+        Updates the l0 lambda of the sparse autoencoder.
+        """
+        step = self.current_step
+        if step < self.l0_warmup_steps:
+            self.current_l0_lambda = self.final_l0_lambda * (
+                (1 + step) / self.l0_warmup_steps
+            )  # type: ignore
+        else:
+            self.current_l0_lambda = self.final_l0_lambda  # type: ignore
+
+        self.current_step += 1
+
+    def state_dict(self):
+        """State dict for serializing as part of an SAETrainContext."""
+        return {
+            "l0_warmup_steps": self.l0_warmup_steps,
+            "total_steps": self.total_steps,
+            "current_l0_lambda": self.current_l0_lambda,
+            "final_l0_lambda": self.final_l0_lambda,
             "current_step": self.current_step,
         }
 

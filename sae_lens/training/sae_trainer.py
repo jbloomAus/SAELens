@@ -12,7 +12,7 @@ from sae_lens import __version__
 from sae_lens.config import LanguageModelSAERunnerConfig
 from sae_lens.evals import EvalConfig, run_evals
 from sae_lens.training.activations_store import ActivationsStore
-from sae_lens.training.optim import L1Scheduler, get_lr_scheduler
+from sae_lens.training.optim import L0Scheduler, L1Scheduler, get_lr_scheduler
 from sae_lens.training.training_sae import TrainingSAE, TrainStepOutput
 
 # used to map between parameters which are updated during finetuning and the config str.
@@ -56,7 +56,6 @@ class SAETrainer:
         save_checkpoint_fn,  # type: ignore
         cfg: LanguageModelSAERunnerConfig,
     ) -> None:
-
         self.model = model
         self.sae = sae
         self.activation_store = activation_store
@@ -118,6 +117,11 @@ class SAETrainer:
             total_steps=cfg.total_training_steps,
             final_l1_coefficient=cfg.l1_coefficient,
         )
+        self.l0_scheduler = L0Scheduler(
+            l0_warm_up_steps=cfg.l0_warm_up_steps,
+            total_steps=cfg.total_training_steps,
+            final_l0_lambda=cfg.l0_lambda,
+        )
 
         # Setup autocast if using
         self.scaler = torch.cuda.amp.GradScaler(enabled=self.cfg.autocast)
@@ -158,11 +162,14 @@ class SAETrainer:
         return self.l1_scheduler.current_l1_coefficient
 
     @property
+    def current_l0_lambda(self) -> float:
+        return self.l0_scheduler.current_l0_lambda
+
+    @property
     def dead_neurons(self) -> torch.Tensor:
         return (self.n_forward_passes_since_fired > self.cfg.dead_feature_window).bool()
 
     def fit(self) -> TrainingSAE:
-
         pbar = tqdm(total=self.cfg.total_training_tokens, desc="Training SAE")
 
         self._estimate_norm_scaling_factor_if_needed()
@@ -216,7 +223,6 @@ class SAETrainer:
         sae: TrainingSAE,
         sae_in: torch.Tensor,
     ) -> TrainStepOutput:
-
         sae.train()
         # Make sure the W_dec is still zero-norm
         if self.cfg.normalize_sae_decoder:
@@ -232,11 +238,11 @@ class SAETrainer:
         # for documentation on autocasting see:
         # https://pytorch.org/tutorials/recipes/recipes/amp_recipe.html
         with self.autocast_if_enabled:
-
             train_step_output = self.sae.training_forward_pass(
                 sae_in=sae_in,
                 dead_neuron_mask=self.dead_neurons,
                 current_l1_coefficient=self.current_l1_coefficient,
+                current_l0_lambda=self.current_l0_lambda,
             )
 
             with torch.no_grad():
@@ -309,6 +315,7 @@ class SAETrainer:
             "sparsity/dead_features": self.dead_neurons.sum().item(),
             "details/current_learning_rate": current_learning_rate,
             "details/current_l1_coefficient": self.current_l1_coefficient,
+            "details/current_l0_lambda": self.current_l0_lambda,
             "details/n_training_tokens": n_training_tokens,
         }
         for loss_name, loss_value in output.losses.items():
@@ -369,7 +376,6 @@ class SAETrainer:
 
     @torch.no_grad()
     def _build_sparsity_log_dict(self) -> dict[str, Any]:
-
         log_feature_sparsity = _log_feature_sparsity(self.feature_sparsity)
         wandb_histogram = wandb.Histogram(log_feature_sparsity.numpy())  # type: ignore
         return {
@@ -381,7 +387,6 @@ class SAETrainer:
 
     @torch.no_grad()
     def _reset_running_sparsity_stats(self) -> None:
-
         self.act_freq_scores = torch.zeros(
             self.cfg.d_sae,  # type: ignore
             device=self.cfg.device,
@@ -401,8 +406,12 @@ class SAETrainer:
             self.checkpoint_thresholds.pop(0)
 
     @torch.no_grad()
-    def _update_pbar(self, step_output: TrainStepOutput, pbar: tqdm, update_interval: int = 100):  # type: ignore
-
+    def _update_pbar(
+        self,
+        step_output: TrainStepOutput,
+        pbar: tqdm,  # type: ignore
+        update_interval: int = 100,  # type: ignore
+    ):  # type: ignore
         if self.n_training_steps % update_interval == 0:
             loss_strs = " | ".join(
                 f"{loss_name}: {_unwrap_item(loss_value):.5f}"

@@ -79,9 +79,11 @@ class LanguageModelSAERunnerConfig:
         adam_beta2 (float): The beta2 parameter for Adam.
         mse_loss_normalization (str): The normalization to use for the MSE loss.
         l1_coefficient (float): The L1 coefficient.
+        l0_lambda (float): The L0 lambda.
         lp_norm (float): The Lp norm.
         scale_sparsity_penalty_by_decoder_norm (bool): Whether to scale the sparsity penalty by the decoder norm.
         l1_warm_up_steps (int): The number of warm-up steps for the L1 loss.
+        l0_warm_up_steps (int): The number of warm-up steps for the L0 loss.
         lr (float): The learning rate.
         lr_scheduler_name (str): The name of the learning rate scheduler to use.
         lr_warm_up_steps (int): The number of warm-up steps for the learning rate.
@@ -187,9 +189,11 @@ class LanguageModelSAERunnerConfig:
     ## Loss Function
     mse_loss_normalization: Optional[str] = None
     l1_coefficient: float = 1e-3
+    l0_lambda: float = 0.0
     lp_norm: float = 1
     scale_sparsity_penalty_by_decoder_norm: bool = False
     l1_warm_up_steps: int = 0
+    l0_warm_up_steps: int = 0
 
     ## Learning Rate Schedule
     lr: float = 3e-4
@@ -369,6 +373,9 @@ class LanguageModelSAERunnerConfig:
                 f"The provided context_size is {self.context_size} is negative. Expecting positive context_size."
             )
 
+        if self.architecture == "jumprelu" and self.l0_lambda == 0.0:
+            raise ValueError("For JumpReLU SAEs, you must specify l0_lambda.")
+
         _validate_seqpos(seqpos=self.seqpos_slice, context_size=self.context_size)
 
     @property
@@ -409,6 +416,7 @@ class LanguageModelSAERunnerConfig:
         return {
             **self.get_base_sae_cfg_dict(),
             "l1_coefficient": self.l1_coefficient,
+            "l0_lambda": self.l0_lambda,
             "lp_norm": self.lp_norm,
             "use_ghost_grads": self.use_ghost_grads,
             "normalize_sae_decoder": self.normalize_sae_decoder,
@@ -548,6 +556,7 @@ class ToyModelSAERunnerConfig:
 
     # Training Parameters
     l1_coefficient: float = 1e-3
+    l0_lambda: float | None = None
     lr: float = 3e-4
     train_batch_size: int = 1024
     b_dec_init_method: str = "geometric_median"

@@ -20,6 +20,7 @@ class LanguageModelSAERunnerConfigDict(TypedDict, total=False):
     use_cached_activations: bool
     d_in: int
     l1_coefficient: float
+    l0_lambda: float
     lp_norm: float
     lr: float
     train_batch_size_tokens: int
@@ -56,6 +57,7 @@ def build_sae_cfg(**kwargs: Any) -> LanguageModelSAERunnerConfig:
         "use_cached_activations": False,
         "d_in": 64,
         "l1_coefficient": 2e-3,
+        "l0_lambda": 6e-4,
         "lp_norm": 1,
         "lr": 2e-4,
         "train_batch_size_tokens": 4,
