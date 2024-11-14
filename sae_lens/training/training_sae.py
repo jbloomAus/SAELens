@@ -108,9 +108,9 @@ class TrainingSAEConfig(SAEConfig):
     mse_loss_normalization: Optional[str]
     jumprelu_init_threshold: float
     jumprelu_bandwidth: float
-    decoder_heuristic_init: bool = False
-    init_encoder_as_decoder_transpose: bool = False
-    scale_sparsity_penalty_by_decoder_norm: bool = False
+    decoder_heuristic_init: bool
+    init_encoder_as_decoder_transpose: bool
+    scale_sparsity_penalty_by_decoder_norm: bool
 
     @classmethod
     def from_sae_runner_config(
