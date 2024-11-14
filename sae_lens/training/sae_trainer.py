@@ -270,6 +270,7 @@ class SAETrainer:
         self.optimizer.zero_grad()
         self.lr_scheduler.step()
         self.l1_scheduler.step()
+        self.l0_scheduler.step()
 
         return train_step_output
 
