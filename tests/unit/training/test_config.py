@@ -9,6 +9,17 @@ TINYSTORIES_MODEL = "tiny-stories-1M"
 TINYSTORIES_DATASET = "roneneldan/TinyStories"
 
 
+def test_get_training_sae_cfg_dict_passes_scale_sparsity_penalty_by_decoder_norm():
+    cfg = LanguageModelSAERunnerConfig(
+        scale_sparsity_penalty_by_decoder_norm=True, normalize_sae_decoder=False
+    )
+    assert cfg.get_training_sae_cfg_dict()["scale_sparsity_penalty_by_decoder_norm"]
+    cfg = LanguageModelSAERunnerConfig(
+        scale_sparsity_penalty_by_decoder_norm=False, normalize_sae_decoder=False
+    )
+    assert not cfg.get_training_sae_cfg_dict()["scale_sparsity_penalty_by_decoder_norm"]
+
+
 def test_sae_training_runner_config_runs_with_defaults():
     """
     Helper to create a mock instance of LanguageModelSAERunnerConfig.
