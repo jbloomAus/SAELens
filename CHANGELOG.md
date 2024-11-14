@@ -2,6 +2,17 @@
 
 
 
+## v4.3.4 (2024-11-14)
+
+### Fix
+
+* fix: hotfix scale decoder norm is not passed to training sae (#377)
+
+* fix: hotfix scale decoder norm is not passed to training sae
+
+* remove default params from TrainingSAEConfig ([`38876b4`](https://github.com/jbloomAus/SAELens/commit/38876b45506aa763b847eb639c7a595d5985685d))
+
+
 ## v4.3.3 (2024-11-12)
 
 ### Fix
