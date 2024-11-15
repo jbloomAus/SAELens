@@ -150,7 +150,7 @@ def test_get_sae_config_dictionary_learning_1():
         "hook_layer": 12,
         "hook_head_index": None,
         "activation_fn_str": "topk",
-        "activation_fn_kwargs": {'k': 20},
+        "activation_fn_kwargs": {"k": 20},
         "apply_b_dec_to_input": True,
         "finetuning_scaling_factor": False,
         "sae_lens_training_version": None,
