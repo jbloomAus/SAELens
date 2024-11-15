@@ -4,9 +4,9 @@ from dataclasses import dataclass, field
 from typing import Any, Literal, Optional, cast
 
 import torch
-import wandb
 from datasets import Dataset, DatasetDict, IterableDataset, IterableDatasetDict
 
+import wandb
 from sae_lens import __version__
 
 DTYPE_MAP = {
@@ -78,12 +78,10 @@ class LanguageModelSAERunnerConfig:
         adam_beta1 (float): The beta1 parameter for Adam.
         adam_beta2 (float): The beta2 parameter for Adam.
         mse_loss_normalization (str): The normalization to use for the MSE loss.
-        l1_coefficient (float): The L1 coefficient.
-        l0_lambda (float): The L0 lambda.
+        sparsity_coefficient: The sparsity coefficient for either L1 or L0.
         lp_norm (float): The Lp norm.
         scale_sparsity_penalty_by_decoder_norm (bool): Whether to scale the sparsity penalty by the decoder norm.
-        l1_warm_up_steps (int): The number of warm-up steps for the L1 loss.
-        l0_warm_up_steps (int): The number of warm-up steps for the L0 loss.
+        coefficient_warm_up_steps (int): The number of warm-up steps for the sparsity loss.
         lr (float): The learning rate.
         lr_scheduler_name (str): The name of the learning rate scheduler to use.
         lr_warm_up_steps (int): The number of warm-up steps for the learning rate.
@@ -155,9 +153,7 @@ class LanguageModelSAERunnerConfig:
     finetuning_tokens: int = 0
     store_batch_size_prompts: int = 32
     train_batch_size_tokens: int = 4096
-    normalize_activations: str = (
-        "none"  # none, expected_average_only_in (Anthropic April Update), constant_norm_rescale (Anthropic Feb Update)
-    )
+    normalize_activations: str = "none"  # none, expected_average_only_in (Anthropic April Update), constant_norm_rescale (Anthropic Feb Update)
     seqpos_slice: tuple[int | None, ...] = (None,)
 
     # Misc
@@ -188,12 +184,10 @@ class LanguageModelSAERunnerConfig:
 
     ## Loss Function
     mse_loss_normalization: Optional[str] = None
-    l1_coefficient: float = 1e-3
-    l0_lambda: float = 0.0
+    sparsity_coefficient: float = 1.0  # changed the init value to 1.0
     lp_norm: float = 1
     scale_sparsity_penalty_by_decoder_norm: bool = False
-    l1_warm_up_steps: int = 0
-    l0_warm_up_steps: int = 0
+    coefficient_warm_up_steps: int = 0
 
     ## Learning Rate Schedule
     lr: float = 3e-4
@@ -268,7 +262,7 @@ class LanguageModelSAERunnerConfig:
         )
 
         if self.run_name is None:
-            self.run_name = f"{self.d_sae}-L1-{self.l1_coefficient}-LR-{self.lr}-Tokens-{self.training_tokens:3.3e}"
+            self.run_name = f"{self.d_sae}-L1-{self.sparsity_coefficient}-LR-{self.lr}-Tokens-{self.training_tokens:3.3e}"
 
         if self.model_from_pretrained_kwargs is None:
             if self.model_class_name == "HookedTransformer":
@@ -322,7 +316,7 @@ class LanguageModelSAERunnerConfig:
 
         if self.verbose:
             print(
-                f"Run name: {self.d_sae}-L1-{self.l1_coefficient}-LR-{self.lr}-Tokens-{self.training_tokens:3.3e}"
+                f"Run name: {self.d_sae}-L1-{self.sparsity_coefficient}-LR-{self.lr}-Tokens-{self.training_tokens:3.3e}"
             )
             # Print out some useful info:
             n_tokens_per_buffer = (
@@ -373,9 +367,6 @@ class LanguageModelSAERunnerConfig:
                 f"The provided context_size is {self.context_size} is negative. Expecting positive context_size."
             )
 
-        if self.architecture == "jumprelu" and self.l0_lambda == 0.0:
-            raise ValueError("For JumpReLU SAEs, you must specify l0_lambda.")
-
         _validate_seqpos(seqpos=self.seqpos_slice, context_size=self.context_size)
 
     @property
@@ -415,8 +406,7 @@ class LanguageModelSAERunnerConfig:
     def get_training_sae_cfg_dict(self) -> dict[str, Any]:
         return {
             **self.get_base_sae_cfg_dict(),
-            "l1_coefficient": self.l1_coefficient,
-            "l0_lambda": self.l0_lambda,
+            "sparsity_coefficient": self.sparsity_coefficient,
             "lp_norm": self.lp_norm,
             "use_ghost_grads": self.use_ghost_grads,
             "normalize_sae_decoder": self.normalize_sae_decoder,
@@ -555,8 +545,7 @@ class ToyModelSAERunnerConfig:
     d_sae: int = 5
 
     # Training Parameters
-    l1_coefficient: float = 1e-3
-    l0_lambda: float | None = None
+    sparsity_coefficient: float = 1.0
     lr: float = 3e-4
     train_batch_size: int = 1024
     b_dec_init_method: str = "geometric_median"

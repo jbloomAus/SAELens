@@ -180,7 +180,7 @@ def test_build_train_step_log_dict(trainer: SAETrainer) -> None:
     assert log_dict == {
         "losses/mse_loss": 0.25,
         # l1 loss is scaled by l1_coefficient
-        "losses/l1_loss": train_output.losses["l1_loss"] / trainer.cfg.l1_coefficient,
+        "losses/l1_loss": train_output.losses["l1_loss"] / trainer.cfg.sparsity_coefficient,
         "losses/raw_l1_loss": train_output.losses["l1_loss"],
         "losses/overall_loss": 0.5,
         "losses/ghost_grad_loss": 0.15,
@@ -190,8 +190,7 @@ def test_build_train_step_log_dict(trainer: SAETrainer) -> None:
         "sparsity/mean_passes_since_fired": trainer.n_forward_passes_since_fired.mean().item(),
         "sparsity/dead_features": trainer.dead_neurons.sum().item(),
         "details/current_learning_rate": 2e-4,
-        "details/current_l1_coefficient": trainer.cfg.l1_coefficient,
-        "details/current_l0_lambda": trainer.cfg.l0_lambda,
+        "details/current_sparsity_coefficient": trainer.cfg.sparsity_coefficient,
         "details/n_training_tokens": 123,
     }
 

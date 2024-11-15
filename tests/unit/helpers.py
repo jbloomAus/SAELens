@@ -19,8 +19,7 @@ class LanguageModelSAERunnerConfigDict(TypedDict, total=False):
     is_dataset_tokenized: bool
     use_cached_activations: bool
     d_in: int
-    l1_coefficient: float
-    l0_lambda: float
+    sparsity_coefficient: float
     lp_norm: float
     lr: float
     train_batch_size_tokens: int
@@ -56,8 +55,7 @@ def build_sae_cfg(**kwargs: Any) -> LanguageModelSAERunnerConfig:
         "is_dataset_tokenized": False,
         "use_cached_activations": False,
         "d_in": 64,
-        "l1_coefficient": 2e-3,
-        "l0_lambda": 6e-4,
+        "sparsity_coefficient": 1.0,
         "lp_norm": 1,
         "lr": 2e-4,
         "train_batch_size_tokens": 4,

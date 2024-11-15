@@ -102,8 +102,7 @@ class TrainStepOutput:
 @dataclass(kw_only=True)
 class TrainingSAEConfig(SAEConfig):
     # Sparsity Loss Calculations
-    l1_coefficient: float
-    l0_lambda: float
+    sparsity_coefficient: float
     lp_norm: Optional[float]
     use_ghost_grads: bool
     normalize_sae_decoder: bool
@@ -141,8 +140,7 @@ class TrainingSAEConfig(SAEConfig):
             prepend_bos=cfg.prepend_bos,
             seqpos_slice=cfg.seqpos_slice,
             # Training cfg
-            l1_coefficient=cfg.l1_coefficient,
-            l0_lambda=cfg.l0_lambda,
+            sparsity_coefficient=cfg.sparsity_coefficient,
             lp_norm=cfg.lp_norm,
             use_ghost_grads=cfg.use_ghost_grads,
             normalize_sae_decoder=cfg.normalize_sae_decoder,
@@ -184,8 +182,7 @@ class TrainingSAEConfig(SAEConfig):
     def to_dict(self) -> dict[str, Any]:
         return {
             **super().to_dict(),
-            "l1_coefficient": self.l1_coefficient,
-            "l0_lambda": self.l0_lambda,
+            "sparsity_coefficient": self.sparsity_coefficient,
             "lp_norm": self.lp_norm,
             "use_ghost_grads": self.use_ghost_grads,
             "normalize_sae_decoder": self.normalize_sae_decoder,
@@ -372,9 +369,8 @@ class TrainingSAE(SAE):
     def training_forward_pass(
         self,
         sae_in: torch.Tensor,
-        current_l1_coefficient: float,
+        current_sparsity_coefficient: float,
         dead_neuron_mask: Optional[torch.Tensor] = None,
-        current_l0_lambda: Optional[float] = None,
     ) -> TrainStepOutput:
         # do a forward pass to get SAE out, but we also need the
         # hidden pre.
@@ -399,7 +395,7 @@ class TrainingSAE(SAE):
 
             # SFN sparsity loss - summed over the feature dimension and averaged over the batch
             l1_loss = (
-                current_l1_coefficient
+                current_sparsity_coefficient
                 * torch.sum(pi_gate_act * self.W_dec.norm(dim=1), dim=-1).mean()
             )
 
@@ -414,7 +410,8 @@ class TrainingSAE(SAE):
         elif self.cfg.architecture == "jumprelu":
             threshold = torch.exp(self.log_threshold)
             l0 = torch.sum(Step.apply(hidden_pre, threshold, self.bandwidth), dim=-1)  # type: ignore
-            l0_loss = (current_l0_lambda * l0).mean()
+            l0_loss = (current_sparsity_coefficient * l0).mean()
+            # l0_loss = (current_l0_lambda * l0).mean()
             loss = mse_loss + l0_loss
             losses["l0_loss"] = l0_loss
         else:
@@ -426,7 +423,7 @@ class TrainingSAE(SAE):
                 p=self.cfg.lp_norm, dim=-1
             )  # sum over the feature dimension
 
-            l1_loss = (current_l1_coefficient * sparsity).mean()
+            l1_loss = (current_sparsity_coefficient * sparsity).mean()
             loss = mse_loss + l1_loss
             if (
                 self.cfg.use_ghost_grads

@@ -3,16 +3,16 @@ from dataclasses import dataclass
 from typing import Any, cast
 
 import torch
-import wandb
 from torch.optim import Adam
 from tqdm import tqdm
 from transformer_lens.hook_points import HookedRootModule
 
+import wandb
 from sae_lens import __version__
 from sae_lens.config import LanguageModelSAERunnerConfig
 from sae_lens.evals import EvalConfig, run_evals
 from sae_lens.training.activations_store import ActivationsStore
-from sae_lens.training.optim import L0Scheduler, L1Scheduler, get_lr_scheduler
+from sae_lens.training.optim import CoefficientScheduler, get_lr_scheduler
 from sae_lens.training.training_sae import TrainingSAE, TrainStepOutput
 
 # used to map between parameters which are updated during finetuning and the config str.
@@ -112,15 +112,11 @@ class SAETrainer:
             lr_end=cfg.lr_end,
             num_cycles=cfg.n_restart_cycles,
         )
-        self.l1_scheduler = L1Scheduler(
-            l1_warm_up_steps=cfg.l1_warm_up_steps,  # type: ignore
+
+        self.coefficient_scheduler = CoefficientScheduler(
+            coefficient_warm_up_steps=cfg.coefficient_warm_up_steps,
             total_steps=cfg.total_training_steps,
-            final_l1_coefficient=cfg.l1_coefficient,
-        )
-        self.l0_scheduler = L0Scheduler(
-            l0_warm_up_steps=cfg.l0_warm_up_steps,
-            total_steps=cfg.total_training_steps,
-            final_l0_lambda=cfg.l0_lambda,
+            final_sparsity_coefficient=cfg.sparsity_coefficient,
         )
 
         # Setup autocast if using
@@ -158,12 +154,8 @@ class SAETrainer:
         return _log_feature_sparsity(self.feature_sparsity)
 
     @property
-    def current_l1_coefficient(self) -> float:
-        return self.l1_scheduler.current_l1_coefficient
-
-    @property
-    def current_l0_lambda(self) -> float:
-        return self.l0_scheduler.current_l0_lambda
+    def current_sparsity_coefficient(self) -> float:
+        return self.coefficient_scheduler.current_sparsity_coefficient
 
     @property
     def dead_neurons(self) -> torch.Tensor:
@@ -241,8 +233,7 @@ class SAETrainer:
             train_step_output = self.sae.training_forward_pass(
                 sae_in=sae_in,
                 dead_neuron_mask=self.dead_neurons,
-                current_l1_coefficient=self.current_l1_coefficient,
-                current_l0_lambda=self.current_l0_lambda,
+                current_sparsity_coefficient=self.current_sparsity_coefficient,
             )
 
             with torch.no_grad():
@@ -268,9 +259,7 @@ class SAETrainer:
             sae.remove_gradient_parallel_to_decoder_directions()
 
         self.optimizer.zero_grad()
-        self.lr_scheduler.step()
-        self.l1_scheduler.step()
-        self.l0_scheduler.step()
+        self.coefficient_scheduler.step()
 
         return train_step_output
 
@@ -315,8 +304,7 @@ class SAETrainer:
             "sparsity/mean_passes_since_fired": self.n_forward_passes_since_fired.mean().item(),
             "sparsity/dead_features": self.dead_neurons.sum().item(),
             "details/current_learning_rate": current_learning_rate,
-            "details/current_l1_coefficient": self.current_l1_coefficient,
-            "details/current_l0_lambda": self.current_l0_lambda,
+            "details/current_sparsity_coefficient": self.current_sparsity_coefficient,
             "details/n_training_tokens": n_training_tokens,
         }
         for loss_name, loss_value in output.losses.items():
@@ -324,7 +312,8 @@ class SAETrainer:
             # special case for l1 loss, which we normalize by the l1 coefficient
             if loss_name == "l1_loss":
                 log_dict[f"losses/{loss_name}"] = (
-                    loss_item / self.current_l1_coefficient
+                    loss_item / self.current_sparsity_coefficient
+                    # loss_item / self.current_l1_coefficient
                 )
                 log_dict[f"losses/raw_{loss_name}"] = loss_item
             else:
