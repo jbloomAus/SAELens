@@ -134,23 +134,23 @@ def test_get_sae_config_gemma_2():
 
 def test_get_sae_config_dictionary_learning_1():
     cfg_dict = get_sae_config(
-        "sae_bench_gemma-2-2b_sweep_standard_ctx128_ef2_0824",
-        sae_id="blocks.3.hook_resid_post__trainer_1_step_29292",
+        "sae_bench_gemma-2-2b_topk_width-2pow16_date-1109",
+        sae_id="blocks.12.hook_resid_post__trainer_0_step_3088",
         options=SAEConfigLoadOptions(),
     )
 
     expected_cfg_dict = {
         "architecture": "standard",
         "d_in": 2304,
-        "d_sae": 4608,
+        "d_sae": 65536,
         "dtype": "float32",
         "device": "cpu",
         "model_name": "gemma-2-2b",
-        "hook_name": "blocks.3.hook_resid_post",
-        "hook_layer": 3,
+        "hook_name": "blocks.12.hook_resid_post",
+        "hook_layer": 12,
         "hook_head_index": None,
-        "activation_fn_str": "relu",
-        "activation_fn_kwargs": {},
+        "activation_fn_str": "topk",
+        "activation_fn_kwargs": {'k': 20},
         "apply_b_dec_to_input": True,
         "finetuning_scaling_factor": False,
         "sae_lens_training_version": None,
@@ -159,7 +159,7 @@ def test_get_sae_config_dictionary_learning_1():
         "dataset_trust_remote_code": True,
         "context_size": 128,
         "normalize_activations": "none",
-        "neuronpedia_id": "gemma-2-2b/3-sae_bench-standard-res-4k__trainer_1_step_29292",
+        "neuronpedia_id": "gemma-2-2b/12-sae_bench-topk-res-65k__trainer_0_step_3088",
     }
 
     assert cfg_dict == expected_cfg_dict
