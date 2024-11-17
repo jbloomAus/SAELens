@@ -12,7 +12,7 @@ def test_coefficient_scheduler_initialization():
     coefficient_scheduler = CoefficientScheduler(
         coefficient_warm_up_steps=cfg.coefficient_warm_up_steps,  # type: ignore
         total_steps=cfg.training_tokens // cfg.train_batch_size_tokens,
-        final_sparsity_coefficient=cfg.final_sparsity_coefficient,
+        final_sparsity_coefficient=cfg.sparsity_coefficient,
     )
 
     assert cfg.sparsity_coefficient == 5
@@ -34,9 +34,9 @@ def test_coefficient_scheduler_initialization_no_warmup():
     )
 
     coefficient_scheduler = CoefficientScheduler(
-        coefficient_warm_up_steps=cfg.l1_warm_up_steps,  # type: ignore
+        coefficient_warm_up_steps=cfg.coefficient_warm_up_steps,  # type: ignore
         total_steps=cfg.training_tokens // cfg.train_batch_size_tokens,
-        final_sparsity_coefficient=cfg.final_sparsity_coefficient,
+        final_sparsity_coefficient=cfg.sparsity_coefficient,
     )
 
     assert cfg.sparsity_coefficient == 5
