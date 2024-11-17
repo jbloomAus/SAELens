@@ -40,8 +40,7 @@ def test_jumprelu_sae_training_forward_pass():
     x = torch.randn(batch_size, d_in)
     train_step_output = sae.training_forward_pass(
         sae_in=x,
-        current_l1_coefficient=sae.cfg.l1_coefficient,
-        current_l0_lambda=sae.cfg.l0_lambda,
+        current_sparsity_coefficient=sae.cfg.sparsity_coefficient,
     )
 
     assert train_step_output.sae_out.shape == (batch_size, d_in)

@@ -22,7 +22,7 @@ def test_TrainingSAE_training_forward_pass_can_scale_sparsity_penalty_by_decoder
     x = torch.randn(32, 3)
     train_step_output = training_sae.training_forward_pass(
         sae_in=x,
-        current_l1_coefficient=2.0,
+        current_sparsity_coefficient=2.0,
     )
     feature_acts = train_step_output.feature_acts
     decoder_norm = training_sae.W_dec.norm(dim=1)

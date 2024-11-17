@@ -68,7 +68,7 @@ def test_gated_sae_loss():
 
     train_step_output = sae.training_forward_pass(
         sae_in=x,
-        current_l1_coefficient=sae.cfg.l1_coefficient,
+        current_sparsity_coefficient=sae.cfg.sparsity_coefficient,
     )
 
     assert train_step_output.sae_out.shape == (batch_size, d_in)
@@ -77,7 +77,7 @@ def test_gated_sae_loss():
     sae_in_centered = x - sae.b_dec
     via_gate_feature_magnitudes = torch.relu(sae_in_centered @ sae.W_enc + sae.b_gate)
     preactivation_l1_loss = (
-        sae.cfg.l1_coefficient * torch.sum(via_gate_feature_magnitudes, dim=-1).mean()
+        sae.cfg.sparsity_coefficient * torch.sum(via_gate_feature_magnitudes, dim=-1).mean()
     )
 
     via_gate_reconstruction = (
@@ -122,7 +122,7 @@ def test_gated_sae_training_forward_pass():
     x = torch.randn(batch_size, d_in)
     train_step_output = sae.training_forward_pass(
         sae_in=x,
-        current_l1_coefficient=sae.cfg.l1_coefficient,
+        current_sparsity_coefficient=sae.cfg.sparsity_coefficient,
     )
 
     assert train_step_output.sae_out.shape == (batch_size, d_in)

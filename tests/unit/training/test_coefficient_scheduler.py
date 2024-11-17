@@ -30,7 +30,7 @@ def test_coefficient_scheduler_initialization_no_warmup():
     cfg = build_sae_cfg(
         sparsity_coefficient=5,
         training_tokens=100 * 4,  # train batch size (so 100 steps)
-        coefficient_warm_up_steps=10,
+        coefficient_warm_up_steps=0,
     )
 
     coefficient_scheduler = CoefficientScheduler(

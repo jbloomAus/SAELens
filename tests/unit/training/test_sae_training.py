@@ -149,7 +149,7 @@ def test_sae_forward(training_sae: TrainingSAE):
     x = torch.randn(batch_size, d_in)
     train_step_output = training_sae.training_forward_pass(
         sae_in=x,
-        current_l1_coefficient=training_sae.cfg.l1_coefficient,
+        current_sparsity_coefficient=training_sae.cfg.sparsity_coefficient,
     )
 
     assert train_step_output.sae_out.shape == (batch_size, d_in)
@@ -188,7 +188,7 @@ def test_sae_forward(training_sae: TrainingSAE):
         )
     assert (
         pytest.approx(train_step_output.losses["l1_loss"].item(), rel=1e-3)  # type: ignore
-        == training_sae.cfg.l1_coefficient * expected_l1_loss.detach().float()
+        == training_sae.cfg.sparsity_coefficient * expected_l1_loss.detach().float()
     )
 
 
@@ -206,7 +206,7 @@ def test_sae_forward_with_mse_loss_norm(
     x = torch.randn(batch_size, d_in)
     train_step_output = training_sae.training_forward_pass(
         sae_in=x,
-        current_l1_coefficient=training_sae.cfg.l1_coefficient,
+        current_sparsity_coefficient=training_sae.cfg.sparsity_coefficient,
     )
 
     assert train_step_output.sae_out.shape == (batch_size, d_in)
@@ -248,7 +248,7 @@ def test_sae_forward_with_mse_loss_norm(
         )
     assert (
         pytest.approx(train_step_output.losses["l1_loss"].item(), rel=1e-3)  # type: ignore
-        == training_sae.cfg.l1_coefficient * expected_l1_loss.detach().float()
+        == training_sae.cfg.sparsity_coefficient * expected_l1_loss.detach().float()
     )
 
 
@@ -262,7 +262,7 @@ def test_SparseAutoencoder_forward_ghost_grad_loss_non_zero(
     x = torch.randn(batch_size, d_in)
     train_step_output = training_sae.training_forward_pass(
         sae_in=x,
-        current_l1_coefficient=training_sae.cfg.l1_coefficient,
+        current_sparsity_coefficient=training_sae.cfg.sparsity_coefficient,
         dead_neuron_mask=torch.ones_like(
             training_sae.b_enc
         ).bool(),  # all neurons are dead.
