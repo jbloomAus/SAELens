@@ -2,6 +2,31 @@
 
 
 
+## v4.3.5 (2024-11-18)
+
+### Chore
+
+* chore: adding test that all config params pass to sae (#379) ([`2a43b68`](https://github.com/jbloomAus/SAELens/commit/2a43b68fc7b7cd7f08dd3dc65d672992f7396eb1))
+
+### Fix
+
+* fix: Force build for the pretrained_saes.yaml update ([`8752dcc`](https://github.com/jbloomAus/SAELens/commit/8752dcc6b5b5de69b8b7f328073b24d20009bb94))
+
+### Unknown
+
+* Merge pull request #378 from jbloomAus/add-new-saebench-saes
+
+Added new SAEBench gemma 2 2b SAEs ([`637b27b`](https://github.com/jbloomAus/SAELens/commit/637b27b3c1b8c8cb84bbed45ef77ab74784c2c05))
+
+* reformat ([`6940c9b`](https://github.com/jbloomAus/SAELens/commit/6940c9bc29703e8778b01700931efc8ce9c25518))
+
+* Fixed tests ([`5cddabd`](https://github.com/jbloomAus/SAELens/commit/5cddabddfb6c980285e6f189ca2ee5da18220936))
+
+* corrected issues ([`209507b`](https://github.com/jbloomAus/SAELens/commit/209507b6300f558c05a9285666726a817ce9b29a))
+
+* Added new SAEBench gemma 2 2b SAEs ([`f7cec02`](https://github.com/jbloomAus/SAELens/commit/f7cec026a531bf69e926bf4c70712325bb445e1c))
+
+
 ## v4.3.4 (2024-11-14)
 
 ### Fix
