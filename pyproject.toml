@@ -39,7 +39,6 @@ pytest-profiling = "^1.7.0"
 zstandard = "^0.22.0"
 typing-extensions = "^4.10.0"
 simple-parsing = "^0.1.6"
-typeguard = "2.13.3" # remove this after the following issue is fixed: https://github.com/TransformerLensOrg/TransformerLens/issues/785
 
 
 [tool.poetry.group.dev.dependencies]
