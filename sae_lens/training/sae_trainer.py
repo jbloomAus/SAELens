@@ -114,17 +114,19 @@ class SAETrainer:
             num_cycles=cfg.n_restart_cycles,
         )
         self.l1_scheduler = L1Scheduler(
-            l1_warm_up_steps=cfg.l1_warm_up_steps,  # type: ignore
+            l1_warm_up_steps=cfg.l1_warm_up_steps,
             total_steps=cfg.total_training_steps,
             final_l1_coefficient=cfg.l1_coefficient,
         )
 
         # Setup autocast if using
-        self.scaler = torch.cuda.amp.GradScaler(enabled=self.cfg.autocast)
+        self.scaler = torch.amp.GradScaler(
+            device=self.cfg.device, enabled=self.cfg.autocast
+        )
 
         if self.cfg.autocast:
             self.autocast_if_enabled = torch.autocast(
-                device_type="cuda",
+                device_type=self.cfg.device,
                 dtype=torch.bfloat16,
                 enabled=self.cfg.autocast,
             )

@@ -38,7 +38,7 @@ T = TypeVar("T", bound="SAE")
 @dataclass
 class SAEConfig:
     # architecture details
-    architecture: Literal["standard", "gated", "jumprelu"]
+    architecture: Literal["standard", "gated", "jumprelu", "topk"]
 
     # forward pass details.
     d_in: int
@@ -157,7 +157,7 @@ class SAE(HookedRootModule):
         self.device = torch.device(cfg.device)
         self.use_error_term = use_error_term
 
-        if self.cfg.architecture == "standard":
+        if self.cfg.architecture == "standard" or self.cfg.architecture == "topk":
             self.initialize_weights_basic()
             self.encode = self.encode_standard
         elif self.cfg.architecture == "gated":
@@ -681,6 +681,7 @@ class TopK(nn.Module):
         self.k = k
         self.postact_fn = postact_fn
 
+    # TODO: Use a fused kernel to speed up topk decoding like https://github.com/EleutherAI/sae/blob/main/sae/kernels.py
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         topk = torch.topk(x, k=self.k, dim=-1)
         values = self.postact_fn(topk.values)
