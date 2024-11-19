@@ -2,6 +2,13 @@
 
 
 
+## v4.4.1 (2024-11-19)
+
+### Fix
+
+* fix: remove typeguard dependency (#380) ([`c555d9b`](https://github.com/jbloomAus/SAELens/commit/c555d9b4b3089bc2d0c4eecafa5e9df20f55ab50))
+
+
 ## v4.4.0 (2024-11-19)
 
 ### Feature
