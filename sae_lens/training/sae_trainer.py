@@ -120,11 +120,13 @@ class SAETrainer:
         )
 
         # Setup autocast if using
-        self.scaler = torch.amp.GradScaler(device="cuda", enabled=self.cfg.autocast)
+        self.scaler = torch.amp.GradScaler(
+            device=self.cfg.device, enabled=self.cfg.autocast
+        )
 
         if self.cfg.autocast:
             self.autocast_if_enabled = torch.autocast(
-                device_type="cuda",
+                device_type=self.cfg.device,
                 dtype=torch.bfloat16,
                 enabled=self.cfg.autocast,
             )
