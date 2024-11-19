@@ -2,6 +2,29 @@
 
 
 
+## v4.4.0 (2024-11-19)
+
+### Feature
+
+* feat: Topk SAE training (#370)
+
+* feat: topk training
+
+* adding tests
+
+* adding docs for training topk saes
+
+* fixing typing
+
+* more tests
+
+* adding topk to hidden pre test
+
+* changes from CR
+
+* temporarily adding typeguard so tests will pass ([`aa8f42b`](https://github.com/jbloomAus/SAELens/commit/aa8f42bf06d9c68bb890f4881af0aac916ecd17c))
+
+
 ## v4.3.5 (2024-11-18)
 
 ### Chore
