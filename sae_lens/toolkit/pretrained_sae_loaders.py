@@ -10,6 +10,7 @@ from huggingface_hub.utils import EntryNotFoundError
 from safetensors import safe_open
 from safetensors.torch import load_file
 
+from sae_lens import logger
 from sae_lens.config import DTYPE_MAP
 from sae_lens.toolkit.pretrained_saes_directory import (
     PretrainedSAELookup,
@@ -401,7 +402,7 @@ def gemma_2_sae_loader(
 
     # if it is an embedding SAE, then we need to adjust for the scale of d_model because of how they trained it
     if "embedding" in folder_name:
-        print("Adjusting for d_model in embedding SAE")
+        logger.debug("Adjusting for d_model in embedding SAE")
         state_dict["W_enc"].data = state_dict["W_enc"].data / np.sqrt(cfg_dict["d_in"])
         state_dict["W_dec"].data = state_dict["W_dec"].data * np.sqrt(cfg_dict["d_in"])
 
