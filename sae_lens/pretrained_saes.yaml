@@ -4280,7 +4280,6 @@ gemma-scope-9b-pt-res:
   - id: layer_20/width_131k/average_l0_114
     path: layer_20/width_131k/average_l0_114
     l0: 114
-    neuronpedia: gemma-2-9b/20-gemmascope-res-131k__l0-114
   - id: layer_20/width_131k/average_l0_12
     path: layer_20/width_131k/average_l0_12
     l0: 12
@@ -4316,12 +4315,15 @@ gemma-scope-9b-pt-res:
   - id: layer_20/width_131k/average_l0_53
     path: layer_20/width_131k/average_l0_53
     l0: 53
+    neuronpedia: gemma-2-9b/20-gemmascope-res-131k__l0-53
   - id: layer_20/width_131k/average_l0_54
     path: layer_20/width_131k/average_l0_54
     l0: 54
+    neuronpedia: gemma-2-9b/20-gemmascope-res-131k__l0-54
   - id: layer_20/width_131k/average_l0_62
     path: layer_20/width_131k/average_l0_62
     l0: 62
+    neuronpedia: gemma-2-9b/20-gemmascope-res-131k__l0-62
   - id: layer_20/width_16k/average_l0_11
     path: layer_20/width_16k/average_l0_11
     l0: 11
@@ -5544,6 +5546,7 @@ gemma-scope-9b-pt-res:
   - id: layer_9/width_131k/average_l0_8
     path: layer_9/width_131k/average_l0_8
     l0: 8
+    neuronpedia: gemma-2-9b/9-gemmascope-res-131k__l0-8
   - id: layer_9/width_16k/average_l0_100
     path: layer_9/width_16k/average_l0_100
     l0: 100
