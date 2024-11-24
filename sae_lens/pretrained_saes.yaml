@@ -4359,9 +4359,11 @@ gemma-scope-9b-pt-res:
   - id: layer_20/width_16k/average_l0_57
     path: layer_20/width_16k/average_l0_57
     l0: 57
+    neuronpedia: gemma-2-9b/20-gemmascope-res-16k__l0-57
   - id: layer_20/width_16k/average_l0_58
     path: layer_20/width_16k/average_l0_58
     l0: 58
+    neuronpedia: gemma-2-9b/20-gemmascope-res-16k__l0-58
   - id: layer_20/width_16k/average_l0_68
     path: layer_20/width_16k/average_l0_68
     l0: 68
