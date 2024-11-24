@@ -2,6 +2,19 @@
 
 
 
+## v4.4.5 (2024-11-24)
+
+### Fix
+
+* fix: add missing np ([`9d26da4`](https://github.com/jbloomAus/SAELens/commit/9d26da40a35dcd335038df8724f94558a80766e0))
+
+### Unknown
+
+* Merge pull request #387 from jbloomAus/np_yaml
+
+fix: add missing neuronpedia yaml entries ([`deae2a7`](https://github.com/jbloomAus/SAELens/commit/deae2a7e81552b9f055baf7da1084231a3a5811c))
+
+
 ## v4.4.4 (2024-11-24)
 
 ### Fix
