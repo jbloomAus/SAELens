@@ -2,6 +2,19 @@
 
 
 
+## v4.4.2 (2024-11-24)
+
+### Fix
+
+* fix: update neuronpedia yaml entries ([`465c958`](https://github.com/jbloomAus/SAELens/commit/465c958e88b5be7578faafd1eb4e72c05da9fafc))
+
+### Unknown
+
+* Merge pull request #383 from jbloomAus/np_yaml
+
+fix: update neuronpedia yaml entries ([`93b3dd2`](https://github.com/jbloomAus/SAELens/commit/93b3dd28e86d44c00b2a4db04745a472a4911c4d))
+
+
 ## v4.4.1 (2024-11-19)
 
 ### Fix
