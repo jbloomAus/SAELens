@@ -474,7 +474,6 @@ def test_saes_context_manager_with_use_error_term(
 def test_run_with_saes_with_use_error_term(
     model: HookedSAETransformer,
     hooked_sae: SAE,
-    original_logits: torch.Tensor,
 ):
     """Verifies that run_with_saes correctly handles use_error_term."""
     original_use_error_term = hooked_sae.use_error_term
@@ -487,7 +486,6 @@ def test_run_with_saes_with_use_error_term(
 def test_run_with_cache_with_saes_with_use_error_term(
     model: HookedSAETransformer,
     hooked_sae: SAE,
-    original_logits: torch.Tensor,
 ):
     """Verifies that run_with_cache_with_saes correctly handles use_error_term."""
     act_name = hooked_sae.cfg.hook_name

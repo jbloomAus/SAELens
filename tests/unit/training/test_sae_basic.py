@@ -109,7 +109,6 @@ def test_sae_fold_w_dec_norm(cfg: LanguageModelSAERunnerConfig):
 
 @torch.no_grad()
 def test_sae_fold_norm_scaling_factor(cfg: LanguageModelSAERunnerConfig):
-
     norm_scaling_factor = 3.0
 
     sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
@@ -448,7 +447,7 @@ def test_sae_forward_pass_works_with_error_term_and_hooks(architecture: str):
     sae_in = torch.randn(10, cfg.d_in)
     original_out, original_cache = sae.run_with_cache(sae_in)
 
-    def ablate_hooked_sae(acts: torch.Tensor, hook: HookPoint):
+    def ablate_hooked_sae(acts: torch.Tensor, hook: HookPoint):  # noqa: ARG001
         acts[:, :] = 20
         return acts
 

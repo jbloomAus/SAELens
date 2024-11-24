@@ -168,8 +168,7 @@ def _extract_logits_from_output(output: Any) -> torch.Tensor:
 
 
 def get_hook_fn(hook_point: HookPoint):
-
-    def hook_fn(module: Any, input: Any, output: Any) -> Any:
+    def hook_fn(module: Any, input: Any, output: Any) -> Any:  # noqa: ARG001
         if isinstance(output, torch.Tensor):
             return hook_point(output)
         elif isinstance(output, tuple) and isinstance(output[0], torch.Tensor):

@@ -69,7 +69,6 @@ class SAEConfig:
 
     @classmethod
     def from_dict(cls, config_dict: dict[str, Any]) -> "SAEConfig":
-
         # rename dict:
         rename_dict = {  # old : new
             "hook_point": "hook_name",
@@ -198,7 +197,6 @@ class SAE(HookedRootModule):
 
         # handle run time activation normalization if needed:
         if self.cfg.normalize_activations == "constant_norm_rescale":
-
             #  we need to scale the norm of the input and store the scaling factor
             def run_time_activation_norm_fn_in(x: torch.Tensor) -> torch.Tensor:
                 self.x_norm_coeff = (self.cfg.d_in**0.5) / x.norm(dim=-1, keepdim=True)
@@ -214,7 +212,6 @@ class SAE(HookedRootModule):
             self.run_time_activation_norm_fn_out = run_time_activation_norm_fn_out
 
         elif self.cfg.normalize_activations == "layer_norm":
-
             #  we need to scale the norm of the input and store the scaling factor
             def run_time_activation_ln_in(
                 x: torch.Tensor, eps: float = 1e-5
@@ -227,7 +224,7 @@ class SAE(HookedRootModule):
                 self.ln_std = std
                 return x
 
-            def run_time_activation_ln_out(x: torch.Tensor, eps: float = 1e-5):
+            def run_time_activation_ln_out(x: torch.Tensor, eps: float = 1e-5):  # noqa: ARG001
                 return x * self.ln_std + self.ln_mu
 
             self.run_time_activation_norm_fn_in = run_time_activation_ln_in
@@ -239,7 +236,6 @@ class SAE(HookedRootModule):
         self.setup()  # Required for `HookedRootModule`s
 
     def initialize_weights_basic(self):
-
         # no config changes encoder bias init for now.
         self.b_enc = nn.Parameter(
             torch.zeros(self.cfg.d_sae, dtype=self.dtype, device=self.device)
@@ -525,10 +521,9 @@ class SAE(HookedRootModule):
     def load_from_pretrained(
         cls, path: str, device: str = "cpu", dtype: str | None = None
     ) -> "SAE":
-
         # get the config
         config_path = os.path.join(path, SAE_CFG_PATH)
-        with open(config_path, "r") as f:
+        with open(config_path) as f:
             cfg_dict = json.load(f)
         cfg_dict = handle_config_defaulting(cfg_dict)
         cfg_dict["device"] = device
@@ -647,7 +642,6 @@ class SAE(HookedRootModule):
         return cls(SAEConfig.from_dict(config_dict))
 
     def turn_on_forward_pass_hook_z_reshaping(self):
-
         assert self.cfg.hook_name.endswith(
             "_z"
         ), "This method should only be called for hook_z SAEs."
@@ -668,7 +662,7 @@ class SAE(HookedRootModule):
 
     def turn_off_forward_pass_hook_z_reshaping(self):
         self.reshape_fn_in = lambda x: x
-        self.reshape_fn_out = lambda x, d_head: x
+        self.reshape_fn_out = lambda x, d_head: x  # noqa: ARG005
         self.d_head = None
         self.hook_z_reshaping_mode = False
 

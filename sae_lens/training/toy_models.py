@@ -47,7 +47,7 @@ def _init_importance(
     if isinstance(importance, float):
         importance = t.tensor(importance)
     assert isinstance(importance, Tensor)  # pyright can't seem to infer this
-    return importance.to(device).broadcast_to((n_features))
+    return importance.to(device).broadcast_to(n_features)
 
 
 @dataclass
@@ -75,7 +75,7 @@ class HookedToyModel(HookedRootModule, ABC):
             feature_probability, Tensor
         )  # pyright can't seem to infer this
         self.feature_probability = feature_probability.to(device).broadcast_to(
-            (cfg.n_features)
+            cfg.n_features
         )
 
         self.importance = _init_importance(cfg.importance, cfg.n_features, device)
@@ -233,7 +233,7 @@ class ReluOutputModel(HookedToyModel):
         self.W = nn.Parameter(
             nn.init.xavier_normal_(t.empty((cfg.n_hidden, cfg.n_features)))
         )
-        self.b_final = nn.Parameter(t.zeros((cfg.n_features)))
+        self.b_final = nn.Parameter(t.zeros(cfg.n_features))
         self.to(device)
 
         # Add and setup hookpoints.
@@ -311,7 +311,7 @@ class ReluOutputModelCE(ReluOutputModel):
         self.W = nn.Parameter(
             nn.init.xavier_normal_(t.empty((cfg.n_hidden, cfg.n_features + 1)))
         )
-        self.b_final = nn.Parameter(t.zeros((cfg.n_features + 1)))
+        self.b_final = nn.Parameter(t.zeros(cfg.n_features + 1))
         self.importance = _init_importance(cfg.importance, cfg.n_features + 1, device)
         self.to(device)
 
@@ -438,7 +438,7 @@ def plot_features_in_2d(
             ax.set_title(subplot_titles[t], fontsize=12)  # type: ignore
         fig.canvas.draw_idle()
 
-    def play(event: Any):
+    def play(event: Any):  # noqa: ARG001
         _ = slider.val
         for i in range(n_timesteps):
             update(i)

@@ -15,7 +15,7 @@ make check-ci # validate the install
 
 ## Testing, Linting, and Formatting
 
-This project uses [pytest](https://docs.pytest.org/en/stable/) for testing, [flake8](https://flake8.pycqa.org/en/latest/) for linting, [pyright](https://github.com/microsoft/pyright) for type-checking, and [black](https://black.readthedocs.io/en/stable/) and [isort](https://pycqa.github.io/isort/) for formatting.
+This project uses [pytest](https://docs.pytest.org/en/stable/) for testing, [pyright](https://github.com/microsoft/pyright) for type-checking, and [Ruff](https://docs.astral.sh/ruff/) for formatting and linting.
 
 If you add new code, it would be greatly appreciated if you could add tests in the `tests/unit` directory. You can run the tests with:
 

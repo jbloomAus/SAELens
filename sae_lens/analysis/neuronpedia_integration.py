@@ -75,7 +75,6 @@ def get_neuronpedia_quick_list(
     features: list[int],
     name: str = "temporary_list",
 ):
-
     sae_id = sae.cfg.neuronpedia_id
     if sae_id is None:
         logger.warning(
@@ -452,7 +451,9 @@ async def autointerp_neuronpedia_features(  # noqa: C901
         if do_score and autointerp_scorer_model_name and scored_simulation:
             feature_data["activations"] = feature.activations
             feature_data["simulationModel"] = autointerp_scorer_model_name
-            feature_data["simulationActivations"] = scored_simulation.scored_sequence_simulations  # type: ignore
+            feature_data["simulationActivations"] = (
+                scored_simulation.scored_sequence_simulations
+            )  # type: ignore
             feature_data["simulationScore"] = feature.autointerp_explanation_score
         feature_data_str = json.dumps(feature_data, default=vars)
 

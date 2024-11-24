@@ -52,7 +52,10 @@ def test_get_sae_config():
     "release, sae_name, expected_var_explained, expected_l0", all_loadable_saes()
 )
 def test_loading_pretrained_saes(
-    release: str, sae_name: str, expected_var_explained: float, expected_l0: float
+    release: str,
+    sae_name: str,
+    expected_var_explained: float,  # noqa: ARG001
+    expected_l0: float,  # noqa: ARG001
 ):
     if torch.cuda.is_available():
         device = "cuda"
@@ -69,7 +72,10 @@ def test_loading_pretrained_saes(
     "release, sae_name, expected_var_explained, expected_l0", all_loadable_saes()
 )
 def test_loading_pretrained_saes_open_neuronpedia(
-    release: str, sae_name: str, expected_var_explained: float, expected_l0: float
+    release: str,
+    sae_name: str,
+    expected_var_explained: float,  # noqa: ARG001
+    expected_l0: float,  # noqa: ARG001
 ):
     if torch.cuda.is_available():
         device = "cuda"
@@ -88,7 +94,10 @@ def test_loading_pretrained_saes_open_neuronpedia(
     "release, sae_name, expected_var_explained, expected_l0", all_loadable_saes()
 )
 def test_loading_pretrained_saes_do_forward_pass(
-    release: str, sae_name: str, expected_var_explained: float, expected_l0: float
+    release: str,
+    sae_name: str,
+    expected_var_explained: float,  # noqa: ARG001
+    expected_l0: float,  # noqa: ARG001
 ):
     if torch.cuda.is_available():
         device = "cuda"
@@ -214,7 +223,7 @@ def test_run_evaluations_process_results(mock_evals_simple_args: argparse.Namesp
     combined_json_path = output_files["combined_json"]
     assert isinstance(combined_json_path, Path)
     assert combined_json_path.exists()
-    with open(combined_json_path, "r") as f:
+    with open(combined_json_path) as f:
         data = json.load(f)[0]
         assert "metrics" in data
         assert "feature_metrics" in data

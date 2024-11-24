@@ -90,10 +90,14 @@ class ActivationsStore:
         model: HookedRootModule,
         cfg: LanguageModelSAERunnerConfig | CacheActivationsRunnerConfig,
         override_dataset: HfDataset | None = None,
+<<<<<<< HEAD
     ) -> "ActivationsStore":
         if isinstance(cfg, CacheActivationsRunnerConfig):
             return cls.from_cache_activations(model, cfg)
 
+=======
+    ) -> ActivationsStore:
+>>>>>>> 0e24ac2 (replaces isort, black, adn flake8 with Ruff)
         cached_activations_path = cfg.cached_activations_path
         # set cached_activations_path to None if we're not using cached activations
         if (
@@ -144,7 +148,7 @@ class ActivationsStore:
         train_batch_size_tokens: int = 4096,
         total_tokens: int = 10**9,
         device: str = "cpu",
-    ) -> "ActivationsStore":
+    ) -> ActivationsStore:
         return cls(
             model=model,
             dataset=sae.cfg.dataset_path if dataset is None else dataset,
@@ -425,7 +429,7 @@ class ActivationsStore:
         The default buffer_size of 1 means that only the shard will be shuffled; larger buffer sizes will
         additionally shuffle individual elements within the shard.
         """
-        if type(self.dataset) == IterableDataset:
+        if isinstance(self.dataset, IterableDataset):
             self.dataset = self.dataset.shuffle(seed=seed, buffer_size=buffer_size)
         else:
             self.dataset = self.dataset.shuffle(seed=seed)
@@ -726,7 +730,7 @@ def validate_pretokenized_dataset_tokenizer(
         return
     if tokenization_cfg_path is None:
         return
-    with open(tokenization_cfg_path, "r") as f:
+    with open(tokenization_cfg_path) as f:
         tokenization_cfg = json.load(f)
     tokenizer_name = tokenization_cfg["tokenizer_name"]
     try:

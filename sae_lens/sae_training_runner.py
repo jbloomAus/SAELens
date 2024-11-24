@@ -24,7 +24,7 @@ class InterruptedException(Exception):
     pass
 
 
-def interrupt_callback(sig_num: Any, stack_frame: Any):
+def interrupt_callback(sig_num: Any, stack_frame: Any):  # noqa: ARG001
     raise InterruptedException()
 
 
@@ -118,7 +118,6 @@ class SAETrainingRunner:
         return sae
 
     def _compile_if_needed(self):
-
         # Compile model and SAE
         #  torch.compile can provide significant speedups (10-20% in testing)
         # using max-autotune gives the best speedups but:
@@ -190,7 +189,6 @@ class SAETrainingRunner:
         checkpoint_name: int | str,
         wandb_aliases: list[str] | None = None,
     ) -> str:
-
         checkpoint_path = f"{trainer.cfg.checkpoint_path}/{checkpoint_name}"
 
         os.makedirs(checkpoint_path, exist_ok=True)

@@ -160,9 +160,7 @@ class LanguageModelSAERunnerConfig:
     finetuning_tokens: int = 0
     store_batch_size_prompts: int = 32
     train_batch_size_tokens: int = 4096
-    normalize_activations: str = (
-        "none"  # none, expected_average_only_in (Anthropic April Update), constant_norm_rescale (Anthropic Feb Update)
-    )
+    normalize_activations: str = "none"  # none, expected_average_only_in (Anthropic April Update), constant_norm_rescale (Anthropic Feb Update)
     seqpos_slice: tuple[int | None, ...] = (None,)
 
     # Misc
@@ -470,7 +468,7 @@ class LanguageModelSAERunnerConfig:
 
     @classmethod
     def from_json(cls, path: str) -> "LanguageModelSAERunnerConfig":
-        with open(path + "cfg.json", "r") as f:
+        with open(path + "cfg.json") as f:
             cfg = json.load(f)
 
         # ensure that seqpos slices is a tuple

@@ -60,12 +60,10 @@ jobs:
       - name: Install dependencies
         if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
         run: poetry install --no-interaction
-      - name: Lint with flake8
-        run: poetry run flake8 .
-      - name: black code formatting
-        run: poetry run black . --check
-      - name: isort linting
-        run: poetry run isort . --check-only --diff
+      - name: Check linting
+        run: poetry run ruff check .
+      - name: Check formatting
+        run: poetry run ruff format --check .
       - name: type checking
         run: poetry run pyright
       - name: Run Unit Tests

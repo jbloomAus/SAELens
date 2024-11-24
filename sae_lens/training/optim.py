@@ -89,26 +89,26 @@ def _get_main_lr_scheduler(
     num_cycles: int,
 ) -> lr_scheduler.LRScheduler:
     if scheduler_name == "constant":
-        return lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda steps: 1.0)
+        return lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda steps: 1.0)  # noqa: ARG005
     elif scheduler_name == "cosineannealing":
         return lr_scheduler.CosineAnnealingLR(optimizer, T_max=steps, eta_min=lr_end)  # type: ignore
     elif scheduler_name == "cosineannealingwarmrestarts":
         return lr_scheduler.CosineAnnealingWarmRestarts(
-            optimizer, T_0=steps // num_cycles, eta_min=lr_end  # type: ignore
+            optimizer,
+            T_0=steps // num_cycles,
+            eta_min=lr_end,  # type: ignore
         )
     else:
         raise ValueError(f"Unsupported scheduler: {scheduler_name}")
 
 
 class L1Scheduler:
-
     def __init__(
         self,
         l1_warm_up_steps: float,
         total_steps: int,
         final_l1_coefficient: float,
     ):
-
         self.l1_warmup_steps = l1_warm_up_steps
         # assume using warm-up
         if self.l1_warmup_steps != 0:

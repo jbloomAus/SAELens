@@ -26,7 +26,7 @@ INCLUDED_CFG = [
 ]
 
 
-def on_pre_build(config):
+def on_pre_build(config):  # noqa: ARG001
     print("Generating SAE table...")
     generate_sae_table()
     print("SAE table generation complete.")
@@ -35,7 +35,7 @@ def on_pre_build(config):
 def generate_sae_table():
     # Read the YAML file
     yaml_path = Path("sae_lens/pretrained_saes.yaml")
-    with open(yaml_path, "r") as file:
+    with open(yaml_path) as file:
         data = yaml.safe_load(file)
 
     # Start the Markdown content

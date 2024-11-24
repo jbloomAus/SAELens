@@ -1,11 +1,10 @@
 format:
-	poetry run black .
-	poetry run isort .
+	poetry run ruff format .
+	poetry run ruff check --fix-only .
 
 check-format:
-	poetry run flake8 .
-	poetry run black --check .
-	poetry run isort --check-only --diff .
+	poetry run ruff check .
+	poetry run ruff format --check .
 
 check-type:
 	poetry run pyright .

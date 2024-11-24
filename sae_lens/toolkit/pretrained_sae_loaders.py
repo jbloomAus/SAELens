@@ -110,7 +110,7 @@ def get_sae_config_from_hf(
         repo_id=repo_id, filename=cfg_filename, force_download=options.force_download
     )
 
-    with open(cfg_path, "r") as f:
+    with open(cfg_path) as f:
         cfg_dict = json.load(f)
 
     if options.device is not None:
@@ -153,7 +153,7 @@ def get_connor_rob_hook_z_config(
     config_path = folder_name.split(".pt")[0] + "_cfg.json"
     config_path = hf_hub_download(repo_id, config_path)
 
-    old_cfg_dict = json.load(open(config_path, "r"))
+    old_cfg_dict = json.load(open(config_path))
 
     return {
         "architecture": "standard",
@@ -182,7 +182,7 @@ def connor_rob_hook_z_loader(
     sae_id: str,
     device: Optional[str] = None,
     force_download: bool = False,
-    cfg_overrides: Optional[dict[str, Any]] = None,
+    cfg_overrides: Optional[dict[str, Any]] = None,  # noqa: ARG001
 ) -> tuple[dict[str, Any], dict[str, torch.Tensor], None]:
     options = SAEConfigLoadOptions(
         device=device,
@@ -412,7 +412,7 @@ def gemma_2_sae_loader(
 def get_llama_scope_config(
     repo_id: str,
     folder_name: str,
-    options: SAEConfigLoadOptions,
+    options: SAEConfigLoadOptions,  # noqa: ARG001
 ) -> Dict[str, Any]:
     # Llama Scope SAEs
     # repo_id: fnlp/Llama3_1-8B-Base-LX{sublayer}-{exp_factor}x
@@ -420,7 +420,7 @@ def get_llama_scope_config(
     config_path = folder_name + "/hyperparams.json"
     config_path = hf_hub_download(repo_id, config_path)
 
-    old_cfg_dict = json.load(open(config_path, "r"))
+    old_cfg_dict = json.load(open(config_path))
 
     # Model specific parameters
     model_name, d_in = "meta-llama/Llama-3.1-8B", old_cfg_dict["d_model"]
@@ -541,7 +541,7 @@ def get_dictionary_learning_config_1(
         filename=f"{folder_name}/config.json",
         force_download=options.force_download,
     )
-    with open(config_path, "r") as f:
+    with open(config_path) as f:
         config = json.load(f)
 
     trainer = config["trainer"]

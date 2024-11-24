@@ -348,13 +348,13 @@ def test_process_results(tmp_path: Path):
     # Check if individual JSON file is created
     individual_json_path = output_dir / "test-sae_64_test_dataset.json"
     assert individual_json_path.exists()
-    with open(individual_json_path, "r") as f:
+    with open(individual_json_path) as f:
         assert json.load(f) == eval_results[0]
 
     # Check if combined JSON file is created
     combined_json_path = output_dir / "all_eval_results.json"
     assert combined_json_path.exists()
-    with open(combined_json_path, "r") as f:
+    with open(combined_json_path) as f:
         assert json.load(f) == eval_results
 
     # Check if CSV file is created

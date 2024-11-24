@@ -56,7 +56,6 @@ class SAETrainer:
         save_checkpoint_fn,  # type: ignore
         cfg: LanguageModelSAERunnerConfig,
     ) -> None:
-
         self.model = model
         self.sae = sae
         self.activation_store = activation_store
@@ -164,7 +163,6 @@ class SAETrainer:
         return (self.n_forward_passes_since_fired > self.cfg.dead_feature_window).bool()
 
     def fit(self) -> TrainingSAE:
-
         pbar = tqdm(total=self.cfg.total_training_tokens, desc="Training SAE")
 
         self._estimate_norm_scaling_factor_if_needed()
@@ -218,7 +216,6 @@ class SAETrainer:
         sae: TrainingSAE,
         sae_in: torch.Tensor,
     ) -> TrainStepOutput:
-
         sae.train()
         # Make sure the W_dec is still zero-norm
         if self.cfg.normalize_sae_decoder:
@@ -234,7 +231,6 @@ class SAETrainer:
         # for documentation on autocasting see:
         # https://pytorch.org/tutorials/recipes/recipes/amp_recipe.html
         with self.autocast_if_enabled:
-
             train_step_output = self.sae.training_forward_pass(
                 sae_in=sae_in,
                 dead_neuron_mask=self.dead_neurons,
@@ -371,7 +367,6 @@ class SAETrainer:
 
     @torch.no_grad()
     def _build_sparsity_log_dict(self) -> dict[str, Any]:
-
         log_feature_sparsity = _log_feature_sparsity(self.feature_sparsity)
         wandb_histogram = wandb.Histogram(log_feature_sparsity.numpy())  # type: ignore
         return {
@@ -383,7 +378,6 @@ class SAETrainer:
 
     @torch.no_grad()
     def _reset_running_sparsity_stats(self) -> None:
-
         self.act_freq_scores = torch.zeros(
             self.cfg.d_sae,  # type: ignore
             device=self.cfg.device,
@@ -403,8 +397,9 @@ class SAETrainer:
             self.checkpoint_thresholds.pop(0)
 
     @torch.no_grad()
-    def _update_pbar(self, step_output: TrainStepOutput, pbar: tqdm, update_interval: int = 100):  # type: ignore
-
+    def _update_pbar(
+        self, step_output: TrainStepOutput, pbar: tqdm, update_interval: int = 100
+    ):  # type: ignore
         if self.n_training_steps % update_interval == 0:
             loss_strs = " | ".join(
                 f"{loss_name}: {_unwrap_item(loss_value):.5f}"

@@ -51,12 +51,11 @@ def trainer(
     model: HookedTransformer,
     activation_store: ActivationsStore,
 ):
-
     trainer = SAETrainer(
         model=model,
         sae=training_sae,
         activation_store=activation_store,
-        save_checkpoint_fn=lambda *args, **kwargs: None,
+        save_checkpoint_fn=lambda *args, **kwargs: None,  # noqa: ARG005
         cfg=cfg,
     )
 
@@ -72,7 +71,6 @@ def training_runner(
 
 
 def test_save_checkpoint(training_runner: SAETrainingRunner, trainer: SAETrainer):
-
     training_runner.save_checkpoint(
         trainer=trainer,
         checkpoint_name="test",
