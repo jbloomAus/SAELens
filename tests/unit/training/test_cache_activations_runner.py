@@ -50,13 +50,13 @@ def _default_cfg(
     total_training_tokens = dataset_num_rows * sliced_context_size
 
     cfg = CacheActivationsRunnerConfig(
-        activation_save_path=str(tmp_path),
-        hf_dataset_path="chanind/c4-10k-mini-tokenized-16-ctx-gelu-1l-tests",
+        new_cached_activations_path=str(tmp_path),
+        dataset_path="chanind/c4-10k-mini-tokenized-16-ctx-gelu-1l-tests",
         model_name="gelu-1l",
         hook_name="blocks.0.hook_mlp_out",
-        final_hook_layer=0,
+        hook_layer=0,
         ### Parameters
-        total_training_tokens=total_training_tokens,
+        training_tokens=total_training_tokens,
         model_batch_size=batch_size,
         buffer_size_gb=buffer_size_gb,
         context_size=context_size,
@@ -70,9 +70,10 @@ def _default_cfg(
         **kwargs,
     )
     assert cfg.n_buffers == n_buffers
-    assert cfg.dataset_num_rows == dataset_num_rows
+    assert cfg.n_seq_in_dataset == dataset_num_rows
     assert (
-        cfg.tokens_in_buffer == cfg.batches_in_buffer * batch_size * sliced_context_size
+        cfg.n_tokens_in_buffer
+        == cfg.n_batches_in_buffer * batch_size * sliced_context_size
     )
     return cfg
 
@@ -84,8 +85,8 @@ def test_cache_activations_runner(tmp_path: Path):
     runner = CacheActivationsRunner(cfg)
     dataset = runner.run()
 
-    assert len(dataset) == cfg.n_buffers * (cfg.tokens_in_buffer // cfg.context_size)
-    assert cfg.dataset_num_rows == len(dataset)
+    assert len(dataset) == cfg.n_buffers * (cfg.n_tokens_in_buffer // cfg.context_size)
+    assert cfg.n_seq_in_dataset == len(dataset)
     assert dataset.num_columns == 1 and dataset.column_names == [cfg.hook_name]
 
     features = dataset.features
@@ -105,10 +106,10 @@ def test_load_cached_activations(tmp_path: Path):
 
     for _ in range(cfg.n_buffers):
         buffer = activations_store.get_buffer(
-            cfg.batches_in_buffer
+            cfg.n_batches_in_buffer
         )  # Adjusted to use n_batches_in_buffer
         assert buffer.shape == (
-            cfg.rows_in_buffer * cfg.context_size,
+            cfg.n_seq_in_buffer * cfg.context_size,
             1,
             cfg.d_in,
         )
@@ -203,18 +204,18 @@ def test_compare_cached_activations_end_to_end_with_ground_truth(tmp_path: Path)
     dataset_acts: torch.Tensor = activation_dataset[cfg.hook_name]  # type: ignore
 
     model = HookedTransformer.from_pretrained(cfg.model_name, device=cfg.device)
-    token_dataset: Dataset = load_dataset(cfg.hf_dataset_path, split=f"train[:{cfg.dataset_num_rows}]")  # type: ignore
+    token_dataset: Dataset = load_dataset(cfg.dataset_path, split=f"train[:{cfg.n_seq_in_dataset}]")  # type: ignore
     token_dataset.set_format("torch", device=cfg.device)
 
     ground_truth_acts = []
-    for i in trange(0, cfg.dataset_num_rows, cfg.model_batch_size):
+    for i in trange(0, cfg.n_seq_in_dataset, cfg.model_batch_size):
         tokens = token_dataset[i : i + cfg.model_batch_size]["input_ids"][
             :, : cfg.context_size
         ]
         _, layerwise_activations = model.run_with_cache(
             tokens,
             names_filter=[cfg.hook_name],
-            stop_at_layer=cfg.final_hook_layer + 1,
+            stop_at_layer=cfg.hook_layer + 1,
         )
         acts = layerwise_activations[cfg.hook_name]
         ground_truth_acts.append(acts)

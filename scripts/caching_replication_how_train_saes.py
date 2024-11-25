@@ -31,13 +31,13 @@ elif device == "mps":
 cfg = CacheActivationsRunnerConfig(
     # Pick a tiny model to make this easier.
     model_name=model_name,
-    hf_dataset_path=dataset_path,
+    dataset_path=dataset_path,
     ## MLP Layer 0 ##
     hook_name="blocks.0.hook_mlp_out",
-    final_hook_layer=0,
+    hook_layer=0,
     d_in=512,
     prepend_bos=True,
-    total_training_tokens=total_training_tokens,
+    training_tokens=total_training_tokens,
     model_batch_size=model_batch_size,
     # Misc
     device=device,
@@ -60,5 +60,5 @@ runner.run()
 end_time = time.time()
 print(f"Total time taken: {end_time - start_time:.2f} seconds")
 print(
-    f"{cfg.total_training_tokens / ((end_time - start_time)*10**6):.2f} Million Tokens / Second"
+    f"{cfg.training_tokens / ((end_time - start_time)*10**6):.2f} Million Tokens / Second"
 )

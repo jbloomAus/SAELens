@@ -2,7 +2,6 @@ import json
 import math
 import os
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any, Literal, Optional, cast
 
 import torch
@@ -489,16 +488,16 @@ class CacheActivationsRunnerConfig:
     Configuration for creating and caching activations of an LLM.
 
     Args:
-        hf_dataset_path (str): The path to the Hugging Face dataset. This may be tokenized or not.
+        dataset_path (str): The path to the Hugging Face dataset. This may be tokenized or not.
         model_name (str): The name of the model to use.
         model_batch_size (int): How many prompts are in the batch of the language model when generating activations.
         hook_name (str): The name of the hook to use.
-        final_hook_layer (int): The layer of the final hook. Currently only support a single hook, so this should be the same as hook_name.
+        hook_layer (int): The layer of the final hook. Currently only support a single hook, so this should be the same as hook_name.
         d_in (int): Dimension of the model.
         total_training_tokens (int): Total number of tokens to process.
         context_size (int): Context size to process. Can be left as -1 if the dataset is tokenized.
         model_class_name (str): The name of the class of the model to use. This should be either `HookedTransformer` or `HookedMamba`.
-        activation_save_path (str, optional): The path to save the activations.
+        new_cached_activations_path (str, optional): The path to save the activations.
         shuffle (bool): Whether to shuffle the dataset.
         seed (int): The seed to use for shuffling.
         dtype (str): Datatype of activations to be stored.
@@ -519,22 +518,18 @@ class CacheActivationsRunnerConfig:
         dataset_trust_remote_code (bool): Whether to trust remote code when loading datasets from Huggingface.
     """
 
-    hf_dataset_path: str
-
+    dataset_path: str
     model_name: str
     model_batch_size: int
-
     hook_name: str
-    final_hook_layer: int  # Layer of final hook. Same layer as hook_name
+    hook_layer: int
     d_in: int
-
-    total_training_tokens: int
+    training_tokens: int
 
     context_size: int = -1  # Required if dataset is not tokenized
     model_class_name: str = "HookedTransformer"
     # defaults to "activations/{dataset}/{model}/{hook_name}
-    activation_save_path: str | None = None  # type: ignore
-
+    new_cached_activations_path: str | None = None
     shuffle: bool = True
     seed: int = 42
     dtype: str = "float32"
@@ -560,17 +555,10 @@ class CacheActivationsRunnerConfig:
     autocast_lm: bool = False
     dataset_trust_remote_code: bool | None = None
 
-    # set in __post_init__
-    tokens_in_buffer: int = -1
-    rows_in_buffer: int = -1
-    n_buffers: int = -1
-    dataset_num_rows: int = -1
-    batches_in_buffer: int = -1
-
     def __post_init__(self):
         # Automatically determine context_size if dataset is tokenized
         if self.context_size == -1:
-            ds = load_dataset(self.hf_dataset_path, split="train", streaming=True)
+            ds = load_dataset(self.dataset_path, split="train", streaming=True)
             assert isinstance(ds, IterableDataset)
             first_sample = next(iter(ds))
             toks = first_sample.get("tokens") or first_sample.get("input_ids") or None
@@ -588,34 +576,47 @@ class CacheActivationsRunnerConfig:
                 context_size=self.context_size,
             )
 
-        if self.activation_save_path is None:
-            self.activation_save_path = _default_cached_activations_path(  # type: ignore
-                self.hf_dataset_path, self.model_name, self.hook_name, None
+        if self.new_cached_activations_path is None:
+            self.new_cached_activations_path = _default_cached_activations_path(  # type: ignore
+                self.dataset_path, self.model_name, self.hook_name, None
             )
-
-        self.activation_save_path: Path
-        self.activation_save_path = Path(self.activation_save_path)
-
-        bytes_per_token = self.d_in * DTYPE_MAP[self.dtype].itemsize
-        # Calculate raw tokens per buffer based on memory constraints
-        _tokens_per_buffer = int(self.buffer_size_gb * 1e9) // bytes_per_token
-        _batch_token_size = self.model_batch_size * self.sliced_context_size
-        # Round down to nearest multiple of batch_token_size
-        self.tokens_in_buffer = _tokens_per_buffer - (
-            _tokens_per_buffer % _batch_token_size
-        )
-        self.rows_in_buffer = self.tokens_in_buffer // self.sliced_context_size
-
-        self.dataset_num_rows = self.total_training_tokens // self.sliced_context_size
-        self.batches_in_buffer = self.tokens_in_buffer // _batch_token_size
-
-        self.n_buffers = math.ceil(self.total_training_tokens / self.tokens_in_buffer)
 
     @property
     def sliced_context_size(self) -> int:
         if self.seqpos_slice is not None:
             return len(range(self.context_size)[slice(*self.seqpos_slice)])
         return self.context_size
+
+    @property
+    def bytes_per_token(self) -> int:
+        return self.d_in * DTYPE_MAP[self.dtype].itemsize
+
+    @property
+    def n_tokens_in_buffer(self) -> int:
+        # Calculate raw tokens per buffer based on memory constraints
+        _tokens_per_buffer = int(self.buffer_size_gb * 1e9) // self.bytes_per_token
+        # Round down to nearest multiple of batch_token_size
+        return _tokens_per_buffer - (_tokens_per_buffer % self.n_tokens_in_batch)
+
+    @property
+    def n_tokens_in_batch(self) -> int:
+        return self.model_batch_size * self.sliced_context_size
+
+    @property
+    def n_batches_in_buffer(self) -> int:
+        return self.n_tokens_in_buffer // self.n_tokens_in_batch
+
+    @property
+    def n_seq_in_dataset(self) -> int:
+        return self.training_tokens // self.sliced_context_size
+
+    @property
+    def n_seq_in_buffer(self) -> int:
+        return self.n_tokens_in_buffer // self.sliced_context_size
+
+    @property
+    def n_buffers(self) -> int:
+        return math.ceil(self.training_tokens / self.n_tokens_in_buffer)
 
 
 @dataclass

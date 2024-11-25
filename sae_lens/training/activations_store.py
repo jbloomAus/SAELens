@@ -50,50 +50,23 @@ class ActivationsStore:
     device: torch.device
 
     @classmethod
-    def _from_save_activations(
-        cls,
-        model: HookedRootModule,
-        cfg: CacheActivationsRunnerConfig,
-    ) -> "ActivationsStore":
-        return cls(
-            model=model,
-            dataset=cfg.hf_dataset_path,
-            streaming=cfg.streaming,
-            hook_name=cfg.hook_name,
-            hook_layer=cfg.final_hook_layer,
-            hook_head_index=None,
-            context_size=cfg.context_size,
-            d_in=cfg.d_in,
-            n_batches_in_buffer=cfg.batches_in_buffer,
-            total_training_tokens=cfg.total_training_tokens,
-            store_batch_size_prompts=cfg.model_batch_size,
-            train_batch_size_tokens=-1,
-            prepend_bos=cfg.prepend_bos,
-            normalize_activations="none",
-            device=torch.device("cpu"),  # since we're saving to disk
-            dtype=cfg.dtype,
-            cached_activations_path=None,
-            model_kwargs=cfg.model_kwargs,
-            autocast_lm=cfg.autocast_lm,
-            dataset_trust_remote_code=cfg.dataset_trust_remote_code,
-            seqpos_slice=cfg.seqpos_slice,
-        )
-
-    @classmethod
     def from_cache_activations(
         cls,
         model: HookedRootModule,
         cfg: CacheActivationsRunnerConfig,
     ) -> "ActivationsStore":
+        """
+        Public api to create an ActivationsStore from a cached activations dataset.
+        """
         return cls(
-            cached_activations_path=str(cfg.activation_save_path),
+            cached_activations_path=cfg.new_cached_activations_path,
             dtype=cfg.dtype,
             hook_name=cfg.hook_name,
-            hook_layer=cfg.final_hook_layer,
+            hook_layer=cfg.hook_layer,
             context_size=cfg.context_size,
             d_in=cfg.d_in,
-            n_batches_in_buffer=cfg.batches_in_buffer,
-            total_training_tokens=cfg.total_training_tokens,
+            n_batches_in_buffer=cfg.n_batches_in_buffer,
+            total_training_tokens=cfg.training_tokens,
             store_batch_size_prompts=cfg.model_batch_size,  # get_buffer
             train_batch_size_tokens=cfg.model_batch_size,  # dataloader
             seqpos_slice=(None,),
@@ -101,7 +74,7 @@ class ActivationsStore:
             # NOOP
             prepend_bos=False,
             hook_head_index=None,
-            dataset=cfg.hf_dataset_path,
+            dataset=cfg.dataset_path,
             streaming=False,
             model=model,
             normalize_activations="none",

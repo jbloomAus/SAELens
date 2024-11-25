@@ -163,25 +163,25 @@ def test_cache_activations_runner_config_seqpos(
     if expected_error is AssertionError:
         with pytest.raises(expected_error):
             CacheActivationsRunnerConfig(
-                hf_dataset_path="",
+                dataset_path="",
                 model_name="",
                 model_batch_size=1,
                 hook_name="",
-                final_hook_layer=0,
+                hook_layer=0,
                 d_in=1,
-                total_training_tokens=100,
+                training_tokens=100,
                 context_size=10,
                 seqpos_slice=seqpos_slice,
             )
     else:
         CacheActivationsRunnerConfig(
-            hf_dataset_path="",
+            dataset_path="",
             model_name="",
             model_batch_size=1,
             hook_name="",
-            final_hook_layer=0,
+            hook_layer=0,
             d_in=1,
-            total_training_tokens=100,
+            training_tokens=100,
             context_size=10,
             seqpos_slice=seqpos_slice,
         )

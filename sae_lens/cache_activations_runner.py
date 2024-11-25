@@ -18,6 +18,39 @@ from sae_lens.load_model import load_model
 from sae_lens.training.activations_store import ActivationsStore
 
 
+def _mk_activations_store(
+    model: HookedRootModule,
+    cfg: CacheActivationsRunnerConfig,
+) -> ActivationsStore:
+    """
+    Internal method used in CacheActivationsRunner. Used to create a cached dataset
+    from a ActivationsStore.
+    """
+    return ActivationsStore(
+        model=model,
+        dataset=cfg.dataset_path,
+        streaming=cfg.streaming,
+        hook_name=cfg.hook_name,
+        hook_layer=cfg.hook_layer,
+        hook_head_index=None,
+        context_size=cfg.context_size,
+        d_in=cfg.d_in,
+        n_batches_in_buffer=cfg.n_batches_in_buffer,
+        total_training_tokens=cfg.training_tokens,
+        store_batch_size_prompts=cfg.model_batch_size,
+        train_batch_size_tokens=-1,
+        prepend_bos=cfg.prepend_bos,
+        normalize_activations="none",
+        device=torch.device("cpu"),  # since we're saving to disk
+        dtype=cfg.dtype,
+        cached_activations_path=None,
+        model_kwargs=cfg.model_kwargs,
+        autocast_lm=cfg.autocast_lm,
+        dataset_trust_remote_code=cfg.dataset_trust_remote_code,
+        seqpos_slice=cfg.seqpos_slice,
+    )
+
+
 class CacheActivationsRunner:
     def __init__(self, cfg: CacheActivationsRunnerConfig):
         self.cfg = cfg
@@ -29,7 +62,7 @@ class CacheActivationsRunner:
         )
         if self.cfg.compile_llm:
             self.model = torch.compile(self.model, mode=self.cfg.llm_compilation_mode)  # type: ignore
-        self.activations_store = ActivationsStore._from_save_activations(
+        self.activations_store = _mk_activations_store(
             self.model,
             self.cfg,
         )
@@ -58,14 +91,14 @@ class CacheActivationsRunner:
             if isinstance(self.cfg.dtype, torch.dtype)
             else DTYPE_MAP[self.cfg.dtype].itemsize
         )
-        total_training_tokens = self.cfg.dataset_num_rows * self.context_size
+        total_training_tokens = self.cfg.n_seq_in_dataset * self.context_size
         total_disk_space_gb = total_training_tokens * bytes_per_token / 10**9
 
         return (
             f"Activation Cache Runner:\n"
             f"Total training tokens: {total_training_tokens}\n"
             f"Number of buffers: {self.cfg.n_buffers}\n"
-            f"Tokens per buffer: {self.cfg.tokens_in_buffer}\n"
+            f"Tokens per buffer: {self.cfg.n_tokens_in_buffer}\n"
             f"Disk space required: {total_disk_space_gb:.2f} GB\n"
             f"Configuration:\n"
             f"{self.cfg}"
@@ -192,7 +225,7 @@ class CacheActivationsRunner:
 
     @torch.no_grad()
     def run(self) -> Dataset:
-        activation_save_path = self.cfg.activation_save_path
+        activation_save_path = self.cfg.new_cached_activations_path
         assert activation_save_path is not None
 
         ### Paths setup
@@ -208,12 +241,12 @@ class CacheActivationsRunner:
 
         ### Create temporary sharded datasets
 
-        print(f"Started caching activations for {self.cfg.hf_dataset_path}")
+        print(f"Started caching activations for {self.cfg.dataset_path}")
 
         for i in tqdm(range(self.cfg.n_buffers), desc="Caching activations"):
             try:
                 buffer = self.activations_store.get_buffer(
-                    self.cfg.batches_in_buffer, shuffle=False
+                    self.cfg.n_batches_in_buffer, shuffle=False
                 )
                 shard = self._create_shard(buffer)
                 shard.save_to_disk(
@@ -241,7 +274,7 @@ class CacheActivationsRunner:
             print("Pushing to Huggingface Hub...")
             dataset.push_to_hub(
                 repo_id=self.cfg.hf_repo_id,
-                num_shards=self.cfg.hf_num_shards or self.cfg.n_buffers,
+                num_shards=self.cfg.hf_num_shards,
                 private=self.cfg.hf_is_private_repo,
                 revision=self.cfg.hf_revision,
             )
@@ -273,7 +306,7 @@ class CacheActivationsRunner:
         buffer = einops.rearrange(
             buffer,
             "(bs context_size) num_layers d_in -> num_layers bs context_size d_in",
-            bs=self.cfg.rows_in_buffer,
+            bs=self.cfg.n_seq_in_buffer,
             context_size=self.context_size,
             d_in=self.cfg.d_in,
             num_layers=len(hook_names),
