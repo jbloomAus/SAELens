@@ -13,6 +13,7 @@ from huggingface_hub import HfApi
 from jaxtyping import Float
 from tqdm import tqdm
 
+from sae_lens import logger
 from sae_lens.config import DTYPE_MAP, CacheActivationsRunnerConfig
 from sae_lens.load_model import load_model
 from sae_lens.training.activations_store import ActivationsStore
@@ -226,7 +227,7 @@ class CacheActivationsRunner:
 
         ### Create temporary sharded datasets
 
-        print(f"Started caching {self.cfg.training_tokens} activations")
+        logger.info(f"Started caching {self.cfg.training_tokens} activations")
 
         for i in tqdm(range(self.n_buffers), desc="Caching activations"):
             try:
@@ -241,7 +242,7 @@ class CacheActivationsRunner:
                 del buffer, shard
 
             except StopIteration:
-                print(
+                logger.warning(
                     f"Warning: Ran out of samples while filling the buffer at batch {i} before reaching {self.n_buffers} batches. No more caching will occur."
                 )
                 break
@@ -253,11 +254,11 @@ class CacheActivationsRunner:
         )
 
         if self.cfg.shuffle:
-            print("Shuffling...")
+            logger.info("Shuffling...")
             dataset = dataset.shuffle(seed=self.cfg.seed)
 
         if self.cfg.hf_repo_id:
-            print("Pushing to hub...")
+            logger.info("Pushing to hub...")
             dataset.push_to_hub(
                 repo_id=self.cfg.hf_repo_id,
                 num_shards=self.cfg.hf_num_shards or self.n_buffers,
