@@ -396,14 +396,15 @@ class ActivationsStore:
 
         # ---
         # Actual code
-        activations_dataset = datasets.load_from_disk(self.cached_activations_path)
+        activations_dataset = datasets.load_dataset(
+            str(self.cached_activations_path), split="train"
+        )
+        assert isinstance(activations_dataset, Dataset)
         activations_dataset.set_format(
             type="torch", columns=[self.hook_name], device=self.device, dtype=self.dtype
         )
         self.current_row_idx = 0  # idx to load next batch from
         # ---
-
-        assert isinstance(activations_dataset, Dataset)
 
         # multiple in hooks future
         if not set([self.hook_name]).issubset(activations_dataset.column_names):
@@ -411,12 +412,9 @@ class ActivationsStore:
                 f"loaded dataset does not include hook activations, got {activations_dataset.column_names}"
             )
 
-        if activations_dataset.features[self.hook_name].shape != (
-            self.context_size,
-            self.d_in,
-        ):
+        if activations_dataset.features[self.hook_name].length != self.d_in:
             raise ValueError(
-                f"Given dataset of shape {activations_dataset.features[self.hook_name].shape} does not match context_size ({self.context_size}) and d_in ({self.d_in})"
+                f"Given dataset of shape {activations_dataset.features[self.hook_name].length} does not match d_in {self.d_in}"
             )
 
         return activations_dataset
@@ -560,7 +558,6 @@ class ActivationsStore:
     def _load_buffer_from_cached(
         self,
         total_size: int,
-        context_size: int,
         num_layers: int,
         d_in: int,
         raise_on_epoch_end: bool,
@@ -590,16 +587,15 @@ class ActivationsStore:
             _hook_buffer = self.cached_activation_dataset[
                 self.current_row_idx : self.current_row_idx + total_size
             ][hook_name]
-            assert _hook_buffer.shape == (total_size, context_size, d_in)
+            assert _hook_buffer.shape == (total_size, d_in)
             new_buffer.append(_hook_buffer)
 
         # Stack across num_layers dimension
         # list of num_layers; shape: (total_size, context_size, d_in) -> (total_size, context_size, num_layers, d_in)
-        new_buffer = torch.stack(new_buffer, dim=2)
-        assert new_buffer.shape == (total_size, context_size, num_layers, d_in)
-
+        new_buffer = torch.stack(new_buffer, dim=1)
+        assert new_buffer.shape == (total_size, num_layers, d_in)
         self.current_row_idx += total_size
-        return new_buffer.reshape(total_size * context_size, num_layers, d_in)
+        return new_buffer
 
     @torch.no_grad()
     def get_buffer(
@@ -624,7 +620,7 @@ class ActivationsStore:
 
         if self.cached_activation_dataset is not None:
             return self._load_buffer_from_cached(
-                total_size, context_size, num_layers, d_in, raise_on_epoch_end
+                total_size * context_size, num_layers, d_in, raise_on_epoch_end
             )
 
         refill_iterator = range(0, total_size, batch_size)
