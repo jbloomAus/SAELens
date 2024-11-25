@@ -55,8 +55,7 @@ def NanAndInfReplacer(value: str):
     if value in replacements:
         replaced_value = replacements[value]
         return float(replaced_value)
-    else:
-        return NAN_REPLACEMENT
+    return NAN_REPLACEMENT
 
 
 def open_neuronpedia_feature_dashboard(sae: SAE, index: int):
@@ -145,10 +144,7 @@ class NeuronpediaFeature:
         """Check if the feature has activating text."""
         if self.activations is None:
             return False
-        else:
-            return any(
-                max(activation.act_values) > 0 for activation in self.activations
-            )
+        return any(max(activation.act_values) > 0 for activation in self.activations)
 
 
 T = TypeVar("T")
@@ -208,8 +204,7 @@ def make_neuronpedia_list_with_features(
     if "url" in result and open_browser:
         webbrowser.open(result["url"])
         return result["url"]
-    else:
-        raise Exception("Error in creating list: " + result["message"])
+    raise Exception("Error in creating list: " + result["message"])
 
 
 def test_key(api_key: str):
@@ -264,8 +259,7 @@ async def autointerp_neuronpedia_features(  # noqa: C901
             raise Exception(
                 "You need to provide an OpenAI API key either in environment variable OPENAI_API_KEY or as an argument."
             )
-        else:
-            os.environ["OPENAI_API_KEY"] = openai_api_key
+        os.environ["OPENAI_API_KEY"] = openai_api_key
 
     if autointerp_explainer_model_name not in HARMONY_V4_MODELS:
         raise Exception(

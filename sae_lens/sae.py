@@ -200,8 +200,7 @@ class SAE(HookedRootModule):
             #  we need to scale the norm of the input and store the scaling factor
             def run_time_activation_norm_fn_in(x: torch.Tensor) -> torch.Tensor:
                 self.x_norm_coeff = (self.cfg.d_in**0.5) / x.norm(dim=-1, keepdim=True)
-                x = x * self.x_norm_coeff
-                return x
+                return x * self.x_norm_coeff
 
             def run_time_activation_norm_fn_out(x: torch.Tensor) -> torch.Tensor:  #
                 x = x / self.x_norm_coeff
@@ -403,9 +402,7 @@ class SAE(HookedRootModule):
         )
         feature_magnitudes = self.activation_fn(magnitude_pre_activation)
 
-        feature_acts = self.hook_sae_acts_post(active_features * feature_magnitudes)
-
-        return feature_acts
+        return self.hook_sae_acts_post(active_features * feature_magnitudes)
 
     def encode_jumprelu(
         self, x: Float[torch.Tensor, "... d_in"]
@@ -418,11 +415,9 @@ class SAE(HookedRootModule):
         # "... d_in, d_in d_sae -> ... d_sae",
         hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
 
-        feature_acts = self.hook_sae_acts_post(
+        return self.hook_sae_acts_post(
             self.activation_fn(hidden_pre) * (hidden_pre > self.threshold)
         )
-
-        return feature_acts
 
     def encode_standard(
         self, x: Float[torch.Tensor, "... d_in"]
@@ -434,9 +429,7 @@ class SAE(HookedRootModule):
 
         # "... d_in, d_in d_sae -> ... d_sae",
         hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
-        feature_acts = self.hook_sae_acts_post(self.activation_fn(hidden_pre))
-
-        return feature_acts
+        return self.hook_sae_acts_post(self.activation_fn(hidden_pre))
 
     def process_sae_in(
         self, sae_in: Float[torch.Tensor, "... d_in"]
@@ -445,8 +438,7 @@ class SAE(HookedRootModule):
         sae_in = self.reshape_fn_in(sae_in)
         sae_in = self.hook_sae_input(sae_in)
         sae_in = self.run_time_activation_norm_fn_in(sae_in)
-        sae_in = sae_in - (self.b_dec * self.cfg.apply_b_dec_to_input)
-        return sae_in
+        return sae_in - (self.b_dec * self.cfg.apply_b_dec_to_input)
 
     def decode(
         self, feature_acts: Float[torch.Tensor, "... d_sae"]
@@ -462,9 +454,7 @@ class SAE(HookedRootModule):
         sae_out = self.run_time_activation_norm_fn_out(sae_out)
 
         # handle hook z reshaping if needed.
-        sae_out = self.reshape_fn_out(sae_out, self.d_head)  # type: ignore
-
-        return sae_out
+        return self.reshape_fn_out(sae_out, self.d_head)  # type: ignore
 
     @torch.no_grad()
     def fold_W_dec_norm(self):
@@ -634,8 +624,7 @@ class SAE(HookedRootModule):
         return sae, cfg_dict, log_sparsities
 
     def get_name(self):
-        sae_name = f"sae_{self.cfg.model_name}_{self.cfg.hook_name}_{self.cfg.d_sae}"
-        return sae_name
+        return f"sae_{self.cfg.model_name}_{self.cfg.hook_name}_{self.cfg.d_sae}"
 
     @classmethod
     def from_dict(cls, config_dict: dict[str, Any]) -> "SAE":
@@ -689,15 +678,14 @@ def get_activation_fn(
 ) -> Callable[[torch.Tensor], torch.Tensor]:
     if activation_fn == "relu":
         return torch.nn.ReLU()
-    elif activation_fn == "tanh-relu":
+    if activation_fn == "tanh-relu":
 
         def tanh_relu(input: torch.Tensor) -> torch.Tensor:
             input = torch.relu(input)
-            input = torch.tanh(input)
-            return input
+            return torch.tanh(input)
 
         return tanh_relu
-    elif activation_fn == "topk":
+    if activation_fn == "topk":
         assert "k" in kwargs, "TopK activation function requires a k value."
         k = kwargs.get("k", 1)  # Default k to 1 if not provided
         postact_fn = kwargs.get(
@@ -705,8 +693,7 @@ def get_activation_fn(
         )  # Default post-activation to ReLU if not provided
 
         return TopK(k, postact_fn)
-    else:
-        raise ValueError(f"Unknown activation function: {activation_fn}")
+    raise ValueError(f"Unknown activation function: {activation_fn}")
 
 
 _blank_hook = nn.Identity()

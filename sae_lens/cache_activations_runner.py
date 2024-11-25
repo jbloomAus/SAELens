@@ -225,6 +225,29 @@ class CacheActivationsRunner:
         return Dataset.load_from_disk(output_dir)
 
     @torch.no_grad()
+<<<<<<< HEAD
+=======
+    def _create_shard(
+        self,
+        buffer: Float[torch.Tensor, "(bs context_size) num_layers d_in"],
+    ) -> Dataset:
+        hook_names = [self.cfg.hook_name]  # allow multiple hooks in future
+
+        buffer = einops.rearrange(
+            buffer,
+            "(bs context_size) num_layers d_in -> num_layers bs context_size d_in",
+            bs=self.cfg.n_batches_in_buffer * self.cfg.store_batch_size_prompts,
+            context_size=_get_sliced_context_size(self.cfg),
+            d_in=self.cfg.d_in,
+            num_layers=len(hook_names),
+        )
+        return Dataset.from_dict(
+            {hook_name: act for hook_name, act in zip(hook_names, buffer)},
+            features=self.features,
+        )
+
+    @torch.no_grad()
+>>>>>>> 5463a67 (adds RET lint rule)
     def run(self) -> Dataset:
         activation_save_path = self.cfg.new_cached_activations_path
         assert activation_save_path is not None

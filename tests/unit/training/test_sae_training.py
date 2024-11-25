@@ -99,15 +99,13 @@ def trainer(
     model: HookedTransformer,
     activation_store: ActivationsStore,
 ):
-    trainer = SAETrainer(
+    return SAETrainer(
         model=model,
         sae=training_sae,
         activation_store=activation_store,
         save_checkpoint_fn=lambda *args, **kwargs: None,  # noqa: ARG005
         cfg=cfg,
     )
-
-    return trainer
 
 
 # TODO: DECIDE IF WE ARE KEEPING ENCODE AND DECODE METHODS

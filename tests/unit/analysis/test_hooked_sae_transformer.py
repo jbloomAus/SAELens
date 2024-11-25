@@ -114,8 +114,7 @@ def list_of_hooked_saes(
         "blocks.0.hook_resid_pre",
     ]
 
-    hooked_saes = [get_hooked_sae(model, act_name) for act_name in act_names]
-    return hooked_saes
+    return [get_hooked_sae(model, act_name) for act_name in act_names]
 
 
 def test_model_with_no_saes_matches_original_model(

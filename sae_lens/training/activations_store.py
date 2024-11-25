@@ -417,9 +417,7 @@ class ActivationsStore:
             acts = self.next_batch()
             norms_per_batch.append(acts.norm(dim=-1).mean().item())
         mean_norm = np.mean(norms_per_batch)
-        scaling_factor = np.sqrt(self.d_in) / mean_norm
-
-        return scaling_factor
+        return np.sqrt(self.d_in) / mean_norm
 
     def shuffle_input_dataset(self, seed: int, buffer_size: int = 1):
         """
@@ -475,8 +473,7 @@ class ActivationsStore:
                     raise StopIteration(
                         f"Ran out of tokens in dataset after {self.n_dataset_processed} samples, beginning the next epoch."
                     )
-                else:
-                    sequences.append(next(self.iterable_sequences))
+                sequences.append(next(self.iterable_sequences))
 
         return torch.stack(sequences, dim=0).to(_get_model_device(self.model))
 
@@ -680,7 +677,7 @@ class ActivationsStore:
         self._storage_buffer = mixing_buffer[: mixing_buffer.shape[0] // 2]
 
         # 3. put other 50 % in a dataloader
-        dataloader = iter(
+        return iter(
             DataLoader(
                 # TODO: seems like a typing bug?
                 cast(Any, mixing_buffer[mixing_buffer.shape[0] // 2 :]),
@@ -688,8 +685,6 @@ class ActivationsStore:
                 shuffle=True,
             )
         )
-
-        return dataloader
 
     def next_batch(self):
         """
@@ -747,7 +742,6 @@ def validate_pretokenized_dataset_tokenizer(
 def _get_model_device(model: HookedRootModule) -> torch.device:
     if hasattr(model, "W_E"):
         return model.W_E.device
-    elif hasattr(model, "cfg") and hasattr(model.cfg, "device"):
+    if hasattr(model, "cfg") and hasattr(model.cfg, "device"):
         return model.cfg.device
-    else:
-        return next(model.parameters()).device
+    return next(model.parameters()).device

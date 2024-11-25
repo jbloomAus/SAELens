@@ -14,8 +14,7 @@ from sae_lens.sae import SAE
 def load_sparsity(path: str) -> torch.Tensor:
     sparsity_path = os.path.join(path, "sparsity.safetensors")
     with safe_open(sparsity_path, framework="pt", device="cpu") as f:  # type: ignore
-        sparsity = f.get_tensor("sparsity")
-    return sparsity
+        return f.get_tensor("sparsity")
 
 
 def download_sae_from_hf(

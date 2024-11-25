@@ -180,8 +180,7 @@ class HookedToyModel(HookedRootModule, ABC):
             )
         if n_uncorrelated > 0:
             data.append(self.generate_uncorrelated_features(batch_size, n_uncorrelated))
-        batch = t.cat(data, dim=-1)
-        return batch
+        return t.cat(data, dim=-1)
 
     def optimize(
         self,
@@ -264,10 +263,9 @@ class ReluOutputModel(HookedToyModel):
 
         if return_type == "loss":
             return self.calculate_loss(reconstructed, features)
-        elif return_type == "reconstruction":
+        if return_type == "reconstruction":
             return reconstructed
-        else:
-            raise ValueError(f"Unknown return type: {return_type}")
+        raise ValueError(f"Unknown return type: {return_type}")
 
     def calculate_loss(
         self,
@@ -282,8 +280,7 @@ class ReluOutputModel(HookedToyModel):
         Note, `model.importance` is guaranteed to broadcast with the shape of `out` and `batch`.
         """
         error = self.importance * ((batch - out) ** 2)
-        loss = einops.reduce(error, "batch features -> ()", "mean").sum()
-        return loss
+        return einops.reduce(error, "batch features -> ()", "mean").sum()
 
 
 class ReluOutputModelCE(ReluOutputModel):
@@ -337,10 +334,9 @@ class ReluOutputModelCE(ReluOutputModel):
         Note, `model.importance` is guaranteed to broadcast with the shape of `out` and `batch`.
         """
         max_feat_indices = t.argmax(batch, dim=-1)
-        loss = F.cross_entropy(
+        return F.cross_entropy(
             (self.importance * out).squeeze(), max_feat_indices.squeeze()
         )
-        return loss
 
 
 Arr = np.ndarray
@@ -481,6 +477,7 @@ def plot_features_in_2d(
 
         clear_output()
         return ani
+    return None
 
 
 def parse_colors_for_superposition_plot(
@@ -511,11 +508,11 @@ def parse_colors_for_superposition_plot(
         )
 
     # If colors is a string, make all datapoints that color
-    elif isinstance(colors, str):
+    if isinstance(colors, str):
         return [colors] * n_feats
 
     # Lastly, if colors is None, make all datapoints black
-    elif colors is None:
+    if colors is None:
         return ["black"] * n_feats
 
     assert isinstance(colors, list)

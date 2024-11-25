@@ -367,9 +367,7 @@ class TrainingSAE(SAE):
         x: Float[torch.Tensor, "... d_in"],
     ) -> Float[torch.Tensor, "... d_in"]:
         feature_acts, _ = self.encode_with_hidden_pre_fn(x)
-        sae_out = self.decode(feature_acts)
-
-        return sae_out
+        return self.decode(feature_acts)
 
     def training_forward_pass(
         self,
@@ -556,8 +554,7 @@ class TrainingSAE(SAE):
 
         if self.cfg.mse_loss_normalization == "dense_batch":
             return batch_norm_mse_loss_fn
-        else:
-            return standard_mse_loss_fn
+        return standard_mse_loss_fn
 
     def process_state_dict_for_saving(self, state_dict: dict[str, Any]) -> None:
         if self.cfg.architecture == "jumprelu" and "log_threshold" in state_dict:

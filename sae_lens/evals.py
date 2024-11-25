@@ -669,8 +669,7 @@ def get_recons_loss(
         new_probs = torch.nn.functional.softmax(new_logits, dim=-1)
         log_new_probs = torch.log(new_probs)
         kl_div = original_probs * (log_original_probs - log_new_probs)
-        kl_div = kl_div.sum(dim=-1)
-        return kl_div
+        return kl_div.sum(dim=-1)
 
     if compute_kl:
         recons_kl_div = kl(original_logits, recons_logits)
@@ -706,12 +705,11 @@ def get_saes_from_regex(
     sae_regex_compiled = re.compile(sae_regex_pattern)
     sae_block_compiled = re.compile(sae_block_pattern)
     all_saes = all_loadable_saes()
-    filtered_saes = [
+    return [
         sae
         for sae in all_saes
         if sae_regex_compiled.fullmatch(sae[0]) and sae_block_compiled.fullmatch(sae[1])
     ]
-    return filtered_saes
 
 
 def nested_dict() -> defaultdict[Any, Any]:
@@ -832,7 +830,7 @@ def run_evaluations(args: argparse.Namespace) -> List[Dict[str, Any]]:
     print(f"Number of SAE sets: {num_sae_sets}")
     print(f"Total number of SAE IDs: {num_all_sae_ids}")
 
-    eval_results = multiple_evals(
+    return multiple_evals(
         sae_regex_pattern=args.sae_regex_pattern,
         sae_block_pattern=args.sae_block_pattern,
         n_eval_reconstruction_batches=args.n_eval_reconstruction_batches,
@@ -844,18 +842,15 @@ def run_evaluations(args: argparse.Namespace) -> List[Dict[str, Any]]:
         verbose=args.verbose,
     )
 
-    return eval_results
-
 
 def replace_nans_with_negative_one(obj: Any) -> Any:
     if isinstance(obj, dict):
         return {k: replace_nans_with_negative_one(v) for k, v in obj.items()}
-    elif isinstance(obj, list):
+    if isinstance(obj, list):
         return [replace_nans_with_negative_one(item) for item in obj]
-    elif isinstance(obj, float) and math.isnan(obj):
+    if isinstance(obj, float) and math.isnan(obj):
         return -1
-    else:
-        return obj
+    return obj
 
 
 def process_results(

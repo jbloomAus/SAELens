@@ -21,8 +21,7 @@ from tests.unit.helpers import TINYSTORIES_MODEL, build_sae_cfg, load_model_cach
 
 @pytest.fixture
 def cfg():
-    cfg = build_sae_cfg(d_in=64, d_sae=128, hook_layer=0)
-    return cfg
+    return build_sae_cfg(d_in=64, d_sae=128, hook_layer=0)
 
 
 @pytest.fixture
@@ -49,15 +48,13 @@ def trainer(
     model: HookedTransformer,
     activation_store: ActivationsStore,
 ):
-    trainer = SAETrainer(
+    return SAETrainer(
         model=model,
         sae=training_sae,
         activation_store=activation_store,
         save_checkpoint_fn=lambda *args, **kwargs: None,  # noqa: ARG005
         cfg=cfg,
     )
-
-    return trainer
 
 
 def modify_sae_output(sae: TrainingSAE, modifier: Callable[[torch.Tensor], Any]):

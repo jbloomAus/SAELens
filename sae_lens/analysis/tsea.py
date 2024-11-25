@@ -24,13 +24,11 @@ def get_enrichment_df(
     enrichment_scores = calculate_batch_enrichment_scores(
         projections[features], gene_sets_token_ids_tensor
     )
-    df_enrichment_scores = pd.DataFrame(
+    return pd.DataFrame(
         enrichment_scores.numpy(),
-        index=gene_sets_selected.keys(), # type: ignore
+        index=gene_sets_selected.keys(),  # type: ignore
         columns=features,
     )
-
-    return df_enrichment_scores
 
 
 def calculate_batch_enrichment_scores(scores: torch.Tensor, index_lists: torch.Tensor):
@@ -86,9 +84,7 @@ def calculate_batch_enrichment_scores(scores: torch.Tensor, index_lists: torch.T
     # Ensure hit_increment and miss_decrement are broadcastable to the shape of hits
     # Apply hit increment or miss decrement based on hits
     running_sums = torch.where(hits, hit_increment, -miss_decrement).cumsum(dim=2)
-    max_deviation = running_sums.abs().max(dim=2).values
-
-    return max_deviation
+    return running_sums.abs().max(dim=2).values
 
 
 def manhattan_plot_enrichment_scores(
@@ -228,11 +224,10 @@ def pad_gene_sets(gene_sets_token_ids: dict[str, set[int]]) -> dict[str, list[in
     max_len = max([len(v) for v in gene_sets_token_ids.values()])
 
     # pad with -1's to max length
-    gene_sets_token_ids_padded = {
+    return {
         key: value + [-1] * (max_len - len(value))  # type: ignore
         for key, value in gene_sets_token_ids.items()
     }
-    return gene_sets_token_ids_padded
 
 
 def get_baby_name_sets(vocab: dict[str, int], k: int = 300) -> dict[str, list[int]]:
@@ -651,8 +646,6 @@ def get_test_gene_sets(model: HookedTransformer) -> dict[str, set[int]]:
         token_ids = [item for sublist in token_ids for item in sublist]
         return set(token_ids)
 
-    gene_sets_token_ids = {
+    return {
         key: convert_tokens_to_ids(value, model) for key, value in gene_sets.items()
     }  # type: ignore
-
-    return gene_sets_token_ids
