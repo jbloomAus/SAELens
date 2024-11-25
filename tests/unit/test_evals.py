@@ -402,7 +402,7 @@ def test_get_downstream_reconstruction_metrics_with_hf_model_gives_same_results_
         eval_batch_size_prompts=4,
     )
 
-    for key in hf_metrics.keys():
+    for key in hf_metrics:
         assert hf_metrics[key] == pytest.approx(tlens_metrics[key], abs=1e-3)
 
 
@@ -453,9 +453,9 @@ def test_get_sparsity_and_variance_metrics_with_hf_model_gives_same_results_as_t
         model_kwargs={},
     )
 
-    for key in hf_metrics.keys():
+    for key in hf_metrics:
         assert hf_metrics[key] == pytest.approx(tlens_metrics[key], rel=1e-4)
-    for key in hf_feat_metrics.keys():
+    for key in hf_feat_metrics:
         assert _replace_nan(hf_feat_metrics[key]) == pytest.approx(
             _replace_nan(tlens_feat_metrics[key]), rel=1e-4
         )

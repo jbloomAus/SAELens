@@ -718,7 +718,7 @@ def _disable_hooks(sae: SAE):
     Temporarily disable hooks for the SAE. Swaps out all the hooks with a fake modules that does nothing.
     """
     try:
-        for hook_name in sae.hook_dict.keys():
+        for hook_name in sae.hook_dict:
             setattr(sae, hook_name, _blank_hook)
         yield
     finally:

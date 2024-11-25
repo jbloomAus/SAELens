@@ -244,16 +244,16 @@ class ActivationsStore:
         dataset_sample = next(iter(self.dataset))
 
         # check if it's tokenized
-        if "tokens" in dataset_sample.keys():
+        if "tokens" in dataset_sample:
             self.is_dataset_tokenized = True
             self.tokens_column = "tokens"
-        elif "input_ids" in dataset_sample.keys():
+        elif "input_ids" in dataset_sample:
             self.is_dataset_tokenized = True
             self.tokens_column = "input_ids"
-        elif "text" in dataset_sample.keys():
+        elif "text" in dataset_sample:
             self.is_dataset_tokenized = False
             self.tokens_column = "text"
-        elif "problem" in dataset_sample.keys():
+        elif "problem" in dataset_sample:
             self.is_dataset_tokenized = False
             self.tokens_column = "problem"
         else:

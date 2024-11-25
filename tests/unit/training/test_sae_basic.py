@@ -163,7 +163,7 @@ def test_sae_save_and_load_from_pretrained(tmp_path: Path) -> None:
     sae_loaded_state_dict = sae_loaded.state_dict()
 
     # check state_dict matches the original
-    for key in sae.state_dict().keys():
+    for key in sae.state_dict():
         assert torch.allclose(
             sae_state_dict[key],
             sae_loaded_state_dict[key],
@@ -189,7 +189,7 @@ def test_sae_save_and_load_from_pretrained_gated(tmp_path: Path) -> None:
     sae_loaded_state_dict = sae_loaded.state_dict()
 
     # check state_dict matches the original
-    for key in sae.state_dict().keys():
+    for key in sae.state_dict():
         assert torch.allclose(
             sae_state_dict[key],
             sae_loaded_state_dict[key],
@@ -215,7 +215,7 @@ def test_sae_save_and_load_from_pretrained_topk(tmp_path: Path) -> None:
     sae_loaded_state_dict = sae_loaded.state_dict()
 
     # check state_dict matches the original
-    for key in sae.state_dict().keys():
+    for key in sae.state_dict():
         assert torch.allclose(
             sae_state_dict[key],
             sae_loaded_state_dict[key],
@@ -435,7 +435,7 @@ def test_disable_hooks_temporarily_stops_hooks_from_running():
     assert torch.allclose(orig_out, disabled_out)
     assert torch.allclose(orig_out, subseq_out)
     assert disabled_cache.keys() == set()
-    for key in orig_cache.keys():
+    for key in orig_cache:
         assert torch.allclose(orig_cache[key], subseq_cache[key])
 
 

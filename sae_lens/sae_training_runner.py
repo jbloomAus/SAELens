@@ -134,10 +134,7 @@ class SAETrainingRunner:
             )  # type: ignore
 
         if self.cfg.compile_sae:
-            if self.cfg.device == "mps":
-                backend = "aot_eager"
-            else:
-                backend = "inductor"
+            backend = "aot_eager" if self.cfg.device == "mps" else "inductor"
 
             self.sae.training_forward_pass = torch.compile(  # type: ignore
                 self.sae.training_forward_pass,

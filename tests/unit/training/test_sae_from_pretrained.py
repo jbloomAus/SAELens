@@ -24,7 +24,7 @@ def test_SparseAutoencoder_from_pretrained_loads_from_hugginface_using_shorthand
     weight_path = hf_hub_download(repo_id=repo_id, filename=filename)
     state_dict = {}
     with safe_open(weight_path, framework="pt", device="cpu") as f:  # type: ignore
-        for k in f.keys():
+        for k in f.keys():  # noqa: SIM118
             state_dict[k] = f.get_tensor(k)
 
     assert isinstance(sae, SAE)
@@ -37,7 +37,7 @@ def test_SparseAutoencoder_from_pretrained_loads_from_hugginface_using_shorthand
     assert sparsity.shape == (sae.cfg.d_sae,)
     assert sparsity.max() < 0.0
 
-    for k in sae.state_dict().keys():
+    for k in sae.state_dict():
         if k == "finetuning_scaling_factor":
             continue
         assert torch.allclose(sae.state_dict()[k], state_dict[k])
@@ -57,7 +57,7 @@ def test_SparseAutoencoder_from_pretrained_can_load_arbitrary_saes_from_hugginfa
     weight_path = hf_hub_download(repo_id=repo_id, filename=filename)
     state_dict = {}
     with safe_open(weight_path, framework="pt", device="cpu") as f:  # type: ignore
-        for k in f.keys():
+        for k in f.keys():  # noqa: SIM118
             state_dict[k] = f.get_tensor(k)
 
     assert isinstance(sae, SAE)
@@ -70,7 +70,7 @@ def test_SparseAutoencoder_from_pretrained_can_load_arbitrary_saes_from_hugginfa
     assert sparsity.shape == (sae.cfg.d_sae,)
     assert sparsity.max() < 0.0
 
-    for k in sae.state_dict().keys():
+    for k in sae.state_dict():
         if k == "finetuning_scaling_factor":
             continue
         assert torch.allclose(sae.state_dict()[k], state_dict[k])

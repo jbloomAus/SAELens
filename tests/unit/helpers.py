@@ -83,11 +83,7 @@ def build_sae_cfg(**kwargs: Any) -> LanguageModelSAERunnerConfig:
     mock_config = LanguageModelSAERunnerConfig(**mock_config_dict)
 
     # reset checkpoint path (as we add an id to each each time)
-    mock_config.checkpoint_path = (
-        "test/checkpoints"
-        if "checkpoint_path" not in kwargs
-        else kwargs["checkpoint_path"]
-    )
+    mock_config.checkpoint_path = kwargs.get("checkpoint_path", "test/checkpoints")
 
     return mock_config
 

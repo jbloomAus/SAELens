@@ -163,7 +163,7 @@ class CacheActivationsRunner:
         assert (
             output_dir.exists()
             and output_dir.is_dir()
-            and not any(p for p in output_dir.iterdir() if not p.name == ".tmp_shards")
+            and not any(p for p in output_dir.iterdir() if p.name != ".tmp_shards")
         )
         if not (source_dir / first_shard_dir_name).exists():
             raise Exception(f"No shards in {source_dir} exist!")

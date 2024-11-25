@@ -690,7 +690,7 @@ def all_loadable_saes() -> list[tuple[str, str, float, float]]:
     all_loadable_saes = []
     saes_directory = get_pretrained_saes_directory()
     for release, lookup in tqdm(saes_directory.items()):
-        for sae_name in lookup.saes_map.keys():
+        for sae_name in lookup.saes_map:
             expected_var_explained = lookup.expected_var_explained[sae_name]
             expected_l0 = lookup.expected_l0[sae_name]
             all_loadable_saes.append(

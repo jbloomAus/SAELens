@@ -153,7 +153,8 @@ def get_connor_rob_hook_z_config(
     config_path = folder_name.split(".pt")[0] + "_cfg.json"
     config_path = hf_hub_download(repo_id, config_path)
 
-    old_cfg_dict = json.load(open(config_path))
+    with open(config_path) as config_file:
+        old_cfg_dict = json.load(config_file)
 
     return {
         "architecture": "standard",
@@ -218,7 +219,7 @@ def read_sae_from_disk(
 
     state_dict = {}
     with safe_open(weight_path, framework="pt", device=device) as f:  # type: ignore
-        for k in f.keys():
+        for k in f.keys():  # noqa: SIM118
             state_dict[k] = f.get_tensor(k).to(dtype=dtype)
 
     # if bool and True, then it's the April update method of normalizing activations and hasn't been folded in.
@@ -376,7 +377,7 @@ def gemma_2_sae_loader(
     # Load and convert the weights
     state_dict = {}
     with np.load(sae_path) as data:
-        for key in data.keys():
+        for key in data:
             state_dict_key = "W_" + key[2:] if key.startswith("w_") else key
             state_dict[state_dict_key] = (
                 torch.tensor(data[key]).to(dtype=torch.float32).to(device)
@@ -420,7 +421,8 @@ def get_llama_scope_config(
     config_path = folder_name + "/hyperparams.json"
     config_path = hf_hub_download(repo_id, config_path)
 
-    old_cfg_dict = json.load(open(config_path))
+    with open(config_path) as f:
+        old_cfg_dict = json.load(f)
 
     # Model specific parameters
     model_name, d_in = "meta-llama/Llama-3.1-8B", old_cfg_dict["d_model"]

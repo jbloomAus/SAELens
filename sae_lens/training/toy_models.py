@@ -375,8 +375,7 @@ def plot_features_in_2d(
         [
             colors is None,
             isinstance(colors, list) and isinstance(colors[0], str),
-            (isinstance(colors, Tensor) or isinstance(colors, Arr))
-            and colors.ndim == 2,
+            (isinstance(colors, (Tensor, Arr))) and colors.ndim == 2,
         ]
     ):
         colors = [colors for _ in range(values.shape[0])]
@@ -385,14 +384,16 @@ def plot_features_in_2d(
     colors = [parse_colors_for_superposition_plot(c, n_features) for c in colors]
 
     # Same for subplot titles & titles
-    if subplot_titles is not None:
-        if isinstance(subplot_titles, list) and isinstance(subplot_titles[0], str):
-            subplot_titles = [
-                cast(list[str], subplot_titles) for _ in range(values.shape[0])
-            ]
-    if title is not None:
-        if isinstance(title, str):
-            title = [title for _ in range(values.shape[0])]
+    if (
+        subplot_titles is not None
+        and isinstance(subplot_titles, list)
+        and isinstance(subplot_titles[0], str)
+    ):
+        subplot_titles = [
+            cast(list[str], subplot_titles) for _ in range(values.shape[0])
+        ]
+    if title is not None and isinstance(title, str):
+        title = [title for _ in range(values.shape[0])]
 
     # Create a figure and axes
     fig, ax = plt.subplots(1, 1, figsize=(5, 5))

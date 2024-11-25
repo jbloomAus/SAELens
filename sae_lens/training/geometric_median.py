@@ -47,10 +47,7 @@ def compute_geometric_median(
         new_weights = weights
         median = weighted_average(points, weights)
         objective_value = geometric_median_objective(median, points, weights)
-        if do_log:
-            logs = [objective_value]
-        else:
-            logs = None
+        logs = [objective_value] if do_log else None
 
         # Weiszfeld iterations
         early_termination = False

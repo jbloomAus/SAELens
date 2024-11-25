@@ -68,7 +68,7 @@ def generate_sae_table():
             cfg = handle_config_defaulting(cfg)
             cfg = SAEConfig.from_dict(cfg).to_dict()
 
-            if "neuronpedia" not in info.keys():
+            if "neuronpedia" not in info:
                 info["neuronpedia"] = None
 
             info.update(cfg)

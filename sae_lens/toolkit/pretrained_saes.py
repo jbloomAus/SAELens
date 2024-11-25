@@ -136,7 +136,8 @@ def get_gpt2_small_ckrk_attn_out_saes() -> dict[str, SAE]:
             # print(f"Downloading {file_name}")
             config_path = hf_hub_download(REPO_ID, file_name)
             name = config_path.split("/")[-1].split("_cfg.json")[0]
-            sae_configs[name] = json.load(open(config_path))
+            with open(config_path) as f:
+                sae_configs[name] = json.load(f)
             sae_configs[name].device = device
 
     saes = {}
