@@ -20,6 +20,7 @@ from tqdm import tqdm
 from transformer_lens.hook_points import HookedRootModule
 from transformers import AutoTokenizer, PreTrainedTokenizerBase
 
+from sae_lens import logger
 from sae_lens.config import (
     DTYPE_MAP,
     CacheActivationsRunnerConfig,
@@ -483,8 +484,8 @@ class ActivationsStore:
                     n_batches, n_context, -1
                 )
             except RuntimeError as e:
-                print(f"Error during view operation: {e}")
-                print("Attempting to use reshape instead...")
+                logger.error(f"Error during view operation: {e}")
+                logger.info("Attempting to use reshape instead...")
                 stacked_activations[:, :, 0] = layerwise_activations.reshape(
                     n_batches, n_context, -1
                 )
