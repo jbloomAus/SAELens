@@ -11,6 +11,8 @@ import torch
 from babe import UsNames
 from transformer_lens import HookedTransformer
 
+from sae_lens import logger
+
 
 def get_enrichment_df(
     projections: torch.Tensor,
@@ -180,10 +182,10 @@ def plot_top_k_feature_projections_by_token_and_category(
 
     # scores = enrichment_scores[category][features]
     scores = enrichment_scores[category].loc[features]
-    print(scores)
+    logger.debug(scores)
     tokens_list = [model.to_single_str_token(i) for i in list(range(model.cfg.d_vocab))]
 
-    print(features)
+    logger.debug(features)
     feature_logit_scores = pd.DataFrame(
         dec_projection_onto_W_U[features].numpy(), index=features  # type: ignore
     ).T
@@ -193,9 +195,9 @@ def plot_top_k_feature_projections_by_token_and_category(
     ]
 
     # display(feature_)
-    print(category)
+    logger.debug(category)
     for feature, score in zip(features, scores):  # type: ignore
-        print(feature)
+        logger.debug(feature)
         score = -1 * np.log(1 - score)  # convert to enrichment score
         fig = px.histogram(
             feature_logit_scores,
