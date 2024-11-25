@@ -1,3 +1,4 @@
+import math
 import os
 import shutil
 import time
@@ -8,7 +9,7 @@ from safetensors.torch import save_file
 from tqdm import trange
 
 from sae_lens.cache_activations_runner import CacheActivationsRunner
-from sae_lens.config import CacheActivationsRunnerConfig
+from sae_lens.config import DTYPE_MAP, CacheActivationsRunnerConfig
 
 os.environ["WANDB_MODE"] = "offline"  # turn this off if you want to see the output
 
@@ -26,45 +27,34 @@ def test_cache_activations_runner():
     print("Using device:", device)
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-    total_training_steps = 500
-    batch_size = 4096
-    total_training_tokens = total_training_steps * batch_size
-    print(f"Total Training Tokens: {total_training_tokens}")
-
-    new_cached_activations_path = (
+    activations_save_path = (
         os.path.dirname(os.path.realpath(__file__))
         + "/fixtures/test_activations/gelu_1l"
     )
 
     # If the directory exists, delete it.
-    if os.path.exists(new_cached_activations_path):
-        shutil.rmtree(new_cached_activations_path)
+    if os.path.exists(activations_save_path):
+        shutil.rmtree(activations_save_path)
 
-    torch.mps.empty_cache()
+    if device == "cuda":
+        torch.cuda.empty_cache()
+    elif device == "mps":
+        torch.mps.empty_cache()
 
     cfg = CacheActivationsRunnerConfig(
-        new_cached_activations_path=new_cached_activations_path,
+        activation_save_path=activations_save_path,
+        total_training_tokens=16_000,
         # Pick a tiny model to make this easier.
         model_name="gelu-1l",
-        # model_name="gpt2-xl",
+        model_batch_size=16,
         ## MLP Layer 0 ##
         hook_name="blocks.0.hook_mlp_out",
-        hook_layer=0,
+        final_hook_layer=0,
         d_in=512,
-        # d_in=1600,
-        dataset_path="NeelNanda/c4-tokenized-2b",
-        streaming=False,
+        ## Dataset ##
+        hf_dataset_path="NeelNanda/c4-tokenized-2b",
         context_size=1024,
-        is_dataset_tokenized=True,
-        prepend_bos=True,
-        training_tokens=total_training_tokens,  # For initial testing I think this is a good number.
-        train_batch_size_tokens=4096,
-        # buffer details
-        n_batches_in_buffer=32,
-        store_batch_size_prompts=16,
-        normalize_activations="none",
-        #
-        # Misc
+        ## Misc ##
         device=device,
         seed=42,
         dtype="float32",
@@ -79,58 +69,65 @@ def test_cache_activations_runner():
 
 def test_hf_dataset_save_vs_safetensors(tmp_path: Path):
     niters = 10
+    context_size = 32
+
+    dataset_num_rows = 10_000
+    total_training_tokens = dataset_num_rows * context_size
+    model_batch_size = 8
+    num_buffers = 4 * niters
 
     ###
 
     d_in = 512
-    context_size = 32
-    n_batches_in_buffer = 32
-    batch_size = 8
-    num_buffers = 4 * niters
-    num_tokens = batch_size * context_size * n_batches_in_buffer * num_buffers
-
-    cfg = CacheActivationsRunnerConfig(
-        new_cached_activations_path=str(tmp_path),
-        d_in=d_in,
-        context_size=context_size,
-        model_name="gelu-1l",
-        hook_name="blocks.0.hook_mlp_out",
-        dataset_path="NeelNanda/c4-tokenized-2b",
-        training_tokens=num_tokens,
-        n_batches_in_buffer=n_batches_in_buffer,
-        store_batch_size_prompts=batch_size,
-        normalize_activations="none",
-        device="cpu",
-        seed=42,
-        dtype="float32",
+    dtype = "float32"
+    device = (
+        "cuda"
+        if torch.cuda.is_available()
+        else "mps" if torch.backends.mps.is_available() else "cpu"
     )
-    runner = CacheActivationsRunner(cfg)
-    store = runner.activations_store
 
-    ###
-
+    bytes_per_token = d_in * DTYPE_MAP[dtype].itemsize
+    tokens_per_buffer = math.ceil(dataset_num_rows * context_size / num_buffers)
+    buffer_size_gb = min((tokens_per_buffer * bytes_per_token) / 1_000_000_000, 2.0)
     safetensors_path = tmp_path / "saftensors"
     hf_path = tmp_path / "hf"
     safetensors_path.mkdir()
     hf_path.mkdir()
 
+    cfg = CacheActivationsRunnerConfig(
+        activation_save_path=str(hf_path),
+        hf_dataset_path="NeelNanda/c4-tokenized-2b",
+        model_name="gelu-1l",
+        hook_name="blocks.0.hook_mlp_out",
+        final_hook_layer=0,
+        d_in=d_in,
+        context_size=context_size,
+        total_training_tokens=total_training_tokens,
+        model_batch_size=model_batch_size,
+        buffer_size_gb=buffer_size_gb,
+        prepend_bos=False,
+        shuffle=False,
+        device=device,
+        seed=42,
+        dtype=dtype,
+    )
+    runner = CacheActivationsRunner(cfg)
+    store = runner.activations_store
+
     print("Warmup")
 
-    for i in trange(niters // 2, leave=False):
-        buffer = store.get_buffer(n_batches_in_buffer)
+    for i in trange(10 // 2, leave=False):
+        buffer = store.get_buffer(cfg.batches_in_buffer)
 
     start_time = time.perf_counter()
-    for i in trange(niters, leave=False):
-        buffer = store.get_buffer(n_batches_in_buffer)
+    for i in trange(cfg.n_buffers, leave=False):
+        buffer = store.get_buffer(cfg.batches_in_buffer)
     end_time = time.perf_counter()
 
     print(f"No saving took: {end_time - start_time:.4f}")
 
     start_time = time.perf_counter()
-    for i in trange(niters, leave=False):
-        buffer = store.get_buffer(n_batches_in_buffer)
-        shard = runner._create_shard(buffer)
-        shard.save_to_disk(hf_path / str(i), num_shards=1)
+    runner.run()
     end_time = time.perf_counter()
     elapsed_time = end_time - start_time
 
@@ -139,8 +136,8 @@ def test_hf_dataset_save_vs_safetensors(tmp_path: Path):
     print(f"HF Dataset size: {hf_size / (1024 * 1024):.2f} MB")
 
     start_time = time.perf_counter()
-    for i in trange(niters, leave=False):
-        buffer = store.get_buffer(n_batches_in_buffer)
+    for i in trange(cfg.n_buffers, leave=False):
+        buffer = store.get_buffer(cfg.batches_in_buffer)
         save_file({"activations": buffer}, safetensors_path / f"{i}.safetensors")
     end_time = time.perf_counter()
 

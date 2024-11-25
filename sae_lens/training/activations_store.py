@@ -50,12 +50,76 @@ class ActivationsStore:
     device: torch.device
 
     @classmethod
+    def _from_save_activations(
+        cls,
+        model: HookedRootModule,
+        cfg: CacheActivationsRunnerConfig,
+    ) -> "ActivationsStore":
+        return cls(
+            model=model,
+            dataset=cfg.hf_dataset_path,
+            streaming=cfg.streaming,
+            hook_name=cfg.hook_name,
+            hook_layer=cfg.final_hook_layer,
+            hook_head_index=None,
+            context_size=cfg.context_size,
+            d_in=cfg.d_in,
+            n_batches_in_buffer=cfg.batches_in_buffer,
+            total_training_tokens=cfg.total_training_tokens,
+            store_batch_size_prompts=cfg.model_batch_size,
+            train_batch_size_tokens=-1,
+            prepend_bos=cfg.prepend_bos,
+            normalize_activations="none",
+            device=torch.device("cpu"),  # since we're saving to disk
+            dtype=cfg.dtype,
+            cached_activations_path=None,
+            model_kwargs=cfg.model_kwargs,
+            autocast_lm=cfg.autocast_lm,
+            dataset_trust_remote_code=cfg.dataset_trust_remote_code,
+            seqpos_slice=cfg.seqpos_slice,
+        )
+
+    @classmethod
+    def from_cache_activations(
+        cls,
+        model: HookedRootModule,
+        cfg: CacheActivationsRunnerConfig,
+    ) -> "ActivationsStore":
+        return cls(
+            cached_activations_path=str(cfg.activation_save_path),
+            dtype=cfg.dtype,
+            hook_name=cfg.hook_name,
+            hook_layer=cfg.final_hook_layer,
+            context_size=cfg.context_size,
+            d_in=cfg.d_in,
+            n_batches_in_buffer=cfg.batches_in_buffer,
+            total_training_tokens=cfg.total_training_tokens,
+            store_batch_size_prompts=cfg.model_batch_size,  # get_buffer
+            train_batch_size_tokens=cfg.model_batch_size,  # dataloader
+            seqpos_slice=(None,),
+            device=torch.device(cfg.device),  # since we're sending these to SAE
+            # NOOP
+            prepend_bos=False,
+            hook_head_index=None,
+            dataset=cfg.hf_dataset_path,
+            streaming=False,
+            model=model,
+            normalize_activations="none",
+            model_kwargs=None,
+            autocast_lm=False,
+            dataset_trust_remote_code=None,
+        )
+
+    @classmethod
     def from_config(
         cls,
         model: HookedRootModule,
         cfg: LanguageModelSAERunnerConfig | CacheActivationsRunnerConfig,
         override_dataset: HfDataset | None = None,
     ) -> "ActivationsStore":
+        if isinstance(cfg, CacheActivationsRunnerConfig):
+            return cls.from_cache_activations(model, cfg)
+
         cached_activations_path = cfg.cached_activations_path
         # set cached_activations_path to None if we're not using cached activations
         if (
@@ -332,14 +396,15 @@ class ActivationsStore:
 
         # ---
         # Actual code
-        activations_dataset = datasets.load_from_disk(self.cached_activations_path)
+        activations_dataset = datasets.load_dataset(
+            str(self.cached_activations_path), split="train"
+        )
+        assert isinstance(activations_dataset, Dataset)
         activations_dataset.set_format(
             type="torch", columns=[self.hook_name], device=self.device, dtype=self.dtype
         )
         self.current_row_idx = 0  # idx to load next batch from
         # ---
-
-        assert isinstance(activations_dataset, Dataset)
 
         # multiple in hooks future
         if not set([self.hook_name]).issubset(activations_dataset.column_names):
@@ -347,12 +412,9 @@ class ActivationsStore:
                 f"loaded dataset does not include hook activations, got {activations_dataset.column_names}"
             )
 
-        if activations_dataset.features[self.hook_name].shape != (
-            self.context_size,
-            self.d_in,
-        ):
+        if activations_dataset.features[self.hook_name].length != self.d_in:
             raise ValueError(
-                f"Given dataset of shape {activations_dataset.features[self.hook_name].shape} does not match context_size ({self.context_size}) and d_in ({self.d_in})"
+                f"Given dataset of shape {activations_dataset.features[self.hook_name].length} does not match d_in {self.d_in}"
             )
 
         return activations_dataset
@@ -496,7 +558,6 @@ class ActivationsStore:
     def _load_buffer_from_cached(
         self,
         total_size: int,
-        context_size: int,
         num_layers: int,
         d_in: int,
         raise_on_epoch_end: bool,
@@ -526,16 +587,15 @@ class ActivationsStore:
             _hook_buffer = self.cached_activation_dataset[
                 self.current_row_idx : self.current_row_idx + total_size
             ][hook_name]
-            assert _hook_buffer.shape == (total_size, context_size, d_in)
+            assert _hook_buffer.shape == (total_size, d_in)
             new_buffer.append(_hook_buffer)
 
         # Stack across num_layers dimension
         # list of num_layers; shape: (total_size, context_size, d_in) -> (total_size, context_size, num_layers, d_in)
-        new_buffer = torch.stack(new_buffer, dim=2)
-        assert new_buffer.shape == (total_size, context_size, num_layers, d_in)
-
+        new_buffer = torch.stack(new_buffer, dim=1)
+        assert new_buffer.shape == (total_size, num_layers, d_in)
         self.current_row_idx += total_size
-        return new_buffer.reshape(total_size * context_size, num_layers, d_in)
+        return new_buffer
 
     @torch.no_grad()
     def get_buffer(
@@ -560,10 +620,10 @@ class ActivationsStore:
 
         if self.cached_activation_dataset is not None:
             return self._load_buffer_from_cached(
-                total_size, context_size, num_layers, d_in, raise_on_epoch_end
+                total_size * context_size, num_layers, d_in, raise_on_epoch_end
             )
 
-        refill_iterator = range(0, batch_size * n_batches_in_buffer, batch_size)
+        refill_iterator = range(0, total_size, batch_size)
         # Initialize empty tensor buffer of the maximum required size with an additional dimension for layers
         new_buffer = torch.zeros(
             (total_size, training_context_size, num_layers, d_in),
@@ -571,7 +631,9 @@ class ActivationsStore:
             device=self.device,
         )
 
-        for refill_batch_idx_start in refill_iterator:
+        for refill_batch_idx_start in tqdm(
+            refill_iterator, leave=False, desc="Refilling buffer"
+        ):
             # move batch toks to gpu for model
             refill_batch_tokens = self.get_batch_tokens(
                 raise_at_epoch_end=raise_on_epoch_end
@@ -582,8 +644,6 @@ class ActivationsStore:
             new_buffer[
                 refill_batch_idx_start : refill_batch_idx_start + batch_size, ...
             ] = refill_activations
-
-            # pbar.update(1)
 
         new_buffer = new_buffer.reshape(-1, num_layers, d_in)
         if shuffle:
