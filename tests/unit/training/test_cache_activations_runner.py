@@ -7,7 +7,7 @@ from typing import Any, Tuple
 import datasets
 import pytest
 import torch
-from datasets import Dataset, load_dataset
+from datasets import Dataset, Sequence, load_dataset
 from tqdm import trange
 from transformer_lens import HookedTransformer
 
@@ -84,14 +84,14 @@ def test_cache_activations_runner(tmp_path: Path):
     runner = CacheActivationsRunner(cfg)
     dataset = runner.run()
 
-    assert len(dataset) == cfg.n_buffers * (cfg.tokens_in_buffer // cfg.context_size)
-    assert cfg.dataset_num_rows == len(dataset)
+    assert len(dataset) == cfg.n_buffers * (cfg.tokens_in_buffer)
+    assert cfg.dataset_num_rows == len(dataset) // cfg.sliced_context_size
     assert dataset.num_columns == 1 and dataset.column_names == [cfg.hook_name]
 
     features = dataset.features
     for hook_name in [cfg.hook_name]:
-        assert isinstance(features[hook_name], datasets.Array2D)
-        assert features[hook_name].shape == (cfg.context_size, cfg.d_in)
+        assert isinstance(features[hook_name], Sequence)
+        assert features[hook_name].length == cfg.d_in
 
 
 def test_load_cached_activations(tmp_path: Path):
@@ -220,8 +220,9 @@ def test_compare_cached_activations_end_to_end_with_ground_truth(tmp_path: Path)
         ground_truth_acts.append(acts)
 
     ground_truth_acts = torch.cat(ground_truth_acts, dim=0).cpu()
-
-    assert torch.allclose(ground_truth_acts, dataset_acts, rtol=1e-3, atol=5e-2)
+    assert torch.allclose(
+        ground_truth_acts.reshape(-1, cfg.d_in), dataset_acts, rtol=1e-3, atol=5e-2
+    )
 
 
 def test_load_activations_store_with_nonexistent_dataset(tmp_path: Path):
@@ -237,7 +238,7 @@ def test_load_activations_store_with_nonexistent_dataset(tmp_path: Path):
     # Attempt to load from a non-existent dataset
     with pytest.raises(
         FileNotFoundError,
-        match="is neither a `Dataset` directory nor a `DatasetDict` directory.",
+        match="doesn't contain any data files",
     ):
         ActivationsStore.from_config(model, cfg)
 
@@ -248,7 +249,7 @@ def test_cache_activations_runner_with_nonempty_directory(tmp_path: Path):
         f.write("test")
 
     with pytest.raises(
-        Exception, match="is not empty. Please delete it or specify a different path."
+        Exception, match=r"is not empty. Please delete it or specify a different path"
     ):
         cfg = _default_cfg(tmp_path)
         runner = CacheActivationsRunner(cfg)
@@ -265,9 +266,9 @@ def test_cache_activations_runner_with_incorrect_d_in(tmp_path: Path):
     wrong_d_in_cfg.d_in = 513
 
     runner = CacheActivationsRunner(wrong_d_in_cfg)
-    with pytest.raises(
-        RuntimeError,
-        match=r"The expanded size of the tensor \(513\) must match the existing size \(512\) at non-singleton dimension 2.",
+    with pytest.raises(  # type: ignore
+        datasets.exceptions.DatasetGenerationError,
+        match=r"An error occurred while generating the dataset",
     ):
         runner.run()
 
@@ -278,18 +279,6 @@ def test_cache_activations_runner_load_dataset_with_incorrect_config(tmp_path: P
     runner.run()
     model = runner.model
 
-    # Context size different from dataset
-    wrong_context_size_cfg = CacheActivationsRunnerConfig(
-        **dataclasses.asdict(correct_cfg),
-    )
-    wrong_context_size_cfg.context_size = 13
-
-    with pytest.raises(
-        ValueError,
-        match=r"Given dataset of shape \(16, 512\) does not match context_size \(13\) and d_in \(512\)",
-    ):
-        ActivationsStore.from_config(model, wrong_context_size_cfg)
-
     # d_in different from dataset
     wrong_d_in_cfg = CacheActivationsRunnerConfig(
         **dataclasses.asdict(correct_cfg),
@@ -298,7 +287,7 @@ def test_cache_activations_runner_load_dataset_with_incorrect_config(tmp_path: P
 
     with pytest.raises(
         ValueError,
-        match=r"Given dataset of shape \(16, 512\) does not match context_size \(16\) and d_in \(513\)",
+        match=r"Given dataset of shape 512 does not match d_in 513",
     ):
         ActivationsStore.from_config(model, wrong_d_in_cfg)
 
@@ -332,14 +321,4 @@ def test_cache_activations_runner_with_valid_seqpos(tmp_path: Path):
 
     assert os.path.exists(tmp_path)
 
-    # assert that there are n_buffer files in the directory.
-    buffer_files = [
-        f
-        for f in os.listdir(tmp_path)
-        if f.startswith("data-") and f.endswith(".arrow")
-    ]
-    assert len(buffer_files) == cfg.n_buffers
-
-    for act in dataset_acts:
-        # should be 16 - 3 - 3 = 10
-        assert act.shape == (10, cfg.d_in)
+    assert len(dataset_acts) == cfg.total_training_tokens
