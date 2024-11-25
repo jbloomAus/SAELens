@@ -242,7 +242,11 @@ class CacheActivationsRunner:
 
         ### Create temporary sharded datasets
 
+<<<<<<< HEAD
         logger.info(f"Started caching activations for {self.cfg.dataset_path}")
+=======
+        logger.info(f"Started caching {self.cfg.training_tokens} activations")
+>>>>>>> a600943 (replaces in cache_activations_runner.py)
 
         for i in tqdm(range(self.cfg.n_buffers), desc="Caching activations"):
             try:
@@ -257,7 +261,11 @@ class CacheActivationsRunner:
 
             except StopIteration:
                 logger.warning(
+<<<<<<< HEAD
                     f"Warning: Ran out of samples while filling the buffer at batch {i} before reaching {self.cfg.n_buffers} batches."
+=======
+                    f"Warning: Ran out of samples while filling the buffer at batch {i} before reaching {self.n_buffers} batches. No more caching will occur."
+>>>>>>> a600943 (replaces in cache_activations_runner.py)
                 )
                 break
 
@@ -272,7 +280,11 @@ class CacheActivationsRunner:
             dataset = dataset.shuffle(seed=self.cfg.seed)
 
         if self.cfg.hf_repo_id:
+<<<<<<< HEAD
             logger.info("Pushing to Huggingface Hub...")
+=======
+            logger.info("Pushing to hub...")
+>>>>>>> a600943 (replaces in cache_activations_runner.py)
             dataset.push_to_hub(
                 repo_id=self.cfg.hf_repo_id,
                 num_shards=self.cfg.hf_num_shards,
