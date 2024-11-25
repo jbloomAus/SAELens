@@ -496,8 +496,7 @@ class TrainingSAE(SAE):
             recons = self.decode(auxk_acts)
             auxk_loss = (recons - residual).pow(2).sum(dim=-1).mean()
             return scale * auxk_loss
-        else:
-            return sae_out.new_tensor(0.0)
+        return sae_out.new_tensor(0.0)
 
     def calculate_ghost_grad_loss(
         self,
