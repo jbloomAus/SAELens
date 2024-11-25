@@ -4,7 +4,7 @@ import os
 import urllib.parse
 import webbrowser
 from datetime import datetime
-from typing import Any, Optional, TypeVar
+from typing import Any, NamedTuple, Optional, TypeVar
 
 import requests
 from dotenv import load_dotenv
@@ -70,30 +70,78 @@ def open_neuronpedia_feature_dashboard(sae: SAE, index: int):
         webbrowser.open(url)
 
 
-def get_neuronpedia_quick_list(
-    sae: SAE,
-    features: list[int],
-    name: str = "temporary_list",
-):
+class FeatureInfo(NamedTuple):
+    feature_index: int
+    description: str
+    model_name: Optional[str] = None
+    neuronpedia_id: Optional[str] = None
 
-    sae_id = sae.cfg.neuronpedia_id
-    if sae_id is None:
-        print(
-            "SAE does not have a Neuronpedia ID. Either dashboards for this SAE do not exist (yet) on Neuronpedia, or the SAE was not loaded via the from_pretrained method"
-        )
-    assert sae_id is not None
+
+class SaeInfo(NamedTuple):
+    model_name: str
+    neuronpedia_id: str
+
+
+def get_neuronpedia_quick_list(
+    sae: SAE | SaeInfo,
+    features: list[int] | list[FeatureInfo],
+    name: str = "temporary_list",
+    description: Optional[str] = None,
+    default_test_text: Optional[str] = None,
+) -> str:
+    if isinstance(sae, SaeInfo):
+        if sae.neuronpedia_id is None:
+            raise ValueError(
+                "SAE does not have a Neuronpedia ID. Either dashboards for this SAE do not exist (yet) on Neuronpedia, or the SAE was not loaded via the from_pretrained method"
+            )
+
+        neuronpedia_id = sae.neuronpedia_id
+        model_name = sae.model_name
+    elif isinstance(sae, SAE):
+        if sae.cfg.neuronpedia_id is None:
+            raise ValueError("Neuronpedia ID was not provided in SaeInfo.")
+
+        neuronpedia_id = sae.cfg.neuronpedia_id
+        model_name = sae.cfg.model_name
+    else:
+        raise TypeError("sae must be either SaeInfo or SAE")
+
+    if len(features) == 0:
+        raise ValueError("No features provided")
 
     url = NEURONPEDIA_DOMAIN + "/quick-list/"
     name = urllib.parse.quote(name)
     url = url + "?name=" + name
-    list_feature = [
-        {
-            "modelId": sae.cfg.model_name,
-            "layer": sae_id.split("/")[1],
-            "index": str(feature),
-        }
-        for feature in features
-    ]
+    if description is not None:
+        url = url + "&description=" + urllib.parse.quote(description)
+    if default_test_text is not None:
+        url = url + "&default_test_text=" + urllib.parse.quote(default_test_text)
+
+    if isinstance(features[0], FeatureInfo):
+        list_feature = [
+            {
+                "modelId": feature.model_name or model_name,
+                "layer": (
+                    feature.neuronpedia_id.split("/")[1]
+                    if feature.neuronpedia_id is not None
+                    else neuronpedia_id.split("/")[1]
+                ),
+                "index": str(feature.feature_index),
+                "description": feature.description,
+            }
+            for feature in features
+            if isinstance(feature, FeatureInfo)
+        ]
+    else:
+        list_feature = [
+            {
+                "modelId": model_name,
+                "layer": neuronpedia_id.split("/")[1],
+                "index": str(feature),
+            }
+            for feature in features
+        ]
+
     url = url + "&features=" + urllib.parse.quote(json.dumps(list_feature))
     webbrowser.open(url)
 
