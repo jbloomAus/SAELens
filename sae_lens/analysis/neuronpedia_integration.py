@@ -31,7 +31,7 @@ from neuron_explainer.explanations.simulator import (
 )
 from tenacity import retry, stop_after_attempt, wait_random_exponential
 
-from sae_lens import SAE
+from sae_lens import SAE, logger
 
 NEURONPEDIA_DOMAIN = "https://neuronpedia.org"
 
@@ -62,7 +62,7 @@ def NanAndInfReplacer(value: str):
 def open_neuronpedia_feature_dashboard(sae: SAE, index: int):
     sae_id = sae.cfg.neuronpedia_id
     if sae_id is None:
-        print(
+        logger.warning(
             "SAE does not have a Neuronpedia ID. Either dashboards for this SAE do not exist (yet) on Neuronpedia, or the SAE was not loaded via the from_pretrained method"
         )
     else:
@@ -78,7 +78,7 @@ def get_neuronpedia_quick_list(
 
     sae_id = sae.cfg.neuronpedia_id
     if sae_id is None:
-        print(
+        logger.warning(
             "SAE does not have a Neuronpedia ID. Either dashboards for this SAE do not exist (yet) on Neuronpedia, or the SAE was not loaded via the from_pretrained method"
         )
     assert sae_id is not None
@@ -258,7 +258,7 @@ async def autointerp_neuronpedia_features(  # noqa: C901
     Returns:
         None
     """
-    print("\n\n")
+    logger.info("\n\n")
 
     if os.getenv("OPENAI_API_KEY") is None:
         if openai_api_key is None:
@@ -286,7 +286,7 @@ async def autointerp_neuronpedia_features(  # noqa: C901
         if not skip_neuronpedia_api_key_test:
             test_key(neuronpedia_api_key)
 
-    print("\n\n=== Step 1) Fetching features from Neuronpedia")
+    logger.info("\n\n=== Step 1) Fetching features from Neuronpedia")
     for feature in features:
         feature_data = get_neuronpedia_feature(
             feature=feature.feature,
@@ -326,10 +326,10 @@ async def autointerp_neuronpedia_features(  # noqa: C901
     for iteration_num, feature in enumerate(features):
         start_time = datetime.now()
 
-        print(
+        logger.info(
             f"\n========== Feature {feature.modelId}@{feature.layer}-{feature.dataset}:{feature.feature} ({iteration_num + 1} of {len(features)} Features) =========="
         )
-        print(
+        logger.info(
             f"\n=== Step 2) Explaining feature {feature.modelId}@{feature.layer}-{feature.dataset}:{feature.feature}"
         )
 
@@ -364,25 +364,27 @@ async def autointerp_neuronpedia_features(  # noqa: C901
                     num_samples=1,
                 )
             except Exception as e:
-                print(f"ERROR, RETRYING: {e}")
+                logger.error(f"ERROR, RETRYING: {e}")
             else:
                 break
         else:
-            print(
+            logger.error(
                 f"ERROR: Failed to explain feature {feature.modelId}@{feature.layer}-{feature.dataset}:{feature.feature}"
             )
 
         assert len(explanations) == 1
         explanation = explanations[0].rstrip(".")
-        print(f"===== {autointerp_explainer_model_name}'s explanation: {explanation}")
+        logger.info(
+            f"===== {autointerp_explainer_model_name}'s explanation: {explanation}"
+        )
         feature.autointerp_explanation = explanation
 
         scored_simulation = None
         if do_score and autointerp_scorer_model_name:
-            print(
+            logger.info(
                 f"\n=== Step 3) Scoring feature {feature.modelId}@{feature.layer}-{feature.dataset}:{feature.feature}"
             )
-            print("=== This can take up to 30 seconds.")
+            logger.info("=== This can take up to 30 seconds.")
 
             temp_activation_records = [
                 ActivationRecord(
@@ -417,7 +419,7 @@ async def autointerp_neuronpedia_features(  # noqa: C901
                     )
                     score = scored_simulation.get_preferred_score()
                 except Exception as e:
-                    print(f"ERROR, RETRYING: {e}")
+                    logger.error(f"ERROR, RETRYING: {e}")
                 else:
                     break
 
@@ -427,15 +429,17 @@ async def autointerp_neuronpedia_features(  # noqa: C901
                 or len(scored_simulation.scored_sequence_simulations)
                 != num_activations_to_use
             ):
-                print(
+                logger.error(
                     f"ERROR: Failed to score feature {feature.modelId}@{feature.layer}-{feature.dataset}:{feature.feature}. Skipping it."
                 )
                 continue
             feature.autointerp_explanation_score = score
-            print(f"===== {autointerp_scorer_model_name}'s score: {(score * 100):.0f}")
+            logger.info(
+                f"===== {autointerp_scorer_model_name}'s score: {(score * 100):.0f}"
+            )
 
         else:
-            print("=== Step 3) Skipping scoring as instructed.")
+            logger.info("=== Step 3) Skipping scoring as instructed.")
 
         feature_data = {
             "modelId": feature.modelId,
@@ -455,15 +459,15 @@ async def autointerp_neuronpedia_features(  # noqa: C901
         if save_to_disk:
             output_file = f"{output_dir}/{feature.modelId}-{feature.layer}-{feature.dataset}_feature-{feature.feature}_time-{datetime.now().strftime('%Y%m%d-%H%M%S')}.jsonl"
             os.makedirs(output_dir, exist_ok=True)
-            print(f"\n=== Step 4) Saving feature to {output_file}")
+            logger.info(f"\n=== Step 4) Saving feature to {output_file}")
             with open(output_file, "a") as f:
                 f.write(feature_data_str)
                 f.write("\n")
         else:
-            print("\n=== Step 4) Skipping saving to disk.")
+            logger.info("\n=== Step 4) Skipping saving to disk.")
 
         if upload_to_neuronpedia:
-            print("\n=== Step 5) Uploading feature to Neuronpedia")
+            logger.info("\n=== Step 5) Uploading feature to Neuronpedia")
             upload_data = json.dumps(
                 {
                     "feature": feature_data,
@@ -476,15 +480,15 @@ async def autointerp_neuronpedia_features(  # noqa: C901
                 url, json=upload_data_json, headers={"x-api-key": neuronpedia_api_key}
             )
             if response.status_code != 200:
-                print(
+                logger.error(
                     f"ERROR: Couldn't upload explanation to Neuronpedia: {response.text}"
                 )
             else:
-                print(
+                logger.info(
                     f"===== Uploaded to Neuronpedia: {NEURONPEDIA_DOMAIN}/{feature.modelId}/{feature.layer}-{feature.dataset}/{feature.feature}"
                 )
 
         end_time = datetime.now()
-        print(f"\n========== Time Spent for Feature: {end_time - start_time}\n")
+        logger.info(f"\n========== Time Spent for Feature: {end_time - start_time}\n")
 
-    print("\n\n========== Generation and Upload Complete ==========\n\n")
+    logger.info("\n\n========== Generation and Upload Complete ==========\n\n")
