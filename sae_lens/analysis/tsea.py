@@ -26,8 +26,8 @@ def get_enrichment_df(
     )
     df_enrichment_scores = pd.DataFrame(
         enrichment_scores.numpy(),
-        index=gene_sets_selected.keys(),
-        columns=features,  # type: ignore
+        index=gene_sets_selected.keys(), # type: ignore
+        columns=features,
     )
 
     return df_enrichment_scores
