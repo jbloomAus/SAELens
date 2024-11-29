@@ -2,6 +2,60 @@
 
 
 
+## v5.0.0 (2024-11-29)
+
+### Breaking
+
+* feat: Cleaned up CacheActionsRunnerConfig (#389)
+
+BREAKING CHANGE: Superfluous config options have been removed
+
+* Cleaned up CacheActionsRunnerConfig
+
+Before `CacheActivationConfig` had a inconsistent config file for some
+interopability with `LanguageModelSAERunnerConfig`. It was kind of
+unclear which parameters were necessary vs redundant, and just was
+fairly unclear.
+
+Simplified to the required arguments:
+
+- `dataset_path`: Tokenized or untokenized dataset
+- `total_training_tokens`
+- `model_name`
+- `model_batch_size`
+- `hook_name`
+- `final_hook_layer`
+- `d_in`
+
+I think this scheme captures everything you need when attempting to
+cache activations and makes it a lot easier to reason about.
+
+Optional:
+
+```
+activation_save_path # defaults to &#34;activations/{dataset}/{model}/{hook_name}
+shuffle=True
+prepend_bos=True
+streaming=True
+seqpos_slice
+buffer_size_gb=2 # Size of each buffer. Affects memory usage and saving freq
+device=&#34;cuda&#34; or &#34;cpu&#34;
+dtype=&#34;float32&#34;
+autocast_lm=False
+compile_llm=True
+hf_repo_id # Push to hf
+model_kwargs # `run_with_cache`
+model_from_pretrained_kwargs
+```
+
+* Keep compatiability with old config
+
+- Renamed to keep values same where possible
+- Moved _from_saved_activations (private api for CachedActivationRunner)
+  to cached_activation_runner.py
+- Use properties instead of `__post_init__` ([`d81e286`](https://github.com/jbloomAus/SAELens/commit/d81e2862ce914c0b0f86c544fa8f4320c82032ac))
+
+
 ## v4.4.5 (2024-11-24)
 
 ### Fix
