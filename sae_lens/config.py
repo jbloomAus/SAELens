@@ -1,11 +1,18 @@
 import json
+import math
 import os
 from dataclasses import dataclass, field
 from typing import Any, Literal, Optional, cast
 
 import torch
 import wandb
-from datasets import Dataset, DatasetDict, IterableDataset, IterableDatasetDict
+from datasets import (
+    Dataset,
+    DatasetDict,
+    IterableDataset,
+    IterableDatasetDict,
+    load_dataset,
+)
 
 from sae_lens import __version__, logger
 
@@ -480,76 +487,138 @@ class LanguageModelSAERunnerConfig:
 @dataclass
 class CacheActivationsRunnerConfig:
     """
-    Configuration for caching activations of an LLM.
+    Configuration for creating and caching activations of an LLM.
+
+    Args:
+        dataset_path (str): The path to the Hugging Face dataset. This may be tokenized or not.
+        model_name (str): The name of the model to use.
+        model_batch_size (int): How many prompts are in the batch of the language model when generating activations.
+        hook_name (str): The name of the hook to use.
+        hook_layer (int): The layer of the final hook. Currently only support a single hook, so this should be the same as hook_name.
+        d_in (int): Dimension of the model.
+        total_training_tokens (int): Total number of tokens to process.
+        context_size (int): Context size to process. Can be left as -1 if the dataset is tokenized.
+        model_class_name (str): The name of the class of the model to use. This should be either `HookedTransformer` or `HookedMamba`.
+        new_cached_activations_path (str, optional): The path to save the activations.
+        shuffle (bool): Whether to shuffle the dataset.
+        seed (int): The seed to use for shuffling.
+        dtype (str): Datatype of activations to be stored.
+        device (str): The device for the model.
+        buffer_size_gb (float): The buffer size in GB. This should be < 2GB.
+        hf_repo_id (str, optional): The Hugging Face repository id to save the activations to.
+        hf_num_shards (int, optional): The number of shards to save the activations to.
+        hf_revision (str): The revision to save the activations to.
+        hf_is_private_repo (bool): Whether the Hugging Face repository is private.
+        model_kwargs (dict): Keyword arguments for `model.run_with_cache`.
+        model_from_pretrained_kwargs (dict): Keyword arguments for the `from_pretrained` method of the model.
+        compile_llm (bool): Whether to compile the LLM.
+        llm_compilation_mode (str): The torch.compile mode to use.
+        prepend_bos (bool): Whether to prepend the beginning of sequence token. You should use whatever the model was trained with.
+        seqpos_slice (tuple): Determines slicing of activations when constructing batches during training. The slice should be (start_pos, end_pos, optional[step_size]), e.g. for Othello we sometimes use (5, -5). Note, step_size > 0.
+        streaming (bool): Whether to stream the dataset. Streaming large datasets is usually practical.
+        autocast_lm (bool): Whether to use autocast during activation fetching.
+        dataset_trust_remote_code (bool): Whether to trust remote code when loading datasets from Huggingface.
     """
 
-    # Data Generating Function (Model + Training Distibuion)
-    model_name: str = "gelu-2l"
-    model_class_name: str = "HookedTransformer"
-    hook_name: str = "blocks.{layer}.hook_mlp_out"
-    hook_layer: int = 0
-    hook_head_index: Optional[int] = None
-    dataset_path: str = ""
-    dataset_trust_remote_code: bool | None = None
-    streaming: bool = True
-    is_dataset_tokenized: bool = True
-    context_size: int = 128
-    new_cached_activations_path: Optional[str] = (
-        None  # Defaults to "activations/{dataset}/{model}/{full_hook_name}_{hook_head_index}"
-    )
+    dataset_path: str
+    model_name: str
+    model_batch_size: int
+    hook_name: str
+    hook_layer: int
+    d_in: int
+    training_tokens: int
 
-    # if saving to huggingface, set hf_repo_id
-    hf_repo_id: Optional[str] = None
+    context_size: int = -1  # Required if dataset is not tokenized
+    model_class_name: str = "HookedTransformer"
+    # defaults to "activations/{dataset}/{model}/{hook_name}
+    new_cached_activations_path: str | None = None
+    shuffle: bool = True
+    seed: int = 42
+    dtype: str = "float32"
+    device: str = "cuda" if torch.cuda.is_available() else "cpu"
+    buffer_size_gb: float = 2.0  # HF datasets writer have problems with shards > 2GB
+
+    # Huggingface Integration
+    hf_repo_id: str | None = None
     hf_num_shards: int | None = None
     hf_revision: str = "main"
     hf_is_private_repo: bool = False
 
-    # dont' specify this since you don't want to load from disk with the cache runner.
-    cached_activations_path: Optional[str] = None
-    # SAE Parameters
-    d_in: int = 512
-
-    # Activation Store Parameters
-    n_batches_in_buffer: int = 20
-    training_tokens: int = 2_000_000
-    store_batch_size_prompts: int = 32
-    train_batch_size_tokens: int = 4096
-    normalize_activations: str = "none"  # should always be none for activation caching
-    seqpos_slice: tuple[int | None, ...] = (None,)
-
-    # Misc
-    device: str = "cpu"
-    act_store_device: str = "with_model"  # will be set by post init if with_model
-    seed: int = 42
-    dtype: str = "float32"
-    prepend_bos: bool = True
-    autocast_lm: bool = False  # autocast lm during activation fetching
-
-    # Shuffle activations
-    shuffle: bool = True
-
+    # Model
     model_kwargs: dict[str, Any] = field(default_factory=dict)
     model_from_pretrained_kwargs: dict[str, Any] = field(default_factory=dict)
+    compile_llm: bool = False
+    llm_compilation_mode: str | None = None  # which torch.compile mode to use
+
+    # Activation Store
+    prepend_bos: bool = True
+    seqpos_slice: tuple[int | None, ...] = (None,)
+    streaming: bool = True
+    autocast_lm: bool = False
+    dataset_trust_remote_code: bool | None = None
 
     def __post_init__(self):
-        # Autofill cached_activations_path unless the user overrode it
+        # Automatically determine context_size if dataset is tokenized
+        if self.context_size == -1:
+            ds = load_dataset(self.dataset_path, split="train", streaming=True)
+            assert isinstance(ds, IterableDataset)
+            first_sample = next(iter(ds))
+            toks = first_sample.get("tokens") or first_sample.get("input_ids") or None
+            if toks is None:
+                raise ValueError(
+                    "Dataset is not tokenized. Please specify context_size."
+                )
+            token_length = len(toks)
+            self.context_size = token_length
+        assert self.context_size != -1
+
+        if self.seqpos_slice is not None:
+            _validate_seqpos(
+                seqpos=self.seqpos_slice,
+                context_size=self.context_size,
+            )
+
         if self.new_cached_activations_path is None:
-            self.new_cached_activations_path = _default_cached_activations_path(
-                self.dataset_path,
-                self.model_name,
-                self.hook_name,
-                self.hook_head_index,
+            self.new_cached_activations_path = _default_cached_activations_path(  # type: ignore
+                self.dataset_path, self.model_name, self.hook_name, None
             )
 
-        if self.act_store_device == "with_model":
-            self.act_store_device = self.device
+    @property
+    def sliced_context_size(self) -> int:
+        if self.seqpos_slice is not None:
+            return len(range(self.context_size)[slice(*self.seqpos_slice)])
+        return self.context_size
 
-        if self.context_size < 0:
-            raise ValueError(
-                f"The provided context_size is {self.context_size} is negative. Expecting positive context_size."
-            )
+    @property
+    def bytes_per_token(self) -> int:
+        return self.d_in * DTYPE_MAP[self.dtype].itemsize
 
-        _validate_seqpos(seqpos=self.seqpos_slice, context_size=self.context_size)
+    @property
+    def n_tokens_in_buffer(self) -> int:
+        # Calculate raw tokens per buffer based on memory constraints
+        _tokens_per_buffer = int(self.buffer_size_gb * 1e9) // self.bytes_per_token
+        # Round down to nearest multiple of batch_token_size
+        return _tokens_per_buffer - (_tokens_per_buffer % self.n_tokens_in_batch)
+
+    @property
+    def n_tokens_in_batch(self) -> int:
+        return self.model_batch_size * self.sliced_context_size
+
+    @property
+    def n_batches_in_buffer(self) -> int:
+        return self.n_tokens_in_buffer // self.n_tokens_in_batch
+
+    @property
+    def n_seq_in_dataset(self) -> int:
+        return self.training_tokens // self.sliced_context_size
+
+    @property
+    def n_seq_in_buffer(self) -> int:
+        return self.n_tokens_in_buffer // self.sliced_context_size
+
+    @property
+    def n_buffers(self) -> int:
+        return math.ceil(self.training_tokens / self.n_tokens_in_buffer)
 
 
 @dataclass

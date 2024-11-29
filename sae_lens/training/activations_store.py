@@ -51,12 +51,49 @@ class ActivationsStore:
     device: torch.device
 
     @classmethod
+    def from_cache_activations(
+        cls,
+        model: HookedRootModule,
+        cfg: CacheActivationsRunnerConfig,
+    ) -> "ActivationsStore":
+        """
+        Public api to create an ActivationsStore from a cached activations dataset.
+        """
+        return cls(
+            cached_activations_path=cfg.new_cached_activations_path,
+            dtype=cfg.dtype,
+            hook_name=cfg.hook_name,
+            hook_layer=cfg.hook_layer,
+            context_size=cfg.context_size,
+            d_in=cfg.d_in,
+            n_batches_in_buffer=cfg.n_batches_in_buffer,
+            total_training_tokens=cfg.training_tokens,
+            store_batch_size_prompts=cfg.model_batch_size,  # get_buffer
+            train_batch_size_tokens=cfg.model_batch_size,  # dataloader
+            seqpos_slice=(None,),
+            device=torch.device(cfg.device),  # since we're sending these to SAE
+            # NOOP
+            prepend_bos=False,
+            hook_head_index=None,
+            dataset=cfg.dataset_path,
+            streaming=False,
+            model=model,
+            normalize_activations="none",
+            model_kwargs=None,
+            autocast_lm=False,
+            dataset_trust_remote_code=None,
+        )
+
+    @classmethod
     def from_config(
         cls,
         model: HookedRootModule,
         cfg: LanguageModelSAERunnerConfig | CacheActivationsRunnerConfig,
         override_dataset: HfDataset | None = None,
     ) -> "ActivationsStore":
+        if isinstance(cfg, CacheActivationsRunnerConfig):
+            return cls.from_cache_activations(model, cfg)
+
         cached_activations_path = cfg.cached_activations_path
         # set cached_activations_path to None if we're not using cached activations
         if (
@@ -564,7 +601,7 @@ class ActivationsStore:
                 total_size, context_size, num_layers, d_in, raise_on_epoch_end
             )
 
-        refill_iterator = range(0, batch_size * n_batches_in_buffer, batch_size)
+        refill_iterator = range(0, total_size, batch_size)
         # Initialize empty tensor buffer of the maximum required size with an additional dimension for layers
         new_buffer = torch.zeros(
             (total_size, training_context_size, num_layers, d_in),
@@ -572,7 +609,9 @@ class ActivationsStore:
             device=self.device,
         )
 
-        for refill_batch_idx_start in refill_iterator:
+        for refill_batch_idx_start in tqdm(
+            refill_iterator, leave=False, desc="Refilling buffer"
+        ):
             # move batch toks to gpu for model
             refill_batch_tokens = self.get_batch_tokens(
                 raise_at_epoch_end=raise_on_epoch_end
@@ -583,8 +622,6 @@ class ActivationsStore:
             new_buffer[
                 refill_batch_idx_start : refill_batch_idx_start + batch_size, ...
             ] = refill_activations
-
-            # pbar.update(1)
 
         new_buffer = new_buffer.reshape(-1, num_layers, d_in)
         if shuffle:
