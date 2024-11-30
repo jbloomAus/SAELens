@@ -14,7 +14,7 @@ from datasets import (
     load_dataset,
 )
 
-from sae_lens import __version__
+from sae_lens import __version__, logger
 
 DTYPE_MAP = {
     "float32": torch.float32,
@@ -342,7 +342,7 @@ class LanguageModelSAERunnerConfig:
         self.checkpoint_path = f"{self.checkpoint_path}/{unique_id}"
 
         if self.verbose:
-            print(
+            logger.info(
                 f"Run name: {self.d_sae}-L1-{self.l1_coefficient}-LR-{self.lr}-Tokens-{self.training_tokens:3.3e}"
             )
             # Print out some useful info:
@@ -351,43 +351,45 @@ class LanguageModelSAERunnerConfig:
                 * self.context_size
                 * self.n_batches_in_buffer
             )
-            print(f"n_tokens_per_buffer (millions): {n_tokens_per_buffer / 10 ** 6}")
+            logger.info(
+                f"n_tokens_per_buffer (millions): {n_tokens_per_buffer / 10 ** 6}"
+            )
             n_contexts_per_buffer = (
                 self.store_batch_size_prompts * self.n_batches_in_buffer
             )
-            print(
+            logger.info(
                 f"Lower bound: n_contexts_per_buffer (millions): {n_contexts_per_buffer / 10 ** 6}"
             )
 
             total_training_steps = (
                 self.training_tokens + self.finetuning_tokens
             ) // self.train_batch_size_tokens
-            print(f"Total training steps: {total_training_steps}")
+            logger.info(f"Total training steps: {total_training_steps}")
 
             total_wandb_updates = total_training_steps // self.wandb_log_frequency
-            print(f"Total wandb updates: {total_wandb_updates}")
+            logger.info(f"Total wandb updates: {total_wandb_updates}")
 
             # how many times will we sample dead neurons?
             # assert self.dead_feature_window <= self.feature_sampling_window, "dead_feature_window must be smaller than feature_sampling_window"
             n_feature_window_samples = (
                 total_training_steps // self.feature_sampling_window
             )
-            print(
+            logger.info(
                 f"n_tokens_per_feature_sampling_window (millions): {(self.feature_sampling_window * self.context_size * self.train_batch_size_tokens) / 10 ** 6}"
             )
-            print(
+            logger.info(
                 f"n_tokens_per_dead_feature_window (millions): {(self.dead_feature_window * self.context_size * self.train_batch_size_tokens) / 10 ** 6}"
             )
-            print(
+            logger.info(
                 f"We will reset the sparsity calculation {n_feature_window_samples} times."
             )
-            # print("Number tokens in dead feature calculation window: ", self.dead_feature_window * self.train_batch_size_tokens)
-            print(
+            # logger.info("Number tokens in dead feature calculation window: ", self.dead_feature_window * self.train_batch_size_tokens)
+            logger.info(
                 f"Number tokens in sparsity calculation window: {self.feature_sampling_window * self.train_batch_size_tokens:.2e}"
             )
 
         if self.use_ghost_grads:
-            print("Using Ghost Grads.")
+            logger.info("Using Ghost Grads.")
 
         if self.context_size < 0:
             raise ValueError(

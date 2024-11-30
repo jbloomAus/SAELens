@@ -13,6 +13,7 @@ import torch
 from jaxtyping import Float
 from torch import nn
 
+from sae_lens import logger
 from sae_lens.config import LanguageModelSAERunnerConfig
 from sae_lens.sae import SAE, SAEConfig
 from sae_lens.toolkit.pretrained_sae_loaders import (
@@ -647,11 +648,11 @@ class TrainingSAE(SAE):
         previous_distances = torch.norm(all_activations - previous_b_dec, dim=-1)
         distances = torch.norm(all_activations - out, dim=-1)
 
-        print("Reinitializing b_dec with mean of activations")
-        print(
+        logger.info("Reinitializing b_dec with mean of activations")
+        logger.debug(
             f"Previous distances: {previous_distances.median(0).values.mean().item()}"
         )
-        print(f"New distances: {distances.median(0).values.mean().item()}")
+        logger.debug(f"New distances: {distances.median(0).values.mean().item()}")
 
         self.b_dec.data = out.to(self.dtype).to(self.device)
 

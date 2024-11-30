@@ -1,5 +1,8 @@
 __version__ = "5.0.0"
 
+import logging
+
+logger = logging.getLogger(__name__)
 
 from .analysis.hooked_sae_transformer import HookedSAETransformer
 from .cache_activations_runner import CacheActivationsRunner

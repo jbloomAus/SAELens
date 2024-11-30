@@ -11,6 +11,8 @@ from transformer_lens.utils import (
 )
 from transformers import AutoModelForCausalLM, AutoTokenizer, PreTrainedTokenizerBase
 
+from sae_lens import logger
+
 
 def load_model(
     model_class_name: str,
@@ -23,11 +25,11 @@ def load_model(
     if "n_devices" in model_from_pretrained_kwargs:
         n_devices = model_from_pretrained_kwargs["n_devices"]
         if n_devices > 1:
-            print("MODEL LOADING:")
-            print("Setting model device to cuda for d_devices")
-            print(f"Will use cuda:0 to cuda:{n_devices-1}")
+            logger.info("MODEL LOADING:")
+            logger.info("Setting model device to cuda for d_devices")
+            logger.info(f"Will use cuda:0 to cuda:{n_devices-1}")
             device = "cuda"
-            print("-------------")
+            logger.info("-------------")
 
     if model_class_name == "HookedTransformer":
         return HookedTransformer.from_pretrained_no_processing(

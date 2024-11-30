@@ -1,5 +1,4 @@
 import json
-import logging
 import os
 import signal
 import sys
@@ -11,6 +10,7 @@ from safetensors.torch import save_file
 from simple_parsing import ArgumentParser
 from transformer_lens.hook_points import HookedRootModule
 
+from sae_lens import logger
 from sae_lens.config import HfDataset, LanguageModelSAERunnerConfig
 from sae_lens.load_model import load_model
 from sae_lens.sae import SAE_CFG_PATH, SAE_WEIGHTS_PATH, SPARSITY_PATH
@@ -46,11 +46,11 @@ class SAETrainingRunner:
         override_sae: TrainingSAE | None = None,
     ):
         if override_dataset is not None:
-            logging.warning(
+            logger.warning(
                 f"You just passed in a dataset which will override the one specified in your configuration: {cfg.dataset_path}. As a consequence this run will not be reproducible via configuration alone."
             )
         if override_model is not None:
-            logging.warning(
+            logger.warning(
                 f"You just passed in a model which will override the one specified in your configuration: {cfg.model_name}. As a consequence this run will not be reproducible via configuration alone."
             )
 
@@ -156,10 +156,10 @@ class SAETrainingRunner:
             sae = trainer.fit()
 
         except (KeyboardInterrupt, InterruptedException):
-            print("interrupted, saving progress")
+            logger.warning("interrupted, saving progress")
             checkpoint_name = trainer.n_training_tokens
             self.save_checkpoint(trainer, checkpoint_name=checkpoint_name)
-            print("done saving")
+            logger.info("done saving")
             raise
 
         return sae

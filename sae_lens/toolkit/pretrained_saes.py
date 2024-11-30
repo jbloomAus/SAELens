@@ -7,6 +7,7 @@ from huggingface_hub import hf_hub_download, list_repo_tree
 from safetensors import safe_open
 from tqdm import tqdm
 
+from sae_lens import logger
 from sae_lens.sae import SAE
 
 
@@ -144,7 +145,7 @@ def get_gpt2_small_ckrk_attn_out_saes() -> dict[str, SAE]:
 
     saes = {}
     for name, config in sae_configs.items():
-        print(f"Loading {name}")
+        logger.debug(f"Loading {name}")
         saes[name] = convert_connor_rob_sae_to_our_saelens_format(
             saes_weights[name], config
         )

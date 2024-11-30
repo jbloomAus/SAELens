@@ -8,6 +8,7 @@ from huggingface_hub import HfApi, create_repo, get_hf_file_metadata, hf_hub_url
 from huggingface_hub.utils import EntryNotFoundError, RepositoryNotFoundError
 from tqdm.autonotebook import tqdm
 
+from sae_lens import logger
 from sae_lens.sae import SAE, SAE_CFG_PATH, SAE_WEIGHTS_PATH, SPARSITY_PATH
 
 
@@ -45,7 +46,7 @@ def upload_saes_to_huggingface(
             )
         if add_default_readme:
             if _repo_file_exists(hf_repo_id, "README.md", hf_revision):
-                print("README.md already exists in the repo, skipping upload")
+                logger.info("README.md already exists in the repo, skipping upload")
             else:
                 readme = _create_default_readme(hf_repo_id, saes_dict)
                 readme_io = io.BytesIO()
