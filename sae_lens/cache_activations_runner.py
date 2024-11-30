@@ -163,7 +163,7 @@ class CacheActivationsRunner:
         assert (
             output_dir.exists()
             and output_dir.is_dir()
-            and not any(p for p in output_dir.iterdir() if not p.name == ".tmp_shards")
+            and not any(p for p in output_dir.iterdir() if p.name != ".tmp_shards")
         )
         if not (source_dir / first_shard_dir_name).exists():
             raise Exception(f"No shards in {source_dir} exist!")
@@ -312,11 +312,10 @@ class CacheActivationsRunner:
             d_in=self.cfg.d_in,
             num_layers=len(hook_names),
         )
-        shard = Dataset.from_dict(
+        return Dataset.from_dict(
             {hook_name: act for hook_name, act in zip(hook_names, buffer)},
             features=self.features,
         )
-        return shard
 
     @staticmethod
     def _get_sliced_context_size(
