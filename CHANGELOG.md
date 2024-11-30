@@ -2,6 +2,41 @@
 
 
 
+## v5.1.0 (2024-11-30)
+
+### Feature
+
+* feat: Replace print with controllable logging (#388)
+
+* replaces in pretrained_sae_loaders.py
+
+* replaces in load_model.py
+
+* replaces in neuronpedia_integration.py
+
+* replaces in tsea.py
+
+* replaces in pretrained_saes.py
+
+* replaces in cache_activations_runner.py
+
+* replaces in activations_store.py
+
+* replaces in training_sae.py
+
+* replaces in upload_saes_to_huggingface.py
+
+* replaces in sae_training_runner.py
+
+* replaces in config.py
+
+* fixes error for CI
+
+---------
+
+Co-authored-by: David Chanin &lt;chanindav@gmail.com&gt; ([`2bcd646`](https://github.com/jbloomAus/SAELens/commit/2bcd646bf69a116d5a7df14d2fe07988539a930b))
+
+
 ## v5.0.0 (2024-11-29)
 
 ### Breaking
