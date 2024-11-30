@@ -49,9 +49,9 @@ class Step(torch.autograd.Function):
         ctx.bandwidth = bandwidth
 
     @staticmethod
-    def backward(
+    def backward(  # type: ignore[override]
         ctx: Any, grad_output: torch.Tensor
-    ) -> tuple[None, torch.Tensor, None]:  # type: ignore[override]
+    ) -> tuple[None, torch.Tensor, None]:
         x, threshold = ctx.saved_tensors
         bandwidth = ctx.bandwidth
         threshold_grad = torch.sum(
@@ -80,9 +80,9 @@ class JumpReLU(torch.autograd.Function):
         ctx.bandwidth = bandwidth
 
     @staticmethod
-    def backward(
+    def backward(  # type: ignore[override]
         ctx: Any, grad_output: torch.Tensor
-    ) -> tuple[torch.Tensor, torch.Tensor, None]:  # type: ignore[override]
+    ) -> tuple[torch.Tensor, torch.Tensor, None]:
         x, threshold = ctx.saved_tensors
         bandwidth = ctx.bandwidth
         x_grad = (x > threshold) * grad_output  # We don't apply STE to x input

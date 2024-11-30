@@ -324,11 +324,10 @@ class CacheActivationsRunner:
             d_in=self.cfg.d_in,
             num_layers=len(hook_names),
         )
-        shard = Dataset.from_dict(
+        return Dataset.from_dict(
             {hook_name: act for hook_name, act in zip(hook_names, buffer)},
             features=self.features,
         )
-        return shard
 
     @staticmethod
     def _get_sliced_context_size(

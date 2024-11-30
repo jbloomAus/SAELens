@@ -104,9 +104,9 @@ def test_sae_runner_multiple_devices():
     cfg_dict["model_name"] = "gemma-2b"
     cfg_dict["d_in"] = 2048
     cfg_dict["device"] = "cuda:3"
-    cfg_dict["model_from_pretrained_kwargs"] = {
+    cfg_dict["model_from_pretrained_kwargs"] = {  # type: ignore
         "n_devices": torch.cuda.device_count() - 1
-    }  # type: ignore
+    }
     cfg_dict["act_store_device"] = "cpu"
     cfg_dict["dtype"] = "torch.bfloat16"
     cfg_dict["eval_every_n_wandb_logs"] = 3
@@ -125,9 +125,9 @@ def test_sae_runner_multiple_devices_sae_act_store_on_gpus():
     cfg_dict["model_name"] = "gemma-2b"
     cfg_dict["d_in"] = 2048
     cfg_dict["device"] = "cuda:2"
-    cfg_dict["model_from_pretrained_kwargs"] = {
+    cfg_dict["model_from_pretrained_kwargs"] = {  # type: ignore
         "n_devices": torch.cuda.device_count() - 2
-    }  # type: ignore
+    }
     cfg_dict["act_store_device"] = "cuda:3"
     cfg_dict["dtype"] = "torch.bfloat16"
     cfg_dict["eval_every_n_wandb_logs"] = 3

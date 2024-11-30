@@ -398,8 +398,11 @@ class SAETrainer:
 
     @torch.no_grad()
     def _update_pbar(
-        self, step_output: TrainStepOutput, pbar: tqdm, update_interval: int = 100
-    ):  # type: ignore
+        self,
+        step_output: TrainStepOutput,
+        pbar: tqdm,  # type: ignore
+        update_interval: int = 100,
+    ):
         if self.n_training_steps % update_interval == 0:
             loss_strs = " | ".join(
                 f"{loss_name}: {_unwrap_item(loss_value):.5f}"

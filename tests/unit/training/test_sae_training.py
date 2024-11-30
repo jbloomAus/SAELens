@@ -223,8 +223,8 @@ def test_sae_forward_with_mse_loss_norm(
     )
 
     assert (
-        pytest.approx(train_step_output.losses["mse_loss"].item()) == expected_mse_loss
-    )  # type: ignore
+        pytest.approx(train_step_output.losses["mse_loss"].item()) == expected_mse_loss  # type: ignore
+    )
 
     assert (
         pytest.approx(train_step_output.loss.detach(), rel=1e-3)

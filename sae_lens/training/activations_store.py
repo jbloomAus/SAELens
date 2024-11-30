@@ -55,7 +55,7 @@ class ActivationsStore:
         cls,
         model: HookedRootModule,
         cfg: CacheActivationsRunnerConfig,
-    ) -> "ActivationsStore":
+    ) -> ActivationsStore:
         """
         Public api to create an ActivationsStore from a cached activations dataset.
         """
@@ -90,7 +90,7 @@ class ActivationsStore:
         model: HookedRootModule,
         cfg: LanguageModelSAERunnerConfig | CacheActivationsRunnerConfig,
         override_dataset: HfDataset | None = None,
-    ) -> "ActivationsStore":
+    ) -> ActivationsStore:
         if isinstance(cfg, CacheActivationsRunnerConfig):
             return cls.from_cache_activations(model, cfg)
 
