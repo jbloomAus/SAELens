@@ -99,4 +99,4 @@ if __name__ == "__main__":
 
     tic = time.perf_counter()
     new = compute_geometric_median(sample, weights=weights, maxiter=100)
-    print(f"new code takes {time.perf_counter()-tic} seconds!")
+    print(f"new code takes {time.perf_counter()-tic} seconds!")  # noqa: T201

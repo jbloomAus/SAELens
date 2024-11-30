@@ -65,7 +65,11 @@ mamba = ["mamba-lens"]
 [tool.ruff.lint]
 exclude = ["*.ipynb"]
 ignore = ["E203", "E501", "E731", "F722", "E741", "F821", "F403", "ARG002"]
-extend-select = ["UP", "TID", "I", "F", "E", "ARG", "SIM", "RET", "LOG"]
+extend-select = ["UP", "TID", "I", "F", "E", "ARG", "SIM", "RET", "LOG", "T20"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/benchmark/*" = ["T20"]
+"scripts/*" = ["T20"]
 
 [tool.pyright]
 typeCheckingMode = "strict"

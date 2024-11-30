@@ -1,3 +1,4 @@
+# ruff: noqa: T201
 import argparse
 import json
 import math
