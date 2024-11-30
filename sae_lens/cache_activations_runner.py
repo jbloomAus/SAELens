@@ -163,7 +163,7 @@ class CacheActivationsRunner:
         assert (
             output_dir.exists()
             and output_dir.is_dir()
-            and not any(p for p in output_dir.iterdir() if p.name != ".tmp_shards")
+            and not any(p for p in output_dir.iterdir() if not p.name == ".tmp_shards")
         )
         if not (source_dir / first_shard_dir_name).exists():
             raise Exception(f"No shards in {source_dir} exist!")
@@ -242,11 +242,7 @@ class CacheActivationsRunner:
 
         ### Create temporary sharded datasets
 
-<<<<<<< HEAD
         logger.info(f"Started caching activations for {self.cfg.dataset_path}")
-=======
-        logger.info(f"Started caching {self.cfg.training_tokens} activations")
->>>>>>> a600943 (replaces in cache_activations_runner.py)
 
         for i in tqdm(range(self.cfg.n_buffers), desc="Caching activations"):
             try:
@@ -261,11 +257,7 @@ class CacheActivationsRunner:
 
             except StopIteration:
                 logger.warning(
-<<<<<<< HEAD
                     f"Warning: Ran out of samples while filling the buffer at batch {i} before reaching {self.cfg.n_buffers} batches."
-=======
-                    f"Warning: Ran out of samples while filling the buffer at batch {i} before reaching {self.n_buffers} batches. No more caching will occur."
->>>>>>> a600943 (replaces in cache_activations_runner.py)
                 )
                 break
 
@@ -280,11 +272,7 @@ class CacheActivationsRunner:
             dataset = dataset.shuffle(seed=self.cfg.seed)
 
         if self.cfg.hf_repo_id:
-<<<<<<< HEAD
             logger.info("Pushing to Huggingface Hub...")
-=======
-            logger.info("Pushing to hub...")
->>>>>>> a600943 (replaces in cache_activations_runner.py)
             dataset.push_to_hub(
                 repo_id=self.cfg.hf_repo_id,
                 num_shards=self.cfg.hf_num_shards,
@@ -324,10 +312,11 @@ class CacheActivationsRunner:
             d_in=self.cfg.d_in,
             num_layers=len(hook_names),
         )
-        return Dataset.from_dict(
+        shard = Dataset.from_dict(
             {hook_name: act for hook_name, act in zip(hook_names, buffer)},
             features=self.features,
         )
+        return shard
 
     @staticmethod
     def _get_sliced_context_size(
