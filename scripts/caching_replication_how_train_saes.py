@@ -21,31 +21,7 @@ model_name = "gelu-1l"
 model_batch_size = 16
 
 dataset_path = "NeelNanda/c4-tokenized-2b"
-<<<<<<< HEAD
 total_training_tokens = 100_000
-=======
-new_cached_activations_path = (
-    f"./cached_activations/{model_name}/{dataset_path}/{total_training_steps}"
-)
-
-# check how much data is in the directory
-if os.path.exists(new_cached_activations_path):
-    print("Directory exists. Checking how much data is in the directory.")
-    total_files = sum(
-        os.path.getsize(os.path.join(new_cached_activations_path, f))
-        for f in os.listdir(new_cached_activations_path)
-        if os.path.isfile(os.path.join(new_cached_activations_path, f))
-    )
-    print(f"Total size of directory: {total_files / 1e9:.2f} GB")
-
-# If the directory exists, delete it.
-if (
-    input("Delete the directory? (y/n): ") == "y"
-    and os.path.exists(new_cached_activations_path)
-    and os.path.exists(new_cached_activations_path)
-):
-    shutil.rmtree(new_cached_activations_path)
->>>>>>> a344cdd (adds SIM lint rule)
 
 if device == "cuda":
     torch.cuda.empty_cache()

@@ -90,14 +90,10 @@ class ActivationsStore:
         model: HookedRootModule,
         cfg: LanguageModelSAERunnerConfig | CacheActivationsRunnerConfig,
         override_dataset: HfDataset | None = None,
-<<<<<<< HEAD
     ) -> "ActivationsStore":
         if isinstance(cfg, CacheActivationsRunnerConfig):
             return cls.from_cache_activations(model, cfg)
 
-=======
-    ) -> ActivationsStore:
->>>>>>> 0e24ac2 (replaces isort, black, adn flake8 with Ruff)
         cached_activations_path = cfg.cached_activations_path
         # set cached_activations_path to None if we're not using cached activations
         if (
