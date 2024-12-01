@@ -6,15 +6,13 @@
   "python.testing.pytestEnabled": true,
 
   "[python]": {
-    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.defaultFormatter": "ms-python.black-formatter",
     "editor.formatOnSave": true,
     "editor.codeActionsOnSave": {
-      "source.fixAll": "explicit",
       "source.organizeImports": "explicit"
     }
   },
-
-  "notebook.formatOnSave.enabled": true,
-  "notebook.codeActionsOnSave": {},
+  "isort.args": ["--profile", "black"],
+"editor.defaultFormatter": "mikoz.black-py",
 "liveServer.settings.port": 5501
 }
