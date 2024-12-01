@@ -201,7 +201,7 @@ def test_build_train_step_log_dict(trainer: SAETrainer) -> None:
     }
 
 
-def test_train_sae_group_on_language_model__runs(
+def test_train_sae_on_language_model__runs(
     ts_model: HookedTransformer,
     tmp_path: Path,
 ) -> None:
@@ -223,7 +223,9 @@ def test_train_sae_group_on_language_model__runs(
         activation_store=activation_store,
         save_checkpoint_fn=lambda *args, **kwargs: None,
         cfg=cfg,
-    ).fit()
+    )
+    
+    sae.fit()
 
     assert isinstance(sae, TrainingSAE)
 

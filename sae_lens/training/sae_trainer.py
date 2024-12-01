@@ -1,8 +1,6 @@
 import contextlib
-import json
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Any, cast
+from typing import Any, Protocol, cast
 
 import torch
 import wandb
@@ -45,6 +43,15 @@ class TrainSAEOutput:
     log_feature_sparsities: torch.Tensor
 
 
+class SaveCheckpointFn(Protocol):
+    def __call__(
+        self,
+        trainer: "SAETrainer",
+        checkpoint_name: str,
+        wandb_aliases: list[str] | None = None,
+    ) -> None: ...
+
+
 class SAETrainer:
     """
     Core SAE class used for inference. For training, see TrainingSAE.
@@ -55,12 +62,14 @@ class SAETrainer:
         model: HookedRootModule,
         sae: TrainingSAE,
         activation_store: ActivationsStore,
+        save_checkpoint_fn: SaveCheckpointFn,
         cfg: LanguageModelSAERunnerConfig,
     ) -> None:
 
         self.model = model
         self.sae = sae
         self.activation_store = activation_store
+        self.save_checkpoint = save_checkpoint_fn
         self.cfg = cfg
 
         self.n_training_steps: int = 0
@@ -194,6 +203,7 @@ class SAETrainer:
 
         # save final sae group to checkpoints folder
         self.save_checkpoint(
+            trainer=self,
             checkpoint_name=f"final_{self.n_training_tokens}",
             wandb_aliases=["final_model"],
         )
@@ -385,7 +395,10 @@ class SAETrainer:
             and self.n_training_tokens > self.checkpoint_thresholds[0]
         ):
 
-            self.save_checkpoint(checkpoint_name=str(self.n_training_tokens))
+            self.save_checkpoint(
+                trainer=self,
+                checkpoint_name=str(self.n_training_tokens),
+            )
             self.checkpoint_thresholds.pop(0)
 
     @torch.no_grad()
@@ -417,59 +430,6 @@ class SAETrainer:
                     param.requires_grad = False
 
             self.finetuning = True
-
-    def save_checkpoint(
-        self,
-        checkpoint_name: str,
-        wandb_aliases: list[str] | None = None,
-    ) -> None:
-        """Save a checkpoint of the SAE locally and optionally to wandb."""
-
-        base_path = Path(self.cfg.checkpoint_path) / checkpoint_name
-        base_path.mkdir(exist_ok=True)
-
-        self.activation_store.save_state(base_path)
-
-        # TODO(oli-clive-griffin): Is this broken? it seems like this is "assymetrical" in the sense that
-        # this changes the output of the SAE.
-        # Should we not also balance this by scaling the encoder weights?
-        if self.sae.cfg.normalize_sae_decoder:
-            self.sae.set_decoder_norm_to_unit_norm()
-
-        weights_path, cfg_path, sparsity_path = self.sae.save_model(
-            str(base_path),
-            self.log_feature_sparsity,
-        )
-
-        # let's over write the cfg file with the trainer cfg, which is a super set of the original cfg.
-        # and should not cause issues but give us more info about SAEs we trained in SAE Lens.
-        config = self.cfg.to_dict()
-        with open(cfg_path, "w") as f:
-            json.dump(config, f)
-
-        if self.cfg.log_to_wandb:
-            # Avoid wandb saving errors such as:
-            #   ValueError: Artifact name may only contain alphanumeric characters, dashes, underscores, and dots. Invalid name: sae_google/gemma-2b_etc
-            sae_name = self.sae.get_name().replace("/", "__")
-
-            # save model weights and cfg
-            model_artifact = wandb.Artifact(
-                sae_name,
-                type="model",
-                metadata=dict(self.cfg.__dict__),
-            )
-            model_artifact.add_file(str(weights_path))
-            model_artifact.add_file(str(cfg_path))
-            wandb.log_artifact(model_artifact, aliases=wandb_aliases)
-
-            # save log feature sparsity
-            sparsity_artifact = wandb.Artifact(
-                f"{sae_name}_log_feature_sparsity",
-                type="log_feature_sparsity",
-                metadata=dict(self.cfg.__dict__),
-            )
-            sparsity_artifact.add_file(str(sparsity_path))
-            wandb.log_artifact(sparsity_artifact)
 
 
 def _unwrap_item(item: float | torch.Tensor) -> float:

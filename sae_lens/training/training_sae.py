@@ -5,7 +5,7 @@ https://github.com/ArthurConmy/sae/blob/main/sae/model.py
 import json
 import os
 from dataclasses import dataclass, fields
-from typing import Any, Literal, Optional
+from typing import Any, Optional
 
 import einops
 import numpy as np
@@ -14,7 +14,7 @@ from jaxtyping import Float
 from torch import nn
 
 from sae_lens import logger
-from sae_lens.config import LanguageModelSAERunnerConfig
+from sae_lens.config import DecoderBiasInitMethod, LanguageModelSAERunnerConfig
 from sae_lens.sae import SAE, SAEConfig
 from sae_lens.toolkit.pretrained_sae_loaders import (
     handle_config_defaulting,
@@ -114,7 +114,7 @@ class TrainingSAEConfig(SAEConfig):
     decoder_heuristic_init: bool
     init_encoder_as_decoder_transpose: bool
     scale_sparsity_penalty_by_decoder_norm: bool
-    b_dec_init_method: Literal["geometric_median", "mean"]
+    b_dec_init_method: DecoderBiasInitMethod
 
     @classmethod
     def from_sae_runner_config(
@@ -157,6 +157,7 @@ class TrainingSAEConfig(SAEConfig):
             model_from_pretrained_kwargs=cfg.model_from_pretrained_kwargs or {},
             jumprelu_init_threshold=cfg.jumprelu_init_threshold,
             jumprelu_bandwidth=cfg.jumprelu_bandwidth,
+            b_dec_init_method=cfg.b_dec_init_method,
         )
 
     @classmethod

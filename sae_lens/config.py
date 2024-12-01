@@ -27,7 +27,10 @@ DTYPE_MAP = {
     "torch.bfloat16": torch.bfloat16,
 }
 
+
 HfDataset = DatasetDict | Dataset | IterableDatasetDict | IterableDataset
+
+DecoderBiasInitMethod = Literal["geometric_median", "mean", "zeros"]
 
 
 @dataclass
@@ -140,7 +143,7 @@ class LanguageModelSAERunnerConfig:
     architecture: Literal["standard", "gated", "jumprelu", "topk"] = "standard"
     d_in: int = 512
     d_sae: Optional[int] = None
-    b_dec_init_method: Literal["geometric_median", "mean", "zeros"] = "geometric_median"
+    b_dec_init_method: DecoderBiasInitMethod = "geometric_median"
     expansion_factor: Optional[int] = (
         None  # defaults to 4 if d_sae and expansion_factor is None
     )
@@ -636,7 +639,7 @@ class ToyModelSAERunnerConfig:
     l1_coefficient: float = 1e-3
     lr: float = 3e-4
     train_batch_size: int = 1024
-    b_dec_init_method: Literal["geometric_median", "mean", "zeros"] = "geometric_median"
+    b_dec_init_method: DecoderBiasInitMethod = "geometric_median"
 
     # Sparsity / Dead Feature Handling
     use_ghost_grads: bool = (
