@@ -27,7 +27,7 @@ def compute_geometric_median(
     maxiter: int = 100,
     ftol: float = 1e-20,
     do_log: bool = False,
-):
+) -> torch.Tensor:
     """
     :param points: ``torch.Tensor`` of shape ``(n, d)``
     :param weights: Optional ``torch.Tensor`` of shape :math:``(n,)``.
@@ -36,11 +36,7 @@ def compute_geometric_median(
     :param maxiter: Maximum number of Weiszfeld iterations. Default 100
     :param ftol: If objective value does not improve by at least this `ftol` fraction, terminate the algorithm. Default 1e-20.
     :param do_log: If true will return a log of function values encountered through the course of the algorithm
-    :return: estimate of the geometric median, which is a ``torch.Tensor`` object of shape :math:``(d,)``
-    # :return: SimpleNamespace object with fields
-    #     - `median`: estimate of the geometric median, which is a ``torch.Tensor`` object of shape :math:``(d,)``
-    #     - `termination`: string explaining how the algorithm terminated.
-    #     - `logs`: function values encountered through the course of the algorithm in a list (None if do_log is false).
+    :return: estimate of the geometric median, ``torch.Tensor`` of shape ``(d,)``
     """
     with torch.no_grad():
 
@@ -77,16 +73,6 @@ def compute_geometric_median(
     median = weighted_average(points, new_weights)  # allow autodiff to track it
 
     return median
-    # return SimpleNamespace(
-    #     median=median,
-    #     new_weights=new_weights,
-    #     termination=(
-    #         "function value converged within tolerance"
-    #         if early_termination
-    #         else "maximum iterations reached"
-    #     ),
-    #     logs=logs,
-    # )
 
 
 if __name__ == "__main__":

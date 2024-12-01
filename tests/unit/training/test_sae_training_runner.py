@@ -71,20 +71,17 @@ def training_runner(
     return runner
 
 
-def test_save_checkpoint(training_runner: SAETrainingRunner, trainer: SAETrainer):
+def test_save_checkpoint(sae_trainer: SAETrainer, trainer: SAETrainer):
 
-    training_runner.save_checkpoint(
-        self=trainer,
-        checkpoint_name="test",
-    )
+    sae_trainer.save_checkpoint(checkpoint_name="test")
 
-    contents = os.listdir(training_runner.cfg.checkpoint_path + "/test")
+    contents = os.listdir(sae_trainer.cfg.checkpoint_path + "/test")
 
     assert "sae_weights.safetensors" in contents
     assert "sparsity.safetensors" in contents
     assert "cfg.json" in contents
 
-    sae = SAE.load_from_pretrained(training_runner.cfg.checkpoint_path + "/test")
+    sae = SAE.load_from_pretrained(sae_trainer.cfg.checkpoint_path + "/test")
 
     assert isinstance(sae, SAE)
 
