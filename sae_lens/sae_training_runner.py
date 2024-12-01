@@ -229,7 +229,7 @@ class SAETrainingRunner:
             sparsity_artifact = wandb.Artifact(
                 f"{sae_name}_log_feature_sparsity",
                 type="log_feature_sparsity",
-                metadata=dict(self.cfg.__dict__),
+                metadata=dict(trainer.cfg.__dict__),
             )
             sparsity_artifact.add_file(str(sparsity_path))
             wandb.log_artifact(sparsity_artifact)
