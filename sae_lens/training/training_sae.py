@@ -237,7 +237,12 @@ class TrainingSAE(SAE):
     dtype: torch.dtype
     device: torch.device
 
-    def __init__(self, cfg: TrainingSAEConfig, use_error_term: bool = False):
+    def __init__(
+        self,
+        cfg: TrainingSAEConfig,
+        sample_activations: torch.Tensor,
+        use_error_term: bool = False,
+    ):
         base_sae_cfg = SAEConfig.from_dict(cfg.get_base_sae_cfg_dict())
         super().__init__(base_sae_cfg)
         self.cfg = cfg  # type: ignore
@@ -268,11 +273,10 @@ class TrainingSAE(SAE):
 
         self.mse_loss_fn = self._get_mse_loss_fn()
 
+        self._init_b_decs(sample_activations)
+
     @torch.no_grad()
     def _init_b_decs(self, layer_activations: torch.Tensor) -> None:
-        """
-        extract all activations at a certain layer and use for sae b_dec initialization
-        """
         if self.cfg.b_dec_init_method == "geometric_median":
             # get geometric median of the activations if we're using those.
             median = compute_geometric_median(layer_activations, maxiter=100)

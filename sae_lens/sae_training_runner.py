@@ -1,13 +1,13 @@
 import json
 import signal
 import sys
+from pathlib import Path
 from typing import Any, Sequence, cast
 
 import torch
 import wandb
 from simple_parsing import ArgumentParser
 from transformer_lens.hook_points import HookedRootModule
-from pathlib import Path
 
 from sae_lens import logger
 from sae_lens.config import HfDataset, LanguageModelSAERunnerConfig
@@ -67,15 +67,15 @@ class SAETrainingRunner:
                     self.cfg.from_pretrained_path, self.cfg.device
                 )
             else:
-                self.sae = TrainingSAE(
-                    TrainingSAEConfig.from_dict(
-                        self.cfg.get_training_sae_cfg_dict(),
-                    )
-                )
                 layer_acts = self.activations_store.storage_buffer.detach()[
                     :, 0, :
                 ]  # TODO(oli-clive-griffin): is this a bug? I __think__ 0 means the first layer.
-                self.sae._init_b_decs(layer_acts)
+                self.sae = TrainingSAE(
+                    TrainingSAEConfig.from_dict(
+                        self.cfg.get_training_sae_cfg_dict(),
+                    ),
+                    layer_activations=layer_acts,
+                )
         else:
             self.sae = override_sae
 
@@ -162,7 +162,6 @@ class SAETrainingRunner:
 
         return sae
 
-
     def save_checkpoint(
         self,
         trainer: SAETrainer,
@@ -202,7 +201,7 @@ class SAETrainingRunner:
             model_artifact = wandb.Artifact(
                 sae_name,
                 type="model",
-                metadata=dict(self.cfg.__dict__),
+                metadata=dict(trainer.cfg.__dict__),
             )
             model_artifact.add_file(str(weights_path))
             model_artifact.add_file(str(cfg_path))
@@ -216,7 +215,6 @@ class SAETrainingRunner:
             )
             sparsity_artifact.add_file(str(sparsity_path))
             wandb.log_artifact(sparsity_artifact)
-
 
 
 def _parse_cfg_args(args: Sequence[str]) -> LanguageModelSAERunnerConfig:
