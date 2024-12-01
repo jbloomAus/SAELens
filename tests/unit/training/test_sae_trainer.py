@@ -223,9 +223,7 @@ def test_train_sae_on_language_model__runs(
         activation_store=activation_store,
         save_checkpoint_fn=lambda *args, **kwargs: None,
         cfg=cfg,
-    )
-    
-    sae.fit()
+    ).fit()
 
     assert isinstance(sae, TrainingSAE)
 
