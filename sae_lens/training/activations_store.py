@@ -23,6 +23,7 @@ from transformers import AutoTokenizer, PreTrainedTokenizerBase
 from sae_lens import logger
 from sae_lens.config import (
     DTYPE_MAP,
+    ActivationNormalizationStrategy,
     CacheActivationsRunnerConfig,
     HfDataset,
     LanguageModelSAERunnerConfig,
@@ -44,6 +45,7 @@ class ActivationsStore:
     dataset: HfDataset
     cached_activations_path: str | None
     cached_activation_dataset: Dataset | None = None
+    normalize_activations: ActivationNormalizationStrategy
     tokens_column: Literal["tokens", "input_ids", "text", "problem"]
     hook_name: str
     hook_layer: int
@@ -183,7 +185,7 @@ class ActivationsStore:
         store_batch_size_prompts: int,
         train_batch_size_tokens: int,
         prepend_bos: bool,
-        normalize_activations: str,
+        normalize_activations: ActivationNormalizationStrategy,
         device: torch.device,
         dtype: str,
         cached_activations_path: str | None = None,
@@ -410,6 +412,9 @@ class ActivationsStore:
 
     def unscale(self, activations: torch.Tensor) -> torch.Tensor:
         return activations / self.estimated_norm_scaling_factor
+
+    def get_norm_scaling_factor(self, activations: torch.Tensor) -> torch.Tensor:
+        return (self.d_in**0.5) / activations.norm(dim=-1).mean()
 
     @torch.no_grad()
     def estimate_norm_scaling_factor(self, n_batches_for_norm_estimate: int = int(1e3)):

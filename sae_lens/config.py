@@ -27,9 +27,11 @@ DTYPE_MAP = {
     "torch.bfloat16": torch.bfloat16,
 }
 
-
 HfDataset = DatasetDict | Dataset | IterableDatasetDict | IterableDataset
 
+ActivationNormalizationStrategy = Literal[
+    "none", "expected_average_only_in", "constant_norm_rescale", "layer_norm"
+]
 DecoderBiasInitMethod = Literal["geometric_median", "mean", "zeros"]
 
 
@@ -45,7 +47,7 @@ class LanguageModelSAERunnerConfig:
         hook_name (str): The name of the hook to use. This should be a valid TransformerLens hook.
         hook_eval (str): NOT CURRENTLY IN USE. The name of the hook to use for evaluation.
         hook_layer (int): The index of the layer to hook. Used to stop forward passes early and speed up processing.
-        hook_head_index (int, optional): When the hook is for an activation with a head index, we can specify a specific head to use here.
+        hook_head_index (int, optional): When the hook if for an activatio with a head index, we can specify a specific head to use here.
         dataset_path (str): A Hugging Face dataset path.
         dataset_trust_remote_code (bool): Whether to trust remote code when loading datasets from Huggingface.
         streaming (bool): Whether to stream the dataset. Streaming large datasets is usually practical.
@@ -70,7 +72,7 @@ class LanguageModelSAERunnerConfig:
         finetuning_tokens (int): The number of finetuning tokens. See [here](https://www.lesswrong.com/posts/3JuSjTZyMzaSeTxKk/addressing-feature-suppression-in-saes)
         store_batch_size_prompts (int): The batch size for storing activations. This controls how many prompts are in the batch of the language model when generating actiations.
         train_batch_size_tokens (int): The batch size for training. This controls the batch size of the SAE Training loop.
-        normalize_activations (str): Activation Normalization Strategy. Either none, expected_average_only_in (estimate the average activation norm and divide activations by it following Anthropic April 2024 update -> this can be folded post training and set to None), or constant_norm_rescale (at runtime set activation norm to sqrt(d_in) and then scale up the SAE output).
+        normalize_activations (ActivationNormalizationStrategy): Activation Normalization Strategy. Either "none", "expected_average_only_in" (estimate the average activation norm and divide activations by it following Anthropic April 2024 update -> this can be folded post training and set to None), "constant_norm_rescale" (at runtime set activation norm to sqrt(d_in) and then scale up the SAE output), or "layer_norm" <ADD DESCRIPTION HERE>.
         seqpos_slice (tuple): Determines slicing of activations when constructing batches during training. The slice should be (start_pos, end_pos, optional[step_size]), e.g. for Othello we sometimes use (5, -5). Note, step_size > 0.
         device (str): The device to use. Usually cuda.
         act_store_device (str): The device to use for the activation store. CPU is advised in order to save vram.
@@ -163,9 +165,7 @@ class LanguageModelSAERunnerConfig:
     finetuning_tokens: int = 0
     store_batch_size_prompts: int = 32
     train_batch_size_tokens: int = 4096
-    normalize_activations: str = (
-        "none"  # none, expected_average_only_in (Anthropic April 2024 Update), constant_norm_rescale (Anthropic Feb 2024 Update)
-    )
+    normalize_activations: ActivationNormalizationStrategy = "none"
     seqpos_slice: tuple[int | None, ...] = (None,)
 
     # Misc
@@ -316,16 +316,6 @@ class LanguageModelSAERunnerConfig:
                 "If we are fine tuning the decoder, we can't be applying b_dec to the input.\nSet apply_b_dec_to_input to False."
             )
 
-        if self.normalize_activations not in [
-            "none",
-            "expected_average_only_in",
-            "constant_norm_rescale",
-            "layer_norm",
-        ]:
-            raise ValueError(
-                f"normalize_activations must be none, layer_norm, expected_average_only_in, or constant_norm_rescale. Got {self.normalize_activations}"
-            )
-
         if self.act_store_device == "with_model":
             self.act_store_device = self.device
 
@@ -446,7 +436,6 @@ class LanguageModelSAERunnerConfig:
             "jumprelu_init_threshold": self.jumprelu_init_threshold,
             "jumprelu_bandwidth": self.jumprelu_bandwidth,
             "scale_sparsity_penalty_by_decoder_norm": self.scale_sparsity_penalty_by_decoder_norm,
-            "b_dec_init_method": self.b_dec_init_method,
         }
 
     def to_dict(self) -> dict[str, Any]:

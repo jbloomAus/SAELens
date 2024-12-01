@@ -17,7 +17,7 @@ from safetensors.torch import save_file
 from torch import nn
 from transformer_lens.hook_points import HookedRootModule, HookPoint
 
-from sae_lens.config import DTYPE_MAP
+from sae_lens.config import DTYPE_MAP, ActivationNormalizationStrategy
 from sae_lens.toolkit.pretrained_sae_loaders import (
     NAMED_PRETRAINED_SAE_LOADERS,
     get_conversion_loader_name,
@@ -31,7 +31,7 @@ from sae_lens.toolkit.pretrained_saes_directory import (
 
 SPARSITY_FILENAME = "sparsity.safetensors"
 SAE_WEIGHTS_FILENAME = "sae_weights.safetensors"
-SAE_CFG_FILNAME = "cfg.json"
+SAE_CFG_FILENAME = "cfg.json"
 
 T = TypeVar("T", bound="SAE")
 
@@ -57,7 +57,7 @@ class SAEConfig:
     prepend_bos: bool
     dataset_path: str
     dataset_trust_remote_code: bool
-    normalize_activations: str
+    normalize_activations: ActivationNormalizationStrategy
 
     # misc
     dtype: str
@@ -484,7 +484,7 @@ class SAE(HookedRootModule):
             self.b_enc.data = self.b_enc.data * W_dec_norms.squeeze()
 
     @torch.no_grad()
-    def fold_activation_norm_scaling_factor_into_weights(
+    def fold_activation_norm_scaling_factor(
         self, activation_norm_scaling_factor: float
     ):
         self.W_enc.data = self.W_enc.data * activation_norm_scaling_factor
@@ -516,7 +516,7 @@ class SAE(HookedRootModule):
         # save the config
         config = self.cfg.to_dict()
 
-        cfg_path = path / SAE_CFG_FILNAME
+        cfg_path = path / SAE_CFG_FILENAME
         with open(cfg_path, "w") as f:
             json.dump(config, f)
 
@@ -542,7 +542,7 @@ class SAE(HookedRootModule):
     ) -> "SAE":
 
         # get the config
-        config_path = os.path.join(path, SAE_CFG_FILNAME)
+        config_path = os.path.join(path, SAE_CFG_FILENAME)
         with open(config_path, "r") as f:
             cfg_dict = json.load(f)
         cfg_dict = handle_config_defaulting(cfg_dict)
@@ -644,9 +644,7 @@ class SAE(HookedRootModule):
         if cfg_dict.get("normalize_activations") == "expected_average_only_in":
             norm_scaling_factor = get_norm_scaling_factor(release, sae_id)
             if norm_scaling_factor is not None:
-                sae.fold_activation_norm_scaling_factor_into_weights(
-                    norm_scaling_factor
-                )
+                sae.fold_activation_norm_scaling_factor(norm_scaling_factor)
                 cfg_dict["normalize_activations"] = "none"
             else:
                 warnings.warn(

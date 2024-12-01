@@ -119,7 +119,7 @@ def test_sae_fold_norm_scaling_factor(cfg: LanguageModelSAERunnerConfig):
     sae.turn_off_forward_pass_hook_z_reshaping()  # hook z reshaping not needed here.
 
     sae2 = deepcopy(sae)
-    sae2.fold_activation_norm_scaling_factor_into_weights(norm_scaling_factor)
+    sae2.fold_activation_norm_scaling_factor(norm_scaling_factor)
 
     assert sae2.cfg.normalize_activations == "none"
 

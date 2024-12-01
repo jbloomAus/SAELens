@@ -1,6 +1,6 @@
 import contextlib
 from dataclasses import dataclass
-from typing import Any, Protocol, cast
+from typing import Any, Optional, Protocol, cast
 
 import torch
 import wandb
@@ -36,20 +36,20 @@ def _update_sae_lens_training_version(sae: TrainingSAE) -> None:
     sae.cfg.sae_lens_training_version = str(__version__)
 
 
-@dataclass
-class TrainSAEOutput:
-    sae: TrainingSAE
-    checkpoint_path: str
-    log_feature_sparsities: torch.Tensor
-
-
 class SaveCheckpointFn(Protocol):
     def __call__(
         self,
         trainer: "SAETrainer",
         checkpoint_name: str,
-        wandb_aliases: list[str] | None = None,
+        wandb_aliases: Optional[list[str]] = None,
     ) -> None: ...
+
+
+@dataclass
+class TrainSAEOutput:
+    sae: TrainingSAE
+    checkpoint_path: str
+    log_feature_sparsities: torch.Tensor
 
 
 class SAETrainer:
@@ -197,7 +197,8 @@ class SAETrainer:
             ### If n_training_tokens > sae_group.cfg.training_tokens, then we should switch to fine-tuning (if we haven't already)
             self._begin_finetuning_if_needed()
 
-        self.sae.fold_activation_norm_scaling_factor_into_weights(
+        # fold the estimated norm scaling factor into the sae weights
+        self.sae.fold_activation_norm_scaling_factor(
             self.activation_store.estimated_norm_scaling_factor
         )
 
@@ -394,7 +395,6 @@ class SAETrainer:
             self.checkpoint_thresholds
             and self.n_training_tokens > self.checkpoint_thresholds[0]
         ):
-
             self.save_checkpoint(
                 trainer=self,
                 checkpoint_name=str(self.n_training_tokens),
