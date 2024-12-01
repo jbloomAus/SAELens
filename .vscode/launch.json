@@ -1,0 +1,15 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        
+        {
+            "name": "Python: pytest",
+            "type": "python",
+            "request": "launch",
+            "module": "pytest",  // Run pytest as a module
+            "args": ["tests/unit/analysis/test_hooked_sae_transformer.py"],  // Path to your test file
+            "console": "integratedTerminal",
+            "justMyCode": false
+        }
+    ]
+}
