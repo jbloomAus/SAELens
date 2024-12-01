@@ -67,7 +67,7 @@ class LanguageModelSAERunnerConfig:
         finetuning_tokens (int): The number of finetuning tokens. See [here](https://www.lesswrong.com/posts/3JuSjTZyMzaSeTxKk/addressing-feature-suppression-in-saes)
         store_batch_size_prompts (int): The batch size for storing activations. This controls how many prompts are in the batch of the language model when generating actiations.
         train_batch_size_tokens (int): The batch size for training. This controls the batch size of the SAE Training loop.
-        normalize_activations (str): Activation Normalization Strategy. Either none, expected_average_only_in (estimate the average activation norm and divide activations by it following Antrhopic April update -> this can be folded post training and set to None), or constant_norm_rescale (at runtime set activation norm to sqrt(d_in) and then scale up the SAE output).
+        normalize_activations (str): Activation Normalization Strategy. Either none, expected_average_only_in (estimate the average activation norm and divide activations by it following Anthropic April update -> this can be folded post training and set to None), or constant_norm_rescale (at runtime set activation norm to sqrt(d_in) and then scale up the SAE output).
         seqpos_slice (tuple): Determines slicing of activations when constructing batches during training. The slice should be (start_pos, end_pos, optional[step_size]), e.g. for Othello we sometimes use (5, -5). Note, step_size > 0.
         device (str): The device to use. Usually cuda.
         act_store_device (str): The device to use for the activation store. CPU is advised in order to save vram.
@@ -140,7 +140,7 @@ class LanguageModelSAERunnerConfig:
     architecture: Literal["standard", "gated", "jumprelu", "topk"] = "standard"
     d_in: int = 512
     d_sae: Optional[int] = None
-    b_dec_init_method: str = "geometric_median"
+    b_dec_init_method: Literal["geometric_median", "mean", "zeros"] = "geometric_median"
     expansion_factor: Optional[int] = (
         None  # defaults to 4 if d_sae and expansion_factor is None
     )
@@ -297,11 +297,6 @@ class LanguageModelSAERunnerConfig:
             else:
                 self.model_from_pretrained_kwargs = {}
 
-        if self.b_dec_init_method not in ["geometric_median", "mean", "zeros"]:
-            raise ValueError(
-                f"b_dec_init_method must be geometric_median, mean, or zeros. Got {self.b_dec_init_method}"
-            )
-
         if self.normalize_sae_decoder and self.decoder_heuristic_init:
             raise ValueError(
                 "You can't normalize the decoder and use heuristic initialization."
@@ -448,6 +443,7 @@ class LanguageModelSAERunnerConfig:
             "jumprelu_init_threshold": self.jumprelu_init_threshold,
             "jumprelu_bandwidth": self.jumprelu_bandwidth,
             "scale_sparsity_penalty_by_decoder_norm": self.scale_sparsity_penalty_by_decoder_norm,
+            "b_dec_init_method": self.b_dec_init_method,
         }
 
     def to_dict(self) -> dict[str, Any]:
@@ -640,7 +636,7 @@ class ToyModelSAERunnerConfig:
     l1_coefficient: float = 1e-3
     lr: float = 3e-4
     train_batch_size: int = 1024
-    b_dec_init_method: str = "geometric_median"
+    b_dec_init_method: Literal["geometric_median", "mean", "zeros"] = "geometric_median"
 
     # Sparsity / Dead Feature Handling
     use_ghost_grads: bool = (

@@ -4,6 +4,7 @@ import contextlib
 import json
 import os
 import warnings
+from pathlib import Path
 from typing import Any, Generator, Iterator, Literal, cast
 
 import datasets
@@ -14,7 +15,6 @@ from huggingface_hub import hf_hub_download
 from huggingface_hub.utils import HfHubHTTPError
 from jaxtyping import Float
 from requests import HTTPError
-from safetensors.torch import save_file
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformer_lens.hook_points import HookedRootModule
@@ -29,6 +29,8 @@ from sae_lens.config import (
 )
 from sae_lens.sae import SAE
 from sae_lens.tokenization_and_batching import concat_and_batch_sequences
+
+ACTIVATION_STORE_STATE_FILENAME = "activation_store_state.json"
 
 
 # TODO: Make an activation store config class to be consistent with the rest of the code.
@@ -291,6 +293,14 @@ class ActivationsStore:
 
         # TODO add support for "mixed loading" (ie use cache until you run out, then switch over to streaming from HF)
 
+    @torch.no_grad()
+    def estimate_norm_scaling_factor_if_needed(self) -> None:
+        """If needed, update the estimated norm scaling factor."""
+        if self.normalize_activations == "expected_average_only_in":
+            self.estimated_norm_scaling_factor = self.estimate_norm_scaling_factor()
+        else:
+            self.estimated_norm_scaling_factor = 1.0
+
     def _iterate_raw_dataset(
         self,
     ) -> Generator[torch.Tensor | list[int] | str, None, None]:
@@ -400,9 +410,6 @@ class ActivationsStore:
 
     def unscale(self, activations: torch.Tensor) -> torch.Tensor:
         return activations / self.estimated_norm_scaling_factor
-
-    def get_norm_scaling_factor(self, activations: torch.Tensor) -> torch.Tensor:
-        return (self.d_in**0.5) / activations.norm(dim=-1).mean()
 
     @torch.no_grad()
     def estimate_norm_scaling_factor(self, n_batches_for_norm_estimate: int = int(1e3)):
@@ -700,16 +707,13 @@ class ActivationsStore:
             self._dataloader = self.get_data_loader()
             return next(self.dataloader)
 
-    def state_dict(self) -> dict[str, torch.Tensor]:
-        result = {
-            "n_dataset_processed": torch.tensor(self.n_dataset_processed),
+    def save_state(self, path: Path):
+        state = {
+            "norm_scaling_factor": self.estimated_norm_scaling_factor,
         }
-        if self._storage_buffer is not None:  # first time might be None
-            result["storage_buffer"] = self._storage_buffer
-        return result
 
-    def save(self, file_path: str):
-        save_file(self.state_dict(), file_path)
+        with open(path / ACTIVATION_STORE_STATE_FILENAME, "w") as f:
+            json.dump(state, f)
 
 
 def validate_pretokenized_dataset_tokenizer(

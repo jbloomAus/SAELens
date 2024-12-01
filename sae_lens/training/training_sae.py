@@ -5,7 +5,7 @@ https://github.com/ArthurConmy/sae/blob/main/sae/model.py
 import json
 import os
 from dataclasses import dataclass, fields
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 import einops
 import numpy as np
@@ -20,6 +20,7 @@ from sae_lens.toolkit.pretrained_sae_loaders import (
     handle_config_defaulting,
     read_sae_from_disk,
 )
+from sae_lens.training.geometric_median import compute_geometric_median
 
 SPARSITY_PATH = "sparsity.safetensors"
 SAE_WEIGHTS_PATH = "sae_weights.safetensors"
@@ -113,6 +114,7 @@ class TrainingSAEConfig(SAEConfig):
     decoder_heuristic_init: bool
     init_encoder_as_decoder_transpose: bool
     scale_sparsity_penalty_by_decoder_norm: bool
+    b_dec_init_method: Literal["geometric_median", "mean"]
 
     @classmethod
     def from_sae_runner_config(
@@ -253,17 +255,29 @@ class TrainingSAE(SAE):
         else:
             raise ValueError(f"Unknown architecture: {cfg.architecture}")
 
-        self.check_cfg_compatibility()
+        self._check_cfg_compatibility()
 
         self.use_error_term = use_error_term
 
-        self.initialize_weights_complex()
+        self._initialize_weights_complex()
 
         # The training SAE will assume that the activation store handles
         # reshaping.
         self.turn_off_forward_pass_hook_z_reshaping()
 
         self.mse_loss_fn = self._get_mse_loss_fn()
+
+    @torch.no_grad()
+    def _init_b_decs(self, layer_activations: torch.Tensor) -> None:
+        """
+        extract all activations at a certain layer and use for sae b_dec initialization
+        """
+        if self.cfg.b_dec_init_method == "geometric_median":
+            # get geometric median of the activations if we're using those.
+            median = compute_geometric_median(layer_activations, maxiter=100)
+            self.initialize_b_dec_with_precalculated(median)
+        elif self.cfg.b_dec_init_method == "mean":
+            self.initialize_b_dec_with_mean(layer_activations)
 
     def initialize_weights_jumprelu(self):
         # same as the superclass, except we use a log_threshold parameter instead of threshold
@@ -282,7 +296,7 @@ class TrainingSAE(SAE):
     def from_dict(cls, config_dict: dict[str, Any]) -> "TrainingSAE":
         return cls(TrainingSAEConfig.from_dict(config_dict))
 
-    def check_cfg_compatibility(self):
+    def _check_cfg_compatibility(self):
         if self.cfg.architecture != "standard" and self.cfg.use_ghost_grads:
             raise ValueError(f"{self.cfg.architecture} SAEs do not support ghost grads")
         if self.cfg.architecture == "gated" and self.use_error_term:
@@ -600,7 +614,7 @@ class TrainingSAE(SAE):
 
         return sae
 
-    def initialize_weights_complex(self):
+    def _initialize_weights_complex(self):
         """ """
 
         if self.cfg.decoder_orthogonal_init:
@@ -642,6 +656,8 @@ class TrainingSAE(SAE):
 
     @torch.no_grad()
     def initialize_b_dec_with_mean(self, all_activations: torch.Tensor):
+        all_activations = all_activations.cpu()
+
         previous_b_dec = self.b_dec.clone().cpu()
         out = all_activations.mean(dim=0)
 

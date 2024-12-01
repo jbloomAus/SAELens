@@ -74,7 +74,7 @@ def training_runner(
 def test_save_checkpoint(training_runner: SAETrainingRunner, trainer: SAETrainer):
 
     training_runner.save_checkpoint(
-        trainer=trainer,
+        self=trainer,
         checkpoint_name="test",
     )
 
@@ -95,7 +95,7 @@ def test_training_runner_works_with_from_pretrained_path(
     cfg: LanguageModelSAERunnerConfig,
 ):
     training_runner.save_checkpoint(
-        trainer=trainer,
+        self=trainer,
         checkpoint_name="test",
     )
 

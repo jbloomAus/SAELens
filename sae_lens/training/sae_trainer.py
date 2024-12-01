@@ -1,5 +1,7 @@
 import contextlib
+import json
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, cast
 
 import torch
@@ -53,14 +55,12 @@ class SAETrainer:
         model: HookedRootModule,
         sae: TrainingSAE,
         activation_store: ActivationsStore,
-        save_checkpoint_fn,  # type: ignore
         cfg: LanguageModelSAERunnerConfig,
     ) -> None:
 
         self.model = model
         self.sae = sae
         self.activation_store = activation_store
-        self.save_checkpoint = save_checkpoint_fn
         self.cfg = cfg
 
         self.n_training_steps: int = 0
@@ -167,7 +167,7 @@ class SAETrainer:
 
         pbar = tqdm(total=self.cfg.total_training_tokens, desc="Training SAE")
 
-        self._estimate_norm_scaling_factor_if_needed()
+        self.activation_store.estimate_norm_scaling_factor_if_needed()
 
         # Train loop
         while self.n_training_tokens < self.cfg.total_training_tokens:
@@ -188,30 +188,18 @@ class SAETrainer:
             ### If n_training_tokens > sae_group.cfg.training_tokens, then we should switch to fine-tuning (if we haven't already)
             self._begin_finetuning_if_needed()
 
-        # fold the estimated norm scaling factor into the sae weights
-        if self.activation_store.estimated_norm_scaling_factor is not None:
-            self.sae.fold_activation_norm_scaling_factor(
-                self.activation_store.estimated_norm_scaling_factor
-            )
+        self.sae.fold_activation_norm_scaling_factor_into_weights(
+            self.activation_store.estimated_norm_scaling_factor
+        )
 
         # save final sae group to checkpoints folder
         self.save_checkpoint(
-            trainer=self,
             checkpoint_name=f"final_{self.n_training_tokens}",
             wandb_aliases=["final_model"],
         )
 
         pbar.close()
         return self.sae
-
-    @torch.no_grad()
-    def _estimate_norm_scaling_factor_if_needed(self) -> None:
-        if self.cfg.normalize_activations == "expected_average_only_in":
-            self.activation_store.estimated_norm_scaling_factor = (
-                self.activation_store.estimate_norm_scaling_factor()
-            )
-        else:
-            self.activation_store.estimated_norm_scaling_factor = 1.0
 
     def _train_step(
         self,
@@ -220,7 +208,7 @@ class SAETrainer:
     ) -> TrainStepOutput:
 
         sae.train()
-        # Make sure the W_dec is still zero-norm
+        # Make sure the W_dec is still unit-norm
         if self.cfg.normalize_sae_decoder:
             sae.set_decoder_norm_to_unit_norm()
 
@@ -396,10 +384,8 @@ class SAETrainer:
             self.checkpoint_thresholds
             and self.n_training_tokens > self.checkpoint_thresholds[0]
         ):
-            self.save_checkpoint(
-                trainer=self,
-                checkpoint_name=self.n_training_tokens,
-            )
+
+            self.save_checkpoint(checkpoint_name=str(self.n_training_tokens))
             self.checkpoint_thresholds.pop(0)
 
     @torch.no_grad()
@@ -431,6 +417,59 @@ class SAETrainer:
                     param.requires_grad = False
 
             self.finetuning = True
+
+    def save_checkpoint(
+        self,
+        checkpoint_name: str,
+        wandb_aliases: list[str] | None = None,
+    ) -> None:
+        """Save a checkpoint of the SAE locally and optionally to wandb."""
+
+        base_path = Path(self.cfg.checkpoint_path) / checkpoint_name
+        base_path.mkdir(exist_ok=True)
+
+        self.activation_store.save_state(base_path)
+
+        # TODO(oli-clive-griffin): Is this broken? it seems like this is "assymetrical" in the sense that
+        # this changes the output of the SAE.
+        # Should we not also balance this by scaling the encoder weights?
+        if self.sae.cfg.normalize_sae_decoder:
+            self.sae.set_decoder_norm_to_unit_norm()
+
+        weights_path, cfg_path, sparsity_path = self.sae.save_model(
+            str(base_path),
+            self.log_feature_sparsity,
+        )
+
+        # let's over write the cfg file with the trainer cfg, which is a super set of the original cfg.
+        # and should not cause issues but give us more info about SAEs we trained in SAE Lens.
+        config = self.cfg.to_dict()
+        with open(cfg_path, "w") as f:
+            json.dump(config, f)
+
+        if self.cfg.log_to_wandb:
+            # Avoid wandb saving errors such as:
+            #   ValueError: Artifact name may only contain alphanumeric characters, dashes, underscores, and dots. Invalid name: sae_google/gemma-2b_etc
+            sae_name = self.sae.get_name().replace("/", "__")
+
+            # save model weights and cfg
+            model_artifact = wandb.Artifact(
+                sae_name,
+                type="model",
+                metadata=dict(self.cfg.__dict__),
+            )
+            model_artifact.add_file(str(weights_path))
+            model_artifact.add_file(str(cfg_path))
+            wandb.log_artifact(model_artifact, aliases=wandb_aliases)
+
+            # save log feature sparsity
+            sparsity_artifact = wandb.Artifact(
+                f"{sae_name}_log_feature_sparsity",
+                type="log_feature_sparsity",
+                metadata=dict(self.cfg.__dict__),
+            )
+            sparsity_artifact.add_file(str(sparsity_path))
+            wandb.log_artifact(sparsity_artifact)
 
 
 def _unwrap_item(item: float | torch.Tensor) -> float:

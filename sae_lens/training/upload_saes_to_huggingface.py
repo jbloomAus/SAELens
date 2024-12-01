@@ -9,7 +9,7 @@ from huggingface_hub.utils import EntryNotFoundError, RepositoryNotFoundError
 from tqdm.autonotebook import tqdm
 
 from sae_lens import logger
-from sae_lens.sae import SAE, SAE_CFG_PATH, SAE_WEIGHTS_PATH, SPARSITY_PATH
+from sae_lens.sae import SAE, SAE_CFG_FILNAME, SAE_WEIGHTS_FILENAME, SPARSITY_FILENAME
 
 
 def upload_saes_to_huggingface(
@@ -114,7 +114,7 @@ def _upload_sae(api: HfApi, sae_path: Path, repo_id: str, sae_id: str, revision:
         revision=revision,
         repo_type="model",
         commit_message=f"Upload SAE {sae_id}",
-        allow_patterns=[SAE_CFG_PATH, SAE_WEIGHTS_PATH, SPARSITY_PATH],
+        allow_patterns=[SAE_CFG_FILNAME, SAE_WEIGHTS_FILENAME, SPARSITY_FILENAME],
     )
 
 
@@ -130,9 +130,11 @@ def _build_sae_path(sae_ref: SAE | Path | str, tmp_dir: str) -> Path:
 
 def _validate_sae_path(sae_path: Path):
     "Validate that the model files exist in the given path."
-    if not (sae_path / SAE_CFG_PATH).exists():
-        raise FileNotFoundError(f"SAE config file not found: {sae_path / SAE_CFG_PATH}")
-    if not (sae_path / SAE_WEIGHTS_PATH).exists():
+    if not (sae_path / SAE_CFG_FILNAME).exists():
         raise FileNotFoundError(
-            f"SAE weights file not found: {sae_path / SAE_WEIGHTS_PATH}"
+            f"SAE config file not found: {sae_path / SAE_CFG_FILNAME}"
+        )
+    if not (sae_path / SAE_WEIGHTS_FILENAME).exists():
+        raise FileNotFoundError(
+            f"SAE weights file not found: {sae_path / SAE_WEIGHTS_FILENAME}"
         )
