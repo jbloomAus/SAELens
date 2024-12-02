@@ -439,7 +439,11 @@ class ActivationsStore:
         for _ in tqdm(
             range(n_batches_for_norm_estimate), desc="Estimating norm scaling factor"
         ):
+            # temporarily set the scaling factor to so that we can load a batch without erroring
+            self.estimated_norm_scaling_factor = 1.0
             acts = self.next_batch()
+            self.estimated_norm_scaling_factor = None
+
             norms_per_batch.append(acts.norm(dim=-1).mean().item())
         mean_norm = np.mean(norms_per_batch)
         scaling_factor = np.sqrt(self.d_in) / mean_norm
