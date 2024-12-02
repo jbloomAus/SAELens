@@ -193,10 +193,6 @@ class SAETrainingRunner:
 
         self.activations_store.save(str(base_path / "activation_store_state.json"))
 
-        # comment:
-        # Is this broken? it seems like this is "assymetrical" in the sense that
-        # this changes the output of the SAE.
-        # Should we not also balance this by scaling the encoder weights?
         if self.sae.cfg.normalize_sae_decoder:
             self.sae.set_decoder_norm_to_unit_norm()
 
@@ -207,7 +203,7 @@ class SAETrainingRunner:
 
         # let's over write the cfg file with the trainer cfg, which is a super set of the original cfg.
         # and should not cause issues but give us more info about SAEs we trained in SAE Lens.
-        config = self.cfg.to_dict()
+        config = trainer.cfg.to_dict()
         with open(cfg_path, "w") as f:
             json.dump(config, f)
 
