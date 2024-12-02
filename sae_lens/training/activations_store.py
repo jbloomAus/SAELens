@@ -234,7 +234,10 @@ class ActivationsStore:
 
         self.n_dataset_processed = 0
 
-        self.estimated_norm_scaling_factor = 1.0
+        if self.normalize_activations == "expected_average_only_in":
+            self.estimated_norm_scaling_factor = self.estimate_norm_scaling_factor()
+        else:
+            self.estimated_norm_scaling_factor = 1.0
 
         # Check if dataset is tokenized
         dataset_sample = next(iter(self.dataset))

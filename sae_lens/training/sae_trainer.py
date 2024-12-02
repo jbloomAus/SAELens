@@ -167,8 +167,6 @@ class SAETrainer:
 
         pbar = tqdm(total=self.cfg.total_training_tokens, desc="Training SAE")
 
-        self._estimate_norm_scaling_factor_if_needed()
-
         # Train loop
         while self.n_training_tokens < self.cfg.total_training_tokens:
             # Do a training step.
@@ -203,15 +201,6 @@ class SAETrainer:
 
         pbar.close()
         return self.sae
-
-    @torch.no_grad()
-    def _estimate_norm_scaling_factor_if_needed(self) -> None:
-        if self.cfg.normalize_activations == "expected_average_only_in":
-            self.activation_store.estimated_norm_scaling_factor = (
-                self.activation_store.estimate_norm_scaling_factor()
-            )
-        else:
-            self.activation_store.estimated_norm_scaling_factor = 1.0
 
     def _train_step(
         self,
