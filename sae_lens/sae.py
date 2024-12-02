@@ -496,7 +496,7 @@ class SAE(HookedRootModule):
         self.cfg.normalize_activations = "none"
 
     @overload
-    def save_model(self, path: str | Path, sparsity: None) -> Tuple[Path, Path]: ...
+    def save_model(self, path: str | Path) -> Tuple[Path, Path]: ...
 
     @overload
     def save_model(

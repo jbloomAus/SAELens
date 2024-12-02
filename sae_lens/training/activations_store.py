@@ -234,10 +234,7 @@ class ActivationsStore:
 
         self.n_dataset_processed = 0
 
-        if self.normalize_activations == "expected_average_only_in":
-            self.estimated_norm_scaling_factor = self.estimate_norm_scaling_factor()
-        else:
-            self.estimated_norm_scaling_factor = 1.0
+        self.estimated_norm_scaling_factor = None
 
         # Check if dataset is tokenized
         dataset_sample = next(iter(self.dataset))
@@ -398,10 +395,24 @@ class ActivationsStore:
 
         return activations_dataset
 
+    def set_norm_scaling_factor_if_needed(self):
+        if self.normalize_activations == "expected_average_only_in":
+            self.estimated_norm_scaling_factor = self.estimate_norm_scaling_factor()
+        else:
+            self.estimated_norm_scaling_factor = 1.0
+
     def apply_norm_scaling_factor(self, activations: torch.Tensor) -> torch.Tensor:
+        if self.estimated_norm_scaling_factor is None:
+            raise ValueError(
+                "estimated_norm_scaling_factor is not set, call set_norm_scaling_factor_if_needed() first"
+            )
         return activations * self.estimated_norm_scaling_factor
 
     def unscale(self, activations: torch.Tensor) -> torch.Tensor:
+        if self.estimated_norm_scaling_factor is None:
+            raise ValueError(
+                "estimated_norm_scaling_factor is not set, call set_norm_scaling_factor_if_needed() first"
+            )
         return activations / self.estimated_norm_scaling_factor
 
     def get_norm_scaling_factor(self, activations: torch.Tensor) -> torch.Tensor:
@@ -413,7 +424,10 @@ class ActivationsStore:
         for _ in tqdm(
             range(n_batches_for_norm_estimate), desc="Estimating norm scaling factor"
         ):
+            # temporalily set estimated_norm_scaling_factor to 1.0 so the dataloader works
+            self.estimated_norm_scaling_factor = 1.0
             acts = self.next_batch()
+            self.estimated_norm_scaling_factor = None
             norms_per_batch.append(acts.norm(dim=-1).mean().item())
         mean_norm = np.mean(norms_per_batch)
         scaling_factor = np.sqrt(self.d_in) / mean_norm
@@ -706,12 +720,13 @@ class ActivationsStore:
     def state_dict(self) -> dict[str, torch.Tensor]:
         result = {
             "n_dataset_processed": torch.tensor(self.n_dataset_processed),
-            "estimated_norm_scaling_factor": torch.tensor(
-                self.estimated_norm_scaling_factor
-            ),
         }
         if self._storage_buffer is not None:  # first time might be None
             result["storage_buffer"] = self._storage_buffer
+        if self.estimated_norm_scaling_factor is not None:
+            result["estimated_norm_scaling_factor"] = torch.tensor(
+                self.estimated_norm_scaling_factor
+            )
         return result
 
     def save(self, file_path: str):
