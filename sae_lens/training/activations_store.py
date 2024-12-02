@@ -398,8 +398,6 @@ class ActivationsStore:
     def set_norm_scaling_factor_if_needed(self):
         if self.normalize_activations == "expected_average_only_in":
             self.estimated_norm_scaling_factor = self.estimate_norm_scaling_factor()
-        else:
-            self.estimated_norm_scaling_factor = 1.0
 
     def apply_norm_scaling_factor(self, activations: torch.Tensor) -> torch.Tensor:
         if self.estimated_norm_scaling_factor is None:

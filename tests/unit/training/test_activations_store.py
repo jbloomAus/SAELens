@@ -1,11 +1,14 @@
+import os
+import tempfile
 from collections.abc import Iterable
 from math import ceil
-from typing import Optional
+from typing import Any, Optional
 
 import numpy as np
 import pytest
 import torch
 from datasets import Dataset, IterableDataset
+from safetensors.torch import load_file
 from transformer_lens import HookedTransformer
 
 from sae_lens.config import LanguageModelSAERunnerConfig, PretokenizeRunnerConfig
@@ -559,3 +562,38 @@ def test_activations_store_respects_position_offsets(ts_model: HookedTransformer
 
     assert batch.shape == (1, 10)  # Full context size
     assert activations.shape == (1, 6, 1, cfg.d_in)  # Only 6 positions (2 to 7)
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {
+            "sae_kwargs": {
+                "normalize_activations": "none",
+            },
+            "should_save": False,
+        },
+        {
+            "sae_kwargs": {
+                "normalize_activations": "expected_average_only_in",
+            },
+            "should_save": True,
+        },
+    ],
+)
+def test_activations_store_save_with_norm_scaling_factor(
+    ts_model: HookedTransformer, params: dict[str, Any]
+):
+    cfg = build_sae_cfg(**params["sae_kwargs"])
+    activation_store = ActivationsStore.from_config(ts_model, cfg)
+    activation_store.set_norm_scaling_factor_if_needed()
+    with tempfile.NamedTemporaryFile() as temp_file:
+        activation_store.save(temp_file.name)
+        assert os.path.exists(temp_file.name)
+        state_dict = load_file(temp_file.name)
+        assert isinstance(state_dict, dict)
+        if params["should_save"]:
+            assert "estimated_norm_scaling_factor" in state_dict.keys()
+            assert state_dict["estimated_norm_scaling_factor"].shape == ()
+        else:
+            assert "estimated_norm_scaling_factor" not in state_dict.keys()
