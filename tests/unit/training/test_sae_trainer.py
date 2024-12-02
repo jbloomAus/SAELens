@@ -216,6 +216,7 @@ def test_train_sae_on_language_model__runs(
     activation_store = ActivationsStore.from_config(
         ts_model, cfg, override_dataset=dataset
     )
+    activation_store.set_norm_scaling_factor_if_needed()
     sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
     sae = SAETrainer(
         model=ts_model,

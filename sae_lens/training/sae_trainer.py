@@ -198,9 +198,10 @@ class SAETrainer:
             self._begin_finetuning_if_needed()
 
         # fold the estimated norm scaling factor into the sae weights
-        self.sae.fold_activation_norm_scaling_factor(
-            self.activation_store.estimated_norm_scaling_factor
-        )
+        if self.activation_store.estimated_norm_scaling_factor is not None:
+            self.sae.fold_activation_norm_scaling_factor(
+                self.activation_store.estimated_norm_scaling_factor
+            )
 
         # save final sae group to checkpoints folder
         self.save_checkpoint(
