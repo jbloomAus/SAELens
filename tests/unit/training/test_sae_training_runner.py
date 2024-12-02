@@ -154,7 +154,7 @@ def test_parse_cfg_args_expansion_factor():
 def test_parse_cfg_args_b_dec_init_method():
     # Test validation of b_dec_init_method
     args = ["--b_dec_init_method", "invalid"]
-    with pytest.raises(ValueError):
+    with pytest.raises(SystemExit):
         cfg = _parse_cfg_args(args)
 
     valid_methods = ["geometric_median", "mean", "zeros"]

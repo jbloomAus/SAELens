@@ -189,7 +189,7 @@ class SAETrainingRunner:
         """Save a checkpoint of the SAE locally and optionally to wandb."""
 
         base_path = Path(self.cfg.checkpoint_path) / checkpoint_name
-        base_path.mkdir(exist_ok=True)
+        base_path.mkdir(exist_ok=True, parents=True)
 
         self.activations_store.save_state(base_path)
 
