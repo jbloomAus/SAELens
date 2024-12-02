@@ -46,6 +46,7 @@ class ActivationsStore:
     cached_activations_path: str | None
     cached_activation_dataset: Dataset | None = None
     normalize_activations: ActivationNormalizationStrategy
+    estimated_norm_scaling_factor: float | None
     tokens_column: Literal["tokens", "input_ids", "text", "problem"]
     hook_name: str
     hook_layer: int
@@ -238,7 +239,7 @@ class ActivationsStore:
 
         self.n_dataset_processed = 0
 
-        self.estimated_norm_scaling_factor = 1.0
+        self.estimated_norm_scaling_factor = None
 
         # Check if dataset is tokenized
         dataset_sample = next(iter(self.dataset))
@@ -296,12 +297,10 @@ class ActivationsStore:
         # TODO add support for "mixed loading" (ie use cache until you run out, then switch over to streaming from HF)
 
     @torch.no_grad()
-    def estimate_norm_scaling_factor_if_needed(self) -> None:
+    def set_norm_scaling_factor_if_needed(self) -> None:
         """If needed, update the estimated norm scaling factor."""
         if self.normalize_activations == "expected_average_only_in":
             self.estimated_norm_scaling_factor = self.estimate_norm_scaling_factor()
-        else:
-            self.estimated_norm_scaling_factor = 1.0
 
     def _iterate_raw_dataset(
         self,
@@ -407,11 +406,29 @@ class ActivationsStore:
 
         return activations_dataset
 
-    def apply_norm_scaling_factor(self, activations: torch.Tensor) -> torch.Tensor:
-        return activations * self.estimated_norm_scaling_factor
+    def apply_norm_scaling_factor_if_needed(
+        self, activations: torch.Tensor
+    ) -> torch.Tensor:
+        if self.normalize_activations == "expected_average_only_in":
+            if self.estimated_norm_scaling_factor is None:
+                raise ValueError(
+                    "Norm scaling factor is None, but normalize_activations is expected_average_only_in, "
+                    "please call estimate_norm_scaling_factor_if_needed first."
+                )
+            return activations * self.estimated_norm_scaling_factor
+        return activations
 
-    def unscale(self, activations: torch.Tensor) -> torch.Tensor:
-        return activations / self.estimated_norm_scaling_factor
+    def unapply_norm_scaling_factor_if_needed(
+        self, activations: torch.Tensor
+    ) -> torch.Tensor:
+        if self.normalize_activations == "expected_average_only_in":
+            if self.estimated_norm_scaling_factor is None:
+                raise ValueError(
+                    "Norm scaling factor is None, but normalize_activations is expected_average_only_in, "
+                    "please call estimate_norm_scaling_factor_if_needed first."
+                )
+            return activations / self.estimated_norm_scaling_factor
+        return activations
 
     def get_norm_scaling_factor(self, activations: torch.Tensor) -> torch.Tensor:
         return (self.d_in**0.5) / activations.norm(dim=-1).mean()
@@ -640,8 +657,7 @@ class ActivationsStore:
             new_buffer = new_buffer[torch.randperm(new_buffer.shape[0])]
 
         # every buffer should be normalized:
-        if self.normalize_activations == "expected_average_only_in":
-            new_buffer = self.apply_norm_scaling_factor(new_buffer)
+        new_buffer = self.apply_norm_scaling_factor_if_needed(new_buffer)
 
         return new_buffer
 

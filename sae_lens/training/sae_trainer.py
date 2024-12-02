@@ -176,7 +176,7 @@ class SAETrainer:
 
         pbar = tqdm(total=self.cfg.total_training_tokens, desc="Training SAE")
 
-        self.activation_store.estimate_norm_scaling_factor_if_needed()
+        self.activation_store.set_norm_scaling_factor_if_needed()
 
         # Train loop
         while self.n_training_tokens < self.cfg.total_training_tokens:

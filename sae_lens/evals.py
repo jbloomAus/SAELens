@@ -436,16 +436,16 @@ def get_sparsity_and_variance_metrics(
             original_act = cache[hook_name]
 
         # normalise if necessary (necessary in training only, otherwise we should fold the scaling in)
-        if activation_store.normalize_activations == "expected_average_only_in":
-            original_act = activation_store.apply_norm_scaling_factor(original_act)
+        original_act = activation_store.apply_norm_scaling_factor_if_needed(
+            original_act
+        )
 
         # send the (maybe normalised) activations into the SAE
         sae_feature_activations = sae.encode(original_act.to(sae.device))
         sae_out = sae.decode(sae_feature_activations).to(original_act.device)
         del cache
 
-        if activation_store.normalize_activations == "expected_average_only_in":
-            sae_out = activation_store.unscale(sae_out)
+        sae_out = activation_store.unapply_norm_scaling_factor_if_needed(sae_out)
 
         flattened_sae_input = einops.rearrange(original_act, "b ctx d -> (b ctx) d")
         flattened_sae_feature_acts = einops.rearrange(
@@ -571,15 +571,15 @@ def get_recons_loss(
         activations = activations.to(sae.device)
 
         # Handle rescaling if SAE expects it
-        if activation_store.normalize_activations == "expected_average_only_in":
-            activations = activation_store.apply_norm_scaling_factor(activations)
+        activations = activation_store.apply_norm_scaling_factor_if_needed(activations)
 
         # SAE class agnost forward forward pass.
         new_activations = sae.decode(sae.encode(activations)).to(activations.dtype)
 
         # Unscale if activations were scaled prior to going into the SAE
-        if activation_store.normalize_activations == "expected_average_only_in":
-            new_activations = activation_store.unscale(new_activations)
+        new_activations = activation_store.unapply_norm_scaling_factor_if_needed(
+            new_activations
+        )
 
         new_activations = torch.where(mask[..., None], new_activations, activations)
 
@@ -591,8 +591,7 @@ def get_recons_loss(
         activations = activations.to(sae.device)
 
         # Handle rescaling if SAE expects it
-        if activation_store.normalize_activations == "expected_average_only_in":
-            activations = activation_store.apply_norm_scaling_factor(activations)
+        activations = activation_store.apply_norm_scaling_factor_if_needed(activations)
 
         # SAE class agnost forward forward pass.
         new_activations = sae.decode(sae.encode(activations.flatten(-2, -1))).to(
@@ -604,8 +603,9 @@ def get_recons_loss(
         )  # reshape to match original shape
 
         # Unscale if activations were scaled prior to going into the SAE
-        if activation_store.normalize_activations == "expected_average_only_in":
-            new_activations = activation_store.unscale(new_activations)
+        new_activations = activation_store.unapply_norm_scaling_factor_if_needed(
+            new_activations
+        )
 
         return new_activations.to(original_device)
 
@@ -615,8 +615,7 @@ def get_recons_loss(
         activations = activations.to(sae.device)
 
         # Handle rescaling if SAE expects it
-        if activation_store.normalize_activations == "expected_average_only_in":
-            activations = activation_store.apply_norm_scaling_factor(activations)
+        activations = activation_store.apply_norm_scaling_factor_if_needed(activations)
 
         new_activations = sae.decode(sae.encode(activations[:, :, head_index])).to(
             activations.dtype
@@ -624,8 +623,9 @@ def get_recons_loss(
         activations[:, :, head_index] = new_activations
 
         # Unscale if activations were scaled prior to going into the SAE
-        if activation_store.normalize_activations == "expected_average_only_in":
-            activations = activation_store.unscale(activations)
+        activations = activation_store.unapply_norm_scaling_factor_if_needed(
+            activations
+        )
 
         return activations.to(original_device)
 
