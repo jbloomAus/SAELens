@@ -703,6 +703,9 @@ class ActivationsStore:
     def state_dict(self) -> dict[str, torch.Tensor]:
         result = {
             "n_dataset_processed": torch.tensor(self.n_dataset_processed),
+            "estimated_norm_scaling_factor": torch.tensor(
+                self.estimated_norm_scaling_factor
+            ),
         }
         if self._storage_buffer is not None:  # first time might be None
             result["storage_buffer"] = self._storage_buffer
