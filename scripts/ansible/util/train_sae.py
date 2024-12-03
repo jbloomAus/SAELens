@@ -32,7 +32,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 # load the yaml file as config
 # load only the keys that are in LanguageModelSAERunnerConfig
 # TODO: this is a hacky way of importing
-with open(job_config_path, "r") as file:
+with open(job_config_path) as file:
     config_yaml = yaml.load(file, Loader=yaml.FullLoader)
 
     config_params = inspect.signature(LanguageModelSAERunnerConfig).parameters

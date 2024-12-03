@@ -79,7 +79,9 @@ def test_hf_dataset_save_vs_safetensors(tmp_path: Path):
     device = (
         "cuda"
         if torch.cuda.is_available()
-        else "mps" if torch.backends.mps.is_available() else "cpu"
+        else "mps"
+        if torch.backends.mps.is_available()
+        else "cpu"
     )
 
     bytes_per_token = d_in * DTYPE_MAP[dtype].itemsize

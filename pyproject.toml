@@ -40,14 +40,10 @@ zstandard = "^0.22.0"
 typing-extensions = "^4.10.0"
 simple-parsing = "^0.1.6"
 
-
 [tool.poetry.group.dev.dependencies]
-black = { version = "24.4.0", extras = ["jupyter"] }
 pytest = "^8.0.2"
 pytest-cov = "^4.1.0"
 pre-commit = "^3.6.2"
-flake8 = "7.0.0"
-isort = "5.13.2"
 pyright = "1.1.365"
 mamba-lens = "^0.0.4"
 ansible-lint = { version = "^24.2.3", markers = "platform_system != 'Windows'" }
@@ -61,14 +57,19 @@ mkdocs-section-index = "^0.3.9"
 mkdocstrings = "^0.25.2"
 mkdocstrings-python = "^1.10.9"
 tabulate = "^0.9.0"
+ruff = "^0.7.4"
 
 [tool.poetry.extras]
 mamba = ["mamba-lens"]
 
+[tool.ruff.lint]
+exclude = ["*.ipynb"]
+ignore = ["E203", "E501", "E731", "F722", "E741", "F821", "F403", "ARG002"]
+select = ["UP", "TID", "I", "F", "E", "ARG", "SIM", "RET", "LOG", "T20"]
 
-[tool.isort]
-profile = "black"
-src_paths = ["sae_lens", "tests"]
+[tool.ruff.lint.per-file-ignores]
+"tests/benchmark/*" = ["T20"]
+"scripts/*" = ["T20"]
 
 [tool.pyright]
 typeCheckingMode = "strict"
@@ -91,7 +92,6 @@ ignore = [
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
-
 
 [tool.semantic_release]
 version_variables = [

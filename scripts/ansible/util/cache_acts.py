@@ -30,7 +30,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 # load the yaml file as config
 # load only the keys that are in CacheActivationsRunnerConfig
 # TODO: this is a hacky way of importing
-with open(f"./jobs/cache_acts/{job_name}/cache_acts.yml", "r") as file:
+with open(f"./jobs/cache_acts/{job_name}/cache_acts.yml") as file:
     config_yaml = yaml.load(file, Loader=yaml.FullLoader)
 
     config_params = inspect.signature(CacheActivationsRunnerConfig).parameters

@@ -160,9 +160,7 @@ class LanguageModelSAERunnerConfig:
     finetuning_tokens: int = 0
     store_batch_size_prompts: int = 32
     train_batch_size_tokens: int = 4096
-    normalize_activations: str = (
-        "none"  # none, expected_average_only_in (Anthropic April Update), constant_norm_rescale (Anthropic Feb Update)
-    )
+    normalize_activations: str = "none"  # none, expected_average_only_in (Anthropic April Update), constant_norm_rescale (Anthropic Feb Update)
     seqpos_slice: tuple[int | None, ...] = (None,)
 
     # Misc
@@ -451,15 +449,13 @@ class LanguageModelSAERunnerConfig:
         }
 
     def to_dict(self) -> dict[str, Any]:
-        cfg_dict = {
+        return {
             **self.__dict__,
             # some args may not be serializable by default
             "dtype": str(self.dtype),
             "device": str(self.device),
             "act_store_device": str(self.act_store_device),
         }
-
-        return cfg_dict
 
     def to_json(self, path: str) -> None:
         if not os.path.exists(os.path.dirname(path)):
@@ -470,7 +466,7 @@ class LanguageModelSAERunnerConfig:
 
     @classmethod
     def from_json(cls, path: str) -> "LanguageModelSAERunnerConfig":
-        with open(path + "cfg.json", "r") as f:
+        with open(path + "cfg.json") as f:
             cfg = json.load(f)
 
         # ensure that seqpos slices is a tuple
@@ -672,7 +668,7 @@ class ToyModelSAERunnerConfig:
             raise ValueError(
                 f"dtype must be one of {list(DTYPE_MAP.keys())}. Got {self.dtype}"
             )
-        elif isinstance(self.dtype, str):
+        if isinstance(self.dtype, str):
             self.dtype = DTYPE_MAP[self.dtype]
 
     def get_base_sae_cfg_dict(self) -> dict[str, Any]:

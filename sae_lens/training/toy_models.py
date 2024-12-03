@@ -47,7 +47,7 @@ def _init_importance(
     if isinstance(importance, float):
         importance = t.tensor(importance)
     assert isinstance(importance, Tensor)  # pyright can't seem to infer this
-    return importance.to(device).broadcast_to((n_features))
+    return importance.to(device).broadcast_to(n_features)
 
 
 @dataclass
@@ -75,7 +75,7 @@ class HookedToyModel(HookedRootModule, ABC):
             feature_probability, Tensor
         )  # pyright can't seem to infer this
         self.feature_probability = feature_probability.to(device).broadcast_to(
-            (cfg.n_features)
+            cfg.n_features
         )
 
         self.importance = _init_importance(cfg.importance, cfg.n_features, device)
@@ -180,8 +180,7 @@ class HookedToyModel(HookedRootModule, ABC):
             )
         if n_uncorrelated > 0:
             data.append(self.generate_uncorrelated_features(batch_size, n_uncorrelated))
-        batch = t.cat(data, dim=-1)
-        return batch
+        return t.cat(data, dim=-1)
 
     def optimize(
         self,
@@ -233,7 +232,7 @@ class ReluOutputModel(HookedToyModel):
         self.W = nn.Parameter(
             nn.init.xavier_normal_(t.empty((cfg.n_hidden, cfg.n_features)))
         )
-        self.b_final = nn.Parameter(t.zeros((cfg.n_features)))
+        self.b_final = nn.Parameter(t.zeros(cfg.n_features))
         self.to(device)
 
         # Add and setup hookpoints.
@@ -264,10 +263,9 @@ class ReluOutputModel(HookedToyModel):
 
         if return_type == "loss":
             return self.calculate_loss(reconstructed, features)
-        elif return_type == "reconstruction":
+        if return_type == "reconstruction":
             return reconstructed
-        else:
-            raise ValueError(f"Unknown return type: {return_type}")
+        raise ValueError(f"Unknown return type: {return_type}")
 
     def calculate_loss(
         self,
@@ -282,8 +280,7 @@ class ReluOutputModel(HookedToyModel):
         Note, `model.importance` is guaranteed to broadcast with the shape of `out` and `batch`.
         """
         error = self.importance * ((batch - out) ** 2)
-        loss = einops.reduce(error, "batch features -> ()", "mean").sum()
-        return loss
+        return einops.reduce(error, "batch features -> ()", "mean").sum()
 
 
 class ReluOutputModelCE(ReluOutputModel):
@@ -311,7 +308,7 @@ class ReluOutputModelCE(ReluOutputModel):
         self.W = nn.Parameter(
             nn.init.xavier_normal_(t.empty((cfg.n_hidden, cfg.n_features + 1)))
         )
-        self.b_final = nn.Parameter(t.zeros((cfg.n_features + 1)))
+        self.b_final = nn.Parameter(t.zeros(cfg.n_features + 1))
         self.importance = _init_importance(cfg.importance, cfg.n_features + 1, device)
         self.to(device)
 
@@ -337,10 +334,9 @@ class ReluOutputModelCE(ReluOutputModel):
         Note, `model.importance` is guaranteed to broadcast with the shape of `out` and `batch`.
         """
         max_feat_indices = t.argmax(batch, dim=-1)
-        loss = F.cross_entropy(
+        return F.cross_entropy(
             (self.importance * out).squeeze(), max_feat_indices.squeeze()
         )
-        return loss
 
 
 Arr = np.ndarray
@@ -375,8 +371,7 @@ def plot_features_in_2d(
         [
             colors is None,
             isinstance(colors, list) and isinstance(colors[0], str),
-            (isinstance(colors, Tensor) or isinstance(colors, Arr))
-            and colors.ndim == 2,
+            (isinstance(colors, (Tensor, Arr))) and colors.ndim == 2,
         ]
     ):
         colors = [colors for _ in range(values.shape[0])]
@@ -385,14 +380,16 @@ def plot_features_in_2d(
     colors = [parse_colors_for_superposition_plot(c, n_features) for c in colors]
 
     # Same for subplot titles & titles
-    if subplot_titles is not None:
-        if isinstance(subplot_titles, list) and isinstance(subplot_titles[0], str):
-            subplot_titles = [
-                cast(list[str], subplot_titles) for _ in range(values.shape[0])
-            ]
-    if title is not None:
-        if isinstance(title, str):
-            title = [title for _ in range(values.shape[0])]
+    if (
+        subplot_titles is not None
+        and isinstance(subplot_titles, list)
+        and isinstance(subplot_titles[0], str)
+    ):
+        subplot_titles = [
+            cast(list[str], subplot_titles) for _ in range(values.shape[0])
+        ]
+    if title is not None and isinstance(title, str):
+        title = [title for _ in range(values.shape[0])]
 
     # Create a figure and axes
     fig, ax = plt.subplots(1, 1, figsize=(5, 5))
@@ -438,7 +435,7 @@ def plot_features_in_2d(
             ax.set_title(subplot_titles[t], fontsize=12)  # type: ignore
         fig.canvas.draw_idle()
 
-    def play(event: Any):
+    def play(event: Any):  # noqa: ARG001
         _ = slider.val
         for i in range(n_timesteps):
             update(i)
@@ -480,6 +477,7 @@ def plot_features_in_2d(
 
         clear_output()
         return ani
+    return None
 
 
 def parse_colors_for_superposition_plot(
@@ -510,11 +508,11 @@ def parse_colors_for_superposition_plot(
         )
 
     # If colors is a string, make all datapoints that color
-    elif isinstance(colors, str):
+    if isinstance(colors, str):
         return [colors] * n_feats
 
     # Lastly, if colors is None, make all datapoints black
-    elif colors is None:
+    if colors is None:
         return ["black"] * n_feats
 
     assert isinstance(colors, list)

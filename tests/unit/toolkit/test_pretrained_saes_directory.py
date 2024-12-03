@@ -87,7 +87,6 @@ def test_get_pretrained_saes_directory():
 
 
 def test_get_pretrained_saes_directory_unique_np_ids():
-
     # ideally this code should be elsewhere but as a stop-gap we'll leave it here.
     df = pd.DataFrame.from_records(
         {k: v.__dict__ for k, v in get_pretrained_saes_directory().items()}

@@ -69,7 +69,6 @@ class SAEConfig:
 
     @classmethod
     def from_dict(cls, config_dict: dict[str, Any]) -> "SAEConfig":
-
         # rename dict:
         rename_dict = {  # old : new
             "hook_point": "hook_name",
@@ -198,12 +197,10 @@ class SAE(HookedRootModule):
 
         # handle run time activation normalization if needed:
         if self.cfg.normalize_activations == "constant_norm_rescale":
-
             #  we need to scale the norm of the input and store the scaling factor
             def run_time_activation_norm_fn_in(x: torch.Tensor) -> torch.Tensor:
                 self.x_norm_coeff = (self.cfg.d_in**0.5) / x.norm(dim=-1, keepdim=True)
-                x = x * self.x_norm_coeff
-                return x
+                return x * self.x_norm_coeff
 
             def run_time_activation_norm_fn_out(x: torch.Tensor) -> torch.Tensor:  #
                 x = x / self.x_norm_coeff
@@ -214,7 +211,6 @@ class SAE(HookedRootModule):
             self.run_time_activation_norm_fn_out = run_time_activation_norm_fn_out
 
         elif self.cfg.normalize_activations == "layer_norm":
-
             #  we need to scale the norm of the input and store the scaling factor
             def run_time_activation_ln_in(
                 x: torch.Tensor, eps: float = 1e-5
@@ -227,7 +223,7 @@ class SAE(HookedRootModule):
                 self.ln_std = std
                 return x
 
-            def run_time_activation_ln_out(x: torch.Tensor, eps: float = 1e-5):
+            def run_time_activation_ln_out(x: torch.Tensor, eps: float = 1e-5):  # noqa: ARG001
                 return x * self.ln_std + self.ln_mu
 
             self.run_time_activation_norm_fn_in = run_time_activation_ln_in
@@ -239,7 +235,6 @@ class SAE(HookedRootModule):
         self.setup()  # Required for `HookedRootModule`s
 
     def initialize_weights_basic(self):
-
         # no config changes encoder bias init for now.
         self.b_enc = nn.Parameter(
             torch.zeros(self.cfg.d_sae, dtype=self.dtype, device=self.device)
@@ -407,9 +402,7 @@ class SAE(HookedRootModule):
         )
         feature_magnitudes = self.activation_fn(magnitude_pre_activation)
 
-        feature_acts = self.hook_sae_acts_post(active_features * feature_magnitudes)
-
-        return feature_acts
+        return self.hook_sae_acts_post(active_features * feature_magnitudes)
 
     def encode_jumprelu(
         self, x: Float[torch.Tensor, "... d_in"]
@@ -422,11 +415,9 @@ class SAE(HookedRootModule):
         # "... d_in, d_in d_sae -> ... d_sae",
         hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
 
-        feature_acts = self.hook_sae_acts_post(
+        return self.hook_sae_acts_post(
             self.activation_fn(hidden_pre) * (hidden_pre > self.threshold)
         )
-
-        return feature_acts
 
     def encode_standard(
         self, x: Float[torch.Tensor, "... d_in"]
@@ -438,9 +429,7 @@ class SAE(HookedRootModule):
 
         # "... d_in, d_in d_sae -> ... d_sae",
         hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
-        feature_acts = self.hook_sae_acts_post(self.activation_fn(hidden_pre))
-
-        return feature_acts
+        return self.hook_sae_acts_post(self.activation_fn(hidden_pre))
 
     def process_sae_in(
         self, sae_in: Float[torch.Tensor, "... d_in"]
@@ -449,8 +438,7 @@ class SAE(HookedRootModule):
         sae_in = self.reshape_fn_in(sae_in)
         sae_in = self.hook_sae_input(sae_in)
         sae_in = self.run_time_activation_norm_fn_in(sae_in)
-        sae_in = sae_in - (self.b_dec * self.cfg.apply_b_dec_to_input)
-        return sae_in
+        return sae_in - (self.b_dec * self.cfg.apply_b_dec_to_input)
 
     def decode(
         self, feature_acts: Float[torch.Tensor, "... d_sae"]
@@ -466,9 +454,7 @@ class SAE(HookedRootModule):
         sae_out = self.run_time_activation_norm_fn_out(sae_out)
 
         # handle hook z reshaping if needed.
-        sae_out = self.reshape_fn_out(sae_out, self.d_head)  # type: ignore
-
-        return sae_out
+        return self.reshape_fn_out(sae_out, self.d_head)  # type: ignore
 
     @torch.no_grad()
     def fold_W_dec_norm(self):
@@ -525,10 +511,9 @@ class SAE(HookedRootModule):
     def load_from_pretrained(
         cls, path: str, device: str = "cpu", dtype: str | None = None
     ) -> "SAE":
-
         # get the config
         config_path = os.path.join(path, SAE_CFG_PATH)
-        with open(config_path, "r") as f:
+        with open(config_path) as f:
             cfg_dict = json.load(f)
         cfg_dict = handle_config_defaulting(cfg_dict)
         cfg_dict["device"] = device
@@ -639,15 +624,13 @@ class SAE(HookedRootModule):
         return sae, cfg_dict, log_sparsities
 
     def get_name(self):
-        sae_name = f"sae_{self.cfg.model_name}_{self.cfg.hook_name}_{self.cfg.d_sae}"
-        return sae_name
+        return f"sae_{self.cfg.model_name}_{self.cfg.hook_name}_{self.cfg.d_sae}"
 
     @classmethod
     def from_dict(cls, config_dict: dict[str, Any]) -> "SAE":
         return cls(SAEConfig.from_dict(config_dict))
 
     def turn_on_forward_pass_hook_z_reshaping(self):
-
         assert self.cfg.hook_name.endswith(
             "_z"
         ), "This method should only be called for hook_z SAEs."
@@ -668,7 +651,7 @@ class SAE(HookedRootModule):
 
     def turn_off_forward_pass_hook_z_reshaping(self):
         self.reshape_fn_in = lambda x: x
-        self.reshape_fn_out = lambda x, d_head: x
+        self.reshape_fn_out = lambda x, d_head: x  # noqa: ARG005
         self.d_head = None
         self.hook_z_reshaping_mode = False
 
@@ -695,15 +678,14 @@ def get_activation_fn(
 ) -> Callable[[torch.Tensor], torch.Tensor]:
     if activation_fn == "relu":
         return torch.nn.ReLU()
-    elif activation_fn == "tanh-relu":
+    if activation_fn == "tanh-relu":
 
         def tanh_relu(input: torch.Tensor) -> torch.Tensor:
             input = torch.relu(input)
-            input = torch.tanh(input)
-            return input
+            return torch.tanh(input)
 
         return tanh_relu
-    elif activation_fn == "topk":
+    if activation_fn == "topk":
         assert "k" in kwargs, "TopK activation function requires a k value."
         k = kwargs.get("k", 1)  # Default k to 1 if not provided
         postact_fn = kwargs.get(
@@ -711,8 +693,7 @@ def get_activation_fn(
         )  # Default post-activation to ReLU if not provided
 
         return TopK(k, postact_fn)
-    else:
-        raise ValueError(f"Unknown activation function: {activation_fn}")
+    raise ValueError(f"Unknown activation function: {activation_fn}")
 
 
 _blank_hook = nn.Identity()
@@ -724,7 +705,7 @@ def _disable_hooks(sae: SAE):
     Temporarily disable hooks for the SAE. Swaps out all the hooks with a fake modules that does nothing.
     """
     try:
-        for hook_name in sae.hook_dict.keys():
+        for hook_name in sae.hook_dict:
             setattr(sae, hook_name, _blank_hook)
         yield
     finally:

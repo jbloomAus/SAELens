@@ -55,7 +55,7 @@ class ActivationsStore:
         cls,
         model: HookedRootModule,
         cfg: CacheActivationsRunnerConfig,
-    ) -> "ActivationsStore":
+    ) -> ActivationsStore:
         """
         Public api to create an ActivationsStore from a cached activations dataset.
         """
@@ -90,7 +90,7 @@ class ActivationsStore:
         model: HookedRootModule,
         cfg: LanguageModelSAERunnerConfig | CacheActivationsRunnerConfig,
         override_dataset: HfDataset | None = None,
-    ) -> "ActivationsStore":
+    ) -> ActivationsStore:
         if isinstance(cfg, CacheActivationsRunnerConfig):
             return cls.from_cache_activations(model, cfg)
 
@@ -144,7 +144,7 @@ class ActivationsStore:
         train_batch_size_tokens: int = 4096,
         total_tokens: int = 10**9,
         device: str = "cpu",
-    ) -> "ActivationsStore":
+    ) -> ActivationsStore:
         return cls(
             model=model,
             dataset=sae.cfg.dataset_path if dataset is None else dataset,
@@ -240,16 +240,16 @@ class ActivationsStore:
         dataset_sample = next(iter(self.dataset))
 
         # check if it's tokenized
-        if "tokens" in dataset_sample.keys():
+        if "tokens" in dataset_sample:
             self.is_dataset_tokenized = True
             self.tokens_column = "tokens"
-        elif "input_ids" in dataset_sample.keys():
+        elif "input_ids" in dataset_sample:
             self.is_dataset_tokenized = True
             self.tokens_column = "input_ids"
-        elif "text" in dataset_sample.keys():
+        elif "text" in dataset_sample:
             self.is_dataset_tokenized = False
             self.tokens_column = "text"
-        elif "problem" in dataset_sample.keys():
+        elif "problem" in dataset_sample:
             self.is_dataset_tokenized = False
             self.tokens_column = "problem"
         else:
@@ -413,9 +413,7 @@ class ActivationsStore:
             acts = self.next_batch()
             norms_per_batch.append(acts.norm(dim=-1).mean().item())
         mean_norm = np.mean(norms_per_batch)
-        scaling_factor = np.sqrt(self.d_in) / mean_norm
-
-        return scaling_factor
+        return np.sqrt(self.d_in) / mean_norm
 
     def shuffle_input_dataset(self, seed: int, buffer_size: int = 1):
         """
@@ -425,7 +423,7 @@ class ActivationsStore:
         The default buffer_size of 1 means that only the shard will be shuffled; larger buffer sizes will
         additionally shuffle individual elements within the shard.
         """
-        if type(self.dataset) == IterableDataset:
+        if isinstance(self.dataset, IterableDataset):
             self.dataset = self.dataset.shuffle(seed=seed, buffer_size=buffer_size)
         else:
             self.dataset = self.dataset.shuffle(seed=seed)
@@ -471,8 +469,7 @@ class ActivationsStore:
                     raise StopIteration(
                         f"Ran out of tokens in dataset after {self.n_dataset_processed} samples, beginning the next epoch."
                     )
-                else:
-                    sequences.append(next(self.iterable_sequences))
+                sequences.append(next(self.iterable_sequences))
 
         return torch.stack(sequences, dim=0).to(_get_model_device(self.model))
 
@@ -676,7 +673,7 @@ class ActivationsStore:
         self._storage_buffer = mixing_buffer[: mixing_buffer.shape[0] // 2]
 
         # 3. put other 50 % in a dataloader
-        dataloader = iter(
+        return iter(
             DataLoader(
                 # TODO: seems like a typing bug?
                 cast(Any, mixing_buffer[mixing_buffer.shape[0] // 2 :]),
@@ -684,8 +681,6 @@ class ActivationsStore:
                 shuffle=True,
             )
         )
-
-        return dataloader
 
     def next_batch(self):
         """
@@ -726,7 +721,7 @@ def validate_pretokenized_dataset_tokenizer(
         return
     if tokenization_cfg_path is None:
         return
-    with open(tokenization_cfg_path, "r") as f:
+    with open(tokenization_cfg_path) as f:
         tokenization_cfg = json.load(f)
     tokenizer_name = tokenization_cfg["tokenizer_name"]
     try:
@@ -743,7 +738,6 @@ def validate_pretokenized_dataset_tokenizer(
 def _get_model_device(model: HookedRootModule) -> torch.device:
     if hasattr(model, "W_E"):
         return model.W_E.device
-    elif hasattr(model, "cfg") and hasattr(model.cfg, "device"):
+    if hasattr(model, "cfg") and hasattr(model.cfg, "device"):
         return model.cfg.device
-    else:
-        return next(model.parameters()).device
+    return next(model.parameters()).device

@@ -29,11 +29,12 @@ def train_toy_sae(
     sparse_autoencoder.train()
     frac_active_list = []  # track active features
 
-    n_training_steps = 0
     n_training_tokens = 0
 
     pbar = tqdm(dataloader, desc="Training SAE")
-    for _, batch in enumerate(pbar):
+    for n_training_steps, batch in enumerate(
+        pbar
+    ):  # Use enumerate to track training steps
         batch = next(dataloader)
         # Make sure the W_dec is still zero-norm
         if sparse_autoencoder.normalize_sae_decoder:
@@ -121,6 +122,6 @@ def train_toy_sae(
 
         # If we did checkpointing we'd do it here.
 
-        n_training_steps += 1
+        # If we did checkpointing we'd do it here.
 
     return sparse_autoencoder

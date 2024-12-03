@@ -114,8 +114,7 @@ def list_of_hooked_saes(
         "blocks.0.hook_resid_pre",
     ]
 
-    hooked_saes = [get_hooked_sae(model, act_name) for act_name in act_names]
-    return hooked_saes
+    return [get_hooked_sae(model, act_name) for act_name in act_names]
 
 
 def test_model_with_no_saes_matches_original_model(
@@ -474,7 +473,6 @@ def test_saes_context_manager_with_use_error_term(
 def test_run_with_saes_with_use_error_term(
     model: HookedSAETransformer,
     hooked_sae: SAE,
-    original_logits: torch.Tensor,
 ):
     """Verifies that run_with_saes correctly handles use_error_term."""
     original_use_error_term = hooked_sae.use_error_term
@@ -487,7 +485,6 @@ def test_run_with_saes_with_use_error_term(
 def test_run_with_cache_with_saes_with_use_error_term(
     model: HookedSAETransformer,
     hooked_sae: SAE,
-    original_logits: torch.Tensor,
 ):
     """Verifies that run_with_cache_with_saes correctly handles use_error_term."""
     act_name = hooked_sae.cfg.hook_name
