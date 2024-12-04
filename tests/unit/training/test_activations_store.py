@@ -595,7 +595,7 @@ def test_activations_store_save_with_norm_scaling_factor(
         state_dict = load_file(temp_file.name)
         assert isinstance(state_dict, dict)
         if params["should_save"]:
-            assert "estimated_norm_scaling_factor" in state_dict.keys()
+            assert "estimated_norm_scaling_factor" in state_dict
             estimated_norm_scaling_factor = state_dict["estimated_norm_scaling_factor"]
             assert estimated_norm_scaling_factor.shape == ()
             assert (
@@ -603,4 +603,4 @@ def test_activations_store_save_with_norm_scaling_factor(
                 == activation_store.estimated_norm_scaling_factor
             )
         else:
-            assert "estimated_norm_scaling_factor" not in state_dict.keys()
+            assert "estimated_norm_scaling_factor" not in state_dict
