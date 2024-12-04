@@ -587,6 +587,8 @@ def test_activations_store_save_with_norm_scaling_factor(
     cfg = build_sae_cfg(**params["sae_kwargs"])
     activation_store = ActivationsStore.from_config(ts_model, cfg)
     activation_store.set_norm_scaling_factor_if_needed()
+    if params["sae_kwargs"]["normalize_activations"] == "expected_average_only_in":
+        assert activation_store.estimated_norm_scaling_factor is not None
     with tempfile.NamedTemporaryFile() as temp_file:
         activation_store.save(temp_file.name)
         assert os.path.exists(temp_file.name)
@@ -594,6 +596,8 @@ def test_activations_store_save_with_norm_scaling_factor(
         assert isinstance(state_dict, dict)
         if params["should_save"]:
             assert "estimated_norm_scaling_factor" in state_dict.keys()
-            assert state_dict["estimated_norm_scaling_factor"].shape == ()
+            estimated_norm_scaling_factor = state_dict["estimated_norm_scaling_factor"]
+            assert estimated_norm_scaling_factor.shape == ()
+            assert estimated_norm_scaling_factor.item() == activation_store.estimated_norm_scaling_factor
         else:
             assert "estimated_norm_scaling_factor" not in state_dict.keys()
