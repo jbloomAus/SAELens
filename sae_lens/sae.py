@@ -530,7 +530,7 @@ class SAE(HookedRootModule):
     ) -> "SAE":
         # get the config
         config_path = os.path.join(path, SAE_CFG_FILENAME)
-        with open(config_path, "r") as f:
+        with open(config_path) as f:
             cfg_dict = json.load(f)
         cfg_dict = handle_config_defaulting(cfg_dict)
         cfg_dict["device"] = device

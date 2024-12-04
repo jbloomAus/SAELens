@@ -598,6 +598,9 @@ def test_activations_store_save_with_norm_scaling_factor(
             assert "estimated_norm_scaling_factor" in state_dict.keys()
             estimated_norm_scaling_factor = state_dict["estimated_norm_scaling_factor"]
             assert estimated_norm_scaling_factor.shape == ()
-            assert estimated_norm_scaling_factor.item() == activation_store.estimated_norm_scaling_factor
+            assert (
+                estimated_norm_scaling_factor.item()
+                == activation_store.estimated_norm_scaling_factor
+            )
         else:
             assert "estimated_norm_scaling_factor" not in state_dict.keys()

@@ -3,8 +3,8 @@ from __future__ import annotations
 import contextlib
 import json
 import os
-from pathlib import Path
 import warnings
+from pathlib import Path
 from typing import Any, Generator, Iterator, Literal, cast
 
 import datasets
@@ -30,7 +30,6 @@ from sae_lens.config import (
 )
 from sae_lens.sae import SAE
 from sae_lens.tokenization_and_batching import concat_and_batch_sequences
-
 
 ACTIVATION_STORE_STATE_FILENAME = "activation_store_state.safetensors"
 
