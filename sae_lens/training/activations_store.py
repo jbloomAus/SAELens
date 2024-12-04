@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import json
 import os
+from pathlib import Path
 import warnings
 from typing import Any, Generator, Iterator, Literal, cast
 
@@ -29,6 +30,9 @@ from sae_lens.config import (
 )
 from sae_lens.sae import SAE
 from sae_lens.tokenization_and_batching import concat_and_batch_sequences
+
+
+ACTIVATION_STORE_STATE_FILENAME = "activation_store_state.safetensors"
 
 
 # TODO: Make an activation store config class to be consistent with the rest of the code.
@@ -728,7 +732,10 @@ class ActivationsStore:
         return result
 
     def save(self, file_path: str):
-        save_file(self.state_dict(), file_path)
+        """save the state dict to a file in safetensors format"""
+        path = Path(file_path)
+        path.mkdir(exist_ok=True, parents=True)
+        save_file(self.state_dict(), str(path / ACTIVATION_STORE_STATE_FILENAME))
 
 
 def validate_pretokenized_dataset_tokenizer(

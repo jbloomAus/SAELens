@@ -191,7 +191,7 @@ class SAETrainingRunner:
         base_path = Path(self.cfg.checkpoint_path) / checkpoint_name
         base_path.mkdir(exist_ok=True, parents=True)
 
-        self.activations_store.save(str(base_path / "activation_store_state.json"))
+        self.activations_store.save(str(base_path))
 
         if self.sae.cfg.normalize_sae_decoder:
             self.sae.set_decoder_norm_to_unit_norm()
