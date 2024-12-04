@@ -20,7 +20,7 @@ def get_feature_property_df(sae: SAE, feature_sparsity: torch.Tensor):
     d_e_projection = (W_dec_normalized * W_enc_normalized).sum(-1)
     b_dec_projection = sae.b_dec.cpu() @ W_dec_normalized.T
 
-    temp_df = pd.DataFrame(
+    return pd.DataFrame(
         {
             "log_feature_sparsity": feature_sparsity + 1e-10,
             "d_e_projection": d_e_projection,
@@ -31,8 +31,6 @@ def get_feature_property_df(sae: SAE, feature_sparsity: torch.Tensor):
             "dead_neuron": (feature_sparsity < -9).cpu(),
         }
     )
-
-    return temp_df
 
 
 @torch.no_grad()
@@ -48,7 +46,7 @@ def get_stats_df(projection: torch.Tensor):
     skews = torch.mean(torch.pow(zscores, 3.0), dim=1)
     kurtosis = torch.mean(torch.pow(zscores, 4.0), dim=1)
 
-    stats_df = pd.DataFrame(
+    return pd.DataFrame(
         {
             "feature": range(len(skews)),
             "mean": mean.numpy().squeeze(),
@@ -57,8 +55,6 @@ def get_stats_df(projection: torch.Tensor):
             "kurtosis": kurtosis.numpy(),
         }
     )
-
-    return stats_df
 
 
 @torch.no_grad()
@@ -82,8 +78,7 @@ def get_all_stats_dfs(
         W_U_stats_df_dec["layer"] = layer + (1 if "post" in key else 0)
         stats_dfs.append(W_U_stats_df_dec)
 
-    W_U_stats_df_dec_all_layers = pd.concat(stats_dfs, axis=0)
-    return W_U_stats_df_dec_all_layers
+    return pd.concat(stats_dfs, axis=0)
 
 
 @torch.no_grad()

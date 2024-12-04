@@ -34,10 +34,12 @@ def _default_cfg(
     device = (
         "cuda"
         if torch.cuda.is_available()
-        else "mps" if torch.backends.mps.is_available() else "cpu"
+        else "mps"
+        if torch.backends.mps.is_available()
+        else "cpu"
     )
 
-    sliced_context_size = kwargs.get("seqpos_slice", None)
+    sliced_context_size = kwargs.get("seqpos_slice")
     if sliced_context_size is not None:
         sliced_context_size = len(range(context_size)[slice(*sliced_context_size)])
     else:
@@ -204,7 +206,9 @@ def test_compare_cached_activations_end_to_end_with_ground_truth(tmp_path: Path)
     dataset_acts: torch.Tensor = activation_dataset[cfg.hook_name]  # type: ignore
 
     model = HookedTransformer.from_pretrained(cfg.model_name, device=cfg.device)
-    token_dataset: Dataset = load_dataset(cfg.dataset_path, split=f"train[:{cfg.n_seq_in_dataset}]")  # type: ignore
+    token_dataset: Dataset = load_dataset(
+        cfg.dataset_path, split=f"train[:{cfg.n_seq_in_dataset}]"
+    )  # type: ignore
     token_dataset.set_format("torch", device=cfg.device)
 
     ground_truth_acts = []

@@ -33,7 +33,9 @@ def rectangle(x: torch.Tensor) -> torch.Tensor:
 class Step(torch.autograd.Function):
     @staticmethod
     def forward(
-        x: torch.Tensor, threshold: torch.Tensor, bandwidth: float
+        x: torch.Tensor,
+        threshold: torch.Tensor,
+        bandwidth: float,  # noqa: ARG004
     ) -> torch.Tensor:
         return (x > threshold).to(x)
 
@@ -47,7 +49,9 @@ class Step(torch.autograd.Function):
         ctx.bandwidth = bandwidth
 
     @staticmethod
-    def backward(ctx: Any, grad_output: torch.Tensor) -> tuple[None, torch.Tensor, None]:  # type: ignore[override]
+    def backward(  # type: ignore[override]
+        ctx: Any, grad_output: torch.Tensor
+    ) -> tuple[None, torch.Tensor, None]:
         x, threshold = ctx.saved_tensors
         bandwidth = ctx.bandwidth
         threshold_grad = torch.sum(
@@ -60,7 +64,9 @@ class Step(torch.autograd.Function):
 class JumpReLU(torch.autograd.Function):
     @staticmethod
     def forward(
-        x: torch.Tensor, threshold: torch.Tensor, bandwidth: float
+        x: torch.Tensor,
+        threshold: torch.Tensor,
+        bandwidth: float,  # noqa: ARG004
     ) -> torch.Tensor:
         return (x * (x > threshold)).to(x)
 
@@ -74,7 +80,9 @@ class JumpReLU(torch.autograd.Function):
         ctx.bandwidth = bandwidth
 
     @staticmethod
-    def backward(ctx: Any, grad_output: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, None]:  # type: ignore[override]
+    def backward(  # type: ignore[override]
+        ctx: Any, grad_output: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor, None]:
         x, threshold = ctx.saved_tensors
         bandwidth = ctx.bandwidth
         x_grad = (x > threshold) * grad_output  # We don't apply STE to x input
@@ -99,7 +107,6 @@ class TrainStepOutput:
 
 @dataclass(kw_only=True)
 class TrainingSAEConfig(SAEConfig):
-
     # Sparsity Loss Calculations
     l1_coefficient: float
     lp_norm: float
@@ -118,7 +125,6 @@ class TrainingSAEConfig(SAEConfig):
     def from_sae_runner_config(
         cls, cfg: LanguageModelSAERunnerConfig
     ) -> "TrainingSAEConfig":
-
         return cls(
             # base config
             architecture=cfg.architecture,
@@ -360,11 +366,8 @@ class TrainingSAE(SAE):
         self,
         x: Float[torch.Tensor, "... d_in"],
     ) -> Float[torch.Tensor, "... d_in"]:
-
         feature_acts, _ = self.encode_with_hidden_pre_fn(x)
-        sae_out = self.decode(feature_acts)
-
-        return sae_out
+        return self.decode(feature_acts)
 
     def training_forward_pass(
         self,
@@ -372,7 +375,6 @@ class TrainingSAE(SAE):
         current_l1_coefficient: float,
         dead_neuron_mask: Optional[torch.Tensor] = None,
     ) -> TrainStepOutput:
-
         # do a forward pass to get SAE out, but we also need the
         # hidden pre.
         feature_acts, hidden_pre = self.encode_with_hidden_pre_fn(sae_in)
@@ -494,8 +496,7 @@ class TrainingSAE(SAE):
             recons = self.decode(auxk_acts)
             auxk_loss = (recons - residual).pow(2).sum(dim=-1).mean()
             return scale * auxk_loss
-        else:
-            return sae_out.new_tensor(0.0)
+        return sae_out.new_tensor(0.0)
 
     def calculate_ghost_grad_loss(
         self,
@@ -505,7 +506,6 @@ class TrainingSAE(SAE):
         hidden_pre: torch.Tensor,
         dead_neuron_mask: torch.Tensor,
     ) -> torch.Tensor:
-
         # 1.
         residual = x - sae_out
         l2_norm_residual = torch.norm(residual, dim=-1)
@@ -537,7 +537,6 @@ class TrainingSAE(SAE):
 
     @torch.no_grad()
     def _get_mse_loss_fn(self) -> Any:
-
         def standard_mse_loss_fn(
             preds: torch.Tensor, target: torch.Tensor
         ) -> torch.Tensor:
@@ -554,8 +553,7 @@ class TrainingSAE(SAE):
 
         if self.cfg.mse_loss_normalization == "dense_batch":
             return batch_norm_mse_loss_fn
-        else:
-            return standard_mse_loss_fn
+        return standard_mse_loss_fn
 
     def process_state_dict_for_saving(self, state_dict: dict[str, Any]) -> None:
         if self.cfg.architecture == "jumprelu" and "log_threshold" in state_dict:
@@ -576,10 +574,9 @@ class TrainingSAE(SAE):
         device: str = "cpu",
         dtype: str | None = None,
     ) -> "TrainingSAE":
-
         # get the config
         config_path = os.path.join(path, SAE_CFG_PATH)
-        with open(config_path, "r") as f:
+        with open(config_path) as f:
             cfg_dict = json.load(f)
         cfg_dict = handle_config_defaulting(cfg_dict)
         cfg_dict["device"] = device

@@ -23,8 +23,9 @@ from tests.unit.helpers import (
 
 @pytest.fixture
 def cfg(tmp_path: Path):
-    cfg = build_sae_cfg(d_in=64, d_sae=128, hook_layer=0, checkpoint_path=str(tmp_path))
-    return cfg
+    return build_sae_cfg(
+        d_in=64, d_sae=128, hook_layer=0, checkpoint_path=str(tmp_path)
+    )
 
 
 @pytest.fixture
@@ -51,28 +52,23 @@ def trainer(
     model: HookedTransformer,
     activation_store: ActivationsStore,
 ):
-
-    trainer = SAETrainer(
+    return SAETrainer(
         model=model,
         sae=training_sae,
         activation_store=activation_store,
-        save_checkpoint_fn=lambda *args, **kwargs: None,
+        save_checkpoint_fn=lambda *args, **kwargs: None,  # noqa: ARG005
         cfg=cfg,
     )
-
-    return trainer
 
 
 @pytest.fixture
 def training_runner(
     cfg: LanguageModelSAERunnerConfig,
 ):
-    runner = SAETrainingRunner(cfg)
-    return runner
+    return SAETrainingRunner(cfg)
 
 
 def test_save_checkpoint(training_runner: SAETrainingRunner, trainer: SAETrainer):
-
     training_runner.save_checkpoint(
         trainer=trainer,
         checkpoint_name="test",

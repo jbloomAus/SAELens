@@ -14,7 +14,6 @@ def weighted_average(points: torch.Tensor, weights: torch.Tensor):
 def geometric_median_objective(
     median: torch.Tensor, points: torch.Tensor, weights: torch.Tensor
 ) -> torch.Tensor:
-
     norms = torch.linalg.norm(points - median.view(1, -1), dim=1)  # type: ignore
 
     return (norms * weights).sum()
@@ -42,17 +41,13 @@ def compute_geometric_median(
         - `logs`: function values encountered through the course of the algorithm in a list (None if do_log is false).
     """
     with torch.no_grad():
-
         if weights is None:
             weights = torch.ones((points.shape[0],), device=points.device)
         # initialize median estimate at mean
         new_weights = weights
         median = weighted_average(points, weights)
         objective_value = geometric_median_objective(median, points, weights)
-        if do_log:
-            logs = [objective_value]
-        else:
-            logs = None
+        logs = [objective_value] if do_log else None
 
         # Weiszfeld iterations
         early_termination = False
@@ -104,4 +99,4 @@ if __name__ == "__main__":
 
     tic = time.perf_counter()
     new = compute_geometric_median(sample, weights=weights, maxiter=100)
-    print(f"new code takes {time.perf_counter()-tic} seconds!")
+    print(f"new code takes {time.perf_counter()-tic} seconds!")  # noqa: T201

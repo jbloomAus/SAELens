@@ -35,7 +35,7 @@ def load_model(
         return HookedTransformer.from_pretrained_no_processing(
             model_name=model_name, device=device, **model_from_pretrained_kwargs
         )
-    elif model_class_name == "HookedMamba":
+    if model_class_name == "HookedMamba":
         try:
             from mamba_lens import HookedMamba
         except ImportError:  # pragma: no cover
@@ -49,15 +49,15 @@ def load_model(
                 model_name, device=cast(Any, device), **model_from_pretrained_kwargs
             ),
         )
-    elif model_class_name == "AutoModelForCausalLM":
+    if model_class_name == "AutoModelForCausalLM":
         hf_model = AutoModelForCausalLM.from_pretrained(
             model_name, **model_from_pretrained_kwargs
         ).to(device)
         tokenizer = AutoTokenizer.from_pretrained(model_name)
         return HookedProxyLM(hf_model, tokenizer)
 
-    else:  # pragma: no cover
-        raise ValueError(f"Unknown model class: {model_class_name}")
+    # pragma: no cover
+    raise ValueError(f"Unknown model class: {model_class_name}")
 
 
 class HookedProxyLM(HookedRootModule):
@@ -159,23 +159,20 @@ class HookedProxyLM(HookedRootModule):
 def _extract_logits_from_output(output: Any) -> torch.Tensor:
     if isinstance(output, torch.Tensor):
         return output
-    elif isinstance(output, tuple) and isinstance(output[0], torch.Tensor):
+    if isinstance(output, tuple) and isinstance(output[0], torch.Tensor):
         return output[0]
-    elif isinstance(output, dict) and "logits" in output:
+    if isinstance(output, dict) and "logits" in output:
         return output["logits"]
-    else:
-        raise ValueError(f"Unknown output type: {type(output)}")
+    raise ValueError(f"Unknown output type: {type(output)}")
 
 
 def get_hook_fn(hook_point: HookPoint):
-
-    def hook_fn(module: Any, input: Any, output: Any) -> Any:
+    def hook_fn(module: Any, input: Any, output: Any) -> Any:  # noqa: ARG001
         if isinstance(output, torch.Tensor):
             return hook_point(output)
-        elif isinstance(output, tuple) and isinstance(output[0], torch.Tensor):
+        if isinstance(output, tuple) and isinstance(output[0], torch.Tensor):
             return (hook_point(output[0]), *output[1:])
-        else:
-            # if this isn't a tensor, just skip the hook entirely as this will break otherwise
-            return output
+        # if this isn't a tensor, just skip the hook entirely as this will break otherwise
+        return output
 
     return hook_fn

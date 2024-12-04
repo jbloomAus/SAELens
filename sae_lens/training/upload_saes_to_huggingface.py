@@ -122,10 +122,9 @@ def _build_sae_path(sae_ref: SAE | Path | str, tmp_dir: str) -> Path:
     if isinstance(sae_ref, SAE):
         sae_ref.save_model(tmp_dir)
         return Path(tmp_dir)
-    elif isinstance(sae_ref, Path):
+    if isinstance(sae_ref, Path):
         return sae_ref
-    else:
-        return Path(sae_ref)
+    return Path(sae_ref)
 
 
 def _validate_sae_path(sae_path: Path):

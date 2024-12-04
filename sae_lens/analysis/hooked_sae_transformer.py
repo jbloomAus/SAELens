@@ -29,10 +29,7 @@ def get_deep_attr(obj: Any, path: str):
     parts = path.split(".")
     # Navigate to the last component in the path
     for part in parts:
-        if part.isdigit():  # This is a list index
-            obj = obj[int(part)]
-        else:  # This is an attribute
-            obj = getattr(obj, part)
+        obj = obj[int(part)] if part.isdigit() else getattr(obj, part)
     return obj
 
 
@@ -48,16 +45,12 @@ def set_deep_attr(obj: Any, path: str, value: Any):
     parts = path.split(".")
     # Navigate to the last component in the path
     for part in parts[:-1]:
-        if part.isdigit():  # This is a list index
-            obj = obj[int(part)]
-        else:  # This is an attribute
-            obj = getattr(obj, part)
+        obj = obj[int(part)] if part.isdigit() else getattr(obj, part)
     # Set the value on the final attribute
     setattr(obj, parts[-1], value)
 
 
 class HookedSAETransformer(HookedTransformer):
-
     def __init__(
         self,
         *model_args: Any,

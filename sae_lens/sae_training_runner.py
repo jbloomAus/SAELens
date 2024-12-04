@@ -22,7 +22,7 @@ class InterruptedException(Exception):
     pass
 
 
-def interrupt_callback(sig_num: Any, stack_frame: Any):
+def interrupt_callback(sig_num: Any, stack_frame: Any):  # noqa: ARG001
     raise InterruptedException()
 
 
@@ -116,7 +116,6 @@ class SAETrainingRunner:
         return sae
 
     def _compile_if_needed(self):
-
         # Compile model and SAE
         #  torch.compile can provide significant speedups (10-20% in testing)
         # using max-autotune gives the best speedups but:
@@ -133,10 +132,7 @@ class SAETrainingRunner:
             )  # type: ignore
 
         if self.cfg.compile_sae:
-            if self.cfg.device == "mps":
-                backend = "aot_eager"
-            else:
-                backend = "inductor"
+            backend = "aot_eager" if self.cfg.device == "mps" else "inductor"
 
             self.sae.training_forward_pass = torch.compile(  # type: ignore
                 self.sae.training_forward_pass,
