@@ -2,6 +2,105 @@
 
 
 
+## v5.2.0 (2024-12-06)
+
+### Chore
+
+* chore: fix tokenizer typing for bos_token_id (#399) ([`b3b67d6`](https://github.com/jbloomAus/SAELens/commit/b3b67d6c26d7a088f02bd78f4082ec134a6fd6a0))
+
+* chore: Replace isort black and flake8 with ruff (#393)
+
+* replaces in cache_activations_runner.py
+
+* replaces isort, black, adn flake8 with Ruff
+
+* adds SIM lint rule
+
+* fixes for CI check
+
+* adds RET lint rule
+
+* adds LOG lint rule
+
+* fixes RET error
+
+* resolves conflicts
+
+* applies make format
+
+* adds T20 rule
+
+* replaces extend-select with select
+
+* resolves conflicts
+
+* fixes lint errors
+
+* update .vscode/settings.json
+
+* Revert &#34;update .vscode/settings.json&#34;
+
+This reverts commit 1bb5497d7495f7fb0843bc4eb885ba90cf6b4f47.
+
+* updates .vscode/settings.json
+
+* adds newline ([`52dbff9`](https://github.com/jbloomAus/SAELens/commit/52dbff9d4311b873641c17cadcdc8a7f2c562269))
+
+### Feature
+
+* feat: Save estimated norm scaling factor during checkpointing (#395)
+
+* refactor saving
+
+* save estimated_norm_scaling_factor
+
+* use new constant names elsewhere
+
+* estimate norm scaling factor in `ActivationsStore` init
+
+* fix tests
+
+* add test
+
+* tweaks
+
+* safetensors path
+
+* remove scaling factor on fold
+
+* test scaling factor value
+
+* format
+
+* format
+
+* undo silly change
+
+* format
+
+* save fn protocol
+
+* make save fn static
+
+* test which checkpoints have estimated norm scaling factor
+
+* fix test
+
+* fmt ([`63a15a0`](https://github.com/jbloomAus/SAELens/commit/63a15a010c3f018ae227584a0bc2866b04fe4f79))
+
+### Fix
+
+* fix: force build ([`53180e0`](https://github.com/jbloomAus/SAELens/commit/53180e000928695748dc56787f9995f3ee35096c))
+
+* fix: typo in pretrained yaml ([`9db9e36`](https://github.com/jbloomAus/SAELens/commit/9db9e3660f866322a756ca7f596077537a5fa25e))
+
+### Unknown
+
+* Merge pull request #397 from jbloomAus/np_yaml
+
+fix: typo in pretrained yaml ([`19bcb2e`](https://github.com/jbloomAus/SAELens/commit/19bcb2e3245962add858c289802cf9fb57c014b4))
+
+
 ## v5.1.0 (2024-11-30)
 
 ### Feature
