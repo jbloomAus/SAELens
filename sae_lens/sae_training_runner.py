@@ -179,23 +179,23 @@ class SAETrainingRunner:
             layer_acts = self.activations_store.storage_buffer.detach().cpu()[:, 0, :]
             self.sae.initialize_b_dec_with_mean(layer_acts)  # type: ignore
 
+    @staticmethod
     def save_checkpoint(
-        self,
         trainer: SAETrainer,
         checkpoint_name: str,
         wandb_aliases: list[str] | None = None,
     ) -> None:
-        base_path = Path(self.cfg.checkpoint_path) / checkpoint_name
+        base_path = Path(trainer.cfg.checkpoint_path) / checkpoint_name
         base_path.mkdir(exist_ok=True, parents=True)
 
-        self.activations_store.save(
+        trainer.activations_store.save(
             str(base_path / "activations_store_state.safetensors")
         )
 
-        if self.sae.cfg.normalize_sae_decoder:
-            self.sae.set_decoder_norm_to_unit_norm()
+        if trainer.sae.cfg.normalize_sae_decoder:
+            trainer.sae.set_decoder_norm_to_unit_norm()
 
-        weights_path, cfg_path, sparsity_path = self.sae.save_model(
+        weights_path, cfg_path, sparsity_path = trainer.sae.save_model(
             str(base_path),
             trainer.log_feature_sparsity,
         )
@@ -206,10 +206,10 @@ class SAETrainingRunner:
         with open(cfg_path, "w") as f:
             json.dump(config, f)
 
-        if self.cfg.log_to_wandb:
+        if trainer.cfg.log_to_wandb:
             # Avoid wandb saving errors such as:
             #   ValueError: Artifact name may only contain alphanumeric characters, dashes, underscores, and dots. Invalid name: sae_google/gemma-2b_etc
-            sae_name = self.sae.get_name().replace("/", "__")
+            sae_name = trainer.sae.get_name().replace("/", "__")
 
             # save model weights and cfg
             model_artifact = wandb.Artifact(
