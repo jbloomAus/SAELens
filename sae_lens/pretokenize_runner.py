@@ -60,11 +60,11 @@ def get_special_token_from_cfg(
     if isinstance(cfg_token, int):
         return cfg_token
     if cfg_token == "bos":
-        return tokenizer.bos_token_id
+        return tokenizer.bos_token_id  # type: ignore
     if cfg_token == "eos":
-        return tokenizer.eos_token_id
+        return tokenizer.eos_token_id  # type: ignore
     if cfg_token == "sep":
-        return tokenizer.sep_token_id
+        return tokenizer.sep_token_id  # type: ignore
     raise ValueError(f"Invalid token type: {cfg_token}")
 
 

@@ -24,7 +24,7 @@ from tests.unit.helpers import build_sae_cfg, load_model_cached
 def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
     assert model.tokenizer is not None
     assert model.tokenizer.bos_token_id is not None
-    return [model.tokenizer.bos_token_id] + model.tokenizer.encode(text)
+    return [model.tokenizer.bos_token_id] + model.tokenizer.encode(text)  # type: ignore
 
 
 # Define a new fixture for different configurations
