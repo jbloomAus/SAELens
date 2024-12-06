@@ -86,20 +86,22 @@ def test_save_checkpoint(training_runner: SAETrainingRunner, trainer: SAETrainer
 
 
 def test_training_runner_works_with_from_pretrained_path(
-    training_runner: SAETrainingRunner,
     trainer: SAETrainer,
     cfg: LanguageModelSAERunnerConfig,
 ):
-    training_runner.save_checkpoint(
+    SAETrainingRunner.save_checkpoint(
         trainer=trainer,
         checkpoint_name="test",
     )
 
-    cfg.from_pretrained_path = training_runner.cfg.checkpoint_path + "/test"
+    cfg.from_pretrained_path = trainer.cfg.checkpoint_path + "/test"
     loaded_runner = SAETrainingRunner(cfg)
 
+    print(trainer.activations_store.estimated_norm_scaling_factor)
+    print(loaded_runner.activations_store.estimated_norm_scaling_factor)
+
     # the loaded runner should load the pretrained SAE
-    orig_sae = training_runner.sae
+    orig_sae = trainer.sae
     new_sae = loaded_runner.sae
 
     assert orig_sae.cfg.to_dict() == new_sae.cfg.to_dict()
