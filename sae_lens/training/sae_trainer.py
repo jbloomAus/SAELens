@@ -1,6 +1,6 @@
 import contextlib
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import Any, Optional, Protocol, cast
 
 import torch
 import wandb
@@ -43,6 +43,15 @@ class TrainSAEOutput:
     log_feature_sparsities: torch.Tensor
 
 
+class SaveCheckpointFn(Protocol):
+    def __call__(
+        self,
+        trainer: "SAETrainer",
+        checkpoint_name: str,
+        wandb_aliases: Optional[list[str]] = None,
+    ) -> None: ...
+
+
 class SAETrainer:
     """
     Core SAE class used for inference. For training, see TrainingSAE.
@@ -53,12 +62,12 @@ class SAETrainer:
         model: HookedRootModule,
         sae: TrainingSAE,
         activation_store: ActivationsStore,
-        save_checkpoint_fn,  # type: ignore
+        save_checkpoint_fn: SaveCheckpointFn,
         cfg: LanguageModelSAERunnerConfig,
     ) -> None:
         self.model = model
         self.sae = sae
-        self.activation_store = activation_store
+        self.activations_store = activation_store
         self.save_checkpoint = save_checkpoint_fn
         self.cfg = cfg
 
@@ -165,12 +174,14 @@ class SAETrainer:
     def fit(self) -> TrainingSAE:
         pbar = tqdm(total=self.cfg.total_training_tokens, desc="Training SAE")
 
-        self._estimate_norm_scaling_factor_if_needed()
+        self.activations_store.set_norm_scaling_factor_if_needed()
 
         # Train loop
         while self.n_training_tokens < self.cfg.total_training_tokens:
             # Do a training step.
-            layer_acts = self.activation_store.next_batch()[:, 0, :].to(self.sae.device)
+            layer_acts = self.activations_store.next_batch()[:, 0, :].to(
+                self.sae.device
+            )
             self.n_training_tokens += self.cfg.train_batch_size_tokens
 
             step_output = self._train_step(sae=self.sae, sae_in=layer_acts)
@@ -187,10 +198,11 @@ class SAETrainer:
             self._begin_finetuning_if_needed()
 
         # fold the estimated norm scaling factor into the sae weights
-        if self.activation_store.estimated_norm_scaling_factor is not None:
+        if self.activations_store.estimated_norm_scaling_factor is not None:
             self.sae.fold_activation_norm_scaling_factor(
-                self.activation_store.estimated_norm_scaling_factor
+                self.activations_store.estimated_norm_scaling_factor
             )
+            self.activations_store.estimated_norm_scaling_factor = None
 
         # save final sae group to checkpoints folder
         self.save_checkpoint(
@@ -201,15 +213,6 @@ class SAETrainer:
 
         pbar.close()
         return self.sae
-
-    @torch.no_grad()
-    def _estimate_norm_scaling_factor_if_needed(self) -> None:
-        if self.cfg.normalize_activations == "expected_average_only_in":
-            self.activation_store.estimated_norm_scaling_factor = (
-                self.activation_store.estimate_norm_scaling_factor()
-            )
-        else:
-            self.activation_store.estimated_norm_scaling_factor = 1.0
 
     def _train_step(
         self,
@@ -331,7 +334,7 @@ class SAETrainer:
             self.sae.eval()
             eval_metrics, _ = run_evals(
                 sae=self.sae,
-                activation_store=self.activation_store,
+                activation_store=self.activations_store,
                 model=self.model,
                 eval_config=self.trainer_eval_config,
                 model_kwargs=self.cfg.model_kwargs,
@@ -392,7 +395,7 @@ class SAETrainer:
         ):
             self.save_checkpoint(
                 trainer=self,
-                checkpoint_name=self.n_training_tokens,
+                checkpoint_name=str(self.n_training_tokens),
             )
             self.checkpoint_thresholds.pop(0)
 

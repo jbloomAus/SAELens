@@ -7,6 +7,7 @@ import os
 import warnings
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Callable, Literal, Optional, Tuple, TypeVar, Union, overload
 
 import einops
@@ -28,9 +29,9 @@ from sae_lens.toolkit.pretrained_saes_directory import (
     get_pretrained_saes_directory,
 )
 
-SPARSITY_PATH = "sparsity.safetensors"
-SAE_WEIGHTS_PATH = "sae_weights.safetensors"
-SAE_CFG_PATH = "cfg.json"
+SPARSITY_FILENAME = "sparsity.safetensors"
+SAE_WEIGHTS_FILENAME = "sae_weights.safetensors"
+SAE_CFG_FILENAME = "cfg.json"
 
 T = TypeVar("T", bound="SAE")
 
@@ -480,24 +481,40 @@ class SAE(HookedRootModule):
         # once we normalize, we shouldn't need to scale activations.
         self.cfg.normalize_activations = "none"
 
-    def save_model(self, path: str, sparsity: Optional[torch.Tensor] = None):
-        if not os.path.exists(path):
-            os.mkdir(path)
+    @overload
+    def save_model(self, path: str | Path) -> Tuple[Path, Path]: ...
+
+    @overload
+    def save_model(
+        self, path: str | Path, sparsity: torch.Tensor
+    ) -> Tuple[Path, Path, Path]: ...
+
+    def save_model(self, path: str | Path, sparsity: Optional[torch.Tensor] = None):
+        path = Path(path)
+
+        if not path.exists():
+            path.mkdir(parents=True)
 
         # generate the weights
         state_dict = self.state_dict()
         self.process_state_dict_for_saving(state_dict)
-        save_file(state_dict, f"{path}/{SAE_WEIGHTS_PATH}")
+        model_weights_path = path / SAE_WEIGHTS_FILENAME
+        save_file(state_dict, model_weights_path)
 
         # save the config
         config = self.cfg.to_dict()
 
-        with open(f"{path}/{SAE_CFG_PATH}", "w") as f:
+        cfg_path = path / SAE_CFG_FILENAME
+        with open(cfg_path, "w") as f:
             json.dump(config, f)
 
         if sparsity is not None:
             sparsity_in_dict = {"sparsity": sparsity}
-            save_file(sparsity_in_dict, f"{path}/{SPARSITY_PATH}")  # type: ignore
+            sparsity_path = path / SPARSITY_FILENAME
+            save_file(sparsity_in_dict, sparsity_path)
+            return model_weights_path, cfg_path, sparsity_path
+
+        return model_weights_path, cfg_path
 
     # overwrite this in subclasses to modify the state_dict in-place before saving
     def process_state_dict_for_saving(self, state_dict: dict[str, Any]) -> None:
@@ -512,7 +529,7 @@ class SAE(HookedRootModule):
         cls, path: str, device: str = "cpu", dtype: str | None = None
     ) -> "SAE":
         # get the config
-        config_path = os.path.join(path, SAE_CFG_PATH)
+        config_path = os.path.join(path, SAE_CFG_FILENAME)
         with open(config_path) as f:
             cfg_dict = json.load(f)
         cfg_dict = handle_config_defaulting(cfg_dict)
@@ -520,7 +537,7 @@ class SAE(HookedRootModule):
         if dtype is not None:
             cfg_dict["dtype"] = dtype
 
-        weight_path = os.path.join(path, SAE_WEIGHTS_PATH)
+        weight_path = os.path.join(path, SAE_WEIGHTS_FILENAME)
         cfg_dict, state_dict = read_sae_from_disk(
             cfg_dict=cfg_dict,
             weight_path=weight_path,

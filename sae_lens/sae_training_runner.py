@@ -1,19 +1,18 @@
 import json
-import os
 import signal
 import sys
-from typing import Any, Sequence, cast
+from collections.abc import Sequence
+from pathlib import Path
+from typing import Any, cast
 
 import torch
 import wandb
-from safetensors.torch import save_file
 from simple_parsing import ArgumentParser
 from transformer_lens.hook_points import HookedRootModule
 
 from sae_lens import logger
 from sae_lens.config import HfDataset, LanguageModelSAERunnerConfig
 from sae_lens.load_model import load_model
-from sae_lens.sae import SAE_CFG_PATH, SAE_WEIGHTS_PATH, SPARSITY_PATH
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.geometric_median import compute_geometric_median
 from sae_lens.training.sae_trainer import SAETrainer
@@ -153,7 +152,7 @@ class SAETrainingRunner:
 
         except (KeyboardInterrupt, InterruptedException):
             logger.warning("interrupted, saving progress")
-            checkpoint_name = trainer.n_training_tokens
+            checkpoint_name = str(trainer.n_training_tokens)
             self.save_checkpoint(trainer, checkpoint_name=checkpoint_name)
             logger.info("done saving")
             raise
@@ -180,59 +179,56 @@ class SAETrainingRunner:
             layer_acts = self.activations_store.storage_buffer.detach().cpu()[:, 0, :]
             self.sae.initialize_b_dec_with_mean(layer_acts)  # type: ignore
 
+    @staticmethod
     def save_checkpoint(
-        self,
         trainer: SAETrainer,
-        checkpoint_name: int | str,
+        checkpoint_name: str,
         wandb_aliases: list[str] | None = None,
-    ) -> str:
-        checkpoint_path = f"{trainer.cfg.checkpoint_path}/{checkpoint_name}"
+    ) -> None:
+        base_path = Path(trainer.cfg.checkpoint_path) / checkpoint_name
+        base_path.mkdir(exist_ok=True, parents=True)
 
-        os.makedirs(checkpoint_path, exist_ok=True)
+        trainer.activations_store.save(
+            str(base_path / "activations_store_state.safetensors")
+        )
 
-        path = f"{checkpoint_path}"
-        os.makedirs(path, exist_ok=True)
+        if trainer.sae.cfg.normalize_sae_decoder:
+            trainer.sae.set_decoder_norm_to_unit_norm()
 
-        if self.sae.cfg.normalize_sae_decoder:
-            self.sae.set_decoder_norm_to_unit_norm()
-        self.sae.save_model(path)
+        weights_path, cfg_path, sparsity_path = trainer.sae.save_model(
+            str(base_path),
+            trainer.log_feature_sparsity,
+        )
 
         # let's over write the cfg file with the trainer cfg, which is a super set of the original cfg.
         # and should not cause issues but give us more info about SAEs we trained in SAE Lens.
         config = trainer.cfg.to_dict()
-        with open(f"{path}/cfg.json", "w") as f:
+        with open(cfg_path, "w") as f:
             json.dump(config, f)
 
-        log_feature_sparsities = {"sparsity": trainer.log_feature_sparsity}
-
-        log_feature_sparsity_path = f"{path}/{SPARSITY_PATH}"
-        save_file(log_feature_sparsities, log_feature_sparsity_path)
-
-        if trainer.cfg.log_to_wandb and os.path.exists(log_feature_sparsity_path):
+        if trainer.cfg.log_to_wandb:
             # Avoid wandb saving errors such as:
             #   ValueError: Artifact name may only contain alphanumeric characters, dashes, underscores, and dots. Invalid name: sae_google/gemma-2b_etc
-            sae_name = self.sae.get_name().replace("/", "__")
+            sae_name = trainer.sae.get_name().replace("/", "__")
 
+            # save model weights and cfg
             model_artifact = wandb.Artifact(
                 sae_name,
                 type="model",
                 metadata=dict(trainer.cfg.__dict__),
             )
-
-            model_artifact.add_file(f"{path}/{SAE_WEIGHTS_PATH}")
-            model_artifact.add_file(f"{path}/{SAE_CFG_PATH}")
-
+            model_artifact.add_file(str(weights_path))
+            model_artifact.add_file(str(cfg_path))
             wandb.log_artifact(model_artifact, aliases=wandb_aliases)
 
+            # save log feature sparsity
             sparsity_artifact = wandb.Artifact(
                 f"{sae_name}_log_feature_sparsity",
                 type="log_feature_sparsity",
                 metadata=dict(trainer.cfg.__dict__),
             )
-            sparsity_artifact.add_file(log_feature_sparsity_path)
+            sparsity_artifact.add_file(str(sparsity_path))
             wandb.log_artifact(sparsity_artifact)
-
-        return checkpoint_path
 
 
 def _parse_cfg_args(args: Sequence[str]) -> LanguageModelSAERunnerConfig:
