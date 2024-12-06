@@ -97,9 +97,6 @@ def test_training_runner_works_with_from_pretrained_path(
     cfg.from_pretrained_path = trainer.cfg.checkpoint_path + "/test"
     loaded_runner = SAETrainingRunner(cfg)
 
-    print(trainer.activations_store.estimated_norm_scaling_factor)
-    print(loaded_runner.activations_store.estimated_norm_scaling_factor)
-
     # the loaded runner should load the pretrained SAE
     orig_sae = trainer.sae
     new_sae = loaded_runner.sae
