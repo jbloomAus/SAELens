@@ -11059,162 +11059,162 @@ llama_scope_lxr_32x:
     l0: 50.0
     norm_scaling_factor: 58.935251798561154
     path: Llama3_1-8B-Base-L0R-32x
-    neuronpedia: llama3.1-8b/0-llamascope-res-128k
+    neuronpedia: llama3.1-8b/0-llamascope-res-131k
   - id: l1r_32x
     l0: 50.0
     norm_scaling_factor: 39.9609756097561
     path: Llama3_1-8B-Base-L1R-32x
-    neuronpedia: llama3.1-8b/1-llamascope-res-128k
+    neuronpedia: llama3.1-8b/1-llamascope-res-131k
   - id: l2r_32x
     l0: 50.0
     norm_scaling_factor: 27.30666666666667
     path: Llama3_1-8B-Base-L2R-32x
-    neuronpedia: llama3.1-8b/2-llamascope-res-128k
+    neuronpedia: llama3.1-8b/2-llamascope-res-131k
   - id: l3r_32x
     l0: 50.0
     norm_scaling_factor: 20.177339901477833
     path: Llama3_1-8B-Base-L3R-32x
-    neuronpedia: llama3.1-8b/3-llamascope-res-128k
+    neuronpedia: llama3.1-8b/3-llamascope-res-131k
   - id: l4r_32x
     l0: 50.0
     norm_scaling_factor: 16.125984251968504
     path: Llama3_1-8B-Base-L4R-32x
-    neuronpedia: llama3.1-8b/4-llamascope-res-128k
+    neuronpedia: llama3.1-8b/4-llamascope-res-131k
   - id: l5r_32x
     l0: 50.0
     norm_scaling_factor: 13.653333333333334
     path: Llama3_1-8B-Base-L5R-32x
-    neuronpedia: llama3.1-8b/5-llamascope-res-128k
+    neuronpedia: llama3.1-8b/5-llamascope-res-131k
   - id: l6r_32x
     l0: 50.0
     norm_scaling_factor: 11.976608187134502
     path: Llama3_1-8B-Base-L6R-32x
-    neuronpedia: llama3.1-8b/6-llamascope-res-128k
+    neuronpedia: llama3.1-8b/6-llamascope-res-131k
   - id: l7r_32x
     l0: 50.0
     norm_scaling_factor: 10.835978835978835
     path: Llama3_1-8B-Base-L7R-32x
-    neuronpedia: llama3.1-8b/7-llamascope-res-128k
+    neuronpedia: llama3.1-8b/7-llamascope-res-131k
   - id: l8r_32x
     l0: 50.0
     norm_scaling_factor: 10.138613861386139
     path: Llama3_1-8B-Base-L8R-32x
-    neuronpedia: llama3.1-8b/8-llamascope-res-128k
+    neuronpedia: llama3.1-8b/8-llamascope-res-131k
   - id: l9r_32x
     l0: 50.0
     norm_scaling_factor: 9.266968325791856
     path: Llama3_1-8B-Base-L9R-32x
-    neuronpedia: llama3.1-8b/9-llamascope-res-128k
+    neuronpedia: llama3.1-8b/9-llamascope-res-131k
   - id: l10r_32x
     l0: 50.0
     norm_scaling_factor: 8.827586206896552
     path: Llama3_1-8B-Base-L10R-32x
-    neuronpedia: llama3.1-8b/10-llamascope-res-128k
+    neuronpedia: llama3.1-8b/10-llamascope-res-131k
   - id: l11r_32x
     l0: 50.0
     norm_scaling_factor: 8.427983539094651
     path: Llama3_1-8B-Base-L11R-32x
-    neuronpedia: llama3.1-8b/11-llamascope-res-128k
+    neuronpedia: llama3.1-8b/11-llamascope-res-131k
   - id: l12r_32x
     l0: 50.0
     norm_scaling_factor: 7.937984496124031
     path: Llama3_1-8B-Base-L12R-32x
-    neuronpedia: llama3.1-8b/12-llamascope-res-128k
+    neuronpedia: llama3.1-8b/12-llamascope-res-131k
   - id: l13r_32x
     l0: 50.0
     norm_scaling_factor: 7.26241134751773
     path: Llama3_1-8B-Base-L13R-32x
-    neuronpedia: llama3.1-8b/13-llamascope-res-128k
+    neuronpedia: llama3.1-8b/13-llamascope-res-131k
   - id: l14r_32x
     l0: 50.0
     norm_scaling_factor: 6.69281045751634
     path: Llama3_1-8B-Base-L14R-32x
-    neuronpedia: llama3.1-8b/14-llamascope-res-128k
+    neuronpedia: llama3.1-8b/14-llamascope-res-131k
   - id: l15r_32x
     l0: 50.0
     norm_scaling_factor: 5.91907514450867
     path: Llama3_1-8B-Base-L15R-32x
-    neuronpedia: llama3.1-8b/15-llamascope-res-128k
+    neuronpedia: llama3.1-8b/15-llamascope-res-131k
   - id: l16r_32x
     l0: 50.0
     norm_scaling_factor: 5.278350515463917
     path: Llama3_1-8B-Base-L16R-32x
-    neuronpedia: llama3.1-8b/16-llamascope-res-128k
+    neuronpedia: llama3.1-8b/16-llamascope-res-131k
   - id: l17r_32x
     l0: 50.0
     norm_scaling_factor: 4.633484162895928
     path: Llama3_1-8B-Base-L17R-32x
-    neuronpedia: llama3.1-8b/17-llamascope-res-128k
+    neuronpedia: llama3.1-8b/17-llamascope-res-131k
   - id: l18r_32x
     l0: 50.0
     norm_scaling_factor: 4.129032258064516
     path: Llama3_1-8B-Base-L18R-32x
-    neuronpedia: llama3.1-8b/18-llamascope-res-128k
+    neuronpedia: llama3.1-8b/18-llamascope-res-131k
   - id: l19r_32x
     l0: 50.0
     norm_scaling_factor: 3.7372262773722627
     path: Llama3_1-8B-Base-L19R-32x
-    neuronpedia: llama3.1-8b/19-llamascope-res-128k
+    neuronpedia: llama3.1-8b/19-llamascope-res-131k
   - id: l20r_32x
     l0: 50.0
     norm_scaling_factor: 3.4133333333333336
     path: Llama3_1-8B-Base-L20R-32x
-    neuronpedia: llama3.1-8b/20-llamascope-res-128k
+    neuronpedia: llama3.1-8b/20-llamascope-res-131k
   - id: l21r_32x
     l0: 50.0
     norm_scaling_factor: 2.9767441860465116
     path: Llama3_1-8B-Base-L21R-32x
-    neuronpedia: llama3.1-8b/21-llamascope-res-128k
+    neuronpedia: llama3.1-8b/21-llamascope-res-131k
   - id: l22r_32x
     l0: 50.0
     norm_scaling_factor: 2.680628272251309
     path: Llama3_1-8B-Base-L22R-32x
-    neuronpedia: llama3.1-8b/22-llamascope-res-128k
+    neuronpedia: llama3.1-8b/22-llamascope-res-131k
   - id: l23r_32x
     l0: 50.0
     norm_scaling_factor: 2.4150943396226414
     path: Llama3_1-8B-Base-L23R-32x
-    neuronpedia: llama3.1-8b/23-llamascope-res-128k
+    neuronpedia: llama3.1-8b/23-llamascope-res-131k
   - id: l24r_32x
     l0: 50.0
     norm_scaling_factor: 2.1974248927038627
     path: Llama3_1-8B-Base-L24R-32x
-    neuronpedia: llama3.1-8b/24-llamascope-res-128k
+    neuronpedia: llama3.1-8b/24-llamascope-res-131k
   - id: l25r_32x
     l0: 50.0
     norm_scaling_factor: 2.0237154150197627
     path: Llama3_1-8B-Base-L25R-32x
-    neuronpedia: llama3.1-8b/25-llamascope-res-128k
+    neuronpedia: llama3.1-8b/25-llamascope-res-131k
   - id: l26r_32x
     l0: 50.0
     norm_scaling_factor: 1.8156028368794326
     path: Llama3_1-8B-Base-L26R-32x
-    neuronpedia: llama3.1-8b/26-llamascope-res-128k
+    neuronpedia: llama3.1-8b/26-llamascope-res-131k
   - id: l27r_32x
     l0: 50.0
     norm_scaling_factor: 1.6623376623376624
     path: Llama3_1-8B-Base-L27R-32x
-    neuronpedia: llama3.1-8b/27-llamascope-res-128k
+    neuronpedia: llama3.1-8b/27-llamascope-res-131k
   - id: l28r_32x
     l0: 50.0
     norm_scaling_factor: 1.5058823529411764
     path: Llama3_1-8B-Base-L28R-32x
-    neuronpedia: llama3.1-8b/28-llamascope-res-128k
+    neuronpedia: llama3.1-8b/28-llamascope-res-131k
   - id: l29r_32x
     l0: 50.0
     norm_scaling_factor: 1.3763440860215055
     path: Llama3_1-8B-Base-L29R-32x
-    neuronpedia: llama3.1-8b/29-llamascope-res-128k
+    neuronpedia: llama3.1-8b/29-llamascope-res-131k
   - id: l30r_32x
     l0: 50.0
     norm_scaling_factor: 1.2075471698113207
     path: Llama3_1-8B-Base-L30R-32x
-    neuronpedia: llama3.1-8b/30-llamascope-res-128k
+    neuronpedia: llama3.1-8b/30-llamascope-res-131k
   - id: l31r_32x
     l0: 50.0
     norm_scaling_factor: 0.8648648648648649
     path: Llama3_1-8B-Base-L31R-32x
-    neuronpedia: llama3.1-8b/31-llamascope-res-128k
+    neuronpedia: llama3.1-8b/31-llamascope-res-131k
 llama_scope_lxr_8x:
   conversion_func: llama_scope
   model: meta-llama/Llama-3.1-8B
