@@ -5578,23 +5578,23 @@ gemma-scope-9b-pt-res:
   - id: layer_9/width_1m/average_l0_14
     path: layer_9/width_1m/average_l0_14
     l0: 14
-    neuronpedia: gemma-2-9b/9-gemmascope-res-1m-l0_14
+    neuronpedia: gemma-2-9b/9-gemmascope-res-1m__l0-14
   - id: layer_9/width_1m/average_l0_24
     path: layer_9/width_1m/average_l0_24
     l0: 24
-    neuronpedia: gemma-2-9b/9-gemmascope-res-1m-l0_24
+    neuronpedia: gemma-2-9b/9-gemmascope-res-1m__l0-24
   - id: layer_9/width_1m/average_l0_41
     path: layer_9/width_1m/average_l0_41
     l0: 41
-    neuronpedia: gemma-2-9b/9-gemmascope-res-1m-l0_41
+    neuronpedia: gemma-2-9b/9-gemmascope-res-1m__l0-41
   - id: layer_9/width_1m/average_l0_70
     path: layer_9/width_1m/average_l0_70
     l0: 70
-    neuronpedia: gemma-2-9b/9-gemmascope-res-1m-l0_70
+    neuronpedia: gemma-2-9b/9-gemmascope-res-1m__l0-70
   - id: layer_9/width_1m/average_l0_9
     path: layer_9/width_1m/average_l0_9
     l0: 9
-    neuronpedia: gemma-2-9b/9-gemmascope-res-1m-l0_9
+    neuronpedia: gemma-2-9b/9-gemmascope-res-1m__l0-9
 gemma-scope-9b-pt-res-canonical:
   repo_id: google/gemma-scope-9b-pt-res
   model: gemma-2-9b
