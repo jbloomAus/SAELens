@@ -2,6 +2,17 @@
 
 
 
+## v5.2.1 (2024-12-15)
+
+### Unknown
+
+* Merge pull request #398 from jbloomAus/np_yaml
+
+fix: width for llamascope 32x was incorrect ([`0617dba`](https://github.com/jbloomAus/SAELens/commit/0617dba96bf4acd64354b95e41d7abe68b6f7693))
+
+* Update Llama Scope NP ids ([`26899cd`](https://github.com/jbloomAus/SAELens/commit/26899cdcb5f4831682162505abeb980e375888bb))
+
+
 ## v5.2.0 (2024-12-06)
 
 ### Chore
@@ -89,6 +100,8 @@ This reverts commit 1bb5497d7495f7fb0843bc4eb885ba90cf6b4f47.
 * fmt ([`63a15a0`](https://github.com/jbloomAus/SAELens/commit/63a15a010c3f018ae227584a0bc2866b04fe4f79))
 
 ### Fix
+
+* fix: width for llamascope 32x was incorrect ([`355691f`](https://github.com/jbloomAus/SAELens/commit/355691f5becf1b20a8a2082869fff98a2314310d))
 
 * fix: force build ([`53180e0`](https://github.com/jbloomAus/SAELens/commit/53180e000928695748dc56787f9995f3ee35096c))
 
