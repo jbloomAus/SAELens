@@ -130,18 +130,25 @@ class HookedProxyLM(HookedRootModule):
         # Assumes that prepend_bos is always False, move_to_device is always False, and truncate is always False
         # copied from HookedTransformer.to_tokens
 
-        assert (
-            prepend_bos is False
-        ), "Only works with prepend_bos=False, to match ActivationsStore usage"
-        assert (
-            padding_side is None
-        ), "Only works with padding_side=None, to match ActivationsStore usage"
-        assert (
-            truncate is False
-        ), "Only works with truncate=False, to match ActivationsStore usage"
-        assert (
-            move_to_device is False
-        ), "Only works with move_to_device=False, to match ActivationsStore usage"
+        if prepend_bos is not False:
+            raise ValueError(
+                "Only works with prepend_bos=False, to match ActivationsStore usage"
+            )
+
+        if padding_side is not None:
+            raise ValueError(
+                "Only works with padding_side=None, to match ActivationsStore usage"
+            )
+
+        if truncate is not False:
+            raise ValueError(
+                "Only works with truncate=False, to match ActivationsStore usage"
+            )
+
+        if move_to_device is not False:
+            raise ValueError(
+                "Only works with move_to_device=False, to match ActivationsStore usage"
+            )
 
         tokens = self.tokenizer(
             input,
