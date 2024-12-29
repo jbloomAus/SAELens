@@ -1,5 +1,5 @@
 from dataclasses import fields
-from typing import Optional
+from typing import Optional, Type
 
 import pytest
 
@@ -131,19 +131,19 @@ def test_sae_training_runner_config_expansion_factor():
 
 
 test_cases_for_seqpos = [
-    ((None, 10, -1), AssertionError),
-    ((None, 10, 0), AssertionError),
-    ((5, 5, None), AssertionError),
-    ((6, 3, None), AssertionError),
+    ((None, 10, -1), ValueError),
+    ((None, 10, 0), ValueError),
+    ((5, 5, None), ValueError),
+    ((6, 3, None), ValueError),
 ]
 
 
 @pytest.mark.parametrize("seqpos_slice, expected_error", test_cases_for_seqpos)
 def test_sae_training_runner_config_seqpos(
-    seqpos_slice: tuple[int, int], expected_error: Optional[AssertionError]
+    seqpos_slice: tuple[int, int], expected_error: Optional[Type[BaseException]]
 ):
     context_size = 10
-    if expected_error is AssertionError:
+    if expected_error is not None:
         with pytest.raises(expected_error):
             LanguageModelSAERunnerConfig(
                 seqpos_slice=seqpos_slice,
@@ -158,9 +158,10 @@ def test_sae_training_runner_config_seqpos(
 
 @pytest.mark.parametrize("seqpos_slice, expected_error", test_cases_for_seqpos)
 def test_cache_activations_runner_config_seqpos(
-    seqpos_slice: tuple[int, int], expected_error: Optional[AssertionError]
+    seqpos_slice: tuple[int, int],
+    expected_error: Optional[Type[BaseException]],
 ):
-    if expected_error is AssertionError:
+    if expected_error is ValueError:
         with pytest.raises(expected_error):
             CacheActivationsRunnerConfig(
                 dataset_path="",

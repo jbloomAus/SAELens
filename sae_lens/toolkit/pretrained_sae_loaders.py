@@ -233,9 +233,10 @@ def read_sae_from_disk(
             del state_dict["scaling_factor"]
             cfg_dict["finetuning_scaling_factor"] = False
         else:
-            assert cfg_dict[
-                "finetuning_scaling_factor"
-            ], "Scaling factor is present but finetuning_scaling_factor is False."
+            if not cfg_dict["finetuning_scaling_factor"]:
+                raise ValueError(
+                    "Scaling factor is present but finetuning_scaling_factor is False."
+                )
             state_dict["finetuning_scaling_factor"] = state_dict["scaling_factor"]
             del state_dict["scaling_factor"]
     else:
@@ -391,9 +392,10 @@ def gemma_2_sae_loader(
             del state_dict["scaling_factor"]
             cfg_dict["finetuning_scaling_factor"] = False
         else:
-            assert cfg_dict[
-                "finetuning_scaling_factor"
-            ], "Scaling factor is present but finetuning_scaling_factor is False."
+            if not cfg_dict["finetuning_scaling_factor"]:
+                raise ValueError(
+                    "Scaling factor is present but finetuning_scaling_factor is False."
+                )
             state_dict["finetuning_scaling_factor"] = state_dict.pop("scaling_factor")
     else:
         cfg_dict["finetuning_scaling_factor"] = False

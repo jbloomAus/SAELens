@@ -119,7 +119,10 @@ class L1Scheduler:
 
         self.current_step = 0
         self.total_steps = total_steps
-        assert isinstance(self.final_l1_coefficient, float | int)
+        if not isinstance(self.final_l1_coefficient, (float, int)):
+            raise TypeError(
+                f"final_l1_coefficient must be float or int, got {type(self.final_l1_coefficient)}."
+            )
 
     def __repr__(self) -> str:
         return (

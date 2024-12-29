@@ -141,9 +141,8 @@ class HookedSAETransformer(HookedTransformer):
             act_names = list(self.acts_to_saes.keys())
 
         if prev_saes:
-            assert len(act_names) == len(
-                prev_saes
-            ), "act_names and prev_saes must have the same length"
+            if len(act_names) != len(prev_saes):
+                raise ValueError("act_names and prev_saes must have the same length")
         else:
             prev_saes = [None] * len(act_names)  # type: ignore
 

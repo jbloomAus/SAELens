@@ -79,9 +79,8 @@ def concat_and_batch_sequences(
     """
     batch: torch.Tensor | None = None
     for tokens in tokens_iterator:
-        assert (
-            len(tokens.shape) == 1
-        ), f"tokens.shape should be 1D but was {tokens.shape}"
+        if len(tokens.shape) != 1:
+            raise ValueError(f"tokens.shape should be 1D but was {tokens.shape}")
         offset = 0
         total_toks = tokens.shape[0]
         is_start_of_sequence = True

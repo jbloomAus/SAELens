@@ -318,9 +318,8 @@ class ActivationsStore:
                 .squeeze(0)
                 .to(self.device)
             )
-            assert (
-                len(tokens.shape) == 1
-            ), f"tokens.shape should be 1D but was {tokens.shape}"
+            if len(tokens.shape) != 1:
+                raise ValueError(f"tokens.shape should be 1D but was {tokens.shape}")
             yield tokens
 
     def _iterate_tokenized_sequences(self) -> Generator[torch.Tensor, None, None]:
@@ -365,9 +364,11 @@ class ActivationsStore:
 
         assert self.cached_activations_path is not None  # keep pyright happy
         # Sanity check: does the cache directory exist?
-        assert os.path.exists(
-            self.cached_activations_path
-        ), f"Cache directory {self.cached_activations_path} does not exist. Consider double-checking your dataset, model, and hook names."
+        if not os.path.exists(self.cached_activations_path):
+            raise FileNotFoundError(
+                f"Cache directory {self.cached_activations_path} does not exist. "
+                "Consider double-checking your dataset, model, and hook names."
+            )
 
         # ---
         # Actual code
@@ -563,7 +564,11 @@ class ActivationsStore:
         assert self.cached_activation_dataset is not None
         # In future, could be a list of multiple hook names
         hook_names = [self.hook_name]
-        assert set(hook_names).issubset(self.cached_activation_dataset.column_names)
+        if not set(hook_names).issubset(self.cached_activation_dataset.column_names):
+            raise ValueError(
+                f"Missing columns in dataset. Expected {hook_names}, "
+                f"got {self.cached_activation_dataset.column_names}."
+            )
 
         if self.current_row_idx > len(self.cached_activation_dataset) - total_size:
             self.current_row_idx = 0
@@ -577,13 +582,21 @@ class ActivationsStore:
             _hook_buffer = self.cached_activation_dataset[
                 self.current_row_idx : self.current_row_idx + total_size
             ][hook_name]
-            assert _hook_buffer.shape == (total_size, context_size, d_in)
+            if _hook_buffer.shape != (total_size, context_size, d_in):
+                raise ValueError(
+                    f"_hook_buffer has shape {_hook_buffer.shape}, "
+                    f"but expected ({total_size}, {context_size}, {d_in})."
+                )
             new_buffer.append(_hook_buffer)
 
         # Stack across num_layers dimension
         # list of num_layers; shape: (total_size, context_size, d_in) -> (total_size, context_size, num_layers, d_in)
         new_buffer = torch.stack(new_buffer, dim=2)
-        assert new_buffer.shape == (total_size, context_size, num_layers, d_in)
+        if new_buffer.shape != (total_size, context_size, num_layers, d_in):
+            raise ValueError(
+                f"new_buffer has shape {new_buffer.shape}, "
+                f"but expected ({total_size}, {context_size}, {num_layers}, {d_in})."
+            )
 
         self.current_row_idx += total_size
         return new_buffer.reshape(total_size * context_size, num_layers, d_in)

@@ -566,7 +566,9 @@ class CacheActivationsRunnerConfig:
                 )
             token_length = len(toks)
             self.context_size = token_length
-        assert self.context_size != -1
+
+        if self.context_size == -1:
+            raise ValueError("context_size is still -1 after dataset inspection.")
 
         if self.seqpos_slice is not None:
             _validate_seqpos(
@@ -704,11 +706,15 @@ def _validate_seqpos(seqpos: tuple[int | None, ...], context_size: int) -> None:
     # Ensure that the step-size is larger or equal to 1
     if len(seqpos) == 3:
         step_size = seqpos[2] or 1
-        assert (
-            step_size > 1
-        ), f"Ensure the step_size {seqpos[2]=} for sequence slicing is positive."
+        if step_size <= 1:
+            raise ValueError(
+                f"Ensure the step_size={seqpos[2]} for sequence slicing is at least 1."
+            )
     # Ensure that the choice of seqpos doesn't end up with an empty list
-    assert len(list(range(context_size))[slice(*seqpos)]) > 0
+    if len(list(range(context_size))[slice(*seqpos)]) == 0:
+        raise ValueError(
+            f"The slice {seqpos} results in an empty range. Please adjust your seqpos or context_size."
+        )
 
 
 @dataclass

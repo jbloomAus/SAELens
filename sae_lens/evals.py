@@ -130,7 +130,11 @@ def run_evals(
     }
 
     if eval_config.compute_kl or eval_config.compute_ce_loss:
-        assert eval_config.n_eval_reconstruction_batches > 0
+        if eval_config.n_eval_reconstruction_batches <= 0:
+            raise ValueError(
+                "eval_config.n_eval_reconstruction_batches must be > 0 when "
+                "compute_kl or compute_ce_loss is True."
+            )
         reconstruction_metrics = get_downstream_reconstruction_metrics(
             sae,
             model,
@@ -175,7 +179,11 @@ def run_evals(
         or eval_config.compute_sparsity_metrics
         or eval_config.compute_variance_metrics
     ):
-        assert eval_config.n_eval_sparsity_variance_batches > 0
+        if eval_config.n_eval_sparsity_variance_batches <= 0:
+            raise ValueError(
+                "eval_config.n_eval_sparsity_variance_batches must be > 0 when "
+                "compute_l2_norms, compute_sparsity_metrics, or compute_variance_metrics is True."
+            )
         sparsity_variance_metrics, feature_metrics = get_sparsity_and_variance_metrics(
             sae,
             model,
@@ -743,7 +751,8 @@ def multiple_evals(
 
     filtered_saes = get_saes_from_regex(sae_regex_pattern, sae_block_pattern)
 
-    assert len(filtered_saes) > 0, "No SAEs matched the given regex patterns"
+    if len(filtered_saes) == 0:
+        raise ValueError("No SAEs matched the given regex patterns")
 
     eval_results = []
     output_path = Path(output_dir)
