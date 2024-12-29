@@ -365,7 +365,10 @@ async def autointerp_neuronpedia_features(  # noqa: C901
                 f"ERROR: Failed to explain feature {feature.modelId}@{feature.layer}-{feature.dataset}:{feature.feature}"
             )
 
-        assert len(explanations) == 1
+        if len(explanations) != 1:
+            raise ValueError(
+                f"Expected exactly one explanation but got {len(explanations)}. This may indicate an issue with the explainer's response."
+            )
         explanation = explanations[0].rstrip(".")
         logger.info(
             f"===== {autointerp_explainer_model_name}'s explanation: {explanation}"

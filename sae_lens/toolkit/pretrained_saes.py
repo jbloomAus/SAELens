@@ -66,10 +66,11 @@ def get_gpt2_res_jb_saes(
     ] + ["blocks.11.hook_resid_post"]
 
     if hook_point is not None:
-        assert hook_point in GPT2_SMALL_RESIDUAL_SAES_HOOK_POINTS, (
-            f"hook_point must be one of {GPT2_SMALL_RESIDUAL_SAES_HOOK_POINTS}"
-            f"but got {hook_point}"
-        )
+        if hook_point not in GPT2_SMALL_RESIDUAL_SAES_HOOK_POINTS:
+            raise ValueError(
+                f"hook_point must be one of {GPT2_SMALL_RESIDUAL_SAES_HOOK_POINTS} "
+                f"but got {hook_point}"
+            )
         GPT2_SMALL_RESIDUAL_SAES_HOOK_POINTS = [hook_point]
 
     saes = {}

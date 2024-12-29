@@ -648,9 +648,8 @@ class SAE(HookedRootModule):
         return cls(SAEConfig.from_dict(config_dict))
 
     def turn_on_forward_pass_hook_z_reshaping(self):
-        assert self.cfg.hook_name.endswith(
-            "_z"
-        ), "This method should only be called for hook_z SAEs."
+        if not self.cfg.hook_name.endswith("_z"):
+            raise ValueError("This method should only be called for hook_z SAEs.")
 
         def reshape_fn_in(x: torch.Tensor):
             self.d_head = x.shape[-1]  # type: ignore
@@ -703,7 +702,8 @@ def get_activation_fn(
 
         return tanh_relu
     if activation_fn == "topk":
-        assert "k" in kwargs, "TopK activation function requires a k value."
+        if "k" not in kwargs:
+            raise ValueError("TopK activation function requires a k value.")
         k = kwargs.get("k", 1)  # Default k to 1 if not provided
         postact_fn = kwargs.get(
             "postact_fn", nn.ReLU()

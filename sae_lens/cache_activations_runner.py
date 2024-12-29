@@ -159,12 +159,22 @@ class CacheActivationsRunner:
         """
         first_shard_dir_name = "shard_00000"  # shard_{i:05d}
 
-        assert source_dir.exists() and source_dir.is_dir()
-        assert (
-            output_dir.exists()
-            and output_dir.is_dir()
-            and not any(p for p in output_dir.iterdir() if p.name != ".tmp_shards")
-        )
+        if not source_dir.exists() or not source_dir.is_dir():
+            raise NotADirectoryError(
+                f"source_dir is not an existing directory: {source_dir}"
+            )
+
+        if not output_dir.exists() or not output_dir.is_dir():
+            raise NotADirectoryError(
+                f"output_dir is not an existing directory: {output_dir}"
+            )
+
+        other_items = [p for p in output_dir.iterdir() if p.name != ".tmp_shards"]
+        if other_items:
+            raise FileExistsError(
+                f"output_dir must be empty (besides .tmp_shards). Found: {other_items}"
+            )
+
         if not (source_dir / first_shard_dir_name).exists():
             raise Exception(f"No shards in {source_dir} exist!")
 

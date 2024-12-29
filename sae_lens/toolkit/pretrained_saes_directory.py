@@ -33,7 +33,8 @@ def get_pretrained_saes_directory() -> dict[str, PretrainedSAELookup]:
             l0_map: dict[str, float] = {}
             neuronpedia_id_map: dict[str, str] = {}
 
-            assert "saes" in value, f"Missing 'saes' key in {release}"
+            if "saes" not in value:
+                raise KeyError(f"Missing 'saes' key in {release}")
             for hook_info in value["saes"]:
                 saes_map[hook_info["id"]] = hook_info["path"]
                 var_explained_map[hook_info["id"]] = hook_info.get(
