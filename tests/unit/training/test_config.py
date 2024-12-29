@@ -1,5 +1,5 @@
 from dataclasses import fields
-from typing import Optional, Type
+from typing import Type
 
 import pytest
 
@@ -140,16 +140,10 @@ test_cases_for_seqpos = [
 
 @pytest.mark.parametrize("seqpos_slice, expected_error", test_cases_for_seqpos)
 def test_sae_training_runner_config_seqpos(
-    seqpos_slice: tuple[int, int], expected_error: Optional[Type[BaseException]]
+    seqpos_slice: tuple[int, int], expected_error: Type[BaseException]
 ):
     context_size = 10
-    if expected_error is not None:
-        with pytest.raises(expected_error):
-            LanguageModelSAERunnerConfig(
-                seqpos_slice=seqpos_slice,
-                context_size=context_size,
-            )
-    else:
+    with pytest.raises(expected_error):
         LanguageModelSAERunnerConfig(
             seqpos_slice=seqpos_slice,
             context_size=context_size,
@@ -159,22 +153,9 @@ def test_sae_training_runner_config_seqpos(
 @pytest.mark.parametrize("seqpos_slice, expected_error", test_cases_for_seqpos)
 def test_cache_activations_runner_config_seqpos(
     seqpos_slice: tuple[int, int],
-    expected_error: Optional[Type[BaseException]],
+    expected_error: Type[BaseException],
 ):
-    if expected_error is ValueError:
-        with pytest.raises(expected_error):
-            CacheActivationsRunnerConfig(
-                dataset_path="",
-                model_name="",
-                model_batch_size=1,
-                hook_name="",
-                hook_layer=0,
-                d_in=1,
-                training_tokens=100,
-                context_size=10,
-                seqpos_slice=seqpos_slice,
-            )
-    else:
+    with pytest.raises(expected_error):
         CacheActivationsRunnerConfig(
             dataset_path="",
             model_name="",
