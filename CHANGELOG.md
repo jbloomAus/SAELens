@@ -2,6 +2,19 @@
 
 
 
+## v5.3.0 (2024-12-29)
+
+### Feature
+
+* feat: Replace assert statements with exception code (#400)
+
+* replaces assert statements with exception code
+
+* replaces assert statements with exception code in less obvious cases
+
+* removes unnecessary if and else statements ([`324be25`](https://github.com/jbloomAus/SAELens/commit/324be2581435fffa4bc9e31a0d329aefce6cc91f))
+
+
 ## v5.2.1 (2024-12-15)
 
 ### Unknown
