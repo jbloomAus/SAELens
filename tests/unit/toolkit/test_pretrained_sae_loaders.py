@@ -135,7 +135,7 @@ def test_get_sae_config_gemma_2():
 def test_get_sae_config_dictionary_learning_1():
     cfg_dict = get_sae_config(
         "sae_bench_gemma-2-2b_topk_width-2pow16_date-1109",
-        sae_id="blocks.12.hook_resid_post__trainer_0_step_3088",
+        sae_id="blocks.12.hook_resid_post__trainer_0",
         options=SAEConfigLoadOptions(),
     )
 
@@ -159,7 +159,7 @@ def test_get_sae_config_dictionary_learning_1():
         "dataset_trust_remote_code": True,
         "context_size": 128,
         "normalize_activations": "none",
-        "neuronpedia_id": "gemma-2-2b/12-sae_bench-topk-res-65k__trainer_0_step_3088",
+        "neuronpedia_id": "gemma-2-2b/12-sae_bench-topk-res-65k__trainer_0_step_final",
     }
 
     assert cfg_dict == expected_cfg_dict
