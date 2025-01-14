@@ -2,6 +2,25 @@
 
 
 
+## v5.3.1 (2025-01-14)
+
+### Chore
+
+* chore: Fixed bug in the neuronpedia_integration cell in notebook  (#402)
+
+* corrected basic loading tutorial
+
+* fix formatting
+
+---------
+
+Co-authored-by: David Chanin &lt;chanindav@gmail.com&gt; ([`4935b83`](https://github.com/jbloomAus/SAELens/commit/4935b8351d8b2bdcbcc6b4f3a5c61b33ab82cf9e))
+
+### Fix
+
+* fix: removing deleted saebench SAEs from pretrained_saes.yaml (#403) ([`65e1986`](https://github.com/jbloomAus/SAELens/commit/65e1986132d5dda94c01ad7d61d6a49a6c1f31aa))
+
+
 ## v5.3.0 (2024-12-29)
 
 ### Feature
