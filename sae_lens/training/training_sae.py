@@ -340,9 +340,6 @@ class TrainingSAE(SAE):
     ) -> tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
         sae_in = self.process_sae_in(x)
 
-        # apply b_dec_to_input if using that method.
-        sae_in = x - (self.b_dec * self.cfg.apply_b_dec_to_input)
-
         # Gating path with Heaviside step function
         gating_pre_activation = sae_in @ self.W_enc + self.b_gate
         active_features = (gating_pre_activation > 0).to(self.dtype)
@@ -630,6 +627,17 @@ class TrainingSAE(SAE):
             with torch.no_grad():
                 # Anthropic normalize this to have unit columns
                 self.set_decoder_norm_to_unit_norm()
+
+    @torch.no_grad()
+    def fold_W_dec_norm(self):
+        # need to deal with the jumprelu having a log_threshold in training
+        if self.cfg.architecture == "jumprelu":
+            cur_threshold = self.threshold.clone()
+            W_dec_norms = self.W_dec.norm(dim=-1).unsqueeze(1)
+            super().fold_W_dec_norm()
+            self.log_threshold.data = torch.log(cur_threshold * W_dec_norms.squeeze())
+        else:
+            super().fold_W_dec_norm()
 
     ## Initialization Methods
     @torch.no_grad()

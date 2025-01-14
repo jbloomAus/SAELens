@@ -466,6 +466,9 @@ class SAE(HookedRootModule):
             self.r_mag.data = self.r_mag.data * W_dec_norms.squeeze()
             self.b_gate.data = self.b_gate.data * W_dec_norms.squeeze()
             self.b_mag.data = self.b_mag.data * W_dec_norms.squeeze()
+        elif self.cfg.architecture == "jumprelu":
+            self.threshold.data = self.threshold.data * W_dec_norms.squeeze()
+            self.b_enc.data = self.b_enc.data * W_dec_norms.squeeze()
         else:
             self.b_enc.data = self.b_enc.data * W_dec_norms.squeeze()
 
