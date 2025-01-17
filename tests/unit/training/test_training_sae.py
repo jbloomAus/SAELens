@@ -1,3 +1,4 @@
+from copy import deepcopy
 from pathlib import Path
 
 import pytest
@@ -226,3 +227,43 @@ def test_TrainingSAE_jumprelu_save_and_load(tmp_path: Path):
     loaded_sae_out = loaded_sae.encode(test_input)
     assert torch.allclose(training_sae_out, loaded_training_sae_out)
     assert torch.allclose(training_sae_out, loaded_sae_out)
+
+
+@torch.no_grad()
+def test_TrainingSAE_fold_w_dec_norm_jumprelu():
+    cfg = build_sae_cfg(architecture="jumprelu")
+    sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+
+    # make sure all parameters are not 0s
+    for param in sae.parameters():
+        param.data = torch.rand_like(param)
+
+    assert sae.W_dec.norm(dim=-1).mean().item() != pytest.approx(1.0, abs=1e-6)
+    sae2 = deepcopy(sae)
+    sae2.fold_W_dec_norm()
+
+    # fold_W_dec_norm should normalize W_dec to have unit norm.
+    assert sae2.W_dec.norm(dim=-1).mean().item() == pytest.approx(1.0, abs=1e-6)
+
+    W_dec_norms = sae.W_dec.norm(dim=-1).unsqueeze(1)
+    assert torch.allclose(sae2.b_enc, sae.b_enc * W_dec_norms.squeeze())
+    assert torch.allclose(sae2.threshold, sae.threshold * W_dec_norms.squeeze())
+
+    # we expect activations of features to differ by W_dec norm weights.
+    activations = torch.randn(10, 4, cfg.d_in, device=cfg.device)
+    feature_activations_1 = sae.encode(activations)
+    feature_activations_2 = sae2.encode(activations)
+
+    assert torch.allclose(
+        feature_activations_1.nonzero(),
+        feature_activations_2.nonzero(),
+    )
+
+    expected_feature_activations_2 = feature_activations_1 * sae.W_dec.norm(dim=-1)
+    torch.testing.assert_close(feature_activations_2, expected_feature_activations_2)
+
+    sae_out_1 = sae.decode(feature_activations_1)
+    sae_out_2 = sae2.decode(feature_activations_2)
+
+    # but actual outputs should be the same
+    torch.testing.assert_close(sae_out_1, sae_out_2)

@@ -8,6 +8,8 @@ from sae_lens.config import LanguageModelSAERunnerConfig
 TINYSTORIES_MODEL = "tiny-stories-1M"
 TINYSTORIES_DATASET = "roneneldan/TinyStories"
 
+ALL_ARCHITECTURES = ["standard", "gated", "jumprelu", "topk"]
+
 
 class LanguageModelSAERunnerConfigDict(TypedDict, total=False):
     model_name: str
