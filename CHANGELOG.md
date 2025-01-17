@@ -2,6 +2,13 @@
 
 
 
+## v5.3.2 (2025-01-17)
+
+### Fix
+
+* fix: fixing jumprelu threshold when folding dec norm (#404) ([`06b6669`](https://github.com/jbloomAus/SAELens/commit/06b66695ddcab4ee37969ba07e59b0ed76615748))
+
+
 ## v5.3.1 (2025-01-14)
 
 ### Chore
