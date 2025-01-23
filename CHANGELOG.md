@@ -2,6 +2,13 @@
 
 
 
+## v5.3.3 (2025-01-23)
+
+### Fix
+
+* fix: removing invalid gemma scope SAEs from the supported SAEs llist (#408) ([`60c97f5`](https://github.com/jbloomAus/SAELens/commit/60c97f5174545f8da0c6af5b52605633cf5e34a5))
+
+
 ## v5.3.2 (2025-01-17)
 
 ### Fix
