@@ -218,9 +218,9 @@ class SAETrainer:
         self,
         sae: TrainingSAE,
         sae_in: torch.Tensor,
+        token_mask: torch.Tensor | None = None,
     ) -> TrainStepOutput:
         sae.train()
-        # Make sure the W_dec is still zero-norm
         if self.cfg.normalize_sae_decoder:
             sae.set_decoder_norm_to_unit_norm()
 
@@ -231,23 +231,34 @@ class SAETrainer:
                 wandb.log(sparsity_log_dict, step=self.n_training_steps)
             self._reset_running_sparsity_stats()
 
-        # for documentation on autocasting see:
-        # https://pytorch.org/tutorials/recipes/recipes/amp_recipe.html
         with self.autocast_if_enabled:
             train_step_output = self.sae.training_forward_pass(
                 sae_in=sae_in,
                 dead_neuron_mask=self.dead_neurons,
                 current_l1_coefficient=self.current_l1_coefficient,
+                token_mask=token_mask,
             )
 
             with torch.no_grad():
-                did_fire = (train_step_output.feature_acts > 0).float().sum(-2) > 0
+                did_fire = (train_step_output.feature_acts > 0).float()
+                if token_mask is not None:
+                    did_fire = did_fire * token_mask.unsqueeze(-1)
+                did_fire = did_fire.sum(-2) > 0
+
                 self.n_forward_passes_since_fired += 1
                 self.n_forward_passes_since_fired[did_fire] = 0
-                self.act_freq_scores += (
-                    (train_step_output.feature_acts.abs() > 0).float().sum(0)
+
+                act_freq = (train_step_output.feature_acts.abs() > 0).float()
+                if token_mask is not None:
+                    act_freq = act_freq * token_mask.unsqueeze(-1)
+                self.act_freq_scores += act_freq.sum(0)
+
+                n_valid_tokens = (
+                    token_mask.sum()
+                    if token_mask is not None
+                    else self.cfg.train_batch_size_tokens
                 )
-                self.n_frac_active_tokens += self.cfg.train_batch_size_tokens
+                self.n_frac_active_tokens += n_valid_tokens
 
         # Scaler will rescale gradients if autocast is enabled
         self.scaler.scale(

@@ -117,6 +117,7 @@ class LanguageModelSAERunnerConfig:
         verbose (bool): Whether to print verbose output.
         model_kwargs (dict[str, Any]): Additional keyword arguments for the model.
         model_from_pretrained_kwargs (dict[str, Any]): Additional keyword arguments for the model from pretrained.
+        exclude_special_tokens (bool | list[int]): Whether to exclude special tokens from the activations.
     """
 
     # Data Generating Function (Model + Training Distibuion)
@@ -242,6 +243,7 @@ class LanguageModelSAERunnerConfig:
     model_from_pretrained_kwargs: dict[str, Any] | None = None
     sae_lens_version: str = field(default_factory=lambda: __version__)
     sae_lens_training_version: str = field(default_factory=lambda: __version__)
+    exclude_special_tokens: bool | list[int] = False
 
     def __post_init__(self):
         if self.resume:
@@ -350,13 +352,13 @@ class LanguageModelSAERunnerConfig:
                 * self.n_batches_in_buffer
             )
             logger.info(
-                f"n_tokens_per_buffer (millions): {n_tokens_per_buffer / 10 ** 6}"
+                f"n_tokens_per_buffer (millions): {n_tokens_per_buffer / 10**6}"
             )
             n_contexts_per_buffer = (
                 self.store_batch_size_prompts * self.n_batches_in_buffer
             )
             logger.info(
-                f"Lower bound: n_contexts_per_buffer (millions): {n_contexts_per_buffer / 10 ** 6}"
+                f"Lower bound: n_contexts_per_buffer (millions): {n_contexts_per_buffer / 10**6}"
             )
 
             total_training_steps = (
@@ -373,10 +375,10 @@ class LanguageModelSAERunnerConfig:
                 total_training_steps // self.feature_sampling_window
             )
             logger.info(
-                f"n_tokens_per_feature_sampling_window (millions): {(self.feature_sampling_window * self.context_size * self.train_batch_size_tokens) / 10 ** 6}"
+                f"n_tokens_per_feature_sampling_window (millions): {(self.feature_sampling_window * self.context_size * self.train_batch_size_tokens) / 10**6}"
             )
             logger.info(
-                f"n_tokens_per_dead_feature_window (millions): {(self.dead_feature_window * self.context_size * self.train_batch_size_tokens) / 10 ** 6}"
+                f"n_tokens_per_dead_feature_window (millions): {(self.dead_feature_window * self.context_size * self.train_batch_size_tokens) / 10**6}"
             )
             logger.info(
                 f"We will reset the sparsity calculation {n_feature_window_samples} times."
@@ -395,6 +397,13 @@ class LanguageModelSAERunnerConfig:
             )
 
         _validate_seqpos(seqpos=self.seqpos_slice, context_size=self.context_size)
+
+        if isinstance(self.exclude_special_tokens, list):
+            # Validate that all elements are integers
+            if not all(isinstance(x, int) for x in self.exclude_special_tokens):
+                raise ValueError(
+                    "exclude_special_tokens list must contain only integers"
+                )
 
     @property
     def total_training_tokens(self) -> int:

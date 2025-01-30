@@ -16,6 +16,8 @@ from sae_lens.load_model import load_model
 from sae_lens.pretokenize_runner import pretokenize_dataset
 from sae_lens.training.activations_store import (
     ActivationsStore,
+    _get_special_token_ids,
+    permute_together,
     validate_pretokenized_dataset_tokenizer,
 )
 from tests.unit.helpers import build_sae_cfg, load_model_cached
@@ -116,7 +118,9 @@ def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
     expected_size = (
         cfg.store_batch_size_prompts * cfg.context_size * cfg.n_batches_in_buffer // 2
     )
-    assert store.storage_buffer.shape == (expected_size, 1, cfg.d_in)
+    assert store.storage_buffer[0].shape == (expected_size, 1, cfg.d_in)
+    assert store.storage_buffer[1] is not None
+    assert store.storage_buffer[1].shape == (expected_size,)
 
     # --- Next, get batch tokens and assert they look correct ---
 
@@ -145,21 +149,24 @@ def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
     # --- Next, get buffer and assert it looks correct ---
 
     n_batches_in_buffer = 3
-    buffer = store.get_buffer(n_batches_in_buffer)
+    act_buffer, tok_buffer = store.get_buffer(n_batches_in_buffer)
 
-    assert isinstance(buffer, torch.Tensor)
+    assert isinstance(act_buffer, torch.Tensor)
+    assert isinstance(tok_buffer, torch.Tensor)
     buffer_size_expected = (
         store.store_batch_size_prompts * store.context_size * n_batches_in_buffer
     )
 
-    assert buffer.shape == (buffer_size_expected, 1, store.d_in)
-    assert buffer.device == store.device
+    assert act_buffer.shape == (buffer_size_expected, 1, store.d_in)
+    assert tok_buffer.shape == (buffer_size_expected,)
+    assert act_buffer.device == store.device
+    assert tok_buffer.device == store.device
 
     # check the buffer norm
     if cfg.normalize_activations == "expected_average_only_in":
         assert torch.allclose(
-            buffer.norm(dim=-1),
-            np.sqrt(store.d_in) * torch.ones_like(buffer.norm(dim=-1)),
+            act_buffer.norm(dim=-1),
+            np.sqrt(store.d_in) * torch.ones_like(act_buffer.norm(dim=-1)),
             atol=2,
         )
 
@@ -292,7 +299,9 @@ def test_activations_store_goes_to_cpu(ts_model: HookedTransformer):
     cfg = build_sae_cfg(act_store_device="cpu")
     activation_store = ActivationsStore.from_config(ts_model, cfg)
     activations = activation_store.next_batch()
-    assert activations.device == torch.device("cpu")
+    assert activations[0].device == torch.device("cpu")
+    assert activations[1] is not None
+    assert activations[1].device == torch.device("cpu")
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="No GPU to test on.")
@@ -300,7 +309,9 @@ def test_activations_store_with_model_on_gpu(ts_model: HookedTransformer):
     cfg = build_sae_cfg(act_store_device="cpu", device="cuda:0")
     activation_store = ActivationsStore.from_config(ts_model.to("cuda:0"), cfg)  # type: ignore
     activations = activation_store.next_batch()
-    assert activations.device == torch.device("cpu")
+    assert activations[0].device == torch.device("cpu")
+    assert activations[1] is not None
+    assert activations[1].device == torch.device("cpu")
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="No GPU to test on.")
@@ -309,7 +320,9 @@ def test_activations_store_moves_with_model(ts_model: HookedTransformer):
     cfg = build_sae_cfg(act_store_device="with_model", device="cuda:0")
     activation_store = ActivationsStore.from_config(ts_model.to("cuda:0"), cfg)  # type: ignore
     activations = activation_store.next_batch()
-    assert activations.device == torch.device("cuda:0")
+    assert activations[0].device == torch.device("cpu")
+    assert activations[1] is not None
+    assert activations[1].device == torch.device("cpu")
 
 
 def test_activations_store_estimate_norm_scaling_factor(
@@ -328,7 +341,8 @@ def test_activations_store_estimate_norm_scaling_factor(
     factor = store.estimate_norm_scaling_factor(n_batches_for_norm_estimate=10)
     assert isinstance(factor, float)
 
-    scaled_norm = store._storage_buffer.norm(dim=-1).mean() * factor  # type: ignore
+    assert store._storage_buffer is not None
+    scaled_norm = store._storage_buffer[0].norm(dim=-1).mean() * factor
     assert scaled_norm == pytest.approx(np.sqrt(store.d_in), abs=5)
 
 
@@ -604,3 +618,159 @@ def test_activations_store_save_with_norm_scaling_factor(
             )
         else:
             assert "estimated_norm_scaling_factor" not in state_dict
+
+
+def test_activations_store_exclude_special_tokens(ts_model: HookedTransformer):
+    cfg = build_sae_cfg(exclude_special_tokens=True, train_batch_size_tokens=3)
+    dataset = Dataset.from_list([{"text": "hello world"}] * 100)
+
+    store = ActivationsStore.from_config(ts_model, cfg, override_dataset=dataset)
+    acts, mask = store.next_batch()
+
+    # Check that mask excludes special tokens
+    assert mask is not None
+    assert mask.shape == acts.shape[:1]  # Should match batch x context_size
+    assert mask.dtype == torch.bool
+    assert len(mask) == 3
+
+    # BOS token should not be masked
+    assert mask[0].item() is False
+    assert mask[1].item() is True
+    assert mask[2].item() is True
+
+
+def test_activations_store_exclude_specific_tokens(ts_model: HookedTransformer):
+    tokens_to_exclude = [ts_model.tokenizer.encode("hello")[0]]  # type: ignore
+    cfg = build_sae_cfg(
+        exclude_special_tokens=tokens_to_exclude, train_batch_size_tokens=3
+    )
+    dataset = Dataset.from_list([{"text": "hello world"}] * 100)
+
+    store = ActivationsStore.from_config(ts_model, cfg, override_dataset=dataset)
+    acts, mask = store.next_batch()
+    assert acts is not None
+    assert mask is not None
+    assert len(mask) == 3
+
+    # hello token should be masked
+    assert mask[0].item() is True
+    assert mask[1].item() is False
+    assert mask[2].item() is False
+
+
+def test_get_special_token_ids():
+    # Create a mock tokenizer with some special tokens
+    class MockTokenizer:
+        def __init__(self):
+            self.bos_token_id = 1
+            self.eos_token_id = 2
+            self.pad_token_id = 3
+            self.unk_token_id = None  # Test handling of None values
+            self.special_tokens_map = {
+                "additional_special_tokens": ["<extra_0>", "<extra_1>"],
+                "mask_token": "<mask>",
+            }
+
+        def convert_tokens_to_ids(self, token: str) -> int:
+            token_map = {"<extra_0>": 4, "<extra_1>": 5, "<mask>": 6}
+            return token_map[token]
+
+    tokenizer = MockTokenizer()
+    special_tokens = _get_special_token_ids(tokenizer)  # type: ignore
+
+    # Check that all expected token IDs are present
+    assert set(special_tokens) == {1, 2, 3, 4, 5, 6}
+
+    # Check that None values are properly handled
+    assert None not in special_tokens
+
+
+def test_get_special_token_ids_works_with_real_models(ts_model: HookedTransformer):
+    special_tokens = _get_special_token_ids(ts_model.tokenizer)  # type: ignore
+    assert special_tokens == [50256]
+
+
+def test_activations_store_buffer_contains_token_ids(ts_model: HookedTransformer):
+    """Test that the buffer contains both activations and token IDs."""
+    cfg = build_sae_cfg(context_size=3, store_batch_size_prompts=5)
+    dataset = Dataset.from_list([{"text": "hello world"}] * 100)
+
+    store = ActivationsStore.from_config(ts_model, cfg, override_dataset=dataset)
+    acts, token_ids = store.get_buffer(n_batches_in_buffer=2)
+
+    assert acts.shape == (30, 1, 64)  # (batch_size x context_size x n_batches, 1, d_in)
+    assert token_ids is not None
+    assert token_ids.shape == (30,)  # (batch_size x context_size x n_batches,)
+
+    expected_tokens = set(ts_model.to_tokens("hello world").squeeze().tolist())  # type: ignore
+    assert set(token_ids.tolist()) == expected_tokens
+
+
+def test_activations_store_buffer_shuffling(ts_model: HookedTransformer):
+    """Test that buffer shuffling maintains alignment between acts and token_ids."""
+    cfg = build_sae_cfg()
+    dataset = Dataset.from_list([{"text": "hello world"}] * 100)
+
+    # Get unshuffled buffer
+    store = ActivationsStore.from_config(ts_model, cfg, override_dataset=dataset)
+    acts_unshuffled_1, token_ids_unshuffled_1 = store.get_buffer(
+        n_batches_in_buffer=2, shuffle=False
+    )
+
+    store = ActivationsStore.from_config(ts_model, cfg, override_dataset=dataset)
+    acts_unshuffled_2, token_ids_unshuffled_2 = store.get_buffer(
+        n_batches_in_buffer=2, shuffle=False
+    )
+
+    # Get shuffled buffer
+    store = ActivationsStore.from_config(ts_model, cfg, override_dataset=dataset)
+    acts_shuffled, token_ids_shuffled = store.get_buffer(
+        n_batches_in_buffer=2, shuffle=True
+    )
+
+    assert token_ids_unshuffled_1 is not None
+    assert token_ids_unshuffled_2 is not None
+    assert token_ids_shuffled is not None
+
+    assert torch.allclose(acts_unshuffled_1, acts_unshuffled_2)
+    assert torch.allclose(token_ids_unshuffled_1, token_ids_unshuffled_2)
+    assert not torch.allclose(acts_unshuffled_1, acts_shuffled)
+    assert not torch.allclose(token_ids_unshuffled_1, token_ids_shuffled)
+
+    assert set(token_ids_shuffled.tolist()) == set(token_ids_unshuffled_1.tolist())
+
+
+def test_permute_together():
+    """Test that permute_together correctly permutes tensors together."""
+    # Create test tensors
+    t1 = torch.tensor([[1, 2], [3, 4], [5, 6]])
+    t2 = torch.tensor([10, 20, 30])
+    t3 = torch.tensor([[100], [200], [300]])
+
+    # Permute them together
+    p1, p2, p3 = permute_together([t1, t2, t3])
+
+    # Verify shapes are preserved
+    assert p1.shape == t1.shape
+    assert p2.shape == t2.shape
+    assert p3.shape == t3.shape
+
+    # Find the permutation that was applied by looking at t2
+    perm = torch.zeros_like(t2, dtype=torch.long)
+    for i in range(len(t2)):
+        perm[i] = torch.where(p2 == t2[i])[0]
+
+    # Verify all tensors used the same permutation
+    for i in range(len(t2)):
+        assert torch.allclose(p1[i], t1[perm[i]])
+        assert torch.allclose(p2[i], t2[perm[i]])
+        assert torch.allclose(p3[i], t3[perm[i]])
+
+
+def test_permute_together_different_sizes_raises():
+    """Test that permute_together raises an error if tensors have different first dimensions."""
+    t1 = torch.tensor([[1, 2], [3, 4], [5, 6]])  # Shape (3, 2)
+    t2 = torch.tensor([10, 20])  # Shape (2,)
+
+    with pytest.raises(IndexError):
+        permute_together([t1, t2])

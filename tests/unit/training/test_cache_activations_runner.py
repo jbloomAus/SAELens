@@ -2,7 +2,7 @@ import dataclasses
 import math
 import os
 from pathlib import Path
-from typing import Any, Tuple
+from typing import Any
 
 import datasets
 import pytest
@@ -89,12 +89,13 @@ def test_cache_activations_runner(tmp_path: Path):
 
     assert len(dataset) == cfg.n_buffers * (cfg.n_tokens_in_buffer // cfg.context_size)
     assert cfg.n_seq_in_dataset == len(dataset)
-    assert dataset.num_columns == 1 and dataset.column_names == [cfg.hook_name]
+    assert dataset.column_names == [cfg.hook_name, "token_ids"]
 
     features = dataset.features
-    for hook_name in [cfg.hook_name]:
-        assert isinstance(features[hook_name], datasets.Array2D)
-        assert features[hook_name].shape == (cfg.context_size, cfg.d_in)
+    assert isinstance(features[cfg.hook_name], datasets.Array2D)
+    assert features[cfg.hook_name].shape == (cfg.context_size, cfg.d_in)
+    assert isinstance(features["token_ids"], datasets.Sequence)
+    assert features["token_ids"].length == cfg.context_size
 
 
 def test_load_cached_activations(tmp_path: Path):
@@ -110,11 +111,13 @@ def test_load_cached_activations(tmp_path: Path):
         buffer = activations_store.get_buffer(
             cfg.n_batches_in_buffer
         )  # Adjusted to use n_batches_in_buffer
-        assert buffer.shape == (
+        assert buffer[0].shape == (
             cfg.n_seq_in_buffer * cfg.context_size,
             1,
             cfg.d_in,
         )
+        assert buffer[1] is not None
+        assert buffer[1].shape == (cfg.n_seq_in_buffer * cfg.context_size,)
 
 
 def test_activations_store_refreshes_dataset_when_it_runs_out(tmp_path: Path):
@@ -151,7 +154,7 @@ def test_activations_store_refreshes_dataset_when_it_runs_out(tmp_path: Path):
     )
 
     class MockModel:
-        def to_tokens(self, *args: Tuple[Any, ...], **kwargs: Any) -> torch.Tensor:
+        def to_tokens(self, *args: tuple[Any, ...], **kwargs: Any) -> torch.Tensor:
             return torch.ones(context_size)
 
         @property
@@ -162,12 +165,7 @@ def test_activations_store_refreshes_dataset_when_it_runs_out(tmp_path: Path):
         def cfg(self) -> LanguageModelSAERunnerConfig:
             return cfg
 
-    dataset = Dataset.from_list(
-        [
-            {"text": "hello world1"},
-        ]
-        * 64
-    )
+    dataset = Dataset.from_list([{"text": "hello world1"}] * 64)
 
     model = MockModel()
     activations_store = ActivationsStore.from_config(
@@ -315,7 +313,7 @@ def test_cache_activations_runner_load_dataset_with_incorrect_config(tmp_path: P
 
     with pytest.raises(
         ValueError,
-        match=r"Columns \['blocks.1.hook_mlp_out'\] not in the dataset. Current columns in the dataset: \['blocks.0.hook_mlp_out'\]",
+        match=r"Columns \['blocks.1.hook_mlp_out'\] not in the dataset. Current columns in the dataset: \['blocks.0.hook_mlp_out'\, 'token_ids'\]",
     ):
         ActivationsStore.from_config(model, wrong_hook_cfg)
 
@@ -348,3 +346,14 @@ def test_cache_activations_runner_with_valid_seqpos(tmp_path: Path):
     for act in dataset_acts:
         # should be 16 - 3 - 3 = 10
         assert act.shape == (10, cfg.d_in)
+
+
+def test_cache_activations_runner_stores_token_ids(tmp_path: Path):
+    cfg = _default_cfg(tmp_path)
+    runner = CacheActivationsRunner(cfg)
+    dataset = runner.run()
+    dataset.set_format("torch")
+
+    assert "token_ids" in dataset.features
+    assert dataset["token_ids"].shape[1] == cfg.context_size  # type: ignore
+    assert dataset["blocks.0.hook_mlp_out"].shape[:2] == dataset["token_ids"].shape  # type: ignore

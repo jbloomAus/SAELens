@@ -4,7 +4,7 @@ import contextlib
 import json
 import os
 import warnings
-from collections.abc import Generator, Iterator
+from collections.abc import Generator, Iterator, Sequence
 from typing import Any, Literal, cast
 
 import datasets
@@ -13,10 +13,11 @@ import torch
 from datasets import Dataset, DatasetDict, IterableDataset, load_dataset
 from huggingface_hub import hf_hub_download
 from huggingface_hub.utils import HfHubHTTPError
-from jaxtyping import Float
+from jaxtyping import Float, Int
 from requests import HTTPError
 from safetensors.torch import save_file
 from torch.utils.data import DataLoader
+from torch.utils.data import Dataset as TorchDataset
 from tqdm import tqdm
 from transformer_lens.hook_points import HookedRootModule
 from transformers import AutoTokenizer, PreTrainedTokenizerBase
@@ -48,7 +49,8 @@ class ActivationsStore:
     hook_layer: int
     hook_head_index: int | None
     _dataloader: Iterator[Any] | None = None
-    _storage_buffer: torch.Tensor | None = None
+    _storage_buffer: tuple[torch.Tensor, torch.Tensor | None] | None = None
+    exclude_special_tokens: torch.Tensor | None = None
     device: torch.device
 
     @classmethod
@@ -83,6 +85,7 @@ class ActivationsStore:
             model_kwargs=None,
             autocast_lm=False,
             dataset_trust_remote_code=None,
+            exclude_special_tokens=None,
         )
 
     @classmethod
@@ -108,6 +111,16 @@ class ActivationsStore:
                 "You must either pass in a dataset or specify a dataset_path in your configutation."
             )
 
+        device = torch.device(cfg.act_store_device)
+        exclude_special_tokens = cfg.exclude_special_tokens
+        if exclude_special_tokens is False:
+            exclude_special_tokens = None
+        if exclude_special_tokens is True:
+            exclude_special_tokens = _get_special_token_ids(model.tokenizer)  # type: ignore
+        if exclude_special_tokens is not None:
+            exclude_special_tokens = torch.tensor(
+                exclude_special_tokens, dtype=torch.long, device=device
+            )
         return cls(
             model=model,
             dataset=override_dataset or cfg.dataset_path,
@@ -123,13 +136,14 @@ class ActivationsStore:
             train_batch_size_tokens=cfg.train_batch_size_tokens,
             prepend_bos=cfg.prepend_bos,
             normalize_activations=cfg.normalize_activations,
-            device=torch.device(cfg.act_store_device),
+            device=device,
             dtype=cfg.dtype,
             cached_activations_path=cached_activations_path,
             model_kwargs=cfg.model_kwargs,
             autocast_lm=cfg.autocast_lm,
             dataset_trust_remote_code=cfg.dataset_trust_remote_code,
             seqpos_slice=cfg.seqpos_slice,
+            exclude_special_tokens=exclude_special_tokens,
         )
 
     @classmethod
@@ -190,6 +204,7 @@ class ActivationsStore:
         autocast_lm: bool = False,
         dataset_trust_remote_code: bool | None = None,
         seqpos_slice: tuple[int | None, ...] = (None,),
+        exclude_special_tokens: torch.Tensor | None = None,
     ):
         self.model = model
         if model_kwargs is None:
@@ -232,6 +247,7 @@ class ActivationsStore:
         self.cached_activations_path = cached_activations_path
         self.autocast_lm = autocast_lm
         self.seqpos_slice = seqpos_slice
+        self.exclude_special_tokens = exclude_special_tokens
 
         self.n_dataset_processed = 0
 
@@ -374,8 +390,11 @@ class ActivationsStore:
         # ---
         # Actual code
         activations_dataset = datasets.load_from_disk(self.cached_activations_path)
+        columns = [self.hook_name]
+        if "token_ids" in activations_dataset.column_names:
+            columns.append("token_ids")
         activations_dataset.set_format(
-            type="torch", columns=[self.hook_name], device=self.device, dtype=self.dtype
+            type="torch", columns=columns, device=self.device, dtype=self.dtype
         )
         self.current_row_idx = 0  # idx to load next batch from
         # ---
@@ -427,7 +446,7 @@ class ActivationsStore:
         ):
             # temporalily set estimated_norm_scaling_factor to 1.0 so the dataloader works
             self.estimated_norm_scaling_factor = 1.0
-            acts = self.next_batch()
+            acts = self.next_batch()[0]
             self.estimated_norm_scaling_factor = None
             norms_per_batch.append(acts.norm(dim=-1).mean().item())
         mean_norm = np.mean(norms_per_batch)
@@ -454,7 +473,7 @@ class ActivationsStore:
         self.iterable_dataset = iter(self.dataset)
 
     @property
-    def storage_buffer(self) -> torch.Tensor:
+    def storage_buffer(self) -> tuple[torch.Tensor, torch.Tensor | None]:
         if self._storage_buffer is None:
             self._storage_buffer = self.get_buffer(self.half_buffer_size)
 
@@ -553,7 +572,10 @@ class ActivationsStore:
         num_layers: int,
         d_in: int,
         raise_on_epoch_end: bool,
-    ) -> Float[torch.Tensor, "(total_size context_size) num_layers d_in"]:
+    ) -> tuple[
+        Float[torch.Tensor, "(total_size context_size) num_layers d_in"],
+        Int[torch.Tensor, "(total_size context_size)"] | None,
+    ]:
         """
         Loads `total_size` activations from `cached_activation_dataset`
 
@@ -577,12 +599,13 @@ class ActivationsStore:
                 raise StopIteration
 
         new_buffer = []
+        ds_slice = self.cached_activation_dataset[
+            self.current_row_idx : self.current_row_idx + total_size
+        ]
         for hook_name in hook_names:
             # Load activations for each hook.
             # Usually faster to first slice dataset then pick column
-            _hook_buffer = self.cached_activation_dataset[
-                self.current_row_idx : self.current_row_idx + total_size
-            ][hook_name]
+            _hook_buffer = ds_slice[hook_name]
             if _hook_buffer.shape != (total_size, context_size, d_in):
                 raise ValueError(
                     f"_hook_buffer has shape {_hook_buffer.shape}, "
@@ -600,7 +623,19 @@ class ActivationsStore:
             )
 
         self.current_row_idx += total_size
-        return new_buffer.reshape(total_size * context_size, num_layers, d_in)
+        acts_buffer = new_buffer.reshape(total_size * context_size, num_layers, d_in)
+
+        if "token_ids" not in self.cached_activation_dataset.column_names:
+            return acts_buffer, None
+
+        token_ids_buffer = ds_slice["token_ids"]
+        if token_ids_buffer.shape != (total_size, context_size):
+            raise ValueError(
+                f"token_ids_buffer has shape {token_ids_buffer.shape}, "
+                f"but expected ({total_size}, {context_size})."
+            )
+        token_ids_buffer = token_ids_buffer.reshape(total_size * context_size)
+        return acts_buffer, token_ids_buffer
 
     @torch.no_grad()
     def get_buffer(
@@ -608,9 +643,9 @@ class ActivationsStore:
         n_batches_in_buffer: int,
         raise_on_epoch_end: bool = False,
         shuffle: bool = True,
-    ) -> torch.Tensor:
+    ) -> tuple[torch.Tensor, torch.Tensor | None]:
         """
-        Loads the next n_batches_in_buffer batches of activations into a tensor and returns half of it.
+        Loads the next n_batches_in_buffer batches of activations into a tensor and returns it.
 
         The primary purpose here is maintaining a shuffling buffer.
 
@@ -630,9 +665,14 @@ class ActivationsStore:
 
         refill_iterator = range(0, total_size, batch_size)
         # Initialize empty tensor buffer of the maximum required size with an additional dimension for layers
-        new_buffer = torch.zeros(
+        new_buffer_activations = torch.zeros(
             (total_size, training_context_size, num_layers, d_in),
             dtype=self.dtype,  # type: ignore
+            device=self.device,
+        )
+        new_buffer_token_ids = torch.zeros(
+            (total_size, training_context_size),
+            dtype=torch.long,
             device=self.device,
         )
 
@@ -646,19 +686,33 @@ class ActivationsStore:
             refill_activations = self.get_activations(refill_batch_tokens)
             # move acts back to cpu
             refill_activations.to(self.device)
-            new_buffer[
+            new_buffer_activations[
                 refill_batch_idx_start : refill_batch_idx_start + batch_size, ...
             ] = refill_activations
 
-        new_buffer = new_buffer.reshape(-1, num_layers, d_in)
+            # handle seqpos_slice, this is done for activations in get_activations
+            refill_batch_tokens = refill_batch_tokens[:, slice(*self.seqpos_slice)]
+            new_buffer_token_ids[
+                refill_batch_idx_start : refill_batch_idx_start + batch_size, ...
+            ] = refill_batch_tokens
+
+        new_buffer_activations = new_buffer_activations.reshape(-1, num_layers, d_in)
+        new_buffer_token_ids = new_buffer_token_ids.reshape(-1)
         if shuffle:
-            new_buffer = new_buffer[torch.randperm(new_buffer.shape[0])]
+            new_buffer_activations, new_buffer_token_ids = permute_together(
+                [new_buffer_activations, new_buffer_token_ids]
+            )
 
         # every buffer should be normalized:
         if self.normalize_activations == "expected_average_only_in":
-            new_buffer = self.apply_norm_scaling_factor(new_buffer)
+            new_buffer_activations = self.apply_norm_scaling_factor(
+                new_buffer_activations
+            )
 
-        return new_buffer
+        return (
+            new_buffer_activations,
+            new_buffer_token_ids,
+        )
 
     def get_data_loader(
         self,
@@ -674,7 +728,7 @@ class ActivationsStore:
         batch_size = self.train_batch_size_tokens
 
         try:
-            new_samples = self.get_buffer(
+            new_sample_acts, new_sample_toks = self.get_buffer(
                 self.half_buffer_size, raise_on_epoch_end=True
             )
         except StopIteration:
@@ -685,34 +739,52 @@ class ActivationsStore:
                 None  # dump the current buffer so samples do not leak between epochs
             )
             try:
-                new_samples = self.get_buffer(self.half_buffer_size)
+                new_sample_acts, new_sample_toks = self.get_buffer(
+                    self.half_buffer_size
+                )
             except StopIteration:
                 raise ValueError(
                     "We were unable to fill up the buffer directly after starting a new epoch. This could indicate that there are less samples in the dataset than are required to fill up the buffer. Consider reducing batch_size or n_batches_in_buffer. "
                 )
 
         # 1. # create new buffer by mixing stored and new buffer
-        mixing_buffer = torch.cat(
-            [new_samples, self.storage_buffer],
+        existing_buffer_acts, existing_buffer_toks = self.storage_buffer
+        mixing_buffer_acts = torch.cat(
+            [new_sample_acts, existing_buffer_acts],
             dim=0,
         )
 
-        mixing_buffer = mixing_buffer[torch.randperm(mixing_buffer.shape[0])]
+        permutation = torch.randperm(mixing_buffer_acts.shape[0])
+        mixing_buffer_acts = mixing_buffer_acts[permutation]
+
+        mixing_buffer_toks = None
+        if existing_buffer_toks is not None and new_sample_toks is not None:
+            mixing_buffer_toks = torch.cat(
+                [new_sample_toks, existing_buffer_toks],
+                dim=0,
+            )
+            mixing_buffer_toks = mixing_buffer_toks[permutation]
 
         # 2.  put 50 % in storage
-        self._storage_buffer = mixing_buffer[: mixing_buffer.shape[0] // 2]
+        half_buffer_acts = mixing_buffer_acts[: mixing_buffer_acts.shape[0] // 2]
+        half_buffer_toks = (
+            None
+            if mixing_buffer_toks is None
+            else mixing_buffer_toks[: mixing_buffer_toks.shape[0] // 2]
+        )
+        self._storage_buffer = (half_buffer_acts, half_buffer_toks)
 
         # 3. put other 50 % in a dataloader
-        return iter(
-            DataLoader(
-                # TODO: seems like a typing bug?
-                cast(Any, mixing_buffer[mixing_buffer.shape[0] // 2 :]),
-                batch_size=batch_size,
-                shuffle=True,
-            )
+        toks_dataset = ActivationsTokensDataset(
+            activations=mixing_buffer_acts[mixing_buffer_acts.shape[0] // 2 :],
+            tokens=mixing_buffer_toks[mixing_buffer_toks.shape[0] // 2 :]
+            if mixing_buffer_toks is not None
+            else None,
+            mask_tokens=self.exclude_special_tokens,
         )
+        return iter(DataLoader(toks_dataset, batch_size=batch_size, shuffle=True))
 
-    def next_batch(self):
+    def next_batch(self) -> tuple[torch.Tensor, torch.Tensor | None]:
         """
         Get the next batch from the current DataLoader.
         If the DataLoader is exhausted, refill the buffer and create a new DataLoader.
@@ -730,7 +802,9 @@ class ActivationsStore:
             "n_dataset_processed": torch.tensor(self.n_dataset_processed),
         }
         if self._storage_buffer is not None:  # first time might be None
-            result["storage_buffer"] = self._storage_buffer
+            result["storage_buffer_activations"] = self._storage_buffer[0]
+            if self._storage_buffer[1] is not None:
+                result["storage_buffer_tokens"] = self._storage_buffer[1]
         if self.estimated_norm_scaling_factor is not None:
             result["estimated_norm_scaling_factor"] = torch.tensor(
                 self.estimated_norm_scaling_factor
@@ -776,3 +850,61 @@ def _get_model_device(model: HookedRootModule) -> torch.device:
     if hasattr(model, "cfg") and hasattr(model.cfg, "device"):
         return model.cfg.device  # type: ignore
     return next(model.parameters()).device  # type: ignore
+
+
+def _get_special_token_ids(tokenizer: PreTrainedTokenizerBase) -> list[int]:
+    """Get all special token IDs from a tokenizer."""
+    special_tokens = set()
+
+    # Get special tokens from tokenizer attributes
+    for attr in dir(tokenizer):
+        if attr.endswith("_token_id"):
+            token_id = getattr(tokenizer, attr)
+            if token_id is not None:
+                special_tokens.add(token_id)
+
+    # Get any additional special tokens from the tokenizer's special tokens map
+    if hasattr(tokenizer, "special_tokens_map"):
+        for token in tokenizer.special_tokens_map.values():
+            if isinstance(token, str):
+                token_id = tokenizer.convert_tokens_to_ids(token)  # type: ignore
+                special_tokens.add(token_id)
+            elif isinstance(token, list):
+                for t in token:
+                    token_id = tokenizer.convert_tokens_to_ids(t)  # type: ignore
+                    special_tokens.add(token_id)
+
+    return list(special_tokens)
+
+
+class ActivationsTokensDataset(TorchDataset[tuple[torch.Tensor, torch.Tensor]]):
+    """
+    Dataset of activations and tokens. Handles masking special tokens.
+    """
+
+    def __init__(
+        self,
+        activations: torch.Tensor,
+        tokens: torch.Tensor | None,
+        mask_tokens: torch.Tensor | None,
+    ) -> None:
+        self.activations = activations
+        self.tokens = tokens
+        self.mask_tokens = mask_tokens
+
+    def __len__(self) -> int:
+        return len(self.activations)
+
+    def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor]:
+        act = self.activations[idx]
+        if self.mask_tokens is None or self.tokens is None:
+            return act, torch.ones_like(act, dtype=torch.bool)
+        tok = self.tokens[idx]
+        mask = torch.isin(tok, self.mask_tokens)
+        return act, mask
+
+
+def permute_together(tensors: Sequence[torch.Tensor]) -> tuple[torch.Tensor, ...]:
+    """Permute tensors together."""
+    permutation = torch.randperm(tensors[0].shape[0])
+    return tuple(t[permutation] for t in tensors)
