@@ -279,7 +279,8 @@ class ActivationsStore:
                 and model.tokenizer is not None
             ):
                 validate_pretokenized_dataset_tokenizer(
-                    dataset_path=dataset, model_tokenizer=model.tokenizer
+                    dataset_path=dataset,
+                    model_tokenizer=model.tokenizer,  # type: ignore
                 )
         else:
             warnings.warn(
@@ -314,7 +315,7 @@ class ActivationsStore:
                     truncate=False,
                     move_to_device=False,  # we move to device below
                     prepend_bos=False,
-                )
+                )  # type: ignore
                 .squeeze(0)
                 .to(self.device)
             )
@@ -771,7 +772,7 @@ def validate_pretokenized_dataset_tokenizer(
 
 def _get_model_device(model: HookedRootModule) -> torch.device:
     if hasattr(model, "W_E"):
-        return model.W_E.device
+        return model.W_E.device  # type: ignore
     if hasattr(model, "cfg") and hasattr(model.cfg, "device"):
-        return model.cfg.device
-    return next(model.parameters()).device
+        return model.cfg.device  # type: ignore
+    return next(model.parameters()).device  # type: ignore

@@ -582,6 +582,71 @@ def get_dictionary_learning_config_1(
     }
 
 
+def deepseek_r1_sae_loader(
+    release: str,
+    sae_id: str,
+    device: str = "cpu",
+    force_download: bool = False,
+    cfg_overrides: Optional[Dict[str, Any]] = None,
+) -> Tuple[Dict[str, Any], Dict[str, torch.Tensor], Optional[torch.Tensor]]:
+    # Get repo and file info from pretrained directory
+    sae_directory = get_pretrained_saes_directory()
+    repo_id = sae_directory[release].repo_id
+    filename = sae_directory[release].saes_map[sae_id]
+
+    # Download weights
+    sae_path = hf_hub_download(
+        repo_id=repo_id,
+        filename=filename,
+        force_download=force_download,
+    )
+
+    # Load state dict
+    state_dict_loaded = torch.load(sae_path, map_location=device)
+
+    # Extract layer from filename (l19 in this case)
+    match = re.search(r"l(\d+)", filename)
+    if match is None:
+        raise ValueError(f"Could not find layer number in filename: {filename}")
+    layer = int(match.group(1))
+
+    # Create config
+    cfg_dict = {
+        "architecture": "standard",
+        "d_in": 4096,  # LLaMA 8B hidden size
+        "d_sae": 4096 * 16,  # Expansion factor 16
+        "dtype": "bfloat16",
+        "context_size": 1024,
+        "model_name": "deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
+        "hook_name": f"blocks.{layer}.hook_resid_post",
+        "hook_layer": layer,
+        "hook_head_index": None,
+        "prepend_bos": True,
+        "dataset_path": "lmsys/lmsys-chat-1m",
+        "dataset_trust_remote_code": True,
+        "sae_lens_training_version": None,
+        "activation_fn_str": "relu",
+        "normalize_activations": "none",
+        "device": device,
+        "apply_b_dec_to_input": False,
+        "finetuning_scaling_factor": False,
+    }
+
+    # Convert weights
+    state_dict = {
+        "W_enc": state_dict_loaded["encoder.weight"].T,
+        "W_dec": state_dict_loaded["decoder.weight"].T,
+        "b_enc": state_dict_loaded["encoder.bias"],
+        "b_dec": state_dict_loaded["decoder.bias"],
+    }
+
+    # Apply any config overrides
+    if cfg_overrides:
+        cfg_dict.update(cfg_overrides)
+
+    return cfg_dict, state_dict, None
+
+
 def get_conversion_loader_name(sae_info: Optional[PretrainedSAELookup]):
     conversion_loader_name = "sae_lens"
     if sae_info is not None and sae_info.conversion_func is not None:
@@ -610,7 +675,7 @@ def get_sae_config(
     conversion_loader_name = get_conversion_loader_name(sae_info)
     config_getter = NAMED_PRETRAINED_SAE_CONFIG_GETTERS[conversion_loader_name]
     cfg = {
-        **config_getter(repo_id, folder_name=folder_name, options=options),
+        **config_getter(repo_id, folder_name, options),
         **cfg_overrides,
     }
     return handle_config_defaulting(cfg)
@@ -669,6 +734,7 @@ NAMED_PRETRAINED_SAE_LOADERS: dict[str, PretrainedSaeLoader] = {
     "gemma_2": gemma_2_sae_loader,
     "llama_scope": llama_scope_sae_loader,
     "dictionary_learning_1": dictionary_learning_sae_loader_1,
+    "deepseek_r1": deepseek_r1_sae_loader,
 }
 
 NAMED_PRETRAINED_SAE_CONFIG_GETTERS = {
@@ -677,4 +743,7 @@ NAMED_PRETRAINED_SAE_CONFIG_GETTERS = {
     "gemma_2": get_gemma_2_config,
     "llama_scope": get_llama_scope_config,
     "dictionary_learning_1": get_dictionary_learning_config_1,
+    "deepseek_r1": lambda _repo_id,
+    _folder_name,
+    _options: {},  # Config built in loader
 }

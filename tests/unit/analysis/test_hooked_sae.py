@@ -1,3 +1,4 @@
+# type: ignore
 import einops
 import pytest
 import torch
