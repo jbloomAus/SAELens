@@ -605,7 +605,10 @@ def deepseek_r1_sae_loader(
     state_dict_loaded = torch.load(sae_path, map_location=device)
 
     # Extract layer from filename (l19 in this case)
-    layer = int(re.search(r"l(\d+)", filename).group(1))
+    match = re.search(r"l(\d+)", filename)
+    if match is None:
+        raise ValueError(f"Could not find layer number in filename: {filename}")
+    layer = int(match.group(1))
 
     # Create config
     cfg_dict = {
@@ -672,7 +675,7 @@ def get_sae_config(
     conversion_loader_name = get_conversion_loader_name(sae_info)
     config_getter = NAMED_PRETRAINED_SAE_CONFIG_GETTERS[conversion_loader_name]
     cfg = {
-        **config_getter(repo_id, folder_name=folder_name, options=options),
+        **config_getter(repo_id, folder_name, options),
         **cfg_overrides,
     }
     return handle_config_defaulting(cfg)
@@ -740,5 +743,7 @@ NAMED_PRETRAINED_SAE_CONFIG_GETTERS = {
     "gemma_2": get_gemma_2_config,
     "llama_scope": get_llama_scope_config,
     "dictionary_learning_1": get_dictionary_learning_config_1,
-    "deepseek_r1": lambda *_: {},  # Config built in loader
+    "deepseek_r1": lambda _repo_id,
+    _folder_name,
+    _options: {},  # Config built in loader
 }

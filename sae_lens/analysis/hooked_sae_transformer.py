@@ -66,7 +66,7 @@ class HookedSAETransformer(HookedTransformer):
             **model_kwargs: Keyword arguments for HookedTransformer initialization
         """
         super().__init__(*model_args, **model_kwargs)
-        self.acts_to_saes: Dict[str, SAE] = {}
+        self.acts_to_saes: Dict[str, SAE] = {}  # type: ignore
 
     def add_sae(self, sae: SAE, use_error_term: Optional[bool] = None):
         """Attaches an SAE to the model
@@ -111,7 +111,7 @@ class HookedSAETransformer(HookedTransformer):
 
         current_sae = self.acts_to_saes[act_name]
         if hasattr(current_sae, "_original_use_error_term"):
-            current_sae.use_error_term = current_sae._original_use_error_term
+            current_sae.use_error_term = current_sae._original_use_error_term  # type: ignore
             delattr(current_sae, "_original_use_error_term")
 
         if prev_sae:

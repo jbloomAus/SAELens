@@ -188,7 +188,7 @@ class LanguageModelSAERunnerConfig:
     train_batch_size_tokens: int = 4096
 
     ## Adam
-    adam_beta1: float = 0
+    adam_beta1: float = 0.0
     adam_beta2: float = 0.999
 
     ## Loss Function

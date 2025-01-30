@@ -1,3 +1,4 @@
+# type: ignore
 from typing import Tuple, Union
 
 import pytest
@@ -39,7 +40,7 @@ class Counter:
 def model():
     model = HookedSAETransformer.from_pretrained(MODEL, device="cpu")
     yield model
-    model.reset_saes()
+    model.reset_saes()  # type: ignore
 
 
 @pytest.fixture(scope="module")
@@ -121,7 +122,7 @@ def test_model_with_no_saes_matches_original_model(
     model: HookedTransformer, original_logits: torch.Tensor
 ):
     """Verifies that HookedSAETransformer behaves like a normal HookedTransformer model when no SAEs are attached."""
-    assert len(model.acts_to_saes) == 0
+    assert len(model.acts_to_saes) == 0  # type: ignore
     logits = model(prompt)
     assert torch.allclose(original_logits, logits)
 
@@ -132,9 +133,9 @@ def test_model_with_saes_does_not_match_original_model(
     original_logits: torch.Tensor,
 ):
     """Verifies that the attached (and turned on) SAEs actually affect the models output logits"""
-    assert len(model.acts_to_saes) == 0
-    model.add_sae(hooked_sae)
-    assert len(model.acts_to_saes) == 1
+    assert len(model.acts_to_saes) == 0  # type: ignore
+    model.add_sae(hooked_sae)  # type: ignore
+    assert len(model.acts_to_saes) == 1  # type: ignore
     logits_with_saes = model(prompt)
     assert not torch.allclose(original_logits, logits_with_saes)
     model.reset_saes()
@@ -143,8 +144,8 @@ def test_model_with_saes_does_not_match_original_model(
 def test_add_sae(model: HookedTransformer, hooked_sae: SAE):
     """Verifies that add_sae correctly updates the model's acts_to_saes dictionary and replaces the HookPoint."""
     act_name = hooked_sae.cfg.hook_name
-    model.add_sae(hooked_sae)
-    assert len(model.acts_to_saes) == 1
+    model.add_sae(hooked_sae)  # type: ignore
+    assert len(model.acts_to_saes) == 1  # type: ignore
     assert model.acts_to_saes[act_name] == hooked_sae
     assert get_deep_attr(model, act_name) == hooked_sae
     model.reset_saes()

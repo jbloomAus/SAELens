@@ -128,6 +128,7 @@ class SAE(HookedRootModule):
     cfg: SAEConfig
     dtype: torch.dtype
     device: torch.device
+    x_norm_coeff: torch.Tensor
 
     # analysis
     use_error_term: bool
@@ -224,8 +225,11 @@ class SAE(HookedRootModule):
                 self.ln_std = std
                 return x
 
-            def run_time_activation_ln_out(x: torch.Tensor, eps: float = 1e-5):  # noqa: ARG001
-                return x * self.ln_std + self.ln_mu
+            def run_time_activation_ln_out(
+                x: torch.Tensor,
+                eps: float = 1e-5,  # noqa: ARG001
+            ) -> torch.Tensor:
+                return x * self.ln_std + self.ln_mu  # type: ignore
 
             self.run_time_activation_norm_fn_in = run_time_activation_ln_in
             self.run_time_activation_norm_fn_out = run_time_activation_ln_out
