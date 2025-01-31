@@ -22,6 +22,7 @@ from sae_lens.training.activations_store import ActivationsStore
 def _mk_activations_store(
     model: HookedRootModule,
     cfg: CacheActivationsRunnerConfig,
+    override_dataset: Dataset | None = None,
 ) -> ActivationsStore:
     """
     Internal method used in CacheActivationsRunner. Used to create a cached dataset
@@ -29,7 +30,7 @@ def _mk_activations_store(
     """
     return ActivationsStore(
         model=model,
-        dataset=cfg.dataset_path,
+        dataset=override_dataset or cfg.dataset_path,
         streaming=cfg.streaming,
         hook_name=cfg.hook_name,
         hook_layer=cfg.hook_layer,
@@ -53,7 +54,11 @@ def _mk_activations_store(
 
 
 class CacheActivationsRunner:
-    def __init__(self, cfg: CacheActivationsRunnerConfig):
+    def __init__(
+        self,
+        cfg: CacheActivationsRunnerConfig,
+        override_dataset: Dataset | None = None,
+    ):
         self.cfg = cfg
         self.model: HookedRootModule = load_model(
             model_class_name=self.cfg.model_class_name,
@@ -66,6 +71,7 @@ class CacheActivationsRunner:
         self.activations_store = _mk_activations_store(
             self.model,
             self.cfg,
+            override_dataset=override_dataset,
         )
         self.context_size = self._get_sliced_context_size(
             self.cfg.context_size, self.cfg.seqpos_slice
