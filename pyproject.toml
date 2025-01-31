@@ -4,7 +4,7 @@ version = "5.3.3"
 description = "Training and Analyzing Sparse Autoencoders (SAEs)"
 authors = ["Joseph Bloom"]
 readme = "README.md"
-packages = [{include = "sae_lens"}]
+packages = [{ include = "sae_lens" }]
 include = ["pretrained_saes.yaml"]
 repository = "https://github.com/jbloomAus/SAELens"
 homepage = "https://jbloomaus.github.io/SAELens"
@@ -19,7 +19,6 @@ classifiers = ["Topic :: Scientific/Engineering :: Artificial Intelligence"]
 
 [tool.poetry.dependencies]
 python = "^3.10"
-typeguard = "<3.0.0"
 transformer-lens = "^2.0.0"
 transformers = "^4.38.1"
 plotly = "^5.19.0"
@@ -86,20 +85,14 @@ reportUnknownLambdaType = "none"
 reportPrivateUsage = "none"
 reportDeprecated = "none"
 reportPrivateImportUsage = "none"
-ignore = [
-    "**/wandb/**"
-]
+ignore = ["**/wandb/**"]
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.semantic_release]
-version_variables = [
-    "sae_lens/__init__.py:__version__",
-]
-version_toml = [
-    "pyproject.toml:tool.poetry.version",
-]
+version_variables = ["sae_lens/__init__.py:__version__"]
+version_toml = ["pyproject.toml:tool.poetry.version"]
 branch = "main"
 build_command = "pip install poetry && poetry build"
