@@ -2,6 +2,35 @@
 
 
 
+## v5.3.4 (2025-01-31)
+
+### Chore
+
+* chore: fix sae loading in logits_lens_with_features.ipynb example (#406)
+
+when load `sae` through `SAE.from_pretrained`, `sae_id` should change with `layer` not always `blocks.0.hook_resid_pre` ([`36dab85`](https://github.com/jbloomAus/SAELens/commit/36dab85319464218500963bd7159e6ace6cbf230))
+
+### Fix
+
+* fix: remove restrictive typeguard dependency (#414)
+
+merging as this is a problem in the current production release and should be uncontroversial ([`77de73c`](https://github.com/jbloomAus/SAELens/commit/77de73c625fedb154384f88d4ca80ad9016a66b7))
+
+### Unknown
+
+* added NP name to R1 distillation SAE ([`8ccc556`](https://github.com/jbloomAus/SAELens/commit/8ccc5563ab91c30c2dfb887d7380d2e528577b5a))
+
+* Merge pull request #412 from jbloomAus/feature/qresearch-r1-distill-l19-sae
+
+Added qresearch SAE for distilled R1 LLaMa ([`32f4a60`](https://github.com/jbloomAus/SAELens/commit/32f4a60ca209a04bbb09b1b1666108aa6a2709a1))
+
+* Update pyproject.toml ([`84ee3d4`](https://github.com/jbloomAus/SAELens/commit/84ee3d42c0d8202b3b3fad52c8d4ba5c76b1a678))
+
+* several updates to fix typing issues ([`9482155`](https://github.com/jbloomAus/SAELens/commit/948215562b1c44e39d97306a3a5c769b0b1f4f07))
+
+* Added qresearch SAE for distilled R1 LLaMa ([`08191f4`](https://github.com/jbloomAus/SAELens/commit/08191f46e929e7779ca0958364d25c0b5ac2a8c6))
+
+
 ## v5.3.3 (2025-01-23)
 
 ### Fix
