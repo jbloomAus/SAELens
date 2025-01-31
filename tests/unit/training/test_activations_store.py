@@ -16,6 +16,7 @@ from sae_lens.load_model import load_model
 from sae_lens.pretokenize_runner import pretokenize_dataset
 from sae_lens.training.activations_store import (
     ActivationsStore,
+    _filter_buffer_acts,
     _get_special_token_ids,
     permute_together,
     validate_pretokenized_dataset_tokenizer,
@@ -69,6 +70,7 @@ def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
             "hook_name": "blocks.1.hook_resid_pre",
             "hook_layer": 1,
             "d_in": 768,
+            "exclude_special_tokens": True,
         },
     ],
     ids=[
@@ -118,9 +120,9 @@ def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
     expected_size = (
         cfg.store_batch_size_prompts * cfg.context_size * cfg.n_batches_in_buffer // 2
     )
-    assert store.storage_buffer[0].shape == (expected_size, 1, cfg.d_in)
-    assert store.storage_buffer[1] is not None
-    assert store.storage_buffer[1].shape == (expected_size,)
+    assert store.storage_buffer.shape[1:] == (1, cfg.d_in)
+    # if exluding special tokens, the buffer will be smaller
+    assert store.storage_buffer.shape[0] <= expected_size
 
     # --- Next, get batch tokens and assert they look correct ---
 
@@ -620,44 +622,6 @@ def test_activations_store_save_with_norm_scaling_factor(
             assert "estimated_norm_scaling_factor" not in state_dict
 
 
-def test_activations_store_exclude_special_tokens(ts_model: HookedTransformer):
-    cfg = build_sae_cfg(exclude_special_tokens=True, train_batch_size_tokens=3)
-    dataset = Dataset.from_list([{"text": "hello world"}] * 100)
-
-    store = ActivationsStore.from_config(ts_model, cfg, override_dataset=dataset)
-    acts, mask = store.next_batch()
-
-    # Check that mask excludes special tokens
-    assert mask is not None
-    assert mask.shape == acts.shape[:1]  # Should match batch x context_size
-    assert mask.dtype == torch.bool
-    assert len(mask) == 3
-
-    # BOS token should not be masked
-    assert mask[0].item() is False
-    assert mask[1].item() is True
-    assert mask[2].item() is True
-
-
-def test_activations_store_exclude_specific_tokens(ts_model: HookedTransformer):
-    tokens_to_exclude = [ts_model.tokenizer.encode("hello")[0]]  # type: ignore
-    cfg = build_sae_cfg(
-        exclude_special_tokens=tokens_to_exclude, train_batch_size_tokens=3
-    )
-    dataset = Dataset.from_list([{"text": "hello world"}] * 100)
-
-    store = ActivationsStore.from_config(ts_model, cfg, override_dataset=dataset)
-    acts, mask = store.next_batch()
-    assert acts is not None
-    assert mask is not None
-    assert len(mask) == 3
-
-    # hello token should be masked
-    assert mask[0].item() is True
-    assert mask[1].item() is False
-    assert mask[2].item() is False
-
-
 def test_get_special_token_ids():
     # Create a mock tokenizer with some special tokens
     class MockTokenizer:
@@ -740,6 +704,86 @@ def test_activations_store_buffer_shuffling(ts_model: HookedTransformer):
     assert set(token_ids_shuffled.tolist()) == set(token_ids_unshuffled_1.tolist())
 
 
+@torch.no_grad()
+def test_activations_store_storage_buffer_excludes_special_tokens(
+    ts_model: HookedTransformer,
+):
+    hook_name = "blocks.0.hook_resid_post"
+    base_cfg = build_sae_cfg(
+        exclude_special_tokens=False,
+        context_size=5,
+        store_batch_size_prompts=2,
+        hook_name=hook_name,
+    )
+    cfg = build_sae_cfg(
+        exclude_special_tokens=True,
+        context_size=5,
+        store_batch_size_prompts=2,
+        hook_name=hook_name,
+    )
+    dataset = Dataset.from_list([{"text": "hello world"}] * 100)
+    _, cache = ts_model.run_with_cache(dataset[0]["text"])
+    bos_act = cache[hook_name][0, 0]
+    store_base = ActivationsStore.from_config(
+        ts_model, base_cfg, override_dataset=dataset
+    )
+    store_exclude_special_tokens = ActivationsStore.from_config(
+        ts_model, cfg, override_dataset=dataset
+    )
+    assert store_base.storage_buffer.shape[0] == 10
+    assert store_exclude_special_tokens.storage_buffer.shape[0] < 10
+
+    # bos act should be in the base buffer, but not in the exclude special tokens buffer
+    assert (store_base.storage_buffer.squeeze() - bos_act).abs().sum(
+        dim=-1
+    ).min().item() == pytest.approx(0.0, abs=1e-5)
+    assert (store_exclude_special_tokens.storage_buffer.squeeze() - bos_act).abs().sum(
+        dim=-1
+    ).min().item() != pytest.approx(0.0, abs=1e-5)
+
+
+@torch.no_grad()
+def test_activations_next_batch_excludes_special_tokens(
+    ts_model: HookedTransformer,
+):
+    hook_name = "blocks.0.hook_resid_post"
+    base_cfg = build_sae_cfg(
+        exclude_special_tokens=False,
+        context_size=5,
+        store_batch_size_prompts=2,
+        hook_name=hook_name,
+        train_batch_size_tokens=5,
+    )
+    cfg = build_sae_cfg(
+        exclude_special_tokens=True,
+        context_size=5,
+        store_batch_size_prompts=2,
+        hook_name=hook_name,
+        train_batch_size_tokens=5,
+    )
+    dataset = Dataset.from_list([{"text": "hello world"}] * 100)
+    _, cache = ts_model.run_with_cache(dataset[0]["text"])
+    bos_act = cache[hook_name][0, 0]
+    store_base = ActivationsStore.from_config(
+        ts_model, base_cfg, override_dataset=dataset
+    )
+    store_exclude_special_tokens = ActivationsStore.from_config(
+        ts_model, cfg, override_dataset=dataset
+    )
+    batch_base = store_base.next_batch()
+    batch_exclude_special_tokens = store_exclude_special_tokens.next_batch()
+    assert batch_base.shape[0] == 5
+    assert batch_exclude_special_tokens.shape[0] == 5
+
+    # bos act should be in the base batch, but not in the exclude special tokens batch
+    assert (batch_base.squeeze() - bos_act).abs().sum(
+        dim=-1
+    ).min().item() == pytest.approx(0.0, abs=1e-5)
+    assert (batch_exclude_special_tokens.squeeze() - bos_act).abs().sum(
+        dim=-1
+    ).min().item() != pytest.approx(0.0, abs=1e-5)
+
+
 def test_permute_together():
     """Test that permute_together correctly permutes tensors together."""
     # Create test tensors
@@ -774,3 +818,56 @@ def test_permute_together_different_sizes_raises():
 
     with pytest.raises(IndexError):
         permute_together([t1, t2])
+
+
+def test_filter_buffer_acts_no_filtering():
+    """Test that _filter_buffer_acts returns original activations when no filtering needed."""
+    activations = torch.randn(10, 5)  # 10 tokens, 5 features
+    tokens = None
+    exclude_tokens = None
+
+    filtered = _filter_buffer_acts((activations, tokens), exclude_tokens)
+
+    assert torch.allclose(filtered, activations)
+
+
+def test_filter_buffer_acts_with_filtering():
+    """Test that _filter_buffer_acts correctly filters out specified tokens."""
+    activations = torch.tensor(
+        [
+            [1.0, 2.0],  # token 0
+            [3.0, 4.0],  # token 1
+            [5.0, 6.0],  # token 2
+            [7.0, 8.0],  # token 3
+        ]
+    )
+    tokens = torch.tensor([0, 1, 0, 2])
+    exclude_tokens = torch.tensor([0, 2])  # Filter out tokens 0 and 2
+
+    filtered = _filter_buffer_acts((activations, tokens), exclude_tokens)
+
+    expected = torch.tensor([[3.0, 4.0]])  # Only token 1 remains
+    assert torch.allclose(filtered, expected)
+
+
+def test_filter_buffer_acts_no_matches():
+    """Test that _filter_buffer_acts handles case where no tokens match exclusion list."""
+    activations = torch.tensor([[1.0, 2.0], [3.0, 4.0]])
+    tokens = torch.tensor([0, 1])
+    exclude_tokens = torch.tensor([2, 3])  # No matches
+
+    filtered = _filter_buffer_acts((activations, tokens), exclude_tokens)
+
+    assert torch.allclose(filtered, activations)  # All tokens kept
+
+
+def test_filter_buffer_acts_all_filtered():
+    """Test that _filter_buffer_acts handles case where all tokens are filtered."""
+    activations = torch.tensor([[1.0, 2.0], [3.0, 4.0]])
+    tokens = torch.tensor([0, 0])
+    exclude_tokens = torch.tensor([0])  # All tokens filtered
+
+    filtered = _filter_buffer_acts((activations, tokens), exclude_tokens)
+
+    assert filtered.shape[0] == 0  # Empty tensor returned
+    assert filtered.shape[1] == activations.shape[1]  # Feature dimension preserved

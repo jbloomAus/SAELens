@@ -140,7 +140,7 @@ def test_hf_dataset_save_vs_safetensors(tmp_path: Path):
 
     start_time = time.perf_counter()
     for i in trange(niters, leave=False):
-        buffer = store.get_buffer(cfg.n_batches_in_buffer)
+        buffer = store.get_buffer(cfg.n_batches_in_buffer)[0]
         save_file({"activations": buffer}, safetensors_path / f"{i}.safetensors")
     end_time = time.perf_counter()
 

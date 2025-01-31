@@ -398,12 +398,10 @@ class LanguageModelSAERunnerConfig:
 
         _validate_seqpos(seqpos=self.seqpos_slice, context_size=self.context_size)
 
-        if isinstance(self.exclude_special_tokens, list):
-            # Validate that all elements are integers
-            if not all(isinstance(x, int) for x in self.exclude_special_tokens):
-                raise ValueError(
-                    "exclude_special_tokens list must contain only integers"
-                )
+        if isinstance(self.exclude_special_tokens, list) and not all(
+            isinstance(x, int) for x in self.exclude_special_tokens
+        ):
+            raise ValueError("exclude_special_tokens list must contain only integers")
 
     @property
     def total_training_tokens(self) -> int:

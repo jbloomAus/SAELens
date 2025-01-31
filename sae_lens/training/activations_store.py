@@ -17,7 +17,6 @@ from jaxtyping import Float, Int
 from requests import HTTPError
 from safetensors.torch import save_file
 from torch.utils.data import DataLoader
-from torch.utils.data import Dataset as TorchDataset
 from tqdm import tqdm
 from transformer_lens.hook_points import HookedRootModule
 from transformers import AutoTokenizer, PreTrainedTokenizerBase
@@ -49,7 +48,7 @@ class ActivationsStore:
     hook_layer: int
     hook_head_index: int | None
     _dataloader: Iterator[Any] | None = None
-    _storage_buffer: tuple[torch.Tensor, torch.Tensor | None] | None = None
+    _storage_buffer: torch.Tensor | None = None
     exclude_special_tokens: torch.Tensor | None = None
     device: torch.device
 
@@ -473,9 +472,11 @@ class ActivationsStore:
         self.iterable_dataset = iter(self.dataset)
 
     @property
-    def storage_buffer(self) -> tuple[torch.Tensor, torch.Tensor | None]:
+    def storage_buffer(self) -> torch.Tensor:
         if self._storage_buffer is None:
-            self._storage_buffer = self.get_buffer(self.half_buffer_size)
+            self._storage_buffer = _filter_buffer_acts(
+                self.get_buffer(self.half_buffer_size), self.exclude_special_tokens
+            )
 
         return self._storage_buffer
 
@@ -728,8 +729,9 @@ class ActivationsStore:
         batch_size = self.train_batch_size_tokens
 
         try:
-            new_sample_acts, new_sample_toks = self.get_buffer(
-                self.half_buffer_size, raise_on_epoch_end=True
+            new_samples = _filter_buffer_acts(
+                self.get_buffer(self.half_buffer_size, raise_on_epoch_end=True),
+                self.exclude_special_tokens,
             )
         except StopIteration:
             warnings.warn(
@@ -739,8 +741,9 @@ class ActivationsStore:
                 None  # dump the current buffer so samples do not leak between epochs
             )
             try:
-                new_sample_acts, new_sample_toks = self.get_buffer(
-                    self.half_buffer_size
+                new_samples = _filter_buffer_acts(
+                    self.get_buffer(self.half_buffer_size),
+                    self.exclude_special_tokens,
                 )
             except StopIteration:
                 raise ValueError(
@@ -748,43 +751,27 @@ class ActivationsStore:
                 )
 
         # 1. # create new buffer by mixing stored and new buffer
-        existing_buffer_acts, existing_buffer_toks = self.storage_buffer
-        mixing_buffer_acts = torch.cat(
-            [new_sample_acts, existing_buffer_acts],
+        mixing_buffer = torch.cat(
+            [new_samples, self.storage_buffer],
             dim=0,
         )
 
-        permutation = torch.randperm(mixing_buffer_acts.shape[0])
-        mixing_buffer_acts = mixing_buffer_acts[permutation]
-
-        mixing_buffer_toks = None
-        if existing_buffer_toks is not None and new_sample_toks is not None:
-            mixing_buffer_toks = torch.cat(
-                [new_sample_toks, existing_buffer_toks],
-                dim=0,
-            )
-            mixing_buffer_toks = mixing_buffer_toks[permutation]
+        mixing_buffer = mixing_buffer[torch.randperm(mixing_buffer.shape[0])]
 
         # 2.  put 50 % in storage
-        half_buffer_acts = mixing_buffer_acts[: mixing_buffer_acts.shape[0] // 2]
-        half_buffer_toks = (
-            None
-            if mixing_buffer_toks is None
-            else mixing_buffer_toks[: mixing_buffer_toks.shape[0] // 2]
-        )
-        self._storage_buffer = (half_buffer_acts, half_buffer_toks)
+        self._storage_buffer = mixing_buffer[: mixing_buffer.shape[0] // 2]
 
         # 3. put other 50 % in a dataloader
-        toks_dataset = ActivationsTokensDataset(
-            activations=mixing_buffer_acts[mixing_buffer_acts.shape[0] // 2 :],
-            tokens=mixing_buffer_toks[mixing_buffer_toks.shape[0] // 2 :]
-            if mixing_buffer_toks is not None
-            else None,
-            mask_tokens=self.exclude_special_tokens,
+        return iter(
+            DataLoader(
+                # TODO: seems like a typing bug?
+                cast(Any, mixing_buffer[mixing_buffer.shape[0] // 2 :]),
+                batch_size=batch_size,
+                shuffle=True,
+            )
         )
-        return iter(DataLoader(toks_dataset, batch_size=batch_size, shuffle=True))
 
-    def next_batch(self) -> tuple[torch.Tensor, torch.Tensor | None]:
+    def next_batch(self) -> torch.Tensor:
         """
         Get the next batch from the current DataLoader.
         If the DataLoader is exhausted, refill the buffer and create a new DataLoader.
@@ -877,31 +864,20 @@ def _get_special_token_ids(tokenizer: PreTrainedTokenizerBase) -> list[int]:
     return list(special_tokens)
 
 
-class ActivationsTokensDataset(TorchDataset[tuple[torch.Tensor, torch.Tensor]]):
+def _filter_buffer_acts(
+    buffer: tuple[torch.Tensor, torch.Tensor | None],
+    exclude_tokens: torch.Tensor | None,
+) -> torch.Tensor:
     """
-    Dataset of activations and tokens. Handles masking special tokens.
+    Filter out activations for tokens that are in exclude_tokens.
     """
 
-    def __init__(
-        self,
-        activations: torch.Tensor,
-        tokens: torch.Tensor | None,
-        mask_tokens: torch.Tensor | None,
-    ) -> None:
-        self.activations = activations
-        self.tokens = tokens
-        self.mask_tokens = mask_tokens
+    activations, tokens = buffer
+    if tokens is None or exclude_tokens is None:
+        return activations
 
-    def __len__(self) -> int:
-        return len(self.activations)
-
-    def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor]:
-        act = self.activations[idx]
-        if self.mask_tokens is None or self.tokens is None:
-            return act, torch.ones_like(act, dtype=torch.bool)
-        tok = self.tokens[idx]
-        mask = torch.isin(tok, self.mask_tokens)
-        return act, mask
+    mask = torch.isin(tokens, exclude_tokens)
+    return activations[~mask]
 
 
 def permute_together(tensors: Sequence[torch.Tensor]) -> tuple[torch.Tensor, ...]:
