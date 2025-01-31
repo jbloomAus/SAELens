@@ -13197,4 +13197,5 @@ deepseek-r1-distill-llama-8b-qresearch:
   conversion_func: deepseek_r1
   saes:
     - id: blocks.19.hook_resid_post
+      neuronpedia: deepseek-r1-distill-llama-8b/19-qresearch-res-65k
       path: DeepSeek-R1-Distill-Llama-8B-SAE-l19.pt
