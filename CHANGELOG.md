@@ -2,6 +2,19 @@
 
 
 
+## v5.4.0 (2025-02-02)
+
+### Feature
+
+* feat: ignore special tokens in SAE training (#413)
+
+* feat: allow masking special tokens during training
+
+* filter out special tokens in activations store before passing to trainer
+
+* ignore special tokens in evals too ([`9e269df`](https://github.com/jbloomAus/SAELens/commit/9e269df65a3227eb1d5d451231c04243271c895b))
+
+
 ## v5.3.4 (2025-01-31)
 
 ### Chore
