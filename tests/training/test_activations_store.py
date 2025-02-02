@@ -21,7 +21,7 @@ from sae_lens.training.activations_store import (
     permute_together,
     validate_pretokenized_dataset_tokenizer,
 )
-from tests.unit.helpers import build_sae_cfg, load_model_cached
+from tests.helpers import build_sae_cfg, load_model_cached
 
 
 def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
@@ -94,7 +94,7 @@ def model(cfg: LanguageModelSAERunnerConfig):
 
 # tests involving loading real models / real datasets are very slow
 # so do lots of stuff in this one test to make each load of model / data count
-# poetry run py.test tests/unit/training/test_activations_store.py -k 'test_activations_store__shapes_look_correct_with_real_models_and_datasets' --profile-svg -s
+# poetry run py.test tests/training/test_activations_store.py -k 'test_activations_store__shapes_look_correct_with_real_models_and_datasets' --profile-svg -s
 def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
     cfg: LanguageModelSAERunnerConfig, model: HookedTransformer
 ):

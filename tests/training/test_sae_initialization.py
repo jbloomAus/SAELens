@@ -2,7 +2,7 @@ import pytest
 import torch
 
 from sae_lens.training.training_sae import TrainingSAE
-from tests.unit.helpers import build_sae_cfg
+from tests.helpers import build_sae_cfg
 
 
 def test_SparseAutoencoder_initialization_standard():

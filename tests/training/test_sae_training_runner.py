@@ -13,7 +13,7 @@ from sae_lens.sae_training_runner import SAETrainingRunner, _parse_cfg_args, _ru
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.sae_trainer import SAETrainer
 from sae_lens.training.training_sae import TrainingSAE
-from tests.unit.helpers import (
+from tests.helpers import (
     TINYSTORIES_DATASET,
     TINYSTORIES_MODEL,
     build_sae_cfg,

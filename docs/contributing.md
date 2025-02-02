@@ -17,10 +17,10 @@ make check-ci # validate the install
 
 This project uses [pytest](https://docs.pytest.org/en/stable/) for testing, [pyright](https://github.com/microsoft/pyright) for type-checking, and [Ruff](https://docs.astral.sh/ruff/) for formatting and linting.
 
-If you add new code, it would be greatly appreciated if you could add tests in the `tests/unit` directory. You can run the tests with:
+If you add new code, it would be greatly appreciated if you could add tests in the `tests` directory. You can run the tests with:
 
 ```bash
-make unit-test
+make test
 ```
 
 Before commiting, make sure you format the code with:

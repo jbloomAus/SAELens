@@ -1,5 +1,5 @@
 from sae_lens.training.optim import L1Scheduler
-from tests.unit.helpers import build_sae_cfg
+from tests.helpers import build_sae_cfg
 
 
 def test_l1_scheduler_initialization():
