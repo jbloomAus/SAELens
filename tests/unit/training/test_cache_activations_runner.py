@@ -2,7 +2,7 @@ import dataclasses
 import math
 import os
 from pathlib import Path
-from typing import Any, Tuple
+from typing import Any
 
 import datasets
 import pytest
@@ -27,6 +27,7 @@ def _default_cfg(
     context_size: int = 8,
     dataset_num_rows: int = 128,
     n_buffers: int = 4,
+    shuffle: bool = False,
     **kwargs: Any,
 ) -> CacheActivationsRunnerConfig:
     d_in = 512
@@ -64,7 +65,7 @@ def _default_cfg(
         context_size=context_size,
         ###
         d_in=d_in,
-        shuffle=False,
+        shuffle=shuffle,
         prepend_bos=False,
         device=device,
         seed=42,
@@ -89,12 +90,13 @@ def test_cache_activations_runner(tmp_path: Path):
 
     assert len(dataset) == cfg.n_buffers * (cfg.n_tokens_in_buffer // cfg.context_size)
     assert cfg.n_seq_in_dataset == len(dataset)
-    assert dataset.num_columns == 1 and dataset.column_names == [cfg.hook_name]
+    assert dataset.column_names == [cfg.hook_name, "token_ids"]
 
     features = dataset.features
-    for hook_name in [cfg.hook_name]:
-        assert isinstance(features[hook_name], datasets.Array2D)
-        assert features[hook_name].shape == (cfg.context_size, cfg.d_in)
+    assert isinstance(features[cfg.hook_name], datasets.Array2D)
+    assert features[cfg.hook_name].shape == (cfg.context_size, cfg.d_in)
+    assert isinstance(features["token_ids"], datasets.Sequence)
+    assert features["token_ids"].length == cfg.context_size
 
 
 def test_load_cached_activations(tmp_path: Path):
@@ -110,11 +112,13 @@ def test_load_cached_activations(tmp_path: Path):
         buffer = activations_store.get_buffer(
             cfg.n_batches_in_buffer
         )  # Adjusted to use n_batches_in_buffer
-        assert buffer.shape == (
+        assert buffer[0].shape == (
             cfg.n_seq_in_buffer * cfg.context_size,
             1,
             cfg.d_in,
         )
+        assert buffer[1] is not None
+        assert buffer[1].shape == (cfg.n_seq_in_buffer * cfg.context_size,)
 
 
 def test_activations_store_refreshes_dataset_when_it_runs_out(tmp_path: Path):
@@ -151,7 +155,7 @@ def test_activations_store_refreshes_dataset_when_it_runs_out(tmp_path: Path):
     )
 
     class MockModel:
-        def to_tokens(self, *args: Tuple[Any, ...], **kwargs: Any) -> torch.Tensor:
+        def to_tokens(self, *args: tuple[Any, ...], **kwargs: Any) -> torch.Tensor:
             return torch.ones(context_size)
 
         @property
@@ -162,12 +166,7 @@ def test_activations_store_refreshes_dataset_when_it_runs_out(tmp_path: Path):
         def cfg(self) -> LanguageModelSAERunnerConfig:
             return cfg
 
-    dataset = Dataset.from_list(
-        [
-            {"text": "hello world1"},
-        ]
-        * 64
-    )
+    dataset = Dataset.from_list([{"text": "hello world1"}] * 64)
 
     model = MockModel()
     activations_store = ActivationsStore.from_config(
@@ -315,7 +314,7 @@ def test_cache_activations_runner_load_dataset_with_incorrect_config(tmp_path: P
 
     with pytest.raises(
         ValueError,
-        match=r"Columns \['blocks.1.hook_mlp_out'\] not in the dataset. Current columns in the dataset: \['blocks.0.hook_mlp_out'\]",
+        match=r"Columns \['blocks.1.hook_mlp_out'\] not in the dataset. Current columns in the dataset: \['blocks.0.hook_mlp_out'\, 'token_ids'\]",
     ):
         ActivationsStore.from_config(model, wrong_hook_cfg)
 
@@ -348,3 +347,78 @@ def test_cache_activations_runner_with_valid_seqpos(tmp_path: Path):
     for act in dataset_acts:
         # should be 16 - 3 - 3 = 10
         assert act.shape == (10, cfg.d_in)
+
+
+def test_cache_activations_runner_stores_token_ids(tmp_path: Path):
+    cfg = _default_cfg(tmp_path)
+    runner = CacheActivationsRunner(cfg)
+    dataset = runner.run()
+    dataset.set_format("torch")
+
+    assert "token_ids" in dataset.features
+    assert dataset["token_ids"].shape[1] == cfg.context_size  # type: ignore
+    assert dataset["blocks.0.hook_mlp_out"].shape[:2] == dataset["token_ids"].shape  # type: ignore
+
+
+def test_cache_activations_runner_shuffling(tmp_path: Path):
+    """Test that when shuffle=True, activations and token IDs remain aligned after shuffling."""
+    # Create test dataset with arbitrary unique tokens
+    tokenizer = HookedTransformer.from_pretrained("gelu-1l").tokenizer
+    text = "".join(
+        [
+            " " + word[1:]
+            for word in tokenizer.vocab  # type: ignore
+            if word[0] == "Ġ" and word[1:].isascii() and word.isalnum()
+        ]
+    )
+    dataset = Dataset.from_list([{"text": text}])
+
+    # Create configs for unshuffled and shuffled versions
+    base_cfg = _default_cfg(
+        tmp_path / "base",
+        context_size=3,
+        batch_size=2,
+        dataset_num_rows=8,
+        shuffle=False,
+    )
+    shuffle_cfg = _default_cfg(
+        tmp_path / "shuffled",
+        context_size=3,
+        batch_size=2,
+        dataset_num_rows=8,
+        shuffle=True,
+    )
+
+    # Get unshuffled dataset
+    unshuffled_runner = CacheActivationsRunner(base_cfg, override_dataset=dataset)
+    unshuffled_ds = unshuffled_runner.run()
+    unshuffled_ds.set_format("torch")
+
+    # Get shuffled dataset
+    shuffled_runner = CacheActivationsRunner(shuffle_cfg, override_dataset=dataset)
+    shuffled_ds = shuffled_runner.run()
+    shuffled_ds.set_format("torch")
+
+    # Get activations and tokens
+    hook_name = base_cfg.hook_name
+    unshuffled_acts: torch.Tensor = unshuffled_ds[hook_name]  # type: ignore
+    unshuffled_tokens: torch.Tensor = unshuffled_ds["token_ids"]  # type: ignore
+    shuffled_acts: torch.Tensor = shuffled_ds[hook_name]  # type: ignore
+    shuffled_tokens: torch.Tensor = shuffled_ds["token_ids"]  # type: ignore
+
+    # Verify shapes are preserved
+    assert unshuffled_acts.shape == shuffled_acts.shape
+    assert unshuffled_tokens.shape == shuffled_tokens.shape
+
+    # Verify data is actually shuffled
+    assert not (unshuffled_acts == shuffled_acts).all()
+    assert not (unshuffled_tokens == shuffled_tokens).all()
+
+    # For each token in unshuffled, find its position in shuffled
+    # and verify the activations were moved together
+    for i in range(len(unshuffled_tokens)):
+        token = unshuffled_tokens[i]
+        # Find where this token went in shuffled version
+        shuffled_idx = torch.where(shuffled_tokens == token)[0][0]
+        # Verify activations moved with it
+        assert torch.allclose(unshuffled_acts[i], shuffled_acts[shuffled_idx])

@@ -332,11 +332,17 @@ class SAETrainer:
             self.cfg.wandb_log_frequency * self.cfg.eval_every_n_wandb_logs
         ) == 0:
             self.sae.eval()
+            ignore_tokens = set()
+            if self.activations_store.exclude_special_tokens is not None:
+                ignore_tokens = set(
+                    self.activations_store.exclude_special_tokens.tolist()
+                )
             eval_metrics, _ = run_evals(
                 sae=self.sae,
                 activation_store=self.activations_store,
                 model=self.model,
                 eval_config=self.trainer_eval_config,
+                ignore_tokens=ignore_tokens,
                 model_kwargs=self.cfg.model_kwargs,
             )  # not calculating featurwise metrics here.
 

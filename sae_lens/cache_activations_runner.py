@@ -6,10 +6,10 @@ from pathlib import Path
 
 import einops
 import torch
-from datasets import Array2D, Dataset, Features
+from datasets import Array2D, Dataset, Features, Sequence, Value
 from datasets.fingerprint import generate_fingerprint
 from huggingface_hub import HfApi
-from jaxtyping import Float
+from jaxtyping import Float, Int
 from tqdm import tqdm
 from transformer_lens.HookedTransformer import HookedRootModule
 
@@ -22,6 +22,7 @@ from sae_lens.training.activations_store import ActivationsStore
 def _mk_activations_store(
     model: HookedRootModule,
     cfg: CacheActivationsRunnerConfig,
+    override_dataset: Dataset | None = None,
 ) -> ActivationsStore:
     """
     Internal method used in CacheActivationsRunner. Used to create a cached dataset
@@ -29,7 +30,7 @@ def _mk_activations_store(
     """
     return ActivationsStore(
         model=model,
-        dataset=cfg.dataset_path,
+        dataset=override_dataset or cfg.dataset_path,
         streaming=cfg.streaming,
         hook_name=cfg.hook_name,
         hook_layer=cfg.hook_layer,
@@ -53,7 +54,11 @@ def _mk_activations_store(
 
 
 class CacheActivationsRunner:
-    def __init__(self, cfg: CacheActivationsRunnerConfig):
+    def __init__(
+        self,
+        cfg: CacheActivationsRunnerConfig,
+        override_dataset: Dataset | None = None,
+    ):
         self.cfg = cfg
         self.model: HookedRootModule = load_model(
             model_class_name=self.cfg.model_class_name,
@@ -66,18 +71,21 @@ class CacheActivationsRunner:
         self.activations_store = _mk_activations_store(
             self.model,
             self.cfg,
+            override_dataset=override_dataset,
         )
         self.context_size = self._get_sliced_context_size(
             self.cfg.context_size, self.cfg.seqpos_slice
         )
-        self.features = Features(
-            {
-                hook_name: Array2D(
-                    shape=(self.context_size, self.cfg.d_in), dtype=self.cfg.dtype
-                )
-                for hook_name in [self.cfg.hook_name]
-            }
+        features_dict: dict[str, Array2D | Sequence] = {
+            hook_name: Array2D(
+                shape=(self.context_size, self.cfg.d_in), dtype=self.cfg.dtype
+            )
+            for hook_name in [self.cfg.hook_name]
+        }
+        features_dict["token_ids"] = Sequence(
+            Value(dtype="int32"), length=self.context_size
         )
+        self.features = Features(features_dict)
 
     def __str__(self):
         """
@@ -264,7 +272,6 @@ class CacheActivationsRunner:
                     f"{tmp_cached_activation_path}/shard_{i:05d}", num_shards=1
                 )
                 del buffer, shard
-
             except StopIteration:
                 logger.warning(
                     f"Warning: Ran out of samples while filling the buffer at batch {i} before reaching {self.cfg.n_buffers} batches."
@@ -310,20 +317,33 @@ class CacheActivationsRunner:
 
     def _create_shard(
         self,
-        buffer: Float[torch.Tensor, "(bs context_size) num_layers d_in"],
+        buffer: tuple[
+            Float[torch.Tensor, "(bs context_size) num_layers d_in"],
+            Int[torch.Tensor, "(bs context_size)"] | None,
+        ],
     ) -> Dataset:
         hook_names = [self.cfg.hook_name]
-
-        buffer = einops.rearrange(
-            buffer,
+        acts, token_ids = buffer
+        acts = einops.rearrange(
+            acts,
             "(bs context_size) num_layers d_in -> num_layers bs context_size d_in",
             bs=self.cfg.n_seq_in_buffer,
             context_size=self.context_size,
             d_in=self.cfg.d_in,
             num_layers=len(hook_names),
         )
+        shard_dict = {hook_name: act for hook_name, act in zip(hook_names, acts)}
+
+        if token_ids is not None:
+            token_ids = einops.rearrange(
+                token_ids,
+                "(bs context_size) -> bs context_size",
+                bs=self.cfg.n_seq_in_buffer,
+                context_size=self.context_size,
+            )
+            shard_dict["token_ids"] = token_ids.to(torch.int32)
         return Dataset.from_dict(
-            {hook_name: act for hook_name, act in zip(hook_names, buffer)},
+            shard_dict,
             features=self.features,
         )
 
