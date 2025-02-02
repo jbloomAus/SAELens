@@ -18,13 +18,13 @@ from torch import nn
 from transformer_lens.hook_points import HookedRootModule, HookPoint
 
 from sae_lens.config import DTYPE_MAP
-from sae_lens.toolkit.pretrained_sae_loaders import (
+from sae_lens.loading.pretrained_sae_loaders import (
     NAMED_PRETRAINED_SAE_LOADERS,
     get_conversion_loader_name,
     handle_config_defaulting,
     read_sae_from_disk,
 )
-from sae_lens.toolkit.pretrained_saes_directory import (
+from sae_lens.loading.pretrained_saes_directory import (
     get_norm_scaling_factor,
     get_pretrained_saes_directory,
 )

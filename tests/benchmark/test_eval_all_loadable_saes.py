@@ -17,7 +17,7 @@ from sae_lens.evals import (
     run_evals,
     run_evaluations,
 )
-from sae_lens.toolkit.pretrained_sae_loaders import (
+from sae_lens.loading.pretrained_sae_loaders import (
     SAEConfigLoadOptions,
     get_sae_config_from_hf,
 )

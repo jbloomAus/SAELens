@@ -22,7 +22,7 @@ from sae_lens.evals import (
 )
 from sae_lens.load_model import load_model
 from sae_lens.sae import SAE
-from sae_lens.toolkit.pretrained_saes_directory import PretrainedSAELookup
+from sae_lens.loading.pretrained_saes_directory import PretrainedSAELookup
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.training_sae import TrainingSAE
 from tests.unit.helpers import TINYSTORIES_MODEL, build_sae_cfg, load_model_cached
