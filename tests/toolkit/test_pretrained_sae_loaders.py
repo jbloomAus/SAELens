@@ -1,5 +1,5 @@
+from sae_lens.loading.pretrained_sae_loaders import SAEConfigLoadOptions, get_sae_config
 from sae_lens.sae import SAE
-from sae_lens.toolkit.pretrained_sae_loaders import SAEConfigLoadOptions, get_sae_config
 
 
 def test_get_sae_config_sae_lens():
