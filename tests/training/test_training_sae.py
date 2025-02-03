@@ -10,7 +10,7 @@ from sae_lens.training.training_sae import (
     TrainingSAEConfig,
     _calculate_topk_aux_acts,
 )
-from tests.unit.helpers import build_sae_cfg
+from tests.helpers import build_sae_cfg
 
 
 @pytest.mark.parametrize("scale_sparsity_penalty_by_decoder_norm", [True, False])

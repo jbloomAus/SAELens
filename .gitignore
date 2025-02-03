@@ -181,7 +181,7 @@ cached_activations/
 neuronpedia_outputs/
 
 # test fixtures
-tests/benchmark/fixtures/
+tests/fixtures/
 
 # ignore prof
 prof/

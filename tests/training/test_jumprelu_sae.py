@@ -2,7 +2,7 @@ import pytest
 import torch
 
 from sae_lens.training.training_sae import JumpReLU, TrainingSAE
-from tests.unit.helpers import build_sae_cfg
+from tests.helpers import build_sae_cfg
 
 
 def test_jumprelu_sae_encoding():

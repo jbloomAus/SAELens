@@ -7,7 +7,7 @@ import pytest
 import torch
 
 from sae_lens.sae import SAE
-from tests.unit.helpers import TINYSTORIES_MODEL, load_model_cached
+from tests.helpers import TINYSTORIES_MODEL, load_model_cached
 
 torch.set_grad_enabled(True)
 

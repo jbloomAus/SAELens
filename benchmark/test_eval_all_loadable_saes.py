@@ -21,7 +21,7 @@ from sae_lens.loading.pretrained_sae_loaders import (
     SAEConfigLoadOptions,
     get_sae_config_from_hf,
 )
-from tests.unit.helpers import load_model_cached
+from tests.helpers import load_model_cached
 
 # from sae_lens.evals import run_evals
 

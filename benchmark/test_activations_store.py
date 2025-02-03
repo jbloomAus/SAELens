@@ -7,7 +7,7 @@ from transformer_lens import HookedTransformer
 from sae_lens.config import PretokenizeRunnerConfig
 from sae_lens.pretokenize_runner import pretokenize_dataset
 from sae_lens.training.activations_store import ActivationsStore
-from tests.unit.helpers import build_sae_cfg
+from tests.helpers import build_sae_cfg
 
 
 # The way to run this with this command:

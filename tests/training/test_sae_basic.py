@@ -9,7 +9,7 @@ from transformer_lens.hook_points import HookPoint
 
 from sae_lens.config import LanguageModelSAERunnerConfig
 from sae_lens.sae import SAE, _disable_hooks
-from tests.unit.helpers import ALL_ARCHITECTURES, build_sae_cfg
+from tests.helpers import ALL_ARCHITECTURES, build_sae_cfg
 
 
 # Define a new fixture for different configurations
