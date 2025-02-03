@@ -18,7 +18,7 @@ from sae_lens.training.sae_trainer import (
     _update_sae_lens_training_version,
 )
 from sae_lens.training.training_sae import TrainingSAE
-from tests.unit.helpers import TINYSTORIES_MODEL, build_sae_cfg, load_model_cached
+from tests.helpers import TINYSTORIES_MODEL, build_sae_cfg, load_model_cached
 
 
 @pytest.fixture

@@ -10,7 +10,7 @@ from sae_lens.config import LanguageModelSAERunnerConfig
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.sae_trainer import SAETrainer
 from sae_lens.training.training_sae import JumpReLU, TrainingSAE
-from tests.unit.helpers import build_sae_cfg
+from tests.helpers import build_sae_cfg
 
 
 # Define a new fixture for different configurations

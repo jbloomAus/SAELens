@@ -15,7 +15,7 @@ os.environ["WANDB_MODE"] = "offline"  # turn this off if you want to see the out
 
 
 # The way to run this with this command:
-# poetry run py.test tests/benchmark/test_cache_activations_runner.py --profile-svg -s
+# poetry run py.test benchmark/test_cache_activations_runner.py --profile-svg -s
 def test_cache_activations_runner():
     if torch.cuda.is_available():
         device = "cuda"

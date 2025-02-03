@@ -21,7 +21,7 @@ Please delete options that are not relevant.
 - [ ] I have made corresponding changes to the documentation
 - [ ] My changes generate no new warnings
 - [ ] I have added tests that prove my fix is effective or that my feature works
-- [ ] New and existing unit tests pass locally with my changes
+- [ ] New and existing tests pass locally with my changes
 - [ ] I have not rewritten tests relating to key interfaces which would affect backward compatibility
 
 <!--
@@ -32,7 +32,7 @@ For example,
 - [ ] I have not done this task
 -->
 
-### You have tested formatting, typing and unit tests (acceptance tests not currently in use)
+### You have tested formatting, typing and tests
 
 - [ ] I have run `make check-ci` to check format and linting. (you can run `make format` to format code if needed.)
 
