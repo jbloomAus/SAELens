@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import contextlib
 import json
 import os
 import warnings
@@ -16,7 +15,6 @@ from huggingface_hub.utils import HfHubHTTPError
 from jaxtyping import Float, Int
 from requests import HTTPError
 from safetensors.torch import save_file
-from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformer_lens.hook_points import HookedRootModule
 from transformers import AutoTokenizer, PreTrainedTokenizerBase
@@ -30,6 +28,7 @@ from sae_lens.config import (
 )
 from sae_lens.sae import SAE
 from sae_lens.tokenization_and_batching import concat_and_batch_sequences
+from sae_lens.training.mixing_buffer import mixing_buffer
 
 
 # TODO: Make an activation store config class to be consistent with the rest of the code.
@@ -48,7 +47,6 @@ class ActivationsStore:
     hook_layer: int
     hook_head_index: int | None
     _dataloader: Iterator[Any] | None = None
-    _storage_buffer: torch.Tensor | None = None
     exclude_special_tokens: torch.Tensor | None = None
     device: torch.device
 
@@ -471,21 +469,6 @@ class ActivationsStore:
         """
         self.iterable_dataset = iter(self.dataset)
 
-    @property
-    def storage_buffer(self) -> torch.Tensor:
-        if self._storage_buffer is None:
-            self._storage_buffer = _filter_buffer_acts(
-                self.get_buffer(self.half_buffer_size), self.exclude_special_tokens
-            )
-
-        return self._storage_buffer
-
-    @property
-    def dataloader(self) -> Iterator[Any]:
-        if self._dataloader is None:
-            self._dataloader = self.get_data_loader()
-        return self._dataloader
-
     def get_batch_tokens(
         self, batch_size: int | None = None, raise_at_epoch_end: bool = False
     ):
@@ -518,18 +501,11 @@ class ActivationsStore:
 
         d_in may result from a concatenated head dimension.
         """
-
-        # Setup autocast if using
-        if self.autocast_lm:
-            autocast_if_enabled = torch.autocast(
-                device_type="cuda",
-                dtype=torch.bfloat16,
-                enabled=self.autocast_lm,
-            )
-        else:
-            autocast_if_enabled = contextlib.nullcontext()
-
-        with autocast_if_enabled:
+        with torch.autocast(
+            device_type="cuda",
+            dtype=torch.bfloat16,
+            enabled=self.autocast_lm,
+        ):
             layerwise_activations_cache = self.model.run_with_cache(
                 batch_tokens,
                 names_filter=[self.hook_name],
@@ -715,83 +691,60 @@ class ActivationsStore:
             new_buffer_token_ids,
         )
 
+    def _iterate_filtered_activations(self) -> Generator[torch.Tensor, None, None]:
+        """
+        Iterate over the filtered tokens in the buffer.
+        """
+        while True:
+            try:
+                yield _filter_buffer_acts(
+                    self.get_buffer(self.half_buffer_size, raise_on_epoch_end=True),
+                    self.exclude_special_tokens,
+                )
+            except StopIteration:
+                warnings.warn(
+                    "All samples in the training dataset have been exhausted, beginning new epoch."
+                )
+                self._mixing_buffer = None  # Reset mixing buffer for new epoch
+                try:
+                    new_acts = self.get_buffer(self.half_buffer_size)
+                    yield _filter_buffer_acts(new_acts, self.exclude_special_tokens)
+                except StopIteration:
+                    raise ValueError(
+                        "Unable to fill buffer after starting new epoch. Dataset may be too small."
+                    )
+
     def get_data_loader(
         self,
     ) -> Iterator[Any]:
         """
-        Return a torch.utils.dataloader which you can get batches from.
-
-        Should automatically refill the buffer when it gets to n % full.
-        (better mixing if you refill and shuffle regularly).
-
+        Return an auto-refilling stream of filtered and mixed activations.
         """
-
-        batch_size = self.train_batch_size_tokens
-
-        try:
-            new_samples = _filter_buffer_acts(
-                self.get_buffer(self.half_buffer_size, raise_on_epoch_end=True),
-                self.exclude_special_tokens,
-            )
-        except StopIteration:
-            warnings.warn(
-                "All samples in the training dataset have been exhausted, we are now beginning a new epoch with the same samples."
-            )
-            self._storage_buffer = (
-                None  # dump the current buffer so samples do not leak between epochs
-            )
-            try:
-                new_samples = _filter_buffer_acts(
-                    self.get_buffer(self.half_buffer_size),
-                    self.exclude_special_tokens,
-                )
-            except StopIteration:
-                raise ValueError(
-                    "We were unable to fill up the buffer directly after starting a new epoch. This could indicate that there are less samples in the dataset than are required to fill up the buffer. Consider reducing batch_size or n_batches_in_buffer. "
-                )
-
-        # 1. # create new buffer by mixing stored and new buffer
-        mixing_buffer = torch.cat(
-            [new_samples, self.storage_buffer],
-            dim=0,
-        )
-
-        mixing_buffer = mixing_buffer[torch.randperm(mixing_buffer.shape[0])]
-
-        # 2.  put 50 % in storage
-        self._storage_buffer = mixing_buffer[: mixing_buffer.shape[0] // 2]
-
-        # 3. put other 50 % in a dataloader
-        return iter(
-            DataLoader(
-                # TODO: seems like a typing bug?
-                cast(Any, mixing_buffer[mixing_buffer.shape[0] // 2 :]),
-                batch_size=batch_size,
-                shuffle=True,
-            )
+        return mixing_buffer(
+            buffer_size=self.n_batches_in_buffer,
+            batch_size=self.train_batch_size_tokens,
+            activations_loader=self._iterate_filtered_activations(),
         )
 
     def next_batch(self) -> torch.Tensor:
-        """
-        Get the next batch from the current DataLoader.
-        If the DataLoader is exhausted, refill the buffer and create a new DataLoader.
-        """
-        try:
-            # Try to get the next batch
-            return next(self.dataloader)
-        except StopIteration:
-            # If the DataLoader is exhausted, create a new one
+        """Get next batch, updating buffer if needed."""
+        return self.__next__()
+
+    # ActivationsStore should be an iterator
+    def __next__(self) -> torch.Tensor:
+        if self._dataloader is None:
             self._dataloader = self.get_data_loader()
-            return next(self.dataloader)
+        return next(self._dataloader)
+
+    def __iter__(self) -> Iterator[torch.Tensor]:
+        return self
 
     def state_dict(self) -> dict[str, torch.Tensor]:
         result = {
             "n_dataset_processed": torch.tensor(self.n_dataset_processed),
         }
-        if self._storage_buffer is not None:  # first time might be None
-            result["storage_buffer_activations"] = self._storage_buffer[0]
-            if self._storage_buffer[1] is not None:
-                result["storage_buffer_tokens"] = self._storage_buffer[1]
+        if self._mixing_buffer is not None:
+            result.update(self._mixing_buffer.state_dict())
         if self.estimated_norm_scaling_factor is not None:
             result["estimated_norm_scaling_factor"] = torch.tensor(
                 self.estimated_norm_scaling_factor
