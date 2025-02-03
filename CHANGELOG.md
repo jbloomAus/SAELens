@@ -2,6 +2,25 @@
 
 
 
+## v5.4.1 (2025-02-03)
+
+### Chore
+
+* chore: moves files in tests/unit to tests (#417) ([`251d3cd`](https://github.com/jbloomAus/SAELens/commit/251d3cd853e19ae54d09959a1b853e45c09b57b0))
+
+* chore: removing overlooked legacy file (#416) ([`02360b0`](https://github.com/jbloomAus/SAELens/commit/02360b06931cdc9b67f2b81bc96929253f7a7e19))
+
+* chore: delete legacy files (#415)
+
+* deleting legacy files
+
+* moving tsea stuff into tutorials dir ([`157e2ad`](https://github.com/jbloomAus/SAELens/commit/157e2ad127467b4d7bda555b24a526e85d437a50))
+
+### Fix
+
+* fix: ensure flattened_mask is on correct device in evals (#418) ([`38370d4`](https://github.com/jbloomAus/SAELens/commit/38370d41c02507d84f95fa58e5b070d46fb88d7f))
+
+
 ## v5.4.0 (2025-02-02)
 
 ### Feature
