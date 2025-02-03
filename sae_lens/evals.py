@@ -5,11 +5,12 @@ import math
 import re
 import subprocess
 from collections import defaultdict
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from functools import partial
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Union
+from typing import Any, Dict, List, Union
 
 import einops
 import pandas as pd
@@ -460,9 +461,15 @@ def get_sparsity_and_variance_metrics(
         # TODO: Clean this up.
         # apply mask
         masked_sae_feature_activations = sae_feature_activations * mask.unsqueeze(-1)
-        flattened_sae_input = flattened_sae_input[flattened_mask]
-        flattened_sae_feature_acts = flattened_sae_feature_acts[flattened_mask]
-        flattened_sae_out = flattened_sae_out[flattened_mask]
+        flattened_sae_input = flattened_sae_input[
+            flattened_mask.to(flattened_sae_input.device)
+        ]
+        flattened_sae_feature_acts = flattened_sae_feature_acts[
+            flattened_mask.to(flattened_sae_feature_acts.device)
+        ]
+        flattened_sae_out = flattened_sae_out[
+            flattened_mask.to(flattened_sae_out.device)
+        ]
 
         if compute_l2_norms:
             l2_norm_in = torch.norm(flattened_sae_input, dim=-1)
