@@ -5,7 +5,7 @@ from typing import Any, Optional, Protocol, cast
 import torch
 import wandb
 from torch.optim import Adam
-from tqdm import tqdm
+from tqdm.auto import tqdm
 from transformer_lens.hook_points import HookedRootModule
 
 from sae_lens import __version__
