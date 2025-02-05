@@ -245,7 +245,7 @@ class ActivationsStore:
         self.autocast_lm = autocast_lm
         self.seqpos_slice = seqpos_slice
         self.exclude_special_tokens = exclude_special_tokens
-
+        self.training_context_size = len(range(context_size)[slice(*seqpos_slice)])
         self.n_dataset_processed = 0
 
         self.estimated_norm_scaling_factor = None
@@ -629,7 +629,6 @@ class ActivationsStore:
         If raise_on_epoch_end is True, when the dataset it exhausted it will automatically refill the dataset and then raise a StopIteration so that the caller has a chance to react.
         """
         context_size = self.context_size
-        training_context_size = len(range(context_size)[slice(*self.seqpos_slice)])
         batch_size = self.store_batch_size_prompts
         d_in = self.d_in
         total_size = batch_size * n_batches_in_buffer
@@ -643,12 +642,12 @@ class ActivationsStore:
         refill_iterator = range(0, total_size, batch_size)
         # Initialize empty tensor buffer of the maximum required size with an additional dimension for layers
         new_buffer_activations = torch.zeros(
-            (total_size, training_context_size, num_layers, d_in),
+            (total_size, self.training_context_size, num_layers, d_in),
             dtype=self.dtype,  # type: ignore
             device=self.device,
         )
         new_buffer_token_ids = torch.zeros(
-            (total_size, training_context_size),
+            (total_size, self.training_context_size),
             dtype=torch.long,
             device=self.device,
         )
@@ -721,7 +720,7 @@ class ActivationsStore:
         Return an auto-refilling stream of filtered and mixed activations.
         """
         return mixing_buffer(
-            buffer_size=self.n_batches_in_buffer,
+            buffer_size=self.n_batches_in_buffer * self.training_context_size,
             batch_size=self.train_batch_size_tokens,
             activations_loader=self._iterate_filtered_activations(),
         )
