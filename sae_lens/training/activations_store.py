@@ -704,7 +704,6 @@ class ActivationsStore:
                 warnings.warn(
                     "All samples in the training dataset have been exhausted, beginning new epoch."
                 )
-                self._mixing_buffer = None  # Reset mixing buffer for new epoch
                 try:
                     new_acts = self.get_buffer(self.half_buffer_size)
                     yield _filter_buffer_acts(new_acts, self.exclude_special_tokens)
@@ -742,8 +741,6 @@ class ActivationsStore:
         result = {
             "n_dataset_processed": torch.tensor(self.n_dataset_processed),
         }
-        if self._mixing_buffer is not None:
-            result.update(self._mixing_buffer.state_dict())
         if self.estimated_norm_scaling_factor is not None:
             result["estimated_norm_scaling_factor"] = torch.tensor(
                 self.estimated_norm_scaling_factor
