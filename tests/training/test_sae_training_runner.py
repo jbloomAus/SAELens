@@ -1,3 +1,4 @@
+import argparse
 import json
 import os
 from pathlib import Path
@@ -137,6 +138,44 @@ def test_parse_cfg_args_override():
     assert cfg.activation_fn == "tanh-relu"
     assert cfg.normalize_sae_decoder is False
     assert cfg.dataset_path == "my/dataset"
+
+
+def test_parse_cfg_args_dict_args():
+    # Test that we can pass dict args as json strings
+    args = [
+        "--model_kwargs",
+        '{"foo": "bar", "baz": 123}',
+        "--model_from_pretrained_kwargs",
+        '{"center_writing_weights": false}',
+        "--activation_fn_kwargs",
+        '{"k": 100}',
+    ]
+    cfg = _parse_cfg_args(args)
+
+    assert cfg.model_kwargs == {"foo": "bar", "baz": 123}
+    assert cfg.model_from_pretrained_kwargs == {"center_writing_weights": False}
+    assert cfg.activation_fn_kwargs == {"k": 100}
+
+
+def test_parse_cfg_args_invalid_json():
+    args = ["--model_kwargs", "{invalid json"]
+    with pytest.raises(argparse.ArgumentError, match="invalid json_dict value"):
+        _parse_cfg_args(args)
+
+
+def test_parse_cfg_args_invalid_dict_type():
+    # Test that we reject non-dict values for dict fields
+    args = ["--model_kwargs", "[1, 2, 3]"]  # Array instead of dict
+    with pytest.raises(argparse.ArgumentError, match="invalid json_dict value"):
+        _parse_cfg_args(args)
+
+    args = ["--model_from_pretrained_kwargs", '"not_a_dict"']  # String instead of dict
+    with pytest.raises(argparse.ArgumentError, match="invalid json_dict value"):
+        _parse_cfg_args(args)
+
+    args = ["--activation_fn_kwargs", "123"]  # Number instead of dict
+    with pytest.raises(argparse.ArgumentError, match="invalid json_dict value"):
+        _parse_cfg_args(args)
 
 
 def test_parse_cfg_args_expansion_factor():

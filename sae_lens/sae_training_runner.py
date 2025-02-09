@@ -234,7 +234,7 @@ class SAETrainingRunner:
 def _parse_cfg_args(args: Sequence[str]) -> LanguageModelSAERunnerConfig:
     if len(args) == 0:
         args = ["--help"]
-    parser = ArgumentParser()
+    parser = ArgumentParser(exit_on_error=False)
     parser.add_arguments(LanguageModelSAERunnerConfig, dest="cfg")
     return parser.parse_args(args).cfg
 
