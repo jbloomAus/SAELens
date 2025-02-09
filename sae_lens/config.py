@@ -160,7 +160,6 @@ class LanguageModelSAERunnerConfig:
     training_tokens: int = 2_000_000
     finetuning_tokens: int = 0
     store_batch_size_prompts: int = 32
-    train_batch_size_tokens: int = 4096
     normalize_activations: str = "none"  # none, expected_average_only_in (Anthropic April Update), constant_norm_rescale (Anthropic Feb Update)
     seqpos_slice: tuple[int | None, ...] = (None,)
 
