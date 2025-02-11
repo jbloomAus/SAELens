@@ -4,6 +4,7 @@ import os
 from dataclasses import dataclass, field
 from typing import Any, Literal, Optional, cast
 
+import simple_parsing
 import torch
 import wandb
 from datasets import (
@@ -28,6 +29,23 @@ DTYPE_MAP = {
 }
 
 HfDataset = DatasetDict | Dataset | IterableDatasetDict | IterableDataset
+
+
+# calling this "json_dict" so error messages will reference "json_dict" being invalid
+def json_dict(s: str) -> Any:
+    res = json.loads(s)
+    if res is not None and not isinstance(res, dict):
+        raise ValueError(f"Expected a dictionary, got {type(res)}")
+    return res
+
+
+def dict_field(default: dict[str, Any] | None, **kwargs: Any) -> Any:  # type: ignore
+    """
+    Helper to wrap simple_parsing.helpers.dict_field so we can load JSON fields from the command line.
+    """
+    if default is None:
+        return simple_parsing.helpers.field(default=None, type=json_dict, **kwargs)
+    return simple_parsing.helpers.dict_field(default, type=json_dict, **kwargs)
 
 
 @dataclass
@@ -146,7 +164,7 @@ class LanguageModelSAERunnerConfig:
         None  # defaults to 4 if d_sae and expansion_factor is None
     )
     activation_fn: str = None  # relu, tanh-relu, topk. Default is relu. # type: ignore
-    activation_fn_kwargs: dict[str, Any] = None  # for topk # type: ignore
+    activation_fn_kwargs: dict[str, int] = dict_field(default=None)  # for topk
     normalize_sae_decoder: bool = True
     noise_scale: float = 0.0
     from_pretrained_path: Optional[str] = None
@@ -238,8 +256,8 @@ class LanguageModelSAERunnerConfig:
     n_checkpoints: int = 0
     checkpoint_path: str = "checkpoints"
     verbose: bool = True
-    model_kwargs: dict[str, Any] = field(default_factory=dict)
-    model_from_pretrained_kwargs: dict[str, Any] | None = None
+    model_kwargs: dict[str, Any] = dict_field(default={})
+    model_from_pretrained_kwargs: dict[str, Any] | None = dict_field(default=None)
     sae_lens_version: str = field(default_factory=lambda: __version__)
     sae_lens_training_version: str = field(default_factory=lambda: __version__)
     exclude_special_tokens: bool | list[int] = False
