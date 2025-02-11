@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from sae_lens.toolkit.pretrained_saes_directory import (
+from sae_lens.loading.pretrained_saes_directory import (
     PretrainedSAELookup,
     get_pretrained_saes_directory,
     get_repo_id_and_folder_name,

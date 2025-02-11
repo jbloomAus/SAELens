@@ -378,7 +378,6 @@ class SAE(HookedRootModule):
         feature_acts = self.encode(x)
         sae_out = self.decode(feature_acts)
 
-        # TEMP
         if self.use_error_term:
             with torch.no_grad():
                 # Recompute everything without hooks to get true error term
@@ -436,9 +435,7 @@ class SAE(HookedRootModule):
         hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
         return self.hook_sae_acts_post(self.activation_fn(hidden_pre))
 
-    def process_sae_in(
-        self, sae_in: Float[torch.Tensor, "... d_in"]
-    ) -> Float[torch.Tensor, "... d_sae"]:
+    def process_sae_in(self, sae_in: Float[torch.Tensor, "... d_in"]) -> Float[torch.Tensor, "... d_in"]:
         sae_in = sae_in.to(self.dtype)
         sae_in = self.reshape_fn_in(sae_in)
         sae_in = self.hook_sae_input(sae_in)

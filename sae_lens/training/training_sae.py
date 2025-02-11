@@ -16,7 +16,7 @@ from torch import nn
 from sae_lens import logger
 from sae_lens.config import LanguageModelSAERunnerConfig
 from sae_lens.sae import SAE, SAEConfig
-from sae_lens.toolkit.pretrained_sae_loaders import (
+from sae_lens.loading.pretrained_sae_loaders import (
     handle_config_defaulting,
     read_sae_from_disk,
 )
@@ -460,6 +460,7 @@ class TrainingSAE(SAE):
             losses=losses,
         )
 
+    # architecture-specific aux loss calculation
     def calculate_topk_aux_loss(
         self,
         sae_in: torch.Tensor,
@@ -495,6 +496,7 @@ class TrainingSAE(SAE):
             return scale * auxk_loss
         return sae_out.new_tensor(0.0)
 
+    # deprecated
     def calculate_ghost_grad_loss(
         self,
         x: torch.Tensor,
@@ -552,12 +554,14 @@ class TrainingSAE(SAE):
             return batch_norm_mse_loss_fn
         return standard_mse_loss_fn
 
+    # architecture-specific state dict processing
     def process_state_dict_for_saving(self, state_dict: dict[str, Any]) -> None:
         if self.cfg.architecture == "jumprelu" and "log_threshold" in state_dict:
             threshold = torch.exp(state_dict["log_threshold"]).detach().contiguous()
             del state_dict["log_threshold"]
             state_dict["threshold"] = threshold
 
+    # architecture-specific state dict processing
     def process_state_dict_for_loading(self, state_dict: dict[str, Any]) -> None:
         if self.cfg.architecture == "jumprelu" and "threshold" in state_dict:
             threshold = state_dict["threshold"]
@@ -697,7 +701,7 @@ class TrainingSAE(SAE):
             "d_sae, d_sae d_in -> d_sae d_in",
         )
 
-
+# Helper function for topk aux loss
 def _calculate_topk_aux_acts(
     k_aux: int,
     hidden_pre: torch.Tensor,

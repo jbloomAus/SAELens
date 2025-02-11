@@ -12,6 +12,7 @@ from torch import nn
 from transformer_lens.hook_points import HookedRootModule, HookPoint
 
 from sae_lens.config import DTYPE_MAP
+from sae_lens.config import LanguageModelSAERunnerConfig
 
 T = TypeVar("T", bound="BaseSAE")
 
@@ -110,13 +111,17 @@ class BaseSAE(HookedRootModule, ABC):
         self.hook_sae_output = HookPoint()
         self.hook_sae_recons = HookPoint()
         self.hook_sae_error = HookPoint()
+
+        # handle hook_z reshaping if needed.
+        if self.cfg.hook_name.endswith("_z"):
+            print("Turning on hook_z reshaping")
+            self.turn_on_forward_pass_hook_z_reshaping()
+        else:
+            print("Turning off hook_z reshaping")
+            self.turn_off_forward_pass_hook_z_reshaping()
         
         # Set up activation normalization
         self._setup_activation_normalization()
-
-        # Add reshape functions
-        self.reshape_fn_in = lambda x: x
-        self.reshape_fn_out = lambda x: x
         
         self.setup()  # Required for HookedRootModule
     
@@ -188,23 +193,34 @@ class BaseSAE(HookedRootModule, ABC):
         pass
     
     def turn_on_forward_pass_hook_z_reshaping(self):
-        """For attention head outputs (hook_z) - reshape to 2D"""
-        self.reshape_fn_in = lambda x: einops.rearrange(x, "b s n h -> (b s) (n h)")
-        self.reshape_fn_out = lambda x: einops.rearrange(
-            x, "(b s) (n h) -> b s n h", 
-            n=self.cfg.hook_head_index is not None
+        if not self.cfg.hook_name.endswith("_z"):
+            raise ValueError("This method should only be called for hook_z SAEs.")
+
+        def reshape_fn_in(x: torch.Tensor):
+            self.d_head = x.shape[-1]
+            self.reshape_fn_in = lambda x: einops.rearrange(
+                x, "... n_heads d_head -> ... (n_heads d_head)"
+            )
+            return einops.rearrange(x, "... n_heads d_head -> ... (n_heads d_head)")
+
+        self.reshape_fn_in = reshape_fn_in
+        self.reshape_fn_out = lambda x, d_head: einops.rearrange(
+            x, "... (n_heads d_head) -> ... n_heads d_head", d_head=d_head
         )
+        self.hook_z_reshaping_mode = True
 
     def turn_off_forward_pass_hook_z_reshaping(self):
         self.reshape_fn_in = lambda x: x
-        self.reshape_fn_out = lambda x: x
+        self.reshape_fn_out = lambda x, d_head: x  # noqa: ARG005
+        self.d_head = None
+        self.hook_z_reshaping_mode = False
     
     def process_sae_in(self, sae_in: Float[torch.Tensor, "... d_in"]) -> Float[torch.Tensor, "... d_in"]:
         sae_in = sae_in.to(self.dtype)
-        sae_in = self.reshape_fn_in(sae_in)  # Add reshape
+        sae_in = self.reshape_fn_in(sae_in)
         sae_in = self.hook_sae_input(sae_in)
         sae_in = self.run_time_activation_norm_fn_in(sae_in)
-        return sae_in - (self.b_dec * self.cfg.apply_b_dec_to_input)  # type: ignore
+        return sae_in - (self.b_dec * self.cfg.apply_b_dec_to_input)
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass through the SAE."""
@@ -228,6 +244,130 @@ class BaseSAE(HookedRootModule, ABC):
         self.W_dec.data = self.W_dec.data / W_dec_norms
         self.W_enc.data = self.W_enc.data * W_dec_norms.T
         self.b_enc.data = self.b_enc.data * W_dec_norms.squeeze()
+
+
+@dataclass(kw_only=True)
+class TrainingSAEConfig(SAEConfig):
+    # Sparsity Loss Calculations
+    l1_coefficient: float
+    lp_norm: float
+    use_ghost_grads: bool
+    normalize_sae_decoder: bool
+    noise_scale: float
+    decoder_orthogonal_init: bool
+    mse_loss_normalization: Optional[str]
+    jumprelu_init_threshold: float
+    jumprelu_bandwidth: float
+    decoder_heuristic_init: bool
+    init_encoder_as_decoder_transpose: bool
+    scale_sparsity_penalty_by_decoder_norm: bool
+
+    @classmethod
+    def from_sae_runner_config(
+        cls, cfg: LanguageModelSAERunnerConfig
+    ) -> "TrainingSAEConfig":
+        return cls(
+            # base config
+            architecture=cfg.architecture,
+            d_in=cfg.d_in,
+            d_sae=cfg.d_sae,  # type: ignore
+            dtype=cfg.dtype,
+            device=cfg.device,
+            model_name=cfg.model_name,
+            hook_name=cfg.hook_name,
+            hook_layer=cfg.hook_layer,
+            hook_head_index=cfg.hook_head_index,
+            activation_fn_str=cfg.activation_fn,
+            activation_fn_kwargs=cfg.activation_fn_kwargs,
+            apply_b_dec_to_input=cfg.apply_b_dec_to_input,
+            finetuning_scaling_factor=cfg.finetuning_method is not None,
+            sae_lens_training_version=cfg.sae_lens_training_version,
+            context_size=cfg.context_size,
+            dataset_path=cfg.dataset_path,
+            prepend_bos=cfg.prepend_bos,
+            seqpos_slice=cfg.seqpos_slice,
+            # Training cfg
+            l1_coefficient=cfg.l1_coefficient,
+            lp_norm=cfg.lp_norm,
+            use_ghost_grads=cfg.use_ghost_grads,
+            normalize_sae_decoder=cfg.normalize_sae_decoder,
+            noise_scale=cfg.noise_scale,
+            decoder_orthogonal_init=cfg.decoder_orthogonal_init,
+            mse_loss_normalization=cfg.mse_loss_normalization,
+            decoder_heuristic_init=cfg.decoder_heuristic_init,
+            init_encoder_as_decoder_transpose=cfg.init_encoder_as_decoder_transpose,
+            scale_sparsity_penalty_by_decoder_norm=cfg.scale_sparsity_penalty_by_decoder_norm,
+            normalize_activations=cfg.normalize_activations,
+            dataset_trust_remote_code=cfg.dataset_trust_remote_code,
+            model_from_pretrained_kwargs=cfg.model_from_pretrained_kwargs or {},
+            jumprelu_init_threshold=cfg.jumprelu_init_threshold,
+            jumprelu_bandwidth=cfg.jumprelu_bandwidth,
+        )
+
+    @classmethod
+    def from_dict(cls, config_dict: dict[str, Any]) -> "TrainingSAEConfig":
+        # remove any keys that are not in the dataclass
+        # since we sometimes enhance the config with the whole LM runner config
+        valid_field_names = {field.name for field in fields(cls)}
+        valid_config_dict = {
+            key: val for key, val in config_dict.items() if key in valid_field_names
+        }
+
+        # ensure seqpos slice is tuple
+        # ensure that seqpos slices is a tuple
+        # Ensure seqpos_slice is a tuple
+        if "seqpos_slice" in valid_config_dict:
+            if isinstance(valid_config_dict["seqpos_slice"], list):
+                valid_config_dict["seqpos_slice"] = tuple(
+                    valid_config_dict["seqpos_slice"]
+                )
+            elif not isinstance(valid_config_dict["seqpos_slice"], tuple):
+                valid_config_dict["seqpos_slice"] = (valid_config_dict["seqpos_slice"],)
+
+        return TrainingSAEConfig(**valid_config_dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            **super().to_dict(),
+            "l1_coefficient": self.l1_coefficient,
+            "lp_norm": self.lp_norm,
+            "use_ghost_grads": self.use_ghost_grads,
+            "normalize_sae_decoder": self.normalize_sae_decoder,
+            "noise_scale": self.noise_scale,
+            "decoder_orthogonal_init": self.decoder_orthogonal_init,
+            "init_encoder_as_decoder_transpose": self.init_encoder_as_decoder_transpose,
+            "mse_loss_normalization": self.mse_loss_normalization,
+            "decoder_heuristic_init": self.decoder_heuristic_init,
+            "scale_sparsity_penalty_by_decoder_norm": self.scale_sparsity_penalty_by_decoder_norm,
+            "normalize_activations": self.normalize_activations,
+            "jumprelu_init_threshold": self.jumprelu_init_threshold,
+            "jumprelu_bandwidth": self.jumprelu_bandwidth,
+        }
+
+    # this needs to exist so we can initialize the parent sae cfg without the training specific
+    # parameters. Maybe there's a cleaner way to do this
+    def get_base_sae_cfg_dict(self) -> dict[str, Any]:
+        return {
+            "architecture": self.architecture,
+            "d_in": self.d_in,
+            "d_sae": self.d_sae,
+            "activation_fn_str": self.activation_fn_str,
+            "activation_fn_kwargs": self.activation_fn_kwargs,
+            "apply_b_dec_to_input": self.apply_b_dec_to_input,
+            "dtype": self.dtype,
+            "model_name": self.model_name,
+            "hook_name": self.hook_name,
+            "hook_layer": self.hook_layer,
+            "hook_head_index": self.hook_head_index,
+            "device": self.device,
+            "context_size": self.context_size,
+            "prepend_bos": self.prepend_bos,
+            "finetuning_scaling_factor": self.finetuning_scaling_factor,
+            "normalize_activations": self.normalize_activations,
+            "dataset_path": self.dataset_path,
+            "dataset_trust_remote_code": self.dataset_trust_remote_code,
+            "sae_lens_training_version": self.sae_lens_training_version,
+        }
 
 
 class BaseTrainingSAE(BaseSAE, ABC):
