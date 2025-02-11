@@ -624,10 +624,7 @@ def deepseek_r1_sae_loader(
     cfg_overrides: Optional[dict[str, Any]] = None,
 ) -> tuple[dict[str, Any], dict[str, torch.Tensor], Optional[torch.Tensor]]:
     """Load a DeepSeek R1 SAE."""
-    # Get repo and file info from pretrained directory
-    sae_directory = get_pretrained_saes_directory()
-    repo_id = sae_directory[release].repo_id
-    filename = sae_directory[release].saes_map[sae_id]
+    repo_id, filename = get_repo_id_and_folder_name(release, sae_id=sae_id)
 
     # Download weights
     sae_path = hf_hub_download(
