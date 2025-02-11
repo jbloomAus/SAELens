@@ -2,6 +2,23 @@
 
 
 
+## v5.4.2 (2025-02-11)
+
+### Chore
+
+* chore: remove ToyModelSAERunnerConfig (#424) ([`9af8bc0`](https://github.com/jbloomAus/SAELens/commit/9af8bc08818a02f34d89d77758f26f733cbd4c29))
+
+* chore: Update config.py to remove duplicate of `train_batch_size_tokens: int = 4096` in line 162 and line 188 (#411) ([`220471b`](https://github.com/jbloomAus/SAELens/commit/220471bce38e5c8b29489b9c7b11821bae011189))
+
+### Fix
+
+* fix: properly parse CLI dict options as json (#423)
+
+* fix: properly parse CLI dict options as json
+
+* Update config.py ([`a5ac0f0`](https://github.com/jbloomAus/SAELens/commit/a5ac0f0ea5fa9d5d1895956e5ba1358fdd65bc8a))
+
+
 ## v5.4.1 (2025-02-03)
 
 ### Chore
