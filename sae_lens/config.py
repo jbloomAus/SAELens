@@ -164,7 +164,7 @@ class LanguageModelSAERunnerConfig:
         None  # defaults to 4 if d_sae and expansion_factor is None
     )
     activation_fn: str = None  # relu, tanh-relu, topk. Default is relu. # type: ignore
-    activation_fn_kwargs: dict[str, Any] = dict_field(default=None)  # for topk
+    activation_fn_kwargs: dict[str, int] = dict_field(default=None)  # for topk
     normalize_sae_decoder: bool = True
     noise_scale: float = 0.0
     from_pretrained_path: Optional[str] = None
