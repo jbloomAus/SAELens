@@ -582,36 +582,19 @@ def get_dictionary_learning_config_1(
     }
 
 
-def deepseek_r1_sae_loader(
-    release: str,
-    sae_id: str,
-    device: str = "cpu",
-    force_download: bool = False,
-    cfg_overrides: Optional[Dict[str, Any]] = None,
-) -> Tuple[Dict[str, Any], Dict[str, torch.Tensor], Optional[torch.Tensor]]:
-    # Get repo and file info from pretrained directory
-    sae_directory = get_pretrained_saes_directory()
-    repo_id = sae_directory[release].repo_id
-    filename = sae_directory[release].saes_map[sae_id]
+def get_deepseek_r1_config(
+    repo_id: str,  # noqa: ARG001
+    folder_name: str,
+    options: SAEConfigLoadOptions,
+) -> dict[str, Any]:
+    """Get config for DeepSeek R1 SAEs."""
 
-    # Download weights
-    sae_path = hf_hub_download(
-        repo_id=repo_id,
-        filename=filename,
-        force_download=force_download,
-    )
-
-    # Load state dict
-    state_dict_loaded = torch.load(sae_path, map_location=device)
-
-    # Extract layer from filename (l19 in this case)
-    match = re.search(r"l(\d+)", filename)
+    match = re.search(r"l(\d+)", folder_name)
     if match is None:
-        raise ValueError(f"Could not find layer number in filename: {filename}")
+        raise ValueError(f"Could not find layer number in filename: {folder_name}")
     layer = int(match.group(1))
 
-    # Create config
-    cfg_dict = {
+    return {
         "architecture": "standard",
         "d_in": 4096,  # LLaMA 8B hidden size
         "d_sae": 4096 * 16,  # Expansion factor 16
@@ -627,10 +610,35 @@ def deepseek_r1_sae_loader(
         "sae_lens_training_version": None,
         "activation_fn_str": "relu",
         "normalize_activations": "none",
-        "device": device,
+        "device": options.device,
         "apply_b_dec_to_input": False,
         "finetuning_scaling_factor": False,
     }
+
+
+def deepseek_r1_sae_loader(
+    release: str,
+    sae_id: str,
+    device: str = "cpu",
+    force_download: bool = False,
+    cfg_overrides: Optional[dict[str, Any]] = None,
+) -> tuple[dict[str, Any], dict[str, torch.Tensor], Optional[torch.Tensor]]:
+    """Load a DeepSeek R1 SAE."""
+    repo_id, filename = get_repo_id_and_folder_name(release, sae_id=sae_id)
+
+    # Download weights
+    sae_path = hf_hub_download(
+        repo_id=repo_id,
+        filename=filename,
+        force_download=force_download,
+    )
+
+    # Load state dict
+    state_dict_loaded = torch.load(sae_path, map_location=device)
+
+    # Create config
+    options = SAEConfigLoadOptions(device=device, force_download=force_download)
+    cfg_dict = get_deepseek_r1_config(repo_id, filename, options)
 
     # Convert weights
     state_dict = {
@@ -743,7 +751,5 @@ NAMED_PRETRAINED_SAE_CONFIG_GETTERS = {
     "gemma_2": get_gemma_2_config,
     "llama_scope": get_llama_scope_config,
     "dictionary_learning_1": get_dictionary_learning_config_1,
-    "deepseek_r1": lambda _repo_id,
-    _folder_name,
-    _options: {},  # Config built in loader
+    "deepseek_r1": get_deepseek_r1_config,
 }
