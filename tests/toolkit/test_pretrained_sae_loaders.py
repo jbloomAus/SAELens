@@ -1,5 +1,11 @@
-from sae_lens.loading.pretrained_sae_loaders import SAEConfigLoadOptions, get_sae_config
+import pytest
+
 from sae_lens.sae import SAE
+from sae_lens.toolkit.pretrained_sae_loaders import (
+    SAEConfigLoadOptions,
+    get_deepseek_r1_config,
+    get_sae_config,
+)
 
 
 def test_get_sae_config_sae_lens():
@@ -177,6 +183,7 @@ def test_get_sae_config_matches_from_pretrained():
         options=SAEConfigLoadOptions(device="cpu"),
     )
 
+<<<<<<< HEAD
     # Apply the same renaming that happens in SAE.from_pretrained
     renamed_direct_sae_cfg = {}
     rename_map = {
@@ -195,3 +202,51 @@ def test_get_sae_config_matches_from_pretrained():
         renamed_direct_sae_cfg["seqpos_slice"] = None
 
     assert renamed_direct_sae_cfg == from_pretrained_cfg_dict
+=======
+    assert direct_sae_cfg == from_pretrained_cfg_dict
+
+
+def test_get_deepseek_r1_config():
+    """Test that the DeepSeek R1 config is generated correctly."""
+    options = SAEConfigLoadOptions(device="cpu")
+    cfg = get_deepseek_r1_config(
+        repo_id="some/repo",
+        folder_name="DeepSeek-R1-Distill-Llama-8B-SAE-l19.pt",
+        options=options,
+    )
+
+    expected_cfg = {
+        "architecture": "standard",
+        "d_in": 4096,  # LLaMA 8B hidden size
+        "d_sae": 4096 * 16,  # Expansion factor 16
+        "dtype": "bfloat16",
+        "context_size": 1024,
+        "model_name": "deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
+        "hook_name": "blocks.19.hook_resid_post",
+        "hook_layer": 19,
+        "hook_head_index": None,
+        "prepend_bos": True,
+        "dataset_path": "lmsys/lmsys-chat-1m",
+        "dataset_trust_remote_code": True,
+        "sae_lens_training_version": None,
+        "activation_fn_str": "relu",
+        "normalize_activations": "none",
+        "device": "cpu",
+        "apply_b_dec_to_input": False,
+        "finetuning_scaling_factor": False,
+    }
+
+    assert cfg == expected_cfg
+
+
+def test_get_deepseek_r1_config_with_invalid_layer():
+    """Test that get_deepseek_r1_config raises ValueError with invalid layer in filename."""
+    options = SAEConfigLoadOptions(device="cpu")
+
+    with pytest.raises(
+        ValueError, match="Could not find layer number in filename: invalid_filename.pt"
+    ):
+        get_deepseek_r1_config(
+            repo_id="some/repo", folder_name="invalid_filename.pt", options=options
+        )
+>>>>>>> 8760f9e (chore: fixing docs sae table for deepseek SAE (#421))
