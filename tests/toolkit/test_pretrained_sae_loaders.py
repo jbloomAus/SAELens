@@ -1,3 +1,5 @@
+import pytest
+
 from sae_lens.sae import SAE
 from sae_lens.toolkit.pretrained_sae_loaders import (
     SAEConfigLoadOptions,
@@ -215,3 +217,15 @@ def test_get_deepseek_r1_config():
     }
 
     assert cfg == expected_cfg
+
+
+def test_get_deepseek_r1_config_with_invalid_layer():
+    """Test that get_deepseek_r1_config raises ValueError with invalid layer in filename."""
+    options = SAEConfigLoadOptions(device="cpu")
+
+    with pytest.raises(
+        ValueError, match="Could not find layer number in filename: invalid_filename.pt"
+    ):
+        get_deepseek_r1_config(
+            repo_id="some/repo", folder_name="invalid_filename.pt", options=options
+        )
