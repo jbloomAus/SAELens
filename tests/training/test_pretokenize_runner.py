@@ -123,6 +123,45 @@ def test_pretokenize_dataset_dedupes_bos(
     )
 
 
+def test_pretokenize_dataset_limits_rows(ts_tokenizer: PreTrainedTokenizerBase):
+    # Create two datasets - one with 100 rows and one with 10 rows
+    dataset_100 = Dataset.from_list([{"text": "hello world"}] * 100)
+    dataset_10 = Dataset.from_list([{"text": "hello world"}] * 10)
+
+    base_cfg = PretokenizeRunnerConfig(
+        context_size=10,
+        num_proc=1,
+        shuffle=False,  # No shuffle to ensure deterministic results
+    )
+
+    # Tokenize full 100-row dataset
+    tokenized_100 = cast(Any, pretokenize_dataset(dataset_100, ts_tokenizer, base_cfg))
+
+    # Tokenize 10-row dataset
+    tokenized_10 = cast(Any, pretokenize_dataset(dataset_10, ts_tokenizer, base_cfg))
+
+    # Tokenize 100-row dataset but limit to first 10 rows
+    limited_cfg = PretokenizeRunnerConfig(
+        context_size=10,
+        num_proc=1,
+        shuffle=False,
+        dataset_process_max_rows=10,  # Only process first 10 rows
+    )
+    tokenized_100_limited = cast(
+        Any, pretokenize_dataset(dataset_100, ts_tokenizer, limited_cfg)
+    )
+
+    # Verify that limiting 100-row dataset to 10 rows gives same result as tokenizing 10-row dataset
+    assert len(tokenized_10) == len(tokenized_100_limited)
+    assert (
+        tokenized_10["input_ids"].tolist()
+        == tokenized_100_limited["input_ids"].tolist()
+    )
+
+    # Verify full 100-row dataset produces more rows
+    assert len(tokenized_100) > len(tokenized_10)
+
+
 def test_pretokenize_dataset_can_shuffle(ts_tokenizer: PreTrainedTokenizerBase):
     dataset = Dataset.from_list(
         [

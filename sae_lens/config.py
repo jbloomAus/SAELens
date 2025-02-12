@@ -685,6 +685,7 @@ class PretokenizeRunnerConfig:
     seed: int | None = None
     streaming: bool = False
     pretokenize_batch_size: int | None = 1000
+    dataset_process_max_rows: int | None = None
 
     # special tokens
     begin_batch_token: int | Literal["bos", "eos", "sep"] | None = "bos"

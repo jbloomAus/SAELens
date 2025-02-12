@@ -1,9 +1,10 @@
 import io
 import json
 import sys
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator, Literal, cast
+from typing import Literal, cast
 
 import torch
 from datasets import Dataset, DatasetDict, load_dataset
@@ -98,6 +99,9 @@ def pretokenize_dataset(
                 )
             )
         }
+
+    if cfg.dataset_process_max_rows is not None:
+        dataset = dataset.take(cfg.dataset_process_max_rows)
 
     tokenized_dataset = dataset.map(
         process_examples,
