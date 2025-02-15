@@ -5,7 +5,7 @@ import torch
 
 sys.path.append("..")
 
-from sae_lens.config import LanguageModelSAERunnerConfig
+from sae_lens.config import LanguageModelSAERunnerConfig, LoggingConfig
 from sae_lens.sae_training_runner import SAETrainingRunner
 
 if torch.cuda.is_available():
@@ -98,10 +98,11 @@ for l1_coefficient in [2, 5, 10]:
         dead_feature_window=1000,
         dead_feature_threshold=1e-4,
         # WANDB
-        log_to_wandb=log_to_wandb,  # always use wandb unless you are just testing code.
-        wandb_project="how_we_train_SAEs_replication_1",
-        wandb_log_frequency=50,
-        eval_every_n_wandb_logs=10,
+        logger=LoggingConfig(
+            wandb_project="how_we_train_SAEs_replication_1",
+            wandb_log_frequency=50,
+            eval_every_n_wandb_logs=10,
+        ),
         # Misc
         device=device,
         seed=42,
