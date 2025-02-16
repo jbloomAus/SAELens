@@ -10,7 +10,7 @@ from tqdm import tqdm
 from sae_lens import SAEConfig
 from sae_lens.toolkit.pretrained_sae_loaders import (
     SAEConfigLoadOptions,
-    get_sae_config,
+    get_huggingface_sae_config,
     handle_config_defaulting,
 )
 
@@ -61,7 +61,7 @@ def generate_sae_table():
         for info in tqdm(model_info["saes"]):
             # can remove this by explicitly overriding config in yaml. Do this later.
             sae_id = info["id"]
-            cfg = get_sae_config(
+            cfg = get_huggingface_sae_config(
                 release,
                 sae_id=sae_id,
                 options=SAEConfigLoadOptions(),

@@ -1,7 +1,8 @@
 import json
 import re
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional, Protocol, Tuple
+from pathlib import Path
+from typing import Any, Optional, Protocol
 
 import numpy as np
 import torch
@@ -19,28 +20,87 @@ from sae_lens.toolkit.pretrained_saes_directory import (
 )
 
 
-# loaders take in a release, sae_id, device, and whether to force download, and returns a tuple of config, state_dict, and log sparsity
-class PretrainedSaeLoader(Protocol):
-    def __call__(
-        self,
-        release: str,
-        sae_id: str,
-        device: str | torch.device | None = None,
-        force_download: bool = False,
-        cfg_overrides: dict[str, Any] | None = None,
-    ) -> tuple[dict[str, Any], dict[str, torch.Tensor], Optional[torch.Tensor]]: ...
-
-
 @dataclass
 class SAEConfigLoadOptions:
     device: Optional[str] = None
     force_download: bool = False
-    d_sae_override: Optional[int] = None
-    layer_override: Optional[int] = None
-    cfg_overrides: Optional[Dict[str, Any]] = field(default_factory=dict)
+    cfg_overrides: Optional[dict[str, Any]] = field(default_factory=dict)
 
 
-def sae_lens_loader(
+# loaders take in a release, sae_id, device, and whether to force download, and returns a tuple of config, state_dict, and log sparsity
+class PretrainedSaeHuggingfaceLoader(Protocol):
+    def __call__(
+        self,
+        release: str,
+        sae_id: str,
+        device: str,
+        force_download: bool,
+        cfg_overrides: dict[str, Any] | None,
+    ) -> tuple[dict[str, Any], dict[str, torch.Tensor], Optional[torch.Tensor]]: ...
+
+
+class PretrainedSaeConfigHuggingfaceLoader(Protocol):
+    def __call__(
+        self,
+        repo_id: str,
+        folder_name: str,
+        options: SAEConfigLoadOptions,
+    ) -> dict[str, Any]: ...
+
+
+class PretrainedSaeDiskLoader(Protocol):
+    def __call__(
+        self,
+        path: str,
+        device: str | None,
+        cfg_overrides: dict[str, Any] | None,
+    ) -> tuple[dict[str, Any], dict[str, torch.Tensor], Optional[torch.Tensor]]: ...
+
+
+def hf_download_files(
+    repo_id: str, filenames: list[str], force_download: bool = False
+) -> str:
+    """
+    Gets the `shared local path for a list of files from a HuggingFace repo.
+
+    Args:
+        repo_id: The HuggingFace repo ID
+        filenames: List of filenames to download
+        force_download: Whether to force re-download even if files exist locally
+
+    Returns:
+        The shared local path where the files are stored
+    """
+    # Download all files and get their paths
+    paths = [
+        Path(
+            hf_hub_download(
+                repo_id=repo_id, filename=filename, force_download=force_download
+            )
+        )
+        for filename in filenames
+    ]
+
+    # Find the common parent directory by iterating from root
+    path_parts = [list(p.parts) for p in paths]
+    min_len = min(len(parts) for parts in path_parts)
+
+    # Start with empty path and build up shared prefix
+    shared_parts = []
+    for i in range(min_len):
+        part = path_parts[0][i]
+        if all(parts[i] == part for parts in path_parts):
+            shared_parts.append(part)
+        else:
+            break
+
+    if not shared_parts:
+        raise ValueError("No shared parent directory found between files")
+
+    return str(Path(*shared_parts))
+
+
+def sae_lens_huggingface_loader(
     release: str,
     sae_id: str,
     device: str = "cpu",
@@ -55,7 +115,48 @@ def sae_lens_loader(
         force_download=force_download,
         cfg_overrides=cfg_overrides,
     )
-    cfg_dict = get_sae_config(release, sae_id=sae_id, options=options)
+    cfg_dict = get_huggingface_sae_config(release, sae_id=sae_id, options=options)
+    repo_id, folder_name = get_repo_id_and_folder_name(release, sae_id=sae_id)
+
+    weights_filename = f"{folder_name}/sae_weights.safetensors"
+    sae_path = hf_hub_download(
+        repo_id=repo_id, filename=weights_filename, force_download=force_download
+    )
+
+    try:
+        sparsity_filename = f"{folder_name}/sparsity.safetensors"
+        log_sparsity_path = hf_hub_download(
+            repo_id=repo_id, filename=sparsity_filename, force_download=force_download
+        )
+    except EntryNotFoundError:
+        log_sparsity_path = None  # no sparsity file
+
+    cfg_dict, state_dict = read_sae_from_disk(
+        cfg_dict=cfg_dict,
+        weight_path=sae_path,
+        device=device,
+    )
+
+    # get sparsity tensor if it exists
+    if log_sparsity_path is not None:
+        with safe_open(log_sparsity_path, framework="pt", device=device) as f:  # type: ignore
+            log_sparsity = f.get_tensor("sparsity")
+    else:
+        log_sparsity = None
+
+    return cfg_dict, state_dict, log_sparsity
+
+
+def sae_lens_disk_loader(
+    path: str,
+    device: str = "cpu",
+    cfg_overrides: Optional[dict[str, Any]] = None,
+) -> tuple[dict[str, Any], dict[str, torch.Tensor], Optional[torch.Tensor]]:
+    """
+    Get's SAEs from HF, loads them.
+    """
+    options = SAEConfigLoadOptions(device=device, cfg_overrides=cfg_overrides)
+    cfg_dict = get_huggingface_sae_config(release, sae_id=sae_id, options=options)
     repo_id, folder_name = get_repo_id_and_folder_name(release, sae_id=sae_id)
 
     weights_filename = f"{folder_name}/sae_weights.safetensors"
@@ -88,11 +189,11 @@ def sae_lens_loader(
     return cfg_dict, state_dict, log_sparsity
 
 
-def get_sae_config_from_hf(
+def get_saelens_config_from_hf(
     repo_id: str,
     folder_name: str,
     options: SAEConfigLoadOptions,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Retrieve the configuration for a Sparse Autoencoder (SAE) from a Hugging Face repository.
 
@@ -100,10 +201,10 @@ def get_sae_config_from_hf(
         repo_id (str): The repository ID on Hugging Face.
         folder_name (str): The folder name within the repository containing the config file.
         force_download (bool, optional): Whether to force download the config file. Defaults to False.
-        cfg_overrides (Optional[Dict[str, Any]], optional): Overrides for the config. Defaults to None.
+        cfg_overrides (Optional[dict[str, Any]], optional): Overrides for the config. Defaults to None.
 
     Returns:
-        Dict[str, Any]: The configuration dictionary for the SAE.
+        dict[str, Any]: The configuration dictionary for the SAE.
     """
     cfg_filename = f"{folder_name}/cfg.json"
     cfg_path = hf_hub_download(
@@ -178,10 +279,10 @@ def get_connor_rob_hook_z_config(
     }
 
 
-def connor_rob_hook_z_loader(
+def connor_rob_hook_z_huggingface_loader(
     release: str,
     sae_id: str,
-    device: Optional[str] = None,
+    device: str = "cpu",
     force_download: bool = False,
     cfg_overrides: Optional[dict[str, Any]] = None,  # noqa: ARG001
 ) -> tuple[dict[str, Any], dict[str, torch.Tensor], None]:
@@ -189,7 +290,7 @@ def connor_rob_hook_z_loader(
         device=device,
         force_download=force_download,
     )
-    cfg_dict = get_sae_config(
+    cfg_dict = get_huggingface_sae_config(
         release,
         sae_id=sae_id,
         options=options,
@@ -250,7 +351,7 @@ def get_gemma_2_config(
     repo_id: str,
     folder_name: str,
     options: SAEConfigLoadOptions,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     # Detect width from folder_name
     width_map = {
         "width_4k": 4096,
@@ -337,24 +438,18 @@ def get_gemma_2_config(
     return cfg
 
 
-def gemma_2_sae_loader(
+def gemma_2_sae_huggingface_loader(
     release: str,
     sae_id: str,
     device: str = "cpu",
     force_download: bool = False,
-    cfg_overrides: Optional[Dict[str, Any]] = None,
-    d_sae_override: Optional[int] = None,
-    layer_override: Optional[int] = None,
-) -> Tuple[Dict[str, Any], Dict[str, torch.Tensor], Optional[torch.Tensor]]:
+    cfg_overrides: Optional[dict[str, Any]] = None,
+) -> tuple[dict[str, Any], dict[str, torch.Tensor], Optional[torch.Tensor]]:
     """
     Custom loader for Gemma 2 SAEs.
     """
-    options = SAEConfigLoadOptions(
-        device=device,
-        d_sae_override=d_sae_override,
-        layer_override=layer_override,
-    )
-    cfg_dict = get_sae_config(
+    options = SAEConfigLoadOptions(device=device)
+    cfg_dict = get_huggingface_sae_config(
         release,
         sae_id=sae_id,
         options=options,
@@ -416,7 +511,7 @@ def get_llama_scope_config(
     repo_id: str,
     folder_name: str,
     options: SAEConfigLoadOptions,  # noqa: ARG001
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     # Llama Scope SAEs
     # repo_id: fnlp/Llama3_1-8B-Base-LX{sublayer}-{exp_factor}x
     # folder_name: Llama3_1-8B-Base-L{layer}{sublayer}-{exp_factor}x
@@ -453,15 +548,13 @@ def get_llama_scope_config(
     }
 
 
-def llama_scope_sae_loader(
+def llama_scope_sae_huggingface_loader(
     release: str,
     sae_id: str,
     device: str = "cpu",
     force_download: bool = False,
-    cfg_overrides: Optional[Dict[str, Any]] = None,
-    d_sae_override: Optional[int] = None,
-    layer_override: Optional[int] = None,
-) -> Tuple[Dict[str, Any], Dict[str, torch.Tensor], Optional[torch.Tensor]]:
+    cfg_overrides: Optional[dict[str, Any]] = None,
+) -> tuple[dict[str, Any], dict[str, torch.Tensor], Optional[torch.Tensor]]:
     """
     Custom loader for Llama Scope SAEs.
 
@@ -475,14 +568,10 @@ def llama_scope_sae_loader(
         layer_override: Optional override for layer number
 
     Returns:
-        Tuple of (config dict, state dict, log sparsity tensor)
+        tuple of (config dict, state dict, log sparsity tensor)
     """
-    options = SAEConfigLoadOptions(
-        device=device,
-        d_sae_override=d_sae_override,
-        layer_override=layer_override,
-    )
-    cfg_dict = get_sae_config(
+    options = SAEConfigLoadOptions(device=device)
+    cfg_dict = get_huggingface_sae_config(
         release,
         sae_id=sae_id,
         options=options,
@@ -616,7 +705,7 @@ def get_deepseek_r1_config(
     }
 
 
-def deepseek_r1_sae_loader(
+def deepseek_r1_sae_huggingface_loader(
     release: str,
     sae_id: str,
     device: str = "cpu",
@@ -666,7 +755,7 @@ def get_conversion_loader_name(sae_info: Optional[PretrainedSAELookup]):
     return conversion_loader_name
 
 
-def get_sae_config(
+def get_huggingface_sae_config(
     release: str, sae_id: str, options: SAEConfigLoadOptions
 ) -> dict[str, Any]:
     saes_directory = get_pretrained_saes_directory()
@@ -689,7 +778,22 @@ def get_sae_config(
     return handle_config_defaulting(cfg)
 
 
-def dictionary_learning_sae_loader_1(
+def get_disk_sae_config(
+    path: str,
+    options: SAEConfigLoadOptions,
+) -> dict[str, Any]:
+    """Get config for a disk-based SAE."""
+    cfg_overrides = options.cfg_overrides or {}
+    conversion_loader_name = get_conversion_loader_name(sae_info)
+    config_getter = NAMED_PRETRAINED_SAE_CONFIG_GETTERS[conversion_loader_name]
+    cfg = {
+        **config_getter(repo_id, folder_name, options),
+        **cfg_overrides,
+    }
+    return handle_config_defaulting(cfg)
+
+
+def dictionary_learning_sae_huggingface_loader_1(
     release: str,
     sae_id: str,
     device: str = "cpu",
@@ -703,7 +807,7 @@ def dictionary_learning_sae_loader_1(
         device=device,
         force_download=force_download,
     )
-    cfg_dict = get_sae_config(release, sae_id=sae_id, options=options)
+    cfg_dict = get_huggingface_sae_config(release, sae_id=sae_id, options=options)
     cfg_dict["device"] = device
     if cfg_overrides:
         cfg_dict.update(cfg_overrides)
@@ -736,17 +840,22 @@ def dictionary_learning_sae_loader_1(
     return cfg_dict, state_dict, None
 
 
-NAMED_PRETRAINED_SAE_LOADERS: dict[str, PretrainedSaeLoader] = {
-    "sae_lens": sae_lens_loader,  # type: ignore
-    "connor_rob_hook_z": connor_rob_hook_z_loader,  # type: ignore
-    "gemma_2": gemma_2_sae_loader,
-    "llama_scope": llama_scope_sae_loader,
-    "dictionary_learning_1": dictionary_learning_sae_loader_1,
-    "deepseek_r1": deepseek_r1_sae_loader,
+NAMED_PRETRAINED_SAE_LOADERS: dict[str, PretrainedSaeHuggingfaceLoader] = {
+    "sae_lens": sae_lens_huggingface_loader,
+    "connor_rob_hook_z": connor_rob_hook_z_huggingface_loader,
+    "gemma_2": gemma_2_sae_huggingface_loader,
+    "llama_scope": llama_scope_sae_huggingface_loader,
+    "dictionary_learning_1": dictionary_learning_sae_huggingface_loader_1,
+    "deepseek_r1": deepseek_r1_sae_huggingface_loader,
 }
 
-NAMED_PRETRAINED_SAE_CONFIG_GETTERS = {
-    "sae_lens": get_sae_config_from_hf,
+
+NAMED_PRETRAINED_SAE_DISK_LOADERS: dict[str, PretrainedSaeDiskLoader] = {
+    "sae_lens": sae_lens_disk_loader,
+}
+
+NAMED_PRETRAINED_SAE_CONFIG_GETTERS: dict[str, PretrainedSaeConfigHuggingfaceLoader] = {
+    "sae_lens": get_saelens_config_from_hf,
     "connor_rob_hook_z": get_connor_rob_hook_z_config,
     "gemma_2": get_gemma_2_config,
     "llama_scope": get_llama_scope_config,

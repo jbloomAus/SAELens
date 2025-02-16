@@ -16,6 +16,7 @@ from jaxtyping import Float
 from safetensors.torch import save_file
 from torch import nn
 from transformer_lens.hook_points import HookedRootModule, HookPoint
+from typing_extensions import deprecated
 
 from sae_lens.config import DTYPE_MAP
 from sae_lens.toolkit.pretrained_sae_loaders import (
@@ -531,8 +532,15 @@ class SAE(HookedRootModule):
     def process_state_dict_for_loading(self, state_dict: dict[str, Any]) -> None:
         pass
 
+    @deprecated("Use load_from_disk instead")
     @classmethod
     def load_from_pretrained(
+        cls, path: str, device: str = "cpu", dtype: str | None = None
+    ) -> "SAE":
+        return cls.load_from_disk(path, device, dtype)
+
+    @classmethod
+    def load_from_disk(
         cls, path: str, device: str = "cpu", dtype: str | None = None
     ) -> "SAE":
         # get the config
