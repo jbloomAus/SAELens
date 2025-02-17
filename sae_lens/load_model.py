@@ -1,4 +1,7 @@
-from typing import Any, Literal, cast
+import re
+from collections import defaultdict
+from collections.abc import Iterable
+from typing import Any, Callable, Literal, cast
 
 import torch
 from transformer_lens import HookedTransformer
@@ -27,7 +30,7 @@ def load_model(
         if n_devices > 1:
             logger.info("MODEL LOADING:")
             logger.info("Setting model device to cuda for d_devices")
-            logger.info(f"Will use cuda:0 to cuda:{n_devices-1}")
+            logger.info(f"Will use cuda:0 to cuda:{n_devices - 1}")
             device = "cuda"
             logger.info("-------------")
 
@@ -72,6 +75,7 @@ class HookedProxyLM(HookedRootModule):
         super().__init__()
         self.model = model
         self.tokenizer = tokenizer
+        self.decoder_block_matcher = guess_decoder_block_matcher(model)
         self.setup()
 
     # copied and modified from base HookedRootModule
@@ -95,20 +99,35 @@ class HookedProxyLM(HookedRootModule):
         tokens: torch.Tensor,
         return_type: Literal["both", "logits"] = "logits",
         loss_per_token: bool = False,
-        # TODO: implement real support for stop_at_layer
         stop_at_layer: int | None = None,
         **kwargs: Any,
     ) -> Output | Loss:
         # This is just what's needed for evals, not everything that HookedTransformer has
-        if return_type not in (
-            "both",
-            "logits",
-        ):
+        if return_type not in ("both", "logits"):
             raise NotImplementedError(
                 "Only return_type supported is 'both' or 'logits' to match what's in evals.py and ActivationsStore"
             )
-        output = self.model(tokens)
-        logits = _extract_logits_from_output(output)
+
+        stop_hook = None
+        if stop_at_layer is not None:
+            if return_type != "logits":
+                raise NotImplementedError(
+                    "stop_at_layer is not supported for return_type='both'"
+                )
+            if self.decoder_block_matcher is not None:
+                layer_name = self.decoder_block_matcher.format(num=stop_at_layer)
+                layer = get_layer_by_name(self.model, layer_name)
+                stop_hook = layer.register_forward_hook(stop_hook_fn)
+
+        try:
+            output = self.model(tokens)
+            logits = _extract_logits_from_output(output)
+        except StopForward:
+            # If we stop early, we don't care about the return output
+            return None  # type: ignore
+        finally:
+            if stop_hook is not None:
+                stop_hook.remove()
 
         if return_type == "logits":
             return logits
@@ -183,3 +202,50 @@ def get_hook_fn(hook_point: HookPoint):
         return output
 
     return hook_fn
+
+
+class StopForward(Exception):
+    pass
+
+
+def stop_hook_fn(module: Any, input: Any, output: Any) -> Any:  # noqa: ARG001
+    raise StopForward()
+
+
+LAYER_GUESS_RE = r"^([^\d]+)\.([\d]+)(.*)$"
+
+
+def get_layer_by_name(model: torch.nn.Module, layer_name: str) -> torch.nn.Module:
+    return dict(model.named_modules())[layer_name]
+
+
+# broken into a separate function for easier testing
+def _guess_block_matcher_from_layers(
+    layers: Iterable[str], filter: Callable[[str], bool] | None = None
+) -> str | None:
+    """
+    Guess the block matcher for a given model. The block matcher is a template string like "model.layers.{num}"
+    that can be used to match the hidden layers of the model.
+    """
+    counts_by_guess: dict[str, int] = defaultdict(int)
+
+    for layer in layers:
+        if re.match(LAYER_GUESS_RE, layer):
+            guess = re.sub(LAYER_GUESS_RE, r"\1.{num}\3", layer)
+            if filter is None or filter(guess):
+                counts_by_guess[guess] += 1
+    if len(counts_by_guess) == 0:
+        return None
+
+    # score is higher for guesses that match more often, are and shorter in length
+    guess_scores = [
+        (guess, count + 1 / len(guess)) for guess, count in counts_by_guess.items()
+    ]
+    return max(guess_scores, key=lambda x: x[1])[0]
+
+
+def guess_decoder_block_matcher(model: torch.nn.Module) -> str | None:
+    """
+    Guess the hidden layer matcher for a given model.
+    """
+    return _guess_block_matcher_from_layers(dict(model.named_modules()).keys())

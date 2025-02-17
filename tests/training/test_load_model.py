@@ -2,9 +2,23 @@ import pytest
 import torch
 from mamba_lens import HookedMamba
 from transformer_lens import HookedTransformer
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import (
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    GemmaConfig,
+    GemmaForCausalLM,
+    GPT2LMHeadModel,
+    LlamaConfig,
+    LlamaForCausalLM,
+)
 
-from sae_lens.load_model import HookedProxyLM, _extract_logits_from_output, load_model
+from sae_lens.load_model import (
+    HookedProxyLM,
+    _extract_logits_from_output,
+    _guess_block_matcher_from_layers,
+    guess_decoder_block_matcher,
+    load_model,
+)
 
 
 @pytest.fixture
@@ -14,6 +28,34 @@ def gpt2_proxy_model():
         model_name="gpt2",
         device="cpu",
     )
+
+
+@pytest.fixture
+def gpt2_hf_model() -> GPT2LMHeadModel:
+    model = GPT2LMHeadModel.from_pretrained("gpt2")
+    return model.eval()  # type: ignore
+
+
+@pytest.fixture
+def empty_llama_hf_model() -> LlamaForCausalLM:
+    config = LlamaConfig(
+        num_hidden_layers=3,
+        hidden_size=1024,
+        intermediate_size=2752,
+    )
+    model = LlamaForCausalLM(config)
+    return model.eval()
+
+
+@pytest.fixture
+def empty_gemma_hf_model() -> GemmaForCausalLM:
+    config = GemmaConfig(
+        num_hidden_layers=3,
+        hidden_size=1024,
+        intermediate_size=2752,
+    )
+    model = GemmaForCausalLM(config)
+    return model.eval()
 
 
 def test_load_model_works_with_mamba():
@@ -69,6 +111,32 @@ def test_HookedProxyLM_gives_same_cached_states_as_original_implementation():
         assert torch.allclose(
             cache[f"transformer.h.{i}"], hf_output.hidden_states[i + 1]
         )
+
+
+def test_HookedProxyLM_gives_same_hidden_states_when_stop_at_layer_is_set(
+    gpt2_proxy_model: HookedProxyLM,
+):
+    tokenizer = AutoTokenizer.from_pretrained("gpt2")
+    input_ids = tokenizer.encode("hi", return_tensors="pt")
+    _, cache_with_stop = gpt2_proxy_model.run_with_cache(input_ids, stop_at_layer=3)
+    _, cache_no_stop = gpt2_proxy_model.run_with_cache(input_ids)
+    for i in range(3):
+        assert torch.allclose(
+            cache_with_stop[f"transformer.h.{i}"], cache_no_stop[f"transformer.h.{i}"]
+        )
+    assert "transformer.h.6" in cache_no_stop
+
+
+def test_HookedProxyLM_run_with_cache_has_no_values_past_stop_layer(
+    gpt2_proxy_model: HookedProxyLM,
+):
+    tokenizer = AutoTokenizer.from_pretrained("gpt2")
+    input_ids = tokenizer.encode("hi", return_tensors="pt")
+    _, cache = gpt2_proxy_model.run_with_cache(input_ids, stop_at_layer=3)
+
+    # Check that no layers past 3 exist in cache
+    for i in range(4, 12):
+        assert f"transformer.h.{i}" not in cache
 
 
 def test_HookedProxyLM_gives_same_cached_states_as_tlens_implementation(
@@ -129,3 +197,35 @@ def test_HookedProxyLM_to_tokens_gives_same_output_as_tlens(
     )
 
     assert torch.allclose(tl_tokens, hf_tokens)
+
+
+def test_guess_decoder_block_matcher_for_llama(
+    empty_llama_hf_model: LlamaForCausalLM,
+) -> None:
+    assert guess_decoder_block_matcher(empty_llama_hf_model) == "model.layers.{num}"
+
+
+def test_guess_decoder_block_matcher_for_gemma(
+    empty_gemma_hf_model: GemmaForCausalLM,
+) -> None:
+    assert guess_decoder_block_matcher(empty_gemma_hf_model) == "model.layers.{num}"
+
+
+def test_guess_decoder_block_matcher_for_gpt2(
+    gpt2_hf_model: GPT2LMHeadModel,
+) -> None:
+    assert guess_decoder_block_matcher(gpt2_hf_model) == "transformer.h.{num}"
+
+
+def test_guess_block_matcher_from_layers() -> None:
+    layers = [
+        "x.e",
+        "x.y.0",
+        "x.y.0.attn",
+        "x.y.1",
+        "x.y.1.attn",
+        "x.y.2",
+        "x.y.2.attn",
+        "x.lm_head",
+    ]
+    assert _guess_block_matcher_from_layers(layers) == "x.y.{num}"
