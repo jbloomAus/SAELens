@@ -645,16 +645,15 @@ def llama_scope_r1_distill_sae_loader(
         "b_dec": state_dict_loaded["decoder.bias"].to(
             dtype=DTYPE_MAP[cfg_dict["dtype"]]
         ),
-        "threshold": state_dict_loaded["log_jumprelu_threshold"].to(
-            dtype=DTYPE_MAP[cfg_dict["dtype"]]
-        ).exp(),
+        "threshold": state_dict_loaded["log_jumprelu_threshold"]
+        .to(dtype=DTYPE_MAP[cfg_dict["dtype"]])
+        .exp(),
     }
 
     # No sparsity tensor for Llama Scope SAEs
     log_sparsity = None
 
     return cfg_dict, state_dict, log_sparsity
-
 
 
 def get_dictionary_learning_config_1(
