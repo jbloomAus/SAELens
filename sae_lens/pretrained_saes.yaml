@@ -10730,6 +10730,198 @@ llama_scope_r1_distill:
   - id: l31r_800m_slimpajama
     norm_scaling_factor: 1.0963025732622191
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L31R
+  - id: l0r_400m_slimpajama_400m_openr1_math
+    norm_scaling_factor: 53.97673033497749
+    path: 400M-Slimpajama-400M-OpenR1-Math-220k/L0R
+  - id: l1r_400m_slimpajama_400m_openr1_math
+    norm_scaling_factor: 36.76995792628666
+    path: 400M-Slimpajama-400M-OpenR1-Math-220k/L1R
+  - id: l2r_400m_slimpajama_400m_openr1_math
+    norm_scaling_factor: 26.86329549484781
+    path: 400M-Slimpajama-400M-OpenR1-Math-220k/L2R
+  - id: l3r_400m_slimpajama_400m_openr1_math
+    norm_scaling_factor: 20.473522361966317
+    path: 400M-Slimpajama-400M-OpenR1-Math-220k/L3R
+  - id: l4r_400m_slimpajama_400m_openr1_math
+    norm_scaling_factor: 16.491433880849524
+    path: 400M-Slimpajama-400M-OpenR1-Math-220k/L4R
+  - id: l5r_400m_slimpajama_400m_openr1_math
+    norm_scaling_factor: 13.902529211394633
+    path: 400M-Slimpajama-400M-OpenR1-Math-220k/L5R
+  - id: l6r_400m_slimpajama_400m_openr1_math
+    norm_scaling_factor: 11.959185891949216
+    path: 400M-Slimpajama-400M-OpenR1-Math-220k/L6R
+  - id: l7r_400m_slimpajama_400m_openr1_math
+    norm_scaling_factor: 10.454685082137889
+    path: 400M-Slimpajama-400M-OpenR1-Math-220k/L7R
+  - id: l8r_400m_slimpajama_400m_openr1_math
+    norm_scaling_factor: 9.625849752730096
+    path: 400M-Slimpajama-400M-OpenR1-Math-220k/L8R
+  - id: l9r_400m_slimpajama_400m_openr1_math
+    norm_scaling_factor: 8.705443147441324
+    path: 400M-Slimpajama-400M-OpenR1-Math-220k/L9R
+  - id: l10r_400m_slimpajama_400m_openr1_math
+    norm_scaling_factor: 8.0884989084078
+    path: 400M-Slimpajama-400M-OpenR1-Math-220k/L10R
+  - id: l11r_400m_slimpajama_400m_openr1_math
+    norm_scaling_factor: 7.449578399564585
+    path: 400M-Slimpajama-400M-OpenR1-Math-220k/L11R
+  - id: l12r_400m_slimpajama_400m_openr1_math
+    norm_scaling_factor: 6.80144905444981
+    path: 400M-Slimpajama-400M-OpenR1-Math-220k/L12R
+  - id: l13r_400m_slimpajama_400m_openr1_math
+    norm_scaling_factor: 6.331711239265464
+    path: 400M-Slimpajama-400M-OpenR1-Math-220k/L13R
+  - id: l14r_400m_slimpajama_400m_openr1_math
+    norm_scaling_factor: 5.70284230018703
+    path: 400M-Slimpajama-400M-OpenR1-Math-220k/L14R
+  - id: l15r_400m_slimpajama_400m_openr1_math
+    norm_scaling_factor: 5.318041374444156
+    path: 400M-Slimpajama-400M-OpenR1-Math-220k/L15R
+  - id: l16r_400m_slimpajama_400m_openr1_math
+    norm_scaling_factor: 4.79639347416429
+    path: 400M-Slimpajama-400M-OpenR1-Math-220k/L16R
+  - id: l17r_400m_slimpajama_400m_openr1_math
+    norm_scaling_factor: 4.333554093692626
+    path: 400M-Slimpajama-400M-OpenR1-Math-220k/L17R
+  - id: l18r_400m_slimpajama_400m_openr1_math
+    norm_scaling_factor: 3.9386839067851334
+    path: 400M-Slimpajama-400M-OpenR1-Math-220k/L18R
+  - id: l19r_400m_slimpajama_400m_openr1_math
+    norm_scaling_factor: 3.584045063066589
+    path: 400M-Slimpajama-400M-OpenR1-Math-220k/L19R
+  - id: l20r_400m_slimpajama_400m_openr1_math
+    norm_scaling_factor: 3.4122850442674064
+    path: 400M-Slimpajama-400M-OpenR1-Math-220k/L20R
+  - id: l21r_400m_slimpajama_400m_openr1_math
+    norm_scaling_factor: 2.9930188471058385
+    path: 400M-Slimpajama-400M-OpenR1-Math-220k/L21R
+  - id: l22r_400m_slimpajama_400m_openr1_math
+    norm_scaling_factor: 2.7548717844301582
+    path: 400M-Slimpajama-400M-OpenR1-Math-220k/L22R
+  - id: l23r_400m_slimpajama_400m_openr1_math
+    norm_scaling_factor: 2.5281942698718076
+    path: 400M-Slimpajama-400M-OpenR1-Math-220k/L23R
+  - id: l24r_400m_slimpajama_400m_openr1_math
+    norm_scaling_factor: 2.326851186904894
+    path: 400M-Slimpajama-400M-OpenR1-Math-220k/L24R
+  - id: l25r_400m_slimpajama_400m_openr1_math
+    norm_scaling_factor: 2.101068654605767
+    path: 400M-Slimpajama-400M-OpenR1-Math-220k/L25R
+  - id: l26r_400m_slimpajama_400m_openr1_math
+    norm_scaling_factor: 1.9361189375890395
+    path: 400M-Slimpajama-400M-OpenR1-Math-220k/L26R
+  - id: l27r_400m_slimpajama_400m_openr1_math
+    norm_scaling_factor: 1.7784660082777055
+    path: 400M-Slimpajama-400M-OpenR1-Math-220k/L27R
+  - id: l28r_400m_slimpajama_400m_openr1_math
+    norm_scaling_factor: 1.6635049539624462
+    path: 400M-Slimpajama-400M-OpenR1-Math-220k/L28R
+  - id: l29r_400m_slimpajama_400m_openr1_math
+    norm_scaling_factor: 1.448853212514504
+    path: 400M-Slimpajama-400M-OpenR1-Math-220k/L29R
+  - id: l30r_400m_slimpajama_400m_openr1_math
+    norm_scaling_factor: 1.157008764313032
+    path: 400M-Slimpajama-400M-OpenR1-Math-220k/L30R
+  - id: l31r_400m_slimpajama_400m_openr1_math
+    norm_scaling_factor: 1.041977999933546
+    path: 400M-Slimpajama-400M-OpenR1-Math-220k/L31R
+  - id: l0r_0_slimpajama_800m_openr1_math
+    norm_scaling_factor: 54.308791085956486
+    path: 0-Slimpajama-800M-OpenR1-Math-220k/L0R
+  - id: l1r_0_slimpajama_800m_openr1_math
+    norm_scaling_factor: 36.49473030775242
+    path: 0-Slimpajama-800M-OpenR1-Math-220k/L1R
+  - id: l2r_0_slimpajama_800m_openr1_math
+    norm_scaling_factor: 26.96126387031055
+    path: 0-Slimpajama-800M-OpenR1-Math-220k/L2R
+  - id: l3r_0_slimpajama_800m_openr1_math
+    norm_scaling_factor: 20.52210199911164
+    path: 0-Slimpajama-800M-OpenR1-Math-220k/L3R
+  - id: l4r_0_slimpajama_800m_openr1_math
+    norm_scaling_factor: 16.67733543806145
+    path: 0-Slimpajama-800M-OpenR1-Math-220k/L4R
+  - id: l5r_0_slimpajama_800m_openr1_math
+    norm_scaling_factor: 14.067505043509176
+    path: 0-Slimpajama-800M-OpenR1-Math-220k/L5R
+  - id: l6r_0_slimpajama_800m_openr1_math
+    norm_scaling_factor: 12.034338704494331
+    path: 0-Slimpajama-800M-OpenR1-Math-220k/L6R
+  - id: l7r_0_slimpajama_800m_openr1_math
+    norm_scaling_factor: 10.495662821867164
+    path: 0-Slimpajama-800M-OpenR1-Math-220k/L7R
+  - id: l8r_0_slimpajama_800m_openr1_math
+    norm_scaling_factor: 9.683004157081735
+    path: 0-Slimpajama-800M-OpenR1-Math-220k/L8R
+  - id: l9r_0_slimpajama_800m_openr1_math
+    norm_scaling_factor: 8.679730500864236
+    path: 0-Slimpajama-800M-OpenR1-Math-220k/L9R
+  - id: l10r_0_slimpajama_800m_openr1_math
+    norm_scaling_factor: 7.988383971728427
+    path: 0-Slimpajama-800M-OpenR1-Math-220k/L10R
+  - id: l11r_0_slimpajama_800m_openr1_math
+    norm_scaling_factor: 7.237531143695951
+    path: 0-Slimpajama-800M-OpenR1-Math-220k/L11R
+  - id: l12r_0_slimpajama_800m_openr1_math
+    norm_scaling_factor: 6.69444885029299
+    path: 0-Slimpajama-800M-OpenR1-Math-220k/L12R
+  - id: l13r_0_slimpajama_800m_openr1_math
+    norm_scaling_factor: 6.0489858065009265
+    path: 0-Slimpajama-800M-OpenR1-Math-220k/L13R
+  - id: l14r_0_slimpajama_800m_openr1_math
+    norm_scaling_factor: 5.4935929917888595
+    path: 0-Slimpajama-800M-OpenR1-Math-220k/L14R
+  - id: l15r_0_slimpajama_800m_openr1_math
+    norm_scaling_factor: 4.970860531188141
+    path: 0-Slimpajama-800M-OpenR1-Math-220k/L15R
+  - id: l16r_0_slimpajama_800m_openr1_math
+    norm_scaling_factor: 4.541887865516153
+    path: 0-Slimpajama-800M-OpenR1-Math-220k/L16R
+  - id: l17r_0_slimpajama_800m_openr1_math
+    norm_scaling_factor: 4.111292885351861
+    path: 0-Slimpajama-800M-OpenR1-Math-220k/L17R
+  - id: l18r_0_slimpajama_800m_openr1_math
+    norm_scaling_factor: 3.7319009471881754
+    path: 0-Slimpajama-800M-OpenR1-Math-220k/L18R
+  - id: l19r_0_slimpajama_800m_openr1_math
+    norm_scaling_factor: 3.4464218438335172
+    path: 0-Slimpajama-800M-OpenR1-Math-220k/L19R
+  - id: l20r_0_slimpajama_800m_openr1_math
+    norm_scaling_factor: 3.1614163309538377
+    path: 0-Slimpajama-800M-OpenR1-Math-220k/L20R
+  - id: l21r_0_slimpajama_800m_openr1_math
+    norm_scaling_factor: 2.8600260547627334
+    path: 0-Slimpajama-800M-OpenR1-Math-220k/L21R
+  - id: l22r_0_slimpajama_800m_openr1_math
+    norm_scaling_factor: 2.636157171207381
+    path: 0-Slimpajama-800M-OpenR1-Math-220k/L22R
+  - id: l23r_0_slimpajama_800m_openr1_math
+    norm_scaling_factor: 2.4287397996449367
+    path: 0-Slimpajama-800M-OpenR1-Math-220k/L23R
+  - id: l24r_0_slimpajama_800m_openr1_math
+    norm_scaling_factor: 2.2405978768214556
+    path: 0-Slimpajama-800M-OpenR1-Math-220k/L24R
+  - id: l25r_0_slimpajama_800m_openr1_math
+    norm_scaling_factor: 2.034659098936678
+    path: 0-Slimpajama-800M-OpenR1-Math-220k/L25R
+  - id: l26r_0_slimpajama_800m_openr1_math
+    norm_scaling_factor: 1.8430054630341937
+    path: 0-Slimpajama-800M-OpenR1-Math-220k/L26R
+  - id: l27r_0_slimpajama_800m_openr1_math
+    norm_scaling_factor: 1.6554423260870552
+    path: 0-Slimpajama-800M-OpenR1-Math-220k/L27R
+  - id: l28r_0_slimpajama_800m_openr1_math
+    norm_scaling_factor: 1.477070442772071
+    path: 0-Slimpajama-800M-OpenR1-Math-220k/L28R
+  - id: l29r_0_slimpajama_800m_openr1_math
+    norm_scaling_factor: 1.3361543238773446
+    path: 0-Slimpajama-800M-OpenR1-Math-220k/L29R
+  - id: l30r_0_slimpajama_800m_openr1_math
+    norm_scaling_factor: 1.1387454210154435
+    path: 0-Slimpajama-800M-OpenR1-Math-220k/L30R
+  - id: l31r_0_slimpajama_800m_openr1_math
+    norm_scaling_factor: 0.926395749048437
+    path: 0-Slimpajama-800M-OpenR1-Math-220k/L31R
 mistral-7b-res-wg:
   config_overrides:
     normalize_activations: constant_norm_rescale
