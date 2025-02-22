@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 import torch
+from sparsify import SparseCoder, SparseCoderConfig
 
 from sae_lens.sae import SAE
 from sae_lens.training.training_sae import (
@@ -99,6 +100,46 @@ def test_calculate_topk_aux_acts_k_less_than_dead():
     result = _calculate_topk_aux_acts(k_aux, hidden_pre, dead_neuron_mask)
 
     assert torch.allclose(result, expected)
+
+
+def test_TrainingSAE_topk_aux_loss_matches_unnormalized_sparsify_implementation():
+    cfg = build_sae_cfg(
+        d_in=128,
+        d_sae=192,
+        architecture="topk",
+        activation_fn_kwargs={"k": 26},
+        normalize_sae_decoder=False,
+    )
+
+    sae = TrainingSAE(TrainingSAEConfig.from_sae_runner_config(cfg))
+    comparison_sae = SparseCoder(d_in=128, cfg=SparseCoderConfig(num_latents=192, k=26))
+
+    with torch.no_grad():
+        # increase b_enc so all features are likely above 0
+        # sparsify includes a relu() in their pre_acts, but
+        # this is not something we need to try to replicate.
+        sae.b_enc.data = sae.b_enc + 10.0
+        # make sure all params are the same
+        comparison_sae.encoder.weight.data = sae.W_enc.T
+        comparison_sae.encoder.bias.data = sae.b_enc
+        comparison_sae.b_dec.data = sae.b_dec
+        comparison_sae.W_dec.data = sae.W_dec  # type: ignore
+
+    dead_neuron_mask = torch.randn(192) > 0.1
+    input_acts = torch.randn(200, 128)
+    input_var = (input_acts - input_acts.mean(0)).pow(2).sum()
+
+    sae_out = sae.training_forward_pass(
+        sae_in=input_acts,
+        current_l1_coefficient=0.0,
+        dead_neuron_mask=dead_neuron_mask,
+    )
+    comparison_sae_out = comparison_sae.forward(input_acts, dead_mask=dead_neuron_mask)
+
+    normalization = input_var / input_acts.shape[0]
+    raw_aux_loss = sae_out.losses["auxiliary_reconstruction_loss"].item()  # type: ignore
+    norm_aux_loss = raw_aux_loss / normalization
+    assert norm_aux_loss == pytest.approx(comparison_sae_out.auxk_loss, abs=1e-4)
 
 
 def test_TrainingSAE_calculate_topk_aux_loss():
