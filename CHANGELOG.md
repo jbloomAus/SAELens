@@ -2,6 +2,49 @@
 
 
 
+## v5.5.0 (2025-02-22)
+
+### Chore
+
+* chore: skip failing test so CI passes ([`4f4a7b7`](https://github.com/jbloomAus/SAELens/commit/4f4a7b7265bae33a5e28adb9263d113b8b6c20dd))
+
+* chore: fixing docs sae table for deepseek SAE (#421)
+
+* chore: fixing docs sae table for deepseek SAE
+
+* Update sae_lens/toolkit/pretrained_sae_loaders.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* adding test from CR
+
+---------
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt; ([`8760f9e`](https://github.com/jbloomAus/SAELens/commit/8760f9e0fc3d57f57b279d03d98a9ff93fba9043))
+
+### Feature
+
+* feat: Merge pull request #431 from Hzfinfdu/main
+
+Supports llama scope r1 distill SAEs ([`cf754b3`](https://github.com/jbloomAus/SAELens/commit/cf754b3a52f8dbefd2e609041785f650c46a538d))
+
+### Fix
+
+* fix: force build ([`be45fa3`](https://github.com/jbloomAus/SAELens/commit/be45fa374f99e47e3009483c93a117af3e00e14e))
+
+* fix: force build ([`a8f38e1`](https://github.com/jbloomAus/SAELens/commit/a8f38e1243002c808d6ee5019565c31553b9a477))
+
+### Unknown
+
+* add all sae paths and meta data to pretrained_saes.yaml ([`f099d15`](https://github.com/jbloomAus/SAELens/commit/f099d15dde3483687de263d145c3e44cbcbd47b8))
+
+* add all sae paths and meta data to pretrained_saes.yaml ([`52f0133`](https://github.com/jbloomAus/SAELens/commit/52f01331afd9297adfc1a4420cbd9706a41ddf7b))
+
+* fix format errors ([`f99bbbf`](https://github.com/jbloomAus/SAELens/commit/f99bbbf5244885b5cda73604f6f8348777224a51))
+
+* add support of llamascope R1 distilled ([`131263d`](https://github.com/jbloomAus/SAELens/commit/131263dbff4dd898ac57c0977b46130c03f86779))
+
+
 ## v5.4.2 (2025-02-11)
 
 ### Chore

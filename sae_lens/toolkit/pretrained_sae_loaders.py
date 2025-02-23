@@ -770,11 +770,126 @@ def dictionary_learning_sae_huggingface_loader_1(
     return cfg_dict, state_dict, None
 
 
+def get_llama_scope_r1_distill_config_from_hf(
+    repo_id: str,
+    folder_name: str,
+    device: str,
+    force_download: bool = False,
+    cfg_overrides: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    # Future Llama Scope series SAE by OpenMoss group use this config.
+    # repo_id: [
+    #   fnlp/Llama-Scope-R1-Distill
+    # ]
+    # folder_name: [
+    #   800M-Slimpajama-0-OpenR1-Math-220k/L{layer}R,
+    #   400M-Slimpajama-400M-OpenR1-Math-220k/L{layer}R,
+    #   0-Slimpajama-800M-OpenR1-Math-220k/L{layer}R,
+    # ]
+    config_path = folder_name + "/config.json"
+    config_path = hf_hub_download(repo_id, config_path, force_download=force_download)
+
+    with open(config_path) as f:
+        huggingface_cfg_dict = json.load(f)
+
+    # Model specific parameters
+    model_name, d_in = "meta-llama/Llama-3.1-8B", huggingface_cfg_dict["d_model"]
+
+    return {
+        "architecture": "jumprelu",
+        "d_in": d_in,
+        "d_sae": d_in * huggingface_cfg_dict["expansion_factor"],
+        "dtype": "float32",
+        "device": device,
+        "model_name": model_name,
+        "hook_name": huggingface_cfg_dict["hook_point_in"],
+        "hook_layer": int(huggingface_cfg_dict["hook_point_in"].split(".")[1]),
+        "hook_head_index": None,
+        "activation_fn_str": "relu",
+        "finetuning_scaling_factor": False,
+        "sae_lens_training_version": None,
+        "prepend_bos": True,
+        "dataset_path": "cerebras/SlimPajama-627B",
+        "context_size": 1024,
+        "dataset_trust_remote_code": True,
+        "apply_b_dec_to_input": False,
+        "normalize_activations": "expected_average_only_in",
+        **(cfg_overrides or {}),
+    }
+
+
+def llama_scope_r1_distill_sae_huggingface_loader(
+    repo_id: str,
+    folder_name: str,
+    device: str = "cpu",
+    force_download: bool = False,
+    cfg_overrides: dict[str, Any] | None = None,
+) -> tuple[dict[str, Any], dict[str, torch.Tensor], Optional[torch.Tensor]]:
+    """
+    Custom loader for Llama Scope SAEs.
+
+    Args:
+        release: Release identifier
+        sae_id: SAE identifier
+        device: Device to load tensors to
+        force_download: Whether to force download even if files exist
+        cfg_overrides: Optional configuration overrides
+        d_sae_override: Optional override for SAE dimension
+        layer_override: Optional override for layer number
+
+    Returns:
+        Tuple of (config dict, state dict, log sparsity tensor)
+    """
+    cfg_dict = get_llama_scope_r1_distill_config_from_hf(
+        repo_id,
+        folder_name,
+        device,
+        force_download,
+        cfg_overrides,
+    )
+
+    # Download the SAE weights
+    sae_path = hf_hub_download(
+        repo_id=repo_id,
+        filename="sae_weights.safetensors",
+        subfolder=folder_name,
+        force_download=force_download,
+    )
+
+    # Load the weights using load_file instead of safe_open
+    state_dict_loaded = load_file(sae_path, device=device)
+
+    # Convert and organize the weights
+    state_dict = {
+        "W_enc": state_dict_loaded["encoder.weight"]
+        .to(dtype=DTYPE_MAP[cfg_dict["dtype"]])
+        .T,
+        "W_dec": state_dict_loaded["decoder.weight"]
+        .to(dtype=DTYPE_MAP[cfg_dict["dtype"]])
+        .T,
+        "b_enc": state_dict_loaded["encoder.bias"].to(
+            dtype=DTYPE_MAP[cfg_dict["dtype"]]
+        ),
+        "b_dec": state_dict_loaded["decoder.bias"].to(
+            dtype=DTYPE_MAP[cfg_dict["dtype"]]
+        ),
+        "threshold": state_dict_loaded["log_jumprelu_threshold"]
+        .to(dtype=DTYPE_MAP[cfg_dict["dtype"]])
+        .exp(),
+    }
+
+    # No sparsity tensor for Llama Scope SAEs
+    log_sparsity = None
+
+    return cfg_dict, state_dict, log_sparsity
+
+
 NAMED_PRETRAINED_SAE_LOADERS: dict[str, PretrainedSaeHuggingfaceLoader] = {
     "sae_lens": sae_lens_huggingface_loader,
     "connor_rob_hook_z": connor_rob_hook_z_huggingface_loader,
     "gemma_2": gemma_2_sae_huggingface_loader,
     "llama_scope": llama_scope_sae_huggingface_loader,
+    "llama_scope_r1_distill": llama_scope_r1_distill_sae_huggingface_loader,
     "dictionary_learning_1": dictionary_learning_sae_huggingface_loader_1,
     "deepseek_r1": deepseek_r1_sae_huggingface_loader,
 }
@@ -785,6 +900,7 @@ NAMED_PRETRAINED_SAE_CONFIG_GETTERS: dict[str, PretrainedSaeConfigHuggingfaceLoa
     "connor_rob_hook_z": get_connor_rob_hook_z_config_from_hf,
     "gemma_2": get_gemma_2_config_from_hf,
     "llama_scope": get_llama_scope_config_from_hf,
+    "llama_scope_r1_distill": get_llama_scope_r1_distill_config_from_hf,
     "dictionary_learning_1": get_dictionary_learning_config_1_from_hf,
     "deepseek_r1": get_deepseek_r1_config_from_hf,
 }

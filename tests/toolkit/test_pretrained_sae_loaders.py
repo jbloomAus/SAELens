@@ -3,6 +3,7 @@ import pytest
 from sae_lens.sae import SAE
 from sae_lens.toolkit.pretrained_sae_loaders import (
     get_deepseek_r1_config_from_hf,
+    get_llama_scope_r1_distill_config_from_hf,
     load_sae_config_from_huggingface,
 )
 
@@ -221,3 +222,58 @@ def test_get_deepseek_r1_config_with_invalid_layer():
         get_deepseek_r1_config_from_hf(
             repo_id="some/repo", folder_name="invalid_filename.pt", device="cpu"
         )
+
+
+def test_get_llama_scope_r1_distill_config_from_hf():
+    """Test that the Llama Scope R1 Distill config is generated correctly."""
+    cfg = get_llama_scope_r1_distill_config_from_hf(
+        repo_id="fnlp/Llama-Scope-R1-Distill",
+        folder_name="800M-Slimpajama-0-OpenR1-Math-220k/L5R",
+        device="cpu",
+        force_download=False,
+        cfg_overrides=None,
+    )
+
+    expected_cfg = {
+        "architecture": "jumprelu",
+        "d_in": 4096,  # LLaMA 8B hidden size
+        "d_sae": 4096 * 8,  # Expansion factor
+        "dtype": "float32",
+        "device": "cpu",
+        "model_name": "meta-llama/Llama-3.1-8B",
+        "hook_name": "blocks.5.hook_resid_post",
+        "hook_layer": 5,
+        "hook_head_index": None,
+        "activation_fn_str": "relu",
+        "finetuning_scaling_factor": False,
+        "sae_lens_training_version": None,
+        "prepend_bos": True,
+        "dataset_path": "cerebras/SlimPajama-627B",
+        "context_size": 1024,
+        "dataset_trust_remote_code": True,
+        "apply_b_dec_to_input": False,
+        "normalize_activations": "expected_average_only_in",
+    }
+
+    assert cfg == expected_cfg
+
+
+def test_get_llama_scope_r1_distill_config_with_overrides():
+    """Test that config overrides work correctly for Llama Scope R1 Distill."""
+    cfg_overrides = {
+        "device": "cuda",
+        "dtype": "float16",
+        "d_sae": 8192,
+    }
+
+    cfg = get_llama_scope_r1_distill_config_from_hf(
+        repo_id="fnlp/Llama-Scope-R1-Distill",
+        folder_name="400M-Slimpajama-400M-OpenR1-Math-220k/L10R",
+        device="cuda",
+        cfg_overrides=cfg_overrides,
+    )
+
+    assert cfg["device"] == "cuda"
+    assert cfg["dtype"] == "float16"
+    assert cfg["d_sae"] == 8192
+    assert cfg["hook_layer"] == 10
