@@ -2,17 +2,15 @@ import pytest
 
 from sae_lens.sae import SAE
 from sae_lens.toolkit.pretrained_sae_loaders import (
-    SAEConfigLoadOptions,
-    get_deepseek_r1_config,
-    get_huggingface_sae_config,
+    get_deepseek_r1_config_from_hf,
+    load_sae_config_from_huggingface,
 )
 
 
 def test_get_sae_config_sae_lens():
-    cfg_dict = get_huggingface_sae_config(
+    cfg_dict = load_sae_config_from_huggingface(
         "gpt2-small-res-jb",
         sae_id="blocks.0.hook_resid_pre",
-        options=SAEConfigLoadOptions(),
     )
 
     expected_cfg_dict = {
@@ -33,7 +31,7 @@ def test_get_sae_config_sae_lens():
         "n_batches_in_buffer": 128,
         "total_training_tokens": 300000000,
         "store_batch_size": 32,
-        "device": "mps",
+        "device": "cpu",
         "seed": 42,
         "dtype": "torch.float32",
         "b_dec_init_method": "geometric_median",
@@ -75,10 +73,9 @@ def test_get_sae_config_sae_lens():
 
 
 def test_get_sae_config_connor_rob_hook_z():
-    cfg_dict = get_huggingface_sae_config(
+    cfg_dict = load_sae_config_from_huggingface(
         "gpt2-small-hook-z-kk",
         sae_id="blocks.0.hook_z",
-        options=SAEConfigLoadOptions(),
     )
 
     expected_cfg_dict = {
@@ -107,10 +104,9 @@ def test_get_sae_config_connor_rob_hook_z():
 
 
 def test_get_sae_config_gemma_2():
-    cfg_dict = get_huggingface_sae_config(
+    cfg_dict = load_sae_config_from_huggingface(
         "gemma-scope-2b-pt-res",
         sae_id="embedding/width_4k/average_l0_6",
-        options=SAEConfigLoadOptions(),
     )
 
     expected_cfg_dict = {
@@ -139,10 +135,9 @@ def test_get_sae_config_gemma_2():
 
 
 def test_get_sae_config_dictionary_learning_1():
-    cfg_dict = get_huggingface_sae_config(
+    cfg_dict = load_sae_config_from_huggingface(
         "sae_bench_gemma-2-2b_topk_width-2pow16_date-1109",
         sae_id="blocks.12.hook_resid_post__trainer_0",
-        options=SAEConfigLoadOptions(),
     )
 
     expected_cfg_dict = {
@@ -177,22 +172,21 @@ def test_get_sae_config_matches_from_pretrained():
         sae_id="blocks.0.hook_resid_pre",
         device="cpu",
     )[1]
-    direct_sae_cfg = get_huggingface_sae_config(
+    direct_sae_cfg = load_sae_config_from_huggingface(
         "gpt2-small-res-jb",
         sae_id="blocks.0.hook_resid_pre",
-        options=SAEConfigLoadOptions(device="cpu"),
+        device="cpu",
     )
 
     assert direct_sae_cfg == from_pretrained_cfg_dict
 
 
-def test_get_deepseek_r1_config():
+def test_get_deepseek_r1_config_from_hf():
     """Test that the DeepSeek R1 config is generated correctly."""
-    options = SAEConfigLoadOptions(device="cpu")
-    cfg = get_deepseek_r1_config(
+    cfg = get_deepseek_r1_config_from_hf(
         repo_id="some/repo",
         folder_name="DeepSeek-R1-Distill-Llama-8B-SAE-l19.pt",
-        options=options,
+        device="cpu",
     )
 
     expected_cfg = {
@@ -221,11 +215,9 @@ def test_get_deepseek_r1_config():
 
 def test_get_deepseek_r1_config_with_invalid_layer():
     """Test that get_deepseek_r1_config raises ValueError with invalid layer in filename."""
-    options = SAEConfigLoadOptions(device="cpu")
-
     with pytest.raises(
         ValueError, match="Could not find layer number in filename: invalid_filename.pt"
     ):
-        get_deepseek_r1_config(
-            repo_id="some/repo", folder_name="invalid_filename.pt", options=options
+        get_deepseek_r1_config_from_hf(
+            repo_id="some/repo", folder_name="invalid_filename.pt", device="cpu"
         )
