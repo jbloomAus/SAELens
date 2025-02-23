@@ -473,10 +473,10 @@ class TrainingSAE(SAE):
             dead_neuron_mask is not None
             and (num_dead := int(dead_neuron_mask.sum())) > 0
         ):
-            residual = sae_in - sae_out
+            residual = (sae_in - sae_out).detach()
 
             # Heuristic from Appendix B.1 in the paper
-            k_aux = hidden_pre.shape[-1] // 2
+            k_aux = sae_in.shape[-1] // 2
 
             # Reduce the scale of the loss if there are a small number of dead latents
             scale = min(num_dead / k_aux, 1.0)
