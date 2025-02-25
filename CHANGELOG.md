@@ -2,6 +2,17 @@
 
 
 
+## v5.5.1 (2025-02-25)
+
+### Fix
+
+* fix: Merge pull request #434 from jbloomAus/np_r1
+
+fix: neuronpedia links for DS R1 ([`cd85f6d`](https://github.com/jbloomAus/SAELens/commit/cd85f6dd6b372c99b5f0c2b07d5778976f044c8f))
+
+* fix: neuronpedia links for DS R1 ([`c335c91`](https://github.com/jbloomAus/SAELens/commit/c335c911bb3b88221b10f9e8848f19e6c054cb40))
+
+
 ## v5.5.0 (2025-02-22)
 
 ### Chore
