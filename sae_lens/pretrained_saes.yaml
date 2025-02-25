@@ -10637,99 +10637,131 @@ llama_scope_r1_distill:
   - id: l0r_800m_slimpajama
     norm_scaling_factor: 53.52995401997436
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L0R
+    neuronpedia: deepseek-r1-distill-llama-8b/0-llamascope-r1-res-32k
   - id: l1r_800m_slimpajama
     norm_scaling_factor: 37.07457226753229
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L1R
+    neuronpedia: deepseek-r1-distill-llama-8b/1-llamascope-r1-res-32k
   - id: l2r_800m_slimpajama
     norm_scaling_factor: 26.801271953747353
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L2R
+    neuronpedia: deepseek-r1-distill-llama-8b/2-llamascope-r1-res-32k
   - id: l3r_800m_slimpajama
     norm_scaling_factor: 20.258785842428143
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L3R
+    neuronpedia: deepseek-r1-distill-llama-8b/3-llamascope-r1-res-32k
   - id: l4r_800m_slimpajama
     norm_scaling_factor: 16.35620323956284
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L4R
+    neuronpedia: deepseek-r1-distill-llama-8b/4-llamascope-r1-res-32k
   - id: l5r_800m_slimpajama
     norm_scaling_factor: 13.77273090622553
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L5R
+    neuronpedia: deepseek-r1-distill-llama-8b/5-llamascope-r1-res-32k
   - id: l6r_800m_slimpajama
     norm_scaling_factor: 11.802642616140206
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L6R
+    neuronpedia: deepseek-r1-distill-llama-8b/6-llamascope-r1-res-32k
   - id: l7r_800m_slimpajama
     norm_scaling_factor: 10.345622082873675
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L7R
+    neuronpedia: deepseek-r1-distill-llama-8b/7-llamascope-r1-res-32k
   - id: l8r_800m_slimpajama
     norm_scaling_factor: 9.52711219837399
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L8R
+    neuronpedia: deepseek-r1-distill-llama-8b/8-llamascope-r1-res-32k
   - id: l9r_800m_slimpajama
     norm_scaling_factor: 8.722802553532865
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L9R
+    neuronpedia: deepseek-r1-distill-llama-8b/9-llamascope-r1-res-32k
   - id: l10r_800m_slimpajama
     norm_scaling_factor: 8.187374613072596
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L10R
+    neuronpedia: deepseek-r1-distill-llama-8b/10-llamascope-r1-res-32k
   - id: l11r_800m_slimpajama
     norm_scaling_factor: 7.681409438301019
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L11R
+    neuronpedia: deepseek-r1-distill-llama-8b/11-llamascope-r1-res-32k
   - id: l12r_800m_slimpajama
     norm_scaling_factor: 7.011470964851573
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L12R
+    neuronpedia: deepseek-r1-distill-llama-8b/12-llamascope-r1-res-32k
   - id: l13r_800m_slimpajama
     norm_scaling_factor: 6.507851835301529
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L13R
+    neuronpedia: deepseek-r1-distill-llama-8b/13-llamascope-r1-res-32k
   - id: l14r_800m_slimpajama
     norm_scaling_factor: 6.075830839342571
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L14R
+    neuronpedia: deepseek-r1-distill-llama-8b/14-llamascope-r1-res-32k
   - id: l15r_800m_slimpajama
     norm_scaling_factor: 5.529329506982431
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L15R
+    neuronpedia: deepseek-r1-distill-llama-8b/15-llamascope-r1-res-32k
   - id: l16r_800m_slimpajama
     norm_scaling_factor: 5.04125765694814
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L16R
+    neuronpedia: deepseek-r1-distill-llama-8b/16-llamascope-r1-res-32k
   - id: l17r_800m_slimpajama
     norm_scaling_factor: 4.543060254752811
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L17R
+    neuronpedia: deepseek-r1-distill-llama-8b/17-llamascope-r1-res-32k
   - id: l18r_800m_slimpajama
     norm_scaling_factor: 4.136073768441771
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L18R
+    neuronpedia: deepseek-r1-distill-llama-8b/18-llamascope-r1-res-32k
   - id: l19r_800m_slimpajama
     norm_scaling_factor: 3.8186778444880143
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L19R
+    neuronpedia: deepseek-r1-distill-llama-8b/19-llamascope-r1-res-32k
   - id: l20r_800m_slimpajama
     norm_scaling_factor: 3.4997662089479755
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L20R
+    neuronpedia: deepseek-r1-distill-llama-8b/20-llamascope-r1-res-32k
   - id: l21r_800m_slimpajama
     norm_scaling_factor: 3.114875161525094
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L21R
+    neuronpedia: deepseek-r1-distill-llama-8b/21-llamascope-r1-res-32k
   - id: l22r_800m_slimpajama
     norm_scaling_factor: 2.858677637086371
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L22R
+    neuronpedia: deepseek-r1-distill-llama-8b/22-llamascope-r1-res-32k
   - id: l23r_800m_slimpajama
     norm_scaling_factor: 2.6143620233159384
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L23R
+    neuronpedia: deepseek-r1-distill-llama-8b/23-llamascope-r1-res-32k
   - id: l24r_800m_slimpajama
     norm_scaling_factor: 2.406593266301888
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L24R
+    neuronpedia: deepseek-r1-distill-llama-8b/24-llamascope-r1-res-32k
   - id: l25r_800m_slimpajama
     norm_scaling_factor: 2.2185540508553694
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L25R
+    neuronpedia: deepseek-r1-distill-llama-8b/25-llamascope-r1-res-32k
   - id: l26r_800m_slimpajama
     norm_scaling_factor: 2.038628827422577
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L26R
+    neuronpedia: deepseek-r1-distill-llama-8b/26-llamascope-r1-res-32k
   - id: l27r_800m_slimpajama
     norm_scaling_factor: 1.8664054897001374
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L27R
+    neuronpedia: deepseek-r1-distill-llama-8b/27-llamascope-r1-res-32k
   - id: l28r_800m_slimpajama
     norm_scaling_factor: 1.6914743009513147
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L28R
+    neuronpedia: deepseek-r1-distill-llama-8b/28-llamascope-r1-res-32k
   - id: l29r_800m_slimpajama
     norm_scaling_factor: 1.530389056066687
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L29R
+    neuronpedia: deepseek-r1-distill-llama-8b/29-llamascope-r1-res-32k
   - id: l30r_800m_slimpajama
     norm_scaling_factor: 1.3378642198135962
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L30R
+    neuronpedia: deepseek-r1-distill-llama-8b/30-llamascope-r1-res-32k
   - id: l31r_800m_slimpajama
     norm_scaling_factor: 1.0963025732622191
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L31R
+    neuronpedia: deepseek-r1-distill-llama-8b/31-llamascope-r1-res-32k
   - id: l0r_400m_slimpajama_400m_openr1_math
     norm_scaling_factor: 53.97673033497749
     path: 400M-Slimpajama-400M-OpenR1-Math-220k/L0R
