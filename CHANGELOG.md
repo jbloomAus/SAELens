@@ -2,6 +2,17 @@
 
 
 
+## v5.5.2 (2025-02-25)
+
+### Fix
+
+* fix: Merge pull request #435 from jbloomAus/np_r1
+
+fix: Pretrained YAML for ds r1 ([`871cdf0`](https://github.com/jbloomAus/SAELens/commit/871cdf0ec08d77bc6bd44f3e88119d291b200b5c))
+
+* fix: deepseek ([`ddb1042`](https://github.com/jbloomAus/SAELens/commit/ddb10426e6260466cb16a05bfbf908e314c7ce0f))
+
+
 ## v5.5.1 (2025-02-25)
 
 ### Fix
