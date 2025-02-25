@@ -43,6 +43,7 @@ class SAETrainingRunner:
         override_dataset: HfDataset | None = None,
         override_model: HookedRootModule | None = None,
         override_sae: TrainingSAE | None = None,
+        resume_from_checkpoint: str | None = None,
     ):
         if override_dataset is not None:
             logger.warning(
@@ -54,6 +55,7 @@ class SAETrainingRunner:
             )
 
         self.cfg = cfg
+        self.resume_from_checkpoint = resume_from_checkpoint
 
         if override_model is None:
             self.model = load_model(
@@ -72,7 +74,12 @@ class SAETrainingRunner:
         )
 
         if override_sae is None:
-            if self.cfg.from_pretrained_path is not None:
+            if resume_from_checkpoint is not None:
+                logger.info(f"Loading SAE from checkpoint: {resume_from_checkpoint}")
+                self.sae = TrainingSAE.load_from_pretrained(
+                    resume_from_checkpoint, self.cfg.device
+                )
+            elif self.cfg.from_pretrained_path is not None:
                 self.sae = TrainingSAE.load_from_pretrained(
                     self.cfg.from_pretrained_path, self.cfg.device
                 )
@@ -107,6 +114,17 @@ class SAETrainingRunner:
             save_checkpoint_fn=self.save_checkpoint,
             cfg=self.cfg,
         )
+        
+        # Restore trainer state if resuming from checkpoint
+        if self.resume_from_checkpoint is not None:
+            _load_checkpoint_state(
+                trainer=trainer,
+                checkpoint_path_str=self.resume_from_checkpoint,
+                activations_store=self.activations_store,
+                device=self.cfg.device
+            )
+            
+            logger.info(f"Resuming training from {trainer.n_training_tokens} tokens and {trainer.n_training_steps} steps")
 
         self._compile_if_needed()
         sae = self.run_trainer_with_interruption_handling(trainer)
@@ -192,6 +210,22 @@ class SAETrainingRunner:
             str(base_path / "activations_store_state.safetensors")
         )
 
+        # Save training state including optimizer
+        torch.save(
+            {
+                "optimizer": trainer.optimizer.state_dict(),
+                "lr_scheduler": trainer.lr_scheduler.state_dict(),
+                "l1_scheduler": trainer.l1_scheduler.state_dict(),
+                "n_training_tokens": trainer.n_training_tokens,
+                "n_training_steps": trainer.n_training_steps,
+                "act_freq_scores": trainer.act_freq_scores,
+                "n_forward_passes_since_fired": trainer.n_forward_passes_since_fired,
+                "n_frac_active_tokens": trainer.n_frac_active_tokens,
+                "started_fine_tuning": trainer.started_fine_tuning
+            },
+            str(base_path / "training_state.pt")
+        )
+
         if trainer.sae.cfg.normalize_sae_decoder:
             trainer.sae.set_decoder_norm_to_unit_norm()
 
@@ -231,18 +265,89 @@ class SAETrainingRunner:
             wandb.log_artifact(sparsity_artifact)
 
 
-def _parse_cfg_args(args: Sequence[str]) -> LanguageModelSAERunnerConfig:
+def _load_checkpoint_state(
+    trainer: SAETrainer, 
+    checkpoint_path_str: str, 
+    activations_store: ActivationsStore,
+    device: str
+) -> dict[str, Any]:
+    """
+    Load trainer and activations store states from a checkpoint.
+    
+    Args:
+        trainer: The SAETrainer to update with loaded state
+        checkpoint_path_str: Path to the checkpoint directory
+        activations_store: The ActivationsStore to update with loaded state
+        device: Device to load tensors onto
+    
+    Returns:
+        The loaded training state dictionary
+    """
+    checkpoint_path = Path(checkpoint_path_str)
+    training_state_path = checkpoint_path / "training_state.pt"
+    
+    if not training_state_path.exists():
+        raise ValueError(f"Training state not found at {training_state_path}")
+    
+    logger.info(f"Loading training state from {training_state_path}")
+    training_state = torch.load(training_state_path, map_location=device)
+    
+    # Restore optimizer and schedulers
+    trainer.optimizer.load_state_dict(training_state["optimizer"])
+    trainer.lr_scheduler.load_state_dict(training_state["lr_scheduler"])
+    trainer.l1_scheduler.load_state_dict(training_state["l1_scheduler"])
+    
+    # Restore tracking metrics
+    trainer.n_training_tokens = training_state["n_training_tokens"]
+    trainer.n_training_steps = training_state["n_training_steps"]
+    trainer.act_freq_scores = training_state["act_freq_scores"]
+    trainer.n_forward_passes_since_fired = training_state["n_forward_passes_since_fired"]
+    trainer.n_frac_active_tokens = training_state["n_frac_active_tokens"]
+    trainer.started_fine_tuning = training_state["started_fine_tuning"]
+    
+    # Recalculate checkpoint thresholds based on remaining tokens
+    if trainer.cfg.n_checkpoints > 0:
+        remaining_tokens = trainer.cfg.total_training_tokens - trainer.n_training_tokens
+        checkpoint_interval = remaining_tokens // trainer.cfg.n_checkpoints
+        trainer.checkpoint_thresholds = [
+            trainer.n_training_tokens + i * checkpoint_interval
+            for i in range(1, trainer.cfg.n_checkpoints + 1)
+            if trainer.n_training_tokens + i * checkpoint_interval < trainer.cfg.total_training_tokens
+        ]
+    
+    # Load activation store state
+    activations_store_state_path = checkpoint_path / "activations_store_state.safetensors"
+    if activations_store_state_path.exists():
+        logger.info(f"Loading activations store state from {activations_store_state_path}")
+        activations_store.load(str(activations_store_state_path))
+        
+    return training_state
+
+
+def _parse_cfg_args(args: Sequence[str]) -> tuple[LanguageModelSAERunnerConfig, str | None]:
+    """
+    Parse command line arguments into a config object and resume checkpoint path.
+    
+    Args:
+        args: Command line arguments to parse
+        
+    Returns:
+        A tuple containing (config_object, resume_checkpoint_path)
+    """
     if len(args) == 0:
         args = ["--help"]
     parser = ArgumentParser(exit_on_error=False)
     parser.add_arguments(LanguageModelSAERunnerConfig, dest="cfg")
-    return parser.parse_args(args).cfg
+    parser.add_argument("--resume-from-checkpoint", type=str, help="Path to checkpoint directory to resume training from")
+    parsed_args = parser.parse_args(args)
+    
+    return parsed_args.cfg, parsed_args.resume_from_checkpoint
 
 
 # moved into its own function to make it easier to test
 def _run_cli(args: Sequence[str]):
-    cfg = _parse_cfg_args(args)
-    SAETrainingRunner(cfg=cfg).run()
+    cfg, resume_from_checkpoint = _parse_cfg_args(args)
+    SAETrainingRunner(cfg=cfg, resume_from_checkpoint=resume_from_checkpoint).run()
 
 
 if __name__ == "__main__":

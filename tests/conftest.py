@@ -28,6 +28,7 @@ def reproducibility():
     # this is a "legacy" method that operates on a global RandomState
     # sounds like the argument must be in [0, 2**32)
     np.random.seed(seed & 0xFFFF_FFFF)
+    torch.set_grad_enabled(True)
 
 
 @pytest.fixture
