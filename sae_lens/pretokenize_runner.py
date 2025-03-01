@@ -25,8 +25,10 @@ class PretokenizedDatasetMetadata:
     sae_lens_version: str
     tokenizer_name: str
     original_dataset: str
+    original_dataset_name: str | None
     original_split: str | None
     original_data_files: list[str] | None
+    original_column_name: str | None
     context_size: int
     shuffled: bool
     seed: int | None
@@ -40,8 +42,10 @@ def metadata_from_config(cfg: PretokenizeRunnerConfig) -> PretokenizedDatasetMet
         sae_lens_version=__version__,
         tokenizer_name=cfg.tokenizer_name,
         original_dataset=cfg.dataset_path,
+        original_dataset_name=cfg.dataset_name,
         original_split=cfg.split,
         original_data_files=cfg.data_files,
+        original_column_name=cfg.column_name,
         context_size=cfg.context_size,
         shuffled=cfg.shuffle,
         seed=cfg.seed,
@@ -164,6 +168,7 @@ class PretokenizeRunner:
         """
         dataset = load_dataset(
             self.cfg.dataset_path,
+            name=self.cfg.dataset_name,
             data_dir=self.cfg.data_dir,
             data_files=self.cfg.data_files,
             split=self.cfg.split,
