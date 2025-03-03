@@ -61,7 +61,7 @@ class TrainStepOutput:
     feature_acts: torch.Tensor
     hidden_pre: torch.Tensor
     loss: torch.Tensor  # we need to call backwards on this
-    losses: dict[str, float | torch.Tensor]
+    losses: dict[str, torch.Tensor]
 
 class BaseSAE(HookedRootModule, ABC):
     """Abstract base class for all SAE architectures."""
@@ -70,6 +70,19 @@ class BaseSAE(HookedRootModule, ABC):
     dtype: torch.dtype
     device: torch.device
     use_error_term: bool
+    
+    # For type checking only - don't provide default values
+    # These will be initialized by subclasses
+    W_enc: nn.Parameter
+    W_dec: nn.Parameter
+    b_dec: nn.Parameter
+    
+    # Architecture-specific parameters that may be present depending on subclass
+    # Don't provide default values here
+    # b_enc: Optional[nn.Parameter]
+    b_gate: Optional[nn.Parameter]
+    b_mag: Optional[nn.Parameter]
+    r_mag: Optional[nn.Parameter]
     
     def __init__(self, cfg: SAEConfig, use_error_term: bool = False):
         """Initialize the SAE."""
@@ -243,7 +256,10 @@ class BaseSAE(HookedRootModule, ABC):
         W_dec_norms = self.W_dec.norm(dim=-1).unsqueeze(1)
         self.W_dec.data = self.W_dec.data / W_dec_norms
         self.W_enc.data = self.W_enc.data * W_dec_norms.T
-        self.b_enc.data = self.b_enc.data * W_dec_norms.squeeze()
+        
+        # Only update b_enc if it exists (standard/jumprelu architectures)
+        if hasattr(self, 'b_enc') and self.b_enc is not None:
+            self.b_enc.data = self.b_enc.data * W_dec_norms.squeeze()
 
 
 @dataclass(kw_only=True)
