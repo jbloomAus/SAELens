@@ -52,7 +52,7 @@ def get_hooked_sae(model: HookedTransformer, act_name: str) -> SAE:
         hook_name=act_name,
         hook_layer=0,
         hook_head_index=None,
-        activation_fn_str="relu",
+        activation_fn="relu",
         prepend_bos=True,
         context_size=128,
         dataset_path="test",

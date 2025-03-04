@@ -10,7 +10,7 @@ def test_get_sae_config_sae_lens():
     )
 
     expected_cfg_dict = {
-        "activation_fn_str": "relu",
+        "activation_fn": "relu",
         "apply_b_dec_to_input": True,
         "architecture": "standard",
         "model_name": "gpt2-small",
@@ -85,7 +85,7 @@ def test_get_sae_config_connor_rob_hook_z():
         "hook_name": "blocks.0.attn.hook_z",
         "hook_layer": 0,
         "hook_head_index": None,
-        "activation_fn_str": "relu",
+        "activation_fn": "relu",
         "apply_b_dec_to_input": True,
         "finetuning_scaling_factor": False,
         "sae_lens_training_version": None,
@@ -116,7 +116,7 @@ def test_get_sae_config_gemma_2():
         "hook_name": "hook_embed",
         "hook_layer": 0,
         "hook_head_index": None,
-        "activation_fn_str": "relu",
+        "activation_fn": "relu",
         "finetuning_scaling_factor": False,
         "sae_lens_training_version": None,
         "prepend_bos": True,
@@ -149,7 +149,7 @@ def test_get_sae_config_dictionary_learning_1():
         "hook_name": "blocks.12.hook_resid_post",
         "hook_layer": 12,
         "hook_head_index": None,
-        "activation_fn_str": "topk",
+        "activation_fn": "topk",
         "activation_fn_kwargs": {"k": 20},
         "apply_b_dec_to_input": True,
         "finetuning_scaling_factor": False,

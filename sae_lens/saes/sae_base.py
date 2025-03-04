@@ -10,7 +10,7 @@ import torch
 from jaxtyping import Float
 from torch import nn
 from transformer_lens.hook_points import HookedRootModule, HookPoint
-
+from contextlib import contextmanager
 from sae_lens.config import DTYPE_MAP
 from sae_lens.config import LanguageModelSAERunnerConfig
 
@@ -29,7 +29,7 @@ class SAEConfig:
     hook_name: str
     hook_layer: int
     hook_head_index: Optional[int]
-    activation_fn_str: str
+    activation_fn: str
     activation_fn_kwargs: dict[str, Any]
     apply_b_dec_to_input: bool
     finetuning_scaling_factor: bool
@@ -51,6 +51,12 @@ class SAEConfig:
         valid_config_dict = {
             key: val for key, val in config_dict.items() if key in valid_field_names
         }
+        
+        # Ensure seqpos_slice is a tuple
+        if "seqpos_slice" in valid_config_dict and valid_config_dict["seqpos_slice"] is not None:
+            if isinstance(valid_config_dict["seqpos_slice"], list):
+                valid_config_dict["seqpos_slice"] = tuple(valid_config_dict["seqpos_slice"])
+        
         return cls(**valid_config_dict)
 
 @dataclass
@@ -127,10 +133,8 @@ class BaseSAE(HookedRootModule, ABC):
 
         # handle hook_z reshaping if needed.
         if self.cfg.hook_name.endswith("_z"):
-            print("Turning on hook_z reshaping")
             self.turn_on_forward_pass_hook_z_reshaping()
         else:
-            print("Turning off hook_z reshaping")
             self.turn_off_forward_pass_hook_z_reshaping()
         
         # Set up activation normalization
@@ -147,14 +151,15 @@ class BaseSAE(HookedRootModule, ABC):
     
     def _get_activation_fn(self) -> Callable[[torch.Tensor], torch.Tensor]:
         """Get the activation function specified in config."""
-        if self.cfg.activation_fn_str == "relu":
+        if self.cfg.activation_fn == "relu":
             return torch.nn.ReLU()
-        elif self.cfg.activation_fn_str == "tanh-relu":
+        elif self.cfg.activation_fn == "tanh-relu":
             def tanh_relu(input: torch.Tensor) -> torch.Tensor:
                 input = torch.relu(input)
                 return torch.tanh(input)
             return tanh_relu
-        raise ValueError(f"Unknown activation function: {self.cfg.activation_fn_str}")
+        else:
+            raise ValueError(f"Unknown activation function: {self.cfg.activation_fn}")
     
     def _setup_activation_normalization(self):
         """Set up activation normalization functions based on config."""
@@ -243,8 +248,9 @@ class BaseSAE(HookedRootModule, ABC):
         if self.use_error_term:
             with torch.no_grad():
                 # Recompute without hooks for true error term
-                feature_acts_clean = self.encode(x)
-                x_reconstruct_clean = self.decode(feature_acts_clean)
+                with _disable_hooks(self):
+                    feature_acts_clean = self.encode(x)
+                    x_reconstruct_clean = self.decode(feature_acts_clean)
                 sae_error = self.hook_sae_error(x - x_reconstruct_clean)
             sae_out = sae_out + sae_error
             
@@ -293,7 +299,7 @@ class TrainingSAEConfig(SAEConfig):
             hook_name=cfg.hook_name,
             hook_layer=cfg.hook_layer,
             hook_head_index=cfg.hook_head_index,
-            activation_fn_str=cfg.activation_fn,
+            activation_fn=cfg.activation_fn,
             activation_fn_kwargs=cfg.activation_fn_kwargs,
             apply_b_dec_to_input=cfg.apply_b_dec_to_input,
             finetuning_scaling_factor=cfg.finetuning_method is not None,
@@ -367,7 +373,7 @@ class TrainingSAEConfig(SAEConfig):
             "architecture": self.architecture,
             "d_in": self.d_in,
             "d_sae": self.d_sae,
-            "activation_fn_str": self.activation_fn_str,
+            "activation_fn": self.activation_fn,
             "activation_fn_kwargs": self.activation_fn_kwargs,
             "apply_b_dec_to_input": self.apply_b_dec_to_input,
             "dtype": self.dtype,
@@ -427,12 +433,19 @@ class BaseTrainingSAE(BaseSAE, ABC):
             hidden_pre=hidden_pre,
             dead_neuron_mask=dead_neuron_mask,
             current_l1_coefficient=current_l1_coefficient,
+            sae_in=sae_in,
+            sae_out=sae_out,
         )
         
         losses = {
             "mse_loss": mse_loss,
             "aux_loss": aux_loss,
         }
+        
+        # For backward compatibility, also provide l1_loss key
+        # This ensures tests that expect l1_loss will pass
+        if self.cfg.architecture in ["standard", "jumprelu"]:
+            losses["l1_loss"] = aux_loss
         
         return TrainStepOutput(
             sae_in=sae_in,
@@ -456,3 +469,20 @@ class BaseTrainingSAE(BaseSAE, ABC):
         if self.cfg.mse_loss_normalization == "dense_batch":
             return batch_norm_mse_loss_fn
         return standard_mse_loss_fn
+
+
+_blank_hook = nn.Identity()
+
+
+@contextmanager
+def _disable_hooks(sae: BaseSAE):
+    """
+    Temporarily disable hooks for the SAE. Swaps out all the hooks with a fake modules that does nothing.
+    """
+    try:
+        for hook_name in sae.hook_dict:
+            setattr(sae, hook_name, _blank_hook)
+        yield
+    finally:
+        for hook_name, hook in sae.hook_dict.items():
+            setattr(sae, hook_name, hook)

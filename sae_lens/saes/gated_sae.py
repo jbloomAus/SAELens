@@ -269,7 +269,8 @@ class GatedTrainingSAE(BaseTrainingSAE):
         # Structure losses as in original implementation
         losses = {
             "mse_loss": mse_loss,
-            "l1_loss": aux_loss  # In original, this was included as a single auxiliary loss
+            "l1_loss": aux_loss,  # For backward compatibility
+            "aux_loss": aux_loss   # For new standard
         }
 
         return TrainStepOutput(
@@ -280,3 +281,14 @@ class GatedTrainingSAE(BaseTrainingSAE):
             loss=total_loss,
             losses=losses,
         )
+
+    @torch.no_grad()
+    def set_decoder_norm_to_unit_norm(self):
+        """Set decoder norms to unit norm"""
+        self.W_dec.data /= torch.norm(self.W_dec.data, dim=1, keepdim=True)
+    
+    @torch.no_grad()
+    def initialize_decoder_norm_constant_norm(self, norm: float = 0.1):
+        """Initialize decoder with constant norm"""
+        self.W_dec.data /= torch.norm(self.W_dec.data, dim=1, keepdim=True)
+        self.W_dec.data *= norm

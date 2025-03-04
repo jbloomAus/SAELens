@@ -49,7 +49,7 @@ def make_old_topk_sae(d_in=16, d_sae=8, use_error_term=False) -> SAE:
         hook_name="blocks.0.hook_resid_pre",  # avoid hook_z for simpler shape
         hook_layer=0,
         hook_head_index=None,
-        activation_fn_str="topk",
+        activation_fn="topk",
         activation_fn_kwargs={"k": 4},  # example k
         apply_b_dec_to_input=False,
         finetuning_scaling_factor=False,
@@ -80,7 +80,7 @@ def make_new_topk_sae(d_in=16, d_sae=8, use_error_term=False) -> TopKSAE:
         hook_name="blocks.0.hook_resid_pre",
         hook_layer=0,
         hook_head_index=None,
-        activation_fn_str="topk",
+        activation_fn="topk",
         activation_fn_kwargs={"k": 4},  # match old config
         apply_b_dec_to_input=False,
         finetuning_scaling_factor=False,
@@ -151,7 +151,7 @@ def test_topk_sae_training_equivalence(seed_everything):
         hook_name="blocks.0.hook_resid_pre",
         hook_layer=0,
         hook_head_index=None,
-        activation_fn_str="topk",
+        activation_fn="topk",
         activation_fn_kwargs={"k": 4},
         apply_b_dec_to_input=False,
         finetuning_scaling_factor=False,

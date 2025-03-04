@@ -95,6 +95,26 @@ class JumpReLUSAE(BaseSAE):
         sae_out_pre = self.run_time_activation_norm_fn_out(sae_out_pre)
         return self.reshape_fn_out(sae_out_pre, self.d_head)
     
+    @torch.no_grad()
+    def fold_W_dec_norm(self):
+        """
+        Override to properly handle threshold adjustment with W_dec norms.
+        When we scale the encoder weights, we need to scale the threshold
+        by the same factor to maintain the same sparsity pattern.
+        """
+        # Save the current threshold before calling parent method
+        current_thresh = self.threshold.clone()
+        
+        # Get W_dec norms that will be used for scaling
+        W_dec_norms = self.W_dec.norm(dim=-1)
+        
+        # Call parent implementation to handle W_enc, W_dec, and b_enc adjustment
+        super().fold_W_dec_norm()
+        
+        # Scale the threshold by the same factor as we scaled b_enc
+        # This ensures the same features remain active/inactive after folding
+        self.threshold.data = current_thresh * W_dec_norms
+
 
 class JumpReLUTrainingSAE(BaseTrainingSAE):
     """
@@ -256,6 +276,7 @@ class JumpReLUTrainingSAE(BaseTrainingSAE):
         losses_dict = {
             "mse_loss": mse_loss,
             "l0_loss": l0_loss,
+            "l1_loss": l0_loss,  # Add this for backward compatibility
         }
 
         # Return the train step output
@@ -280,7 +301,7 @@ class JumpReLUTrainingSAE(BaseTrainingSAE):
         self,
         feature_acts: torch.Tensor,
         hidden_pre: torch.Tensor,
-        dead_neuron_mask: torch.Tensor | None,
+        dead_neuron_mask: Optional[torch.Tensor],
         current_l1_coefficient: float,
         **kwargs: Any,
     ) -> torch.Tensor:
@@ -294,14 +315,15 @@ class JumpReLUTrainingSAE(BaseTrainingSAE):
     @torch.no_grad()
     def fold_W_dec_norm(self):
         """
-        Override to match the old code's logic of scaling threshold by the norm of each decoder row:
-          threshold <- threshold * W_dec_norm
+        Override to properly handle threshold adjustment with W_dec norms.
         """
-        # Save the current threshold before we call super()
+        # Save the current threshold before we call the parent method
         current_thresh = self.threshold.clone()
-        W_dec_norms = self.W_dec.norm(dim=-1).unsqueeze(-1)
-
-        # Do the usual fold in parent's fold_W_dec_norm
+        
+        # Get W_dec norms
+        W_dec_norms = self.W_dec.norm(dim=-1).unsqueeze(1)
+        
+        # Call parent implementation to handle W_enc and W_dec adjustment
         super().fold_W_dec_norm()
 
         # Fix: Use squeeze() instead of squeeze(-1) to match old behavior

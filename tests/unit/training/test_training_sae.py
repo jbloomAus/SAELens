@@ -198,11 +198,16 @@ def test_TrainingSAE_initializes_only_with_log_threshold_if_jumprelu():
     cfg = build_sae_cfg(architecture="jumprelu", jumprelu_init_threshold=0.01)
     sae = TrainingSAE(TrainingSAEConfig.from_sae_runner_config(cfg))
     param_names = dict(sae.named_parameters()).keys()
-    assert "log_threshold" in param_names
-    assert "threshold" not in param_names
+    
+    # Check that log_threshold is the only threshold-related parameter
+    # Note: With the new architecture, parameter names include the _sae. prefix
+    assert "_sae.log_threshold" in param_names
+    assert "_sae.threshold" not in param_names
+    
+    # Verify that the threshold value is correct by accessing it through the property
     assert torch.allclose(
         sae.threshold,
-        torch.ones_like(sae.log_threshold.data) * cfg.jumprelu_init_threshold,
+        torch.ones_like(sae._sae.log_threshold.data) * cfg.jumprelu_init_threshold,
     )
 
 
