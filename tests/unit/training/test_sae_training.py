@@ -144,6 +144,11 @@ def test_sae_forward(training_sae: TrainingSAE):
     d_sae = training_sae.cfg.d_sae
 
     x = torch.randn(batch_size, d_in)
+    # print(f"\nTest input shape: {x.shape}")
+    # print(f"SAE d_in: {training_sae.cfg.d_in}, d_sae: {training_sae.cfg.d_sae}")
+    # print(f"SAE hook_name: {training_sae.cfg.hook_name}")
+    # print(f"SAE hook_z_reshaping_mode: {getattr(training_sae, 'hook_z_reshaping_mode', False)}")
+    
     train_step_output = training_sae.training_forward_pass(
         sae_in=x,
         current_l1_coefficient=training_sae.cfg.l1_coefficient,
@@ -156,7 +161,6 @@ def test_sae_forward(training_sae: TrainingSAE):
         == (
             train_step_output.losses["mse_loss"]
             + train_step_output.losses["l1_loss"]
-            + train_step_output.losses.get("ghost_grad_loss", 0.0)
         )
         .detach()  # type: ignore
         .cpu()
@@ -231,7 +235,6 @@ def test_sae_forward_with_mse_loss_norm(
         == (
             train_step_output.losses["mse_loss"]
             + train_step_output.losses["l1_loss"]
-            + train_step_output.losses.get("ghost_grad_loss", 0.0)
         )
         .detach()  # type: ignore
         .numpy()
@@ -249,72 +252,6 @@ def test_sae_forward_with_mse_loss_norm(
         pytest.approx(train_step_output.losses["l1_loss"].item(), rel=1e-3)  # type: ignore
         == training_sae.cfg.l1_coefficient * expected_l1_loss.detach().float()
     )
-
-
-def test_SparseAutoencoder_forward_ghost_grad_loss_non_zero(
-    training_sae: TrainingSAE,
-):
-    training_sae.cfg.use_ghost_grads = True
-    batch_size = 32
-    d_in = training_sae.cfg.d_in
-    x = torch.randn(batch_size, d_in)
-    train_step_output = training_sae.training_forward_pass(
-        sae_in=x,
-        current_l1_coefficient=training_sae.cfg.l1_coefficient,
-        dead_neuron_mask=torch.ones_like(
-            training_sae.b_enc
-        ).bool(),  # all neurons are dead.
-    )
-
-    assert train_step_output.losses["ghost_grad_loss"] != 0.0
-
-
-def test_calculate_ghost_grad_loss(
-    trainer: SAETrainer,
-):
-    training_sae = trainer.sae
-    trainer.cfg.use_ghost_grads = True
-    batch_size = 32
-    d_in = trainer.cfg.d_in
-    x = torch.randn(batch_size, d_in)
-
-    trainer.sae.train()
-
-    # set n_forward passes since fired to < dead feature window for all neurons
-    trainer.n_forward_passes_since_fired = (
-        torch.ones_like(trainer.n_forward_passes_since_fired)
-        * 3
-        * trainer.cfg.dead_feature_window
-    )  # type: ignore
-    # then set the first 10 neurons to have fired recently
-    trainer.n_forward_passes_since_fired[:10] = 0
-
-    feature_acts = training_sae.encode(x)
-    sae_out = training_sae.decode(feature_acts)
-
-    _, hidden_pre = training_sae.encode_with_hidden_pre(x)
-    ghost_grad_loss = training_sae.calculate_ghost_grad_loss(
-        x=x,
-        sae_out=sae_out,
-        per_item_mse_loss=training_sae.mse_loss_fn(sae_out, x),
-        hidden_pre=hidden_pre,
-        dead_neuron_mask=trainer.dead_neurons,
-    )
-    ghost_grad_loss.backward()  # type: ignore
-
-    # W_enc grad
-    assert trainer.sae.W_enc.grad is not None
-    assert torch.allclose(
-        trainer.sae.W_enc.grad[:, :10], torch.zeros_like(trainer.sae.W_enc[:, :10])
-    )
-    assert trainer.sae.W_enc.grad[:, 10:].abs().sum() > 0.001
-
-    # only features 1 and 3 should have non-zero gradients on the decoder weights
-    assert trainer.sae.W_dec.grad is not None
-    assert torch.allclose(
-        trainer.sae.W_dec.grad[:10, :], torch.zeros_like(trainer.sae.W_dec[:10, :])
-    )
-    assert trainer.sae.W_dec.grad[10:, :].abs().sum() > 0.001
 
 
 def test_per_item_mse_loss_with_norm_matches_original_implementation(

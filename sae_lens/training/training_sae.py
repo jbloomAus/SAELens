@@ -13,6 +13,7 @@ from jaxtyping import Float
 from torch import nn
 
 from sae_lens import logger
+from sae_lens.config import LanguageModelSAERunnerConfig
 from sae_lens.loading.pretrained_sae_loaders import (
     handle_config_defaulting,
     read_sae_from_disk,
@@ -139,10 +140,14 @@ class TrainingSAE(SAE):
         # Remove unnecessary cast
         return self._sae.cfg
         
-    def __init__(self, cfg: TrainingSAEConfig, use_error_term: bool = False):
+    def __init__(self, cfg: Union[TrainingSAEConfig, LanguageModelSAERunnerConfig], use_error_term: bool = False):
         """Initialize with the appropriate training SAE implementation."""
         # Skip the standard SAE initialization and initialize the HookedRootModule directly
         nn.Module.__init__(self)
+        
+        # Convert LanguageModelSAERunnerConfig to TrainingSAEConfig if needed
+        if not isinstance(cfg, TrainingSAEConfig):
+            cfg = TrainingSAEConfig.from_sae_runner_config(cfg)
         
         # Create the appropriate training implementation based on architecture
         self._sae = create_training_sae_from_config(cfg, use_error_term)
@@ -268,7 +273,11 @@ class TrainingSAE(SAE):
     def mse_loss_fn(self) -> Callable[[torch.Tensor, torch.Tensor], torch.Tensor]:
         """Forward to the internal implementation's mse_loss_fn."""
         return self._sae.mse_loss_fn
-    
+
+    @mse_loss_fn.setter
+    def mse_loss_fn(self, new_fn: Callable[[torch.Tensor, torch.Tensor], torch.Tensor]):
+        self._sae.mse_loss_fn = new_fn
+
     def _get_mse_loss_fn(self) -> Callable[[torch.Tensor, torch.Tensor], torch.Tensor]:
         """Forward to the internal implementation's _get_mse_loss_fn method."""
         return self._sae._get_mse_loss_fn()

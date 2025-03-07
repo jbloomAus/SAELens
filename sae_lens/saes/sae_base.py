@@ -133,8 +133,10 @@ class BaseSAE(HookedRootModule, ABC):
 
         # handle hook_z reshaping if needed.
         if self.cfg.hook_name.endswith("_z"):
+            # print(f"Setting up hook_z reshaping for {self.cfg.hook_name}")
             self.turn_on_forward_pass_hook_z_reshaping()
         else:
+            # print(f"No hook_z reshaping needed for {self.cfg.hook_name}")
             self.turn_off_forward_pass_hook_z_reshaping()
         
         # Set up activation normalization
@@ -151,15 +153,32 @@ class BaseSAE(HookedRootModule, ABC):
     
     def _get_activation_fn(self) -> Callable[[torch.Tensor], torch.Tensor]:
         """Get the activation function specified in config."""
-        if self.cfg.activation_fn == "relu":
+        return self._get_activation_fn_static(self.cfg.activation_fn, **(self.cfg.activation_fn_kwargs or {}))
+
+    @staticmethod
+    def _get_activation_fn_static(activation_fn: str, **kwargs) -> Callable[[torch.Tensor], torch.Tensor]:
+        """Get the activation function from a string specification."""
+        if activation_fn == "relu":
             return torch.nn.ReLU()
-        elif self.cfg.activation_fn == "tanh-relu":
+        elif activation_fn == "tanh-relu":
             def tanh_relu(input: torch.Tensor) -> torch.Tensor:
                 input = torch.relu(input)
                 return torch.tanh(input)
             return tanh_relu
-        else:
-            raise ValueError(f"Unknown activation function: {self.cfg.activation_fn}")
+        elif activation_fn == "topk":
+            if "k" not in kwargs:
+                raise ValueError("TopK activation function requires a k value.")
+            k = kwargs.get("k", 1)  # Default k to 1 if not provided
+            
+            def topk_fn(x: torch.Tensor) -> torch.Tensor:
+                topk = torch.topk(x.flatten(start_dim=-1), k=k, dim=-1)
+                values = torch.relu(topk.values)
+                result = torch.zeros_like(x.flatten(start_dim=-1))
+                result.scatter_(-1, topk.indices, values)
+                return result.view_as(x)
+            
+            return topk_fn
+        raise ValueError(f"Unknown activation function: {activation_fn}")
     
     def _setup_activation_normalization(self):
         """Set up activation normalization functions based on config."""
@@ -214,18 +233,25 @@ class BaseSAE(HookedRootModule, ABC):
         if not self.cfg.hook_name.endswith("_z"):
             raise ValueError("This method should only be called for hook_z SAEs.")
 
+        # print(f"Turning on hook_z reshaping for {self.cfg.hook_name}")
+        
         def reshape_fn_in(x: torch.Tensor):
+            # print(f"reshape_fn_in input shape: {x.shape}")
             self.d_head = x.shape[-1]
+            # print(f"Setting d_head to: {self.d_head}")
             self.reshape_fn_in = lambda x: einops.rearrange(
                 x, "... n_heads d_head -> ... (n_heads d_head)"
             )
-            return einops.rearrange(x, "... n_heads d_head -> ... (n_heads d_head)")
+            reshaped = einops.rearrange(x, "... n_heads d_head -> ... (n_heads d_head)")
+            # print(f"reshape_fn_in output shape: {reshaped.shape}")
+            return reshaped
 
         self.reshape_fn_in = reshape_fn_in
         self.reshape_fn_out = lambda x, d_head: einops.rearrange(
             x, "... (n_heads d_head) -> ... n_heads d_head", d_head=d_head
         )
         self.hook_z_reshaping_mode = True
+        # print(f"hook_z reshaping turned on, self.d_head={getattr(self, 'd_head', None)}")
 
     def turn_off_forward_pass_hook_z_reshaping(self):
         self.reshape_fn_in = lambda x: x
@@ -234,11 +260,25 @@ class BaseSAE(HookedRootModule, ABC):
         self.hook_z_reshaping_mode = False
     
     def process_sae_in(self, sae_in: Float[torch.Tensor, "... d_in"]) -> Float[torch.Tensor, "... d_in"]:
+        # print(f"Input shape to process_sae_in: {sae_in.shape}")
+        # print(f"self.cfg.hook_name: {self.cfg.hook_name}")
+        # print(f"self.b_dec shape: {self.b_dec.shape}")
+        # print(f"Hook z reshaping mode: {getattr(self, 'hook_z_reshaping_mode', False)}")
+        
         sae_in = sae_in.to(self.dtype)
+        
+        # print(f"Shape before reshape_fn_in: {sae_in.shape}")
         sae_in = self.reshape_fn_in(sae_in)
+        # print(f"Shape after reshape_fn_in: {sae_in.shape}")
+        
         sae_in = self.hook_sae_input(sae_in)
         sae_in = self.run_time_activation_norm_fn_in(sae_in)
-        return sae_in - (self.b_dec * self.cfg.apply_b_dec_to_input)
+        
+        # Here's where the error happens
+        bias_term = self.b_dec * self.cfg.apply_b_dec_to_input
+        # print(f"Bias term shape: {bias_term.shape}")
+        
+        return sae_in - bias_term
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass through the SAE."""
@@ -264,7 +304,7 @@ class BaseSAE(HookedRootModule, ABC):
         self.W_enc.data = self.W_enc.data * W_dec_norms.T
         
         # Only update b_enc if it exists (standard/jumprelu architectures)
-        if hasattr(self, 'b_enc') and self.b_enc is not None:
+        if hasattr(self, 'b_enc') and isinstance(self.b_enc, nn.Parameter):
             self.b_enc.data = self.b_enc.data * W_dec_norms.squeeze()
 
 
@@ -307,7 +347,7 @@ class TrainingSAEConfig(SAEConfig):
             context_size=cfg.context_size,
             dataset_path=cfg.dataset_path,
             prepend_bos=cfg.prepend_bos,
-            seqpos_slice=cfg.seqpos_slice,
+            seqpos_slice=tuple(x for x in cfg.seqpos_slice if x is not None) if cfg.seqpos_slice is not None else None,
             # Training cfg
             l1_coefficient=cfg.l1_coefficient,
             lp_norm=cfg.lp_norm,
@@ -395,10 +435,15 @@ class TrainingSAEConfig(SAEConfig):
 class BaseTrainingSAE(BaseSAE, ABC):
     """Abstract base class for training versions of SAEs."""
     
-    cfg: TrainingSAEConfig
+    cfg: "TrainingSAEConfig"  # Quote marks make this a forward reference
     
     def __init__(self, cfg: TrainingSAEConfig, use_error_term: bool = False):
         super().__init__(cfg, use_error_term)
+        
+        # Turn off hook_z reshaping for training mode - the activation store
+        # is expected to handle reshaping before passing data to the SAE
+        self.turn_off_forward_pass_hook_z_reshaping()
+        
         self.mse_loss_fn = self._get_mse_loss_fn()
     
     @abstractmethod
@@ -409,7 +454,16 @@ class BaseTrainingSAE(BaseSAE, ABC):
         pass
     
     @abstractmethod
-    def calculate_aux_loss(self, **kwargs) -> torch.Tensor:
+    def calculate_aux_loss(
+        self, 
+        feature_acts: torch.Tensor,
+        hidden_pre: torch.Tensor,
+        dead_neuron_mask: Optional[torch.Tensor] = None,
+        current_l1_coefficient: Optional[float] = None,
+        sae_in: Optional[torch.Tensor] = None,
+        sae_out: Optional[torch.Tensor] = None,
+        **kwargs: Any
+    ) -> torch.Tensor:
         """Calculate architecture-specific auxiliary loss terms."""
         pass
     
