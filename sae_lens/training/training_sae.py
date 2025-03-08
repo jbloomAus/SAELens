@@ -204,55 +204,13 @@ class TrainingSAE(SAE):
     ) -> TrainStepOutput:
         """
         Forward to the internal implementation's training_forward_pass.
-        Ensures backward compatibility with test expectations by standardizing loss names.
+        No longer modifies loss keys for backward compatibility.
         """
-        result = self._sae.training_forward_pass(
+        return self._sae.training_forward_pass(
             sae_in=sae_in,
             current_l1_coefficient=current_l1_coefficient,
             dead_neuron_mask=dead_neuron_mask,
         )
-        
-        # Make sure dictionary has l1_loss for backward compatibility
-        # JumpReLU might use l0_loss, but tests expect l1_loss key
-        if "l1_loss" not in result.losses and "aux_loss" in result.losses:
-            result.losses["l1_loss"] = result.losses["aux_loss"]
-        
-        return result
-    
-    def calculate_ghost_grad_loss(
-        self,
-        x: torch.Tensor,
-        sae_out: torch.Tensor,
-        per_item_mse_loss: torch.Tensor,
-        hidden_pre: torch.Tensor,
-        dead_neuron_mask: torch.Tensor,
-    ) -> torch.Tensor:
-        """Calculate ghost gradient loss for Standard SAE architecture."""
-        if not isinstance(self._sae, StandardTrainingSAE):
-            raise TypeError("Ghost grad loss is only available for Standard SAEs")
-            
-        # Ghost grad calculation - replicated from the original implementation
-        # 1.
-        residual = x - sae_out
-        l2_norm_residual = torch.norm(residual, dim=-1)
-
-        # 2.
-        feature_acts_dead_neurons_only = torch.exp(hidden_pre[:, dead_neuron_mask])
-        ghost_out = feature_acts_dead_neurons_only @ self.W_dec[dead_neuron_mask, :]
-        l2_norm_ghost_out = torch.norm(ghost_out, dim=-1)
-        norm_scaling_factor = l2_norm_residual / (1e-6 + l2_norm_ghost_out * 2)
-        ghost_out = ghost_out * norm_scaling_factor[:, None].detach()
-
-        # 3. 
-        per_item_mse_loss_ghost_resid = self.mse_loss_fn(ghost_out, residual.detach())
-        mse_rescaling_factor = (
-            per_item_mse_loss / (per_item_mse_loss_ghost_resid + 1e-6)
-        ).detach()
-        per_item_mse_loss_ghost_resid = (
-            mse_rescaling_factor * per_item_mse_loss_ghost_resid
-        )
-
-        return per_item_mse_loss_ghost_resid.mean()
     
     # Forward additional properties/methods from the internal implementation
     @property

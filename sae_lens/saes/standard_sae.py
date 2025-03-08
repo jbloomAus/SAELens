@@ -158,16 +158,15 @@ class StandardTrainingSAE(BaseTrainingSAE):
         hidden_pre: torch.Tensor,
         dead_neuron_mask: Optional[torch.Tensor],
         current_l1_coefficient: float,
-        **kwargs: Any,  # Add this to accept extra parameters
-    ) -> torch.Tensor:
-        # The "standard" auxiliary loss is a sparsity penalty on the feature activations.
-        # Optionally, scale the activations by the norm of each decoder row.
+        **kwargs: Any,
+    ) -> dict[str, torch.Tensor]:
+        # The "standard" auxiliary loss is a sparsity penalty on the feature activations
         weighted_feature_acts = feature_acts
         if self.cfg.scale_sparsity_penalty_by_decoder_norm:
             weighted_feature_acts = feature_acts * self.W_dec.norm(dim=1)
         
-        # Compute the p-norm (set by cfg.lp_norm) over the feature dimension.
+        # Compute the p-norm (set by cfg.lp_norm) over the feature dimension
         sparsity = weighted_feature_acts.norm(p=self.cfg.lp_norm, dim=-1)
         l1_loss = (current_l1_coefficient * sparsity).mean()
         
-        return l1_loss
+        return {"l1_loss": l1_loss}

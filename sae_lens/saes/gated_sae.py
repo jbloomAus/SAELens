@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 from jaxtyping import Float
-from typing import Optional
+from typing import Optional, Any
 
 from sae_lens.saes.sae_base import BaseSAE, SAEConfig, BaseTrainingSAE, TrainingSAEConfig, TrainStepOutput
 
@@ -205,14 +205,10 @@ class GatedTrainingSAE(BaseTrainingSAE):
         self,
         feature_acts: torch.Tensor,
         hidden_pre: torch.Tensor,
+        dead_neuron_mask: Optional[torch.Tensor],
         current_l1_coefficient: float,
-        dead_neuron_mask: Optional[torch.Tensor] = None,
-        **kwargs
-    ) -> torch.Tensor:
-        """
-        Calculate auxiliary losses for gated architecture.
-        This should exactly match the logic in the original TrainingSAE class.
-        """
+        **kwargs: Any,
+    ) -> dict[str, torch.Tensor]:
         # Get the input tensor from kwargs
         sae_in = kwargs.get("sae_in")
         if sae_in is None:
@@ -235,8 +231,11 @@ class GatedTrainingSAE(BaseTrainingSAE):
         via_gate_reconstruction = pi_gate_act @ self.W_dec + self.b_dec
         aux_recon_loss = (via_gate_reconstruction - sae_in).pow(2).sum(dim=-1).mean()
 
-        # Return the total auxiliary loss
-        return l1_loss + aux_recon_loss
+        # Return both losses separately
+        return {
+            "l1_loss": l1_loss,
+            "auxiliary_reconstruction_loss": aux_recon_loss
+        }
 
     def training_forward_pass(
         self,
@@ -255,22 +254,22 @@ class GatedTrainingSAE(BaseTrainingSAE):
         mse_loss = per_item_mse_loss.sum(dim=-1).mean()
 
         # Calculate auxiliary losses, passing sae_in as a keyword argument
-        aux_loss = self.calculate_aux_loss(
+        aux_losses = self.calculate_aux_loss(
             feature_acts=feature_acts,
             hidden_pre=hidden_pre,
-            current_l1_coefficient=current_l1_coefficient,
             dead_neuron_mask=dead_neuron_mask,
+            current_l1_coefficient=current_l1_coefficient,
             sae_in=sae_in
         )
 
         # Total loss and losses dictionary
-        total_loss = mse_loss + aux_loss
+        total_loss = mse_loss + aux_losses["l1_loss"] + aux_losses["auxiliary_reconstruction_loss"]
         
         # Structure losses as in original implementation
         losses = {
             "mse_loss": mse_loss,
-            "l1_loss": aux_loss,  # For backward compatibility
-            "aux_loss": aux_loss   # For new standard
+            "l1_loss": aux_losses["l1_loss"],
+            "auxiliary_reconstruction_loss": aux_losses["auxiliary_reconstruction_loss"]
         }
 
         return TrainStepOutput(

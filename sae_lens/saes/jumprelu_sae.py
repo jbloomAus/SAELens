@@ -304,13 +304,13 @@ class JumpReLUTrainingSAE(BaseTrainingSAE):
         dead_neuron_mask: Optional[torch.Tensor],
         current_l1_coefficient: float,
         **kwargs: Any,
-    ) -> torch.Tensor:
+    ) -> dict[str, torch.Tensor]:
         """
         Calculate L0 penalty (number of units above threshold).
         """
         step_mask = (hidden_pre > self.threshold).to(feature_acts.dtype)
         l0_loss = (current_l1_coefficient * step_mask.sum(dim=-1)).mean()
-        return l0_loss
+        return {"l0_loss": l0_loss}
 
     @torch.no_grad()
     def fold_W_dec_norm(self):

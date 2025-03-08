@@ -192,41 +192,24 @@ class TopKTrainingSAE(BaseTrainingSAE):
         hidden_pre: torch.Tensor,
         dead_neuron_mask: Optional[torch.Tensor],
         current_l1_coefficient: float,
-        sae_in: torch.Tensor,
-        sae_out: torch.Tensor,
         **kwargs: Any,
-    ) -> torch.Tensor:
-        """
-        Calculate auxiliary loss for TopK SAE.
+    ) -> dict[str, torch.Tensor]:
+        # Get the input and output tensors from kwargs
+        sae_in = kwargs.get("sae_in")
+        sae_out = kwargs.get("sae_out")
         
-        For TopK SAEs, the auxiliary loss is the topk auxiliary reconstruction loss,
-        which encourages dead neurons to learn useful features.
-        """
-        # Standard L1 loss
-        weighted_feature_acts = feature_acts
-        if self.cfg.scale_sparsity_penalty_by_decoder_norm:
-            weighted_feature_acts = feature_acts * self.W_dec.norm(dim=1)
+        if sae_in is None or sae_out is None:
+            raise ValueError("sae_in and sae_out are required for TopK auxiliary loss calculation")
         
-        sparsity = weighted_feature_acts.norm(p=self.cfg.lp_norm, dim=-1)
-        l1_loss = (current_l1_coefficient * sparsity).mean()
+        # Calculate the auxiliary loss for dead neurons
+        topk_loss = self.calculate_topk_aux_loss(
+            sae_in=sae_in,
+            sae_out=sae_out,
+            hidden_pre=hidden_pre,
+            dead_neuron_mask=dead_neuron_mask,
+        )
         
-        # Calculate auxiliary reconstruction loss if dead neurons present
-        aux_recon_loss = torch.tensor(0.0, device=sae_in.device, dtype=sae_in.dtype)
-        if dead_neuron_mask is not None:
-            # ... topk specific implementation ...
-            # This should match the logic from the tests
-            k_aux = self.cfg.d_sae // 2  # Half the number of neurons
-            aux_acts = self._calculate_topk_aux_acts(k_aux, hidden_pre, dead_neuron_mask)
-            aux_out = aux_acts @ self.W_dec + self.b_dec
-            aux_recon_loss = ((aux_out - sae_in) ** 2).sum(dim=-1).mean()
-        
-        # Update the losses dictionary in the parent class
-        self.current_losses = {
-            "l1_loss": l1_loss,
-            "auxiliary_reconstruction_loss": aux_recon_loss,
-        }
-        
-        return l1_loss + aux_recon_loss
+        return {"topk_loss": topk_loss}
 
     def _get_activation_fn(self):
         if self.cfg.activation_fn == "topk":

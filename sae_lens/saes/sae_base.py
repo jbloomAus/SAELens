@@ -1,7 +1,7 @@
 """Base classes for Sparse Autoencoders (SAEs)."""
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, field, fields
 from typing import Any, Callable, Optional, Tuple, TypeVar
 import warnings
 
@@ -38,9 +38,10 @@ class SAEConfig:
     dataset_path: Optional[str]
     dataset_trust_remote_code: bool
     sae_lens_training_version: str
-    model_from_pretrained_kwargs: dict[str, Any]
-    seqpos_slice: Optional[tuple[int, ...]]
-    prepend_bos: bool
+    model_from_pretrained_kwargs: dict[str, Any] = field(default_factory=dict)
+    seqpos_slice: Optional[tuple[int, ...]] = None
+    prepend_bos: bool = False
+    neuronpedia_id: Optional[str] = None
 
     def to_dict(self) -> dict[str, Any]:
         return {field.name: getattr(self, field.name) for field in fields(self)}
@@ -429,6 +430,9 @@ class TrainingSAEConfig(SAEConfig):
             "dataset_path": self.dataset_path,
             "dataset_trust_remote_code": self.dataset_trust_remote_code,
             "sae_lens_training_version": self.sae_lens_training_version,
+            "model_from_pretrained_kwargs": self.model_from_pretrained_kwargs,
+            "seqpos_slice": self.seqpos_slice,
+            "neuronpedia_id": self.neuronpedia_id,
         }
 
 
@@ -481,8 +485,8 @@ class BaseTrainingSAE(BaseSAE, ABC):
         per_item_mse_loss = self.mse_loss_fn(sae_out, sae_in)
         mse_loss = per_item_mse_loss.sum(dim=-1).mean()
         
-        # Calculate auxiliary losses
-        aux_loss = self.calculate_aux_loss(
+        # Calculate architecture-specific auxiliary losses
+        aux_losses = self.calculate_aux_loss(
             feature_acts=feature_acts,
             hidden_pre=hidden_pre,
             dead_neuron_mask=dead_neuron_mask,
@@ -491,22 +495,25 @@ class BaseTrainingSAE(BaseSAE, ABC):
             sae_out=sae_out,
         )
         
-        losses = {
-            "mse_loss": mse_loss,
-            "aux_loss": aux_loss,
-        }
+        # Total loss is MSE plus all auxiliary losses
+        total_loss = mse_loss
         
-        # For backward compatibility, also provide l1_loss key
-        # This ensures tests that expect l1_loss will pass
-        if self.cfg.architecture in ["standard", "jumprelu"]:
-            losses["l1_loss"] = aux_loss
+        # Create losses dictionary with mse_loss
+        losses = {"mse_loss": mse_loss}
+        
+        # Add architecture-specific losses to the dictionary
+        losses.update(aux_losses)
+        
+        # Sum all losses for total_loss
+        for loss_name, loss_value in aux_losses.items():
+            total_loss = total_loss + loss_value
         
         return TrainStepOutput(
             sae_in=sae_in,
             sae_out=sae_out,
             feature_acts=feature_acts,
             hidden_pre=hidden_pre,
-            loss=mse_loss + aux_loss,
+            loss=total_loss,
             losses=losses,
         )
     
