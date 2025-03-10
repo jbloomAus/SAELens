@@ -1,5 +1,5 @@
-from sae_lens.sae import SAE
 from sae_lens.loading.pretrained_sae_loaders import SAEConfigLoadOptions, get_sae_config
+from sae_lens.sae import SAE
 
 
 def test_get_sae_config_sae_lens():
@@ -177,4 +177,21 @@ def test_get_sae_config_matches_from_pretrained():
         options=SAEConfigLoadOptions(device="cpu"),
     )
 
-    assert direct_sae_cfg == from_pretrained_cfg_dict
+    # Apply the same renaming that happens in SAE.from_pretrained
+    renamed_direct_sae_cfg = {}
+    rename_map = {
+        "hook_point": "hook_name",
+        "hook_point_layer": "hook_layer",
+        "hook_point_head_index": "hook_head_index",
+    }
+
+    for k, v in direct_sae_cfg.items():
+        renamed_direct_sae_cfg[rename_map.get(k, k)] = v
+
+    # Add default values that SAE.from_pretrained adds
+    if "activation_fn_kwargs" not in renamed_direct_sae_cfg:
+        renamed_direct_sae_cfg["activation_fn_kwargs"] = {}
+    if "seqpos_slice" not in renamed_direct_sae_cfg:
+        renamed_direct_sae_cfg["seqpos_slice"] = None
+
+    assert renamed_direct_sae_cfg == from_pretrained_cfg_dict

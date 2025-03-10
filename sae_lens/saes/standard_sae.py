@@ -1,12 +1,10 @@
+from typing import Any, Optional, Tuple
+
 import torch
-from torch import nn
-from typing import Tuple, Optional, Any
 from jaxtyping import Float
+from torch import nn
 
-from sae_lens.saes.sae_base import BaseSAE
-from sae_lens.saes.sae_base import SAEConfig
-
-from sae_lens.saes.sae_base import BaseTrainingSAE
+from sae_lens.saes.sae_base import BaseSAE, BaseTrainingSAE, SAEConfig
 
 
 class StandardSAE(BaseSAE):
@@ -18,10 +16,11 @@ class StandardSAE(BaseSAE):
       - initialize_weights: sets up simple parameter initializations for W_enc, b_enc, W_dec, and b_dec.
       - encode: computes the feature activations from an input.
       - decode: reconstructs the input from the feature activations.
-      
+
     The BaseSAE.forward() method automatically calls encode and decode,
     including any error-term processing if configured.
     """
+
     def __init__(self, cfg: SAEConfig, use_error_term: bool = False):
         super().__init__(cfg, use_error_term)
 
@@ -48,7 +47,9 @@ class StandardSAE(BaseSAE):
         nn.init.kaiming_uniform_(w_dec_data)
         self.W_dec = nn.Parameter(w_dec_data)
 
-    def encode(self, x: Float[torch.Tensor, "... d_in"]) -> Float[torch.Tensor, "... d_sae"]:
+    def encode(
+        self, x: Float[torch.Tensor, "... d_in"]
+    ) -> Float[torch.Tensor, "... d_sae"]:
         """
         Encode the input tensor into the feature space.
         For inference, no noise is added.
@@ -58,10 +59,11 @@ class StandardSAE(BaseSAE):
         # Compute the pre-activation values
         hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
         # Apply the activation function (e.g., ReLU, tanh-relu, depending on config)
-        feature_acts = self.hook_sae_acts_post(self.activation_fn(hidden_pre))
-        return feature_acts
+        return self.hook_sae_acts_post(self.activation_fn(hidden_pre))
 
-    def decode(self, feature_acts: Float[torch.Tensor, "... d_sae"]) -> Float[torch.Tensor, "... d_in"]:
+    def decode(
+        self, feature_acts: Float[torch.Tensor, "... d_sae"]
+    ) -> Float[torch.Tensor, "... d_in"]:
         """
         Decode the feature activations back to the input space.
         Now, if hook_z reshaping is turned on, we reverse the flattening.
@@ -93,11 +95,11 @@ class StandardTrainingSAE(BaseTrainingSAE):
         # Basic init
         # In Python MRO, this calls StandardSAE.initialize_weights()
         StandardSAE.initialize_weights(self)
-        
+
         # Complex init logic from original TrainingSAE
         if self.cfg.decoder_orthogonal_init:
             self.W_dec.data = nn.init.orthogonal_(self.W_dec.data.T).T
-            
+
         elif self.cfg.decoder_heuristic_init:
             self.W_dec.data = torch.rand(  # Changed from Parameter to data assignment
                 self.cfg.d_sae, self.cfg.d_in, dtype=self.dtype, device=self.device
@@ -119,13 +121,17 @@ class StandardTrainingSAE(BaseTrainingSAE):
     @torch.no_grad()
     def set_decoder_norm_to_unit_norm(self):
         self.W_dec.data /= torch.norm(self.W_dec.data, dim=1, keepdim=True)  # type: ignore
-        
-    def encode(self, x: Float[torch.Tensor, "... d_in"]) -> Float[torch.Tensor, "... d_sae"]:
+
+    def encode(
+        self, x: Float[torch.Tensor, "... d_in"]
+    ) -> Float[torch.Tensor, "... d_sae"]:
         # For inference, simply compute feature activations (dropping the pre-activation values)
         feature_acts, _ = self.encode_with_hidden_pre(x)
         return feature_acts
 
-    def decode(self, feature_acts: Float[torch.Tensor, "... d_sae"]) -> Float[torch.Tensor, "... d_in"]:
+    def decode(
+        self, feature_acts: Float[torch.Tensor, "... d_sae"]
+    ) -> Float[torch.Tensor, "... d_in"]:
         """
         Decode the feature activations (with the same hooking and normalization as the old SAE).
         Applies hook_z reshaping if enabled.
@@ -145,7 +151,9 @@ class StandardTrainingSAE(BaseTrainingSAE):
         hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)  # type: ignore
         # Add noise during training for robustness (scaled by noise_scale from the configuration)
         if self.training:
-            hidden_pre_noised = hidden_pre + torch.randn_like(hidden_pre) * self.cfg.noise_scale
+            hidden_pre_noised = (
+                hidden_pre + torch.randn_like(hidden_pre) * self.cfg.noise_scale
+            )
         else:
             hidden_pre_noised = hidden_pre
         # Apply the activation function (and any post-activation hook)
@@ -164,9 +172,9 @@ class StandardTrainingSAE(BaseTrainingSAE):
         weighted_feature_acts = feature_acts
         if self.cfg.scale_sparsity_penalty_by_decoder_norm:
             weighted_feature_acts = feature_acts * self.W_dec.norm(dim=1)
-        
+
         # Compute the p-norm (set by cfg.lp_norm) over the feature dimension
         sparsity = weighted_feature_acts.norm(p=self.cfg.lp_norm, dim=-1)
         l1_loss = (current_l1_coefficient * sparsity).mean()
-        
+
         return {"l1_loss": l1_loss}

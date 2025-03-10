@@ -27,7 +27,6 @@ def test_SparseAutoencoder_from_pretrained_loads_from_hugginface_using_shorthand
         for k in f.keys():  # noqa: SIM118
             state_dict[k] = f.get_tensor(k)
 
-
     assert isinstance(sae, SAE)
     assert sae.cfg.model_name == "gpt2-small"
     assert sae.cfg.hook_name == "blocks.0.hook_resid_pre"

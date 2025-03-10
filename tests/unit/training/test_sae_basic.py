@@ -422,8 +422,6 @@ def test_sae_jumprelu_forward(use_error_term: bool):
     # if we use error term, we should always get the same output as what we put in
     expected_output = sae_in if use_error_term else expected_recons
     out, cache = sae.run_with_cache(sae_in)
-    print("Jumprelu cache:")
-    print(cache)
     assert torch.allclose(out, expected_output)
     assert torch.allclose(cache["hook_sae_input"], sae_in)
     assert torch.allclose(cache["hook_sae_output"], out)

@@ -1,9 +1,17 @@
-import torch
-from torch import nn
-from jaxtyping import Float
-from typing import Optional, Any
+from typing import Any, Optional
 
-from sae_lens.saes.sae_base import BaseSAE, SAEConfig, BaseTrainingSAE, TrainingSAEConfig, TrainStepOutput
+import torch
+from jaxtyping import Float
+from torch import nn
+
+from sae_lens.saes.sae_base import (
+    BaseSAE,
+    BaseTrainingSAE,
+    SAEConfig,
+    TrainingSAEConfig,
+    TrainStepOutput,
+)
+
 
 class GatedSAE(BaseSAE):
     """
@@ -54,7 +62,9 @@ class GatedSAE(BaseSAE):
         # after defining b_gate, b_mag, etc.:
         self.b_enc = None
 
-    def encode(self, x: Float[torch.Tensor, "... d_in"]) -> Float[torch.Tensor, "... d_sae"]:
+    def encode(
+        self, x: Float[torch.Tensor, "... d_in"]
+    ) -> Float[torch.Tensor, "... d_sae"]:
         """
         Encode the input tensor into the feature space using a gated encoder.
         This must match the original encode_gated implementation from SAE class.
@@ -75,7 +85,9 @@ class GatedSAE(BaseSAE):
         # Combine gating and magnitudes
         return self.hook_sae_acts_post(active_features * feature_magnitudes)
 
-    def decode(self, feature_acts: Float[torch.Tensor, "... d_sae"]) -> Float[torch.Tensor, "... d_in"]:
+    def decode(
+        self, feature_acts: Float[torch.Tensor, "... d_sae"]
+    ) -> Float[torch.Tensor, "... d_in"]:
         """
         Decode the feature activations back into the input space:
           1) Apply optional finetuning scaling.
@@ -99,7 +111,7 @@ class GatedSAE(BaseSAE):
         W_dec_norms = self.W_dec.norm(dim=-1).unsqueeze(1)
         self.W_dec.data = self.W_dec.data / W_dec_norms
         self.W_enc.data = self.W_enc.data * W_dec_norms.T
-        
+
         # Gated-specific parameters need special handling
         self.r_mag.data = self.r_mag.data * W_dec_norms.squeeze()
         self.b_gate.data = self.b_gate.data * W_dec_norms.squeeze()
@@ -109,12 +121,13 @@ class GatedSAE(BaseSAE):
     def set_decoder_norm_to_unit_norm(self):
         """Normalize decoder columns to unit norm."""
         self.W_dec.data /= torch.norm(self.W_dec.data, dim=1, keepdim=True)
-        
+
     @torch.no_grad()
     def initialize_decoder_norm_constant_norm(self, norm: float = 0.1):
         """Initialize decoder with constant norm."""
         self.W_dec.data /= torch.norm(self.W_dec.data, dim=1, keepdim=True)
         self.W_dec.data *= norm
+
 
 class GatedTrainingSAE(BaseTrainingSAE):
     """
@@ -130,7 +143,9 @@ class GatedTrainingSAE(BaseTrainingSAE):
 
     def __init__(self, cfg: TrainingSAEConfig, use_error_term: bool = False):
         if use_error_term:
-            raise ValueError("GatedSAE does not support `use_error_term`. Please set `use_error_term=False`.")
+            raise ValueError(
+                "GatedSAE does not support `use_error_term`. Please set `use_error_term=False`."
+            )
         super().__init__(cfg, use_error_term)
         # Also ensure no b_enc for the training version
         self.b_enc = None
@@ -156,12 +171,16 @@ class GatedTrainingSAE(BaseTrainingSAE):
         # after finishing:
         self.b_enc = None
 
-    def encode(self, x: Float[torch.Tensor, "... d_in"]) -> Float[torch.Tensor, "... d_sae"]:
+    def encode(
+        self, x: Float[torch.Tensor, "... d_in"]
+    ) -> Float[torch.Tensor, "... d_sae"]:
         # For inference usage, just compute the feature activations
         features, _ = self.encode_with_hidden_pre(x)
         return features
 
-    def decode(self, feature_acts: Float[torch.Tensor, "... d_sae"]) -> Float[torch.Tensor, "... d_in"]:
+    def decode(
+        self, feature_acts: Float[torch.Tensor, "... d_sae"]
+    ) -> Float[torch.Tensor, "... d_in"]:
         """
         Decode feature activations to input space, with hooking + optional scaling.
         Matches GatedSAE.decode but includes any training logic if needed.
@@ -213,7 +232,7 @@ class GatedTrainingSAE(BaseTrainingSAE):
         sae_in = kwargs.get("sae_in")
         if sae_in is None:
             raise ValueError("sae_in is required for gated auxiliary loss calculation")
-        
+
         # Re-center the input if apply_b_dec_to_input is set
         sae_in_centered = sae_in - (self.b_dec * self.cfg.apply_b_dec_to_input)
 
@@ -232,10 +251,7 @@ class GatedTrainingSAE(BaseTrainingSAE):
         aux_recon_loss = (via_gate_reconstruction - sae_in).pow(2).sum(dim=-1).mean()
 
         # Return both losses separately
-        return {
-            "l1_loss": l1_loss,
-            "auxiliary_reconstruction_loss": aux_recon_loss
-        }
+        return {"l1_loss": l1_loss, "auxiliary_reconstruction_loss": aux_recon_loss}
 
     def training_forward_pass(
         self,
@@ -259,17 +275,23 @@ class GatedTrainingSAE(BaseTrainingSAE):
             hidden_pre=hidden_pre,
             dead_neuron_mask=dead_neuron_mask,
             current_l1_coefficient=current_l1_coefficient,
-            sae_in=sae_in
+            sae_in=sae_in,
         )
 
         # Total loss and losses dictionary
-        total_loss = mse_loss + aux_losses["l1_loss"] + aux_losses["auxiliary_reconstruction_loss"]
-        
+        total_loss = (
+            mse_loss
+            + aux_losses["l1_loss"]
+            + aux_losses["auxiliary_reconstruction_loss"]
+        )
+
         # Structure losses as in original implementation
         losses = {
             "mse_loss": mse_loss,
             "l1_loss": aux_losses["l1_loss"],
-            "auxiliary_reconstruction_loss": aux_losses["auxiliary_reconstruction_loss"]
+            "auxiliary_reconstruction_loss": aux_losses[
+                "auxiliary_reconstruction_loss"
+            ],
         }
 
         return TrainStepOutput(
@@ -285,7 +307,7 @@ class GatedTrainingSAE(BaseTrainingSAE):
     def set_decoder_norm_to_unit_norm(self):
         """Set decoder norms to unit norm"""
         self.W_dec.data /= torch.norm(self.W_dec.data, dim=1, keepdim=True)
-    
+
     @torch.no_grad()
     def initialize_decoder_norm_constant_norm(self, norm: float = 0.1):
         """Initialize decoder with constant norm"""

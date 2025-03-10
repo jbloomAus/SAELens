@@ -1,18 +1,18 @@
 """Base classes for Sparse Autoencoders (SAEs)."""
 
+import warnings
 from abc import ABC, abstractmethod
+from contextlib import contextmanager
 from dataclasses import dataclass, field, fields
 from typing import Any, Callable, Optional, Tuple, TypeVar
-import warnings
 
 import einops
 import torch
 from jaxtyping import Float
 from torch import nn
 from transformer_lens.hook_points import HookedRootModule, HookPoint
-from contextlib import contextmanager
-from sae_lens.config import DTYPE_MAP
-from sae_lens.config import LanguageModelSAERunnerConfig
+
+from sae_lens.config import DTYPE_MAP, LanguageModelSAERunnerConfig
 
 T = TypeVar("T", bound="BaseSAE")
 
@@ -20,6 +20,7 @@ T = TypeVar("T", bound="BaseSAE")
 @dataclass
 class SAEConfig:
     """Base configuration for SAE models."""
+
     architecture: str
     d_in: int
     d_sae: int
@@ -52,17 +53,22 @@ class SAEConfig:
         valid_config_dict = {
             key: val for key, val in config_dict.items() if key in valid_field_names
         }
-        
+
         # Ensure seqpos_slice is a tuple
-        if "seqpos_slice" in valid_config_dict and valid_config_dict["seqpos_slice"] is not None:
-            if isinstance(valid_config_dict["seqpos_slice"], list):
-                valid_config_dict["seqpos_slice"] = tuple(valid_config_dict["seqpos_slice"])
-        
+        if (
+            "seqpos_slice" in valid_config_dict
+            and valid_config_dict["seqpos_slice"] is not None
+            and isinstance(valid_config_dict["seqpos_slice"], list)
+        ):
+            valid_config_dict["seqpos_slice"] = tuple(valid_config_dict["seqpos_slice"])
+
         return cls(**valid_config_dict)
+
 
 @dataclass
 class TrainStepOutput:
     """Output from a training step."""
+
     sae_in: torch.Tensor
     sae_out: torch.Tensor
     feature_acts: torch.Tensor
@@ -70,33 +76,34 @@ class TrainStepOutput:
     loss: torch.Tensor  # we need to call backwards on this
     losses: dict[str, torch.Tensor]
 
+
 class BaseSAE(HookedRootModule, ABC):
     """Abstract base class for all SAE architectures."""
-    
+
     cfg: SAEConfig
     dtype: torch.dtype
     device: torch.device
     use_error_term: bool
-    
+
     # For type checking only - don't provide default values
     # These will be initialized by subclasses
     W_enc: nn.Parameter
     W_dec: nn.Parameter
     b_dec: nn.Parameter
-    
+
     # Architecture-specific parameters that may be present depending on subclass
     # Don't provide default values here
     # b_enc: Optional[nn.Parameter]
     b_gate: Optional[nn.Parameter]
     b_mag: Optional[nn.Parameter]
     r_mag: Optional[nn.Parameter]
-    
+
     def __init__(self, cfg: SAEConfig, use_error_term: bool = False):
         """Initialize the SAE."""
         super().__init__()
-        
+
         self.cfg = cfg
-        
+
         if cfg.model_from_pretrained_kwargs:
             warnings.warn(
                 "\nThis SAE has non-empty model_from_pretrained_kwargs. "
@@ -109,10 +116,10 @@ class BaseSAE(HookedRootModule, ABC):
         self.dtype = DTYPE_MAP[cfg.dtype]
         self.device = torch.device(cfg.device)
         self.use_error_term = use_error_term
-        
+
         # Set up activation function
         self.activation_fn = self._get_activation_fn()
-        
+
         # Initialize weights
         self.initialize_weights()
 
@@ -123,7 +130,7 @@ class BaseSAE(HookedRootModule, ABC):
             )
         else:
             self.apply_finetuning_scaling_factor = lambda x: x
-        
+
         # Set up hooks
         self.hook_sae_input = HookPoint()
         self.hook_sae_acts_pre = HookPoint()
@@ -139,51 +146,58 @@ class BaseSAE(HookedRootModule, ABC):
         else:
             # print(f"No hook_z reshaping needed for {self.cfg.hook_name}")
             self.turn_off_forward_pass_hook_z_reshaping()
-        
+
         # Set up activation normalization
         self._setup_activation_normalization()
-        
+
         self.setup()  # Required for HookedRootModule
-    
+
     @torch.no_grad()
     def fold_activation_norm_scaling_factor(self, scaling_factor: float):
         self.W_enc.data *= scaling_factor  # type: ignore
         self.W_dec.data /= scaling_factor  # type: ignore
         self.b_dec.data /= scaling_factor  # type: ignore
         self.cfg.normalize_activations = "none"
-    
+
     def _get_activation_fn(self) -> Callable[[torch.Tensor], torch.Tensor]:
         """Get the activation function specified in config."""
-        return self._get_activation_fn_static(self.cfg.activation_fn, **(self.cfg.activation_fn_kwargs or {}))
+        return self._get_activation_fn_static(
+            self.cfg.activation_fn, **(self.cfg.activation_fn_kwargs or {})
+        )
 
     @staticmethod
-    def _get_activation_fn_static(activation_fn: str, **kwargs: Any) -> Callable[[torch.Tensor], torch.Tensor]:
+    def _get_activation_fn_static(
+        activation_fn: str, **kwargs: Any
+    ) -> Callable[[torch.Tensor], torch.Tensor]:
         """Get the activation function from a string specification."""
         if activation_fn == "relu":
             return torch.nn.ReLU()
-        elif activation_fn == "tanh-relu":
+        if activation_fn == "tanh-relu":
+
             def tanh_relu(input: torch.Tensor) -> torch.Tensor:
                 input = torch.relu(input)
                 return torch.tanh(input)
+
             return tanh_relu
-        elif activation_fn == "topk":
+        if activation_fn == "topk":
             if "k" not in kwargs:
                 raise ValueError("TopK activation function requires a k value.")
             k = kwargs.get("k", 1)  # Default k to 1 if not provided
-            
+
             def topk_fn(x: torch.Tensor) -> torch.Tensor:
                 topk = torch.topk(x.flatten(start_dim=-1), k=k, dim=-1)
                 values = torch.relu(topk.values)
                 result = torch.zeros_like(x.flatten(start_dim=-1))
                 result.scatter_(-1, topk.indices, values)
                 return result.view_as(x)
-            
+
             return topk_fn
         raise ValueError(f"Unknown activation function: {activation_fn}")
-    
+
     def _setup_activation_normalization(self):
         """Set up activation normalization functions based on config."""
         if self.cfg.normalize_activations == "constant_norm_rescale":
+
             def run_time_activation_norm_fn_in(x: torch.Tensor) -> torch.Tensor:
                 self.x_norm_coeff = (self.cfg.d_in**0.5) / x.norm(dim=-1, keepdim=True)
                 return x * self.x_norm_coeff
@@ -195,9 +209,12 @@ class BaseSAE(HookedRootModule, ABC):
 
             self.run_time_activation_norm_fn_in = run_time_activation_norm_fn_in
             self.run_time_activation_norm_fn_out = run_time_activation_norm_fn_out
-            
+
         elif self.cfg.normalize_activations == "layer_norm":
-            def run_time_activation_ln_in(x: torch.Tensor, eps: float = 1e-5) -> torch.Tensor:
+
+            def run_time_activation_ln_in(
+                x: torch.Tensor, eps: float = 1e-5
+            ) -> torch.Tensor:
                 mu = x.mean(dim=-1, keepdim=True)
                 x = x - mu
                 std = x.std(dim=-1, keepdim=True)
@@ -206,7 +223,10 @@ class BaseSAE(HookedRootModule, ABC):
                 self.ln_std = std
                 return x
 
-            def run_time_activation_ln_out(x: torch.Tensor, eps: float = 1e-5) -> torch.Tensor:  # noqa: ARG001
+            def run_time_activation_ln_out(
+                x: torch.Tensor,
+                eps: float = 1e-5,  # noqa: ARG001
+            ) -> torch.Tensor:
                 return x * self.ln_std + self.ln_mu  # type: ignore
 
             self.run_time_activation_norm_fn_in = run_time_activation_ln_in
@@ -214,28 +234,32 @@ class BaseSAE(HookedRootModule, ABC):
         else:
             self.run_time_activation_norm_fn_in = lambda x: x
             self.run_time_activation_norm_fn_out = lambda x: x
-    
+
     @abstractmethod
     def initialize_weights(self):
         """Initialize model weights."""
         pass
-    
+
     @abstractmethod
-    def encode(self, x: Float[torch.Tensor, "... d_in"]) -> Float[torch.Tensor, "... d_sae"]:
+    def encode(
+        self, x: Float[torch.Tensor, "... d_in"]
+    ) -> Float[torch.Tensor, "... d_sae"]:
         """Encode input tensor to feature space."""
         pass
-    
+
     @abstractmethod
-    def decode(self, feature_acts: Float[torch.Tensor, "... d_sae"]) -> Float[torch.Tensor, "... d_in"]:
+    def decode(
+        self, feature_acts: Float[torch.Tensor, "... d_sae"]
+    ) -> Float[torch.Tensor, "... d_in"]:
         """Decode feature activations back to input space."""
         pass
-    
+
     def turn_on_forward_pass_hook_z_reshaping(self):
         if not self.cfg.hook_name.endswith("_z"):
             raise ValueError("This method should only be called for hook_z SAEs.")
 
         # print(f"Turning on hook_z reshaping for {self.cfg.hook_name}")
-        
+
         def reshape_fn_in(x: torch.Tensor):
             # print(f"reshape_fn_in input shape: {x.shape}")
             self.d_head = x.shape[-1]
@@ -243,9 +267,7 @@ class BaseSAE(HookedRootModule, ABC):
             self.reshape_fn_in = lambda x: einops.rearrange(
                 x, "... n_heads d_head -> ... (n_heads d_head)"
             )
-            reshaped = einops.rearrange(x, "... n_heads d_head -> ... (n_heads d_head)")
-            # print(f"reshape_fn_in output shape: {reshaped.shape}")
-            return reshaped
+            return einops.rearrange(x, "... n_heads d_head -> ... (n_heads d_head)")
 
         self.reshape_fn_in = reshape_fn_in
         self.reshape_fn_out = lambda x, d_head: einops.rearrange(
@@ -259,33 +281,35 @@ class BaseSAE(HookedRootModule, ABC):
         self.reshape_fn_out = lambda x, d_head: x  # noqa: ARG005
         self.d_head = None
         self.hook_z_reshaping_mode = False
-    
-    def process_sae_in(self, sae_in: Float[torch.Tensor, "... d_in"]) -> Float[torch.Tensor, "... d_in"]:
+
+    def process_sae_in(
+        self, sae_in: Float[torch.Tensor, "... d_in"]
+    ) -> Float[torch.Tensor, "... d_in"]:
         # print(f"Input shape to process_sae_in: {sae_in.shape}")
         # print(f"self.cfg.hook_name: {self.cfg.hook_name}")
         # print(f"self.b_dec shape: {self.b_dec.shape}")
         # print(f"Hook z reshaping mode: {getattr(self, 'hook_z_reshaping_mode', False)}")
-        
+
         sae_in = sae_in.to(self.dtype)
-        
+
         # print(f"Shape before reshape_fn_in: {sae_in.shape}")
         sae_in = self.reshape_fn_in(sae_in)
         # print(f"Shape after reshape_fn_in: {sae_in.shape}")
-        
+
         sae_in = self.hook_sae_input(sae_in)
         sae_in = self.run_time_activation_norm_fn_in(sae_in)
-        
+
         # Here's where the error happens
         bias_term = self.b_dec * self.cfg.apply_b_dec_to_input
         # print(f"Bias term shape: {bias_term.shape}")
-        
+
         return sae_in - bias_term
-    
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass through the SAE."""
         feature_acts = self.encode(x)
         sae_out = self.decode(feature_acts)
-        
+
         if self.use_error_term:
             with torch.no_grad():
                 # Recompute without hooks for true error term
@@ -294,18 +318,18 @@ class BaseSAE(HookedRootModule, ABC):
                     x_reconstruct_clean = self.decode(feature_acts_clean)
                 sae_error = self.hook_sae_error(x - x_reconstruct_clean)
             sae_out = sae_out + sae_error
-            
+
         return self.hook_sae_output(sae_out)
-    
+
     @torch.no_grad()
     def fold_W_dec_norm(self):
         """Fold decoder norms into encoder."""
         W_dec_norms = self.W_dec.norm(dim=-1).unsqueeze(1)
         self.W_dec.data = self.W_dec.data / W_dec_norms
         self.W_enc.data = self.W_enc.data * W_dec_norms.T
-        
+
         # Only update b_enc if it exists (standard/jumprelu architectures)
-        if hasattr(self, 'b_enc') and isinstance(self.b_enc, nn.Parameter):
+        if hasattr(self, "b_enc") and isinstance(self.b_enc, nn.Parameter):
             self.b_enc.data = self.b_enc.data * W_dec_norms.squeeze()
 
 
@@ -348,7 +372,9 @@ class TrainingSAEConfig(SAEConfig):
             context_size=cfg.context_size,
             dataset_path=cfg.dataset_path,
             prepend_bos=cfg.prepend_bos,
-            seqpos_slice=tuple(x for x in cfg.seqpos_slice if x is not None) if cfg.seqpos_slice is not None else None,
+            seqpos_slice=tuple(x for x in cfg.seqpos_slice if x is not None)
+            if cfg.seqpos_slice is not None
+            else None,
             # Training cfg
             l1_coefficient=cfg.l1_coefficient,
             lp_norm=cfg.lp_norm,
@@ -438,39 +464,39 @@ class TrainingSAEConfig(SAEConfig):
 
 class BaseTrainingSAE(BaseSAE, ABC):
     """Abstract base class for training versions of SAEs."""
-    
+
     cfg: "TrainingSAEConfig"  # Quote marks make this a forward reference
-    
+
     def __init__(self, cfg: TrainingSAEConfig, use_error_term: bool = False):
         super().__init__(cfg, use_error_term)
-        
+
         # Turn off hook_z reshaping for training mode - the activation store
         # is expected to handle reshaping before passing data to the SAE
         self.turn_off_forward_pass_hook_z_reshaping()
-        
+
         self.mse_loss_fn = self._get_mse_loss_fn()
-    
+
     @abstractmethod
     def encode_with_hidden_pre(
         self, x: Float[torch.Tensor, "... d_in"]
     ) -> Tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
         """Encode with access to pre-activation values for training."""
         pass
-    
+
     @abstractmethod
     def calculate_aux_loss(
-        self, 
+        self,
         feature_acts: torch.Tensor,
         hidden_pre: torch.Tensor,
         dead_neuron_mask: Optional[torch.Tensor] = None,
         current_l1_coefficient: Optional[float] = None,
         sae_in: Optional[torch.Tensor] = None,
         sae_out: Optional[torch.Tensor] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> torch.Tensor:
         """Calculate architecture-specific auxiliary loss terms."""
         pass
-    
+
     def training_forward_pass(
         self,
         sae_in: torch.Tensor,
@@ -480,11 +506,11 @@ class BaseTrainingSAE(BaseSAE, ABC):
         """Forward pass during training."""
         feature_acts, hidden_pre = self.encode_with_hidden_pre(sae_in)
         sae_out = self.decode(feature_acts)
-        
+
         # Calculate MSE loss
         per_item_mse_loss = self.mse_loss_fn(sae_out, sae_in)
         mse_loss = per_item_mse_loss.sum(dim=-1).mean()
-        
+
         # Calculate architecture-specific auxiliary losses
         aux_losses = self.calculate_aux_loss(
             feature_acts=feature_acts,
@@ -494,18 +520,18 @@ class BaseTrainingSAE(BaseSAE, ABC):
             sae_in=sae_in,
             sae_out=sae_out,
         )
-        
+
         # Total loss is MSE plus all auxiliary losses
         total_loss = mse_loss
-        
+
         # Create losses dictionary with mse_loss
         losses = {"mse_loss": mse_loss}
-        
+
         # Add architecture-specific losses to the dictionary
         # Make sure aux_losses is a dictionary with string keys and tensor values
         if isinstance(aux_losses, dict):
             losses.update(aux_losses)
-        
+
         # Sum all losses for total_loss
         if isinstance(aux_losses, dict):
             for loss_value in aux_losses.values():
@@ -513,7 +539,7 @@ class BaseTrainingSAE(BaseSAE, ABC):
         else:
             # Handle case where aux_losses is a tensor
             total_loss = total_loss + aux_losses
-        
+
         return TrainStepOutput(
             sae_in=sae_in,
             sae_out=sae_out,
@@ -522,16 +548,23 @@ class BaseTrainingSAE(BaseSAE, ABC):
             loss=total_loss,
             losses=losses,
         )
-    
+
     def _get_mse_loss_fn(self) -> Callable[[torch.Tensor, torch.Tensor], torch.Tensor]:
         """Get the MSE loss function based on config."""
-        def standard_mse_loss_fn(preds: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+
+        def standard_mse_loss_fn(
+            preds: torch.Tensor, target: torch.Tensor
+        ) -> torch.Tensor:
             return torch.nn.functional.mse_loss(preds, target, reduction="none")
 
-        def batch_norm_mse_loss_fn(preds: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        def batch_norm_mse_loss_fn(
+            preds: torch.Tensor, target: torch.Tensor
+        ) -> torch.Tensor:
             target_centered = target - target.mean(dim=0, keepdim=True)
             normalization = target_centered.norm(dim=-1, keepdim=True)
-            return torch.nn.functional.mse_loss(preds, target, reduction="none") / (normalization + 1e-6)
+            return torch.nn.functional.mse_loss(preds, target, reduction="none") / (
+                normalization + 1e-6
+            )
 
         if self.cfg.mse_loss_normalization == "dense_batch":
             return batch_norm_mse_loss_fn

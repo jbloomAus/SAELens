@@ -1,18 +1,20 @@
 """Inference-only TopKSAE variant, similar in spirit to StandardSAE but using a TopK-based activation."""
 
-import torch
-from torch import nn
-from jaxtyping import Float
-from typing import Callable, Any, Optional
+from typing import Any, Callable, Optional
 
-from sae_lens.saes.sae_base import BaseSAE, SAEConfig
-from sae_lens.saes.sae_base import BaseTrainingSAE, TrainStepOutput
+import torch
+from jaxtyping import Float
+from torch import nn
+
+from sae_lens.saes.sae_base import BaseSAE, BaseTrainingSAE, SAEConfig, TrainStepOutput
+
 
 class TopK(nn.Module):
     """
     A simple TopK activation that zeroes out all but the top K elements along the last dimension,
     then optionally applies a post-activation function (e.g., ReLU).
     """
+
     def __init__(
         self,
         k: int,
@@ -80,7 +82,9 @@ class TopKSAE(BaseSAE):
         nn.init.kaiming_uniform_(w_dec_data)
         self.W_dec = nn.Parameter(w_dec_data)
 
-    def encode(self, x: Float[torch.Tensor, "... d_in"]) -> Float[torch.Tensor, "... d_sae"]:
+    def encode(
+        self, x: Float[torch.Tensor, "... d_in"]
+    ) -> Float[torch.Tensor, "... d_sae"]:
         """
         Converts input x into feature activations.
         Uses topk activation from the config (cfg.activation_fn == "topk")
@@ -89,10 +93,11 @@ class TopKSAE(BaseSAE):
         sae_in = self.process_sae_in(x)
         hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
         # The BaseSAE already sets self.activation_fn to TopK(...) if config requests topk.
-        feature_acts = self.hook_sae_acts_post(self.activation_fn(hidden_pre))
-        return feature_acts
+        return self.hook_sae_acts_post(self.activation_fn(hidden_pre))
 
-    def decode(self, feature_acts: Float[torch.Tensor, "... d_sae"]) -> Float[torch.Tensor, "... d_in"]:
+    def decode(
+        self, feature_acts: Float[torch.Tensor, "... d_sae"]
+    ) -> Float[torch.Tensor, "... d_in"]:
         """
         Reconstructs the input from topk feature activations.
         Applies optional finetuning scaling, hooking to recons, out normalization,
@@ -108,7 +113,9 @@ class TopKSAE(BaseSAE):
         if self.cfg.activation_fn == "topk":
             if "k" not in self.cfg.activation_fn_kwargs:
                 raise ValueError("TopK activation function requires a k value.")
-            k = self.cfg.activation_fn_kwargs.get("k", 1)  # Default k to 1 if not provided
+            k = self.cfg.activation_fn_kwargs.get(
+                "k", 1
+            )  # Default k to 1 if not provided
             postact_fn = self.cfg.activation_fn_kwargs.get(
                 "postact_fn", nn.ReLU()
             )  # Default post-activation to ReLU if not provided
@@ -145,8 +152,7 @@ class TopKTrainingSAE(BaseTrainingSAE):
         self.W_dec = nn.Parameter(w_dec_data)
 
     def encode_with_hidden_pre(
-        self,
-        x: Float[torch.Tensor, "... d_in"]
+        self, x: Float[torch.Tensor, "... d_in"]
     ) -> tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
         """
         Similar to the base training method: cast input, optionally add noise, then apply TopK.
@@ -156,7 +162,9 @@ class TopKTrainingSAE(BaseTrainingSAE):
 
         # Inject noise if training
         if self.training and self.cfg.noise_scale > 0:
-            hidden_pre_noised = hidden_pre + torch.randn_like(hidden_pre) * self.cfg.noise_scale
+            hidden_pre_noised = (
+                hidden_pre + torch.randn_like(hidden_pre) * self.cfg.noise_scale
+            )
         else:
             hidden_pre_noised = hidden_pre
 
@@ -164,20 +172,21 @@ class TopKTrainingSAE(BaseTrainingSAE):
         feature_acts = self.hook_sae_acts_post(self.activation_fn(hidden_pre_noised))
         return feature_acts, hidden_pre_noised
 
-    def encode(self, x: Float[torch.Tensor, "... d_in"]) -> Float[torch.Tensor, "... d_sae"]:
+    def encode(
+        self, x: Float[torch.Tensor, "... d_in"]
+    ) -> Float[torch.Tensor, "... d_sae"]:
         """
-        For inference, just encode without returning hidden_pre. 
+        For inference, just encode without returning hidden_pre.
         (training_forward_pass calls encode_with_hidden_pre).
         """
         feature_acts, _ = self.encode_with_hidden_pre(x)
         return feature_acts
 
     def decode(
-        self,
-        feature_acts: Float[torch.Tensor, "... d_sae"]
+        self, feature_acts: Float[torch.Tensor, "... d_sae"]
     ) -> Float[torch.Tensor, "... d_in"]:
         """
-        Decodes feature activations back into input space, 
+        Decodes feature activations back into input space,
         applying optional finetuning scale, hooking, out normalization, etc.
         """
         scaled_features = self.apply_finetuning_scaling_factor(feature_acts)
@@ -185,7 +194,7 @@ class TopKTrainingSAE(BaseTrainingSAE):
         sae_out_pre = self.hook_sae_recons(sae_out_pre)
         sae_out_pre = self.run_time_activation_norm_fn_out(sae_out_pre)
         return self.reshape_fn_out(sae_out_pre, self.d_head)
-    
+
     def calculate_aux_loss(
         self,
         feature_acts: torch.Tensor,
@@ -197,10 +206,12 @@ class TopKTrainingSAE(BaseTrainingSAE):
         # Get the input and output tensors from kwargs
         sae_in = kwargs.get("sae_in")
         sae_out = kwargs.get("sae_out")
-        
+
         if sae_in is None or sae_out is None:
-            raise ValueError("sae_in and sae_out are required for TopK auxiliary loss calculation")
-        
+            raise ValueError(
+                "sae_in and sae_out are required for TopK auxiliary loss calculation"
+            )
+
         # Calculate the auxiliary loss for dead neurons
         topk_loss = self.calculate_topk_aux_loss(
             sae_in=sae_in,
@@ -208,7 +219,7 @@ class TopKTrainingSAE(BaseTrainingSAE):
             hidden_pre=hidden_pre,
             dead_neuron_mask=dead_neuron_mask,
         )
-        
+
         return {"topk_loss": topk_loss}
 
     def _get_activation_fn(self):
@@ -232,11 +243,11 @@ class TopKTrainingSAE(BaseTrainingSAE):
         # Encode and decode
         feature_acts, hidden_pre = self.encode_with_hidden_pre(sae_in)
         sae_out = self.decode(feature_acts)
-        
+
         # MSE loss calculation
         per_item_mse_loss = self.mse_loss_fn(sae_out, sae_in)
         mse_loss = per_item_mse_loss.sum(dim=-1).mean()
-        
+
         # TopK-specific auxiliary loss
         aux_loss = self.calculate_topk_aux_loss(
             sae_in=sae_in,
@@ -244,13 +255,13 @@ class TopKTrainingSAE(BaseTrainingSAE):
             hidden_pre=hidden_pre,
             dead_neuron_mask=dead_neuron_mask,
         )
-        
+
         # Use consistent keys for losses
         losses = {
             "mse_loss": mse_loss,
             "auxiliary_reconstruction_loss": aux_loss,
         }
-        
+
         return TrainStepOutput(
             sae_in=sae_in,
             sae_out=sae_out,
@@ -269,13 +280,16 @@ class TopKTrainingSAE(BaseTrainingSAE):
     ) -> torch.Tensor:
         """
         Calculate TopK auxiliary loss.
-        
+
         This auxiliary loss encourages dead neurons to learn useful features by having
         them reconstruct the residual error from the live neurons. It's a key part of
         preventing neuron death in TopK SAEs.
         """
         # Check if we have any dead neurons to work with
-        if dead_neuron_mask is not None and (num_dead := int(dead_neuron_mask.sum())) > 0:
+        if (
+            dead_neuron_mask is not None
+            and (num_dead := int(dead_neuron_mask.sum())) > 0
+        ):
             residual = sae_in - sae_out
 
             # Heuristic from Appendix B.1 in the paper - use ~50% of features
@@ -286,13 +300,15 @@ class TopKTrainingSAE(BaseTrainingSAE):
             k_aux = min(k_aux, num_dead)
 
             # Calculate the activations for the top-k dead neurons
-            auxk_acts = self._calculate_topk_aux_acts(k_aux, hidden_pre, dead_neuron_mask)
+            auxk_acts = self._calculate_topk_aux_acts(
+                k_aux, hidden_pre, dead_neuron_mask
+            )
 
             # Encourage the top dead latents to predict the residual
             recons = self.decode(auxk_acts)
             auxk_loss = (recons - residual).pow(2).sum(dim=-1).mean()
             return scale * auxk_loss
-        
+
         # If no dead neurons or mask not provided, return zero loss
         return torch.tensor(0.0, device=self.device)
 
@@ -304,23 +320,27 @@ class TopKTrainingSAE(BaseTrainingSAE):
     ) -> torch.Tensor:
         """
         Helper method to calculate activations for the auxiliary loss.
-        
+
         Args:
             k_aux: Number of top dead neurons to select
             hidden_pre: Pre-activation values from encoder
             dead_neuron_mask: Boolean mask indicating which neurons are dead
-            
+
         Returns:
             Tensor with activations for only the top-k dead neurons, zeros elsewhere
         """
         # Don't include living latents in this loss (set them to -inf so they won't be selected)
-        auxk_latents = torch.where(dead_neuron_mask[None], hidden_pre, torch.tensor(-float('inf'), device=hidden_pre.device))
-        
+        auxk_latents = torch.where(
+            dead_neuron_mask[None],
+            hidden_pre,
+            torch.tensor(-float("inf"), device=hidden_pre.device),
+        )
+
         # Find topk values among dead neurons
         auxk_topk = auxk_latents.topk(k_aux, dim=-1, sorted=False)
-        
+
         # Create a tensor of zeros, then place the topk values at their proper indices
         auxk_acts = torch.zeros_like(hidden_pre)
         auxk_acts.scatter_(-1, auxk_topk.indices, auxk_topk.values)
-        
-        return auxk_acts 
+
+        return auxk_acts

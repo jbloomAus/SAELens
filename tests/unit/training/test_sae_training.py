@@ -148,7 +148,7 @@ def test_sae_forward(training_sae: TrainingSAE):
     # print(f"SAE d_in: {training_sae.cfg.d_in}, d_sae: {training_sae.cfg.d_sae}")
     # print(f"SAE hook_name: {training_sae.cfg.hook_name}")
     # print(f"SAE hook_z_reshaping_mode: {getattr(training_sae, 'hook_z_reshaping_mode', False)}")
-    
+
     train_step_output = training_sae.training_forward_pass(
         sae_in=x,
         current_l1_coefficient=training_sae.cfg.l1_coefficient,
@@ -158,10 +158,7 @@ def test_sae_forward(training_sae: TrainingSAE):
     assert train_step_output.feature_acts.shape == (batch_size, d_sae)
     assert (
         pytest.approx(train_step_output.loss.detach(), rel=1e-3)
-        == (
-            train_step_output.losses["mse_loss"]
-            + train_step_output.losses["l1_loss"]
-        )
+        == (train_step_output.losses["mse_loss"] + train_step_output.losses["l1_loss"])
         .detach()  # type: ignore
         .cpu()
         .numpy()
@@ -232,10 +229,7 @@ def test_sae_forward_with_mse_loss_norm(
 
     assert (
         pytest.approx(train_step_output.loss.detach(), rel=1e-3)
-        == (
-            train_step_output.losses["mse_loss"]
-            + train_step_output.losses["l1_loss"]
-        )
+        == (train_step_output.losses["mse_loss"] + train_step_output.losses["l1_loss"])
         .detach()  # type: ignore
         .numpy()
     )

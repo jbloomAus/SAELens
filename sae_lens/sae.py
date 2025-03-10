@@ -8,8 +8,8 @@ from pathlib import Path
 from typing import Any, Optional, Tuple, Union
 
 import torch
-from torch import nn
 from safetensors.torch import save_file
+from torch import nn
 from transformer_lens.hook_points import HookedRootModule
 
 from sae_lens.loading.pretrained_sae_loaders import (
@@ -24,9 +24,9 @@ from sae_lens.loading.pretrained_saes_directory import (
 )
 from sae_lens.saes.gated_sae import GatedSAE
 from sae_lens.saes.jumprelu_sae import JumpReLUSAE
-from sae_lens.saes.topk_sae import TopKSAE
 from sae_lens.saes.sae_base import BaseSAE, SAEConfig
 from sae_lens.saes.standard_sae import StandardSAE
+from sae_lens.saes.topk_sae import TopKSAE
 
 SPARSITY_FILENAME = "sparsity.safetensors"
 SAE_WEIGHTS_FILENAME = "sae_weights.safetensors"
@@ -37,26 +37,25 @@ SAE_CFG_FILENAME = "cfg.json"
 def create_sae_from_config(cfg: SAEConfig, use_error_term: bool = False) -> BaseSAE:
     """
     Factory function to create the appropriate SAE instance based on architecture.
-    
+
     Args:
         cfg: SAE configuration
         use_error_term: Whether to use the error term in the forward pass
-        
+
     Returns:
         An instance of the appropriate SAE class
     """
     architecture = cfg.architecture.lower()
-    
+
     if architecture == "standard":
         return StandardSAE(cfg, use_error_term)
-    elif architecture == "gated":
+    if architecture == "gated":
         return GatedSAE(cfg, use_error_term)
-    elif architecture == "jumprelu":
+    if architecture == "jumprelu":
         return JumpReLUSAE(cfg, use_error_term)
-    elif architecture == "topk":
+    if architecture == "topk":
         return TopKSAE(cfg, use_error_term)
-    else:
-        raise ValueError(f"Unsupported architecture: {architecture}")
+    raise ValueError(f"Unsupported architecture: {architecture}")
 
 
 class SAE(HookedRootModule):
@@ -65,35 +64,35 @@ class SAE(HookedRootModule):
     Maintains backward compatibility with existing code while
     using the new architecture-specific implementations internally.
     """
-    
+
     # Internal SAE implementation
     _sae: BaseSAE
-    
+
     @property
     def cfg(self) -> SAEConfig:
         return self._sae.cfg
-    
+
     @property
     def dtype(self) -> torch.dtype:
         return self._sae.dtype
-        
+
     @property
     def device(self) -> torch.device:
         return self._sae.device
-        
+
     @property
     def use_error_term(self) -> bool:
         return self._sae.use_error_term
-        
+
     @use_error_term.setter
     def use_error_term(self, value: bool) -> None:
         self._sae.use_error_term = value
-    
+
     def __init__(self, cfg: SAEConfig, use_error_term: bool = False):
         super().__init__()
         # Create the appropriate implementation based on architecture
         self._sae = create_sae_from_config(cfg, use_error_term)
-        
+
         # Expose hooks from the internal implementation directly
         self.hook_sae_input = self._sae.hook_sae_input
         self.hook_sae_acts_pre = self._sae.hook_sae_acts_pre
@@ -101,69 +100,79 @@ class SAE(HookedRootModule):
         self.hook_sae_output = self._sae.hook_sae_output
         self.hook_sae_recons = self._sae.hook_sae_recons
         self.hook_sae_error = self._sae.hook_sae_error
-        
-        # Create property handles for parameters 
+
+        # Create property handles for parameters
         # This ensures tensor methods work properly
         self._param_names = []
         for name, param in self._sae.named_parameters():
             self._param_names.append(name)
             # Use property to dynamically access the parameter from _sae
-            setattr(self.__class__, name, property(
-                lambda self, name=name: getattr(self._sae, name),
-                lambda self, value, name=name: setattr(self._sae, name, value)
-            ))
-            
+            setattr(
+                self.__class__,
+                name,
+                property(
+                    lambda self, name=name: getattr(self._sae, name),
+                    lambda self, value, name=name: setattr(self._sae, name, value),
+                ),
+            )
+
         # Properly setup hooks
         self.setup()  # Required for HookedRootModule
 
     def __getattr__(self, name: str) -> Any:
         """Forward attribute access to the underlying SAE implementation."""
-        if name.startswith('_'):
+        if name.startswith("_"):
             return super().__getattr__(name)
-        
+
         # Delegate to the internal implementation
         try:
             return getattr(self._sae, name)
         except AttributeError:
-            raise AttributeError(f"Neither SAE nor its internal implementation has attribute '{name}'")
-    
+            raise AttributeError(
+                f"Neither SAE nor its internal implementation has attribute '{name}'"
+            )
+
     def setup(self):
         """Set up the SAE facade to properly manage hooks."""
         # Clear old hooks if needed
         self.hook_dict = {}
         self.mod_dict = {}
-        
+
         # Add hooks from the internal _sae implementation directly to this class
-        for hook_name in ['hook_sae_input', 'hook_sae_acts_pre', 'hook_sae_acts_post', 
-                           'hook_sae_output', 'hook_sae_recons', 'hook_sae_error']:
+        for hook_name in [
+            "hook_sae_input",
+            "hook_sae_acts_pre",
+            "hook_sae_acts_post",
+            "hook_sae_output",
+            "hook_sae_recons",
+            "hook_sae_error",
+        ]:
             if hasattr(self, hook_name):
                 hook_module = getattr(self, hook_name)
                 self.hook_dict[hook_name] = hook_module
                 self.mod_dict[hook_name] = hook_module
-    
+
     # Basic delegation methods
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        result = self._sae.forward(x)
+        return self._sae.forward(x)
 
-        return result
-    
     def encode(self, x: torch.Tensor) -> torch.Tensor:
         return self._sae.encode(x)
-    
+
     def decode(self, feature_acts: torch.Tensor) -> torch.Tensor:
         return self._sae.decode(feature_acts)
-    
+
     def to(self, *args: Any, **kwargs: Any) -> "SAE":
         # First update the internal SAE
         self._sae.to(*args, **kwargs)
-        
+
         # Now update the facade
         result = super().to(*args, **kwargs)
-        
+
         # Extract device and dtype from args and kwargs
         device_arg = None
         dtype_arg = None
-        
+
         # Check args
         for arg in args:
             if isinstance(arg, (torch.device, str)):
@@ -173,40 +182,46 @@ class SAE(HookedRootModule):
             elif isinstance(arg, torch.Tensor):
                 device_arg = arg.device
                 dtype_arg = arg.dtype
-        
+
         # Check kwargs
         device_arg = kwargs.get("device", device_arg)
         dtype_arg = kwargs.get("dtype", dtype_arg)
-        
+
         # Update device in config if provided
         if device_arg is not None:
             # Convert device to torch.device if it's a string
-            device = torch.device(device_arg) if isinstance(device_arg, str) else device_arg
-            
+            device = (
+                torch.device(device_arg) if isinstance(device_arg, str) else device_arg
+            )
+
             # Update the cfg.device
             self.cfg.device = str(device)
-            
+
             # Update the device property
             self._sae.device = device
-        
+
         # Update dtype in config if provided
         if dtype_arg is not None:
             # Update the cfg.dtype
             self.cfg.dtype = str(dtype_arg)
-            
+
             # Update the dtype property
             self._sae.dtype = dtype_arg
-        
+
         return result
-    
-    def fold_activation_norm_scaling_factor(self, activation_norm_scaling_factor: float):
+
+    def fold_activation_norm_scaling_factor(
+        self, activation_norm_scaling_factor: float
+    ):
         self._sae.fold_activation_norm_scaling_factor(activation_norm_scaling_factor)
-    
+
     def fold_W_dec_norm(self):
         self._sae.fold_W_dec_norm()
-    
+
     # Method that needs to be maintained at the facade level
-    def save_model(self, path: Union[str, Path], sparsity: Optional[torch.Tensor] = None):
+    def save_model(
+        self, path: Union[str, Path], sparsity: Optional[torch.Tensor] = None
+    ):
         """Save model weights, config, and optional sparsity tensor to disk."""
         path = Path(path)
         if not path.exists():
@@ -231,27 +246,27 @@ class SAE(HookedRootModule):
             return model_weights_path, cfg_path, sparsity_path
 
         return model_weights_path, cfg_path
-    
+
     # Forward state dict processing to the internal implementation
     def process_state_dict_for_saving(self, state_dict: dict[str, Any]) -> None:
-        if hasattr(self._sae, 'process_state_dict_for_saving'):
-            method = getattr(self._sae, 'process_state_dict_for_saving')
+        if hasattr(self._sae, "process_state_dict_for_saving"):
+            method = getattr(self._sae, "process_state_dict_for_saving")
             if callable(method):
                 method(state_dict)
-    
+
     def process_state_dict_for_loading(self, state_dict: dict[str, Any]) -> None:
-        if hasattr(self._sae, 'process_state_dict_for_loading'):
-            method = getattr(self._sae, 'process_state_dict_for_loading')
+        if hasattr(self._sae, "process_state_dict_for_loading"):
+            method = getattr(self._sae, "process_state_dict_for_loading")
             if callable(method):
                 method(state_dict)
 
     # Delegate hook_z reshaping methods to the internal implementation
     def turn_on_forward_pass_hook_z_reshaping(self):
         self._sae.turn_on_forward_pass_hook_z_reshaping()
-    
+
     def turn_off_forward_pass_hook_z_reshaping(self):
         self._sae.turn_off_forward_pass_hook_z_reshaping()
-    
+
     def get_name(self):
         """Generate a name for this SAE."""
         return f"sae_{self.cfg.model_name}_{self.cfg.hook_name}_{self.cfg.d_sae}"
@@ -330,7 +345,7 @@ class SAE(HookedRootModule):
                 f"ID {sae_id} not found in release {release}. Valid IDs are {str_valid_ids}."
                 + value_suffix
             )
-            
+
         # Get loader configuration
         sae_info = sae_directory.get(release, None)
         config_overrides = sae_info.config_overrides if sae_info is not None else None
@@ -355,14 +370,14 @@ class SAE(HookedRootModule):
             "hook_point_head_index": "hook_head_index",
             "activation_fn": "activation_fn",
         }
-        
+
         for k, v in cfg_dict.items():
             renamed_cfg_dict[rename_map.get(k, k)] = v
-        
+
         # Set default values for required fields
         renamed_cfg_dict.setdefault("activation_fn_kwargs", {})
         renamed_cfg_dict.setdefault("seqpos_slice", None)
-        
+
         # Create SAE with appropriate architecture
         sae_cfg = SAEConfig.from_dict(renamed_cfg_dict)
         sae = cls(sae_cfg)
@@ -386,7 +401,7 @@ class SAE(HookedRootModule):
     def from_dict(cls, config_dict: dict[str, Any]) -> "SAE":
         """Create an SAE from a config dictionary."""
         return cls(SAEConfig.from_dict(config_dict))
-    
+
 
 _blank_hook = nn.Identity()
 
@@ -400,36 +415,53 @@ def _disable_hooks(sae: SAE):
         # Get hooks from the SAE wrapper directly, not the _sae implementation
         for hook_name in sae.hook_dict:
             setattr(sae, hook_name, _blank_hook)
+
+        # Also disable hooks in the underlying implementation
+        if hasattr(sae, "_sae") and hasattr(sae._sae, "hook_dict"):
+            for hook_name in sae._sae.hook_dict:
+                setattr(sae._sae, hook_name, _blank_hook)
         yield
     finally:
+        # Restore hooks in the facade
         for hook_name, hook in sae.hook_dict.items():
             setattr(sae, hook_name, hook)
 
-    # Override these methods to ensure hooks work properly
-    def run_with_hooks(self, *args, **kwargs):
-        """Run with hooks, delegating to the underlying SAE implementation."""
-        # Forward to _sae.run_with_hooks but use our hooks
-        return super().run_with_hooks(*args, **kwargs)
-    
-    def run_with_cache(self, *args, **kwargs):
-        """Run with cache, delegating to the underlying SAE implementation."""
-        # Make sure we're caching our hooks
-        return super().run_with_cache(*args, **kwargs)
+        # Restore hooks in the underlying implementation
+        if hasattr(sae, "_sae") and hasattr(sae._sae, "hook_dict"):
+            for hook_name, hook in sae._sae.hook_dict.items():
+                setattr(sae._sae, hook_name, hook)
 
-    def setup(self):
-        """Set up the SAE facade to properly manage hooks."""
-        # Clear old hooks if needed
-        self.hook_dict = {}
-        self.mod_dict = {}
-        
-        # Add hooks from the internal _sae implementation
-        # Maintain a direct reference so the hooks work properly
-        for hook_name in ['hook_sae_input', 'hook_sae_acts_pre', 'hook_sae_acts_post', 
-                           'hook_sae_output', 'hook_sae_recons', 'hook_sae_error']:
-            if hasattr(self, hook_name):
-                hook_module = getattr(self, hook_name)
-                self.hook_dict[hook_name] = hook_module
-                self.mod_dict[hook_name] = hook_module
-        
-        # Rest of setup if needed
-        super().setup()
+    # Override these methods to ensure hooks work properly
+    # def run_with_hooks(self, *args, **kwargs):  # type: ignore
+    #     """Run with hooks, delegating to the underlying SAE implementation."""
+    #     # Forward to _sae.run_with_hooks but use our hooks
+    #     return super().run_with_hooks(*args, **kwargs)
+
+    # def run_with_cache(self, *args, **kwargs):  # type: ignore
+    #     """Run with cache, delegating to the underlying SAE implementation."""
+    #     # Make sure we're caching our hooks
+    #     return super().run_with_cache(*args, **kwargs)
+
+    # def setup(self):
+    #     """Set up the SAE facade to properly manage hooks."""
+    #     # Clear old hooks if needed
+    #     self.hook_dict = {}
+    #     self.mod_dict = {}
+
+    #     # Add hooks from the internal _sae implementation
+    #     # Maintain a direct reference so the hooks work properly
+    #     for hook_name in [
+    #         "hook_sae_input",
+    #         "hook_sae_acts_pre",
+    #         "hook_sae_acts_post",
+    #         "hook_sae_output",
+    #         "hook_sae_recons",
+    #         "hook_sae_error",
+    #     ]:
+    #         if hasattr(self, hook_name):
+    #             hook_module = getattr(self, hook_name)
+    #             self.hook_dict[hook_name] = hook_module
+    #             self.mod_dict[hook_name] = hook_module
+
+    #     # Rest of setup if needed
+    #     super().setup()

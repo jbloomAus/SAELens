@@ -390,7 +390,10 @@ def test_run_with_hooks(
 
     logits_with_saes = model.run_with_hooks(
         prompt,
-        fwd_hooks=[(act_name + "._sae" + ".hook_sae_acts_post", c.inc) for act_name in act_names],
+        fwd_hooks=[
+            (act_name + "._sae" + ".hook_sae_acts_post", c.inc)
+            for act_name in act_names
+        ],
     )
     assert not torch.allclose(logits_with_saes, original_logits)
 
@@ -416,7 +419,10 @@ def test_run_with_hooks_with_saes(
     logits_with_saes = model.run_with_hooks_with_saes(
         prompt,
         saes=list_of_hooked_saes,
-        fwd_hooks=[(act_name + "._sae" + ".hook_sae_acts_post", c.inc) for act_name in act_names],
+        fwd_hooks=[
+            (act_name + "._sae" + ".hook_sae_acts_post", c.inc)
+            for act_name in act_names
+        ],
     )
     assert not torch.allclose(logits_with_saes, original_logits)
     assert c.count == len(act_names)

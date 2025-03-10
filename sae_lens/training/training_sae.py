@@ -5,7 +5,7 @@ https://github.com/ArthurConmy/sae/blob/main/sae/model.py
 import json
 import os
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional, Tuple, Union, cast, TypeVar
+from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 import einops
 import torch
@@ -21,7 +21,7 @@ from sae_lens.loading.pretrained_sae_loaders import (
 from sae_lens.sae import SAE
 from sae_lens.saes.gated_sae import GatedTrainingSAE
 from sae_lens.saes.jumprelu_sae import JumpReLUTrainingSAE
-from sae_lens.saes.sae_base import BaseTrainingSAE, TrainStepOutput, TrainingSAEConfig
+from sae_lens.saes.sae_base import BaseTrainingSAE, TrainingSAEConfig, TrainStepOutput
 from sae_lens.saes.standard_sae import StandardTrainingSAE
 from sae_lens.saes.topk_sae import TopKTrainingSAE
 
@@ -104,26 +104,25 @@ def create_training_sae_from_config(
 ) -> BaseTrainingSAE:
     """
     Factory function to create the appropriate training SAE instance based on architecture.
-    
+
     Args:
         cfg: Training SAE configuration
         use_error_term: Whether to use the error term in the forward pass
-        
+
     Returns:
         An instance of the appropriate training SAE class
     """
     architecture = cfg.architecture.lower()
-    
+
     if architecture == "standard":
         return StandardTrainingSAE(cfg, use_error_term)
-    elif architecture == "gated":
+    if architecture == "gated":
         return GatedTrainingSAE(cfg, use_error_term)
-    elif architecture == "jumprelu":
+    if architecture == "jumprelu":
         return JumpReLUTrainingSAE(cfg, use_error_term)
-    elif architecture == "topk":
+    if architecture == "topk":
         return TopKTrainingSAE(cfg, use_error_term)
-    else:
-        raise ValueError(f"Unsupported architecture: {architecture}")
+    raise ValueError(f"Unsupported architecture: {architecture}")
 
 
 class TrainingSAE(SAE):
@@ -132,37 +131,46 @@ class TrainingSAE(SAE):
     This class delegates to architecture-specific training implementations
     while maintaining backward compatibility with existing code.
     """
+
     # Fix typing issue by making _sae explicitly BaseTrainingSAE, not overriding _sae from SAE
     _sae: BaseTrainingSAE
-    
+
     @property
     def cfg(self) -> TrainingSAEConfig:
         # Remove unnecessary cast
         return self._sae.cfg
-        
-    def __init__(self, cfg: Union[TrainingSAEConfig, LanguageModelSAERunnerConfig], use_error_term: bool = False):
+
+    def __init__(
+        self,
+        cfg: Union[TrainingSAEConfig, LanguageModelSAERunnerConfig],
+        use_error_term: bool = False,
+    ):
         """Initialize with the appropriate training SAE implementation."""
         # Skip the standard SAE initialization and initialize the HookedRootModule directly
         nn.Module.__init__(self)
-        
+
         # Convert LanguageModelSAERunnerConfig to TrainingSAEConfig if needed
         if not isinstance(cfg, TrainingSAEConfig):
             cfg = TrainingSAEConfig.from_sae_runner_config(cfg)
-        
+
         # Create the appropriate training implementation based on architecture
         self._sae = create_training_sae_from_config(cfg, use_error_term)
-        
-        # Create property handles for parameters 
+
+        # Create property handles for parameters
         self._param_names = []
         # Fix unused variable warning by using _ for param
         for name, _ in self._sae.named_parameters():
             self._param_names.append(name)
             # Use property to dynamically access the parameter from _sae
-            setattr(self.__class__, name, property(
-                lambda self, name=name: getattr(self._sae, name),
-                lambda self, value, name=name: setattr(self._sae, name, value)
-            ))
-            
+            setattr(
+                self.__class__,
+                name,
+                property(
+                    lambda self, name=name: getattr(self._sae, name),
+                    lambda self, value, name=name: setattr(self._sae, name, value),
+                ),
+            )
+
         # Forward the hooks and hook dict from the internal implementation
         self.hook_dict = self._sae.hook_dict
         self.setup()  # Required for HookedRootModule
@@ -173,13 +181,13 @@ class TrainingSAE(SAE):
     ) -> Tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
         """Forward to the internal implementation's encode_with_hidden_pre method."""
         return self._sae.encode_with_hidden_pre(x)
-    
+
     def encode_with_hidden_pre_fn(
         self, x: Float[torch.Tensor, "... d_in"]
     ) -> Tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
         """Forward to the appropriate encode_with_hidden_pre method based on architecture."""
         return self._sae.encode_with_hidden_pre(x)
-    
+
     def encode_with_hidden_pre_gated(
         self, x: Float[torch.Tensor, "... d_in"]
     ) -> Tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
@@ -187,7 +195,7 @@ class TrainingSAE(SAE):
         if not isinstance(self._sae, GatedTrainingSAE):
             raise TypeError("This method is only available for Gated SAEs")
         return self._sae.encode_with_hidden_pre(x)
-    
+
     def encode_with_hidden_pre_jumprelu(
         self, x: Float[torch.Tensor, "... d_in"]
     ) -> Tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
@@ -195,7 +203,7 @@ class TrainingSAE(SAE):
         if not isinstance(self._sae, JumpReLUTrainingSAE):
             raise TypeError("This method is only available for JumpReLU SAEs")
         return self._sae.encode_with_hidden_pre(x)
-    
+
     def training_forward_pass(
         self,
         sae_in: torch.Tensor,
@@ -211,7 +219,7 @@ class TrainingSAE(SAE):
             current_l1_coefficient=current_l1_coefficient,
             dead_neuron_mask=dead_neuron_mask,
         )
-    
+
     # Forward additional properties/methods from the internal implementation
     @property
     def threshold(self) -> torch.Tensor:
@@ -219,14 +227,14 @@ class TrainingSAE(SAE):
         if not isinstance(self._sae, JumpReLUTrainingSAE):
             raise AttributeError("threshold is only available for JumpReLU SAEs")
         return self._sae.threshold
-    
+
     @property
     def bandwidth(self) -> float:
         """Forward to JumpReLU's bandwidth property."""
         if not isinstance(self._sae, JumpReLUTrainingSAE):
             raise AttributeError("bandwidth is only available for JumpReLU SAEs")
         return self._sae.bandwidth
-    
+
     @property
     def mse_loss_fn(self) -> Callable[[torch.Tensor, torch.Tensor], torch.Tensor]:
         """Forward to the internal implementation's mse_loss_fn."""
@@ -239,57 +247,57 @@ class TrainingSAE(SAE):
     def _get_mse_loss_fn(self) -> Callable[[torch.Tensor, torch.Tensor], torch.Tensor]:
         """Forward to the internal implementation's _get_mse_loss_fn method."""
         return self._sae._get_mse_loss_fn()
-    
+
     # State dict processing methods
     def process_state_dict_for_saving(self, state_dict: Dict[str, Any]) -> None:
         """Forward to the internal implementation's process_state_dict_for_saving method."""
-        if hasattr(self._sae, 'process_state_dict_for_saving'):
-            method = getattr(self._sae, 'process_state_dict_for_saving')
+        if hasattr(self._sae, "process_state_dict_for_saving"):
+            method = getattr(self._sae, "process_state_dict_for_saving")
             if callable(method):
                 method(state_dict)
-    
+
     def process_state_dict_for_loading(self, state_dict: Dict[str, Any]) -> None:
         """Forward to the internal implementation's process_state_dict_for_loading method."""
-        if hasattr(self._sae, 'process_state_dict_for_loading'):
-            method = getattr(self._sae, 'process_state_dict_for_loading')
+        if hasattr(self._sae, "process_state_dict_for_loading"):
+            method = getattr(self._sae, "process_state_dict_for_loading")
             if callable(method):
                 method(state_dict)
-    
+
     # Initialization methods
     def initialize_weights_complex(self) -> None:
         """Replicate the original complex weight initialization logic."""
-        if hasattr(self._sae, 'initialize_weights_complex'):
-            method = getattr(self._sae, 'initialize_weights_complex')
+        if hasattr(self._sae, "initialize_weights_complex"):
+            method = getattr(self._sae, "initialize_weights_complex")
             if callable(method):
                 method()
-    
+
     @torch.no_grad()
     def initialize_decoder_norm_constant_norm(self, norm: float = 0.1) -> None:
         """Initialize decoder with constant norm."""
-        if hasattr(self._sae, 'initialize_decoder_norm_constant_norm'):
-            method = getattr(self._sae, 'initialize_decoder_norm_constant_norm')
+        if hasattr(self._sae, "initialize_decoder_norm_constant_norm"):
+            method = getattr(self._sae, "initialize_decoder_norm_constant_norm")
             if callable(method):
                 method(norm)
-    
+
     @torch.no_grad()
     def fold_W_dec_norm(self) -> None:
         """Fold decoder norm into encoder weights."""
         self._sae.fold_W_dec_norm()
-    
+
     @torch.no_grad()
     def set_decoder_norm_to_unit_norm(self) -> None:
         """Set decoder norm to unit norm."""
-        if hasattr(self._sae, 'set_decoder_norm_to_unit_norm'):
-            method = getattr(self._sae, 'set_decoder_norm_to_unit_norm')
+        if hasattr(self._sae, "set_decoder_norm_to_unit_norm"):
+            method = getattr(self._sae, "set_decoder_norm_to_unit_norm")
             if callable(method):
                 method()
-    
+
     @torch.no_grad()
     def remove_gradient_parallel_to_decoder_directions(self) -> None:
         """Remove gradient components parallel to decoder directions."""
         # Implement the original logic since this may not be in the base class
         assert self.W_dec.grad is not None
-        
+
         parallel_component = einops.einsum(
             self.W_dec.grad,
             self.W_dec.data,
@@ -300,13 +308,13 @@ class TrainingSAE(SAE):
             self.W_dec.data,
             "d_sae, d_sae d_in -> d_sae d_in",
         )
-    
+
     # Backward compatibility class methods
     @classmethod
     def from_dict(cls, config_dict: Dict[str, Any]) -> "TrainingSAE":
         """Create a TrainingSAE from a config dictionary."""
         return cls(TrainingSAEConfig.from_dict(config_dict))
-    
+
     @classmethod
     def load_from_pretrained(
         cls,
@@ -336,7 +344,7 @@ class TrainingSAE(SAE):
         sae.process_state_dict_for_loading(state_dict)
         sae._sae.load_state_dict(state_dict)
         return sae
-    
+
     def initialize_b_dec_with_precalculated(self, origin: torch.Tensor) -> None:
         """Initialize b_dec with precalculated values."""
         out = torch.tensor(origin, dtype=self.dtype, device=self.device)
@@ -357,7 +365,7 @@ class TrainingSAE(SAE):
         logger.debug(f"New distances: {distances.median(0).values.mean().item()}")
 
         self.b_dec.data = out.to(self.dtype).to(self.device)
-        
+
     def check_cfg_compatibility(self) -> None:
         """Check configuration compatibility."""
         if self.cfg.architecture != "standard" and self.cfg.use_ghost_grads:
@@ -381,7 +389,8 @@ class TrainingSAE(SAE):
             hidden_pre=hidden_pre,
             dead_neuron_mask=dead_neuron_mask,
         )
-    
+
+
 def _calculate_topk_aux_acts(
     k_aux: int,
     hidden_pre: torch.Tensor,

@@ -3,11 +3,17 @@ import torch
 
 # Old modules
 from sae_lens.sae import SAE, SAEConfig
-from sae_lens.training.training_sae import TrainingSAE, TrainingSAEConfig
 
 # New JumpReLU modules
 from sae_lens.saes.jumprelu_sae import JumpReLUSAE, JumpReLUTrainingSAE
-from sae_lens.saes.sae_base import SAEConfig as NewSAEConfig, TrainingSAEConfig as NewTrainingSAEConfig
+from sae_lens.saes.sae_base import (
+    SAEConfig as NewSAEConfig,
+)
+from sae_lens.saes.sae_base import (
+    TrainingSAEConfig as NewTrainingSAEConfig,
+)
+from sae_lens.training.training_sae import TrainingSAE, TrainingSAEConfig
+
 
 @pytest.fixture
 def seed_everything():
@@ -17,6 +23,7 @@ def seed_everything():
     torch.manual_seed(42)
     yield
     torch.manual_seed(0)
+
 
 def make_old_jumprelu_sae(d_in=16, d_sae=8, use_error_term=False) -> SAE:
     """
@@ -52,6 +59,7 @@ def make_old_jumprelu_sae(d_in=16, d_sae=8, use_error_term=False) -> SAE:
     old_sae.use_error_term = use_error_term
     return old_sae
 
+
 def make_new_jumprelu_sae(d_in=16, d_sae=8, use_error_term=False) -> JumpReLUSAE:
     """
     Helper to instantiate a new JumpReLUSAE instance for testing (inference only).
@@ -79,8 +87,8 @@ def make_new_jumprelu_sae(d_in=16, d_sae=8, use_error_term=False) -> JumpReLUSAE
         seqpos_slice=None,
         prepend_bos=False,
     )
-    sae = JumpReLUSAE(new_cfg, use_error_term=use_error_term)
-    return sae
+    return JumpReLUSAE(new_cfg, use_error_term=use_error_term)
+
 
 def compare_params(old_sae: SAE, new_sae: JumpReLUSAE):
     """
@@ -91,19 +99,20 @@ def compare_params(old_sae: SAE, new_sae: JumpReLUSAE):
     old_keys = sorted(old_params.keys())
     new_keys = sorted(new_params.keys())
 
-    assert old_keys == new_keys, (
-        f"Parameter names differ.\nOld: {old_keys}\nNew: {new_keys}"
-    )
+    assert (
+        old_keys == new_keys
+    ), f"Parameter names differ.\nOld: {old_keys}\nNew: {new_keys}"
 
     for key in old_keys:
         v_old = old_params[key]
         v_new = new_params[key]
-        assert v_old.shape == v_new.shape, (
-            f"Param {key} shape mismatch: old {v_old.shape}, new {v_new.shape}"
-        )
+        assert (
+            v_old.shape == v_new.shape
+        ), f"Param {key} shape mismatch: old {v_old.shape}, new {v_new.shape}"
+
 
 @pytest.mark.parametrize("use_error_term", [False, True])
-def test_jumprelu_inference_equivalence(seed_everything, use_error_term):
+def test_jumprelu_inference_equivalence(use_error_term):  # type: ignore
     """
     Test that the old vs new JumpReLU SAEs match in parameter shape and forward pass outputs,
     and can optionally test the error_term usage.
@@ -132,8 +141,11 @@ def test_jumprelu_inference_equivalence(seed_everything, use_error_term):
         # We might not expect exact equality, but we can still check shape
         assert old_out.shape == new_out.shape
 
-@pytest.mark.parametrize("fold_fn", ["fold_W_dec_norm", "fold_activation_norm_scaling_factor"])
-def test_jumprelu_fold_equivalence(seed_everything, fold_fn):
+
+@pytest.mark.parametrize(
+    "fold_fn", ["fold_W_dec_norm", "fold_activation_norm_scaling_factor"]
+)
+def test_jumprelu_fold_equivalence(fold_fn):  # type: ignore
     """
     Test that folding functions (fold_W_dec_norm or fold_activation_norm_scaling_factor)
     on old vs new JumpReLU yields consistent results on forward passes.
@@ -170,17 +182,21 @@ def test_jumprelu_fold_equivalence(seed_everything, fold_fn):
     assert old_out.shape == new_out.shape
     # The numeric results might not match exactly if JumpReLU is stricter with thresholds,
     # but let's see if they match within a tolerance. If they do for your code, match them strictly.
-    assert torch.allclose(old_out, new_out, atol=1e-5), \
-        f"{fold_fn} mismatch between old and new"
+    assert torch.allclose(
+        old_out, new_out, atol=1e-5
+    ), f"{fold_fn} mismatch between old and new"
 
-def test_jumprelu_run_hooks_equivalence(seed_everything):
+
+def test_jumprelu_run_hooks_equivalence():  # type: ignore
     """
     Compare hooking behavior for JumpReLU. We'll check that hooking triggers
     the same number of calls in old_sae vs new_sae and that output shapes match.
     """
+
     class Counter:
         def __init__(self):
             self.count = 0
+
         def inc(self, *args, **kwargs):
             self.count += 1
 
@@ -201,14 +217,18 @@ def test_jumprelu_run_hooks_equivalence(seed_everything):
     x = torch.randn(2, 4, 16, dtype=torch.float32)
     old_out = old_sae(x)
     new_out = new_sae(x)
-    assert old_out.shape == new_out.shape, "Mismatch in forward shape with hooking test."
+    assert (
+        old_out.shape == new_out.shape
+    ), "Mismatch in forward shape with hooking test."
 
     assert old_c.count > 0, "No hooks triggered in old JumpReLU SAE"
     assert new_c.count > 0, "No hooks triggered in new JumpReLU SAE"
 
+
 #####################################
 # Training Equivalence
 #####################################
+
 
 def make_old_jumprelu_training_sae(d_in=16, d_sae=8) -> TrainingSAE:
     """
@@ -252,6 +272,7 @@ def make_old_jumprelu_training_sae(d_in=16, d_sae=8) -> TrainingSAE:
     )
     return TrainingSAE(old_training_cfg)
 
+
 def make_new_jumprelu_training_sae(d_in=16, d_sae=8) -> JumpReLUTrainingSAE:
     """
     Helper to instantiate a new JumpReLUTrainingSAE instance.
@@ -293,7 +314,8 @@ def make_new_jumprelu_training_sae(d_in=16, d_sae=8) -> JumpReLUTrainingSAE:
     )
     return JumpReLUTrainingSAE(new_training_cfg)
 
-def test_jumprelu_training_equivalence(seed_everything):
+
+def test_jumprelu_training_equivalence():
     """
     Test that old vs new JumpReLU SAEs match shapes in outputs and remain finite.
     We won't require exact numeric equivalence, as the old code might differ in how it
@@ -311,18 +333,23 @@ def test_jumprelu_training_equivalence(seed_everything):
     old_out = old_sae.training_forward_pass(
         sae_in=x,
         current_l1_coefficient=old_sae.cfg.l1_coefficient,
-        dead_neuron_mask=None
+        dead_neuron_mask=None,
     )
     new_out = new_sae.training_forward_pass(
         sae_in=x,
         current_l1_coefficient=new_sae.cfg.l1_coefficient,
-        dead_neuron_mask=None
+        dead_neuron_mask=None,
     )
 
-    assert old_out.sae_out.shape == new_out.sae_out.shape, \
-        "JumpReLU training output shape mismatch."
-    assert torch.isfinite(old_out.sae_out).all(), "Old JumpReLU training out is not finite."
-    assert torch.isfinite(new_out.sae_out).all(), "New JumpReLU training out is not finite."
+    assert (
+        old_out.sae_out.shape == new_out.sae_out.shape
+    ), "JumpReLU training output shape mismatch."
+    assert torch.isfinite(
+        old_out.sae_out
+    ).all(), "Old JumpReLU training out is not finite."
+    assert torch.isfinite(
+        new_out.sae_out
+    ).all(), "New JumpReLU training out is not finite."
 
     # Check that we do have MSE and L0 losses
     assert "mse_loss" in old_out.losses
@@ -334,4 +361,4 @@ def test_jumprelu_training_equivalence(seed_everything):
     assert new_l0_loss is not None, "New JumpReLU training missing L0 or aux loss."
 
     assert torch.isfinite(old_l0_loss)
-    assert torch.isfinite(new_l0_loss) 
+    assert torch.isfinite(new_l0_loss)
