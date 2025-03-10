@@ -226,6 +226,9 @@ def run_evals(
                     "explained_variance": sparsity_variance_metrics[
                         "explained_variance"
                     ],
+                    "explained_variance_legacy": sparsity_variance_metrics[
+                        "explained_variance_legacy"
+                    ],
                     "mse": sparsity_variance_metrics["mse"],
                     "cossim": sparsity_variance_metrics["cossim"],
                 }
@@ -391,6 +394,10 @@ def get_sparsity_and_variance_metrics(
         metric_dict["l1"] = []
     if compute_variance_metrics:
         metric_dict["explained_variance"] = []
+        metric_dict["explained_variance_legacy"] = []
+        mean_sum_of_squares = []  # for explained variance
+        mean_act_per_dimension = []  # for explained variance
+        mean_sum_of_resid_squared = []  # for explained variance
         metric_dict["mse"] = []
         metric_dict["cossim"] = []
     if compute_featurewise_density_statistics:
@@ -508,7 +515,26 @@ def get_sparsity_and_variance_metrics(
             )
 
             mse = resid_sum_of_squares / flattened_mask.sum()
-            explained_variance = 1 - resid_sum_of_squares / total_sum_of_squares
+            # Explained variance (old, incorrect, formula)
+            batched_variance_sum = (
+                (flattened_sae_input - flattened_sae_input.mean(dim=0))
+                .pow(2)
+                .sum(dim=-1)
+            )
+            explained_variance_legacy = 1 - resid_sum_of_squares / batched_variance_sum
+            metric_dict["explained_variance_legacy"].append(explained_variance_legacy)
+            # Individual sums for the new (correct) formula. We're taking the mean over the batch
+            # dimension here to save memory, but we could also pass the full tensors and take the
+            # mean later (like we do for other metrics).
+            mean_sum_of_squares.append(
+                (flattened_sae_input).pow(2).sum(dim=-1).mean(dim=0)  # scalar
+            )
+            mean_act_per_dimension.append(
+                (flattened_sae_input).pow(2).mean(dim=0)  # [d_model]
+            )
+            mean_sum_of_resid_squared.append(
+                resid_sum_of_squares.mean(dim=0)  # scalar
+            )
 
             x_normed = flattened_sae_input / torch.norm(
                 flattened_sae_input, dim=-1, keepdim=True
@@ -533,7 +559,14 @@ def get_sparsity_and_variance_metrics(
     # Aggregate scalar metrics
     metrics: dict[str, float] = {}
     for metric_name, metric_values in metric_dict.items():
-        metrics[f"{metric_name}"] = torch.cat(metric_values).mean().item()
+        if metric_name != "explained_variance":
+            metrics[f"{metric_name}"] = torch.cat(metric_values).mean().item()
+        else:
+            mean_sum_of_squares = torch.stack(mean_sum_of_squares).mean(dim=0)
+            mean_act_per_dimension = torch.cat(mean_act_per_dimension).mean(dim=0)
+            total_variance = mean_sum_of_squares - mean_act_per_dimension**2
+            residual_variance = torch.stack(mean_sum_of_resid_squared).mean(dim=0)
+            metrics["explained_variance"] = 1 - residual_variance / total_variance
 
     # Aggregate feature-wise metrics
     feature_metrics: dict[str, list[float]] = {}
