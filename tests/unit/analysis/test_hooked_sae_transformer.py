@@ -69,6 +69,7 @@ def get_hooked_sae(model: HookedTransformer, act_name: str) -> SAE:
         hook_layer=0,
         hook_head_index=None,
         activation_fn="relu",
+        activation_fn_kwargs={},
         prepend_bos=True,
         context_size=128,
         dataset_path="test",
@@ -77,9 +78,10 @@ def get_hooked_sae(model: HookedTransformer, act_name: str) -> SAE:
         finetuning_scaling_factor=False,
         sae_lens_training_version=None,
         normalize_activations="none",
+        model_from_pretrained_kwargs={},
     )
 
-    return SAE(sae_cfg)  # type: ignore
+    return SAE(sae_cfg)
 
 
 @pytest.fixture(
@@ -346,7 +348,7 @@ def test_run_with_cache(
     assert not torch.allclose(logits_with_saes, original_logits)  # type: ignore
     assert isinstance(cache, ActivationCache)
     for act_name, hooked_sae in zip(act_names, list_of_hooked_saes):
-        assert act_name + ".hook_sae_acts_post" in cache
+        assert act_name + "._sae" + ".hook_sae_acts_post" in cache
         assert isinstance(get_deep_attr(model, act_name), SAE)
         assert get_deep_attr(model, act_name) == hooked_sae
     model.reset_saes()
@@ -368,7 +370,7 @@ def test_run_with_cache_with_saes(
 
     assert len(model.acts_to_saes) == 0
     for act_name, _ in zip(act_names, list_of_hooked_saes):
-        assert act_name + ".hook_sae_acts_post" in cache
+        assert act_name + "._sae" + ".hook_sae_acts_post" in cache
         assert isinstance(get_deep_attr(model, act_name), HookPoint)
     model.reset_saes()
 
@@ -388,7 +390,7 @@ def test_run_with_hooks(
 
     logits_with_saes = model.run_with_hooks(
         prompt,
-        fwd_hooks=[(act_name + ".hook_sae_acts_post", c.inc) for act_name in act_names],
+        fwd_hooks=[(act_name + "._sae" + ".hook_sae_acts_post", c.inc) for act_name in act_names],
     )
     assert not torch.allclose(logits_with_saes, original_logits)
 
@@ -414,7 +416,7 @@ def test_run_with_hooks_with_saes(
     logits_with_saes = model.run_with_hooks_with_saes(
         prompt,
         saes=list_of_hooked_saes,
-        fwd_hooks=[(act_name + ".hook_sae_acts_post", c.inc) for act_name in act_names],
+        fwd_hooks=[(act_name + "._sae" + ".hook_sae_acts_post", c.inc) for act_name in act_names],
     )
     assert not torch.allclose(logits_with_saes, original_logits)
     assert c.count == len(act_names)
@@ -496,7 +498,7 @@ def test_run_with_cache_with_saes_with_use_error_term(
     )
     assert hooked_sae.use_error_term == original_use_error_term
     assert len(model.acts_to_saes) == 0
-    assert act_name + ".hook_sae_acts_post" in cache
+    assert act_name + "._sae" + ".hook_sae_acts_post" in cache
 
 
 def test_use_error_term_restoration_after_exception(
@@ -571,12 +573,12 @@ def test_run_with_cache_with_saes_use_error_term_true(
     assert torch.allclose(output_without_sae, output_with_sae, atol=1e-4)
 
     # Verify that the cache contains the SAE activations
-    assert hooked_sae.cfg.hook_name + ".hook_sae_acts_post" in cache_with_sae
+    assert hooked_sae.cfg.hook_name + "._sae" + ".hook_sae_acts_post" in cache_with_sae
 
     # Verify that the activations at the SAE hook point are the same in both caches
     assert torch.allclose(
         cache_without_sae[hooked_sae.cfg.hook_name],
-        cache_with_sae[hooked_sae.cfg.hook_name + ".hook_sae_output"],
+        cache_with_sae[hooked_sae.cfg.hook_name + "._sae" + ".hook_sae_output"],
         atol=1e-5,
     )
 
@@ -636,11 +638,11 @@ def test_run_with_cache_with_saes_use_error_term_false(
     assert not torch.allclose(output_without_sae, output_with_sae, atol=1e-4)
 
     # Verify that the cache contains the SAE activations
-    assert hooked_sae.cfg.hook_name + ".hook_sae_acts_post" in cache_with_sae
+    assert hooked_sae.cfg.hook_name + "._sae" + ".hook_sae_acts_post" in cache_with_sae
 
     # Verify that the activations at the SAE hook point are different in both caches
     assert not torch.allclose(
         cache_without_sae[hooked_sae.cfg.hook_name],
-        cache_with_sae[hooked_sae.cfg.hook_name + ".hook_sae_output"],
+        cache_with_sae[hooked_sae.cfg.hook_name + "._sae" + ".hook_sae_output"],
         atol=1e-5,
     )

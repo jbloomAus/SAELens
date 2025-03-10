@@ -425,17 +425,17 @@ def test_sae_jumprelu_forward(use_error_term: bool):
     print("Jumprelu cache:")
     print(cache)
     assert torch.allclose(out, expected_output)
-    assert torch.allclose(cache["_sae.hook_sae_input"], sae_in)
-    assert torch.allclose(cache["_sae.hook_sae_output"], out)
-    assert torch.allclose(cache["_sae.hook_sae_recons"], expected_recons)
+    assert torch.allclose(cache["hook_sae_input"], sae_in)
+    assert torch.allclose(cache["hook_sae_output"], out)
+    assert torch.allclose(cache["hook_sae_recons"], expected_recons)
     if use_error_term:
         assert torch.allclose(
-            cache["_sae.hook_sae_error"], expected_output - expected_recons
+            cache["hook_sae_error"], expected_output - expected_recons
         )
 
-    assert torch.allclose(cache["_sae.hook_sae_acts_pre"], torch.tensor([[0.6, 0.6, 0.6]]))
+    assert torch.allclose(cache["hook_sae_acts_pre"], torch.tensor([[0.6, 0.6, 0.6]]))
     # the threshold of 1.0 should block the first latent from firing
-    assert torch.allclose(cache["_sae.hook_sae_acts_post"], torch.tensor([[0.0, 0.6, 0.6]]))
+    assert torch.allclose(cache["hook_sae_acts_post"], torch.tensor([[0.0, 0.6, 0.6]]))
 
 
 def test_sae_gated_initialization():
@@ -487,21 +487,21 @@ def test_sae_gated_forward(use_error_term: bool):
     out, cache = sae.run_with_cache(sae_in)
 
     assert torch.allclose(out, expected_output, atol=1e-3)
-    assert torch.allclose(cache["_sae.hook_sae_input"], sae_in, atol=1e-3)
-    assert torch.allclose(cache["_sae.hook_sae_output"], out, atol=1e-3)
-    assert torch.allclose(cache["_sae.hook_sae_recons"], expected_recons, atol=1e-3)
+    assert torch.allclose(cache["hook_sae_input"], sae_in, atol=1e-3)
+    assert torch.allclose(cache["hook_sae_output"], out, atol=1e-3)
+    assert torch.allclose(cache["hook_sae_recons"], expected_recons, atol=1e-3)
     assert torch.allclose(
-        cache["_sae.hook_sae_acts_pre"], torch.tensor([[2.6310, 5.4334, 13.0513]]), atol=1e-3
+        cache["hook_sae_acts_pre"], torch.tensor([[2.6310, 5.4334, 13.0513]]), atol=1e-3
     )
     # the threshold of 1.0 should block the first latent from firing
     assert torch.allclose(
-        cache["_sae.hook_sae_acts_post"],
+        cache["hook_sae_acts_post"],
         torch.tensor([[0.0, 5.4334, 13.0513]]),
         atol=1e-3,
     )
     if use_error_term:
         assert torch.allclose(
-            cache["_sae.hook_sae_error"], expected_output - expected_recons
+            cache["hook_sae_error"], expected_output - expected_recons
         )
 
 
@@ -534,11 +534,11 @@ def test_sae_forward_pass_works_with_error_term_and_hooks(architecture: str):
         acts[:, :] = 20
         return acts
 
-    with sae.hooks(fwd_hooks=[("_sae.hook_sae_acts_post", ablate_hooked_sae)]):
+    with sae.hooks(fwd_hooks=[("hook_sae_acts_post", ablate_hooked_sae)]):
         ablated_out, ablated_cache = sae.run_with_cache(sae_in)
 
     assert not torch.allclose(original_out, ablated_out, rtol=1e-2)
-    assert torch.all(ablated_cache["_sae.hook_sae_acts_post"] == 20)
+    assert torch.all(ablated_cache["hook_sae_acts_post"] == 20)
     assert torch.allclose(
-        original_cache["_sae.hook_sae_error"], ablated_cache["_sae.hook_sae_error"], rtol=1e-4
+        original_cache["hook_sae_error"], ablated_cache["hook_sae_error"], rtol=1e-4
     )

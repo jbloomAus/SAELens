@@ -5,7 +5,7 @@ import os
 import warnings
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Optional, Tuple, Union, Iterator, Dict
+from typing import Any, Optional, Tuple, Union
 
 import torch
 from torch import nn
@@ -94,13 +94,13 @@ class SAE(HookedRootModule):
         # Create the appropriate implementation based on architecture
         self._sae = create_sae_from_config(cfg, use_error_term)
         
-        # Forward hooks from the internal implementation
-        # self.hook_sae_input = self._sae.hook_sae_input
-        # self.hook_sae_acts_pre = self._sae.hook_sae_acts_pre
-        # self.hook_sae_acts_post = self._sae.hook_sae_acts_post
-        # self.hook_sae_output = self._sae.hook_sae_output
-        # self.hook_sae_recons = self._sae.hook_sae_recons
-        # self.hook_sae_error = self._sae.hook_sae_error
+        # Expose hooks from the internal implementation directly
+        self.hook_sae_input = self._sae.hook_sae_input
+        self.hook_sae_acts_pre = self._sae.hook_sae_acts_pre
+        self.hook_sae_acts_post = self._sae.hook_sae_acts_post
+        self.hook_sae_output = self._sae.hook_sae_output
+        self.hook_sae_recons = self._sae.hook_sae_recons
+        self.hook_sae_error = self._sae.hook_sae_error
         
         # Create property handles for parameters 
         # This ensures tensor methods work properly
@@ -113,17 +113,39 @@ class SAE(HookedRootModule):
                 lambda self, value, name=name: setattr(self._sae, name, value)
             ))
             
+        # Properly setup hooks
         self.setup()  # Required for HookedRootModule
 
     def __getattr__(self, name: str) -> Any:
         """Forward attribute access to the underlying SAE implementation."""
         if name.startswith('_'):
             return super().__getattr__(name)
-        return getattr(self._sae, name)
+        
+        # Delegate to the internal implementation
+        try:
+            return getattr(self._sae, name)
+        except AttributeError:
+            raise AttributeError(f"Neither SAE nor its internal implementation has attribute '{name}'")
+    
+    def setup(self):
+        """Set up the SAE facade to properly manage hooks."""
+        # Clear old hooks if needed
+        self.hook_dict = {}
+        self.mod_dict = {}
+        
+        # Add hooks from the internal _sae implementation directly to this class
+        for hook_name in ['hook_sae_input', 'hook_sae_acts_pre', 'hook_sae_acts_post', 
+                           'hook_sae_output', 'hook_sae_recons', 'hook_sae_error']:
+            if hasattr(self, hook_name):
+                hook_module = getattr(self, hook_name)
+                self.hook_dict[hook_name] = hook_module
+                self.mod_dict[hook_name] = hook_module
     
     # Basic delegation methods
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self._sae.forward(x)
+        result = self._sae.forward(x)
+
+        return result
     
     def encode(self, x: torch.Tensor) -> torch.Tensor:
         return self._sae.encode(x)
@@ -375,9 +397,39 @@ def _disable_hooks(sae: SAE):
     Temporarily disable hooks for the SAE. Swaps out all the hooks with a fake modules that does nothing.
     """
     try:
-        for hook_name in sae._sae.hook_dict:
-            setattr(sae._sae, hook_name, _blank_hook)
+        # Get hooks from the SAE wrapper directly, not the _sae implementation
+        for hook_name in sae.hook_dict:
+            setattr(sae, hook_name, _blank_hook)
         yield
     finally:
-        for hook_name, hook in sae._sae.hook_dict.items():
-            setattr(sae._sae, hook_name, hook)
+        for hook_name, hook in sae.hook_dict.items():
+            setattr(sae, hook_name, hook)
+
+    # Override these methods to ensure hooks work properly
+    def run_with_hooks(self, *args, **kwargs):
+        """Run with hooks, delegating to the underlying SAE implementation."""
+        # Forward to _sae.run_with_hooks but use our hooks
+        return super().run_with_hooks(*args, **kwargs)
+    
+    def run_with_cache(self, *args, **kwargs):
+        """Run with cache, delegating to the underlying SAE implementation."""
+        # Make sure we're caching our hooks
+        return super().run_with_cache(*args, **kwargs)
+
+    def setup(self):
+        """Set up the SAE facade to properly manage hooks."""
+        # Clear old hooks if needed
+        self.hook_dict = {}
+        self.mod_dict = {}
+        
+        # Add hooks from the internal _sae implementation
+        # Maintain a direct reference so the hooks work properly
+        for hook_name in ['hook_sae_input', 'hook_sae_acts_pre', 'hook_sae_acts_post', 
+                           'hook_sae_output', 'hook_sae_recons', 'hook_sae_error']:
+            if hasattr(self, hook_name):
+                hook_module = getattr(self, hook_name)
+                self.hook_dict[hook_name] = hook_module
+                self.mod_dict[hook_name] = hook_module
+        
+        # Rest of setup if needed
+        super().setup()

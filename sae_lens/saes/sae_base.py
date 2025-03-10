@@ -157,7 +157,7 @@ class BaseSAE(HookedRootModule, ABC):
         return self._get_activation_fn_static(self.cfg.activation_fn, **(self.cfg.activation_fn_kwargs or {}))
 
     @staticmethod
-    def _get_activation_fn_static(activation_fn: str, **kwargs) -> Callable[[torch.Tensor], torch.Tensor]:
+    def _get_activation_fn_static(activation_fn: str, **kwargs: Any) -> Callable[[torch.Tensor], torch.Tensor]:
         """Get the activation function from a string specification."""
         if activation_fn == "relu":
             return torch.nn.ReLU()
@@ -502,11 +502,17 @@ class BaseTrainingSAE(BaseSAE, ABC):
         losses = {"mse_loss": mse_loss}
         
         # Add architecture-specific losses to the dictionary
-        losses.update(aux_losses)
+        # Make sure aux_losses is a dictionary with string keys and tensor values
+        if isinstance(aux_losses, dict):
+            losses.update(aux_losses)
         
         # Sum all losses for total_loss
-        for loss_name, loss_value in aux_losses.items():
-            total_loss = total_loss + loss_value
+        if isinstance(aux_losses, dict):
+            for loss_value in aux_losses.values():
+                total_loss = total_loss + loss_value
+        else:
+            # Handle case where aux_losses is a tensor
+            total_loss = total_loss + aux_losses
         
         return TrainStepOutput(
             sae_in=sae_in,
