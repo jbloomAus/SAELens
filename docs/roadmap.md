@@ -31,5 +31,5 @@ I think there are lots of other types of analysis that could be done in the futu
 - Accessibility and Code Quality: The codebase won’t be used if it doesn’t work and it also won’t get used if it’s too hard to understand, modify or read. 
 Making the code accessible: This involves tasks like turning the code base into a python package.
 - Knowing how the code is supposed to work: Is the code well-documented? This will require docstrings, tutorials and links to related work and publications. Getting aligned on what the code does is critical to sharing a resource like this. 
-- Knowing the code works as intended: All code should be tested. Unit tests and acceptance tests are both important.
+- Knowing the code works as intended: All code should be tested.
 - Knowing the code is actually performant: This will ensure code works as intended. However deep learning introduces lots of complexity which makes actually running benchmarks essential to having confidence in the code. 

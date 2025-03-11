@@ -116,9 +116,9 @@ def test_get_pretrained_saes_directory_unique_np_ids():
     duplicate_ids = df_exploded.groupby("neuronpedia_id").sae_lens_id.apply(
         lambda x: len(x)
     )
-    assert (
-        duplicate_ids.max() == 1
-    ), f"Duplicate IDs found: {duplicate_ids[duplicate_ids > 1]}"
+    assert duplicate_ids.max() == 1, (
+        f"Duplicate IDs found: {duplicate_ids[duplicate_ids > 1]}"
+    )
 
 
 def test_get_repo_id_and_folder_name_release_found():
