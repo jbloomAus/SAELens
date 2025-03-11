@@ -224,27 +224,43 @@ class GatedTrainingSAE(BaseTrainingSAE):
         self,
         feature_acts: torch.Tensor,
         hidden_pre: torch.Tensor,
-        dead_neuron_mask: Optional[torch.Tensor],
-        current_l1_coefficient: float,
+        dead_neuron_mask: Optional[torch.Tensor] = None,
+        current_l1_coefficient: Optional[float] = None,
+        sae_in: Optional[torch.Tensor] = None,
+        sae_out: Optional[torch.Tensor] = None,
         **kwargs: Any,
     ) -> dict[str, torch.Tensor]:
-        # Get the input tensor from kwargs
-        sae_in = kwargs.get("sae_in")
+        """
+        Calculate auxiliary losses for the gated architecture.
+        
+        Args:
+            feature_acts: Feature activations from encoder
+            hidden_pre: Pre-activation values from encoder
+            dead_neuron_mask: Optional mask identifying dead neurons
+            current_l1_coefficient: Optional sparsity coefficient
+            sae_in: Required input tensor for gated auxiliary loss
+            sae_out: Optional output tensor
+            kwargs: Additional arguments
+            
+        Returns:
+            Dictionary of loss terms: l1_loss and auxiliary_reconstruction_loss
+        """
+        # Check required parameters
         if sae_in is None:
             raise ValueError("sae_in is required for gated auxiliary loss calculation")
+        
+        # Use current_l1_coefficient safely
+        l1_coef = current_l1_coefficient if current_l1_coefficient is not None else 0.0
 
         # Re-center the input if apply_b_dec_to_input is set
         sae_in_centered = sae_in - (self.b_dec * self.cfg.apply_b_dec_to_input)
 
         # The gating pre-activation (pi_gate) for the auxiliary path
-        pi_gate = sae_in_centered @ self.W_enc + self.b_gate
+        pi_gate = sae_in_centered @ self.W_enc + self.b_gate  # type: ignore
         pi_gate_act = torch.relu(pi_gate)
 
         # L1-like penalty scaled by W_dec norms
-        l1_loss = (
-            current_l1_coefficient
-            * torch.sum(pi_gate_act * self.W_dec.norm(dim=1), dim=-1).mean()
-        )
+        l1_loss = l1_coef * torch.sum(pi_gate_act * self.W_dec.norm(dim=1), dim=-1).mean()
 
         # Aux reconstruction: reconstruct x purely from gating path
         via_gate_reconstruction = pi_gate_act @ self.W_dec + self.b_dec

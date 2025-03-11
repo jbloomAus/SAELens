@@ -159,8 +159,8 @@ def test_TrainingSAE_forward_includes_topk_loss_with_topk_architecture():
         current_l1_coefficient=2.0,
         dead_neuron_mask=None,
     )
-    assert "auxiliary_reconstruction_loss" in train_step_output.losses
-    assert train_step_output.losses["auxiliary_reconstruction_loss"] == 0.0
+    assert "topk_loss" in train_step_output.losses
+    assert train_step_output.losses["topk_loss"] == 0.0
 
 
 def test_TrainingSAE_forward_includes_topk_loss_is_nonzero_if_dead_neurons_present():
@@ -178,8 +178,8 @@ def test_TrainingSAE_forward_includes_topk_loss_is_nonzero_if_dead_neurons_prese
         current_l1_coefficient=2.0,
         dead_neuron_mask=torch.tensor([False, True, False, True]),
     )
-    assert "auxiliary_reconstruction_loss" in train_step_output.losses
-    assert train_step_output.losses["auxiliary_reconstruction_loss"] > 0.0
+    assert "topk_loss" in train_step_output.losses
+    assert train_step_output.losses["topk_loss"] > 0.0
 
 
 @pytest.mark.parametrize("architecture", ["standard", "gated", "jumprelu", "topk"])

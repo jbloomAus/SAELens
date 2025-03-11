@@ -251,50 +251,6 @@ class JumpReLUTrainingSAE(BaseTrainingSAE):
 
         return feature_acts, hidden_pre
 
-    def training_forward_pass(
-        self,
-        sae_in: torch.Tensor,
-        current_l1_coefficient: float,
-        dead_neuron_mask: Optional[torch.Tensor] = None,
-    ):
-        """
-        Main training pass.
-        1) Encodes with JumpReLU,
-        2) Decodes,
-        3) Computes MSE,
-        4) Computes L0 loss from (pre > threshold),
-        5) Returns the combined loss.
-        """
-        feature_acts, hidden_pre = self.encode_with_hidden_pre_jumprelu(sae_in)
-        sae_out = self.decode(feature_acts)
-
-        # MSE Loss
-        per_item_mse_loss = self.mse_loss_fn(sae_out, sae_in)
-        mse_loss = per_item_mse_loss.sum(dim=-1).mean()
-
-        # L0 Loss: Count how many times each unit is > threshold with Step.apply
-        # from the old approach, or simply sum boolean mask
-        step_mask = (hidden_pre > self.threshold).to(sae_out.dtype)
-        # L0 penalty is basically sum of step_mask.
-        # Typically scaled by current_l1_coefficient
-        l0_loss = (current_l1_coefficient * step_mask.sum(dim=-1)).mean()
-
-        loss = mse_loss + l0_loss
-        losses_dict = {
-            "mse_loss": mse_loss,
-            "l0_loss": l0_loss,
-            "l1_loss": l0_loss,  # Add this for backward compatibility
-        }
-
-        # Return the train step output
-        return self._create_train_step_output(
-            sae_in=sae_in,
-            sae_out=sae_out,
-            feature_acts=feature_acts,
-            hidden_pre=hidden_pre,
-            loss=loss,
-            losses=losses_dict,
-        )
 
     def encode_with_hidden_pre(
         self, x: Float[torch.Tensor, "... d_in"]
@@ -307,15 +263,19 @@ class JumpReLUTrainingSAE(BaseTrainingSAE):
         self,
         feature_acts: torch.Tensor,
         hidden_pre: torch.Tensor,
-        dead_neuron_mask: Optional[torch.Tensor],
-        current_l1_coefficient: float,
+        dead_neuron_mask: Optional[torch.Tensor] = None,
+        current_l1_coefficient: Optional[float] = None,
+        sae_in: Optional[torch.Tensor] = None,
+        sae_out: Optional[torch.Tensor] = None,
         **kwargs: Any,
     ) -> dict[str, torch.Tensor]:
         """
         Calculate L0 penalty (number of units above threshold).
         """
         step_mask = (hidden_pre > self.threshold).to(feature_acts.dtype)
-        l0_loss = (current_l1_coefficient * step_mask.sum(dim=-1)).mean()
+        # Handle the case where current_l1_coefficient might be None
+        coef = current_l1_coefficient if current_l1_coefficient is not None else 0.0
+        l0_loss = (coef * step_mask.sum(dim=-1)).mean()
         return {"l0_loss": l0_loss}
 
     @torch.no_grad()

@@ -199,14 +199,28 @@ class TopKTrainingSAE(BaseTrainingSAE):
         self,
         feature_acts: torch.Tensor,
         hidden_pre: torch.Tensor,
-        dead_neuron_mask: Optional[torch.Tensor],
-        current_l1_coefficient: float,
+        dead_neuron_mask: Optional[torch.Tensor] = None,
+        current_l1_coefficient: Optional[float] = None,
+        sae_in: Optional[torch.Tensor] = None,
+        sae_out: Optional[torch.Tensor] = None,
         **kwargs: Any,
     ) -> dict[str, torch.Tensor]:
-        # Get the input and output tensors from kwargs
-        sae_in = kwargs.get("sae_in")
-        sae_out = kwargs.get("sae_out")
-
+        """
+        Calculate auxiliary loss for TopK architecture.
+        
+        Args:
+            feature_acts: Feature activations from encoder
+            hidden_pre: Pre-activation values from encoder
+            dead_neuron_mask: Optional mask identifying dead neurons
+            current_l1_coefficient: Optional sparsity coefficient
+            sae_in: Optional input tensor, required for TopK loss
+            sae_out: Optional output tensor, required for TopK loss
+            kwargs: Additional arguments
+            
+        Returns:
+            Dictionary of loss terms
+        """
+        # Check for required parameters
         if sae_in is None or sae_out is None:
             raise ValueError(
                 "sae_in and sae_out are required for TopK auxiliary loss calculation"
@@ -221,55 +235,6 @@ class TopKTrainingSAE(BaseTrainingSAE):
         )
 
         return {"topk_loss": topk_loss}
-
-    def _get_activation_fn(self):
-        if self.cfg.activation_fn == "topk":
-            if "k" not in self.cfg.activation_fn_kwargs:
-                raise ValueError("TopK activation function requires a k value.")
-            k = self.cfg.activation_fn_kwargs.get("k", 1)
-            postact_fn = self.cfg.activation_fn_kwargs.get("postact_fn", nn.ReLU())
-            return TopK(k, postact_fn)
-        return super()._get_activation_fn()
-
-    def training_forward_pass(
-        self,
-        sae_in: torch.Tensor,
-        current_l1_coefficient: float,
-        dead_neuron_mask: Optional[torch.Tensor] = None,
-    ) -> TrainStepOutput:
-        """
-        Forward pass specific to TopK SAE architecture, ensuring consistent loss dictionary keys.
-        """
-        # Encode and decode
-        feature_acts, hidden_pre = self.encode_with_hidden_pre(sae_in)
-        sae_out = self.decode(feature_acts)
-
-        # MSE loss calculation
-        per_item_mse_loss = self.mse_loss_fn(sae_out, sae_in)
-        mse_loss = per_item_mse_loss.sum(dim=-1).mean()
-
-        # TopK-specific auxiliary loss
-        aux_loss = self.calculate_topk_aux_loss(
-            sae_in=sae_in,
-            sae_out=sae_out,
-            hidden_pre=hidden_pre,
-            dead_neuron_mask=dead_neuron_mask,
-        )
-
-        # Use consistent keys for losses
-        losses = {
-            "mse_loss": mse_loss,
-            "auxiliary_reconstruction_loss": aux_loss,
-        }
-
-        return TrainStepOutput(
-            sae_in=sae_in,
-            sae_out=sae_out,
-            feature_acts=feature_acts,
-            hidden_pre=hidden_pre,
-            loss=mse_loss + aux_loss,
-            losses=losses,
-        )
 
     def calculate_topk_aux_loss(
         self,

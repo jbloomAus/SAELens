@@ -493,7 +493,7 @@ class BaseTrainingSAE(BaseSAE, ABC):
         sae_in: Optional[torch.Tensor] = None,
         sae_out: Optional[torch.Tensor] = None,
         **kwargs: Any,
-    ) -> torch.Tensor:
+    ) -> dict[str, torch.Tensor]:
         """Calculate architecture-specific auxiliary loss terms."""
         pass
 

@@ -164,8 +164,10 @@ class StandardTrainingSAE(BaseTrainingSAE):
         self,
         feature_acts: torch.Tensor,
         hidden_pre: torch.Tensor,
-        dead_neuron_mask: Optional[torch.Tensor],
-        current_l1_coefficient: float,
+        dead_neuron_mask: Optional[torch.Tensor] = None,
+        current_l1_coefficient: Optional[float] = None,
+        sae_in: Optional[torch.Tensor] = None,
+        sae_out: Optional[torch.Tensor] = None,
         **kwargs: Any,
     ) -> dict[str, torch.Tensor]:
         # The "standard" auxiliary loss is a sparsity penalty on the feature activations
@@ -174,7 +176,8 @@ class StandardTrainingSAE(BaseTrainingSAE):
             weighted_feature_acts = feature_acts * self.W_dec.norm(dim=1)
 
         # Compute the p-norm (set by cfg.lp_norm) over the feature dimension
+        coef = current_l1_coefficient if current_l1_coefficient is not None else 1.0
         sparsity = weighted_feature_acts.norm(p=self.cfg.lp_norm, dim=-1)
-        l1_loss = (current_l1_coefficient * sparsity).mean()
+        l1_loss = (coef * sparsity).mean()
 
         return {"l1_loss": l1_loss}
