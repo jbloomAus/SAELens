@@ -10,7 +10,7 @@ def test_get_sae_config_sae_lens():
     )
 
     expected_cfg_dict = {
-        "activation_fn_str": "relu",
+        "activation_fn": "relu",
         "apply_b_dec_to_input": True,
         "architecture": "standard",
         "model_name": "gpt2-small",
@@ -85,7 +85,7 @@ def test_get_sae_config_connor_rob_hook_z():
         "hook_name": "blocks.0.attn.hook_z",
         "hook_layer": 0,
         "hook_head_index": None,
-        "activation_fn_str": "relu",
+        "activation_fn": "relu",
         "apply_b_dec_to_input": True,
         "finetuning_scaling_factor": False,
         "sae_lens_training_version": None,
@@ -116,7 +116,7 @@ def test_get_sae_config_gemma_2():
         "hook_name": "hook_embed",
         "hook_layer": 0,
         "hook_head_index": None,
-        "activation_fn_str": "relu",
+        "activation_fn": "relu",
         "finetuning_scaling_factor": False,
         "sae_lens_training_version": None,
         "prepend_bos": True,
@@ -149,7 +149,7 @@ def test_get_sae_config_dictionary_learning_1():
         "hook_name": "blocks.12.hook_resid_post",
         "hook_layer": 12,
         "hook_head_index": None,
-        "activation_fn_str": "topk",
+        "activation_fn": "topk",
         "activation_fn_kwargs": {"k": 20},
         "apply_b_dec_to_input": True,
         "finetuning_scaling_factor": False,
@@ -177,4 +177,21 @@ def test_get_sae_config_matches_from_pretrained():
         options=SAEConfigLoadOptions(device="cpu"),
     )
 
-    assert direct_sae_cfg == from_pretrained_cfg_dict
+    # Apply the same renaming that happens in SAE.from_pretrained
+    renamed_direct_sae_cfg = {}
+    rename_map = {
+        "hook_point": "hook_name",
+        "hook_point_layer": "hook_layer",
+        "hook_point_head_index": "hook_head_index",
+    }
+
+    for k, v in direct_sae_cfg.items():
+        renamed_direct_sae_cfg[rename_map.get(k, k)] = v
+
+    # Add default values that SAE.from_pretrained adds
+    if "activation_fn_kwargs" not in renamed_direct_sae_cfg:
+        renamed_direct_sae_cfg["activation_fn_kwargs"] = {}
+    if "seqpos_slice" not in renamed_direct_sae_cfg:
+        renamed_direct_sae_cfg["seqpos_slice"] = None
+
+    assert renamed_direct_sae_cfg == from_pretrained_cfg_dict

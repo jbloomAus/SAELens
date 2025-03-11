@@ -18,8 +18,8 @@ from tqdm import tqdm
 from transformer_lens import HookedTransformer
 from transformer_lens.hook_points import HookedRootModule
 
-from sae_lens.sae import SAE
 from sae_lens.loading.pretrained_saes_directory import get_pretrained_saes_directory
+from sae_lens.sae import SAE
 from sae_lens.training.activations_store import ActivationsStore
 
 

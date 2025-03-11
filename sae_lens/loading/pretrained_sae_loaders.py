@@ -126,7 +126,7 @@ def handle_config_defaulting(cfg_dict: dict[str, Any]) -> dict[str, Any]:
     cfg_dict.setdefault("apply_b_dec_to_input", True)
     cfg_dict.setdefault("finetuning_scaling_factor", False)
     cfg_dict.setdefault("sae_lens_training_version", None)
-    cfg_dict.setdefault("activation_fn_str", cfg_dict.get("activation_fn", "relu"))
+    cfg_dict.setdefault("activation_fn", cfg_dict.get("activation_fn", "relu"))
     cfg_dict.setdefault("architecture", "standard")
     cfg_dict.setdefault("neuronpedia_id", None)
 
@@ -166,7 +166,7 @@ def get_connor_rob_hook_z_config(
         "hook_name": old_cfg_dict["act_name"],
         "hook_layer": old_cfg_dict["layer"],
         "hook_head_index": None,
-        "activation_fn_str": "relu",
+        "activation_fn": "relu",
         "apply_b_dec_to_input": True,
         "finetuning_scaling_factor": False,
         "sae_lens_training_version": None,
@@ -321,7 +321,7 @@ def get_gemma_2_config(
         "hook_name": hook_name,
         "hook_layer": layer,
         "hook_head_index": None,
-        "activation_fn_str": "relu",
+        "activation_fn": "relu",
         "finetuning_scaling_factor": False,
         "sae_lens_training_version": None,
         "prepend_bos": True,
@@ -441,7 +441,7 @@ def get_llama_scope_config(
         "hook_name": old_cfg_dict["hook_point_in"],
         "hook_layer": int(old_cfg_dict["hook_point_in"].split(".")[1]),
         "hook_head_index": None,
-        "activation_fn_str": "relu",
+        "activation_fn": "relu",
         "finetuning_scaling_factor": False,
         "sae_lens_training_version": None,
         "prepend_bos": True,
@@ -553,8 +553,8 @@ def get_dictionary_learning_config_1(
 
     hook_point_name = f"blocks.{trainer['layer']}.hook_resid_post"
 
-    activation_fn_str = "topk" if trainer["dict_class"] == "AutoEncoderTopK" else "relu"
-    activation_fn_kwargs = {"k": trainer["k"]} if activation_fn_str == "topk" else {}
+    activation_fn = "topk" if trainer["dict_class"] == "AutoEncoderTopK" else "relu"
+    activation_fn_kwargs = {"k": trainer["k"]} if activation_fn == "topk" else {}
 
     return {
         "architecture": (
@@ -568,7 +568,7 @@ def get_dictionary_learning_config_1(
         "hook_name": hook_point_name,
         "hook_layer": trainer["layer"],
         "hook_head_index": None,
-        "activation_fn_str": activation_fn_str,
+        "activation_fn": activation_fn,
         "activation_fn_kwargs": activation_fn_kwargs,
         "apply_b_dec_to_input": True,
         "finetuning_scaling_factor": False,
@@ -625,7 +625,7 @@ def deepseek_r1_sae_loader(
         "dataset_path": "lmsys/lmsys-chat-1m",
         "dataset_trust_remote_code": True,
         "sae_lens_training_version": None,
-        "activation_fn_str": "relu",
+        "activation_fn": "relu",
         "normalize_activations": "none",
         "device": device,
         "apply_b_dec_to_input": False,

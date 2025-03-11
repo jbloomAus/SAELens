@@ -423,7 +423,7 @@ class LanguageModelSAERunnerConfig:
             "hook_name": self.hook_name,
             "hook_layer": self.hook_layer,
             "hook_head_index": self.hook_head_index,
-            "activation_fn_str": self.activation_fn,
+            "activation_fn": self.activation_fn,
             "apply_b_dec_to_input": self.apply_b_dec_to_input,
             "context_size": self.context_size,
             "prepend_bos": self.prepend_bos,
