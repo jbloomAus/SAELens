@@ -2,6 +2,33 @@
 
 
 
+## v5.6.0 (2025-03-12)
+
+### Feature
+
+* feat: Add support for dataset name in PretokenizeRunner (#438)
+
+Summary of updates:
+- Added optional dataset name parameter
+- Updated metadata to track dataset name and column name
+- Added test for loading dataset with name argument and checking metadata
+- Updated tests to use PretokenizeRunner instead of depricated pretokenizer_runner
+
+Co-authored-by: Keltin Grimes &lt;kgrimes@sei.cmu.edu&gt; ([`1dc4ef6`](https://github.com/jbloomAus/SAELens/commit/1dc4ef655a0bc2e7e70c8f8682e86da99bb6b7cd))
+
+### Fix
+
+* fix: fix bug with PretokenizeRunner with streaming=True (#442)
+
+* Fixed issue with PretokenizeRunner with streaming=True
+
+* raise error if streaming with num_proc &gt; 1
+
+---------
+
+Co-authored-by: David Chanin &lt;chanindav@gmail.com&gt; ([`40a5924`](https://github.com/jbloomAus/SAELens/commit/40a59240f1999c716415d81fccc891170ef19d03))
+
+
 ## v5.5.2 (2025-02-25)
 
 ### Fix
