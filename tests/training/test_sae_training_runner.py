@@ -228,7 +228,6 @@ def test_sae_training_runner_works_with_huggingface_models(tmp_path: Path):
         train_batch_size_tokens=4,
         store_batch_size_prompts=4,
         n_checkpoints=1,
-        log_to_wandb=False,
     )
 
     runner = SAETrainingRunner(cfg)
@@ -246,7 +245,6 @@ def test_sae_training_runner_works_with_huggingface_models(tmp_path: Path):
     assert saved_cfg["training_tokens"] == 128
     assert saved_cfg["train_batch_size_tokens"] == 4
     assert saved_cfg["store_batch_size_prompts"] == 4
-    assert saved_cfg["log_to_wandb"] is False
     assert saved_cfg["model_class_name"] == "AutoModelForCausalLM"
 
     sae = SAE.load_from_pretrained(str(checkpoint_dirs[0]))
