@@ -290,3 +290,13 @@ def test_sae_training_runner_works_with_huggingface_models(tmp_path: Path):
 
     sae = SAE.load_from_pretrained(str(checkpoint_dirs[0]))
     assert isinstance(sae, SAE)
+
+
+def test_set_norm_scaling_factor_before_b_dec_init():
+    # Test that the activation norm scaling factor is set before b_dec is initialized
+    cfg = build_sae_cfg(
+        normalize_activations="expected_average_only_in",
+        b_dec_init_method="geometric_median",
+    )
+    # Will fail if b_dec is initialized before the norm scaling factor is set
+    SAETrainingRunner(cfg)
