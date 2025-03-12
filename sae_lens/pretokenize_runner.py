@@ -100,6 +100,8 @@ def pretokenize_dataset(
         }
 
     if cfg.streaming:
+        if cfg.num_proc > 1:
+            raise ValueError("num_proc must be 1 when streaming is True")
         tokenized_dataset = dataset.map(
             process_examples,
             batched=True,

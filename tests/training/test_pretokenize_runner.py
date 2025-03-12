@@ -178,7 +178,7 @@ def test_pretokenize_runner_streaming_dataset():
     cfg = PretokenizeRunnerConfig(
         tokenizer_name="gpt2",
         context_size=10,
-        num_proc=2,
+        num_proc=1,
         dataset_path="NeelNanda/c4-10k",
         split="train",
         streaming=True,
@@ -196,3 +196,16 @@ def test_pretokenize_runner_streaming_dataset():
     )
     dataset = PretokenizeRunner(cfg).run()
     assert not isinstance(dataset, IterableDataset)
+
+
+def test_pretokenize_runner_raises_error_when_num_proc_is_greater_than_1_and_streaming_is_true():
+    cfg = PretokenizeRunnerConfig(
+        tokenizer_name="gpt2",
+        context_size=10,
+        num_proc=2,
+        dataset_path="NeelNanda/c4-10k",
+        split="train",
+        streaming=True,
+    )
+    with pytest.raises(ValueError):
+        PretokenizeRunner(cfg).run()
