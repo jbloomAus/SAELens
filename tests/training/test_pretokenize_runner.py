@@ -166,6 +166,41 @@ def test_pretokenize_runner_save_dataset_locally(tmp_path: Path):
         metadata_dict = json.load(f)
     assert metadata_dict["original_dataset"] == "NeelNanda/c4-10k"
     assert metadata_dict["original_split"] == "train[:20]"
+    assert metadata_dict["original_column_name"] == "text"
+    assert metadata_dict["context_size"] == 10
+    assert metadata_dict["shuffled"] is True
+    assert metadata_dict["begin_batch_token"] == "bos"
+    assert metadata_dict["begin_sequence_token"] is None
+    assert metadata_dict["sequence_separator_token"] == "eos"
+    assert metadata_dict["sae_lens_version"] == __version__
+
+
+def test_pretokenize_runner_with_dataset_name(tmp_path: Path):
+    save_path = tmp_path / "ds_with_dataset_name"
+    cfg = PretokenizeRunnerConfig(
+        tokenizer_name="gpt2",
+        context_size=10,
+        num_proc=2,
+        shuffle=True,
+        save_path=str(save_path),
+        dataset_path="nyu-mll/glue",
+        dataset_name="ax",
+        split="test[:20]",
+        column_name="premise",
+        begin_batch_token="bos",
+        sequence_separator_token="eos",
+    )
+    dataset = cast(Any, PretokenizeRunner(cfg).run())
+    assert save_path.exists()
+    loaded_dataset = Dataset.load_from_disk(str(save_path))
+    assert len(dataset) == len(loaded_dataset)
+    assert dataset["input_ids"].tolist() == loaded_dataset["input_ids"].tolist()  # type: ignore
+    with open(save_path / "sae_lens.json") as f:
+        metadata_dict = json.load(f)
+    assert metadata_dict["original_dataset"] == "nyu-mll/glue"
+    assert metadata_dict["original_dataset_name"] == "ax"
+    assert metadata_dict["original_split"] == "test[:20]"
+    assert metadata_dict["original_column_name"] == "premise"
     assert metadata_dict["context_size"] == 10
     assert metadata_dict["shuffled"] is True
     assert metadata_dict["begin_batch_token"] == "bos"

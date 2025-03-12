@@ -674,6 +674,7 @@ def _validate_seqpos(seqpos: tuple[int | None, ...], context_size: int) -> None:
 class PretokenizeRunnerConfig:
     tokenizer_name: str = "gpt2"
     dataset_path: str = ""
+    dataset_name: str | None = None
     dataset_trust_remote_code: bool | None = None
     split: str | None = "train"
     data_files: list[str] | None = None
