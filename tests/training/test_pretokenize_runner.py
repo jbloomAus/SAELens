@@ -3,12 +3,12 @@ from pathlib import Path
 from typing import Any, cast
 
 import pytest
-from datasets import Dataset
+from datasets import Dataset, IterableDataset
 from transformers import AutoTokenizer, PreTrainedTokenizerBase
 
 from sae_lens import __version__
 from sae_lens.config import PretokenizeRunnerConfig
-from sae_lens.pretokenize_runner import pretokenize_dataset, pretokenize_runner
+from sae_lens.pretokenize_runner import PretokenizeRunner, pretokenize_dataset
 
 
 @pytest.fixture
@@ -157,7 +157,7 @@ def test_pretokenize_runner_save_dataset_locally(tmp_path: Path):
         begin_batch_token="bos",
         sequence_separator_token="eos",
     )
-    dataset = pretokenize_runner(cfg)
+    dataset = PretokenizeRunner(cfg).run()
     assert save_path.exists()
     loaded_dataset = Dataset.load_from_disk(str(save_path))
     assert len(dataset) == len(loaded_dataset)
@@ -172,3 +172,40 @@ def test_pretokenize_runner_save_dataset_locally(tmp_path: Path):
     assert metadata_dict["begin_sequence_token"] is None
     assert metadata_dict["sequence_separator_token"] == "eos"
     assert metadata_dict["sae_lens_version"] == __version__
+
+
+def test_pretokenize_runner_streaming_dataset():
+    cfg = PretokenizeRunnerConfig(
+        tokenizer_name="gpt2",
+        context_size=10,
+        num_proc=1,
+        dataset_path="NeelNanda/c4-10k",
+        split="train",
+        streaming=True,
+    )
+    dataset = PretokenizeRunner(cfg).run()
+    assert isinstance(dataset, IterableDataset)
+
+    cfg = PretokenizeRunnerConfig(
+        tokenizer_name="gpt2",
+        context_size=10,
+        num_proc=2,
+        dataset_path="NeelNanda/c4-10k",
+        split="train",
+        streaming=False,
+    )
+    dataset = PretokenizeRunner(cfg).run()
+    assert not isinstance(dataset, IterableDataset)
+
+
+def test_pretokenize_runner_raises_error_when_num_proc_is_greater_than_1_and_streaming_is_true():
+    cfg = PretokenizeRunnerConfig(
+        tokenizer_name="gpt2",
+        context_size=10,
+        num_proc=2,
+        dataset_path="NeelNanda/c4-10k",
+        split="train",
+        streaming=True,
+    )
+    with pytest.raises(ValueError):
+        PretokenizeRunner(cfg).run()

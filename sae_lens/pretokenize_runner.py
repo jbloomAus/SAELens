@@ -99,16 +99,32 @@ def pretokenize_dataset(
             )
         }
 
-    tokenized_dataset = dataset.map(
-        process_examples,
-        batched=True,
-        batch_size=cfg.pretokenize_batch_size,
-        num_proc=cfg.num_proc,
-        remove_columns=dataset.column_names,
-    )
+    if cfg.streaming:
+        if cfg.num_proc > 1:
+            raise ValueError("num_proc must be 1 when streaming is True")
+        tokenized_dataset = dataset.map(
+            process_examples,
+            batched=True,
+            batch_size=cfg.pretokenize_batch_size,
+            remove_columns=dataset.column_names,
+        )
+    else:
+        tokenized_dataset = dataset.map(
+            process_examples,
+            batched=True,
+            batch_size=cfg.pretokenize_batch_size,
+            num_proc=cfg.num_proc,
+            remove_columns=dataset.column_names,
+        )
+
     if cfg.shuffle:
         tokenized_dataset = tokenized_dataset.shuffle(seed=cfg.seed)
-    tokenized_dataset.set_format(type="torch", columns=["input_ids"])
+
+    if cfg.streaming:
+        tokenized_dataset = tokenized_dataset.with_format(type="torch")
+    else:
+        tokenized_dataset.set_format(type="torch", columns=["input_ids"])
+
     return tokenized_dataset
 
 
