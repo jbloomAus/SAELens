@@ -103,16 +103,20 @@ def test_calculate_topk_aux_acts_k_less_than_dead():
 
 
 def test_TrainingSAE_topk_aux_loss_matches_unnormalized_sparsify_implementation():
+    d_in = 128
+    d_sae = 192
     cfg = build_sae_cfg(
-        d_in=128,
-        d_sae=192,
+        d_in=d_in,
+        d_sae=d_sae,
         architecture="topk",
         activation_fn_kwargs={"k": 26},
         normalize_sae_decoder=False,
     )
 
     sae = TrainingSAE(TrainingSAEConfig.from_sae_runner_config(cfg))
-    comparison_sae = SparseCoder(d_in=128, cfg=SparseCoderConfig(num_latents=192, k=26))
+    comparison_sae = SparseCoder(
+        d_in=d_in, cfg=SparseCoderConfig(num_latents=d_sae, k=26)
+    )
 
     with torch.no_grad():
         # increase b_enc so all features are likely above 0
@@ -125,8 +129,8 @@ def test_TrainingSAE_topk_aux_loss_matches_unnormalized_sparsify_implementation(
         comparison_sae.b_dec.data = sae.b_dec
         comparison_sae.W_dec.data = sae.W_dec  # type: ignore
 
-    dead_neuron_mask = torch.randn(192) > 0.1
-    input_acts = torch.randn(200, 128)
+    dead_neuron_mask = torch.randn(d_sae) > 0.1
+    input_acts = torch.randn(200, d_in)
     input_var = (input_acts - input_acts.mean(0)).pow(2).sum()
 
     sae_out = sae.training_forward_pass(
