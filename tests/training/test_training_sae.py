@@ -114,7 +114,7 @@ def test_TrainingSAE_topk_aux_loss_matches_unnormalized_sparsify_implementation(
     )
 
     sae = TrainingSAE(TrainingSAEConfig.from_sae_runner_config(cfg))
-    comparison_sae = SparseCoder(
+    sparse_coder_sae = SparseCoder(
         d_in=d_in, cfg=SparseCoderConfig(num_latents=d_sae, k=26)
     )
 
@@ -124,10 +124,10 @@ def test_TrainingSAE_topk_aux_loss_matches_unnormalized_sparsify_implementation(
         # this is not something we need to try to replicate.
         sae.b_enc.data = sae.b_enc + 100.0
         # make sure all params are the same
-        comparison_sae.encoder.weight.data = sae.W_enc.T
-        comparison_sae.encoder.bias.data = sae.b_enc
-        comparison_sae.b_dec.data = sae.b_dec
-        comparison_sae.W_dec.data = sae.W_dec  # type: ignore
+        sparse_coder_sae.encoder.weight.data = sae.W_enc.T
+        sparse_coder_sae.encoder.bias.data = sae.b_enc
+        sparse_coder_sae.b_dec.data = sae.b_dec
+        sparse_coder_sae.W_dec.data = sae.W_dec  # type: ignore
 
     dead_neuron_mask = torch.randn(d_sae) > 0.1
     input_acts = torch.randn(200, d_in)
@@ -138,7 +138,9 @@ def test_TrainingSAE_topk_aux_loss_matches_unnormalized_sparsify_implementation(
         current_l1_coefficient=0.0,
         dead_neuron_mask=dead_neuron_mask,
     )
-    comparison_sae_out = comparison_sae.forward(input_acts, dead_mask=dead_neuron_mask)
+    comparison_sae_out = sparse_coder_sae.forward(
+        input_acts, dead_mask=dead_neuron_mask
+    )
     comparison_aux_loss = comparison_sae_out.auxk_loss.detach().item()
 
     normalization = input_var / input_acts.shape[0]
