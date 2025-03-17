@@ -168,6 +168,7 @@ class SAETrainingRunner:
         """
 
         if self.cfg.b_dec_init_method == "geometric_median":
+            self.activations_store.set_norm_scaling_factor_if_needed()
             layer_acts = self.activations_store.storage_buffer.detach()[:, 0, :]
             # get geometric median of the activations if we're using those.
             median = compute_geometric_median(
@@ -176,6 +177,7 @@ class SAETrainingRunner:
             ).median
             self.sae.initialize_b_dec_with_precalculated(median)  # type: ignore
         elif self.cfg.b_dec_init_method == "mean":
+            self.activations_store.set_norm_scaling_factor_if_needed()
             layer_acts = self.activations_store.storage_buffer.detach().cpu()[:, 0, :]
             self.sae.initialize_b_dec_with_mean(layer_acts)  # type: ignore
 
