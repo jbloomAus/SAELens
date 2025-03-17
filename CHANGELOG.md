@@ -2,6 +2,25 @@
 
 
 
+## v5.6.1 (2025-03-17)
+
+### Fix
+
+* fix: Ensure activation scaling factor set before initializing b_dec  when needed (#440)
+
+Co-authored-by: Keltin Grimes &lt;kgrimes@sei.cmu.edu&gt; ([`1145a62`](https://github.com/jbloomAus/SAELens/commit/1145a62ae94ceac4b0ff3f60485aa311b1f08991))
+
+* fix: base k_aux on d_in instead of d_sae in topk aux loss (#432)
+
+* fix: base k_aux on d_in instead of d_sae in topk aux loss
+
+* detaching error before aux loss and fixing tests
+
+* changes from cr
+
+* fixing tests ([`5325c06`](https://github.com/jbloomAus/SAELens/commit/5325c06309c543078e35f63e4e9fb5402811aec7))
+
+
 ## v5.6.0 (2025-03-12)
 
 ### Feature
