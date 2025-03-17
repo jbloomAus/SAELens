@@ -1,3 +1,4 @@
+import os
 import random
 import shutil
 from pathlib import Path
@@ -10,6 +11,9 @@ from sae_lens.sae import SAE
 from tests.helpers import TINYSTORIES_MODEL, load_model_cached
 
 torch.set_grad_enabled(True)
+
+# sparsify's triton implementation breaks in CI, so just disable it
+os.environ["SPARSIFY_DISABLE_TRITON"] = "1"
 
 
 @pytest.fixture(autouse=True)
