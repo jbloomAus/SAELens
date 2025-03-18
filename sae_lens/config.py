@@ -42,7 +42,7 @@ class LoggingConfig:
     run_name: str | None = None
     wandb_entity: str | None = None
     wandb_log_frequency: int = 10
-    eval_every_n_wandb_logs: int = 100  # logs every 1000 steps.
+    eval_every_n_wandb_logs: int = 100  # logs every 100 steps.
 
     def log(
         self,
