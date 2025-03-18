@@ -9,6 +9,7 @@ from sae_lens import (
     SAETrainingRunner,
     upload_saes_to_huggingface,
 )
+from sae_lens.config import LoggingConfig
 
 if torch.cuda.is_available():
     device = "cuda"
@@ -80,10 +81,11 @@ runner_cfg = LanguageModelSAERunnerConfig(
     dead_feature_threshold=1e-5,
     #
     # Logging / evals
-    log_to_wandb=True,
-    wandb_project=f"othello_gpt_sae_{layer=}",
-    wandb_log_frequency=30,
-    eval_every_n_wandb_logs=10,
+    logger=LoggingConfig(
+        wandb_project=f"othello_gpt_sae_{layer=}",
+        wandb_log_frequency=30,
+        eval_every_n_wandb_logs=10,
+    ),
     checkpoint_path="checkpoints",
     #
     # Misc.

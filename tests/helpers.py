@@ -3,7 +3,7 @@ from typing import Any, Optional, TypedDict
 
 from transformer_lens import HookedTransformer
 
-from sae_lens.config import LanguageModelSAERunnerConfig
+from sae_lens.config import LanguageModelSAERunnerConfig, LoggingConfig
 
 TINYSTORIES_MODEL = "tiny-stories-1M"
 TINYSTORIES_DATASET = "roneneldan/TinyStories"
@@ -32,16 +32,13 @@ class LanguageModelSAERunnerConfigDict(TypedDict, total=False):
     n_batches_in_buffer: int
     training_tokens: int
     store_batch_size_prompts: int
-    log_to_wandb: bool
-    wandb_project: str
-    wandb_entity: str
-    wandb_log_frequency: int
     device: str
     seed: int
     checkpoint_path: str
     dtype: str
     prepend_bos: bool
     normalize_activations: str
+    logger: LoggingConfig
 
 
 def build_sae_cfg(**kwargs: Any) -> LanguageModelSAERunnerConfig:
@@ -69,10 +66,12 @@ def build_sae_cfg(**kwargs: Any) -> LanguageModelSAERunnerConfig:
         "n_batches_in_buffer": 2,
         "training_tokens": 1_000_000,
         "store_batch_size_prompts": 4,
-        "log_to_wandb": False,
-        "wandb_project": "test_project",
-        "wandb_entity": "test_entity",
-        "wandb_log_frequency": 10,
+        "logger": LoggingConfig(
+            log_to_wandb=False,
+            wandb_project="test_project",
+            wandb_entity="test_entity",
+            wandb_log_frequency=10,
+        ),
         "device": "cpu",
         "seed": 24,
         "checkpoint_path": "test/checkpoints",

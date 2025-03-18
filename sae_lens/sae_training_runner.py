@@ -91,13 +91,13 @@ class SAETrainingRunner:
         Run the training of the SAE.
         """
 
-        if self.cfg.log_to_wandb:
+        if self.cfg.logger.log_to_wandb:
             wandb.init(
-                project=self.cfg.wandb_project,
-                entity=self.cfg.wandb_entity,
+                project=self.cfg.logger.wandb_project,
+                entity=self.cfg.logger.wandb_entity,
                 config=cast(Any, self.cfg),
-                name=self.cfg.run_name,
-                id=self.cfg.wandb_id,
+                name=self.cfg.logger.run_name,
+                id=self.cfg.logger.wandb_id,
             )
 
         trainer = SAETrainer(
@@ -111,7 +111,7 @@ class SAETrainingRunner:
         self._compile_if_needed()
         sae = self.run_trainer_with_interruption_handling(trainer)
 
-        if self.cfg.log_to_wandb:
+        if self.cfg.logger.log_to_wandb:
             wandb.finish()
 
         return sae
@@ -206,29 +206,14 @@ class SAETrainingRunner:
         with open(cfg_path, "w") as f:
             json.dump(config, f)
 
-        if trainer.cfg.log_to_wandb:
-            # Avoid wandb saving errors such as:
-            #   ValueError: Artifact name may only contain alphanumeric characters, dashes, underscores, and dots. Invalid name: sae_google/gemma-2b_etc
-            sae_name = trainer.sae.get_name().replace("/", "__")
-
-            # save model weights and cfg
-            model_artifact = wandb.Artifact(
-                sae_name,
-                type="model",
-                metadata=dict(trainer.cfg.__dict__),
+        if trainer.cfg.logger.log_to_wandb:
+            trainer.cfg.logger.log(
+                trainer,
+                weights_path,
+                cfg_path,
+                sparsity_path,
+                wandb_aliases,
             )
-            model_artifact.add_file(str(weights_path))
-            model_artifact.add_file(str(cfg_path))
-            wandb.log_artifact(model_artifact, aliases=wandb_aliases)
-
-            # save log feature sparsity
-            sparsity_artifact = wandb.Artifact(
-                f"{sae_name}_log_feature_sparsity",
-                type="log_feature_sparsity",
-                metadata=dict(trainer.cfg.__dict__),
-            )
-            sparsity_artifact.add_file(str(sparsity_path))
-            wandb.log_artifact(sparsity_artifact)
 
 
 def _parse_cfg_args(args: Sequence[str]) -> LanguageModelSAERunnerConfig:
