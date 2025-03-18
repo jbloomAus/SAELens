@@ -37,7 +37,7 @@ class LoggingConfig:
     log_to_wandb: bool = True
     log_activations_store_to_wandb: bool = False
     log_optimizer_state_to_wandb: bool = False
-    wandb_project: str = "mats_sae_training_language_model"
+    wandb_project: str = "sae_lens_training"
     wandb_id: str | None = None
     run_name: str | None = None
     wandb_entity: str | None = None
