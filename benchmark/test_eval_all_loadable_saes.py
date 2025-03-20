@@ -9,7 +9,9 @@ import pytest
 import torch
 
 from sae_lens import SAE, ActivationsStore
-from sae_lens.analysis.neuronpedia_integration import open_neuronpedia_feature_dashboard
+from sae_lens.analysis.neuronpedia_integration import (
+    open_neuronpedia_feature_dashboard,
+)
 from sae_lens.evals import (
     all_loadable_saes,
     get_eval_everything_config,
@@ -49,7 +51,8 @@ def test_get_sae_config():
 
 
 @pytest.mark.parametrize(
-    "release, sae_name, expected_var_explained, expected_l0", all_loadable_saes()
+    "release, sae_name, expected_var_explained, expected_l0",
+    all_loadable_saes(),
 )
 def test_loading_pretrained_saes(
     release: str,
@@ -69,7 +72,8 @@ def test_loading_pretrained_saes(
 
 
 @pytest.mark.parametrize(
-    "release, sae_name, expected_var_explained, expected_l0", all_loadable_saes()
+    "release, sae_name, expected_var_explained, expected_l0",
+    all_loadable_saes(),
 )
 def test_loading_pretrained_saes_open_neuronpedia(
     release: str,
@@ -91,7 +95,8 @@ def test_loading_pretrained_saes_open_neuronpedia(
 
 
 @pytest.mark.parametrize(
-    "release, sae_name, expected_var_explained, expected_l0", all_loadable_saes()
+    "release, sae_name, expected_var_explained, expected_l0",
+    all_loadable_saes(),
 )
 def test_loading_pretrained_saes_do_forward_pass(
     release: str,
@@ -115,10 +120,14 @@ def test_loading_pretrained_saes_do_forward_pass(
 
     if "hook_z" in sae.cfg.hook_name:
         # check that reshaping works as intended
-        from transformer_lens.loading_from_pretrained import get_pretrained_model_config
+        from transformer_lens.loading_from_pretrained import (
+            get_pretrained_model_config,
+        )
 
         model_cfg = get_pretrained_model_config(sae.cfg.model_name)
-        sae_in = torch.randn(1, 4, model_cfg.n_heads, model_cfg.d_head).to(device)
+        sae_in = torch.randn(1, 4, model_cfg.n_heads, model_cfg.d_head).to(
+            device
+        )
         sae_out = sae(sae_in)
         assert sae_out.shape == sae_in.shape
 
@@ -131,10 +140,14 @@ def test_loading_pretrained_saes_do_forward_pass(
 
 
 @pytest.mark.parametrize(
-    "release, sae_name, expected_var_explained, expected_l0", all_loadable_saes()
+    "release, sae_name, expected_var_explained, expected_l0",
+    all_loadable_saes(),
 )
 def test_eval_all_loadable_saes(
-    release: str, sae_name: str, expected_var_explained: float, expected_l0: float
+    release: str,
+    sae_name: str,
+    expected_var_explained: float,
+    expected_l0: float,
 ):
     """This test is currently only passing for a subset of SAEs because we need to
     have the normalization factors on hand to normalize the activations. We should
@@ -185,7 +198,8 @@ def test_eval_all_loadable_saes(
 
     assert pytest.approx(metrics["l0"], abs=5) == expected_l0
     assert (
-        pytest.approx(metrics["explained_variance"], abs=0.1) == expected_var_explained
+        pytest.approx(metrics["explained_variance"], abs=0.1)
+        == expected_var_explained
     )
 
 
@@ -207,12 +221,16 @@ def mock_evals_simple_args(tmp_path: Path):
     return Args()
 
 
-def test_run_evaluations_process_results(mock_evals_simple_args: argparse.Namespace):
+def test_run_evaluations_process_results(
+    mock_evals_simple_args: argparse.Namespace,
+):
     """
     This test is more like an acceptance test for the evals code than a benchmark.
     """
     eval_results = run_evaluations(mock_evals_simple_args)
-    output_files = process_results(eval_results, mock_evals_simple_args.output_dir)
+    output_files = process_results(
+        eval_results, mock_evals_simple_args.output_dir
+    )
 
     print("Evaluation complete. Output files:")
     print(f"Individual JSONs: {len(output_files['individual_jsons'])}")  # type: ignore

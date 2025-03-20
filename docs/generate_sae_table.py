@@ -48,13 +48,17 @@ def generate_sae_table():
     for release, model_info in tqdm(data.items()):
         repo_link = f"https://huggingface.co/{model_info['repo_id']}"
         markdown_content += f"## [{release}]({repo_link})\n\n"
-        markdown_content += f"- **Huggingface Repo**: {model_info['repo_id']}\n"
+        markdown_content += (
+            f"- **Huggingface Repo**: {model_info['repo_id']}\n"
+        )
         markdown_content += f"- **model**: {model_info['model']}\n"
 
         if "links" in model_info:
             markdown_content += "- **Additional Links**:\n"
             for link_type, url in model_info["links"].items():
-                markdown_content += f"    - [{link_type.capitalize()}]({url})\n"
+                markdown_content += (
+                    f"    - [{link_type.capitalize()}]({url})\n"
+                )
 
         markdown_content += "\n"
 

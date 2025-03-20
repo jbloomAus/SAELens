@@ -10,7 +10,11 @@ from transformer_lens import HookedTransformer
 
 from sae_lens.config import LanguageModelSAERunnerConfig
 from sae_lens.sae import SAE
-from sae_lens.sae_training_runner import SAETrainingRunner, _parse_cfg_args, _run_cli
+from sae_lens.sae_training_runner import (
+    SAETrainingRunner,
+    _parse_cfg_args,
+    _run_cli,
+)
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.sae_trainer import SAETrainer
 from sae_lens.training.training_sae import TrainingSAE
@@ -35,9 +39,13 @@ def model():
 
 
 @pytest.fixture
-def activation_store(model: HookedTransformer, cfg: LanguageModelSAERunnerConfig):
+def activation_store(
+    model: HookedTransformer, cfg: LanguageModelSAERunnerConfig
+):
     return ActivationsStore.from_config(
-        model, cfg, override_dataset=Dataset.from_list([{"text": "hello world"}] * 2000)
+        model,
+        cfg,
+        override_dataset=Dataset.from_list([{"text": "hello world"}] * 2000),
     )
 
 
@@ -69,7 +77,9 @@ def training_runner(
     return SAETrainingRunner(cfg)
 
 
-def test_save_checkpoint(training_runner: SAETrainingRunner, trainer: SAETrainer):
+def test_save_checkpoint(
+    training_runner: SAETrainingRunner, trainer: SAETrainer
+):
     training_runner.save_checkpoint(
         trainer=trainer,
         checkpoint_name="test",
@@ -81,7 +91,9 @@ def test_save_checkpoint(training_runner: SAETrainingRunner, trainer: SAETrainer
     assert "sparsity.safetensors" in contents
     assert "cfg.json" in contents
 
-    sae = SAE.load_from_pretrained(training_runner.cfg.checkpoint_path + "/test")
+    sae = SAE.load_from_pretrained(
+        training_runner.cfg.checkpoint_path + "/test"
+    )
 
     assert isinstance(sae, SAE)
 
@@ -153,28 +165,41 @@ def test_parse_cfg_args_dict_args():
     cfg = _parse_cfg_args(args)
 
     assert cfg.model_kwargs == {"foo": "bar", "baz": 123}
-    assert cfg.model_from_pretrained_kwargs == {"center_writing_weights": False}
+    assert cfg.model_from_pretrained_kwargs == {
+        "center_writing_weights": False
+    }
     assert cfg.activation_fn_kwargs == {"k": 100}
 
 
 def test_parse_cfg_args_invalid_json():
     args = ["--model_kwargs", "{invalid json"]
-    with pytest.raises(argparse.ArgumentError, match="invalid json_dict value"):
+    with pytest.raises(
+        argparse.ArgumentError, match="invalid json_dict value"
+    ):
         _parse_cfg_args(args)
 
 
 def test_parse_cfg_args_invalid_dict_type():
     # Test that we reject non-dict values for dict fields
     args = ["--model_kwargs", "[1, 2, 3]"]  # Array instead of dict
-    with pytest.raises(argparse.ArgumentError, match="invalid json_dict value"):
+    with pytest.raises(
+        argparse.ArgumentError, match="invalid json_dict value"
+    ):
         _parse_cfg_args(args)
 
-    args = ["--model_from_pretrained_kwargs", '"not_a_dict"']  # String instead of dict
-    with pytest.raises(argparse.ArgumentError, match="invalid json_dict value"):
+    args = [
+        "--model_from_pretrained_kwargs",
+        '"not_a_dict"',
+    ]  # String instead of dict
+    with pytest.raises(
+        argparse.ArgumentError, match="invalid json_dict value"
+    ):
         _parse_cfg_args(args)
 
     args = ["--activation_fn_kwargs", "123"]  # Number instead of dict
-    with pytest.raises(argparse.ArgumentError, match="invalid json_dict value"):
+    with pytest.raises(
+        argparse.ArgumentError, match="invalid json_dict value"
+    ):
         _parse_cfg_args(args)
 
 

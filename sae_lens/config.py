@@ -44,7 +44,9 @@ def dict_field(default: dict[str, Any] | None, **kwargs: Any) -> Any:  # type: i
     Helper to wrap simple_parsing.helpers.dict_field so we can load JSON fields from the command line.
     """
     if default is None:
-        return simple_parsing.helpers.field(default=None, type=json_dict, **kwargs)
+        return simple_parsing.helpers.field(
+            default=None, type=json_dict, **kwargs
+        )
     return simple_parsing.helpers.dict_field(default, type=json_dict, **kwargs)
 
 
@@ -163,7 +165,9 @@ class LanguageModelSAERunnerConfig:
     expansion_factor: Optional[int] = (
         None  # defaults to 4 if d_sae and expansion_factor is None
     )
-    activation_fn: str = None  # relu, tanh-relu, topk. Default is relu. # type: ignore
+    activation_fn: str = (
+        None  # relu, tanh-relu, topk. Default is relu. # type: ignore
+    )
     activation_fn_kwargs: dict[str, int] = dict_field(default=None)  # for topk
     normalize_sae_decoder: bool = True
     noise_scale: float = 0.0
@@ -183,7 +187,9 @@ class LanguageModelSAERunnerConfig:
 
     # Misc
     device: str = "cpu"
-    act_store_device: str = "with_model"  # will be set by post init if with_model
+    act_store_device: str = (
+        "with_model"  # will be set by post init if with_model
+    )
     seed: int = 42
     dtype: str = "float32"  # type: ignore #
     prepend_bos: bool = True
@@ -222,17 +228,25 @@ class LanguageModelSAERunnerConfig:
         "constant"  # constant, cosineannealing, cosineannealingwarmrestarts
     )
     lr_warm_up_steps: int = 0
-    lr_end: Optional[float] = None  # only used for cosine annealing, default is lr / 10
+    lr_end: Optional[float] = (
+        None  # only used for cosine annealing, default is lr / 10
+    )
     lr_decay_steps: int = 0
     n_restart_cycles: int = 1  # used only for cosineannealingwarmrestarts
 
     ## FineTuning
-    finetuning_method: Optional[str] = None  # scale, decoder or unrotated_decoder
+    finetuning_method: Optional[str] = (
+        None  # scale, decoder or unrotated_decoder
+    )
 
     # Resampling protocol args
-    use_ghost_grads: bool = False  # want to change this to true on some timeline.
+    use_ghost_grads: bool = (
+        False  # want to change this to true on some timeline.
+    )
     feature_sampling_window: int = 2000
-    dead_feature_window: int = 1000  # unless this window is larger feature sampling,
+    dead_feature_window: int = (
+        1000  # unless this window is larger feature sampling,
+    )
 
     dead_feature_threshold: float = 1e-8
 
@@ -257,7 +271,9 @@ class LanguageModelSAERunnerConfig:
     checkpoint_path: str = "checkpoints"
     verbose: bool = True
     model_kwargs: dict[str, Any] = dict_field(default={})
-    model_from_pretrained_kwargs: dict[str, Any] | None = dict_field(default=None)
+    model_from_pretrained_kwargs: dict[str, Any] | None = dict_field(
+        default=None
+    )
     sae_lens_version: str = field(default_factory=lambda: __version__)
     sae_lens_training_version: str = field(default_factory=lambda: __version__)
     exclude_special_tokens: bool | list[int] = False
@@ -269,7 +285,10 @@ class LanguageModelSAERunnerConfig:
                 + "If you want to load an SAE with resume=True in the config, please manually set resume=False in that config."
             )
 
-        if self.use_cached_activations and self.cached_activations_path is None:
+        if (
+            self.use_cached_activations
+            and self.cached_activations_path is None
+        ):
             self.cached_activations_path = _default_cached_activations_path(
                 self.dataset_path,
                 self.model_name,
@@ -278,17 +297,24 @@ class LanguageModelSAERunnerConfig:
             )
 
         if self.activation_fn is None:
-            self.activation_fn = "topk" if self.architecture == "topk" else "relu"
+            self.activation_fn = (
+                "topk" if self.architecture == "topk" else "relu"
+            )
 
         if self.architecture == "topk" and self.activation_fn != "topk":
-            raise ValueError("If using topk architecture, activation_fn must be topk.")
+            raise ValueError(
+                "If using topk architecture, activation_fn must be topk."
+            )
 
         if self.activation_fn_kwargs is None:
             self.activation_fn_kwargs = (
                 {"k": 100} if self.activation_fn == "topk" else {}
             )
 
-        if self.architecture == "topk" and self.activation_fn_kwargs.get("k") is None:
+        if (
+            self.architecture == "topk"
+            and self.activation_fn_kwargs.get("k") is None
+        ):
             raise ValueError(
                 "activation_fn_kwargs.k must be provided for topk architecture."
             )
@@ -302,7 +328,9 @@ class LanguageModelSAERunnerConfig:
         if self.d_sae is None and self.expansion_factor is not None:
             self.d_sae = self.d_in * self.expansion_factor
         self.tokens_per_buffer = (
-            self.train_batch_size_tokens * self.context_size * self.n_batches_in_buffer
+            self.train_batch_size_tokens
+            * self.context_size
+            * self.n_batches_in_buffer
         )
 
         if self.run_name is None:
@@ -310,7 +338,9 @@ class LanguageModelSAERunnerConfig:
 
         if self.model_from_pretrained_kwargs is None:
             if self.model_class_name == "HookedTransformer":
-                self.model_from_pretrained_kwargs = {"center_writing_weights": False}
+                self.model_from_pretrained_kwargs = {
+                    "center_writing_weights": False
+                }
             else:
                 self.model_from_pretrained_kwargs = {}
 
@@ -324,13 +354,18 @@ class LanguageModelSAERunnerConfig:
                 "You can't normalize the decoder and use heuristic initialization."
             )
 
-        if self.normalize_sae_decoder and self.scale_sparsity_penalty_by_decoder_norm:
+        if (
+            self.normalize_sae_decoder
+            and self.scale_sparsity_penalty_by_decoder_norm
+        ):
             raise ValueError(
                 "Weighting loss by decoder norm makes no sense if you are normalizing the decoder weight norms to 1"
             )
 
         # if we use decoder fine tuning, we can't be applying b_dec to the input
-        if (self.finetuning_method == "decoder") and (self.apply_b_dec_to_input):
+        if (self.finetuning_method == "decoder") and (
+            self.apply_b_dec_to_input
+        ):
             raise ValueError(
                 "If we are fine tuning the decoder, we can't be applying b_dec to the input.\nSet apply_b_dec_to_input to False."
             )
@@ -383,7 +418,9 @@ class LanguageModelSAERunnerConfig:
             ) // self.train_batch_size_tokens
             logger.info(f"Total training steps: {total_training_steps}")
 
-            total_wandb_updates = total_training_steps // self.wandb_log_frequency
+            total_wandb_updates = (
+                total_training_steps // self.wandb_log_frequency
+            )
             logger.info(f"Total wandb updates: {total_wandb_updates}")
 
             # how many times will we sample dead neurons?
@@ -413,12 +450,16 @@ class LanguageModelSAERunnerConfig:
                 f"The provided context_size is {self.context_size} is negative. Expecting positive context_size."
             )
 
-        _validate_seqpos(seqpos=self.seqpos_slice, context_size=self.context_size)
+        _validate_seqpos(
+            seqpos=self.seqpos_slice, context_size=self.context_size
+        )
 
         if isinstance(self.exclude_special_tokens, list) and not all(
             isinstance(x, int) for x in self.exclude_special_tokens
         ):
-            raise ValueError("exclude_special_tokens list must contain only integers")
+            raise ValueError(
+                "exclude_special_tokens list must contain only integers"
+            )
 
     @property
     def total_training_tokens(self) -> int:
@@ -556,7 +597,9 @@ class CacheActivationsRunnerConfig:
     seed: int = 42
     dtype: str = "float32"
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
-    buffer_size_gb: float = 2.0  # HF datasets writer have problems with shards > 2GB
+    buffer_size_gb: float = (
+        2.0  # HF datasets writer have problems with shards > 2GB
+    )
 
     # Huggingface Integration
     hf_repo_id: str | None = None
@@ -583,7 +626,11 @@ class CacheActivationsRunnerConfig:
             ds = load_dataset(self.dataset_path, split="train", streaming=True)
             assert isinstance(ds, IterableDataset)
             first_sample = next(iter(ds))
-            toks = first_sample.get("tokens") or first_sample.get("input_ids") or None
+            toks = (
+                first_sample.get("tokens")
+                or first_sample.get("input_ids")
+                or None
+            )
             if toks is None:
                 raise ValueError(
                     "Dataset is not tokenized. Please specify context_size."
@@ -592,7 +639,9 @@ class CacheActivationsRunnerConfig:
             self.context_size = token_length
 
         if self.context_size == -1:
-            raise ValueError("context_size is still -1 after dataset inspection.")
+            raise ValueError(
+                "context_size is still -1 after dataset inspection."
+            )
 
         if self.seqpos_slice is not None:
             _validate_seqpos(
@@ -601,8 +650,10 @@ class CacheActivationsRunnerConfig:
             )
 
         if self.new_cached_activations_path is None:
-            self.new_cached_activations_path = _default_cached_activations_path(  # type: ignore
-                self.dataset_path, self.model_name, self.hook_name, None
+            self.new_cached_activations_path = (
+                _default_cached_activations_path(  # type: ignore
+                    self.dataset_path, self.model_name, self.hook_name, None
+                )
             )
 
     @property
@@ -618,9 +669,13 @@ class CacheActivationsRunnerConfig:
     @property
     def n_tokens_in_buffer(self) -> int:
         # Calculate raw tokens per buffer based on memory constraints
-        _tokens_per_buffer = int(self.buffer_size_gb * 1e9) // self.bytes_per_token
+        _tokens_per_buffer = (
+            int(self.buffer_size_gb * 1e9) // self.bytes_per_token
+        )
         # Round down to nearest multiple of batch_token_size
-        return _tokens_per_buffer - (_tokens_per_buffer % self.n_tokens_in_batch)
+        return _tokens_per_buffer - (
+            _tokens_per_buffer % self.n_tokens_in_batch
+        )
 
     @property
     def n_tokens_in_batch(self) -> int:
@@ -655,7 +710,9 @@ def _default_cached_activations_path(
     return path
 
 
-def _validate_seqpos(seqpos: tuple[int | None, ...], context_size: int) -> None:
+def _validate_seqpos(
+    seqpos: tuple[int | None, ...], context_size: int
+) -> None:
     # Ensure that the step-size is larger or equal to 1
     if len(seqpos) == 3:
         step_size = seqpos[2] or 1

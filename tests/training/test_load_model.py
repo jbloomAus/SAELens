@@ -4,7 +4,11 @@ from mamba_lens import HookedMamba
 from transformer_lens import HookedTransformer
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from sae_lens.load_model import HookedProxyLM, _extract_logits_from_output, load_model
+from sae_lens.load_model import (
+    HookedProxyLM,
+    _extract_logits_from_output,
+    load_model,
+)
 
 
 @pytest.fixture
@@ -78,7 +82,9 @@ def test_HookedProxyLM_gives_same_cached_states_as_original_implementation():
 def test_HookedProxyLM_gives_same_cached_states_as_tlens_implementation(
     gpt2_proxy_model: HookedProxyLM,
 ):
-    tlens_model = HookedTransformer.from_pretrained_no_processing("gpt2", device="cpu")
+    tlens_model = HookedTransformer.from_pretrained_no_processing(
+        "gpt2", device="cpu"
+    )
 
     input_ids = tlens_model.to_tokens("hi")
     hf_cache = gpt2_proxy_model.run_with_cache(input_ids)[1]
@@ -97,8 +103,12 @@ def test_HookedProxyLM_forward_gives_same_output_as_tlens(
     tlens_model = HookedTransformer.from_pretrained("gpt2", device="cpu")
 
     batch_tokens = tlens_model.to_tokens("hi there")
-    tlens_output = tlens_model(batch_tokens, return_type="both", loss_per_token=True)
-    hf_output = gpt2_proxy_model(batch_tokens, return_type="both", loss_per_token=True)
+    tlens_output = tlens_model(
+        batch_tokens, return_type="both", loss_per_token=True
+    )
+    hf_output = gpt2_proxy_model(
+        batch_tokens, return_type="both", loss_per_token=True
+    )
 
     # Seems like tlens removes the means before softmaxing
     hf_logits_normed = hf_output[0] - hf_output[0].mean(dim=-1, keepdim=True)

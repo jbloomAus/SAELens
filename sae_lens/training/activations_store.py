@@ -73,7 +73,9 @@ class ActivationsStore:
             store_batch_size_prompts=cfg.model_batch_size,  # get_buffer
             train_batch_size_tokens=cfg.model_batch_size,  # dataloader
             seqpos_slice=(None,),
-            device=torch.device(cfg.device),  # since we're sending these to SAE
+            device=torch.device(
+                cfg.device
+            ),  # since we're sending these to SAE
             # NOOP
             prepend_bos=False,
             hook_head_index=None,
@@ -166,7 +168,9 @@ class ActivationsStore:
             hook_name=sae.cfg.hook_name,
             hook_layer=sae.cfg.hook_layer,
             hook_head_index=sae.cfg.hook_head_index,
-            context_size=sae.cfg.context_size if context_size is None else context_size,
+            context_size=sae.cfg.context_size
+            if context_size is None
+            else context_size,
             prepend_bos=sae.cfg.prepend_bos,
             streaming=streaming,
             store_batch_size_prompts=store_batch_size_prompts,
@@ -286,7 +290,9 @@ class ActivationsStore:
                 )
             # TODO: investigate if this can work for iterable datasets, or if this is even worthwhile as a perf improvement
             if hasattr(self.dataset, "set_format"):
-                self.dataset.set_format(type="torch", columns=[self.tokens_column])  # type: ignore
+                self.dataset.set_format(  # type: ignore
+                    type="torch", columns=[self.tokens_column]
+                )
 
             if (
                 isinstance(dataset, str)
@@ -319,7 +325,9 @@ class ActivationsStore:
             yield row[self.tokens_column]  # type: ignore
             self.n_dataset_processed += 1
 
-    def _iterate_raw_dataset_tokens(self) -> Generator[torch.Tensor, None, None]:
+    def _iterate_raw_dataset_tokens(
+        self,
+    ) -> Generator[torch.Tensor, None, None]:
         """
         Helper to create an iterator which tokenizes raw text from the dataset on the fly
         """
@@ -335,10 +343,14 @@ class ActivationsStore:
                 .to(self.device)
             )
             if len(tokens.shape) != 1:
-                raise ValueError(f"tokens.shape should be 1D but was {tokens.shape}")
+                raise ValueError(
+                    f"tokens.shape should be 1D but was {tokens.shape}"
+                )
             yield tokens
 
-    def _iterate_tokenized_sequences(self) -> Generator[torch.Tensor, None, None]:
+    def _iterate_tokenized_sequences(
+        self,
+    ) -> Generator[torch.Tensor, None, None]:
         """
         Generator which iterates over full sequence of context_size tokens
         """
@@ -357,11 +369,15 @@ class ActivationsStore:
         # If the dataset isn't tokenized, we'll tokenize, concat, and batch on the fly
         else:
             tokenizer = getattr(self.model, "tokenizer", None)
-            bos_token_id = None if tokenizer is None else tokenizer.bos_token_id
+            bos_token_id = (
+                None if tokenizer is None else tokenizer.bos_token_id
+            )
             yield from concat_and_batch_sequences(
                 tokens_iterator=self._iterate_raw_dataset_tokens(),
                 context_size=self.context_size,
-                begin_batch_token_id=(bos_token_id if self.prepend_bos else None),
+                begin_batch_token_id=(
+                    bos_token_id if self.prepend_bos else None
+                ),
                 begin_sequence_token_id=None,
                 sequence_separator_token_id=(
                     bos_token_id if self.prepend_bos else None
@@ -388,7 +404,9 @@ class ActivationsStore:
 
         # ---
         # Actual code
-        activations_dataset = datasets.load_from_disk(self.cached_activations_path)
+        activations_dataset = datasets.load_from_disk(
+            self.cached_activations_path
+        )
         columns = [self.hook_name]
         if "token_ids" in activations_dataset.column_names:
             columns.append("token_ids")
@@ -401,7 +419,9 @@ class ActivationsStore:
         assert isinstance(activations_dataset, Dataset)
 
         # multiple in hooks future
-        if not set([self.hook_name]).issubset(activations_dataset.column_names):
+        if not set([self.hook_name]).issubset(
+            activations_dataset.column_names
+        ):
             raise ValueError(
                 f"loaded dataset does not include hook activations, got {activations_dataset.column_names}"
             )
@@ -421,9 +441,13 @@ class ActivationsStore:
             self.normalize_activations == "expected_average_only_in"
             and self.estimated_norm_scaling_factor is None
         ):
-            self.estimated_norm_scaling_factor = self.estimate_norm_scaling_factor()
+            self.estimated_norm_scaling_factor = (
+                self.estimate_norm_scaling_factor()
+            )
 
-    def apply_norm_scaling_factor(self, activations: torch.Tensor) -> torch.Tensor:
+    def apply_norm_scaling_factor(
+        self, activations: torch.Tensor
+    ) -> torch.Tensor:
         if self.estimated_norm_scaling_factor is None:
             raise ValueError(
                 "estimated_norm_scaling_factor is not set, call set_norm_scaling_factor_if_needed() first"
@@ -437,14 +461,19 @@ class ActivationsStore:
             )
         return activations / self.estimated_norm_scaling_factor
 
-    def get_norm_scaling_factor(self, activations: torch.Tensor) -> torch.Tensor:
+    def get_norm_scaling_factor(
+        self, activations: torch.Tensor
+    ) -> torch.Tensor:
         return (self.d_in**0.5) / activations.norm(dim=-1).mean()
 
     @torch.no_grad()
-    def estimate_norm_scaling_factor(self, n_batches_for_norm_estimate: int = int(1e3)):
+    def estimate_norm_scaling_factor(
+        self, n_batches_for_norm_estimate: int = int(1e3)
+    ):
         norms_per_batch = []
         for _ in tqdm(
-            range(n_batches_for_norm_estimate), desc="Estimating norm scaling factor"
+            range(n_batches_for_norm_estimate),
+            desc="Estimating norm scaling factor",
         ):
             # temporalily set estimated_norm_scaling_factor to 1.0 so the dataloader works
             self.estimated_norm_scaling_factor = 1.0
@@ -463,7 +492,9 @@ class ActivationsStore:
         additionally shuffle individual elements within the shard.
         """
         if isinstance(self.dataset, IterableDataset):
-            self.dataset = self.dataset.shuffle(seed=seed, buffer_size=buffer_size)
+            self.dataset = self.dataset.shuffle(
+                seed=seed, buffer_size=buffer_size
+            )
         else:
             self.dataset = self.dataset.shuffle(seed=seed)
         self.iterable_dataset = iter(self.dataset)
@@ -478,7 +509,8 @@ class ActivationsStore:
     def storage_buffer(self) -> torch.Tensor:
         if self._storage_buffer is None:
             self._storage_buffer = _filter_buffer_acts(
-                self.get_buffer(self.half_buffer_size), self.exclude_special_tokens
+                self.get_buffer(self.half_buffer_size),
+                self.exclude_special_tokens,
             )
 
         return self._storage_buffer
@@ -591,13 +623,18 @@ class ActivationsStore:
         assert self.cached_activation_dataset is not None
         # In future, could be a list of multiple hook names
         hook_names = [self.hook_name]
-        if not set(hook_names).issubset(self.cached_activation_dataset.column_names):
+        if not set(hook_names).issubset(
+            self.cached_activation_dataset.column_names
+        ):
             raise ValueError(
                 f"Missing columns in dataset. Expected {hook_names}, "
                 f"got {self.cached_activation_dataset.column_names}."
             )
 
-        if self.current_row_idx > len(self.cached_activation_dataset) - total_size:
+        if (
+            self.current_row_idx
+            > len(self.cached_activation_dataset) - total_size
+        ):
             self.current_row_idx = 0
             if raise_on_epoch_end:
                 raise StopIteration
@@ -627,7 +664,9 @@ class ActivationsStore:
             )
 
         self.current_row_idx += total_size
-        acts_buffer = new_buffer.reshape(total_size * context_size, num_layers, d_in)
+        acts_buffer = new_buffer.reshape(
+            total_size * context_size, num_layers, d_in
+        )
 
         if "token_ids" not in self.cached_activation_dataset.column_names:
             return acts_buffer, None
@@ -656,7 +695,9 @@ class ActivationsStore:
         If raise_on_epoch_end is True, when the dataset it exhausted it will automatically refill the dataset and then raise a StopIteration so that the caller has a chance to react.
         """
         context_size = self.context_size
-        training_context_size = len(range(context_size)[slice(*self.seqpos_slice)])
+        training_context_size = len(
+            range(context_size)[slice(*self.seqpos_slice)]
+        )
         batch_size = self.store_batch_size_prompts
         d_in = self.d_in
         total_size = batch_size * n_batches_in_buffer
@@ -691,16 +732,22 @@ class ActivationsStore:
             # move acts back to cpu
             refill_activations.to(self.device)
             new_buffer_activations[
-                refill_batch_idx_start : refill_batch_idx_start + batch_size, ...
+                refill_batch_idx_start : refill_batch_idx_start + batch_size,
+                ...,
             ] = refill_activations
 
             # handle seqpos_slice, this is done for activations in get_activations
-            refill_batch_tokens = refill_batch_tokens[:, slice(*self.seqpos_slice)]
+            refill_batch_tokens = refill_batch_tokens[
+                :, slice(*self.seqpos_slice)
+            ]
             new_buffer_token_ids[
-                refill_batch_idx_start : refill_batch_idx_start + batch_size, ...
+                refill_batch_idx_start : refill_batch_idx_start + batch_size,
+                ...,
             ] = refill_batch_tokens
 
-        new_buffer_activations = new_buffer_activations.reshape(-1, num_layers, d_in)
+        new_buffer_activations = new_buffer_activations.reshape(
+            -1, num_layers, d_in
+        )
         new_buffer_token_ids = new_buffer_token_ids.reshape(-1)
         if shuffle:
             new_buffer_activations, new_buffer_token_ids = permute_together(
@@ -733,16 +780,16 @@ class ActivationsStore:
 
         try:
             new_samples = _filter_buffer_acts(
-                self.get_buffer(self.half_buffer_size, raise_on_epoch_end=True),
+                self.get_buffer(
+                    self.half_buffer_size, raise_on_epoch_end=True
+                ),
                 self.exclude_special_tokens,
             )
         except StopIteration:
             warnings.warn(
                 "All samples in the training dataset have been exhausted, we are now beginning a new epoch with the same samples."
             )
-            self._storage_buffer = (
-                None  # dump the current buffer so samples do not leak between epochs
-            )
+            self._storage_buffer = None  # dump the current buffer so samples do not leak between epochs
             try:
                 new_samples = _filter_buffer_acts(
                     self.get_buffer(self.half_buffer_size),
@@ -883,7 +930,9 @@ def _filter_buffer_acts(
     return activations[~mask]
 
 
-def permute_together(tensors: Sequence[torch.Tensor]) -> tuple[torch.Tensor, ...]:
+def permute_together(
+    tensors: Sequence[torch.Tensor],
+) -> tuple[torch.Tensor, ...]:
     """Permute tensors together."""
     permutation = torch.randperm(tensors[0].shape[0])
     return tuple(t[permutation] for t in tensors)

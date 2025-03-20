@@ -16,7 +16,9 @@ class PretrainedSAELookup:
     expected_var_explained: dict[str, float]
     expected_l0: dict[str, float]
     neuronpedia_id: dict[str, str]
-    config_overrides: dict[str, str] | dict[str, dict[str, str | bool | int]] | None
+    config_overrides: (
+        dict[str, str] | dict[str, dict[str, str | bool | int]] | None
+    )
 
 
 @cache
@@ -41,7 +43,9 @@ def get_pretrained_saes_directory() -> dict[str, PretrainedSAELookup]:
                     "variance_explained", 1.00
                 )
                 l0_map[hook_info["id"]] = hook_info.get("l0", 0.00)
-                neuronpedia_id_map[hook_info["id"]] = hook_info.get("neuronpedia")
+                neuronpedia_id_map[hook_info["id"]] = hook_info.get(
+                    "neuronpedia"
+                )
             directory[release] = PretrainedSAELookup(
                 release=release,
                 repo_id=value["repo_id"],

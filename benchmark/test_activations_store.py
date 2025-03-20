@@ -44,7 +44,9 @@ def test_benchmark_activations_store_get_batch_tokens_pretokenized_vs_raw():
     )
 
     text_start_time = perf_counter()
-    text_batch_toks = [text_dataset_store.get_batch_tokens(50) for _ in range(100)]
+    text_batch_toks = [
+        text_dataset_store.get_batch_tokens(50) for _ in range(100)
+    ]
     text_duration = perf_counter() - text_start_time
 
     pretokenized_start_time = perf_counter()
@@ -58,6 +60,8 @@ def test_benchmark_activations_store_get_batch_tokens_pretokenized_vs_raw():
         f"get_batch_tokens() duration with pretokenized dataset: {pretokenized_duration}"
     )
 
-    for text_toks, pretokenized_toks in zip(text_batch_toks, pretokenized_batch_toks):
+    for text_toks, pretokenized_toks in zip(
+        text_batch_toks, pretokenized_batch_toks
+    ):
         assert text_toks.tolist() == pretokenized_toks.tolist()
     assert pretokenized_duration < text_duration

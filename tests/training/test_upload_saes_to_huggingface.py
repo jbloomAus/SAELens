@@ -51,7 +51,9 @@ def test_build_sae_path_saves_live_saes_to_tmpdir(tmp_path: Path):
 
 def test_build_sae_path_directly_passes_through_existing_dirs(tmp_path: Path):
     assert _build_sae_path("/sae/path", str(tmp_path)) == Path("/sae/path")
-    assert _build_sae_path(Path("/sae/path"), str(tmp_path)) == Path("/sae/path")
+    assert _build_sae_path(Path("/sae/path"), str(tmp_path)) == Path(
+        "/sae/path"
+    )
 
 
 def test_repo_exists():

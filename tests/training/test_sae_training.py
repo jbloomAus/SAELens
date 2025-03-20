@@ -80,9 +80,13 @@ def training_sae(cfg: Any):
 
 
 @pytest.fixture
-def activation_store(model: HookedTransformer, cfg: LanguageModelSAERunnerConfig):
+def activation_store(
+    model: HookedTransformer, cfg: LanguageModelSAERunnerConfig
+):
     return ActivationsStore.from_config(
-        model, cfg, override_dataset=Dataset.from_list([{"text": "hello world"}] * 2000)
+        model,
+        cfg,
+        override_dataset=Dataset.from_list([{"text": "hello world"}] * 2000),
     )
 
 
@@ -172,11 +176,14 @@ def test_sae_forward(training_sae: TrainingSAE):
     )
 
     assert (
-        pytest.approx(train_step_output.losses["mse_loss"].item()) == expected_mse_loss  # type: ignore
+        pytest.approx(train_step_output.losses["mse_loss"].item())  # type: ignore
+        == expected_mse_loss
     )
 
     if not training_sae.cfg.scale_sparsity_penalty_by_decoder_norm:
-        expected_l1_loss = train_step_output.feature_acts.sum(dim=1).mean(dim=(0,))
+        expected_l1_loss = train_step_output.feature_acts.sum(dim=1).mean(
+            dim=(0,)
+        )
     else:
         expected_l1_loss = (
             (train_step_output.feature_acts * training_sae.W_dec.norm(dim=1))
@@ -213,7 +220,9 @@ def test_sae_forward_with_mse_loss_norm(
     x_centred = x - x.mean(dim=0, keepdim=True)
     expected_mse_loss = (
         (
-            torch.nn.functional.mse_loss(train_step_output.sae_out, x, reduction="none")
+            torch.nn.functional.mse_loss(
+                train_step_output.sae_out, x, reduction="none"
+            )
             / (1e-6 + x_centred.norm(dim=-1, keepdim=True))
         )
         .sum(dim=-1)
@@ -223,7 +232,8 @@ def test_sae_forward_with_mse_loss_norm(
     )
 
     assert (
-        pytest.approx(train_step_output.losses["mse_loss"].item()) == expected_mse_loss  # type: ignore
+        pytest.approx(train_step_output.losses["mse_loss"].item())  # type: ignore
+        == expected_mse_loss
     )
 
     assert (
@@ -238,7 +248,9 @@ def test_sae_forward_with_mse_loss_norm(
     )
 
     if not training_sae.cfg.scale_sparsity_penalty_by_decoder_norm:
-        expected_l1_loss = train_step_output.feature_acts.sum(dim=1).mean(dim=(0,))
+        expected_l1_loss = train_step_output.feature_acts.sum(dim=1).mean(
+            dim=(0,)
+        )
     else:
         expected_l1_loss = (
             (train_step_output.feature_acts * training_sae.W_dec.norm(dim=1))
@@ -305,14 +317,16 @@ def test_calculate_ghost_grad_loss(
     # W_enc grad
     assert trainer.sae.W_enc.grad is not None
     assert torch.allclose(
-        trainer.sae.W_enc.grad[:, :10], torch.zeros_like(trainer.sae.W_enc[:, :10])
+        trainer.sae.W_enc.grad[:, :10],
+        torch.zeros_like(trainer.sae.W_enc[:, :10]),
     )
     assert trainer.sae.W_enc.grad[:, 10:].abs().sum() > 0.001
 
     # only features 1 and 3 should have non-zero gradients on the decoder weights
     assert trainer.sae.W_dec.grad is not None
     assert torch.allclose(
-        trainer.sae.W_dec.grad[:10, :], torch.zeros_like(trainer.sae.W_dec[:10, :])
+        trainer.sae.W_dec.grad[:10, :],
+        torch.zeros_like(trainer.sae.W_dec[:10, :]),
     )
     assert trainer.sae.W_dec.grad[10:, :].abs().sum() > 0.001
 

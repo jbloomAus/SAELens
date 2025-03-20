@@ -48,7 +48,8 @@ def test_jumprelu_sae_training_forward_pass():
     assert (
         pytest.approx(train_step_output.loss.detach(), rel=1e-3)
         == (
-            train_step_output.losses["mse_loss"] + train_step_output.losses["l0_loss"]
+            train_step_output.losses["mse_loss"]
+            + train_step_output.losses["l0_loss"]
         ).item()  # type: ignore
     )
 
@@ -61,5 +62,6 @@ def test_jumprelu_sae_training_forward_pass():
     )
 
     assert (
-        pytest.approx(train_step_output.losses["mse_loss"].item()) == expected_mse_loss  # type: ignore
+        pytest.approx(train_step_output.losses["mse_loss"].item())  # type: ignore
+        == expected_mse_loss
     )

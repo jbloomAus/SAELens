@@ -102,7 +102,9 @@ def test_get_pretrained_saes_directory_unique_np_ids():
         ],
         inplace=True,
     )
-    df["neuronpedia_id_list"] = df["neuronpedia_id"].apply(lambda x: list(x.items()))
+    df["neuronpedia_id_list"] = df["neuronpedia_id"].apply(
+        lambda x: list(x.items())
+    )
     df_exploded = df.explode("neuronpedia_id_list")
     df_exploded[["sae_lens_id", "neuronpedia_id"]] = pd.DataFrame(
         df_exploded["neuronpedia_id_list"].tolist(), index=df_exploded.index
@@ -110,7 +112,9 @@ def test_get_pretrained_saes_directory_unique_np_ids():
     df_exploded = df_exploded.drop(columns=["neuronpedia_id_list"])
     df_exploded = df_exploded.reset_index(drop=True)
     df_exploded["neuronpedia_set"] = df_exploded["neuronpedia_id"].apply(
-        lambda x: "-".join(x.split("/")[-1].split("-")[1:]) if x is not None else None
+        lambda x: "-".join(x.split("/")[-1].split("-")[1:])
+        if x is not None
+        else None
     )
 
     duplicate_ids = df_exploded.groupby("neuronpedia_id").sae_lens_id.apply(

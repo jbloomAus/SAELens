@@ -11,7 +11,10 @@ from datasets import Dataset, IterableDataset
 from safetensors.torch import load_file
 from transformer_lens import HookedTransformer
 
-from sae_lens.config import LanguageModelSAERunnerConfig, PretokenizeRunnerConfig
+from sae_lens.config import (
+    LanguageModelSAERunnerConfig,
+    PretokenizeRunnerConfig,
+)
 from sae_lens.load_model import load_model
 from sae_lens.pretokenize_runner import pretokenize_dataset
 from sae_lens.training.activations_store import (
@@ -118,7 +121,10 @@ def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
 
     # the rest is in the dataloader.
     expected_size = (
-        cfg.store_batch_size_prompts * cfg.context_size * cfg.n_batches_in_buffer // 2
+        cfg.store_batch_size_prompts
+        * cfg.context_size
+        * cfg.n_batches_in_buffer
+        // 2
     )
     assert store.storage_buffer.shape[1:] == (1, cfg.d_in)
     # if exluding special tokens, the buffer will be smaller
@@ -156,7 +162,9 @@ def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
     assert isinstance(act_buffer, torch.Tensor)
     assert isinstance(tok_buffer, torch.Tensor)
     buffer_size_expected = (
-        store.store_batch_size_prompts * store.context_size * n_batches_in_buffer
+        store.store_batch_size_prompts
+        * store.context_size
+        * n_batches_in_buffer
     )
 
     assert act_buffer.shape == (buffer_size_expected, 1, store.d_in)
@@ -173,7 +181,9 @@ def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
         )
 
 
-def test_activations_store__get_activations_head_hook(ts_model: HookedTransformer):
+def test_activations_store__get_activations_head_hook(
+    ts_model: HookedTransformer,
+):
     cfg = build_sae_cfg(
         hook_name="blocks.0.attn.hook_q",
         hook_head_index=2,
@@ -200,7 +210,9 @@ def test_activations_store__get_activations__gives_same_results_with_hf_model_an
         model_name="gpt2",
         device="cpu",
     )
-    tlens_model = HookedTransformer.from_pretrained_no_processing("gpt2", device="cpu")
+    tlens_model = HookedTransformer.from_pretrained_no_processing(
+        "gpt2", device="cpu"
+    )
     dataset = Dataset.from_list(
         [
             {"text": "hello world"},
@@ -208,7 +220,9 @@ def test_activations_store__get_activations__gives_same_results_with_hf_model_an
         * 100
     )
 
-    cfg = build_sae_cfg(hook_name="blocks.4.hook_resid_post", hook_layer=4, d_in=768)
+    cfg = build_sae_cfg(
+        hook_name="blocks.4.hook_resid_post", hook_layer=4, d_in=768
+    )
     store_tlens = ActivationsStore.from_config(
         tlens_model, cfg, override_dataset=dataset
     )
@@ -216,7 +230,9 @@ def test_activations_store__get_activations__gives_same_results_with_hf_model_an
     activations_tlens = store_tlens.get_activations(batch_tlens)
 
     cfg = build_sae_cfg(hook_name="transformer.h.4", hook_layer=4, d_in=768)
-    store_hf = ActivationsStore.from_config(hf_model, cfg, override_dataset=dataset)
+    store_hf = ActivationsStore.from_config(
+        hf_model, cfg, override_dataset=dataset
+    )
     batch_hf = store_hf.get_batch_tokens()
     activations_hf = store_hf.get_activations(batch_hf)
 
@@ -246,13 +262,15 @@ def test_activations_store__get_batch_tokens__fills_the_context_separated_by_bos
     encoded_text = tokenize_with_bos(ts_model, "hello world")
     tokens = activation_store.get_batch_tokens()
     assert tokens.shape == (2, context_size)  # batch_size x context_size
-    all_expected_tokens = (encoded_text * ceil(2 * context_size / len(encoded_text)))[
-        : 2 * context_size
-    ]
+    all_expected_tokens = (
+        encoded_text * ceil(2 * context_size / len(encoded_text))
+    )[: 2 * context_size]
     expected_tokens1 = all_expected_tokens[:context_size]
     expected_tokens2 = all_expected_tokens[context_size:]
     if expected_tokens2[0] != ts_model.tokenizer.bos_token_id:
-        expected_tokens2 = [ts_model.tokenizer.bos_token_id] + expected_tokens2[:-1]
+        expected_tokens2 = [
+            ts_model.tokenizer.bos_token_id
+        ] + expected_tokens2[:-1]
     assert tokens[0].tolist() == expected_tokens1
     assert tokens[1].tolist() == expected_tokens2
 
@@ -427,7 +445,9 @@ def test_activations_store___iterate_tokenized_sequences__works_with_huggingface
     [(5, RuntimeWarning), (10, None), (15, ValueError)],
 )
 def test_activations_store__errors_on_context_size_mismatch(
-    ts_model: HookedTransformer, context_size: int, expected_error: Optional[ValueError]
+    ts_model: HookedTransformer,
+    context_size: int,
+    expected_error: Optional[ValueError],
 ):
     tokenizer = ts_model.tokenizer
     assert tokenizer is not None
@@ -441,7 +461,9 @@ def test_activations_store__errors_on_context_size_mismatch(
         * 20
     )
     pretokenize_cfg = PretokenizeRunnerConfig(context_size=10)
-    tokenized_dataset = pretokenize_dataset(dataset, tokenizer, cfg=pretokenize_cfg)
+    tokenized_dataset = pretokenize_dataset(
+        dataset, tokenizer, cfg=pretokenize_cfg
+    )
 
     # This context_size should raise an error or a warning if it mismatches the dataset size
     if expected_error is ValueError:
@@ -457,7 +479,9 @@ def test_activations_store__errors_on_context_size_mismatch(
             )
     else:
         # If the context_size is equal to the dataset size the function should pass
-        ActivationsStore.from_config(ts_model, cfg, override_dataset=tokenized_dataset)
+        ActivationsStore.from_config(
+            ts_model, cfg, override_dataset=tokenized_dataset
+        )
 
 
 def test_activations_store__errors_on_negative_context_size():
@@ -487,14 +511,18 @@ def test_activations_store___iterate_tokenized_sequences__yields_identical_resul
         begin_batch_token="bos",
         sequence_separator_token="bos",
     )
-    tokenized_dataset = pretokenize_dataset(dataset, tokenizer, cfg=pretokenize_cfg)
+    tokenized_dataset = pretokenize_dataset(
+        dataset, tokenizer, cfg=pretokenize_cfg
+    )
     activation_store = ActivationsStore.from_config(
         ts_model, cfg, override_dataset=dataset
     )
     tokenized_activation_store = ActivationsStore.from_config(
         ts_model, cfg, override_dataset=tokenized_dataset
     )
-    seqs = [seq.tolist() for seq in activation_store._iterate_tokenized_sequences()]
+    seqs = [
+        seq.tolist() for seq in activation_store._iterate_tokenized_sequences()
+    ]
     pretok_seqs = [
         seq.tolist()
         for seq in tokenized_activation_store._iterate_tokenized_sequences()
@@ -557,7 +585,9 @@ def test_validate_pretokenized_dataset_tokenizer_does_nothing_if_the_dataset_pat
     validate_pretokenized_dataset_tokenizer(ds_path, model_tokenizer)
 
 
-def test_activations_store_respects_position_offsets(ts_model: HookedTransformer):
+def test_activations_store_respects_position_offsets(
+    ts_model: HookedTransformer,
+):
     cfg = build_sae_cfg(
         context_size=10,
         seqpos_slice=(2, 8),  # Only consider positions 2 to 7 (inclusive)
@@ -577,7 +607,12 @@ def test_activations_store_respects_position_offsets(ts_model: HookedTransformer
     activations = activation_store.get_activations(batch)
 
     assert batch.shape == (1, 10)  # Full context size
-    assert activations.shape == (1, 6, 1, cfg.d_in)  # Only 6 positions (2 to 7)
+    assert activations.shape == (
+        1,
+        6,
+        1,
+        cfg.d_in,
+    )  # Only 6 positions (2 to 7)
 
 
 @pytest.mark.parametrize(
@@ -603,7 +638,10 @@ def test_activations_store_save_with_norm_scaling_factor(
     cfg = build_sae_cfg(**params["sae_kwargs"])
     activation_store = ActivationsStore.from_config(ts_model, cfg)
     activation_store.set_norm_scaling_factor_if_needed()
-    if params["sae_kwargs"]["normalize_activations"] == "expected_average_only_in":
+    if (
+        params["sae_kwargs"]["normalize_activations"]
+        == "expected_average_only_in"
+    ):
         assert activation_store.estimated_norm_scaling_factor is not None
     with tempfile.NamedTemporaryFile() as temp_file:
         activation_store.save(temp_file.name)
@@ -612,7 +650,9 @@ def test_activations_store_save_with_norm_scaling_factor(
         assert isinstance(state_dict, dict)
         if params["should_save"]:
             assert "estimated_norm_scaling_factor" in state_dict
-            estimated_norm_scaling_factor = state_dict["estimated_norm_scaling_factor"]
+            estimated_norm_scaling_factor = state_dict[
+                "estimated_norm_scaling_factor"
+            ]
             assert estimated_norm_scaling_factor.shape == ()
             assert (
                 estimated_norm_scaling_factor.item()
@@ -649,20 +689,30 @@ def test_get_special_token_ids():
     assert None not in special_tokens
 
 
-def test_get_special_token_ids_works_with_real_models(ts_model: HookedTransformer):
+def test_get_special_token_ids_works_with_real_models(
+    ts_model: HookedTransformer,
+):
     special_tokens = _get_special_token_ids(ts_model.tokenizer)  # type: ignore
     assert special_tokens == [50256]
 
 
-def test_activations_store_buffer_contains_token_ids(ts_model: HookedTransformer):
+def test_activations_store_buffer_contains_token_ids(
+    ts_model: HookedTransformer,
+):
     """Test that the buffer contains both activations and token IDs."""
     cfg = build_sae_cfg(context_size=3, store_batch_size_prompts=5)
     dataset = Dataset.from_list([{"text": "hello world"}] * 100)
 
-    store = ActivationsStore.from_config(ts_model, cfg, override_dataset=dataset)
+    store = ActivationsStore.from_config(
+        ts_model, cfg, override_dataset=dataset
+    )
     acts, token_ids = store.get_buffer(n_batches_in_buffer=2)
 
-    assert acts.shape == (30, 1, 64)  # (batch_size x context_size x n_batches, 1, d_in)
+    assert acts.shape == (
+        30,
+        1,
+        64,
+    )  # (batch_size x context_size x n_batches, 1, d_in)
     assert token_ids is not None
     assert token_ids.shape == (30,)  # (batch_size x context_size x n_batches,)
 
@@ -676,18 +726,24 @@ def test_activations_store_buffer_shuffling(ts_model: HookedTransformer):
     dataset = Dataset.from_list([{"text": "hello world"}] * 100)
 
     # Get unshuffled buffer
-    store = ActivationsStore.from_config(ts_model, cfg, override_dataset=dataset)
+    store = ActivationsStore.from_config(
+        ts_model, cfg, override_dataset=dataset
+    )
     acts_unshuffled_1, token_ids_unshuffled_1 = store.get_buffer(
         n_batches_in_buffer=2, shuffle=False
     )
 
-    store = ActivationsStore.from_config(ts_model, cfg, override_dataset=dataset)
+    store = ActivationsStore.from_config(
+        ts_model, cfg, override_dataset=dataset
+    )
     acts_unshuffled_2, token_ids_unshuffled_2 = store.get_buffer(
         n_batches_in_buffer=2, shuffle=False
     )
 
     # Get shuffled buffer
-    store = ActivationsStore.from_config(ts_model, cfg, override_dataset=dataset)
+    store = ActivationsStore.from_config(
+        ts_model, cfg, override_dataset=dataset
+    )
     acts_shuffled, token_ids_shuffled = store.get_buffer(
         n_batches_in_buffer=2, shuffle=True
     )
@@ -701,7 +757,9 @@ def test_activations_store_buffer_shuffling(ts_model: HookedTransformer):
     assert not torch.allclose(acts_unshuffled_1, acts_shuffled)
     assert not torch.allclose(token_ids_unshuffled_1, token_ids_shuffled)
 
-    assert set(token_ids_shuffled.tolist()) == set(token_ids_unshuffled_1.tolist())
+    assert set(token_ids_shuffled.tolist()) == set(
+        token_ids_unshuffled_1.tolist()
+    )
 
 
 @torch.no_grad()
@@ -737,9 +795,9 @@ def test_activations_store_storage_buffer_excludes_special_tokens(
     assert (store_base.storage_buffer.squeeze() - bos_act).abs().sum(
         dim=-1
     ).min().item() == pytest.approx(0.0, abs=1e-5)
-    assert (store_exclude_special_tokens.storage_buffer.squeeze() - bos_act).abs().sum(
-        dim=-1
-    ).min().item() != pytest.approx(0.0, abs=1e-5)
+    assert (
+        store_exclude_special_tokens.storage_buffer.squeeze() - bos_act
+    ).abs().sum(dim=-1).min().item() != pytest.approx(0.0, abs=1e-5)
 
 
 @torch.no_grad()
@@ -870,4 +928,6 @@ def test_filter_buffer_acts_all_filtered():
     filtered = _filter_buffer_acts((activations, tokens), exclude_tokens)
 
     assert filtered.shape[0] == 0  # Empty tensor returned
-    assert filtered.shape[1] == activations.shape[1]  # Feature dimension preserved
+    assert (
+        filtered.shape[1] == activations.shape[1]
+    )  # Feature dimension preserved

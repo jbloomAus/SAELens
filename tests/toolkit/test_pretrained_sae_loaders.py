@@ -224,8 +224,11 @@ def test_get_deepseek_r1_config_with_invalid_layer():
     options = SAEConfigLoadOptions(device="cpu")
 
     with pytest.raises(
-        ValueError, match="Could not find layer number in filename: invalid_filename.pt"
+        ValueError,
+        match="Could not find layer number in filename: invalid_filename.pt",
     ):
         get_deepseek_r1_config(
-            repo_id="some/repo", folder_name="invalid_filename.pt", options=options
+            repo_id="some/repo",
+            folder_name="invalid_filename.pt",
+            options=options,
         )

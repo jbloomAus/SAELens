@@ -22,7 +22,9 @@ class Counter:
 
 @pytest.fixture(scope="module")
 def model():
-    model = HookedSAETransformer.from_pretrained_no_processing(MODEL, device="cpu")
+    model = HookedSAETransformer.from_pretrained_no_processing(
+        MODEL, device="cpu"
+    )
     yield model
     model.reset_saes()
 
@@ -184,11 +186,14 @@ def test_error_term(model: HookedTransformer, hooked_sae: SAE):
     # Compute gradient analytically
     if act_name.endswith("hook_z"):
         reshaped_output_grad = einops.rearrange(
-            grad_cache["hook_sae_output"], "... n_heads d_head -> ... (n_heads d_head)"
+            grad_cache["hook_sae_output"],
+            "... n_heads d_head -> ... (n_heads d_head)",
         )
         analytic_grad = reshaped_output_grad @ hooked_sae.W_dec.T
     else:
         analytic_grad = grad_cache["hook_sae_output"] @ hooked_sae.W_dec.T
 
     # Compare analytic gradient with pytorch computed gradient
-    assert torch.allclose(grad_cache["hook_sae_acts_post"], analytic_grad, atol=1e-6)
+    assert torch.allclose(
+        grad_cache["hook_sae_acts_post"], analytic_grad, atol=1e-6
+    )

@@ -15,7 +15,9 @@ if len(sys.argv) > 1:
     job_config_path = sys.argv[1]
     print(f"Train SAE Job config path: {job_config_path}")
 else:
-    raise ValueError("Error: One argument required - the Train SAE Job Config path")
+    raise ValueError(
+        "Error: One argument required - the Train SAE Job Config path"
+    )
 
 if torch.cuda.is_available():
     device = "cuda"
@@ -36,7 +38,9 @@ with open(job_config_path) as file:
     config_yaml = yaml.load(file, Loader=yaml.FullLoader)
 
     config_params = inspect.signature(LanguageModelSAERunnerConfig).parameters
-    filtered_data = {k: v for k, v in config_yaml.items() if k in config_params}
+    filtered_data = {
+        k: v for k, v in config_yaml.items() if k in config_params
+    }
     config = LanguageModelSAERunnerConfig(**filtered_data)
 
     if type(config.dtype) != torch.dtype:

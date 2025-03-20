@@ -20,7 +20,9 @@ def get_enrichment_df(
     gene_sets_selected: dict[str, set[int]],
 ):
     gene_sets_token_ids_padded = pad_gene_sets(gene_sets_selected)
-    gene_sets_token_ids_tensor = torch.tensor(list(gene_sets_token_ids_padded.values()))
+    gene_sets_token_ids_tensor = torch.tensor(
+        list(gene_sets_token_ids_padded.values())
+    )
     enrichment_scores = calculate_batch_enrichment_scores(
         projections[features], gene_sets_token_ids_tensor
     )
@@ -31,7 +33,9 @@ def get_enrichment_df(
     )
 
 
-def calculate_batch_enrichment_scores(scores: torch.Tensor, index_lists: torch.Tensor):
+def calculate_batch_enrichment_scores(
+    scores: torch.Tensor, index_lists: torch.Tensor
+):
     """
     # features with large skew
     features_top_800_by_prediction_skew = W_U_stats_df_dec["skewness"].sort_values(ascending=False).head(12000).index
@@ -76,19 +80,25 @@ def calculate_batch_enrichment_scores(scores: torch.Tensor, index_lists: torch.T
 
     # Calculate hit increment and miss decrement dynamically for each list
     list_sizes = valid_mask.sum(dim=1).float()  # Actual sizes of each list
-    hit_increment = (1.0 / list_sizes).view(-1, 1, 1)  # Reshape for broadcasting
+    hit_increment = (1.0 / list_sizes).view(
+        -1, 1, 1
+    )  # Reshape for broadcasting
     miss_decrement = (1.0 / (vocab_size - list_sizes)).view(
         -1, 1, 1
     )  # Reshape for broadcasting
 
     # Ensure hit_increment and miss_decrement are broadcastable to the shape of hits
     # Apply hit increment or miss decrement based on hits
-    running_sums = torch.where(hits, hit_increment, -miss_decrement).cumsum(dim=2)
+    running_sums = torch.where(hits, hit_increment, -miss_decrement).cumsum(
+        dim=2
+    )
     return running_sums.abs().max(dim=2).values
 
 
 def manhattan_plot_enrichment_scores(
-    df_enrichment_scores: pd.DataFrame, label_threshold: float = 1.0, top_n: int = 3
+    df_enrichment_scores: pd.DataFrame,
+    label_threshold: float = 1.0,
+    top_n: int = 3,
 ):
     tmp_df = df_enrichment_scores.apply(lambda x: -1 * np.log(1 - x))
 
@@ -105,7 +115,11 @@ def manhattan_plot_enrichment_scores(
         y="Enrichment Score",
         color=tmp_df.gene_set,
         facet_col=tmp_df.gene_set,
-        labels={"index": "", "value": "Enrichment Score", "variable": "Token Set"},
+        labels={
+            "index": "",
+            "value": "Enrichment Score",
+            "variable": "Token Set",
+        },
         width=1400,
         height=500,
     )
@@ -119,7 +133,8 @@ def manhattan_plot_enrichment_scores(
         .reset_index(drop=True)
     )
     gene_set_to_subplot = {
-        gene_set: i + 1 for i, gene_set in enumerate(tmp_df["gene_set"].unique())
+        gene_set: i + 1
+        for i, gene_set in enumerate(tmp_df["gene_set"].unique())
     }
 
     # Annotate all points above the label_threshold
@@ -172,13 +187,17 @@ def plot_top_k_feature_projections_by_token_and_category(
 
     if features is None:
         features = (
-            enrichment_scores.sort_values(category, ascending=False).head(k).index
+            enrichment_scores.sort_values(category, ascending=False)
+            .head(k)
+            .index
         ).to_list()
 
     # scores = enrichment_scores[category][features]
     scores = enrichment_scores[category].loc[features]
     logger.debug(scores)
-    tokens_list = [model.to_single_str_token(i) for i in list(range(model.cfg.d_vocab))]
+    tokens_list = [
+        model.to_single_str_token(i) for i in list(range(model.cfg.d_vocab))
+    ]
 
     logger.debug(features)
     feature_logit_scores = pd.DataFrame(
@@ -187,7 +206,8 @@ def plot_top_k_feature_projections_by_token_and_category(
     ).T
     feature_logit_scores["token"] = tokens_list
     feature_logit_scores[category] = [
-        i in gene_sets_selected[category] for i in list(range(model.cfg.d_vocab))
+        i in gene_sets_selected[category]
+        for i in list(range(model.cfg.d_vocab))
     ]
 
     # display(feature_)
@@ -218,7 +238,9 @@ def plot_top_k_feature_projections_by_token_and_category(
         )
 
 
-def pad_gene_sets(gene_sets_token_ids: dict[str, set[int]]) -> dict[str, list[int]]:
+def pad_gene_sets(
+    gene_sets_token_ids: dict[str, set[int]],
+) -> dict[str, list[int]]:
     for k, v in gene_sets_token_ids.items():
         gene_sets_token_ids[k] = list(v)  # type: ignore
     max_len = max([len(v) for v in gene_sets_token_ids.values()])
@@ -230,11 +252,17 @@ def pad_gene_sets(gene_sets_token_ids: dict[str, set[int]]) -> dict[str, list[in
     }
 
 
-def get_baby_name_sets(vocab: dict[str, int], k: int = 300) -> dict[str, list[int]]:
+def get_baby_name_sets(
+    vocab: dict[str, int], k: int = 300
+) -> dict[str, list[int]]:
     d = UsNames()
     baby_df = d.data
-    boy_names = baby_df[baby_df.gender == "M"].name.value_counts().head(k).index
-    girl_names = baby_df[baby_df.gender == "F"].name.value_counts().head(k).index
+    boy_names = (
+        baby_df[baby_df.gender == "M"].name.value_counts().head(k).index
+    )
+    girl_names = (
+        baby_df[baby_df.gender == "F"].name.value_counts().head(k).index
+    )
 
     # prepend spaces
     boy_names = [f"Ġ{name}" for name in boy_names]
@@ -647,5 +675,6 @@ def get_test_gene_sets(model: HookedTransformer) -> dict[str, set[int]]:
         return set(token_ids)
 
     return {
-        key: convert_tokens_to_ids(value, model) for key, value in gene_sets.items()
+        key: convert_tokens_to_ids(value, model)
+        for key, value in gene_sets.items()
     }  # type: ignore

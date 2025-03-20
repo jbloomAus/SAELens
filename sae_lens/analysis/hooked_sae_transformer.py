@@ -78,7 +78,9 @@ class HookedSAETransformer(HookedTransformer):
             use_error_term: (Optional[bool]) If provided, will set the use_error_term attribute of the SAE to this value. Determines whether the SAE returns input or reconstruction. Defaults to None.
         """
         act_name = sae.cfg.hook_name
-        if (act_name not in self.acts_to_saes) and (act_name not in self.hook_dict):
+        if (act_name not in self.acts_to_saes) and (
+            act_name not in self.hook_dict
+        ):
             logging.warning(
                 f"No hook found for {act_name}. Skipping. Check model.hook_dict for available hooks."
             )
@@ -142,7 +144,9 @@ class HookedSAETransformer(HookedTransformer):
 
         if prev_saes:
             if len(act_names) != len(prev_saes):
-                raise ValueError("act_names and prev_saes must have the same length")
+                raise ValueError(
+                    "act_names and prev_saes must have the same length"
+                )
         else:
             prev_saes = [None] * len(act_names)  # type: ignore
 
@@ -176,7 +180,9 @@ class HookedSAETransformer(HookedTransformer):
             **model_kwargs: Keyword arguments for the model forward pass
         """
         with self.saes(
-            saes=saes, reset_saes_end=reset_saes_end, use_error_term=use_error_term
+            saes=saes,
+            reset_saes_end=reset_saes_end,
+            use_error_term=use_error_term,
         ):
             return self(*model_args, **model_kwargs)
 
@@ -215,7 +221,9 @@ class HookedSAETransformer(HookedTransformer):
             **kwargs: Keyword arguments for the model forward pass
         """
         with self.saes(
-            saes=saes, reset_saes_end=reset_saes_end, use_error_term=use_error_term
+            saes=saes,
+            reset_saes_end=reset_saes_end,
+            use_error_term=use_error_term,
         ):
             return self.run_with_cache(  # type: ignore
                 *model_args,

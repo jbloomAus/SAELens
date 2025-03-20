@@ -11,7 +11,9 @@ from tqdm import trange
 from sae_lens.cache_activations_runner import CacheActivationsRunner
 from sae_lens.config import DTYPE_MAP, CacheActivationsRunnerConfig
 
-os.environ["WANDB_MODE"] = "offline"  # turn this off if you want to see the output
+os.environ["WANDB_MODE"] = (
+    "offline"  # turn this off if you want to see the output
+)
 
 
 # The way to run this with this command:
@@ -85,8 +87,12 @@ def test_hf_dataset_save_vs_safetensors(tmp_path: Path):
     )
 
     bytes_per_token = d_in * DTYPE_MAP[dtype].itemsize
-    tokens_per_buffer = math.ceil(dataset_num_rows * context_size / num_buffers)
-    buffer_size_gb = min((tokens_per_buffer * bytes_per_token) / 1_000_000_000, 2.0)
+    tokens_per_buffer = math.ceil(
+        dataset_num_rows * context_size / num_buffers
+    )
+    buffer_size_gb = min(
+        (tokens_per_buffer * bytes_per_token) / 1_000_000_000, 2.0
+    )
 
     cfg = CacheActivationsRunnerConfig(
         new_cached_activations_path=str(tmp_path),
@@ -135,13 +141,17 @@ def test_hf_dataset_save_vs_safetensors(tmp_path: Path):
     elapsed_time = end_time - start_time
 
     print(f"HF Dataset took: {elapsed_time:.4f}", flush=True)
-    hf_size = sum(f.stat().st_size for f in hf_path.glob("**/*") if f.is_file())
+    hf_size = sum(
+        f.stat().st_size for f in hf_path.glob("**/*") if f.is_file()
+    )
     print(f"HF Dataset size: {hf_size / (1024 * 1024):.2f} MB")
 
     start_time = time.perf_counter()
     for i in trange(niters, leave=False):
         buffer = store.get_buffer(cfg.n_batches_in_buffer)[0]
-        save_file({"activations": buffer}, safetensors_path / f"{i}.safetensors")
+        save_file(
+            {"activations": buffer}, safetensors_path / f"{i}.safetensors"
+        )
     end_time = time.perf_counter()
 
     elapsed_time = end_time - start_time

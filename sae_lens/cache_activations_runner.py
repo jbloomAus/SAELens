@@ -67,7 +67,9 @@ class CacheActivationsRunner:
             model_from_pretrained_kwargs=self.cfg.model_from_pretrained_kwargs,
         )
         if self.cfg.compile_llm:
-            self.model = torch.compile(self.model, mode=self.cfg.llm_compilation_mode)  # type: ignore
+            self.model = torch.compile(
+                self.model, mode=self.cfg.llm_compilation_mode
+            )  # type: ignore
         self.activations_store = _mk_activations_store(
             self.model,
             self.cfg,
@@ -177,7 +179,9 @@ class CacheActivationsRunner:
                 f"output_dir is not an existing directory: {output_dir}"
             )
 
-        other_items = [p for p in output_dir.iterdir() if p.name != ".tmp_shards"]
+        other_items = [
+            p for p in output_dir.iterdir() if p.name != ".tmp_shards"
+        ]
         if other_items:
             raise FileExistsError(
                 f"output_dir must be empty (besides .tmp_shards). Found: {other_items}"
@@ -255,7 +259,9 @@ class CacheActivationsRunner:
                 f"Activations directory ({final_cached_activation_path}) is not empty. Please delete it or specify a different path. Exiting the script to prevent accidental deletion of files."
             )
 
-        tmp_cached_activation_path = final_cached_activation_path / ".tmp_shards/"
+        tmp_cached_activation_path = (
+            final_cached_activation_path / ".tmp_shards/"
+        )
         tmp_cached_activation_path.mkdir(exist_ok=False, parents=False)
 
         ### Create temporary sharded datasets
@@ -281,7 +287,9 @@ class CacheActivationsRunner:
         ### Concatenate shards and push to Huggingface Hub
 
         dataset = self._consolidate_shards(
-            tmp_cached_activation_path, final_cached_activation_path, copy_files=False
+            tmp_cached_activation_path,
+            final_cached_activation_path,
+            copy_files=False,
         )
 
         if self.cfg.shuffle:
@@ -332,7 +340,9 @@ class CacheActivationsRunner:
             d_in=self.cfg.d_in,
             num_layers=len(hook_names),
         )
-        shard_dict = {hook_name: act for hook_name, act in zip(hook_names, acts)}
+        shard_dict = {
+            hook_name: act for hook_name, act in zip(hook_names, acts)
+        }
 
         if token_ids is not None:
             token_ids = einops.rearrange(
