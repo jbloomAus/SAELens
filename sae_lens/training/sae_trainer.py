@@ -169,9 +169,7 @@ class SAETrainer:
 
     @property
     def dead_neurons(self) -> torch.Tensor:
-        return (
-            self.n_forward_passes_since_fired > self.cfg.dead_feature_window
-        ).bool()
+        return (self.n_forward_passes_since_fired > self.cfg.dead_feature_window).bool()
 
     def fit(self) -> TrainingSAE:
         pbar = tqdm(total=self.cfg.total_training_tokens, desc="Training SAE")
@@ -243,9 +241,7 @@ class SAETrainer:
             )
 
             with torch.no_grad():
-                did_fire = (train_step_output.feature_acts > 0).float().sum(
-                    -2
-                ) > 0
+                did_fire = (train_step_output.feature_acts > 0).float().sum(-2) > 0
                 self.n_forward_passes_since_fired += 1
                 self.n_forward_passes_since_fired[did_fire] = 0
                 self.act_freq_scores += (
@@ -260,9 +256,7 @@ class SAETrainer:
         self.scaler.unscale_(self.optimizer)  # needed to clip correctly
         # TODO: Work out if grad norm clipping should be in config / how to test it.
         torch.nn.utils.clip_grad_norm_(sae.parameters(), 1.0)
-        self.scaler.step(
-            self.optimizer
-        )  # just ctx.optimizer.step() if not autocasting
+        self.scaler.step(self.optimizer)  # just ctx.optimizer.step() if not autocasting
         self.scaler.update()
 
         if self.cfg.normalize_sae_decoder:
@@ -362,12 +356,8 @@ class SAETrainer:
             # Remove metrics that are not useful for wandb logging
             eval_metrics.pop("metrics/total_tokens_evaluated", None)
 
-            W_dec_norm_dist = (
-                self.sae.W_dec.detach().float().norm(dim=1).cpu().numpy()
-            )
-            eval_metrics["weights/W_dec_norms"] = wandb.Histogram(
-                W_dec_norm_dist  # type: ignore
-            )
+            W_dec_norm_dist = self.sae.W_dec.detach().float().norm(dim=1).cpu().numpy()
+            eval_metrics["weights/W_dec_norms"] = wandb.Histogram(W_dec_norm_dist)  # type: ignore
 
             if self.sae.cfg.architecture == "standard":
                 b_e_dist = self.sae.b_enc.detach().float().cpu().numpy()

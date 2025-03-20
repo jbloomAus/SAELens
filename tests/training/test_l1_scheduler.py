@@ -47,7 +47,4 @@ def test_l1_scheduler_initialization_no_warmup():
     # over 10 steps, we should get to the final value of 5
     for _ in range(10):
         l1_scheduler.step()
-        assert (
-            l1_scheduler.current_l1_coefficient
-            == l1_scheduler.final_l1_coefficient
-        )
+        assert l1_scheduler.current_l1_coefficient == l1_scheduler.final_l1_coefficient

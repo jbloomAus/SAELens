@@ -41,9 +41,7 @@ class Step(torch.autograd.Function):
 
     @staticmethod
     def setup_context(
-        ctx: Any,
-        inputs: tuple[torch.Tensor, torch.Tensor, float],
-        output: torch.Tensor,
+        ctx: Any, inputs: tuple[torch.Tensor, torch.Tensor, float], output: torch.Tensor
     ) -> None:
         x, threshold, bandwidth = inputs
         del output
@@ -57,9 +55,7 @@ class Step(torch.autograd.Function):
         x, threshold = ctx.saved_tensors
         bandwidth = ctx.bandwidth
         threshold_grad = torch.sum(
-            -(1.0 / bandwidth)
-            * rectangle((x - threshold) / bandwidth)
-            * grad_output,
+            -(1.0 / bandwidth) * rectangle((x - threshold) / bandwidth) * grad_output,
             dim=0,
         )
         return None, threshold_grad, None
@@ -76,9 +72,7 @@ class JumpReLU(torch.autograd.Function):
 
     @staticmethod
     def setup_context(
-        ctx: Any,
-        inputs: tuple[torch.Tensor, torch.Tensor, float],
-        output: torch.Tensor,
+        ctx: Any, inputs: tuple[torch.Tensor, torch.Tensor, float], output: torch.Tensor
     ) -> None:
         x, threshold, bandwidth = inputs
         del output
@@ -164,8 +158,7 @@ class TrainingSAEConfig(SAEConfig):
             scale_sparsity_penalty_by_decoder_norm=cfg.scale_sparsity_penalty_by_decoder_norm,
             normalize_activations=cfg.normalize_activations,
             dataset_trust_remote_code=cfg.dataset_trust_remote_code,
-            model_from_pretrained_kwargs=cfg.model_from_pretrained_kwargs
-            or {},
+            model_from_pretrained_kwargs=cfg.model_from_pretrained_kwargs or {},
             jumprelu_init_threshold=cfg.jumprelu_init_threshold,
             jumprelu_bandwidth=cfg.jumprelu_bandwidth,
         )
@@ -176,9 +169,7 @@ class TrainingSAEConfig(SAEConfig):
         # since we sometimes enhance the config with the whole LM runner config
         valid_field_names = {field.name for field in fields(cls)}
         valid_config_dict = {
-            key: val
-            for key, val in config_dict.items()
-            if key in valid_field_names
+            key: val for key, val in config_dict.items() if key in valid_field_names
         }
 
         # ensure seqpos slice is tuple
@@ -190,9 +181,7 @@ class TrainingSAEConfig(SAEConfig):
                     valid_config_dict["seqpos_slice"]
                 )
             elif not isinstance(valid_config_dict["seqpos_slice"], tuple):
-                valid_config_dict["seqpos_slice"] = (
-                    valid_config_dict["seqpos_slice"],
-                )
+                valid_config_dict["seqpos_slice"] = (valid_config_dict["seqpos_slice"],)
 
         return TrainingSAEConfig(**valid_config_dict)
 
@@ -261,9 +250,7 @@ class TrainingSAE(SAE):
         elif cfg.architecture == "gated":
             self.encode_with_hidden_pre_fn = self.encode_with_hidden_pre_gated
         elif cfg.architecture == "jumprelu":
-            self.encode_with_hidden_pre_fn = (
-                self.encode_with_hidden_pre_jumprelu
-            )
+            self.encode_with_hidden_pre_fn = self.encode_with_hidden_pre_jumprelu
             self.bandwidth = cfg.jumprelu_bandwidth
             self.log_threshold.data = torch.ones(
                 self.cfg.d_sae, dtype=self.dtype, device=self.device
@@ -303,9 +290,7 @@ class TrainingSAE(SAE):
 
     def check_cfg_compatibility(self):
         if self.cfg.architecture != "standard" and self.cfg.use_ghost_grads:
-            raise ValueError(
-                f"{self.cfg.architecture} SAEs do not support ghost grads"
-            )
+            raise ValueError(f"{self.cfg.architecture} SAEs do not support ghost grads")
         if self.cfg.architecture == "gated" and self.use_error_term:
             raise ValueError("Gated SAEs do not support error terms")
 
@@ -320,17 +305,14 @@ class TrainingSAE(SAE):
 
     def encode_with_hidden_pre_jumprelu(
         self, x: Float[torch.Tensor, "... d_in"]
-    ) -> tuple[
-        Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]
-    ]:
+    ) -> tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
         sae_in = self.process_sae_in(x)
 
         hidden_pre = sae_in @ self.W_enc + self.b_enc
 
         if self.training:
             hidden_pre = (
-                hidden_pre
-                + torch.randn_like(hidden_pre) * self.cfg.noise_scale
+                hidden_pre + torch.randn_like(hidden_pre) * self.cfg.noise_scale
             )
 
         threshold = torch.exp(self.log_threshold)
@@ -341,9 +323,7 @@ class TrainingSAE(SAE):
 
     def encode_with_hidden_pre(
         self, x: Float[torch.Tensor, "... d_in"]
-    ) -> tuple[
-        Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]
-    ]:
+    ) -> tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
         sae_in = self.process_sae_in(x)
 
         # "... d_in, d_in d_sae -> ... d_sae",
@@ -351,17 +331,13 @@ class TrainingSAE(SAE):
         hidden_pre_noised = hidden_pre + (
             torch.randn_like(hidden_pre) * self.cfg.noise_scale * self.training
         )
-        feature_acts = self.hook_sae_acts_post(
-            self.activation_fn(hidden_pre_noised)
-        )
+        feature_acts = self.hook_sae_acts_post(self.activation_fn(hidden_pre_noised))
 
         return feature_acts, hidden_pre_noised
 
     def encode_with_hidden_pre_gated(
         self, x: Float[torch.Tensor, "... d_in"]
-    ) -> tuple[
-        Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]
-    ]:
+    ) -> tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
         sae_in = self.process_sae_in(x)
 
         # Gating path with Heaviside step function
@@ -369,9 +345,7 @@ class TrainingSAE(SAE):
         active_features = (gating_pre_activation > 0).to(self.dtype)
 
         # Magnitude path with weight sharing
-        magnitude_pre_activation = (
-            sae_in @ (self.W_enc * self.r_mag.exp()) + self.b_mag
-        )
+        magnitude_pre_activation = sae_in @ (self.W_enc * self.r_mag.exp()) + self.b_mag
         # magnitude_pre_activation_noised = magnitude_pre_activation + (
         #     torch.randn_like(magnitude_pre_activation) * self.cfg.noise_scale * self.training
         # )
@@ -414,8 +388,7 @@ class TrainingSAE(SAE):
 
             # Shared variables
             sae_in_centered = (
-                self.reshape_fn_in(sae_in)
-                - self.b_dec * self.cfg.apply_b_dec_to_input
+                self.reshape_fn_in(sae_in) - self.b_dec * self.cfg.apply_b_dec_to_input
             )
             pi_gate = sae_in_centered @ self.W_enc + self.b_gate
             pi_gate_act = torch.relu(pi_gate)
@@ -423,9 +396,7 @@ class TrainingSAE(SAE):
             # SFN sparsity loss - summed over the feature dimension and averaged over the batch
             l1_loss = (
                 current_l1_coefficient
-                * torch.sum(
-                    pi_gate_act * self.W_dec.norm(dim=1), dim=-1
-                ).mean()
+                * torch.sum(pi_gate_act * self.W_dec.norm(dim=1), dim=-1).mean()
             )
 
             # Auxiliary reconstruction loss - summed over the feature dimension and averaged over the batch
@@ -438,10 +409,7 @@ class TrainingSAE(SAE):
             losses["l1_loss"] = l1_loss
         elif self.cfg.architecture == "jumprelu":
             threshold = torch.exp(self.log_threshold)
-            l0 = torch.sum(
-                Step.apply(hidden_pre, threshold, self.bandwidth),  # type: ignore
-                dim=-1,
-            )
+            l0 = torch.sum(Step.apply(hidden_pre, threshold, self.bandwidth), dim=-1)  # type: ignore
             l0_loss = (current_l1_coefficient * l0).mean()
             loss = mse_loss + l0_loss
             losses["l0_loss"] = l0_loss
@@ -501,10 +469,7 @@ class TrainingSAE(SAE):
     ) -> torch.Tensor:
         # Mostly taken from https://github.com/EleutherAI/sae/blob/main/sae/sae.py, except without variance normalization
         # NOTE: checking the number of dead neurons will force a GPU sync, so performance can likely be improved here
-        if (
-            dead_neuron_mask is None
-            or (num_dead := int(dead_neuron_mask.sum())) == 0
-        ):
+        if dead_neuron_mask is None or (num_dead := int(dead_neuron_mask.sum())) == 0:
             return sae_out.new_tensor(0.0)
         residual = (sae_in - sae_out).detach()
 
@@ -542,12 +507,8 @@ class TrainingSAE(SAE):
         # 2.
         # ghost grads use an exponentional activation function, ignoring whatever
         # the activation function is in the SAE. The forward pass uses the dead neurons only.
-        feature_acts_dead_neurons_only = torch.exp(
-            hidden_pre[:, dead_neuron_mask]
-        )
-        ghost_out = (
-            feature_acts_dead_neurons_only @ self.W_dec[dead_neuron_mask, :]
-        )
+        feature_acts_dead_neurons_only = torch.exp(hidden_pre[:, dead_neuron_mask])
+        ghost_out = feature_acts_dead_neurons_only @ self.W_dec[dead_neuron_mask, :]
         l2_norm_ghost_out = torch.norm(ghost_out, dim=-1)
         norm_scaling_factor = l2_norm_residual / (1e-6 + l2_norm_ghost_out * 2)
         ghost_out = ghost_out * norm_scaling_factor[:, None].detach()
@@ -558,9 +519,7 @@ class TrainingSAE(SAE):
         # make sure that the loss is comparable to the original loss.
         # There have been methodological improvements that are not implemented here yet
         # see here: https://www.lesswrong.com/posts/C5KAZQib3bzzpeyrg/full-post-progress-update-1-from-the-gdm-mech-interp-team#Improving_ghost_grads
-        per_item_mse_loss_ghost_resid = self.mse_loss_fn(
-            ghost_out, residual.detach()
-        )
+        per_item_mse_loss_ghost_resid = self.mse_loss_fn(ghost_out, residual.detach())
         mse_rescaling_factor = (
             per_item_mse_loss / (per_item_mse_loss_ghost_resid + 1e-6)
         ).detach()
@@ -575,45 +534,32 @@ class TrainingSAE(SAE):
         def standard_mse_loss_fn(
             preds: torch.Tensor, target: torch.Tensor
         ) -> torch.Tensor:
-            return torch.nn.functional.mse_loss(
-                preds, target, reduction="none"
-            )
+            return torch.nn.functional.mse_loss(preds, target, reduction="none")
 
         def batch_norm_mse_loss_fn(
             preds: torch.Tensor, target: torch.Tensor
         ) -> torch.Tensor:
             target_centered = target - target.mean(dim=0, keepdim=True)
             normalization = target_centered.norm(dim=-1, keepdim=True)
-            return torch.nn.functional.mse_loss(
-                preds, target, reduction="none"
-            ) / (normalization + 1e-6)
+            return torch.nn.functional.mse_loss(preds, target, reduction="none") / (
+                normalization + 1e-6
+            )
 
         if self.cfg.mse_loss_normalization == "dense_batch":
             return batch_norm_mse_loss_fn
         return standard_mse_loss_fn
 
-    def process_state_dict_for_saving(
-        self, state_dict: dict[str, Any]
-    ) -> None:
-        if (
-            self.cfg.architecture == "jumprelu"
-            and "log_threshold" in state_dict
-        ):
-            threshold = (
-                torch.exp(state_dict["log_threshold"]).detach().contiguous()
-            )
+    def process_state_dict_for_saving(self, state_dict: dict[str, Any]) -> None:
+        if self.cfg.architecture == "jumprelu" and "log_threshold" in state_dict:
+            threshold = torch.exp(state_dict["log_threshold"]).detach().contiguous()
             del state_dict["log_threshold"]
             state_dict["threshold"] = threshold
 
-    def process_state_dict_for_loading(
-        self, state_dict: dict[str, Any]
-    ) -> None:
+    def process_state_dict_for_loading(self, state_dict: dict[str, Any]) -> None:
         if self.cfg.architecture == "jumprelu" and "threshold" in state_dict:
             threshold = state_dict["threshold"]
             del state_dict["threshold"]
-            state_dict["log_threshold"] = (
-                torch.log(threshold).detach().contiguous()
-            )
+            state_dict["log_threshold"] = torch.log(threshold).detach().contiguous()
 
     @classmethod
     def load_from_pretrained(
@@ -654,10 +600,7 @@ class TrainingSAE(SAE):
         elif self.cfg.decoder_heuristic_init:
             self.W_dec = nn.Parameter(
                 torch.rand(
-                    self.cfg.d_sae,
-                    self.cfg.d_in,
-                    dtype=self.dtype,
-                    device=self.device,
+                    self.cfg.d_sae, self.cfg.d_in, dtype=self.dtype, device=self.device
                 )
             )
             self.initialize_decoder_norm_constant_norm()
@@ -689,9 +632,7 @@ class TrainingSAE(SAE):
             cur_threshold = self.threshold.clone()
             W_dec_norms = self.W_dec.norm(dim=-1).unsqueeze(1)
             super().fold_W_dec_norm()
-            self.log_threshold.data = torch.log(
-                cur_threshold * W_dec_norms.squeeze()
-            )
+            self.log_threshold.data = torch.log(cur_threshold * W_dec_norms.squeeze())
         else:
             super().fold_W_dec_norm()
 
@@ -706,18 +647,14 @@ class TrainingSAE(SAE):
         previous_b_dec = self.b_dec.clone().cpu()
         out = all_activations.mean(dim=0)
 
-        previous_distances = torch.norm(
-            all_activations - previous_b_dec, dim=-1
-        )
+        previous_distances = torch.norm(all_activations - previous_b_dec, dim=-1)
         distances = torch.norm(all_activations - out, dim=-1)
 
         logger.info("Reinitializing b_dec with mean of activations")
         logger.debug(
             f"Previous distances: {previous_distances.median(0).values.mean().item()}"
         )
-        logger.debug(
-            f"New distances: {distances.median(0).values.mean().item()}"
-        )
+        logger.debug(f"New distances: {distances.median(0).values.mean().item()}")
 
         self.b_dec.data = out.to(self.dtype).to(self.device)
 

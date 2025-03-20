@@ -82,14 +82,10 @@ def test_sae_fold_w_dec_norm(cfg: LanguageModelSAERunnerConfig):
     W_dec_norms = sae.W_dec.norm(dim=-1).unsqueeze(1)
     assert torch.allclose(sae2.W_dec.data, sae.W_dec.data / W_dec_norms)
     assert torch.allclose(sae2.W_enc.data, sae.W_enc.data * W_dec_norms.T)
-    assert torch.allclose(
-        sae2.b_enc.data, sae.b_enc.data * W_dec_norms.squeeze()
-    )
+    assert torch.allclose(sae2.b_enc.data, sae.b_enc.data * W_dec_norms.squeeze())
 
     # fold_W_dec_norm should normalize W_dec to have unit norm.
-    assert sae2.W_dec.norm(dim=-1).mean().item() == pytest.approx(
-        1.0, abs=1e-6
-    )
+    assert sae2.W_dec.norm(dim=-1).mean().item() == pytest.approx(1.0, abs=1e-6)
 
     # we expect activations of features to differ by W_dec norm weights.
     activations = torch.randn(10, 4, cfg.d_in, device=cfg.device)
@@ -101,12 +97,8 @@ def test_sae_fold_w_dec_norm(cfg: LanguageModelSAERunnerConfig):
         feature_activations_2.nonzero(),
     )
 
-    expected_feature_activations_2 = feature_activations_1 * sae.W_dec.norm(
-        dim=-1
-    )
-    torch.testing.assert_close(
-        feature_activations_2, expected_feature_activations_2
-    )
+    expected_feature_activations_2 = feature_activations_1 * sae.W_dec.norm(dim=-1)
+    torch.testing.assert_close(feature_activations_2, expected_feature_activations_2)
 
     sae_out_1 = sae.decode(feature_activations_1)
     sae_out_2 = sae2.decode(feature_activations_2)
@@ -131,9 +123,7 @@ def test_sae_fold_w_dec_norm_all_architectures(architecture: str):
     sae2.fold_W_dec_norm()
 
     # fold_W_dec_norm should normalize W_dec to have unit norm.
-    assert sae2.W_dec.norm(dim=-1).mean().item() == pytest.approx(
-        1.0, abs=1e-6
-    )
+    assert sae2.W_dec.norm(dim=-1).mean().item() == pytest.approx(1.0, abs=1e-6)
 
     # we expect activations of features to differ by W_dec norm weights.
     activations = torch.randn(10, 4, cfg.d_in, device=cfg.device)
@@ -145,12 +135,8 @@ def test_sae_fold_w_dec_norm_all_architectures(architecture: str):
         feature_activations_2.nonzero(),
     )
 
-    expected_feature_activations_2 = feature_activations_1 * sae.W_dec.norm(
-        dim=-1
-    )
-    torch.testing.assert_close(
-        feature_activations_2, expected_feature_activations_2
-    )
+    expected_feature_activations_2 = feature_activations_1 * sae.W_dec.norm(dim=-1)
+    torch.testing.assert_close(feature_activations_2, expected_feature_activations_2)
 
     sae_out_1 = sae.decode(feature_activations_1)
     sae_out_2 = sae2.decode(feature_activations_2)
@@ -174,9 +160,7 @@ def test_sae_fold_norm_scaling_factor(cfg: LanguageModelSAERunnerConfig):
 
     assert sae2.cfg.normalize_activations == "none"
 
-    assert torch.allclose(
-        sae2.W_enc.data, sae.W_enc.data * norm_scaling_factor
-    )
+    assert torch.allclose(sae2.W_enc.data, sae.W_enc.data * norm_scaling_factor)
 
     # we expect activations of features to differ by W_dec norm weights.
     # assume activations are already scaled
@@ -219,9 +203,7 @@ def test_sae_fold_norm_scaling_factor_all_architectures(architecture: str):
 
     assert sae2.cfg.normalize_activations == "none"
 
-    assert torch.allclose(
-        sae2.W_enc.data, sae.W_enc.data * norm_scaling_factor
-    )
+    assert torch.allclose(sae2.W_enc.data, sae.W_enc.data * norm_scaling_factor)
 
     # we expect activations of features to differ by W_dec norm weights.
     # assume activations are already scaled
@@ -377,9 +359,7 @@ def test_sae_seqpos(tmp_path: Path) -> None:
 
 
 def test_sae_get_name_returns_correct_name_from_cfg_vals() -> None:
-    cfg = build_sae_cfg(
-        model_name="test_model", hook_name="test_hook_name", d_sae=128
-    )
+    cfg = build_sae_cfg(model_name="test_model", hook_name="test_hook_name", d_sae=128)
     sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
     assert sae.get_name() == "sae_test_model_test_hook_name_128"
 
@@ -451,13 +431,9 @@ def test_sae_jumprelu_forward(use_error_term: bool):
             cache["hook_sae_error"], expected_output - expected_recons
         )
 
-    assert torch.allclose(
-        cache["hook_sae_acts_pre"], torch.tensor([[0.6, 0.6, 0.6]])
-    )
+    assert torch.allclose(cache["hook_sae_acts_pre"], torch.tensor([[0.6, 0.6, 0.6]]))
     # the threshold of 1.0 should block the first latent from firing
-    assert torch.allclose(
-        cache["hook_sae_acts_post"], torch.tensor([[0.0, 0.6, 0.6]])
-    )
+    assert torch.allclose(cache["hook_sae_acts_post"], torch.tensor([[0.0, 0.6, 0.6]]))
 
 
 def test_sae_gated_initialization():
@@ -513,9 +489,7 @@ def test_sae_gated_forward(use_error_term: bool):
     assert torch.allclose(cache["hook_sae_output"], out, atol=1e-3)
     assert torch.allclose(cache["hook_sae_recons"], expected_recons, atol=1e-3)
     assert torch.allclose(
-        cache["hook_sae_acts_pre"],
-        torch.tensor([[2.6310, 5.4334, 13.0513]]),
-        atol=1e-3,
+        cache["hook_sae_acts_pre"], torch.tensor([[2.6310, 5.4334, 13.0513]]), atol=1e-3
     )
     # the threshold of 1.0 should block the first latent from firing
     assert torch.allclose(
@@ -564,7 +538,5 @@ def test_sae_forward_pass_works_with_error_term_and_hooks(architecture: str):
     assert not torch.allclose(original_out, ablated_out, rtol=1e-2)
     assert torch.all(ablated_cache["hook_sae_acts_post"] == 20)
     assert torch.allclose(
-        original_cache["hook_sae_error"],
-        ablated_cache["hook_sae_error"],
-        rtol=1e-4,
+        original_cache["hook_sae_error"], ablated_cache["hook_sae_error"], rtol=1e-4
     )

@@ -13,9 +13,7 @@ if len(sys.argv) > 1:
     job_name = sys.argv[1]
     print(f"Cache Activations Job Name: {job_name}")
 else:
-    raise ValueError(
-        "Error: One argument required - the Cache Activations Job Name"
-    )
+    raise ValueError("Error: One argument required - the Cache Activations Job Name")
 
 if torch.cuda.is_available():
     device = "cuda"
@@ -36,9 +34,7 @@ with open(f"./jobs/cache_acts/{job_name}/cache_acts.yml") as file:
     config_yaml = yaml.load(file, Loader=yaml.FullLoader)
 
     config_params = inspect.signature(CacheActivationsRunnerConfig).parameters
-    filtered_data = {
-        k: v for k, v in config_yaml.items() if k in config_params
-    }
+    filtered_data = {k: v for k, v in config_yaml.items() if k in config_params}
     config = CacheActivationsRunnerConfig(**filtered_data)
 
     if type(config.dtype) != torch.dtype:

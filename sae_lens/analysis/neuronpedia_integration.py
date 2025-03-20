@@ -8,9 +8,7 @@ from typing import Any, Optional, TypeVar
 
 import requests
 from dotenv import load_dotenv
-from neuron_explainer.activations.activation_records import (
-    calculate_max_activation,
-)
+from neuron_explainer.activations.activation_records import calculate_max_activation
 from neuron_explainer.activations.activations import ActivationRecord
 from neuron_explainer.explanations.calibrated_simulator import (
     UncalibratedNeuronSimulator,
@@ -101,15 +99,10 @@ def get_neuronpedia_quick_list(
 
 
 def get_neuronpedia_feature(
-    feature: int,
-    layer: int,
-    model: str = "gpt2-small",
-    dataset: str = "res-jb",
+    feature: int, layer: int, model: str = "gpt2-small", dataset: str = "res-jb"
 ) -> dict[str, Any]:
     """Fetch a feature from Neuronpedia API."""
-    url = (
-        f"{NEURONPEDIA_DOMAIN}/api/feature/{model}/{layer}-{dataset}/{feature}"
-    )
+    url = f"{NEURONPEDIA_DOMAIN}/api/feature/{model}/{layer}-{dataset}/{feature}"
     result = requests.get(url).json()
     result["index"] = int(result["index"])
     return result
@@ -151,25 +144,19 @@ class NeuronpediaFeature:
         """Check if the feature has activating text."""
         if self.activations is None:
             return False
-        return any(
-            max(activation.act_values) > 0 for activation in self.activations
-        )
+        return any(max(activation.act_values) > 0 for activation in self.activations)
 
 
 T = TypeVar("T")
 
 
-@retry(
-    wait=wait_random_exponential(min=1, max=500), stop=stop_after_attempt(10)
-)
+@retry(wait=wait_random_exponential(min=1, max=500), stop=stop_after_attempt(10))
 def sleep_identity(x: T) -> T:
     """Dummy function for retrying."""
     return x
 
 
-@retry(
-    wait=wait_random_exponential(min=1, max=500), stop=stop_after_attempt(10)
-)
+@retry(wait=wait_random_exponential(min=1, max=500), stop=stop_after_attempt(10))
 async def simulate_and_score(
     simulator: NeuronSimulator, activation_records: list[ActivationRecord]
 ) -> ScoredSimulation:
@@ -306,10 +293,7 @@ async def autointerp_neuronpedia_features(  # noqa: C901
                 f"Feature {feature.feature} in layer {feature.layer} of model {feature.modelId} and dataset {feature.dataset} does not exist."
             )
 
-        if (
-            "activations" not in feature_data
-            or len(feature_data["activations"]) == 0
-        ):
+        if "activations" not in feature_data or len(feature_data["activations"]) == 0:
             raise Exception(
                 f"Feature {feature.feature} in layer {feature.layer} of model {feature.modelId} and dataset {feature.dataset} does not have activations."
             )
@@ -467,9 +451,7 @@ async def autointerp_neuronpedia_features(  # noqa: C901
             feature_data["simulationActivations"] = (
                 scored_simulation.scored_sequence_simulations
             )  # type: ignore
-            feature_data["simulationScore"] = (
-                feature.autointerp_explanation_score
-            )
+            feature_data["simulationScore"] = feature.autointerp_explanation_score
         feature_data_str = json.dumps(feature_data, default=vars)
 
         if save_to_disk:
@@ -490,14 +472,10 @@ async def autointerp_neuronpedia_features(  # noqa: C901
                 },
                 default=vars,
             )
-            upload_data_json = json.loads(
-                upload_data, parse_constant=NanAndInfReplacer
-            )
+            upload_data_json = json.loads(upload_data, parse_constant=NanAndInfReplacer)
             url = f"{NEURONPEDIA_DOMAIN}/api/explanation/new"
             response = requests.post(
-                url,
-                json=upload_data_json,
-                headers={"x-api-key": neuronpedia_api_key},
+                url, json=upload_data_json, headers={"x-api-key": neuronpedia_api_key}
             )
             if response.status_code != 200:
                 logger.error(
@@ -509,8 +487,6 @@ async def autointerp_neuronpedia_features(  # noqa: C901
                 )
 
         end_time = datetime.now()
-        logger.info(
-            f"\n========== Time Spent for Feature: {end_time - start_time}\n"
-        )
+        logger.info(f"\n========== Time Spent for Feature: {end_time - start_time}\n")
 
     logger.info("\n\n========== Generation and Upload Complete ==========\n\n")

@@ -4,22 +4,12 @@ from tempfile import TemporaryDirectory
 from textwrap import dedent
 from typing import Iterable
 
-from huggingface_hub import (
-    HfApi,
-    create_repo,
-    get_hf_file_metadata,
-    hf_hub_url,
-)
+from huggingface_hub import HfApi, create_repo, get_hf_file_metadata, hf_hub_url
 from huggingface_hub.utils import EntryNotFoundError, RepositoryNotFoundError
 from tqdm.autonotebook import tqdm
 
 from sae_lens import logger
-from sae_lens.sae import (
-    SAE,
-    SAE_CFG_FILENAME,
-    SAE_WEIGHTS_FILENAME,
-    SPARSITY_FILENAME,
-)
+from sae_lens.sae import SAE, SAE_CFG_FILENAME, SAE_WEIGHTS_FILENAME, SPARSITY_FILENAME
 
 
 def upload_saes_to_huggingface(
@@ -56,9 +46,7 @@ def upload_saes_to_huggingface(
             )
         if add_default_readme:
             if _repo_file_exists(hf_repo_id, "README.md", hf_revision):
-                logger.info(
-                    "README.md already exists in the repo, skipping upload"
-                )
+                logger.info("README.md already exists in the repo, skipping upload")
             else:
                 readme = _create_default_readme(hf_repo_id, saes_dict)
                 readme_io = io.BytesIO()
@@ -118,9 +106,7 @@ def _repo_exists(api: HfApi, repo_id: str) -> bool:
         return False
 
 
-def _upload_sae(
-    api: HfApi, sae_path: Path, repo_id: str, sae_id: str, revision: str
-):
+def _upload_sae(api: HfApi, sae_path: Path, repo_id: str, sae_id: str, revision: str):
     api.upload_folder(
         folder_path=sae_path,
         path_in_repo=sae_id,
@@ -128,11 +114,7 @@ def _upload_sae(
         revision=revision,
         repo_type="model",
         commit_message=f"Upload SAE {sae_id}",
-        allow_patterns=[
-            SAE_CFG_FILENAME,
-            SAE_WEIGHTS_FILENAME,
-            SPARSITY_FILENAME,
-        ],
+        allow_patterns=[SAE_CFG_FILENAME, SAE_WEIGHTS_FILENAME, SPARSITY_FILENAME],
     )
 
 

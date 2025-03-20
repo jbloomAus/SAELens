@@ -24,9 +24,7 @@ def test_SparseAutoencoder_initialization_standard():
 
     # check if the decoder weight norm is 1 by default
     assert torch.allclose(
-        sae.W_dec.norm(dim=1),
-        torch.ones_like(sae.W_dec.norm(dim=1)),
-        atol=1e-6,
+        sae.W_dec.norm(dim=1), torch.ones_like(sae.W_dec.norm(dim=1)), atol=1e-6
     )
 
     #  Default currently shouldn't be tranpose initialization
@@ -57,9 +55,7 @@ def test_SparseAutoencoder_initialization_gated():
 
     # check if the decoder weight norm is 1 by default
     assert torch.allclose(
-        sae.W_dec.norm(dim=1),
-        torch.ones_like(sae.W_dec.norm(dim=1)),
-        atol=1e-6,
+        sae.W_dec.norm(dim=1), torch.ones_like(sae.W_dec.norm(dim=1)), atol=1e-6
     )
 
     #  Default currently shouldn't be tranpose initialization
@@ -88,9 +84,7 @@ def test_SparseAutoencoder_initialization_jumprelu():
 
     # check if the decoder weight norm is 1 by default
     assert torch.allclose(
-        sae.W_dec.norm(dim=1),
-        torch.ones_like(sae.W_dec.norm(dim=1)),
-        atol=1e-6,
+        sae.W_dec.norm(dim=1), torch.ones_like(sae.W_dec.norm(dim=1)), atol=1e-6
     )
 
     #  Default currently shouldn't be tranpose initialization
@@ -119,9 +113,7 @@ def test_SparseAutoencoder_initialization_normalize_decoder_norm():
     sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
 
     assert torch.allclose(
-        sae.W_dec.norm(dim=1),
-        torch.ones_like(sae.W_dec.norm(dim=1)),
-        atol=1e-6,
+        sae.W_dec.norm(dim=1), torch.ones_like(sae.W_dec.norm(dim=1)), atol=1e-6
     )
 
     # initialized weights of biases are 0

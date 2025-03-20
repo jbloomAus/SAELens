@@ -12,11 +12,7 @@ from sae_lens.tokenization_and_batching import (
 def test_add_tokens_to_batch_can_start_a_new_batch():
     tokens = torch.arange(10)
     new_batch, new_offset = _add_tokens_to_batch(
-        batch=None,
-        tokens=tokens,
-        offset=1,
-        context_size=5,
-        is_start_of_sequence=True,
+        batch=None, tokens=tokens, offset=1, context_size=5, is_start_of_sequence=True
     )
     assert torch.all(new_batch == tokens[1:6])
     assert new_offset == 6
@@ -144,9 +140,7 @@ def test_add_tokens_to_batch_can_both_separate_sequences_and_add_seq_start_token
         begin_batch_token_id=999,
     )
     remaining_tokens = tokens[new_offset:]
-    assert (
-        new_batch.tolist() == batch.tolist() + [997, 998] + tokens[:1].tolist()
-    )
+    assert new_batch.tolist() == batch.tolist() + [997, 998] + tokens[:1].tolist()
     assert torch.all(remaining_tokens == tokens[1:])
 
 
@@ -295,13 +289,7 @@ def test_concat_and_batch_sequences_can_ensure_each_seq_is_separated_with_a_toke
 
 def test_concat_and_batch_sequences_can_use_all_token_types():
     all_toks = torch.arange(19)
-    seqs = [
-        all_toks[:3],
-        all_toks[3:8],
-        all_toks[8:11],
-        all_toks[11:17],
-        all_toks[17:],
-    ]
+    seqs = [all_toks[:3], all_toks[3:8], all_toks[8:11], all_toks[11:17], all_toks[17:]]
     batches_list = list(
         concat_and_batch_sequences(
             tokens_iterator=iter(seqs),
@@ -325,13 +313,7 @@ def test_concat_and_batch_sequences_can_use_all_token_types():
 
 def test_concat_and_batch_collapses_identical_special_tokens():
     all_toks = torch.arange(19)
-    seqs = [
-        all_toks[:3],
-        all_toks[3:8],
-        all_toks[8:11],
-        all_toks[11:17],
-        all_toks[17:],
-    ]
+    seqs = [all_toks[:3], all_toks[3:8], all_toks[8:11], all_toks[11:17], all_toks[17:]]
     batches_list = list(
         concat_and_batch_sequences(
             tokens_iterator=iter(seqs),

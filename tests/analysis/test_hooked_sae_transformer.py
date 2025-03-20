@@ -8,10 +8,7 @@ from transformer_lens.ActivationCache import ActivationCache
 from transformer_lens.hook_points import HookPoint  # Hooking utilities
 from transformer_lens.HookedTransformer import Loss
 
-from sae_lens.analysis.hooked_sae_transformer import (
-    HookedSAETransformer,
-    get_deep_attr,
-)
+from sae_lens.analysis.hooked_sae_transformer import HookedSAETransformer, get_deep_attr
 from sae_lens.sae import SAE, SAEConfig
 
 MODEL = "solu-1l"
@@ -154,9 +151,7 @@ def test_add_sae(model: HookedTransformer, hooked_sae: SAE):
     model.reset_saes()
 
 
-def test_add_sae_overwrites_prev_sae(
-    model: HookedTransformer, hooked_sae: SAE
-):
+def test_add_sae_overwrites_prev_sae(model: HookedTransformer, hooked_sae: SAE):
     """Verifies that add_sae correctly updates the model's acts_to_saes dictionary and replaces the HookPoint."""
 
     act_name = hooked_sae.cfg.hook_name
@@ -174,9 +169,7 @@ def test_add_sae_overwrites_prev_sae(
     model.reset_saes()
 
 
-def test_reset_sae_removes_sae_by_default(
-    model: HookedTransformer, hooked_sae: SAE
-):
+def test_reset_sae_removes_sae_by_default(model: HookedTransformer, hooked_sae: SAE):
     """Verifies that reset_sae correctly removes the SAE from the model's acts_to_saes dictionary and replaces the HookedSAE with a HookPoint."""
 
     act_name = hooked_sae.cfg.hook_name
@@ -211,9 +204,7 @@ def test_reset_saes_removes_all_saes_by_default(
 ):
     """Verifies that reset_saes correctly removes all SAEs from the model's acts_to_saes dictionary and replaces the HookedSAEs with HookPoints."""
 
-    act_names = [
-        hooked_sae.cfg.hook_name for hooked_sae in list_of_hooked_saes
-    ]
+    act_names = [hooked_sae.cfg.hook_name for hooked_sae in list_of_hooked_saes]
     for hooked_sae in list_of_hooked_saes:
         model.add_sae(hooked_sae)
     assert len(model.acts_to_saes) == len(act_names)
@@ -232,16 +223,12 @@ def test_reset_saes_replaces_saes(
 ):
     """Verifies that reset_saes correctly removes all SAEs from the model's acts_to_saes dictionary and replaces the HookedSAEs with HookPoints."""
 
-    act_names = [
-        hooked_sae.cfg.hook_name for hooked_sae in list_of_hooked_saes
-    ]
+    act_names = [hooked_sae.cfg.hook_name for hooked_sae in list_of_hooked_saes]
 
     for hooked_sae in list_of_hooked_saes:
         model.add_sae(hooked_sae)
 
-    prev_hooked_saes = [
-        get_hooked_sae(model, act_name) for act_name in act_names
-    ]
+    prev_hooked_saes = [get_hooked_sae(model, act_name) for act_name in act_names]
 
     assert len(model.acts_to_saes) == len(act_names)
     for act_name, hooked_sae in zip(act_names, list_of_hooked_saes):
@@ -259,9 +246,7 @@ def test_saes_context_manager_removes_saes_after(
 ):
     """Verifies that the model.saes context manager successfully adds the SAEs for the specified activation name in the context manager and resets off after the context manager exits."""
 
-    act_names = [
-        hooked_sae.cfg.hook_name for hooked_sae in list_of_hooked_saes
-    ]
+    act_names = [hooked_sae.cfg.hook_name for hooked_sae in list_of_hooked_saes]
 
     assert len(model.acts_to_saes) == 0
     for act_name in act_names:
@@ -283,9 +268,7 @@ def test_saes_context_manager_restores_previous_sae_state(
 ):
     """Verifies that the model.saes context manager successfully adds the SAEs for the specified activation name in the context manager and resets off after the context manager exits."""
 
-    act_names = [
-        hooked_sae.cfg.hook_name for hooked_sae in list_of_hooked_saes
-    ]
+    act_names = [hooked_sae.cfg.hook_name for hooked_sae in list_of_hooked_saes]
 
     # First add SAEs statefully
     prev_hooked_saes = list_of_hooked_saes
@@ -316,9 +299,7 @@ def test_saes_context_manager_run_with_cache(
 ):
     """Verifies that the model.run_with_cache method works correctly in the context manager."""
 
-    act_names = [
-        hooked_sae.cfg.hook_name for hooked_sae in list_of_hooked_saes
-    ]
+    act_names = [hooked_sae.cfg.hook_name for hooked_sae in list_of_hooked_saes]
     assert len(model.acts_to_saes) == 0
     for act_name in act_names:
         assert isinstance(get_deep_attr(model, act_name), HookPoint)
@@ -341,9 +322,7 @@ def test_run_with_saes(
 ):
     """Verifies that the model.run_with_saes method works correctly. The logits with SAEs should be different from the original logits, but the SAE should be removed immediately after the forward pass."""
 
-    act_names = [
-        hooked_sae.cfg.hook_name for hooked_sae in list_of_hooked_saes
-    ]
+    act_names = [hooked_sae.cfg.hook_name for hooked_sae in list_of_hooked_saes]
     assert len(model.acts_to_saes) == 0
     logits_with_saes = model.run_with_saes(prompt, saes=list_of_hooked_saes)
     assert not torch.allclose(logits_with_saes, original_logits)
@@ -359,9 +338,7 @@ def test_run_with_cache(
     original_logits: torch.Tensor,
 ):
     """Verifies that the model.run_with_cache method works correctly. The logits with SAEs should be different from the original logits and the cache should contain SAE activations for the attached SAE."""
-    act_names = [
-        hooked_sae.cfg.hook_name for hooked_sae in list_of_hooked_saes
-    ]
+    act_names = [hooked_sae.cfg.hook_name for hooked_sae in list_of_hooked_saes]
     for hooked_sae in list_of_hooked_saes:
         model.add_sae(hooked_sae)
     assert len(model.acts_to_saes) == len(list_of_hooked_saes)
@@ -382,9 +359,7 @@ def test_run_with_cache_with_saes(
 ):
     """Verifies that the model.run_with_cache_with_saes method works correctly. The logits with SAEs should be different from the original logits and the cache should contain SAE activations for the attached SAE."""
 
-    act_names = [
-        hooked_sae.cfg.hook_name for hooked_sae in list_of_hooked_saes
-    ]
+    act_names = [hooked_sae.cfg.hook_name for hooked_sae in list_of_hooked_saes]
     logits_with_saes, cache = model.run_with_cache_with_saes(
         prompt, saes=list_of_hooked_saes
     )
@@ -405,9 +380,7 @@ def test_run_with_hooks(
 ):
     """Verifies that the model.run_with_hooks method works correctly when SAEs are attached. The count should be incremented by 1 when the hooked SAE is called, and the SAE should stay attached after the forward pass"""
 
-    act_names = [
-        hooked_sae.cfg.hook_name for hooked_sae in list_of_hooked_saes
-    ]
+    act_names = [hooked_sae.cfg.hook_name for hooked_sae in list_of_hooked_saes]
     c = Counter()
 
     for hooked_sae in list_of_hooked_saes:
@@ -415,9 +388,7 @@ def test_run_with_hooks(
 
     logits_with_saes = model.run_with_hooks(
         prompt,
-        fwd_hooks=[
-            (act_name + ".hook_sae_acts_post", c.inc) for act_name in act_names
-        ],
+        fwd_hooks=[(act_name + ".hook_sae_acts_post", c.inc) for act_name in act_names],
     )
     assert not torch.allclose(logits_with_saes, original_logits)
 
@@ -436,18 +407,14 @@ def test_run_with_hooks_with_saes(
 ):
     """Verifies that the model.run_with_hooks_with_saes method works correctly when SAEs are attached. The count should be incremented by 1 when the hooked SAE is called, but the SAE should be removed immediately after the forward pass."""
 
-    act_names = [
-        hooked_sae.cfg.hook_name for hooked_sae in list_of_hooked_saes
-    ]
+    act_names = [hooked_sae.cfg.hook_name for hooked_sae in list_of_hooked_saes]
 
     c = Counter()
 
     logits_with_saes = model.run_with_hooks_with_saes(
         prompt,
         saes=list_of_hooked_saes,
-        fwd_hooks=[
-            (act_name + ".hook_sae_acts_post", c.inc) for act_name in act_names
-        ],
+        fwd_hooks=[(act_name + ".hook_sae_acts_post", c.inc) for act_name in act_names],
     )
     assert not torch.allclose(logits_with_saes, original_logits)
     assert c.count == len(act_names)
@@ -473,9 +440,7 @@ def test_model_with_use_error_term_saes_matches_original_model(
     assert torch.allclose(original_logits, logits_with_saes, atol=1e-4)
 
 
-def test_add_sae_with_use_error_term(
-    model: HookedSAETransformer, hooked_sae: SAE
-):
+def test_add_sae_with_use_error_term(model: HookedSAETransformer, hooked_sae: SAE):
     """Verifies that add_sae correctly sets the use_error_term when specified."""
     act_name = hooked_sae.cfg.hook_name
     original_use_error_term = hooked_sae.use_error_term
@@ -487,9 +452,7 @@ def test_add_sae_with_use_error_term(
     assert model.acts_to_saes[act_name].use_error_term is False
 
     model.add_sae(hooked_sae, use_error_term=None)
-    assert (
-        model.acts_to_saes[act_name].use_error_term == original_use_error_term
-    )
+    assert model.acts_to_saes[act_name].use_error_term == original_use_error_term
 
     model.reset_saes()
 

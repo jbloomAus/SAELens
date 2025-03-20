@@ -123,13 +123,9 @@ def model():
 
 
 @pytest.fixture
-def activation_store(
-    model: HookedTransformer, cfg: LanguageModelSAERunnerConfig
-):
+def activation_store(model: HookedTransformer, cfg: LanguageModelSAERunnerConfig):
     return ActivationsStore.from_config(
-        model,
-        cfg,
-        override_dataset=Dataset.from_list([{"text": "hello world"}] * 2000),
+        model, cfg, override_dataset=Dataset.from_list([{"text": "hello world"}] * 2000)
     )
 
 
@@ -191,9 +187,7 @@ def test_run_evals_training_sae(
 
     assert set(eval_metrics.keys()).issubset(set(all_possible_keys))
     assert len(eval_metrics) > 0
-    assert set(feature_metrics.keys()).issubset(
-        set(all_featurewise_keys_expected)
-    )
+    assert set(feature_metrics.keys()).issubset(set(all_featurewise_keys_expected))
 
 
 def test_run_evals_training_sae_ignore_bos(
@@ -285,9 +279,7 @@ def test_run_empty_evals(
     )
 
     assert len(eval_metrics) == 1, "Expected only token_stats in eval_metrics"
-    assert (
-        "token_stats" in eval_metrics
-    ), "Expected token_stats in eval_metrics"
+    assert "token_stats" in eval_metrics, "Expected token_stats in eval_metrics"
     assert len(feature_metrics) == 0, "Expected empty feature_metrics"
 
 
@@ -378,9 +370,7 @@ def test_get_downstream_reconstruction_metrics_with_hf_model_gives_same_results_
         model_name="gpt2",
         device="cpu",
     )
-    tlens_model = HookedTransformer.from_pretrained_no_processing(
-        "gpt2", device="cpu"
-    )
+    tlens_model = HookedTransformer.from_pretrained_no_processing("gpt2", device="cpu")
 
     cfg = build_sae_cfg(hook_name="transformer.h.3")
     gpt2_res_jb_l4_sae.cfg.hook_name = "transformer.h.3"
@@ -425,9 +415,7 @@ def test_get_sparsity_and_variance_metrics_with_hf_model_gives_same_results_as_t
         model_name="gpt2",
         device="cpu",
     )
-    tlens_model = HookedTransformer.from_pretrained_no_processing(
-        "gpt2", device="cpu"
-    )
+    tlens_model = HookedTransformer.from_pretrained_no_processing("gpt2", device="cpu")
 
     cfg = build_sae_cfg(hook_name="transformer.h.3")
     gpt2_res_jb_l4_sae.cfg.hook_name = "transformer.h.3"
@@ -538,9 +526,7 @@ def test_get_saes_from_regex_single_match(mock_all_loadable_saes: MagicMock):
 
 
 @patch("sae_lens.evals.all_loadable_saes")
-def test_get_saes_from_regex_multiple_matches(
-    mock_all_loadable_saes: MagicMock,
-):
+def test_get_saes_from_regex_multiple_matches(mock_all_loadable_saes: MagicMock):
     mock_all_loadable_saes.return_value = mock_all_saes
 
     result = get_saes_from_regex("release.*", "sae.*")

@@ -9,11 +9,7 @@ from transformer_lens.utils import (
     get_tokens_with_bos_removed,
     lm_cross_entropy_loss,
 )
-from transformers import (
-    AutoModelForCausalLM,
-    AutoTokenizer,
-    PreTrainedTokenizerBase,
-)
+from transformers import AutoModelForCausalLM, AutoTokenizer, PreTrainedTokenizerBase
 
 from sae_lens import logger
 
@@ -37,9 +33,7 @@ def load_model(
 
     if model_class_name == "HookedTransformer":
         return HookedTransformer.from_pretrained_no_processing(
-            model_name=model_name,
-            device=device,
-            **model_from_pretrained_kwargs,
+            model_name=model_name, device=device, **model_from_pretrained_kwargs
         )
     if model_class_name == "HookedMamba":
         try:
@@ -52,9 +46,7 @@ def load_model(
         return cast(
             HookedRootModule,
             HookedMamba.from_pretrained(
-                model_name,
-                device=cast(Any, device),
-                **model_from_pretrained_kwargs,
+                model_name, device=cast(Any, device), **model_from_pretrained_kwargs
             ),
         )
     if model_class_name == "AutoModelForCausalLM":
@@ -76,9 +68,7 @@ class HookedProxyLM(HookedRootModule):
     tokenizer: PreTrainedTokenizerBase
     model: torch.nn.Module
 
-    def __init__(
-        self, model: torch.nn.Module, tokenizer: PreTrainedTokenizerBase
-    ):
+    def __init__(self, model: torch.nn.Module, tokenizer: PreTrainedTokenizerBase):
         super().__init__()
         self.model = model
         self.tokenizer = tokenizer
@@ -168,10 +158,7 @@ class HookedProxyLM(HookedRootModule):
         )["input_ids"]
 
         # We don't want to prepend bos but the tokenizer does it automatically, so we remove it manually
-        if (
-            hasattr(self.tokenizer, "add_bos_token")
-            and self.tokenizer.add_bos_token  # type: ignore
-        ):
+        if hasattr(self.tokenizer, "add_bos_token") and self.tokenizer.add_bos_token:  # type: ignore
             tokens = get_tokens_with_bos_removed(self.tokenizer, tokens)
         return tokens  # type: ignore
 

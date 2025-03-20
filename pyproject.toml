@@ -63,50 +63,14 @@ sparsify = {git = "https://github.com/EleutherAI/sparsify"}
 [tool.poetry.extras]
 mamba = ["mamba-lens"]
 
-[tool.ruff]
-line-length = 79
-
 [tool.ruff.lint]
-exclude = [
-    "*.ipynb"
-]
-ignore = [
-    "E203",
-    "E402",
-    "E501",
-    "E721",
-    "E731",
-    "E741",
-    "F403",
-    "F722",
-    "F821",
-    "ARG002"
-]
-select = [
-    "C9",
-    "E",
-    "E9",
-    "F",
-    "F63",
-    "F7",
-    "F82",
-    "W",
-    "UP",
-    "TID",
-    "I",
-    "ARG",
-    "SIM",
-    "RET",
-    "LOG",
-    "T20"
-]
+exclude = ["*.ipynb"]
+ignore = ["E203", "E501", "E731", "F722", "E741", "F821", "F403", "ARG002"]
+select = ["UP", "TID", "I", "F", "E", "ARG", "SIM", "RET", "LOG", "T20"]
 
 [tool.ruff.lint.per-file-ignores]
 "benchmark/*" = ["T20"]
 "scripts/*" = ["T20"]
-
-[tool.ruff.lint.mccabe]
-max-complexity = 25
 
 [tool.pyright]
 typeCheckingMode = "strict"

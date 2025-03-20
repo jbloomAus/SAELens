@@ -28,9 +28,7 @@ def test_gated_sae_initialization():
 
     # check if the decoder weight norm is 1 by default
     assert torch.allclose(
-        sae.W_dec.norm(dim=1),
-        torch.ones_like(sae.W_dec.norm(dim=1)),
-        atol=1e-6,
+        sae.W_dec.norm(dim=1), torch.ones_like(sae.W_dec.norm(dim=1)), atol=1e-6
     )
 
 
@@ -77,12 +75,9 @@ def test_gated_sae_loss():
     assert train_step_output.feature_acts.shape == (batch_size, sae.cfg.d_sae)
 
     sae_in_centered = x - sae.b_dec
-    via_gate_feature_magnitudes = torch.relu(
-        sae_in_centered @ sae.W_enc + sae.b_gate
-    )
+    via_gate_feature_magnitudes = torch.relu(sae_in_centered @ sae.W_enc + sae.b_gate)
     preactivation_l1_loss = (
-        sae.cfg.l1_coefficient
-        * torch.sum(via_gate_feature_magnitudes, dim=-1).mean()
+        sae.cfg.l1_coefficient * torch.sum(via_gate_feature_magnitudes, dim=-1).mean()
     )
 
     via_gate_reconstruction = (
@@ -98,8 +93,7 @@ def test_gated_sae_loss():
         + aux_reconstruction_loss
     )
     assert (
-        pytest.approx(train_step_output.loss.item(), rel=1e-3)
-        == expected_loss.item()
+        pytest.approx(train_step_output.loss.item(), rel=1e-3) == expected_loss.item()
     )
 
 

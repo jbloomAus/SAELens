@@ -40,9 +40,7 @@ def _add_tokens_to_batch(
     # if we're concatting batches, add the separator token as needed
     if sequence_separator_token_id is not None:
         sequence_separator_token_id_tensor = torch.tensor(
-            [sequence_separator_token_id],
-            dtype=torch.long,
-            device=tokens.device,
+            [sequence_separator_token_id], dtype=torch.long, device=tokens.device
         )
         if first_token != sequence_separator_token_id_tensor:
             prefix_toks.insert(0, sequence_separator_token_id_tensor)
@@ -82,9 +80,7 @@ def concat_and_batch_sequences(
     batch: torch.Tensor | None = None
     for tokens in tokens_iterator:
         if len(tokens.shape) != 1:
-            raise ValueError(
-                f"tokens.shape should be 1D but was {tokens.shape}"
-            )
+            raise ValueError(f"tokens.shape should be 1D but was {tokens.shape}")
         offset = 0
         total_toks = tokens.shape[0]
         is_start_of_sequence = True

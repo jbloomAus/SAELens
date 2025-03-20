@@ -106,9 +106,7 @@ def test_get_scheduler_linearwarmupdecay(optimizer: Adam):
 
 
 def test_get_scheduler_errors_if_lr_end_is_0_and_decay_is_set(optimizer: Adam):
-    with pytest.raises(
-        ValueError, match="Cannot have decay_steps with lr_end=0.0"
-    ):
+    with pytest.raises(ValueError, match="Cannot have decay_steps with lr_end=0.0"):
         get_lr_scheduler(
             "cosineannealing",
             optimizer,
@@ -164,24 +162,16 @@ def test_get_scheduler_cosineannealing_with_warmup_and_decay():
 
     step(optimizer, scheduler)
     step(new_optimizer, cos_scheduler)
-    assert scheduler.get_last_lr() == pytest.approx(
-        cos_scheduler.get_last_lr()
-    )
+    assert scheduler.get_last_lr() == pytest.approx(cos_scheduler.get_last_lr())
     step(optimizer, scheduler)
     step(new_optimizer, cos_scheduler)
-    assert scheduler.get_last_lr() == pytest.approx(
-        cos_scheduler.get_last_lr()
-    )
+    assert scheduler.get_last_lr() == pytest.approx(cos_scheduler.get_last_lr())
     step(optimizer, scheduler)
     step(new_optimizer, cos_scheduler)
-    assert scheduler.get_last_lr() == pytest.approx(
-        cos_scheduler.get_last_lr()
-    )
+    assert scheduler.get_last_lr() == pytest.approx(cos_scheduler.get_last_lr())
     step(optimizer, scheduler)
     step(new_optimizer, cos_scheduler)
-    assert scheduler.get_last_lr() == pytest.approx(
-        cos_scheduler.get_last_lr()
-    )
+    assert scheduler.get_last_lr() == pytest.approx(cos_scheduler.get_last_lr())
     assert scheduler.get_last_lr() == [lr_end]
 
     # now, decay to 0 in 2 steps

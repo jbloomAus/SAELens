@@ -32,13 +32,9 @@ def model():
 
 
 @pytest.fixture
-def activation_store(
-    model: HookedTransformer, cfg: LanguageModelSAERunnerConfig
-):
+def activation_store(model: HookedTransformer, cfg: LanguageModelSAERunnerConfig):
     return ActivationsStore.from_config(
-        model,
-        cfg,
-        override_dataset=Dataset.from_list([{"text": "hello world"}] * 2000),
+        model, cfg, override_dataset=Dataset.from_list([{"text": "hello world"}] * 2000)
     )
 
 
@@ -63,9 +59,7 @@ def trainer(
     )
 
 
-def modify_sae_output(
-    sae: TrainingSAE, modifier: Callable[[torch.Tensor], Any]
-):
+def modify_sae_output(sae: TrainingSAE, modifier: Callable[[torch.Tensor], Any]):
     """
     Helper to modify the output of the SAE forward pass for use in patching, for use in patch side_effect.
     We need real grads during training, so we can't just mock the whole forward pass directly.
@@ -116,9 +110,7 @@ def test_train_step__output_looks_reasonable(trainer: SAETrainer) -> None:
     # ghots grads shouldn't trigger until dead_feature_window, which hasn't been reached yet
     assert output.losses.get("ghost_grad_loss", 0) == 0
     assert trainer.n_frac_active_tokens == 4
-    assert (
-        trainer.act_freq_scores.sum() > 0
-    )  # at least SOME acts should have fired
+    assert trainer.act_freq_scores.sum() > 0  # at least SOME acts should have fired
     assert torch.allclose(
         trainer.act_freq_scores, (output.feature_acts.abs() > 0).float().sum(0)
     )
@@ -169,12 +161,8 @@ def test_build_train_step_log_dict(trainer: SAETrainer) -> None:
     train_output = TrainStepOutput(
         sae_in=torch.tensor([[-1, 0], [0, 2], [1, 1]]).float(),
         sae_out=torch.tensor([[0, 0], [0, 2], [0.5, 1]]).float(),
-        feature_acts=torch.tensor(
-            [[0, 0, 0, 1], [1, 0, 0, 1], [1, 0, 1, 1]]
-        ).float(),
-        hidden_pre=torch.tensor(
-            [[-1, 0, 0, 1], [1, -1, 0, 1], [1, -1, 1, 1]]
-        ).float(),
+        feature_acts=torch.tensor([[0, 0, 0, 1], [1, 0, 0, 1], [1, 0, 1, 1]]).float(),
+        hidden_pre=torch.tensor([[-1, 0, 0, 1], [1, -1, 0, 1], [1, -1, 1, 1]]).float(),
         loss=torch.tensor(0.5),
         losses={
             "mse_loss": 0.25,
@@ -192,8 +180,7 @@ def test_build_train_step_log_dict(trainer: SAETrainer) -> None:
     assert log_dict == {
         "losses/mse_loss": 0.25,
         # l1 loss is scaled by l1_coefficient
-        "losses/l1_loss": train_output.losses["l1_loss"]
-        / trainer.cfg.l1_coefficient,
+        "losses/l1_loss": train_output.losses["l1_loss"] / trainer.cfg.l1_coefficient,
         "losses/raw_l1_loss": train_output.losses["l1_loss"],
         "losses/overall_loss": 0.5,
         "losses/ghost_grad_loss": 0.15,
@@ -284,14 +271,10 @@ def test_estimated_norm_scaling_factor_persistence(
         len(checkpoint_paths) == 2
     ), f"Expected 2 checkpoints but got {len(checkpoint_paths)}"
     during_checkpoints = [
-        load_file(path)
-        for path in checkpoint_paths
-        if "final" not in path.parent.name
+        load_file(path) for path in checkpoint_paths if "final" not in path.parent.name
     ]
     final_checkpoints = [
-        load_file(path)
-        for path in checkpoint_paths
-        if "final" in path.parent.name
+        load_file(path) for path in checkpoint_paths if "final" in path.parent.name
     ]
     assert (
         len(during_checkpoints) == 1

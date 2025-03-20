@@ -42,17 +42,13 @@ def _default_cfg(
 
     sliced_context_size = kwargs.get("seqpos_slice")
     if sliced_context_size is not None:
-        sliced_context_size = len(
-            range(context_size)[slice(*sliced_context_size)]
-        )
+        sliced_context_size = len(range(context_size)[slice(*sliced_context_size)])
     else:
         sliced_context_size = context_size
 
     # Calculate buffer_size_gb to achieve desired n_buffers
     bytes_per_token = d_in * DTYPE_MAP[dtype].itemsize
-    tokens_per_buffer = math.ceil(
-        dataset_num_rows * sliced_context_size / n_buffers
-    )
+    tokens_per_buffer = math.ceil(dataset_num_rows * sliced_context_size / n_buffers)
     buffer_size_gb = (tokens_per_buffer * bytes_per_token) / 1_000_000_000
     total_training_tokens = dataset_num_rows * sliced_context_size
 
@@ -92,9 +88,7 @@ def test_cache_activations_runner(tmp_path: Path):
     runner = CacheActivationsRunner(cfg)
     dataset = runner.run()
 
-    assert len(dataset) == cfg.n_buffers * (
-        cfg.n_tokens_in_buffer // cfg.context_size
-    )
+    assert len(dataset) == cfg.n_buffers * (cfg.n_tokens_in_buffer // cfg.context_size)
     assert cfg.n_seq_in_dataset == len(dataset)
     assert dataset.column_names == [cfg.hook_name, "token_ids"]
 
@@ -161,9 +155,7 @@ def test_activations_store_refreshes_dataset_when_it_runs_out(tmp_path: Path):
     )
 
     class MockModel:
-        def to_tokens(
-            self, *args: tuple[Any, ...], **kwargs: Any
-        ) -> torch.Tensor:
+        def to_tokens(self, *args: tuple[Any, ...], **kwargs: Any) -> torch.Tensor:
             return torch.ones(context_size)
 
         @property
@@ -183,9 +175,7 @@ def test_activations_store_refreshes_dataset_when_it_runs_out(tmp_path: Path):
         override_dataset=dataset,
     )
     for _ in range(16):
-        _ = activations_store.get_batch_tokens(
-            batch_size, raise_at_epoch_end=True
-        )
+        _ = activations_store.get_batch_tokens(batch_size, raise_at_epoch_end=True)
 
     # assert a stop iteration is raised when we do one more get_batch_tokens
 
@@ -198,14 +188,10 @@ def test_activations_store_refreshes_dataset_when_it_runs_out(tmp_path: Path):
 
     # no errors are ever raised if we do not ask for raise_at_epoch_end
     for _ in range(32):
-        _ = activations_store.get_batch_tokens(
-            batch_size, raise_at_epoch_end=False
-        )
+        _ = activations_store.get_batch_tokens(batch_size, raise_at_epoch_end=False)
 
 
-def test_compare_cached_activations_end_to_end_with_ground_truth(
-    tmp_path: Path,
-):
+def test_compare_cached_activations_end_to_end_with_ground_truth(tmp_path: Path):
     """
     Creates activations using CacheActivationsRunner and compares them with ground truth
     model.run_with_cache
@@ -218,9 +204,7 @@ def test_compare_cached_activations_end_to_end_with_ground_truth(
     activation_dataset.set_format("torch")
     dataset_acts: torch.Tensor = activation_dataset[cfg.hook_name]  # type: ignore
 
-    model = HookedTransformer.from_pretrained(
-        cfg.model_name, device=cfg.device
-    )
+    model = HookedTransformer.from_pretrained(cfg.model_name, device=cfg.device)
     token_dataset: Dataset = load_dataset(
         cfg.dataset_path, split=f"train[:{cfg.n_seq_in_dataset}]"
     )  # type: ignore
@@ -241,9 +225,7 @@ def test_compare_cached_activations_end_to_end_with_ground_truth(
 
     ground_truth_acts = torch.cat(ground_truth_acts, dim=0).cpu()
 
-    assert torch.allclose(
-        ground_truth_acts, dataset_acts, rtol=1e-3, atol=5e-2
-    )
+    assert torch.allclose(ground_truth_acts, dataset_acts, rtol=1e-3, atol=5e-2)
 
 
 def test_load_activations_store_with_nonexistent_dataset(tmp_path: Path):
@@ -270,8 +252,7 @@ def test_cache_activations_runner_with_nonempty_directory(tmp_path: Path):
         f.write("test")
 
     with pytest.raises(
-        Exception,
-        match="is not empty. Please delete it or specify a different path.",
+        Exception, match="is not empty. Please delete it or specify a different path."
     ):
         cfg = _default_cfg(tmp_path)
         runner = CacheActivationsRunner(cfg)
@@ -295,9 +276,7 @@ def test_cache_activations_runner_with_incorrect_d_in(tmp_path: Path):
         runner.run()
 
 
-def test_cache_activations_runner_load_dataset_with_incorrect_config(
-    tmp_path: Path,
-):
+def test_cache_activations_runner_load_dataset_with_incorrect_config(tmp_path: Path):
     correct_cfg = _default_cfg(tmp_path, context_size=16)
     runner = CacheActivationsRunner(correct_cfg)
     runner.run()
@@ -378,10 +357,7 @@ def test_cache_activations_runner_stores_token_ids(tmp_path: Path):
 
     assert "token_ids" in dataset.features
     assert dataset["token_ids"].shape[1] == cfg.context_size  # type: ignore
-    assert (
-        dataset["blocks.0.hook_mlp_out"].shape[:2]  # type: ignore
-        == dataset["token_ids"].shape  # type: ignore
-    )
+    assert dataset["blocks.0.hook_mlp_out"].shape[:2] == dataset["token_ids"].shape  # type: ignore
 
 
 def test_cache_activations_runner_shuffling(tmp_path: Path):
@@ -414,16 +390,12 @@ def test_cache_activations_runner_shuffling(tmp_path: Path):
     )
 
     # Get unshuffled dataset
-    unshuffled_runner = CacheActivationsRunner(
-        base_cfg, override_dataset=dataset
-    )
+    unshuffled_runner = CacheActivationsRunner(base_cfg, override_dataset=dataset)
     unshuffled_ds = unshuffled_runner.run()
     unshuffled_ds.set_format("torch")
 
     # Get shuffled dataset
-    shuffled_runner = CacheActivationsRunner(
-        shuffle_cfg, override_dataset=dataset
-    )
+    shuffled_runner = CacheActivationsRunner(shuffle_cfg, override_dataset=dataset)
     shuffled_ds = shuffled_runner.run()
     shuffled_ds.set_format("torch")
 

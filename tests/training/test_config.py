@@ -4,10 +4,7 @@ from typing import Type
 import pytest
 
 from sae_lens import __version__
-from sae_lens.config import (
-    CacheActivationsRunnerConfig,
-    LanguageModelSAERunnerConfig,
-)
+from sae_lens.config import CacheActivationsRunnerConfig, LanguageModelSAERunnerConfig
 from sae_lens.sae import SAEConfig
 from sae_lens.training.training_sae import TrainingSAEConfig
 
@@ -17,19 +14,13 @@ TINYSTORIES_DATASET = "roneneldan/TinyStories"
 
 def test_get_training_sae_cfg_dict_passes_scale_sparsity_penalty_by_decoder_norm():
     cfg = LanguageModelSAERunnerConfig(
-        scale_sparsity_penalty_by_decoder_norm=True,
-        normalize_sae_decoder=False,
+        scale_sparsity_penalty_by_decoder_norm=True, normalize_sae_decoder=False
     )
-    assert cfg.get_training_sae_cfg_dict()[
-        "scale_sparsity_penalty_by_decoder_norm"
-    ]
+    assert cfg.get_training_sae_cfg_dict()["scale_sparsity_penalty_by_decoder_norm"]
     cfg = LanguageModelSAERunnerConfig(
-        scale_sparsity_penalty_by_decoder_norm=False,
-        normalize_sae_decoder=False,
+        scale_sparsity_penalty_by_decoder_norm=False, normalize_sae_decoder=False
     )
-    assert not cfg.get_training_sae_cfg_dict()[
-        "scale_sparsity_penalty_by_decoder_norm"
-    ]
+    assert not cfg.get_training_sae_cfg_dict()["scale_sparsity_penalty_by_decoder_norm"]
 
 
 def test_get_training_sae_cfg_dict_has_all_relevant_options():
@@ -38,9 +29,7 @@ def test_get_training_sae_cfg_dict_has_all_relevant_options():
     training_sae_opts = fields(TrainingSAEConfig)
     allowed_missing_fields = {"neuronpedia_id"}
     training_sae_field_names = {opt.name for opt in training_sae_opts}
-    missing_fields = (
-        training_sae_field_names - allowed_missing_fields - cfg_dict.keys()
-    )
+    missing_fields = training_sae_field_names - allowed_missing_fields - cfg_dict.keys()
     assert missing_fields == set()
 
 
@@ -182,8 +171,7 @@ def test_cache_activations_runner_config_seqpos(
 
 def test_topk_architecture_requires_topk_activation():
     with pytest.raises(
-        ValueError,
-        match="If using topk architecture, activation_fn must be topk.",
+        ValueError, match="If using topk architecture, activation_fn must be topk."
     ):
         LanguageModelSAERunnerConfig(architecture="topk", activation_fn="relu")
 

@@ -58,9 +58,7 @@ def compute_geometric_median(
             norms = torch.linalg.norm(points - median.view(1, -1), dim=1)  # type: ignore
             new_weights = weights / torch.clamp(norms, min=eps)
             median = weighted_average(points, new_weights)
-            objective_value = geometric_median_objective(
-                median, points, weights
-            )
+            objective_value = geometric_median_objective(median, points, weights)
 
             if logs is not None:
                 logs.append(objective_value)
@@ -70,9 +68,7 @@ def compute_geometric_median(
 
             pbar.set_description(f"Objective value: {objective_value:.4f}")
 
-    median = weighted_average(
-        points, new_weights
-    )  # allow autodiff to track it
+    median = weighted_average(points, new_weights)  # allow autodiff to track it
     return SimpleNamespace(
         median=median,
         new_weights=new_weights,

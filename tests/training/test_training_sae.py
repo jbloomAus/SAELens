@@ -14,9 +14,7 @@ from sae_lens.training.training_sae import (
 from tests.helpers import build_sae_cfg
 
 
-@pytest.mark.parametrize(
-    "scale_sparsity_penalty_by_decoder_norm", [True, False]
-)
+@pytest.mark.parametrize("scale_sparsity_penalty_by_decoder_norm", [True, False])
 def test_TrainingSAE_training_forward_pass_can_scale_sparsity_penalty_by_decoder_norm(
     scale_sparsity_penalty_by_decoder_norm: bool,
 ):
@@ -35,16 +33,13 @@ def test_TrainingSAE_training_forward_pass_can_scale_sparsity_penalty_by_decoder
     feature_acts = train_step_output.feature_acts
     decoder_norm = training_sae.W_dec.norm(dim=1)
     # double-check decoder norm is not all ones, or this test is pointless
-    assert not torch.allclose(
-        decoder_norm, torch.ones_like(decoder_norm), atol=1e-2
-    )
+    assert not torch.allclose(decoder_norm, torch.ones_like(decoder_norm), atol=1e-2)
     scaled_feature_acts = feature_acts * decoder_norm
 
     if scale_sparsity_penalty_by_decoder_norm:
         assert (
             pytest.approx(train_step_output.losses["l1_loss"].detach().item())  # type: ignore
-            == 2.0
-            * scaled_feature_acts.norm(p=1, dim=1).mean().detach().item()
+            == 2.0 * scaled_feature_acts.norm(p=1, dim=1).mean().detach().item()
         )
     else:
         assert (
@@ -99,12 +94,8 @@ def test_calculate_topk_aux_acts_k_less_than_dead():
     # For each row, should select only top k_aux=1 value from dead neurons (indices 1,3)
     # and zero out all other values
     expected = torch.zeros_like(hidden_pre)
-    expected[0, 3] = (
-        4.0  # Only highest value among dead neurons for first item
-    )
-    expected[
-        1, 1
-    ] = -2.0  # Only highest value among dead neurons for second item
+    expected[0, 3] = 4.0  # Only highest value among dead neurons for first item
+    expected[1, 1] = -2.0  # Only highest value among dead neurons for second item
 
     result = _calculate_topk_aux_acts(k_aux, hidden_pre, dead_neuron_mask)
 
@@ -240,9 +231,7 @@ def test_TrainingSAE_forward_includes_topk_loss_is_nonzero_if_dead_neurons_prese
     assert train_step_output.losses["auxiliary_reconstruction_loss"] > 0.0
 
 
-@pytest.mark.parametrize(
-    "architecture", ["standard", "gated", "jumprelu", "topk"]
-)
+@pytest.mark.parametrize("architecture", ["standard", "gated", "jumprelu", "topk"])
 def test_TrainingSAE_encode_returns_same_value_as_encode_with_hidden_pre(
     architecture: str,
 ):
@@ -277,15 +266,13 @@ def test_TrainingSAE_jumprelu_save_and_load(tmp_path: Path):
 
     assert training_sae.cfg.to_dict() == loaded_training_sae.cfg.to_dict()
     for param_name, param in training_sae.named_parameters():
-        assert torch.allclose(
-            param, loaded_training_sae.state_dict()[param_name]
-        )
+        assert torch.allclose(param, loaded_training_sae.state_dict()[param_name])
 
     test_input = torch.randn(32, cfg.d_in)
     training_sae_out = training_sae.encode_with_hidden_pre_fn(test_input)[0]
-    loaded_training_sae_out = loaded_training_sae.encode_with_hidden_pre_fn(
-        test_input
-    )[0]
+    loaded_training_sae_out = loaded_training_sae.encode_with_hidden_pre_fn(test_input)[
+        0
+    ]
     loaded_sae_out = loaded_sae.encode(test_input)
     assert torch.allclose(training_sae_out, loaded_training_sae_out)
     assert torch.allclose(training_sae_out, loaded_sae_out)
@@ -305,15 +292,11 @@ def test_TrainingSAE_fold_w_dec_norm_jumprelu():
     sae2.fold_W_dec_norm()
 
     # fold_W_dec_norm should normalize W_dec to have unit norm.
-    assert sae2.W_dec.norm(dim=-1).mean().item() == pytest.approx(
-        1.0, abs=1e-6
-    )
+    assert sae2.W_dec.norm(dim=-1).mean().item() == pytest.approx(1.0, abs=1e-6)
 
     W_dec_norms = sae.W_dec.norm(dim=-1).unsqueeze(1)
     assert torch.allclose(sae2.b_enc, sae.b_enc * W_dec_norms.squeeze())
-    assert torch.allclose(
-        sae2.threshold, sae.threshold * W_dec_norms.squeeze()
-    )
+    assert torch.allclose(sae2.threshold, sae.threshold * W_dec_norms.squeeze())
 
     # we expect activations of features to differ by W_dec norm weights.
     activations = torch.randn(10, 4, cfg.d_in, device=cfg.device)
@@ -325,12 +308,8 @@ def test_TrainingSAE_fold_w_dec_norm_jumprelu():
         feature_activations_2.nonzero(),
     )
 
-    expected_feature_activations_2 = feature_activations_1 * sae.W_dec.norm(
-        dim=-1
-    )
-    torch.testing.assert_close(
-        feature_activations_2, expected_feature_activations_2
-    )
+    expected_feature_activations_2 = feature_activations_1 * sae.W_dec.norm(dim=-1)
+    torch.testing.assert_close(feature_activations_2, expected_feature_activations_2)
 
     sae_out_1 = sae.decode(feature_activations_1)
     sae_out_2 = sae2.decode(feature_activations_2)

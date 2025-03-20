@@ -37,9 +37,7 @@ class PretokenizedDatasetMetadata:
     sequence_separator_token: int | Literal["bos", "eos", "sep"] | None
 
 
-def metadata_from_config(
-    cfg: PretokenizeRunnerConfig,
-) -> PretokenizedDatasetMetadata:
+def metadata_from_config(cfg: PretokenizeRunnerConfig) -> PretokenizedDatasetMetadata:
     return PretokenizedDatasetMetadata(
         sae_lens_version=__version__,
         tokenizer_name=cfg.tokenizer_name,
@@ -148,9 +146,9 @@ def push_to_hugging_face_hub(
     # also upload metadata file
     metadata = metadata_from_config(cfg)
     meta_io = io.BytesIO()
-    meta_contents = json.dumps(
-        metadata.__dict__, indent=2, ensure_ascii=False
-    ).encode("utf-8")
+    meta_contents = json.dumps(metadata.__dict__, indent=2, ensure_ascii=False).encode(
+        "utf-8"
+    )
     meta_io.write(meta_contents)
     meta_io.seek(0)
 
