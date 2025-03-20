@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+import torch
 from datasets import Dataset
 from transformer_lens import HookedTransformer
 
@@ -537,3 +538,58 @@ def test_get_saes_from_regex_multiple_matches(mock_all_loadable_saes: MagicMock)
         ("release2", "sae3", 0.8, 0.2),
     ]
     assert result == expected
+
+
+def test_get_sparsity_and_variance_metrics_identity_sae_perfect_reconstruction(
+    model: HookedTransformer,
+    example_dataset: Dataset,
+):
+    """Test that an identity SAE (d_in = d_sae, W_enc = W_dec = Identity, zero biases) gets perfect variance explained."""
+    # Create a special configuration for an identity SAE
+    d_in = 64  # Choose a small dimension for test efficiency
+    identity_cfg = build_sae_cfg(
+        d_in=d_in,
+        d_sae=2 * d_in,  # 2 x d_in, to do both pos and neg identity matrix
+        hook_name="blocks.1.hook_resid_pre",
+        hook_layer=1,
+    )
+
+    # Create an SAE and manually set weights to identity matrices
+    identity_sae = SAE.from_dict(identity_cfg.get_base_sae_cfg_dict())
+    with torch.no_grad():
+        # Set encoder and decoder weights to identity matrices
+        identity_sae.W_dec.data = torch.cat([torch.eye(d_in), -1 * torch.eye(d_in)])
+        identity_sae.W_enc.data = identity_sae.W_dec.T.clone()
+        # Set biases to zero
+        identity_sae.b_enc.data = torch.zeros_like(identity_sae.b_enc)
+        identity_sae.b_dec.data = torch.zeros_like(identity_sae.b_dec)
+
+    # Create an activation store
+    activation_store = ActivationsStore.from_config(
+        model, identity_cfg, override_dataset=example_dataset
+    )
+
+    # Get metrics
+    metrics, _ = get_sparsity_and_variance_metrics(
+        sae=identity_sae,
+        model=model,
+        activation_store=activation_store,
+        n_batches=3,
+        compute_l2_norms=True,
+        compute_sparsity_metrics=True,
+        compute_variance_metrics=True,
+        compute_featurewise_density_statistics=True,
+        eval_batch_size_prompts=4,
+        model_kwargs={},
+    )
+
+    # An identity SAE should perfectly reconstruct the input,
+    # so variance explained should be 1.0 (or very close to it)
+    assert metrics["explained_variance"] == pytest.approx(1.0, abs=1e-5)
+    assert metrics["explained_variance_legacy"] == pytest.approx(1.0, abs=1e-5)
+
+    # Also check that L0 is exactly d_in (all features active)
+    assert metrics["l0"] == pytest.approx(d_in, abs=1e-5)
+
+    # MSE loss should be very close to 0
+    assert metrics["mse"] == pytest.approx(0.0, abs=1e-5)
