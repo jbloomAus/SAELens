@@ -1,5 +1,5 @@
 import copy
-from typing import Any, Optional, TypedDict
+from typing import Any, TypedDict
 
 from transformer_lens import HookedTransformer
 
@@ -15,7 +15,7 @@ class LanguageModelSAERunnerConfigDict(TypedDict, total=False):
     model_name: str
     hook_name: str
     hook_layer: int
-    hook_head_index: Optional[int]
+    hook_head_index: int | None
     dataset_path: str
     dataset_trust_remote_code: bool
     is_dataset_tokenized: bool

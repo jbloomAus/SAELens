@@ -4,7 +4,7 @@ import os
 import urllib.parse
 import webbrowser
 from datetime import datetime
-from typing import Any, Optional, TypeVar
+from typing import Any, TypeVar
 
 import requests
 from dotenv import load_dotenv
@@ -179,7 +179,7 @@ def make_neuronpedia_list_with_features(
     api_key: str,
     list_name: str,
     features: list[NeuronpediaFeature],
-    list_description: Optional[str] = None,
+    list_description: str | None = None,
     open_browser: bool = True,
 ):
     url = NEURONPEDIA_DOMAIN + "/api/list/new-with-features"

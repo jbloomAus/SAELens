@@ -2,7 +2,7 @@ import os
 import tempfile
 from collections.abc import Iterable
 from math import ceil
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 import pytest
@@ -427,7 +427,7 @@ def test_activations_store___iterate_tokenized_sequences__works_with_huggingface
     [(5, RuntimeWarning), (10, None), (15, ValueError)],
 )
 def test_activations_store__errors_on_context_size_mismatch(
-    ts_model: HookedTransformer, context_size: int, expected_error: Optional[ValueError]
+    ts_model: HookedTransformer, context_size: int, expected_error: ValueError | None
 ):
     tokenizer = ts_model.tokenizer
     assert tokenizer is not None
