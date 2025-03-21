@@ -1,7 +1,7 @@
 import json
 import re
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional, Protocol, Tuple
+from typing import Any, Protocol
 
 import numpy as np
 import torch
@@ -28,16 +28,16 @@ class PretrainedSaeLoader(Protocol):
         device: str | torch.device | None = None,
         force_download: bool = False,
         cfg_overrides: dict[str, Any] | None = None,
-    ) -> tuple[dict[str, Any], dict[str, torch.Tensor], Optional[torch.Tensor]]: ...
+    ) -> tuple[dict[str, Any], dict[str, torch.Tensor], torch.Tensor | None]: ...
 
 
 @dataclass
 class SAEConfigLoadOptions:
-    device: Optional[str] = None
+    device: str | None = None
     force_download: bool = False
-    d_sae_override: Optional[int] = None
-    layer_override: Optional[int] = None
-    cfg_overrides: Optional[Dict[str, Any]] = field(default_factory=dict)
+    d_sae_override: int | None = None
+    layer_override: int | None = None
+    cfg_overrides: dict[str, Any] | None = field(default_factory=dict)
 
 
 def sae_lens_loader(
@@ -45,8 +45,8 @@ def sae_lens_loader(
     sae_id: str,
     device: str = "cpu",
     force_download: bool = False,
-    cfg_overrides: Optional[dict[str, Any]] = None,
-) -> tuple[dict[str, Any], dict[str, torch.Tensor], Optional[torch.Tensor]]:
+    cfg_overrides: dict[str, Any] | None = None,
+) -> tuple[dict[str, Any], dict[str, torch.Tensor], torch.Tensor | None]:
     """
     Get's SAEs from HF, loads them.
     """
@@ -92,7 +92,7 @@ def get_sae_config_from_hf(
     repo_id: str,
     folder_name: str,
     options: SAEConfigLoadOptions,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Retrieve the configuration for a Sparse Autoencoder (SAE) from a Hugging Face repository.
 
@@ -100,10 +100,10 @@ def get_sae_config_from_hf(
         repo_id (str): The repository ID on Hugging Face.
         folder_name (str): The folder name within the repository containing the config file.
         force_download (bool, optional): Whether to force download the config file. Defaults to False.
-        cfg_overrides (Optional[Dict[str, Any]], optional): Overrides for the config. Defaults to None.
+        cfg_overrides (dict[str, Any] | None, optional): Overrides for the config. Defaults to None.
 
     Returns:
-        Dict[str, Any]: The configuration dictionary for the SAE.
+        dict[str, Any]: The configuration dictionary for the SAE.
     """
     cfg_filename = f"{folder_name}/cfg.json"
     cfg_path = hf_hub_download(
@@ -181,9 +181,9 @@ def get_connor_rob_hook_z_config(
 def connor_rob_hook_z_loader(
     release: str,
     sae_id: str,
-    device: Optional[str] = None,
+    device: str | None = None,
     force_download: bool = False,
-    cfg_overrides: Optional[dict[str, Any]] = None,  # noqa: ARG001
+    cfg_overrides: dict[str, Any] | None = None,  # noqa: ARG001
 ) -> tuple[dict[str, Any], dict[str, torch.Tensor], None]:
     options = SAEConfigLoadOptions(
         device=device,
@@ -209,7 +209,7 @@ def read_sae_from_disk(
     cfg_dict: dict[str, Any],
     weight_path: str,
     device: str = "cpu",
-    dtype: Optional[torch.dtype] = None,
+    dtype: torch.dtype | None = None,
 ) -> tuple[dict[str, Any], dict[str, torch.Tensor]]:
     """
     Given a loaded dictionary and a path to a weight file, load the weights and return the state_dict.
@@ -250,7 +250,7 @@ def get_gemma_2_config(
     repo_id: str,
     folder_name: str,
     options: SAEConfigLoadOptions,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     # Detect width from folder_name
     width_map = {
         "width_4k": 4096,
@@ -342,10 +342,10 @@ def gemma_2_sae_loader(
     sae_id: str,
     device: str = "cpu",
     force_download: bool = False,
-    cfg_overrides: Optional[Dict[str, Any]] = None,
-    d_sae_override: Optional[int] = None,
-    layer_override: Optional[int] = None,
-) -> Tuple[Dict[str, Any], Dict[str, torch.Tensor], Optional[torch.Tensor]]:
+    cfg_overrides: dict[str, Any] | None = None,
+    d_sae_override: int | None = None,
+    layer_override: int | None = None,
+) -> tuple[dict[str, Any], dict[str, torch.Tensor], torch.Tensor | None]:
     """
     Custom loader for Gemma 2 SAEs.
     """
@@ -416,7 +416,7 @@ def get_llama_scope_config(
     repo_id: str,
     folder_name: str,
     options: SAEConfigLoadOptions,  # noqa: ARG001
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     # Llama Scope SAEs
     # repo_id: fnlp/Llama3_1-8B-Base-LX{sublayer}-{exp_factor}x
     # folder_name: Llama3_1-8B-Base-L{layer}{sublayer}-{exp_factor}x
@@ -458,10 +458,10 @@ def llama_scope_sae_loader(
     sae_id: str,
     device: str = "cpu",
     force_download: bool = False,
-    cfg_overrides: Optional[Dict[str, Any]] = None,
-    d_sae_override: Optional[int] = None,
-    layer_override: Optional[int] = None,
-) -> Tuple[Dict[str, Any], Dict[str, torch.Tensor], Optional[torch.Tensor]]:
+    cfg_overrides: dict[str, Any] | None = None,
+    d_sae_override: int | None = None,
+    layer_override: int | None = None,
+) -> tuple[dict[str, Any], dict[str, torch.Tensor], torch.Tensor | None]:
     """
     Custom loader for Llama Scope SAEs.
 
@@ -470,12 +470,12 @@ def llama_scope_sae_loader(
         sae_id: SAE identifier
         device: Device to load tensors to
         force_download: Whether to force download even if files exist
-        cfg_overrides: Optional configuration overrides
-        d_sae_override: Optional override for SAE dimension
-        layer_override: Optional override for layer number
+        cfg_overrides: Configuration overrides (optional)
+        d_sae_override: Override for SAE dimension (optional)
+        layer_override: Override for layer number (optional)
 
     Returns:
-        Tuple of (config dict, state dict, log sparsity tensor)
+        tuple of (config dict, state dict, log sparsity tensor)
     """
     options = SAEConfigLoadOptions(
         device=device,
@@ -538,7 +538,7 @@ def get_llama_scope_r1_distill_config(
     repo_id: str,
     folder_name: str,
     options: SAEConfigLoadOptions,  # noqa: ARG001
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     # Future Llama Scope series SAE by OpenMoss group use this config.
     # repo_id: [
     #   fnlp/Llama-Scope-R1-Distill
@@ -583,10 +583,10 @@ def llama_scope_r1_distill_sae_loader(
     sae_id: str,
     device: str = "cpu",
     force_download: bool = False,
-    cfg_overrides: Optional[Dict[str, Any]] = None,
-    d_sae_override: Optional[int] = None,
-    layer_override: Optional[int] = None,
-) -> Tuple[Dict[str, Any], Dict[str, torch.Tensor], Optional[torch.Tensor]]:
+    cfg_overrides: dict[str, Any] | None = None,
+    d_sae_override: int | None = None,
+    layer_override: int | None = None,
+) -> tuple[dict[str, Any], dict[str, torch.Tensor], torch.Tensor | None]:
     """
     Custom loader for Llama Scope SAEs.
 
@@ -595,12 +595,12 @@ def llama_scope_r1_distill_sae_loader(
         sae_id: SAE identifier
         device: Device to load tensors to
         force_download: Whether to force download even if files exist
-        cfg_overrides: Optional configuration overrides
-        d_sae_override: Optional override for SAE dimension
-        layer_override: Optional override for layer number
+        cfg_overrides: Configuration overrides (optional)
+        d_sae_override: Override for SAE dimension (optional)
+        layer_override: Override for layer number (optional)
 
     Returns:
-        Tuple of (config dict, state dict, log sparsity tensor)
+        tuple of (config dict, state dict, log sparsity tensor)
     """
     options = SAEConfigLoadOptions(
         device=device,
@@ -743,8 +743,8 @@ def deepseek_r1_sae_loader(
     sae_id: str,
     device: str = "cpu",
     force_download: bool = False,
-    cfg_overrides: Optional[dict[str, Any]] = None,
-) -> tuple[dict[str, Any], dict[str, torch.Tensor], Optional[torch.Tensor]]:
+    cfg_overrides: dict[str, Any] | None = None,
+) -> tuple[dict[str, Any], dict[str, torch.Tensor], torch.Tensor | None]:
     """Load a DeepSeek R1 SAE."""
     repo_id, filename = get_repo_id_and_folder_name(release, sae_id=sae_id)
 
@@ -777,7 +777,7 @@ def deepseek_r1_sae_loader(
     return cfg_dict, state_dict, None
 
 
-def get_conversion_loader_name(sae_info: Optional[PretrainedSAELookup]):
+def get_conversion_loader_name(sae_info: PretrainedSAELookup | None):
     conversion_loader_name = "sae_lens"
     if sae_info is not None and sae_info.conversion_func is not None:
         conversion_loader_name = sae_info.conversion_func
@@ -816,8 +816,8 @@ def dictionary_learning_sae_loader_1(
     sae_id: str,
     device: str = "cpu",
     force_download: bool = False,
-    cfg_overrides: Optional[dict[str, Any]] = None,
-) -> tuple[dict[str, Any], dict[str, torch.Tensor], Optional[torch.Tensor]]:
+    cfg_overrides: dict[str, Any] | None = None,
+) -> tuple[dict[str, Any], dict[str, torch.Tensor], torch.Tensor | None]:
     """
     Suitable for SAEs from https://huggingface.co/canrager/lm_sae.
     """

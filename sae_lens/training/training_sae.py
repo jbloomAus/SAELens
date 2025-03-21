@@ -5,7 +5,7 @@ https://github.com/ArthurConmy/sae/blob/main/sae/model.py
 import json
 import os
 from dataclasses import dataclass, fields
-from typing import Any, Optional
+from typing import Any
 
 import einops
 import numpy as np
@@ -114,7 +114,7 @@ class TrainingSAEConfig(SAEConfig):
     normalize_sae_decoder: bool
     noise_scale: float
     decoder_orthogonal_init: bool
-    mse_loss_normalization: Optional[str]
+    mse_loss_normalization: str | None
     jumprelu_init_threshold: float
     jumprelu_bandwidth: float
     decoder_heuristic_init: bool
@@ -370,7 +370,7 @@ class TrainingSAE(SAE):
         self,
         sae_in: torch.Tensor,
         current_l1_coefficient: float,
-        dead_neuron_mask: Optional[torch.Tensor] = None,
+        dead_neuron_mask: torch.Tensor | None = None,
     ) -> TrainStepOutput:
         # do a forward pass to get SAE out, but we also need the
         # hidden pre.
