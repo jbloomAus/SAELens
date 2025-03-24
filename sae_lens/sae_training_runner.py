@@ -17,7 +17,8 @@ from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.geometric_median import compute_geometric_median
 from sae_lens.training.sae_trainer import SAETrainer
 from sae_lens.training.training_sae import TrainingSAE, TrainingSAEConfig
-
+import random
+import numpy as np
 
 class InterruptedException(Exception):
     pass
@@ -197,6 +198,33 @@ class SAETrainingRunner:
         if trainer.sae.cfg.normalize_sae_decoder:
             trainer.sae.set_decoder_norm_to_unit_norm()
 
+        # save extra - trainer state for resuming from checkpoint.
+        trainer_state = {
+            # Save global training steps
+            "n_training_steps": trainer.n_training_steps,
+            "n_training_tokens": trainer.n_training_tokens,
+            
+            # Save torch tensors storing activation frequency
+            "act_freq_scores": trainer.act_freq_scores,
+            "n_forward_passes_since_fired": trainer.n_forward_passes_since_fired,
+            "n_frac_active_tokens": trainer.n_frac_active_tokens,
+            
+            # Save optimizer and lr state
+            "optimizer": trainer.optimizer.state_dict(),
+            "lr_scheduler_state": trainer.lr_scheduler.state_dict(),
+            "l1_scheduler_state": trainer.l1_scheduler.state_dict(),
+            
+            # Save how many times activation.next_batch() has been called. This variable is newly introduced one. 
+            "n_next_batch_called": trainer.activations_store.n_next_batch_called,            
+            
+            # Save random state to stricktly start from where it left off.
+            "python_rng_state": random.getstate(),
+            "numpy_rng_state": np.random.get_state(),            
+            "torch_rng_state": torch.get_rng_state(),
+            "cuda_rng_state": torch.cuda.get_rng_state_all(),
+        }
+        torch.save(trainer_state, str(base_path / "trainer_state.pt"))        
+
         weights_path, cfg_path, sparsity_path = trainer.sae.save_model(
             str(base_path),
             trainer.log_feature_sparsity,
@@ -221,6 +249,7 @@ class SAETrainingRunner:
             )
             model_artifact.add_file(str(weights_path))
             model_artifact.add_file(str(cfg_path))
+            model_artifact.add_file(str(base_path / "trainer_state.pt"))
             wandb.log_artifact(model_artifact, aliases=wandb_aliases)
 
             # save log feature sparsity

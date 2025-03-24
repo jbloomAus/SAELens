@@ -14,7 +14,11 @@ from sae_lens.evals import EvalConfig, run_evals
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.optim import L1Scheduler, get_lr_scheduler
 from sae_lens.training.training_sae import TrainingSAE, TrainStepOutput
-
+from functools import wraps
+import random
+import numpy as np
+import os
+from safetensors.torch import load_file    
 # used to map between parameters which are updated during finetuning and the config str.
 FINETUNING_PARAMETERS = {
     "scale": ["scaling_factor"],
@@ -35,6 +39,81 @@ def _update_sae_lens_training_version(sae: TrainingSAE) -> None:
     """
     sae.cfg.sae_lens_training_version = str(__version__)
 
+def inject_prehook(obj, method_name, prehook):
+    """
+    Injects a pre-hook function that runs before the original method.
+
+    Args:
+        obj: The object whose method will be wrapped
+        method_name: The name of the method to wrap
+        prehook: The function to call before the original method
+            Should accept the same arguments as the original method
+
+    The pre-hook will be called with the same arguments as the original method.
+    The original method's return value is preserved.
+    """
+    original = getattr(obj, method_name)
+
+    @wraps(original) 
+    def wrapped(*args, **kwargs):
+        prehook(*args, **kwargs)
+        return original(*args, **kwargs)
+
+    setattr(obj, method_name, wrapped)
+    
+def inject_posthook(obj, method_name, posthoc):
+    """
+    Injects a post-hook function that runs after the original method.
+
+    Args:
+        obj: The object whose method will be wrapped
+        method_name: The name of the method to wrap
+        posthoc: The function to call after the original method
+            Should accept the same arguments as the original method
+
+    The post-hook will be called with the same arguments as the original method.
+    The original method's return value is preserved.
+    """    
+    original = getattr(obj, method_name)
+
+    @wraps(original)
+    def wrapped(*args, **kwargs):
+        ret = original(*args, **kwargs)
+        posthoc(*args, **kwargs)
+        return ret
+
+    setattr(obj, method_name, wrapped)     
+    
+@contextlib.contextmanager
+def fork_all_rng(seed=None, devices=None):
+    """
+    Context manager that temporarily forks the random number generator state for numpy, python random, and pytorch.
+    
+    Args:
+        seed (int, optional): If provided, temporarily sets the random seed for all RNGs to this value.
+        devices (list, optional): List of torch devices to fork RNG state for. If None, forks for CPU only. CPU RNG state is always forked.
+    
+    Yields:
+        None
+        
+    The RNG states are restored to their original values when exiting the context.
+    """
+    np_state = np.random.get_state()
+    py_state = random.getstate()
+
+    with torch.random.fork_rng(devices=devices or []):
+        if seed is not None:
+            torch.manual_seed(seed)
+            torch.cuda.manual_seed_all(seed)
+            np.random.seed(seed)
+            random.seed(seed)
+
+        try:
+            yield
+        finally:
+            np.random.set_state(np_state)
+            random.setstate(py_state)
+    
 
 @dataclass
 class TrainSAEOutput:
@@ -171,17 +250,120 @@ class SAETrainer:
     def dead_neurons(self) -> torch.Tensor:
         return (self.n_forward_passes_since_fired > self.cfg.dead_feature_window).bool()
 
+
+    def _get_latest_checkpoint_path(self) -> Optional[str]:
+
+        """
+        Find the latest checkpoint in the checkpoint directory.
+
+        Returns None if no checkpoints are found.
+        """
+        from pathlib import Path
+        checkpoint_dir = Path(self.cfg.checkpoint_path)
+
+        if not checkpoint_dir.exists():
+            return None
+
+        # Find all checkpoint directories (they should be numbers)
+        checkpoint_dirs = [d for d in checkpoint_dir.iterdir() 
+                          if d.is_dir() and d.name.isdigit()]
+
+        if not checkpoint_dirs:
+            return None
+
+        # Get the latest checkpoint (highest number)
+        latest_checkpoint = max(checkpoint_dirs, key=lambda d: int(d.name))
+
+        # Check if the trainer state file exists
+        trainer_state_path = latest_checkpoint / "trainer_state.pt"
+
+        if not trainer_state_path.exists():
+            return None
+
+        return str(latest_checkpoint)
+    
+    def _load_checkpoint(self, checkpoint_path: str) -> None:
+        """
+        Load SAE and trainer state from a checkpoint.
+        
+        This method restores the complete training state from a checkpoint, including:
+        - Training step counts and metrics
+        - Activation frequency scores and firing statistics
+        - Optimizer state
+        - Learning rate and L1 scheduler states
+        - Random number generator states for reproducibility
+        - Activation store batch counter state
+        
+        Args:
+            checkpoint_path: Path to the checkpoint directory containing trainer_state.pt
+        """
+        # Load the trainer state
+        trainer_state_path = os.path.join(checkpoint_path, "trainer_state.pt")
+        trainer_state = torch.load(trainer_state_path, map_location=self.cfg.device, weights_only=False)
+        
+        # Restore global training steps
+        self.n_training_steps = trainer_state["n_training_steps"] + 1
+        self.n_training_tokens = trainer_state["n_training_tokens"]
+        # Restore torch tensors storing activation frequency
+        self.act_freq_scores.copy_(trainer_state["act_freq_scores"])
+        self.n_forward_passes_since_fired.copy_(trainer_state["n_forward_passes_since_fired"])
+        self.n_frac_active_tokens = trainer_state["n_frac_active_tokens"]
+        # Restore optimizer and lr state
+        self.optimizer.load_state_dict(trainer_state["optimizer"])
+        self.lr_scheduler.load_state_dict(trainer_state["lr_scheduler_state"])
+        self.l1_scheduler.load_state_dict(trainer_state["l1_scheduler_state"])  
+        
+        # Restore how many times activation.next_batch() has been called.
+        #with tqdm(total=trainer_state["n_next_batch_called"], desc="Replaying batches (next_batch() only)", initial=self.activations_store.n_next_batch_called) as pbar:
+        print("Replaying batches (next_batch() only)")
+        while True:
+            with fork_all_rng(seed=self.activations_store.n_next_batch_called, devices=[self.sae.device]): 
+                # We call next_batch inside the custom random state context. This is to safeguard random modules `activation_store` depends on from random modules of other components
+                self.activations_store.next_batch()
+                        
+            if self.activations_store.n_next_batch_called == trainer_state["n_next_batch_called"]:
+                break
+            elif self.activations_store.n_next_batch_called > trainer_state["n_next_batch_called"]:
+                raise RuntimeError("Something is wrong. It seems the saved `n_next_batch_called` is not multiple of current batch_size")
+        
+        # Restore random state to stricktly start from where it left off.
+        random.setstate(trainer_state["python_rng_state"])
+        np.random.set_state(trainer_state["numpy_rng_state"])      
+        torch.set_rng_state(torch.tensor(trainer_state["torch_rng_state"].cpu().numpy(), dtype=torch.uint8).byte())
+        torch.cuda.set_rng_state_all([
+            torch.tensor(state.cpu().numpy(), dtype=torch.uint8).byte() for state in trainer_state["cuda_rng_state"]
+        ])        
+        
+        # Load the actual SAE weights
+        weights_path = os.path.join(checkpoint_path, "sae_weights.safetensors")
+
+        # Load SAE model weight
+        state_dict = load_file(weights_path, device=self.cfg.device)
+        self.sae.load_state_dict(state_dict)
+
+
     def fit(self) -> TrainingSAE:
-        pbar = tqdm(total=self.cfg.total_training_tokens, desc="Training SAE")
-
         self.activations_store.set_norm_scaling_factor_if_needed()
-
+        
+        ####### LOAD CHECKPOINTS #######
+        self.activations_store.n_next_batch_called = 0
+        def track_next_batch_called():
+            self.activations_store.n_next_batch_called += 1
+        inject_prehook(self.activations_store, 'next_batch', track_next_batch_called)
+        if self.cfg.resume:
+            latest_checkpoint_path = self._get_latest_checkpoint_path() 
+            if latest_checkpoint_path is not None:
+                print("Loading checkpoint from", latest_checkpoint_path)
+                self._load_checkpoint(latest_checkpoint_path)
+                print("Done loading checkpoint")
+        #################################
         # Train loop
+        pbar = tqdm(total=self.cfg.total_training_tokens, desc="Training SAE", initial=self.n_training_tokens)
         while self.n_training_tokens < self.cfg.total_training_tokens:
             # Do a training step.
-            layer_acts = self.activations_store.next_batch()[:, 0, :].to(
-                self.sae.device
-            )
+            with fork_all_rng(seed=self.activations_store.n_next_batch_called, devices=[self.sae.device]): 
+                # We call next_batch inside the custom random state context. This is to safeguard random modules `activation_store` depends on from random modules of other components
+                layer_acts = self.activations_store.next_batch()[:, 0, :].to(self.sae.device)
             self.n_training_tokens += self.cfg.train_batch_size_tokens
 
             step_output = self._train_step(sae=self.sae, sae_in=layer_acts)
