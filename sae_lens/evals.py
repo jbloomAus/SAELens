@@ -397,6 +397,8 @@ def get_sparsity_and_variance_metrics(
     mean_act_per_dimension = []  # for explained variance
     mean_sum_of_resid_squared = []  # for explained variance
     if compute_variance_metrics:
+        # explained_variance is left out of the dict here, since we don't want to naively
+        # average over the batch dimension. This is handled later in the function.
         metric_dict["explained_variance_legacy"] = []
         metric_dict["mse"] = []
         metric_dict["cossim"] = []
