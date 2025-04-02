@@ -7,6 +7,7 @@ from sae_lens.config import LanguageModelSAERunnerConfig
 
 TINYSTORIES_MODEL = "tiny-stories-1M"
 TINYSTORIES_DATASET = "roneneldan/TinyStories"
+NEEL_NANDA_C4_10K_DATASET = "NeelNanda/c4-10k"
 
 ALL_ARCHITECTURES = ["standard", "gated", "jumprelu", "topk"]
 
@@ -18,6 +19,7 @@ class LanguageModelSAERunnerConfigDict(TypedDict, total=False):
     hook_head_index: int | None
     dataset_path: str
     dataset_trust_remote_code: bool
+    streaming: bool
     is_dataset_tokenized: bool
     use_cached_activations: bool
     d_in: int
@@ -53,7 +55,9 @@ def build_sae_cfg(**kwargs: Any) -> LanguageModelSAERunnerConfig:
         "hook_name": "blocks.0.hook_mlp_out",
         "hook_layer": 0,
         "hook_head_index": None,
-        "dataset_path": TINYSTORIES_DATASET,
+        # use a small, non-streaming dataset for testing. Huggingface gives too many requests errors otherwise.
+        "dataset_path": NEEL_NANDA_C4_10K_DATASET,
+        "streaming": False,
         "dataset_trust_remote_code": True,
         "is_dataset_tokenized": False,
         "use_cached_activations": False,
