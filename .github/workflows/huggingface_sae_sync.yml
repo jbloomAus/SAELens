@@ -58,7 +58,7 @@ jobs:
 
       - name: Run file check script
         run: |
-          poetry run python scripts/check_files.py > file_discrepancies.txt
+          poetry run python scripts/huggingface_sae_sync.py > file_discrepancies.txt
 
       - name: Create issue from output
         uses: actions/github-script@v7
