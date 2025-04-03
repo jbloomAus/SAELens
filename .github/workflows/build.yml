@@ -70,6 +70,8 @@ jobs:
       - name: Run Unit Tests
     #   Would use make, but want cov report in xml format
         run: poetry run pytest -v --cov=sae_lens/ --cov-report=term-missing --cov-branch tests --cov-report=xml
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4.0.1
         with:
