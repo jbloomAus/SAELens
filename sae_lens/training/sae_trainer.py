@@ -1,6 +1,6 @@
 import contextlib
 from dataclasses import dataclass
-from typing import Any, Optional, Protocol, cast
+from typing import Any, Protocol, cast
 
 import torch
 import wandb
@@ -48,7 +48,7 @@ class SaveCheckpointFn(Protocol):
         self,
         trainer: "SAETrainer",
         checkpoint_name: str,
-        wandb_aliases: Optional[list[str]] = None,
+        wandb_aliases: list[str] | None = None,
     ) -> None: ...
 
 

@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from functools import cache
 from importlib import resources
-from typing import Optional
 
 import yaml
 
@@ -56,7 +55,7 @@ def get_pretrained_saes_directory() -> dict[str, PretrainedSAELookup]:
     return directory
 
 
-def get_norm_scaling_factor(release: str, sae_id: str) -> Optional[float]:
+def get_norm_scaling_factor(release: str, sae_id: str) -> float | None:
     """
     Retrieve the norm_scaling_factor for a specific SAE if it exists.
 
@@ -65,7 +64,7 @@ def get_norm_scaling_factor(release: str, sae_id: str) -> Optional[float]:
         sae_id (str): The ID of the specific SAE.
 
     Returns:
-        Optional[float]: The norm_scaling_factor if it exists, None otherwise.
+        float | None: The norm_scaling_factor if it exists, None otherwise.
     """
     package = "sae_lens"
     with resources.open_text(package, "pretrained_saes.yaml") as file:

@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from functools import partial
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
-from typing import Any, Dict, List, Union
+from typing import Any
 
 import einops
 import pandas as pd
@@ -785,7 +785,7 @@ def multiple_evals(
     ctx_lens: list[int] = [128],
     output_dir: str = "eval_results",
     verbose: bool = False,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     filtered_saes = get_saes_from_regex(sae_regex_pattern, sae_block_pattern)
@@ -868,7 +868,7 @@ def multiple_evals(
     return eval_results
 
 
-def run_evaluations(args: argparse.Namespace) -> List[Dict[str, Any]]:
+def run_evaluations(args: argparse.Namespace) -> list[dict[str, Any]]:
     # Filter SAEs based on regex patterns
     filtered_saes = get_saes_from_regex(args.sae_regex_pattern, args.sae_block_pattern)
 
@@ -903,8 +903,8 @@ def replace_nans_with_negative_one(obj: Any) -> Any:
 
 
 def process_results(
-    eval_results: List[Dict[str, Any]], output_dir: str
-) -> Dict[str, Union[List[Path], Path]]:
+    eval_results: list[dict[str, Any]], output_dir: str
+) -> dict[str, list[Path] | Path]:
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 

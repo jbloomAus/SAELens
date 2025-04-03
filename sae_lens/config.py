@@ -2,7 +2,7 @@ import json
 import math
 import os
 from dataclasses import dataclass, field
-from typing import Any, Literal, Optional, cast
+from typing import Any, Literal, cast
 
 import simple_parsing
 import torch
@@ -144,30 +144,30 @@ class LanguageModelSAERunnerConfig:
     hook_name: str = "blocks.0.hook_mlp_out"
     hook_eval: str = "NOT_IN_USE"
     hook_layer: int = 0
-    hook_head_index: Optional[int] = None
+    hook_head_index: int | None = None
     dataset_path: str = ""
     dataset_trust_remote_code: bool = True
     streaming: bool = True
     is_dataset_tokenized: bool = True
     context_size: int = 128
     use_cached_activations: bool = False
-    cached_activations_path: Optional[str] = (
+    cached_activations_path: str | None = (
         None  # Defaults to "activations/{dataset}/{model}/{full_hook_name}_{hook_head_index}"
     )
 
     # SAE Parameters
     architecture: Literal["standard", "gated", "jumprelu", "topk"] = "standard"
     d_in: int = 512
-    d_sae: Optional[int] = None
+    d_sae: int | None = None
     b_dec_init_method: str = "geometric_median"
-    expansion_factor: Optional[int] = (
+    expansion_factor: int | None = (
         None  # defaults to 4 if d_sae and expansion_factor is None
     )
     activation_fn: str = None  # relu, tanh-relu, topk. Default is relu. # type: ignore
     activation_fn_kwargs: dict[str, int] = dict_field(default=None)  # for topk
     normalize_sae_decoder: bool = True
     noise_scale: float = 0.0
-    from_pretrained_path: Optional[str] = None
+    from_pretrained_path: str | None = None
     apply_b_dec_to_input: bool = True
     decoder_orthogonal_init: bool = False
     decoder_heuristic_init: bool = False
@@ -210,7 +210,7 @@ class LanguageModelSAERunnerConfig:
     adam_beta2: float = 0.999
 
     ## Loss Function
-    mse_loss_normalization: Optional[str] = None
+    mse_loss_normalization: str | None = None
     l1_coefficient: float = 1e-3
     lp_norm: float = 1
     scale_sparsity_penalty_by_decoder_norm: bool = False
@@ -222,12 +222,12 @@ class LanguageModelSAERunnerConfig:
         "constant"  # constant, cosineannealing, cosineannealingwarmrestarts
     )
     lr_warm_up_steps: int = 0
-    lr_end: Optional[float] = None  # only used for cosine annealing, default is lr / 10
+    lr_end: float | None = None  # only used for cosine annealing, default is lr / 10
     lr_decay_steps: int = 0
     n_restart_cycles: int = 1  # used only for cosineannealingwarmrestarts
 
     ## FineTuning
-    finetuning_method: Optional[str] = None  # scale, decoder or unrotated_decoder
+    finetuning_method: str | None = None  # scale, decoder or unrotated_decoder
 
     # Resampling protocol args
     use_ghost_grads: bool = False  # want to change this to true on some timeline.
@@ -245,9 +245,9 @@ class LanguageModelSAERunnerConfig:
     log_activations_store_to_wandb: bool = False
     log_optimizer_state_to_wandb: bool = False
     wandb_project: str = "mats_sae_training_language_model"
-    wandb_id: Optional[str] = None
-    run_name: Optional[str] = None
-    wandb_entity: Optional[str] = None
+    wandb_id: str | None = None
+    run_name: str | None = None
+    wandb_entity: str | None = None
     wandb_log_frequency: int = 10
     eval_every_n_wandb_logs: int = 100  # logs every 1000 steps.
 
@@ -674,6 +674,7 @@ def _validate_seqpos(seqpos: tuple[int | None, ...], context_size: int) -> None:
 class PretokenizeRunnerConfig:
     tokenizer_name: str = "gpt2"
     dataset_path: str = ""
+    dataset_name: str | None = None
     dataset_trust_remote_code: bool | None = None
     split: str | None = "train"
     data_files: list[str] | None = None
