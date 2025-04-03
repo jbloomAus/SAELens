@@ -13634,6 +13634,7 @@ gemma-2-2b-res-matryoshka-dc:
   - id: blocks.12.hook_resid_post
     path: standard/blocks.12.hook_resid_post
     l0: 40.0
+    neuronpedia: gemma-2-2b/12-res-matryoshka-dc
   - id: blocks.13.hook_resid_post
     path: standard/blocks.13.hook_resid_post
     l0: 40.0
@@ -13822,6 +13823,7 @@ gemma-2-9b-res-matryoshka-dc:
   - id: blocks.20.hook_resid_post
     path: blocks.20.hook_resid_post
     l0: 60.0
+    neuronpedia: gemma-2-9b/20-res-matryoshka-dc
   - id: blocks.21.hook_resid_post
     path: blocks.21.hook_resid_post
     l0: 60.0
