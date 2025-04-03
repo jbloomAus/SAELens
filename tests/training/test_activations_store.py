@@ -7,7 +7,7 @@ from typing import Any
 import numpy as np
 import pytest
 import torch
-from datasets import Dataset, IterableDataset
+from datasets import Dataset
 from safetensors.torch import load_file
 from transformer_lens import HookedTransformer
 
@@ -21,7 +21,7 @@ from sae_lens.training.activations_store import (
     permute_together,
     validate_pretokenized_dataset_tokenizer,
 )
-from tests.helpers import build_sae_cfg, load_model_cached
+from tests.helpers import NEEL_NANDA_C4_10K_DATASET, build_sae_cfg, load_model_cached
 
 
 def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
@@ -35,18 +35,20 @@ def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
     params=[
         {
             "model_name": "tiny-stories-1M",
-            "dataset_path": "roneneldan/TinyStories",
+            "dataset_path": NEEL_NANDA_C4_10K_DATASET,
             "hook_name": "blocks.1.hook_resid_pre",
             "hook_layer": 1,
             "d_in": 64,
             "normalize_activations": "expected_average_only_in",
+            "streaming": False,
         },
         {
             "model_name": "tiny-stories-1M",
-            "dataset_path": "roneneldan/TinyStories",
+            "dataset_path": NEEL_NANDA_C4_10K_DATASET,
             "hook_name": "blocks.1.attn.hook_z",
             "hook_layer": 1,
             "d_in": 64,
+            "streaming": False,
         },
         {
             "model_name": "gelu-2l",
@@ -55,6 +57,7 @@ def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
             "hook_layer": 1,
             "d_in": 512,
             "context_size": 1024,
+            "streaming": True,
         },
         {
             "model_name": "gpt2",
@@ -63,19 +66,21 @@ def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
             "hook_layer": 1,
             "d_in": 768,
             "context_size": 1024,
+            "streaming": True,
         },
         {
             "model_name": "gpt2",
-            "dataset_path": "Skylion007/openwebtext",
+            "dataset_path": NEEL_NANDA_C4_10K_DATASET,
             "hook_name": "blocks.1.hook_resid_pre",
             "hook_layer": 1,
             "d_in": 768,
             "exclude_special_tokens": True,
+            "streaming": False,
         },
     ],
     ids=[
-        "tiny-stories-1M-resid-pre",
-        "tiny-stories-1M-attn-out",
+        "c4-10k-resid-pre",
+        "c4-10k-attn-out",
         "gelu-2l-tokenized",
         "gpt2-tokenized",
         "gpt2",
@@ -113,7 +118,6 @@ def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
 
     assert store.model == model
 
-    assert isinstance(store.dataset, IterableDataset)
     assert isinstance(store.iterable_sequences, Iterable)
 
     # the rest is in the dataloader.
