@@ -85,6 +85,9 @@ repo_id_to_lookups = defaultdict(list)
 for _, lookup in saes_directory.items():
     repo_id_to_lookups[lookup.repo_id].append(lookup)
 
+any_missing_in_hf = False
+output = []
+
 # Process each unique repo_id
 for repo_id, lookups in repo_id_to_lookups.items():
     # Get all files in the HuggingFace repo
@@ -158,12 +161,16 @@ for repo_id, lookups in repo_id_to_lookups.items():
             missing_in_sae_lens.append(model_file)
 
     if missing_in_huggingface:
-        print("\nPaths in sae_lens that don't exist in HuggingFace repo:")
+        any_missing_in_hf = True
+        output.append("\nPaths in sae_lens that don't exist in HuggingFace repo:")
         for hook_id, sae_path in sorted(missing_in_huggingface, key=lambda x: x[1]):
-            print(f"{repo_id}  {sae_path}")
+            output.append(f"{repo_id}  {sae_path}")
 
     if missing_in_sae_lens:
-        print("\nModel paths in HuggingFace repo that aren't in sae_lens:")
+        output.append("\nModel paths in HuggingFace repo that aren't in sae_lens:")
         for path in sorted(missing_in_sae_lens):
             path_type = "file" if is_file_path(path) else "directory"
-            print(f"{repo_id}  {path}")
+            output.append(f"{repo_id}  {path}")
+
+if any_missing_in_hf:
+    print("\n".join(output))
