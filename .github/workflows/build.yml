@@ -78,7 +78,7 @@ jobs:
           slug: jbloomAus/SAELens
 
   release:
-    # needs: build
+    needs: build
     permissions:
       contents: write
       id-token: write
