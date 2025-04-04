@@ -2,6 +2,31 @@
 
 
 
+## v5.8.0 (2025-04-04)
+
+### Chore
+
+* chore: Added a tokenized dataset for llama3.2 to docs (#452) ([`b6a96b5`](https://github.com/jbloomAus/SAELens/commit/b6a96b536cc602db09292ae3ba27aa0a411a65f7))
+
+### Feature
+
+* feat: Use conventional explained variance definition (#443)
+
+* Use conventional explained variance definition
+
+* fixing linting and polishing PR
+
+* fixing test
+
+* adding an identity test for evals
+
+* changes from CR
+
+---------
+
+Co-authored-by: David Chanin &lt;chanindav@gmail.com&gt; ([`6d1b42a`](https://github.com/jbloomAus/SAELens/commit/6d1b42aaeb747b4070e9f8f7c55403103b3bf9c9))
+
+
 ## v5.7.1 (2025-04-04)
 
 ### Chore
