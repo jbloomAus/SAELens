@@ -2,6 +2,77 @@
 
 
 
+## v5.7.0 (2025-04-04)
+
+### Chore
+
+* chore: stop streaming datasets in tests (#454)
+
+* chore: stop streaming datasets in tests
+
+* try running fewer python versions in parallel in tests to keep from spamming hf
+
+* test setting HF token ([`986cec0`](https://github.com/jbloomAus/SAELens/commit/986cec08b5aeb07acbac40acea61b839772949eb))
+
+* chore: adds cron job to check pretrained_saes.yaml (#453)
+
+* adds cron job to check pretrained_saes.yaml
+
+* makes names more descriptive
+
+* deletes extraneous file
+
+* fixes filename
+
+* adds missing in Hugging Face condition to create issue ([`910e52b`](https://github.com/jbloomAus/SAELens/commit/910e52bcaec5f246735639616cf088896dda778c))
+
+* chore: removes .flake8 (#449)
+
+* converts .flake8 to pyproject.toml
+
+* Revert &#34;converts .flake8 to pyproject.toml&#34;
+
+This reverts commit 764679d383fcd0fd70487dffb759cd42ff58ddfd.
+
+* removes .flake8
+
+* deletes requirements.txt ([`2cb39cb`](https://github.com/jbloomAus/SAELens/commit/2cb39cb087f9570a4a3ce4ee9a80fe1c428f9500))
+
+* chore: adds Ruff rule to check for banned imports (#450) ([`46569b9`](https://github.com/jbloomAus/SAELens/commit/46569b95e0b43c7cb27d425348178a3c7f798ce7))
+
+* chore: move tsea.py into tutorial submodule (#420)
+
+* move tsea.py into tutorial submodule
+
+* adding newline ([`1de69ce`](https://github.com/jbloomAus/SAELens/commit/1de69ce9c52a02d397f4117a03f15f6a4bac89eb))
+
+### Documentation
+
+* docs: Slack link was expired ([`4f79969`](https://github.com/jbloomAus/SAELens/commit/4f799697aff91abdc034e1499b60257257845291))
+
+### Feature
+
+* feat: adding matryoshka-dc saes ([`748845e`](https://github.com/jbloomAus/SAELens/commit/748845ee2d5db4d33172c37cbfd8cf24182a5439))
+
+### Fix
+
+* fix: temporarily disable broken build check to force release ([`a1e5a9f`](https://github.com/jbloomAus/SAELens/commit/a1e5a9f3768297f8354416b1152e8ad5933a29b3))
+
+* fix: removes deleted gemma-scope-9b-pt-res-canonical SAE (#457) ([`39dc66e`](https://github.com/jbloomAus/SAELens/commit/39dc66e85ae3dc8710e3eb73a6946f603a2c3d53))
+
+### Unknown
+
+* Merge pull request #455 from jbloomAus/adding-dc-matryoshka-saes
+
+feat: adding matryoshka-dc saes ([`9702f36`](https://github.com/jbloomAus/SAELens/commit/9702f362686b3eb127abc65dfe7c5ad2156765d8))
+
+* add neuronpedia ID for some layers of matryoshka-dc ([`4dfcf0b`](https://github.com/jbloomAus/SAELens/commit/4dfcf0b95378a6807ac15f6357ea34277e66c23f))
+
+* Merge pull request #448 from jbloomAus/update_slack
+
+docs: Slack link was expired ([`aa76a12`](https://github.com/jbloomAus/SAELens/commit/aa76a12c9ee2e386c851999ddbf3787cc5140257))
+
+
 ## v5.6.1 (2025-03-17)
 
 ### Fix
