@@ -2,6 +2,21 @@
 
 
 
+## v5.7.1 (2025-04-04)
+
+### Chore
+
+* chore: adding HF_TOKEN to docs build in CI (#458) ([`db632e5`](https://github.com/jbloomAus/SAELens/commit/db632e51be8dd90fb7f1fd3215771dbd8357fab2))
+
+### Fix
+
+* fix: removing strangely missing gemma 2 9b SAE (#459) ([`ff718a4`](https://github.com/jbloomAus/SAELens/commit/ff718a4d8a2f3ceca01a01f5316511199476871a))
+
+### Unknown
+
+* reenable build step ([`ecec830`](https://github.com/jbloomAus/SAELens/commit/ecec830774160990b44097d7332d8397d0477f48))
+
+
 ## v5.7.0 (2025-04-04)
 
 ### Chore
