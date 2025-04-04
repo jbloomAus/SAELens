@@ -13789,9 +13789,6 @@ gemma-2-9b-res-matryoshka-dc:
   - id: blocks.10.hook_resid_post
     path: blocks.10.hook_resid_post
     l0: 60.0
-  - id: blocks.11.hook_resid_post
-    path: blocks.11.hook_resid_post
-    l0: 60.0
   - id: blocks.12.hook_resid_post
     path: blocks.12.hook_resid_post
     l0: 60.0
