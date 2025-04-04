@@ -13588,3 +13588,381 @@ sae_bench_pythia70m_sweep_topk_ctx128_0730:
   - id: blocks.4.hook_resid_post__trainer_8
     neuronpedia: pythia-70m-deduped/4-sae_bench-topk-res-4k__trainer_8_step_final
     path: pythia70m_sweep_topk_ctx128_0730/resid_post_layer_4/trainer_8
+gemma-2-2b-res-matryoshka-dc:
+  conversion_func: null
+  links:
+    model: https://huggingface.co/google/gemma-2-2b
+  model: gemma-2-2b
+  repo_id: chanind/gemma-2-2b-batch-topk-matryoshka-saes-w-32k-l0-40
+  saes:
+  - id: blocks.0.hook_resid_post
+    path: standard/blocks.0.hook_resid_post
+    l0: 40.0
+  - id: blocks.1.hook_resid_post
+    path: standard/blocks.1.hook_resid_post
+    l0: 40.0
+  - id: blocks.2.hook_resid_post
+    path: standard/blocks.2.hook_resid_post
+    l0: 40.0
+  - id: blocks.3.hook_resid_post
+    path: standard/blocks.3.hook_resid_post
+    l0: 40.0
+  - id: blocks.4.hook_resid_post
+    path: standard/blocks.4.hook_resid_post
+    l0: 40.0
+  - id: blocks.5.hook_resid_post
+    path: standard/blocks.5.hook_resid_post
+    l0: 40.0
+  - id: blocks.6.hook_resid_post
+    path: standard/blocks.6.hook_resid_post
+    l0: 40.0
+  - id: blocks.7.hook_resid_post
+    path: standard/blocks.7.hook_resid_post
+    l0: 40.0
+  - id: blocks.8.hook_resid_post
+    path: standard/blocks.8.hook_resid_post
+    l0: 40.0
+  - id: blocks.9.hook_resid_post
+    path: standard/blocks.9.hook_resid_post
+    l0: 40.0
+  - id: blocks.10.hook_resid_post
+    path: standard/blocks.10.hook_resid_post
+    l0: 40.0
+  - id: blocks.11.hook_resid_post
+    path: standard/blocks.11.hook_resid_post
+    l0: 40.0
+  - id: blocks.12.hook_resid_post
+    path: standard/blocks.12.hook_resid_post
+    l0: 40.0
+    neuronpedia: gemma-2-2b/12-res-matryoshka-dc
+  - id: blocks.13.hook_resid_post
+    path: standard/blocks.13.hook_resid_post
+    l0: 40.0
+  - id: blocks.14.hook_resid_post
+    path: standard/blocks.14.hook_resid_post
+    l0: 40.0
+  - id: blocks.15.hook_resid_post
+    path: standard/blocks.15.hook_resid_post
+    l0: 40.0
+  - id: blocks.16.hook_resid_post
+    path: standard/blocks.16.hook_resid_post
+    l0: 40.0
+  - id: blocks.17.hook_resid_post
+    path: standard/blocks.17.hook_resid_post
+    l0: 40.0
+  - id: blocks.18.hook_resid_post
+    path: standard/blocks.18.hook_resid_post
+    l0: 40.0
+  - id: blocks.19.hook_resid_post
+    path: standard/blocks.19.hook_resid_post
+    l0: 40.0
+  - id: blocks.20.hook_resid_post
+    path: standard/blocks.20.hook_resid_post
+    l0: 40.0
+  - id: blocks.21.hook_resid_post
+    path: standard/blocks.21.hook_resid_post
+    l0: 40.0
+  - id: blocks.22.hook_resid_post
+    path: standard/blocks.22.hook_resid_post
+    l0: 40.0
+  - id: blocks.23.hook_resid_post
+    path: standard/blocks.23.hook_resid_post
+    l0: 40.0
+  - id: blocks.24.hook_resid_post
+    path: standard/blocks.24.hook_resid_post
+    l0: 40.0
+gemma-2-2b-res-snap-matryoshka-dc:
+  conversion_func: null
+  links:
+    model: https://huggingface.co/google/gemma-2-2b
+  model: gemma-2-2b
+  repo_id: chanind/gemma-2-2b-batch-topk-matryoshka-saes-w-32k-l0-40
+  saes:
+  - id: blocks.0.hook_resid_post
+    path: snap/blocks.0.hook_resid_post
+    l0: 40.0
+  - id: blocks.1.hook_resid_post
+    path: snap/blocks.1.hook_resid_post
+    l0: 40.0
+  - id: blocks.2.hook_resid_post
+    path: snap/blocks.2.hook_resid_post
+    l0: 40.0
+  - id: blocks.3.hook_resid_post
+    path: snap/blocks.3.hook_resid_post
+    l0: 40.0
+  - id: blocks.4.hook_resid_post
+    path: snap/blocks.4.hook_resid_post
+    l0: 40.0
+  - id: blocks.5.hook_resid_post
+    path: snap/blocks.5.hook_resid_post
+    l0: 40.0
+  - id: blocks.6.hook_resid_post
+    path: snap/blocks.6.hook_resid_post
+    l0: 40.0
+  - id: blocks.7.hook_resid_post
+    path: snap/blocks.7.hook_resid_post
+    l0: 40.0
+  - id: blocks.8.hook_resid_post
+    path: snap/blocks.8.hook_resid_post
+    l0: 40.0
+  - id: blocks.9.hook_resid_post
+    path: snap/blocks.9.hook_resid_post
+    l0: 40.0
+  - id: blocks.10.hook_resid_post
+    path: snap/blocks.10.hook_resid_post
+    l0: 40.0
+  - id: blocks.11.hook_resid_post
+    path: snap/blocks.11.hook_resid_post
+    l0: 40.0
+  - id: blocks.12.hook_resid_post
+    path: snap/blocks.12.hook_resid_post
+    l0: 40.0
+  - id: blocks.13.hook_resid_post
+    path: snap/blocks.13.hook_resid_post
+    l0: 40.0
+  - id: blocks.14.hook_resid_post
+    path: snap/blocks.14.hook_resid_post
+    l0: 40.0
+  - id: blocks.15.hook_resid_post
+    path: snap/blocks.15.hook_resid_post
+    l0: 40.0
+  - id: blocks.16.hook_resid_post
+    path: snap/blocks.16.hook_resid_post
+    l0: 40.0
+  - id: blocks.17.hook_resid_post
+    path: snap/blocks.17.hook_resid_post
+    l0: 40.0
+  - id: blocks.18.hook_resid_post
+    path: snap/blocks.18.hook_resid_post
+    l0: 40.0
+  - id: blocks.19.hook_resid_post
+    path: snap/blocks.19.hook_resid_post
+    l0: 40.0
+  - id: blocks.20.hook_resid_post
+    path: snap/blocks.20.hook_resid_post
+    l0: 40.0
+  - id: blocks.21.hook_resid_post
+    path: snap/blocks.21.hook_resid_post
+    l0: 40.0
+  - id: blocks.22.hook_resid_post
+    path: snap/blocks.22.hook_resid_post
+    l0: 40.0
+  - id: blocks.23.hook_resid_post
+    path: snap/blocks.23.hook_resid_post
+    l0: 40.0
+  - id: blocks.24.hook_resid_post
+    path: snap/blocks.24.hook_resid_post
+    l0: 40.0
+gemma-2-9b-res-matryoshka-dc:
+  conversion_func: null
+  links:
+    model: https://huggingface.co/google/gemma-2-9b
+  model: gemma-2-9b
+  repo_id: chanind/gemma-2-9b-batch-topk-matryoshka-saes-w-32k-l0-60
+  saes:
+  - id: blocks.0.hook_resid_post
+    path: blocks.0.hook_resid_post
+    l0: 60.0
+  - id: blocks.1.hook_resid_post
+    path: blocks.1.hook_resid_post
+    l0: 60.0
+  - id: blocks.2.hook_resid_post
+    path: blocks.2.hook_resid_post
+    l0: 60.0
+  - id: blocks.3.hook_resid_post
+    path: blocks.3.hook_resid_post
+    l0: 60.0
+  - id: blocks.4.hook_resid_post
+    path: blocks.4.hook_resid_post
+    l0: 60.0
+  - id: blocks.5.hook_resid_post
+    path: blocks.5.hook_resid_post
+    l0: 60.0
+  - id: blocks.6.hook_resid_post
+    path: blocks.6.hook_resid_post
+    l0: 60.0
+  - id: blocks.7.hook_resid_post
+    path: blocks.7.hook_resid_post
+    l0: 60.0
+  - id: blocks.8.hook_resid_post
+    path: blocks.8.hook_resid_post
+    l0: 60.0
+  - id: blocks.9.hook_resid_post
+    path: blocks.9.hook_resid_post
+    l0: 60.0
+  - id: blocks.10.hook_resid_post
+    path: blocks.10.hook_resid_post
+    l0: 60.0
+  - id: blocks.11.hook_resid_post
+    path: blocks.11.hook_resid_post
+    l0: 60.0
+  - id: blocks.12.hook_resid_post
+    path: blocks.12.hook_resid_post
+    l0: 60.0
+  - id: blocks.13.hook_resid_post
+    path: blocks.13.hook_resid_post
+    l0: 60.0
+  - id: blocks.14.hook_resid_post
+    path: blocks.14.hook_resid_post
+    l0: 60.0
+  - id: blocks.15.hook_resid_post
+    path: blocks.15.hook_resid_post
+    l0: 60.0
+  - id: blocks.16.hook_resid_post
+    path: blocks.16.hook_resid_post
+    l0: 60.0
+  - id: blocks.17.hook_resid_post
+    path: blocks.17.hook_resid_post
+    l0: 60.0
+  - id: blocks.18.hook_resid_post
+    path: blocks.18.hook_resid_post
+    l0: 60.0
+  - id: blocks.19.hook_resid_post
+    path: blocks.19.hook_resid_post
+    l0: 60.0
+  - id: blocks.20.hook_resid_post
+    path: blocks.20.hook_resid_post
+    l0: 60.0
+    neuronpedia: gemma-2-9b/20-res-matryoshka-dc
+  - id: blocks.21.hook_resid_post
+    path: blocks.21.hook_resid_post
+    l0: 60.0
+  - id: blocks.22.hook_resid_post
+    path: blocks.22.hook_resid_post
+    l0: 60.0
+  - id: blocks.23.hook_resid_post
+    path: blocks.23.hook_resid_post
+    l0: 60.0
+  - id: blocks.24.hook_resid_post
+    path: blocks.24.hook_resid_post
+    l0: 60.0
+  - id: blocks.25.hook_resid_post
+    path: blocks.25.hook_resid_post
+    l0: 60.0
+  - id: blocks.26.hook_resid_post
+    path: blocks.26.hook_resid_post
+    l0: 60.0
+  - id: blocks.27.hook_resid_post
+    path: blocks.27.hook_resid_post
+    l0: 60.0
+  - id: blocks.28.hook_resid_post
+    path: blocks.28.hook_resid_post
+    l0: 60.0
+  - id: blocks.29.hook_resid_post
+    path: blocks.29.hook_resid_post
+    l0: 60.0
+  - id: blocks.30.hook_resid_post
+    path: blocks.30.hook_resid_post
+    l0: 60.0
+  - id: blocks.31.hook_resid_post
+    path: blocks.31.hook_resid_post
+    l0: 60.0
+  - id: blocks.32.hook_resid_post
+    path: blocks.32.hook_resid_post
+    l0: 60.0
+  - id: blocks.33.hook_resid_post
+    path: blocks.33.hook_resid_post
+    l0: 60.0
+  - id: blocks.34.hook_resid_post
+    path: blocks.34.hook_resid_post
+    l0: 60.0
+  - id: blocks.35.hook_resid_post
+    path: blocks.35.hook_resid_post
+    l0: 60.0
+  - id: blocks.36.hook_resid_post
+    path: blocks.36.hook_resid_post
+    l0: 60.0
+  - id: blocks.37.hook_resid_post
+    path: blocks.37.hook_resid_post
+    l0: 60.0
+  - id: blocks.38.hook_resid_post
+    path: blocks.38.hook_resid_post
+    l0: 60.0
+  - id: blocks.39.hook_resid_post
+    path: blocks.39.hook_resid_post
+    l0: 60.0
+  - id: blocks.40.hook_resid_post
+    path: blocks.40.hook_resid_post
+    l0: 60.0
+gemma-3-1b-res-matryoshka-dc:
+  conversion_func: null
+  links:
+    model: https://huggingface.co/google/gemma-3-1b-pt
+  model: gemma-3-1b
+  repo_id: chanind/gemma-3-1b-batch-topk-matryoshka-saes-w-32k-l0-40
+  saes:
+  - id: blocks.0.hook_resid_post
+    path: blocks.0.hook_resid_post
+    l0: 40.0
+  - id: blocks.1.hook_resid_post
+    path: blocks.1.hook_resid_post
+    l0: 40.0
+  - id: blocks.2.hook_resid_post
+    path: blocks.2.hook_resid_post
+    l0: 40.0
+  - id: blocks.3.hook_resid_post
+    path: blocks.3.hook_resid_post
+    l0: 40.0
+  - id: blocks.4.hook_resid_post
+    path: blocks.4.hook_resid_post
+    l0: 40.0
+  - id: blocks.5.hook_resid_post
+    path: blocks.5.hook_resid_post
+    l0: 40.0
+  - id: blocks.6.hook_resid_post
+    path: blocks.6.hook_resid_post
+    l0: 40.0
+  - id: blocks.7.hook_resid_post
+    path: blocks.7.hook_resid_post
+    l0: 40.0
+  - id: blocks.8.hook_resid_post
+    path: blocks.8.hook_resid_post
+    l0: 40.0
+  - id: blocks.9.hook_resid_post
+    path: blocks.9.hook_resid_post
+    l0: 40.0
+  - id: blocks.10.hook_resid_post
+    path: blocks.10.hook_resid_post
+    l0: 40.0
+  - id: blocks.11.hook_resid_post
+    path: blocks.11.hook_resid_post
+    l0: 40.0
+  - id: blocks.12.hook_resid_post
+    path: blocks.12.hook_resid_post
+    l0: 40.0
+  - id: blocks.13.hook_resid_post
+    path: blocks.13.hook_resid_post
+    l0: 40.0
+  - id: blocks.14.hook_resid_post
+    path: blocks.14.hook_resid_post
+    l0: 40.0
+  - id: blocks.15.hook_resid_post
+    path: blocks.15.hook_resid_post
+    l0: 40.0
+  - id: blocks.16.hook_resid_post
+    path: blocks.16.hook_resid_post
+    l0: 40.0
+  - id: blocks.17.hook_resid_post
+    path: blocks.17.hook_resid_post
+    l0: 40.0
+  - id: blocks.18.hook_resid_post
+    path: blocks.18.hook_resid_post
+    l0: 40.0
+  - id: blocks.19.hook_resid_post
+    path: blocks.19.hook_resid_post
+    l0: 40.0
+  - id: blocks.20.hook_resid_post
+    path: blocks.20.hook_resid_post
+    l0: 40.0
+  - id: blocks.21.hook_resid_post
+    path: blocks.21.hook_resid_post
+    l0: 40.0
+  - id: blocks.22.hook_resid_post
+    path: blocks.22.hook_resid_post
+    l0: 40.0
+  - id: blocks.23.hook_resid_post
+    path: blocks.23.hook_resid_post
+    l0: 40.0
+  - id: blocks.24.hook_resid_post
+    path: blocks.24.hook_resid_post
+    l0: 40.0
