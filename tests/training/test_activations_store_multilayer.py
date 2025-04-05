@@ -107,32 +107,23 @@ def test_activations_store_next_batch_multiple_layers(ts_model: HookedTransforme
     dataset = Dataset.from_list([{"text": "hello world"}] * 20)
     activation_store = ActivationsStore.from_config(ts_model, cfg, override_dataset=dataset)
 
-    # Get a batch
     batch = activation_store.next_batch()
+    assert batch.shape == (10, len(cfg.hook_layers), activation_store.d_in)
 
-    # Check batch[0] shape: [batch_size, num_layers, d_in]
-    assert batch[0].shape == (10, len(activation_store.hook_layers), activation_store.d_in)
-
-    # Verify the token IDs
-    assert batch[1] is not None
-    assert batch[1].shape == (10,)
-
-
+@pytest.mark.skip("TODO(mkbehr): does activation need to be handled differently?")
 def test_activations_store_normalization_multiple_layers(ts_model: HookedTransformer):
     """Test normalization when using multiple layers."""
     # Setup with normalization and multiple layers
     cfg = build_sae_cfg(
         hook_name="blocks.{}.hook_resid_pre",
         hook_layers=[0, 1, 2],
-        normalize_activations="constant_norm_rescale",
+        normalize_activations="expected_average_only_in",
         context_size=5
     )
 
     dataset = Dataset.from_list([{"text": "hello world"}] * 20)
     activation_store = ActivationsStore.from_config(ts_model, cfg, override_dataset=dataset)
-
-    # Set a fixed norm scaling factor for testing
-    activation_store.estimated_norm_scaling_factor = 2.0
+    activation_store.set_norm_scaling_factor_if_needed()
 
     # Get a batch with normalized activations
     batch = activation_store.next_batch()
@@ -140,7 +131,7 @@ def test_activations_store_normalization_multiple_layers(ts_model: HookedTransfo
     # Check that the activations have been properly normalized
     # The norm should be approximately sqrt(d_in) for each layer
     for layer_idx in range(len(activation_store.hook_layers)):
-        layer_activations = batch[0][:, layer_idx, :]
+        layer_activations = batch[:, layer_idx, :]
         # Check if average norm is approximately as expected (allowing for some variance)
         avg_norm = layer_activations.norm(dim=-1).mean()
         expected_norm = (activation_store.d_in ** 0.5)

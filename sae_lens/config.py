@@ -62,6 +62,7 @@ class LanguageModelSAERunnerConfig:
         architecture (str): The architecture to use, either "standard", "gated", "topk", or "jumprelu".
         model_name (str): The name of the model to use. This should be the name of the model in the Hugging Face model hub.
         model_class_name (str): The name of the class of the model to use. This should be either `HookedTransformer` or `HookedMamba`.
+        TODO(mkbehr): update hook name param docs for multilayer case
         hook_name (str): The name of the hook to use. This should be a valid TransformerLens hook.
         hook_eval (str): NOT CURRENTLY IN USE. The name of the hook to use for evaluation.
         hook_layer (int): The index of the layer to hook. Used to stop forward passes early and speed up processing.
@@ -149,6 +150,7 @@ class LanguageModelSAERunnerConfig:
     hook_name: str = "blocks.0.hook_mlp_out"
     hook_eval: str = "NOT_IN_USE"
     hook_layer: int = 0
+    hook_layers: list[int] | None = None
     hook_head_index: int | None = None
     dataset_path: str = ""
     dataset_trust_remote_code: bool = True
@@ -435,7 +437,7 @@ class LanguageModelSAERunnerConfig:
         return self.total_training_tokens // self.train_batch_size_tokens
 
     def get_base_sae_cfg_dict(self) -> dict[str, Any]:
-        return {
+        cfg_dict = {
             # TEMP
             "architecture": self.architecture,
             "d_in": self.d_in,
@@ -459,6 +461,11 @@ class LanguageModelSAERunnerConfig:
             "model_from_pretrained_kwargs": self.model_from_pretrained_kwargs,
             "seqpos_slice": self.seqpos_slice,
         }
+
+        if self.hook_layers is not None:
+            cfg_dict["hook_layers"] = self.hook_layers
+
+        return cfg_dict
 
     def get_training_sae_cfg_dict(self) -> dict[str, Any]:
         return {
@@ -554,6 +561,7 @@ class CacheActivationsRunnerConfig:
     hook_layer: int
     d_in: int
     training_tokens: int
+    hook_layers: list[int] | None = None
 
     context_size: int = -1  # Required if dataset is not tokenized
     model_class_name: str = "HookedTransformer"
@@ -608,8 +616,12 @@ class CacheActivationsRunnerConfig:
             )
 
         if self.new_cached_activations_path is None:
+            hook_name_str = self.hook_name
+            if self.hook_layers is not None:
+                # TODO(mkbehr): ensure the multilayer activation path makes sense
+                hook_name_str = f"{self.hook_name}_layers_{'_'.join(str(l) for l in self.hook_layers)}"
             self.new_cached_activations_path = _default_cached_activations_path(  # type: ignore
-                self.dataset_path, self.model_name, self.hook_name, None
+                self.dataset_path, self.model_name, hook_name_str, None
             )
 
     @property

@@ -16,6 +16,7 @@ class LanguageModelSAERunnerConfigDict(TypedDict, total=False):
     model_name: str
     hook_name: str
     hook_layer: int
+    hook_layers: list[int] | None
     hook_head_index: int | None
     dataset_path: str
     dataset_trust_remote_code: bool
@@ -54,6 +55,7 @@ def build_sae_cfg(**kwargs: Any) -> LanguageModelSAERunnerConfig:
         "model_name": TINYSTORIES_MODEL,
         "hook_name": "blocks.0.hook_mlp_out",
         "hook_layer": 0,
+        "hook_layers": None,
         "hook_head_index": None,
         # use a small, non-streaming dataset for testing. Huggingface gives too many requests errors otherwise.
         "dataset_path": NEEL_NANDA_C4_10K_DATASET,

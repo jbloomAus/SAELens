@@ -46,6 +46,7 @@ class ActivationsStore:
     tokens_column: Literal["tokens", "input_ids", "text", "problem"]
     hook_name: str
     hook_layer: int
+    hook_layers: list[int]
     hook_head_index: int | None
     _dataloader: Iterator[Any] | None = None
     _storage_buffer: torch.Tensor | None = None
@@ -66,6 +67,7 @@ class ActivationsStore:
             dtype=cfg.dtype,
             hook_name=cfg.hook_name,
             hook_layer=cfg.hook_layer,
+            # TODO(mkbehr): set hook layers if set in cached activations
             context_size=cfg.context_size,
             d_in=cfg.d_in,
             n_batches_in_buffer=cfg.n_batches_in_buffer,
@@ -126,6 +128,7 @@ class ActivationsStore:
             streaming=cfg.streaming,
             hook_name=cfg.hook_name,
             hook_layer=cfg.hook_layer,
+            hook_layers=cfg.hook_layers,
             hook_head_index=cfg.hook_head_index,
             context_size=cfg.context_size,
             d_in=cfg.d_in,
@@ -198,6 +201,7 @@ class ActivationsStore:
         normalize_activations: str,
         device: torch.device,
         dtype: str,
+        hook_layers: list[int] | None = None,
         cached_activations_path: str | None = None,
         model_kwargs: dict[str, Any] | None = None,
         autocast_lm: bool = False,
@@ -231,6 +235,7 @@ class ActivationsStore:
 
         self.hook_name = hook_name
         self.hook_layer = hook_layer
+        self.hook_layers = hook_layers or [hook_layer]
         self.hook_head_index = hook_head_index
         self.context_size = context_size
         self.d_in = d_in
@@ -532,42 +537,55 @@ class ActivationsStore:
         else:
             autocast_if_enabled = contextlib.nullcontext()
 
+        # TODO(mkbehr): This is awkward. It may make more sense to
+        # have a list of hook names.
+        hook_names = []
+        for layer in self.hook_layers:
+            if "{}" in self.hook_name:
+                hook_names.append(self.hook_name.format(layer))
+            else:
+                hook_names.append(self.hook_name)
+
+        stop_at_layer = max(self.hook_layers) + 1
+
         with autocast_if_enabled:
             layerwise_activations_cache = self.model.run_with_cache(
                 batch_tokens,
-                names_filter=[self.hook_name],
-                stop_at_layer=self.hook_layer + 1,
+                names_filter=hook_names,
+                stop_at_layer=stop_at_layer,
                 prepend_bos=False,
                 **self.model_kwargs,
             )[1]
 
-        layerwise_activations = layerwise_activations_cache[self.hook_name][
-            :, slice(*self.seqpos_slice)
+        layerwise_activations = [
+            layerwise_activations_cache[hook_name][
+                :, slice(*self.seqpos_slice)
+            ]
+            for hook_name in hook_names
         ]
 
-        n_batches, n_context = layerwise_activations.shape[:2]
-
-        stacked_activations = torch.zeros((n_batches, n_context, 1, self.d_in))
+        n_batches, n_context = layerwise_activations[0].shape[:2]
 
         if self.hook_head_index is not None:
-            stacked_activations[:, :, 0] = layerwise_activations[
-                :, :, self.hook_head_index
+            layerwise_activations = [
+                activation[:, :, self.hook_head_index]
+                 for activation in layerwise_activations
             ]
-        elif layerwise_activations.ndim > 3:  # if we have a head dimension
+        elif layerwise_activations[0].ndim > 3:  # if we have a head dimension
             try:
-                stacked_activations[:, :, 0] = layerwise_activations.view(
-                    n_batches, n_context, -1
-                )
+                layerwise_activations = [
+                    activation.view(n_batches, n_context, -1)
+                    for activation in layerwise_activations
+                ]
             except RuntimeError as e:
                 logger.error(f"Error during view operation: {e}")
                 logger.info("Attempting to use reshape instead...")
-                stacked_activations[:, :, 0] = layerwise_activations.reshape(
-                    n_batches, n_context, -1
-                )
-        else:
-            stacked_activations[:, :, 0] = layerwise_activations
+                layerwise_activations = [
+                    activation.reshape(n_batches, n_context, -1)
+                    for activation in layerwise_activations
+                ]
 
-        return stacked_activations
+        return torch.stack(layerwise_activations, dim=2)
 
     def _load_buffer_from_cached(
         self,
@@ -660,7 +678,7 @@ class ActivationsStore:
         batch_size = self.store_batch_size_prompts
         d_in = self.d_in
         total_size = batch_size * n_batches_in_buffer
-        num_layers = 1
+        num_layers = len(self.hook_layers)
 
         if self.cached_activation_dataset is not None:
             return self._load_buffer_from_cached(
