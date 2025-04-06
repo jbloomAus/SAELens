@@ -643,7 +643,7 @@ class SAE(HookedRootModule):
         )
         cfg_dict = handle_config_defaulting(cfg_dict)
 
-        sae = cls(SAEConfig.from_dict(cfg_dict))
+        sae = cls.from_dict(cfg_dict)
         sae.process_state_dict_for_loading(state_dict)
         sae.load_state_dict(state_dict)
 

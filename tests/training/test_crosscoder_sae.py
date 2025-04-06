@@ -238,3 +238,78 @@ def test_sae_fold_norm_scaling_factor_all_architectures(architecture: str):
     # but actual outputs should be the same
     torch.testing.assert_close(sae_out_1, sae_out_2)
 
+def test_sae_save_and_load_from_pretrained(tmp_path: Path) -> None:
+    cfg = build_sae_cfg(hook_layers=[1,2,3])
+    model_path = str(tmp_path)
+    sae = CrosscoderSAE.from_dict(cfg.get_base_sae_cfg_dict())
+    sae_state_dict = sae.state_dict()
+    sae.save_model(model_path)
+
+    assert os.path.exists(model_path)
+
+    sae_loaded = CrosscoderSAE.load_from_pretrained(model_path, device="cpu")
+
+    sae_loaded_state_dict = sae_loaded.state_dict()
+
+    # check state_dict matches the original
+    for key in sae.state_dict():
+        assert torch.allclose(
+            sae_state_dict[key],
+            sae_loaded_state_dict[key],
+        )
+
+    sae_in = torch.randn(10, len(cfg.hook_layers), cfg.d_in, device=cfg.device)
+    sae_out_1 = sae(sae_in)
+    sae_out_2 = sae_loaded(sae_in)
+    assert torch.allclose(sae_out_1, sae_out_2)
+
+@pytest.mark.xfail(reason="TODO(mkbehr): support other architectures")
+def test_sae_save_and_load_from_pretrained_gated(tmp_path: Path) -> None:
+    cfg = build_sae_cfg(architecture="gated", hook_layers=[1,2,3])
+    model_path = str(tmp_path)
+    sae = CrosscoderSAE.from_dict(cfg.get_base_sae_cfg_dict())
+    sae_state_dict = sae.state_dict()
+    sae.save_model(model_path)
+
+    assert os.path.exists(model_path)
+
+    sae_loaded = CrosscoderSAE.load_from_pretrained(model_path, device="cpu")
+
+    sae_loaded_state_dict = sae_loaded.state_dict()
+
+    # check state_dict matches the original
+    for key in sae.state_dict():
+        assert torch.allclose(
+            sae_state_dict[key],
+            sae_loaded_state_dict[key],
+        )
+
+    sae_in = torch.randn(10, len(cfg.hook_layers), cfg.d_in, device=cfg.device)
+    sae_out_1 = sae(sae_in)
+    sae_out_2 = sae_loaded(sae_in)
+    assert torch.allclose(sae_out_1, sae_out_2)
+
+def test_sae_save_and_load_from_pretrained_topk(tmp_path: Path) -> None:
+    cfg = build_sae_cfg(activation_fn_kwargs={"k": 30}, hook_layers=[1,2,3])
+    model_path = str(tmp_path)
+    sae = CrosscoderSAE.from_dict(cfg.get_base_sae_cfg_dict())
+    sae_state_dict = sae.state_dict()
+    sae.save_model(model_path)
+
+    assert os.path.exists(model_path)
+
+    sae_loaded = CrosscoderSAE.load_from_pretrained(model_path, device="cpu")
+
+    sae_loaded_state_dict = sae_loaded.state_dict()
+
+    # check state_dict matches the original
+    for key in sae.state_dict():
+        assert torch.allclose(
+            sae_state_dict[key],
+            sae_loaded_state_dict[key],
+        )
+
+    sae_in = torch.randn(10, len(cfg.hook_layers), cfg.d_in, device=cfg.device)
+    sae_out_1 = sae(sae_in)
+    sae_out_2 = sae_loaded(sae_in)
+    assert torch.allclose(sae_out_1, sae_out_2)
