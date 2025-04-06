@@ -2,6 +2,13 @@
 
 
 
+## v5.8.1 (2025-04-06)
+
+### Fix
+
+* fix: adding missing 9b matryoshka SAE (#460) ([`1f742fd`](https://github.com/jbloomAus/SAELens/commit/1f742fd590724a9e23bac15ceb329fc4afd3481e))
+
+
 ## v5.8.0 (2025-04-04)
 
 ### Chore
