@@ -244,6 +244,9 @@ class SAE(HookedRootModule):
 
         self.setup()  # Required for `HookedRootModule`s
 
+    def input_shape(self):
+        return (self.cfg.d_in,)
+
     def initialize_weights_basic(self):
         # no config changes encoder bias init for now.
         self.b_enc = nn.Parameter(
@@ -254,7 +257,7 @@ class SAE(HookedRootModule):
         self.W_dec = nn.Parameter(
             torch.nn.init.kaiming_uniform_(
                 torch.empty(
-                    self.cfg.d_sae, self.cfg.d_in, dtype=self.dtype, device=self.device
+                    self.cfg.d_sae, *self.input_shape(), dtype=self.dtype, device=self.device
                 )
             )
         )
@@ -262,14 +265,14 @@ class SAE(HookedRootModule):
         self.W_enc = nn.Parameter(
             torch.nn.init.kaiming_uniform_(
                 torch.empty(
-                    self.cfg.d_in, self.cfg.d_sae, dtype=self.dtype, device=self.device
+                    *self.input_shape(), self.cfg.d_sae, dtype=self.dtype, device=self.device
                 )
             )
         )
 
         # methdods which change b_dec as a function of the dataset are implemented after init.
         self.b_dec = nn.Parameter(
-            torch.zeros(self.cfg.d_in, dtype=self.dtype, device=self.device)
+            torch.zeros(*self.input_shape(), dtype=self.dtype, device=self.device)
         )
 
         # scaling factor for fine-tuning (not to be used in initial training)
@@ -284,7 +287,7 @@ class SAE(HookedRootModule):
         self.W_enc = nn.Parameter(
             torch.nn.init.kaiming_uniform_(
                 torch.empty(
-                    self.cfg.d_in, self.cfg.d_sae, dtype=self.dtype, device=self.device
+                    *self.input_shape(), self.cfg.d_sae, dtype=self.dtype, device=self.device
                 )
             )
         )
@@ -304,13 +307,13 @@ class SAE(HookedRootModule):
         self.W_dec = nn.Parameter(
             torch.nn.init.kaiming_uniform_(
                 torch.empty(
-                    self.cfg.d_sae, self.cfg.d_in, dtype=self.dtype, device=self.device
+                    self.cfg.d_sae, *self.input_shape(), dtype=self.dtype, device=self.device
                 )
             )
         )
 
         self.b_dec = nn.Parameter(
-            torch.zeros(self.cfg.d_in, dtype=self.dtype, device=self.device)
+            torch.zeros(*self.input_shape(), dtype=self.dtype, device=self.device)
         )
 
     def initialize_weights_jumprelu(self):
