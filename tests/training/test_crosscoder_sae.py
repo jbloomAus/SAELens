@@ -112,3 +112,129 @@ def test_crosscoder_sae_fold_w_dec_norm(cfg: LanguageModelSAERunnerConfig):
 
     # but actual outputs should be the same
     torch.testing.assert_close(sae_out_1, sae_out_2)
+
+@pytest.mark.parametrize("architecture", ALL_ARCHITECTURES)
+@torch.no_grad()
+def test_sae_fold_w_dec_norm_all_architectures(architecture: str):
+    if architecture != "standard":
+        pytest.xfail("TODO(mkbehr): support other architectures")
+    cfg = build_sae_cfg(architecture=architecture, hook_layers=[1,2,3])
+    sae = CrosscoderSAE.from_dict(cfg.get_base_sae_cfg_dict())
+    sae.turn_off_forward_pass_hook_z_reshaping()  # hook z reshaping not needed here.
+
+    # make sure all parameters are not 0s
+    for param in sae.parameters():
+        param.data = torch.rand_like(param)
+
+    assert sae.W_dec.norm(dim=[-2,-1]).mean().item() != pytest.approx(1.0, abs=1e-6)
+    sae2 = deepcopy(sae)
+    sae2.fold_W_dec_norm()
+
+    # fold_W_dec_norm should normalize W_dec to have unit norm.
+    assert sae2.W_dec.norm(dim=[-2,-1]).mean().item() == pytest.approx(1.0, abs=1e-6)
+
+    # we expect activations of features to differ by W_dec norm weights.
+    activations = torch.randn(10, 4, len(cfg.hook_layers), cfg.d_in, device=cfg.device)
+    feature_activations_1 = sae.encode(activations)
+    feature_activations_2 = sae2.encode(activations)
+
+    assert torch.allclose(
+        feature_activations_1.nonzero(),
+        feature_activations_2.nonzero(),
+    )
+
+    expected_feature_activations_2 = feature_activations_1 * sae.W_dec.norm(dim=[-2,-1])
+    torch.testing.assert_close(feature_activations_2, expected_feature_activations_2)
+
+    sae_out_1 = sae.decode(feature_activations_1)
+    sae_out_2 = sae2.decode(feature_activations_2)
+
+    # but actual outputs should be the same
+    torch.testing.assert_close(sae_out_1, sae_out_2)
+
+@torch.no_grad()
+def test_sae_fold_norm_scaling_factor(cfg: LanguageModelSAERunnerConfig):
+    norm_scaling_factor = 3.0
+
+    sae = CrosscoderSAE.from_dict(cfg.get_base_sae_cfg_dict())
+    # make sure b_dec and b_enc are not 0s
+    sae.b_dec.data = torch.randn(len(cfg.hook_layers), cfg.d_in, device=cfg.device)
+    sae.b_enc.data = torch.randn(cfg.d_sae, device=cfg.device)  # type: ignore
+    sae.turn_off_forward_pass_hook_z_reshaping()  # hook z reshaping not needed here.
+
+    sae2 = deepcopy(sae)
+    sae2.fold_activation_norm_scaling_factor(norm_scaling_factor)
+
+    assert sae2.cfg.normalize_activations == "none"
+
+    assert torch.allclose(sae2.W_enc.data, sae.W_enc.data * norm_scaling_factor)
+
+    # we expect activations of features to differ by W_dec norm weights.
+    # assume activations are already scaled
+    activations = torch.randn(10, 4, len(cfg.hook_layers), cfg.d_in, device=cfg.device)
+    # we divide to get the unscale activations
+    unscaled_activations = activations / norm_scaling_factor
+
+    feature_activations_1 = sae.encode(activations)
+    # with the scaling folded in, the unscaled activations should produce the same
+    # result.
+    feature_activations_2 = sae2.encode(unscaled_activations)
+
+    assert torch.allclose(
+        feature_activations_1.nonzero(),
+        feature_activations_2.nonzero(),
+    )
+
+    torch.testing.assert_close(feature_activations_2, feature_activations_1)
+
+    sae_out_1 = sae.decode(feature_activations_1)
+    sae_out_2 = norm_scaling_factor * sae2.decode(feature_activations_2)
+
+    # but actual outputs should be the same
+    torch.testing.assert_close(sae_out_1, sae_out_2)
+
+
+@pytest.mark.parametrize("architecture", ALL_ARCHITECTURES)
+@torch.no_grad()
+def test_sae_fold_norm_scaling_factor_all_architectures(architecture: str):
+    if architecture != "standard":
+        pytest.xfail("TODO(mkbehr): support other architectures")
+    cfg = build_sae_cfg(architecture=architecture, hook_layers=[1,2,3])
+    norm_scaling_factor = 3.0
+
+    sae = CrosscoderSAE.from_dict(cfg.get_base_sae_cfg_dict())
+    # make sure all parameters are not 0s
+    for param in sae.parameters():
+        param.data = torch.rand_like(param)
+
+    sae2 = deepcopy(sae)
+    sae2.fold_activation_norm_scaling_factor(norm_scaling_factor)
+
+    assert sae2.cfg.normalize_activations == "none"
+
+    assert torch.allclose(sae2.W_enc.data, sae.W_enc.data * norm_scaling_factor)
+
+    # we expect activations of features to differ by W_dec norm weights.
+    # assume activations are already scaled
+    activations = torch.randn(10, 4, len(cfg.hook_layers), cfg.d_in, device=cfg.device)
+    # we divide to get the unscale activations
+    unscaled_activations = activations / norm_scaling_factor
+
+    feature_activations_1 = sae.encode(activations)
+    # with the scaling folded in, the unscaled activations should produce the same
+    # result.
+    feature_activations_2 = sae2.encode(unscaled_activations)
+
+    assert torch.allclose(
+        feature_activations_1.nonzero(),
+        feature_activations_2.nonzero(),
+    )
+
+    torch.testing.assert_close(feature_activations_2, feature_activations_1)
+
+    sae_out_1 = sae.decode(feature_activations_1)
+    sae_out_2 = norm_scaling_factor * sae2.decode(feature_activations_2)
+
+    # but actual outputs should be the same
+    torch.testing.assert_close(sae_out_1, sae_out_2)
+
