@@ -45,6 +45,11 @@ class CrosscoderSAE(SAE):
         if self.hook_z_reshaping_mode:
             raise NotImplementedError("TODO(mkbehr): support hook_z")
 
+    def get_name(self):
+        # TODO(mkbehr): think about the correct name
+        layers = ','.join([str(l) for l in self.cfg.hook_layers])
+        return f"sae_{self.cfg.model_name}_{self.cfg.hook_name}_layers{layers}_{self.cfg.d_sae}"
+
     @classmethod
     def from_dict(cls, config_dict: dict[str, Any]) -> "CrosscoderSAE":
         return cls(CrosscoderSAEConfig.from_dict(config_dict))
