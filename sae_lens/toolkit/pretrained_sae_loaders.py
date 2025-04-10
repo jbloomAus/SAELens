@@ -12,6 +12,7 @@ from safetensors.torch import load_file
 
 from sae_lens import logger
 from sae_lens.config import DTYPE_MAP
+from sae_lens.sae import SAE_CFG_FILENAME, SAE_WEIGHTS_FILENAME, SPARSITY_FILENAME
 from sae_lens.toolkit.pretrained_saes_directory import (
     get_config_overrides,
     get_pretrained_saes_directory,
@@ -76,13 +77,13 @@ def sae_lens_huggingface_loader(
         cfg_overrides,
     )
 
-    weights_filename = f"{folder_name}/sae_weights.safetensors"
+    weights_filename = f"{folder_name}/{SAE_WEIGHTS_FILENAME}"
     sae_path = hf_hub_download(
         repo_id=repo_id, filename=weights_filename, force_download=force_download
     )
 
     try:
-        sparsity_filename = f"{folder_name}/sparsity.safetensors"
+        sparsity_filename = f"{folder_name}/{SPARSITY_FILENAME}"
         log_sparsity_path = hf_hub_download(
             repo_id=repo_id, filename=sparsity_filename, force_download=force_download
         )
@@ -112,7 +113,7 @@ def sae_lens_disk_loader(
 ) -> tuple[dict[str, Any], dict[str, torch.Tensor]]:
     """Loads SAEs from disk"""
 
-    weights_path = Path(path) / "sae_weights.safetensors"
+    weights_path = Path(path) / SAE_WEIGHTS_FILENAME
     cfg_dict = get_sae_lens_config_from_disk(path, device, cfg_overrides)
     cfg_dict, state_dict = read_sae_components_from_disk(
         cfg_dict=cfg_dict,
@@ -141,7 +142,7 @@ def get_sae_lens_config_from_hf(
     Returns:
         dict[str, Any]: The configuration dictionary for the SAE.
     """
-    cfg_filename = f"{folder_name}/cfg.json"
+    cfg_filename = f"{folder_name}/{SAE_CFG_FILENAME}"
     cfg_path = hf_hub_download(
         repo_id=repo_id, filename=cfg_filename, force_download=force_download
     )
@@ -154,7 +155,7 @@ def get_sae_lens_config_from_disk(
     device: str | None = None,
     cfg_overrides: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    cfg_filename = Path(path) / "cfg.json"
+    cfg_filename = Path(path) / SAE_CFG_FILENAME
 
     with open(cfg_filename) as f:
         cfg_dict: dict[str, Any] = json.load(f)
@@ -851,7 +852,7 @@ def llama_scope_r1_distill_sae_huggingface_loader(
     # Download the SAE weights
     sae_path = hf_hub_download(
         repo_id=repo_id,
-        filename="sae_weights.safetensors",
+        filename=SAE_WEIGHTS_FILENAME,
         subfolder=folder_name,
         force_download=force_download,
     )

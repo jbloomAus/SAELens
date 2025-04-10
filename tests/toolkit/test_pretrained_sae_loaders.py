@@ -8,7 +8,7 @@ from sae_lens.toolkit.pretrained_sae_loaders import (
 )
 
 
-def test_get_sae_config_sae_lens():
+def test_load_sae_config_from_huggingface():
     cfg_dict = load_sae_config_from_huggingface(
         "gpt2-small-res-jb",
         sae_id="blocks.0.hook_resid_pre",
@@ -73,7 +73,7 @@ def test_get_sae_config_sae_lens():
     assert cfg_dict == expected_cfg_dict
 
 
-def test_get_sae_config_connor_rob_hook_z():
+def test_load_sae_config_from_huggingface_connor_rob_hook_z():
     cfg_dict = load_sae_config_from_huggingface(
         "gpt2-small-hook-z-kk",
         sae_id="blocks.0.hook_z",
@@ -104,7 +104,7 @@ def test_get_sae_config_connor_rob_hook_z():
     assert cfg_dict == expected_cfg_dict
 
 
-def test_get_sae_config_gemma_2():
+def test_load_sae_config_from_huggingface_gemma_2():
     cfg_dict = load_sae_config_from_huggingface(
         "gemma-scope-2b-pt-res",
         sae_id="embedding/width_4k/average_l0_6",
@@ -135,7 +135,7 @@ def test_get_sae_config_gemma_2():
     assert cfg_dict == expected_cfg_dict
 
 
-def test_get_sae_config_dictionary_learning_1():
+def test_load_sae_config_from_huggingface_dictionary_learning_1():
     cfg_dict = load_sae_config_from_huggingface(
         "sae_bench_gemma-2-2b_topk_width-2pow16_date-1109",
         sae_id="blocks.12.hook_resid_post__trainer_0",
@@ -167,7 +167,7 @@ def test_get_sae_config_dictionary_learning_1():
     assert cfg_dict == expected_cfg_dict
 
 
-def test_get_sae_config_matches_from_pretrained():
+def test_load_sae_config_from_huggingface_matches_from_pretrained():
     from_pretrained_cfg_dict = SAE.from_pretrained(
         "gpt2-small-res-jb",
         sae_id="blocks.0.hook_resid_pre",

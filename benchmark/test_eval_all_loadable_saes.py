@@ -37,7 +37,7 @@ because they just didn't hold with such nonsense.
 """
 
 
-def test_get_sae_config():
+def test_load_sae_config_from_huggingface():
     repo_id = "jbloom/GPT2-Small-SAEs-Reformatted"
     cfg = load_sae_config_from_huggingface(
         release=repo_id,
