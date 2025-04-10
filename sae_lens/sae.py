@@ -620,9 +620,9 @@ class SAE(HookedRootModule):
                 + value_suffix
             )
 
-        conversion_loader_name = get_conversion_loader_name(release)
         conversion_loader = (
-            converter or NAMED_PRETRAINED_SAE_LOADERS[conversion_loader_name]
+            converter
+            or NAMED_PRETRAINED_SAE_LOADERS[get_conversion_loader_name(release)]
         )
         repo_id, folder_name = get_repo_id_and_folder_name(release, sae_id)
         config_overrides = get_config_overrides(release, sae_id)
