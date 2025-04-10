@@ -7,7 +7,7 @@ import warnings
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Literal, Optional, Tuple, TypeVar, Union, overload
+from typing import Any, Callable, Literal, TypeVar, overload
 
 import einops
 import torch
@@ -57,7 +57,7 @@ class SAEConfig:
     model_name: str
     hook_name: str
     hook_layer: int
-    hook_head_index: Optional[int]
+    hook_head_index: int | None
     prepend_bos: bool
     dataset_path: str
     dataset_trust_remote_code: bool
@@ -66,9 +66,9 @@ class SAEConfig:
     # misc
     dtype: str
     device: str
-    sae_lens_training_version: Optional[str]
+    sae_lens_training_version: str | None
     activation_fn_kwargs: dict[str, Any] = field(default_factory=dict)
-    neuronpedia_id: Optional[str] = None
+    neuronpedia_id: str | None = None
     model_from_pretrained_kwargs: dict[str, Any] = field(default_factory=dict)
     seqpos_slice: tuple[int | None, ...] = (None,)
 
@@ -323,8 +323,8 @@ class SAE(HookedRootModule):
     @overload
     def to(
         self: T,
-        device: Optional[Union[torch.device, str]] = ...,
-        dtype: Optional[torch.dtype] = ...,
+        device: torch.device | str | None = ...,
+        dtype: torch.dtype | None = ...,
         non_blocking: bool = ...,
     ) -> T: ...
 
@@ -493,14 +493,14 @@ class SAE(HookedRootModule):
         self.cfg.normalize_activations = "none"
 
     @overload
-    def save_model(self, path: str | Path) -> Tuple[Path, Path]: ...
+    def save_model(self, path: str | Path) -> tuple[Path, Path]: ...
 
     @overload
     def save_model(
         self, path: str | Path, sparsity: torch.Tensor
-    ) -> Tuple[Path, Path, Path]: ...
+    ) -> tuple[Path, Path, Path]: ...
 
-    def save_model(self, path: str | Path, sparsity: Optional[torch.Tensor] = None):
+    def save_model(self, path: str | Path, sparsity: torch.Tensor | None = None):
         path = Path(path)
 
         if not path.exists():
@@ -569,7 +569,7 @@ class SAE(HookedRootModule):
         device: str = "cpu",
         force_download: bool = False,
         converter: PretrainedSaeHuggingfaceLoader | None = None,
-    ) -> Tuple["SAE", dict[str, Any], Optional[torch.Tensor]]:
+    ) -> tuple["SAE", dict[str, Any], torch.Tensor | None]:
         """
         Load a pretrained SAE from the Hugging Face model hub.
 

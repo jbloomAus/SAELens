@@ -1,7 +1,7 @@
 import json
 import re
 from pathlib import Path
-from typing import Any, Optional, Protocol
+from typing import Any, Protocol
 
 import numpy as np
 import torch
@@ -28,7 +28,7 @@ class PretrainedSaeHuggingfaceLoader(Protocol):
         device: str,
         force_download: bool,
         cfg_overrides: dict[str, Any] | None,
-    ) -> tuple[dict[str, Any], dict[str, torch.Tensor], Optional[torch.Tensor]]: ...
+    ) -> tuple[dict[str, Any], dict[str, torch.Tensor], torch.Tensor | None]: ...
 
 
 class PretrainedSaeConfigHuggingfaceLoader(Protocol):
@@ -66,7 +66,7 @@ def sae_lens_huggingface_loader(
     device: str = "cpu",
     force_download: bool = False,
     cfg_overrides: dict[str, Any] | None = None,
-) -> tuple[dict[str, Any], dict[str, torch.Tensor], Optional[torch.Tensor]]:
+) -> tuple[dict[str, Any], dict[str, torch.Tensor], torch.Tensor | None]:
     """Loads SAEs from Hugging Face"""
     cfg_dict = get_sae_lens_config_from_hf(
         repo_id,
@@ -258,7 +258,7 @@ def read_sae_components_from_disk(
     cfg_dict: dict[str, Any],
     weight_path: str | Path,
     device: str = "cpu",
-    dtype: Optional[torch.dtype] = None,
+    dtype: torch.dtype | None = None,
 ) -> tuple[dict[str, Any], dict[str, torch.Tensor]]:
     """
     Given a loaded dictionary and a path to a weight file, load the weights and return the state_dict.
@@ -392,7 +392,7 @@ def gemma_2_sae_huggingface_loader(
     device: str = "cpu",
     force_download: bool = False,
     cfg_overrides: dict[str, Any] | None = None,
-) -> tuple[dict[str, Any], dict[str, torch.Tensor], Optional[torch.Tensor]]:
+) -> tuple[dict[str, Any], dict[str, torch.Tensor], torch.Tensor | None]:
     """
     Custom loader for Gemma 2 SAEs.
     """
@@ -506,7 +506,7 @@ def llama_scope_sae_huggingface_loader(
     device: str = "cpu",
     force_download: bool = False,
     cfg_overrides: dict[str, Any] | None = None,
-) -> tuple[dict[str, Any], dict[str, torch.Tensor], Optional[torch.Tensor]]:
+) -> tuple[dict[str, Any], dict[str, torch.Tensor], torch.Tensor | None]:
     """
     Custom loader for Llama Scope SAEs.
 
@@ -515,9 +515,9 @@ def llama_scope_sae_huggingface_loader(
         sae_id: SAE identifier
         device: Device to load tensors to
         force_download: Whether to force download even if files exist
-        cfg_overrides: Optional configuration overrides
-        d_sae_override: Optional override for SAE dimension
-        layer_override: Optional override for layer number
+        cfg_overrides: Configuration overrides (optional)
+        d_sae_override: Override for SAE dimension (optional)
+        layer_override: Override for layer number (optional)
 
     Returns:
         tuple of (config dict, state dict, log sparsity tensor)
@@ -665,7 +665,7 @@ def deepseek_r1_sae_huggingface_loader(
     device: str = "cpu",
     force_download: bool = False,
     cfg_overrides: dict[str, Any] | None = None,
-) -> tuple[dict[str, Any], dict[str, torch.Tensor], Optional[torch.Tensor]]:
+) -> tuple[dict[str, Any], dict[str, torch.Tensor], torch.Tensor | None]:
     """Load a DeepSeek R1 SAE."""
     # Download weights
     sae_path = hf_hub_download(
@@ -732,7 +732,7 @@ def dictionary_learning_sae_huggingface_loader_1(
     device: str = "cpu",
     force_download: bool = False,
     cfg_overrides: dict[str, Any] | None = None,
-) -> tuple[dict[str, Any], dict[str, torch.Tensor], Optional[torch.Tensor]]:
+) -> tuple[dict[str, Any], dict[str, torch.Tensor], torch.Tensor | None]:
     """
     Suitable for SAEs from https://huggingface.co/canrager/lm_sae.
     """
@@ -824,7 +824,7 @@ def llama_scope_r1_distill_sae_huggingface_loader(
     device: str = "cpu",
     force_download: bool = False,
     cfg_overrides: dict[str, Any] | None = None,
-) -> tuple[dict[str, Any], dict[str, torch.Tensor], Optional[torch.Tensor]]:
+) -> tuple[dict[str, Any], dict[str, torch.Tensor], torch.Tensor | None]:
     """
     Custom loader for Llama Scope SAEs.
 
@@ -833,12 +833,12 @@ def llama_scope_r1_distill_sae_huggingface_loader(
         sae_id: SAE identifier
         device: Device to load tensors to
         force_download: Whether to force download even if files exist
-        cfg_overrides: Optional configuration overrides
-        d_sae_override: Optional override for SAE dimension
-        layer_override: Optional override for layer number
+        cfg_overrides: Configuration overrides (optional)
+        d_sae_override: Override for SAE dimension (optional)
+        layer_override: Override for layer number (optional)
 
     Returns:
-        Tuple of (config dict, state dict, log sparsity tensor)
+        tuple of (config dict, state dict, log sparsity tensor)
     """
     cfg_dict = get_llama_scope_r1_distill_config_from_hf(
         repo_id,

@@ -2,6 +2,192 @@
 
 
 
+## v5.8.1 (2025-04-06)
+
+### Fix
+
+* fix: adding missing 9b matryoshka SAE (#460) ([`1f742fd`](https://github.com/jbloomAus/SAELens/commit/1f742fd590724a9e23bac15ceb329fc4afd3481e))
+
+
+## v5.8.0 (2025-04-04)
+
+### Chore
+
+* chore: Added a tokenized dataset for llama3.2 to docs (#452) ([`b6a96b5`](https://github.com/jbloomAus/SAELens/commit/b6a96b536cc602db09292ae3ba27aa0a411a65f7))
+
+### Feature
+
+* feat: Use conventional explained variance definition (#443)
+
+* Use conventional explained variance definition
+
+* fixing linting and polishing PR
+
+* fixing test
+
+* adding an identity test for evals
+
+* changes from CR
+
+---------
+
+Co-authored-by: David Chanin &lt;chanindav@gmail.com&gt; ([`6d1b42a`](https://github.com/jbloomAus/SAELens/commit/6d1b42aaeb747b4070e9f8f7c55403103b3bf9c9))
+
+
+## v5.7.1 (2025-04-04)
+
+### Chore
+
+* chore: adding HF_TOKEN to docs build in CI (#458) ([`db632e5`](https://github.com/jbloomAus/SAELens/commit/db632e51be8dd90fb7f1fd3215771dbd8357fab2))
+
+### Fix
+
+* fix: removing strangely missing gemma 2 9b SAE (#459) ([`ff718a4`](https://github.com/jbloomAus/SAELens/commit/ff718a4d8a2f3ceca01a01f5316511199476871a))
+
+### Unknown
+
+* reenable build step ([`ecec830`](https://github.com/jbloomAus/SAELens/commit/ecec830774160990b44097d7332d8397d0477f48))
+
+
+## v5.7.0 (2025-04-04)
+
+### Chore
+
+* chore: stop streaming datasets in tests (#454)
+
+* chore: stop streaming datasets in tests
+
+* try running fewer python versions in parallel in tests to keep from spamming hf
+
+* test setting HF token ([`986cec0`](https://github.com/jbloomAus/SAELens/commit/986cec08b5aeb07acbac40acea61b839772949eb))
+
+* chore: adds cron job to check pretrained_saes.yaml (#453)
+
+* adds cron job to check pretrained_saes.yaml
+
+* makes names more descriptive
+
+* deletes extraneous file
+
+* fixes filename
+
+* adds missing in Hugging Face condition to create issue ([`910e52b`](https://github.com/jbloomAus/SAELens/commit/910e52bcaec5f246735639616cf088896dda778c))
+
+* chore: removes .flake8 (#449)
+
+* converts .flake8 to pyproject.toml
+
+* Revert &#34;converts .flake8 to pyproject.toml&#34;
+
+This reverts commit 764679d383fcd0fd70487dffb759cd42ff58ddfd.
+
+* removes .flake8
+
+* deletes requirements.txt ([`2cb39cb`](https://github.com/jbloomAus/SAELens/commit/2cb39cb087f9570a4a3ce4ee9a80fe1c428f9500))
+
+* chore: adds Ruff rule to check for banned imports (#450) ([`46569b9`](https://github.com/jbloomAus/SAELens/commit/46569b95e0b43c7cb27d425348178a3c7f798ce7))
+
+* chore: move tsea.py into tutorial submodule (#420)
+
+* move tsea.py into tutorial submodule
+
+* adding newline ([`1de69ce`](https://github.com/jbloomAus/SAELens/commit/1de69ce9c52a02d397f4117a03f15f6a4bac89eb))
+
+### Documentation
+
+* docs: Slack link was expired ([`4f79969`](https://github.com/jbloomAus/SAELens/commit/4f799697aff91abdc034e1499b60257257845291))
+
+### Feature
+
+* feat: adding matryoshka-dc saes ([`748845e`](https://github.com/jbloomAus/SAELens/commit/748845ee2d5db4d33172c37cbfd8cf24182a5439))
+
+### Fix
+
+* fix: temporarily disable broken build check to force release ([`a1e5a9f`](https://github.com/jbloomAus/SAELens/commit/a1e5a9f3768297f8354416b1152e8ad5933a29b3))
+
+* fix: removes deleted gemma-scope-9b-pt-res-canonical SAE (#457) ([`39dc66e`](https://github.com/jbloomAus/SAELens/commit/39dc66e85ae3dc8710e3eb73a6946f603a2c3d53))
+
+### Unknown
+
+* Merge pull request #455 from jbloomAus/adding-dc-matryoshka-saes
+
+feat: adding matryoshka-dc saes ([`9702f36`](https://github.com/jbloomAus/SAELens/commit/9702f362686b3eb127abc65dfe7c5ad2156765d8))
+
+* add neuronpedia ID for some layers of matryoshka-dc ([`4dfcf0b`](https://github.com/jbloomAus/SAELens/commit/4dfcf0b95378a6807ac15f6357ea34277e66c23f))
+
+* Merge pull request #448 from jbloomAus/update_slack
+
+docs: Slack link was expired ([`aa76a12`](https://github.com/jbloomAus/SAELens/commit/aa76a12c9ee2e386c851999ddbf3787cc5140257))
+
+
+## v5.6.1 (2025-03-17)
+
+### Fix
+
+* fix: Ensure activation scaling factor set before initializing b_dec  when needed (#440)
+
+Co-authored-by: Keltin Grimes &lt;kgrimes@sei.cmu.edu&gt; ([`1145a62`](https://github.com/jbloomAus/SAELens/commit/1145a62ae94ceac4b0ff3f60485aa311b1f08991))
+
+* fix: base k_aux on d_in instead of d_sae in topk aux loss (#432)
+
+* fix: base k_aux on d_in instead of d_sae in topk aux loss
+
+* detaching error before aux loss and fixing tests
+
+* changes from cr
+
+* fixing tests ([`5325c06`](https://github.com/jbloomAus/SAELens/commit/5325c06309c543078e35f63e4e9fb5402811aec7))
+
+
+## v5.6.0 (2025-03-12)
+
+### Feature
+
+* feat: Add support for dataset name in PretokenizeRunner (#438)
+
+Summary of updates:
+- Added optional dataset name parameter
+- Updated metadata to track dataset name and column name
+- Added test for loading dataset with name argument and checking metadata
+- Updated tests to use PretokenizeRunner instead of depricated pretokenizer_runner
+
+Co-authored-by: Keltin Grimes &lt;kgrimes@sei.cmu.edu&gt; ([`1dc4ef6`](https://github.com/jbloomAus/SAELens/commit/1dc4ef655a0bc2e7e70c8f8682e86da99bb6b7cd))
+
+### Fix
+
+* fix: fix bug with PretokenizeRunner with streaming=True (#442)
+
+* Fixed issue with PretokenizeRunner with streaming=True
+
+* raise error if streaming with num_proc &gt; 1
+
+---------
+
+Co-authored-by: David Chanin &lt;chanindav@gmail.com&gt; ([`40a5924`](https://github.com/jbloomAus/SAELens/commit/40a59240f1999c716415d81fccc891170ef19d03))
+
+
+## v5.5.2 (2025-02-25)
+
+### Fix
+
+* fix: Merge pull request #435 from jbloomAus/np_r1
+
+fix: Pretrained YAML for ds r1 ([`871cdf0`](https://github.com/jbloomAus/SAELens/commit/871cdf0ec08d77bc6bd44f3e88119d291b200b5c))
+
+* fix: deepseek ([`ddb1042`](https://github.com/jbloomAus/SAELens/commit/ddb10426e6260466cb16a05bfbf908e314c7ce0f))
+
+
+## v5.5.1 (2025-02-25)
+
+### Fix
+
+* fix: Merge pull request #434 from jbloomAus/np_r1
+
+fix: neuronpedia links for DS R1 ([`cd85f6d`](https://github.com/jbloomAus/SAELens/commit/cd85f6dd6b372c99b5f0c2b07d5778976f044c8f))
+
+* fix: neuronpedia links for DS R1 ([`c335c91`](https://github.com/jbloomAus/SAELens/commit/c335c911bb3b88221b10f9e8848f19e6c054cb40))
+
+
 ## v5.5.0 (2025-02-22)
 
 ### Chore

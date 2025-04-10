@@ -1,5 +1,4 @@
 from types import SimpleNamespace
-from typing import Optional
 
 import torch
 import tqdm
@@ -21,7 +20,7 @@ def geometric_median_objective(
 
 def compute_geometric_median(
     points: torch.Tensor,
-    weights: Optional[torch.Tensor] = None,
+    weights: torch.Tensor | None = None,
     eps: float = 1e-6,
     maxiter: int = 100,
     ftol: float = 1e-20,

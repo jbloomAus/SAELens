@@ -1,6 +1,6 @@
 import contextlib
 from dataclasses import dataclass
-from typing import Any, Optional, Protocol, cast
+from typing import Any, Protocol, cast
 
 import torch
 import wandb
@@ -48,7 +48,7 @@ class SaveCheckpointFn(Protocol):
         self,
         trainer: "SAETrainer",
         checkpoint_name: str,
-        wandb_aliases: Optional[list[str]] = None,
+        wandb_aliases: list[str] | None = None,
     ) -> None: ...
 
 
@@ -296,14 +296,16 @@ class SAETrainer:
 
         per_token_l2_loss = (sae_out - sae_in).pow(2).sum(dim=-1).squeeze()
         total_variance = (sae_in - sae_in.mean(0)).pow(2).sum(-1)
-        explained_variance = 1 - per_token_l2_loss / total_variance
+        explained_variance_legacy = 1 - per_token_l2_loss / total_variance
+        explained_variance = 1 - per_token_l2_loss.mean() / total_variance.mean()
 
         log_dict = {
             # losses
             "losses/overall_loss": loss,
             # variance explained
-            "metrics/explained_variance": explained_variance.mean().item(),
-            "metrics/explained_variance_std": explained_variance.std().item(),
+            "metrics/explained_variance_legacy": explained_variance_legacy.mean().item(),
+            "metrics/explained_variance_legacy_std": explained_variance_legacy.std().item(),
+            "metrics/explained_variance": explained_variance.item(),
             "metrics/l0": l0.item(),
             # sparsity
             "sparsity/mean_passes_since_fired": self.n_forward_passes_since_fired.mean().item(),

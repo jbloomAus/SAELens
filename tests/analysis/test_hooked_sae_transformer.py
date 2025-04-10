@@ -1,5 +1,4 @@
 # type: ignore
-from typing import Tuple, Union
 
 import pytest
 import torch
@@ -15,7 +14,7 @@ MODEL = "solu-1l"
 prompt = "Hello World!"
 
 
-Output = Union[torch.Tensor, Tuple[torch.Tensor, Loss], None]
+Output = torch.Tensor | tuple[torch.Tensor, Loss] | None
 
 
 def get_logits(output: Output) -> torch.Tensor:

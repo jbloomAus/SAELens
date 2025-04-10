@@ -8835,10 +8835,6 @@ gemma-scope-9b-pt-res-canonical:
     l0: 77
     neuronpedia: gemma-2-9b/31-gemmascope-res-1m
     path: layer_31/width_1m/average_l0_77
-  - id: layer_20/width_262k/canonical
-    l0: 64
-    neuronpedia: gemma-2-9b/20-gemmascope-res-262k
-    path: layer_20/width_262k/average_l0_64
   - id: layer_20/width_32k/canonical
     l0: 57
     neuronpedia: gemma-2-9b/20-gemmascope-res-32k
@@ -10637,291 +10633,387 @@ llama_scope_r1_distill:
   - id: l0r_800m_slimpajama
     norm_scaling_factor: 53.52995401997436
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L0R
+    neuronpedia: deepseek-r1-distill-llama-8b/0-llamascope-slimpj-res-32k
   - id: l1r_800m_slimpajama
     norm_scaling_factor: 37.07457226753229
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L1R
+    neuronpedia: deepseek-r1-distill-llama-8b/1-llamascope-slimpj-res-32k
   - id: l2r_800m_slimpajama
     norm_scaling_factor: 26.801271953747353
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L2R
+    neuronpedia: deepseek-r1-distill-llama-8b/2-llamascope-slimpj-res-32k
   - id: l3r_800m_slimpajama
     norm_scaling_factor: 20.258785842428143
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L3R
+    neuronpedia: deepseek-r1-distill-llama-8b/3-llamascope-slimpj-res-32k
   - id: l4r_800m_slimpajama
     norm_scaling_factor: 16.35620323956284
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L4R
+    neuronpedia: deepseek-r1-distill-llama-8b/4-llamascope-slimpj-res-32k
   - id: l5r_800m_slimpajama
     norm_scaling_factor: 13.77273090622553
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L5R
+    neuronpedia: deepseek-r1-distill-llama-8b/5-llamascope-slimpj-res-32k
   - id: l6r_800m_slimpajama
     norm_scaling_factor: 11.802642616140206
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L6R
+    neuronpedia: deepseek-r1-distill-llama-8b/6-llamascope-slimpj-res-32k
   - id: l7r_800m_slimpajama
     norm_scaling_factor: 10.345622082873675
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L7R
+    neuronpedia: deepseek-r1-distill-llama-8b/7-llamascope-slimpj-res-32k
   - id: l8r_800m_slimpajama
     norm_scaling_factor: 9.52711219837399
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L8R
+    neuronpedia: deepseek-r1-distill-llama-8b/8-llamascope-slimpj-res-32k
   - id: l9r_800m_slimpajama
     norm_scaling_factor: 8.722802553532865
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L9R
+    neuronpedia: deepseek-r1-distill-llama-8b/9-llamascope-slimpj-res-32k
   - id: l10r_800m_slimpajama
     norm_scaling_factor: 8.187374613072596
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L10R
+    neuronpedia: deepseek-r1-distill-llama-8b/10-llamascope-slimpj-res-32k
   - id: l11r_800m_slimpajama
     norm_scaling_factor: 7.681409438301019
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L11R
+    neuronpedia: deepseek-r1-distill-llama-8b/11-llamascope-slimpj-res-32k
   - id: l12r_800m_slimpajama
     norm_scaling_factor: 7.011470964851573
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L12R
+    neuronpedia: deepseek-r1-distill-llama-8b/12-llamascope-slimpj-res-32k
   - id: l13r_800m_slimpajama
     norm_scaling_factor: 6.507851835301529
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L13R
+    neuronpedia: deepseek-r1-distill-llama-8b/13-llamascope-slimpj-res-32k
   - id: l14r_800m_slimpajama
     norm_scaling_factor: 6.075830839342571
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L14R
+    neuronpedia: deepseek-r1-distill-llama-8b/14-llamascope-slimpj-res-32k
   - id: l15r_800m_slimpajama
     norm_scaling_factor: 5.529329506982431
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L15R
+    neuronpedia: deepseek-r1-distill-llama-8b/15-llamascope-slimpj-res-32k
   - id: l16r_800m_slimpajama
     norm_scaling_factor: 5.04125765694814
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L16R
+    neuronpedia: deepseek-r1-distill-llama-8b/16-llamascope-slimpj-res-32k
   - id: l17r_800m_slimpajama
     norm_scaling_factor: 4.543060254752811
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L17R
+    neuronpedia: deepseek-r1-distill-llama-8b/17-llamascope-slimpj-res-32k
   - id: l18r_800m_slimpajama
     norm_scaling_factor: 4.136073768441771
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L18R
+    neuronpedia: deepseek-r1-distill-llama-8b/18-llamascope-slimpj-res-32k
   - id: l19r_800m_slimpajama
     norm_scaling_factor: 3.8186778444880143
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L19R
+    neuronpedia: deepseek-r1-distill-llama-8b/19-llamascope-slimpj-res-32k
   - id: l20r_800m_slimpajama
     norm_scaling_factor: 3.4997662089479755
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L20R
+    neuronpedia: deepseek-r1-distill-llama-8b/20-llamascope-slimpj-res-32k
   - id: l21r_800m_slimpajama
     norm_scaling_factor: 3.114875161525094
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L21R
+    neuronpedia: deepseek-r1-distill-llama-8b/21-llamascope-slimpj-res-32k
   - id: l22r_800m_slimpajama
     norm_scaling_factor: 2.858677637086371
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L22R
+    neuronpedia: deepseek-r1-distill-llama-8b/22-llamascope-slimpj-res-32k
   - id: l23r_800m_slimpajama
     norm_scaling_factor: 2.6143620233159384
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L23R
+    neuronpedia: deepseek-r1-distill-llama-8b/23-llamascope-slimpj-res-32k
   - id: l24r_800m_slimpajama
     norm_scaling_factor: 2.406593266301888
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L24R
+    neuronpedia: deepseek-r1-distill-llama-8b/24-llamascope-slimpj-res-32k
   - id: l25r_800m_slimpajama
     norm_scaling_factor: 2.2185540508553694
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L25R
+    neuronpedia: deepseek-r1-distill-llama-8b/25-llamascope-slimpj-res-32k
   - id: l26r_800m_slimpajama
     norm_scaling_factor: 2.038628827422577
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L26R
+    neuronpedia: deepseek-r1-distill-llama-8b/26-llamascope-slimpj-res-32k
   - id: l27r_800m_slimpajama
     norm_scaling_factor: 1.8664054897001374
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L27R
+    neuronpedia: deepseek-r1-distill-llama-8b/27-llamascope-slimpj-res-32k
   - id: l28r_800m_slimpajama
     norm_scaling_factor: 1.6914743009513147
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L28R
+    neuronpedia: deepseek-r1-distill-llama-8b/28-llamascope-slimpj-res-32k
   - id: l29r_800m_slimpajama
     norm_scaling_factor: 1.530389056066687
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L29R
+    neuronpedia: deepseek-r1-distill-llama-8b/29-llamascope-slimpj-res-32k
   - id: l30r_800m_slimpajama
     norm_scaling_factor: 1.3378642198135962
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L30R
+    neuronpedia: deepseek-r1-distill-llama-8b/30-llamascope-slimpj-res-32k
   - id: l31r_800m_slimpajama
     norm_scaling_factor: 1.0963025732622191
     path: 800M-Slimpajama-0-OpenR1-Math-220k/L31R
+    neuronpedia: deepseek-r1-distill-llama-8b/31-llamascope-slimpj-res-32k
   - id: l0r_400m_slimpajama_400m_openr1_math
     norm_scaling_factor: 53.97673033497749
     path: 400M-Slimpajama-400M-OpenR1-Math-220k/L0R
+    neuronpedia: deepseek-r1-distill-llama-8b/0-llamascope-slimpj-openr1-res-32k
   - id: l1r_400m_slimpajama_400m_openr1_math
     norm_scaling_factor: 36.76995792628666
     path: 400M-Slimpajama-400M-OpenR1-Math-220k/L1R
+    neuronpedia: deepseek-r1-distill-llama-8b/1-llamascope-slimpj-openr1-res-32k
   - id: l2r_400m_slimpajama_400m_openr1_math
     norm_scaling_factor: 26.86329549484781
     path: 400M-Slimpajama-400M-OpenR1-Math-220k/L2R
+    neuronpedia: deepseek-r1-distill-llama-8b/2-llamascope-slimpj-openr1-res-32k
   - id: l3r_400m_slimpajama_400m_openr1_math
     norm_scaling_factor: 20.473522361966317
     path: 400M-Slimpajama-400M-OpenR1-Math-220k/L3R
+    neuronpedia: deepseek-r1-distill-llama-8b/3-llamascope-slimpj-openr1-res-32k
   - id: l4r_400m_slimpajama_400m_openr1_math
     norm_scaling_factor: 16.491433880849524
     path: 400M-Slimpajama-400M-OpenR1-Math-220k/L4R
+    neuronpedia: deepseek-r1-distill-llama-8b/4-llamascope-slimpj-openr1-res-32k
   - id: l5r_400m_slimpajama_400m_openr1_math
     norm_scaling_factor: 13.902529211394633
     path: 400M-Slimpajama-400M-OpenR1-Math-220k/L5R
+    neuronpedia: deepseek-r1-distill-llama-8b/5-llamascope-slimpj-openr1-res-32k
   - id: l6r_400m_slimpajama_400m_openr1_math
     norm_scaling_factor: 11.959185891949216
     path: 400M-Slimpajama-400M-OpenR1-Math-220k/L6R
+    neuronpedia: deepseek-r1-distill-llama-8b/6-llamascope-slimpj-openr1-res-32k
   - id: l7r_400m_slimpajama_400m_openr1_math
     norm_scaling_factor: 10.454685082137889
     path: 400M-Slimpajama-400M-OpenR1-Math-220k/L7R
+    neuronpedia: deepseek-r1-distill-llama-8b/7-llamascope-slimpj-openr1-res-32k
   - id: l8r_400m_slimpajama_400m_openr1_math
     norm_scaling_factor: 9.625849752730096
     path: 400M-Slimpajama-400M-OpenR1-Math-220k/L8R
+    neuronpedia: deepseek-r1-distill-llama-8b/8-llamascope-slimpj-openr1-res-32k
   - id: l9r_400m_slimpajama_400m_openr1_math
     norm_scaling_factor: 8.705443147441324
     path: 400M-Slimpajama-400M-OpenR1-Math-220k/L9R
+    neuronpedia: deepseek-r1-distill-llama-8b/9-llamascope-slimpj-openr1-res-32k
   - id: l10r_400m_slimpajama_400m_openr1_math
     norm_scaling_factor: 8.0884989084078
     path: 400M-Slimpajama-400M-OpenR1-Math-220k/L10R
+    neuronpedia: deepseek-r1-distill-llama-8b/10-llamascope-slimpj-openr1-res-32k
   - id: l11r_400m_slimpajama_400m_openr1_math
     norm_scaling_factor: 7.449578399564585
     path: 400M-Slimpajama-400M-OpenR1-Math-220k/L11R
+    neuronpedia: deepseek-r1-distill-llama-8b/11-llamascope-slimpj-openr1-res-32k
   - id: l12r_400m_slimpajama_400m_openr1_math
     norm_scaling_factor: 6.80144905444981
     path: 400M-Slimpajama-400M-OpenR1-Math-220k/L12R
+    neuronpedia: deepseek-r1-distill-llama-8b/12-llamascope-slimpj-openr1-res-32k
   - id: l13r_400m_slimpajama_400m_openr1_math
     norm_scaling_factor: 6.331711239265464
     path: 400M-Slimpajama-400M-OpenR1-Math-220k/L13R
+    neuronpedia: deepseek-r1-distill-llama-8b/13-llamascope-slimpj-openr1-res-32k
   - id: l14r_400m_slimpajama_400m_openr1_math
     norm_scaling_factor: 5.70284230018703
     path: 400M-Slimpajama-400M-OpenR1-Math-220k/L14R
+    neuronpedia: deepseek-r1-distill-llama-8b/14-llamascope-slimpj-openr1-res-32k
   - id: l15r_400m_slimpajama_400m_openr1_math
     norm_scaling_factor: 5.318041374444156
     path: 400M-Slimpajama-400M-OpenR1-Math-220k/L15R
+    neuronpedia: deepseek-r1-distill-llama-8b/15-llamascope-slimpj-openr1-res-32k
   - id: l16r_400m_slimpajama_400m_openr1_math
     norm_scaling_factor: 4.79639347416429
     path: 400M-Slimpajama-400M-OpenR1-Math-220k/L16R
+    neuronpedia: deepseek-r1-distill-llama-8b/16-llamascope-slimpj-openr1-res-32k
   - id: l17r_400m_slimpajama_400m_openr1_math
     norm_scaling_factor: 4.333554093692626
     path: 400M-Slimpajama-400M-OpenR1-Math-220k/L17R
+    neuronpedia: deepseek-r1-distill-llama-8b/17-llamascope-slimpj-openr1-res-32k
   - id: l18r_400m_slimpajama_400m_openr1_math
     norm_scaling_factor: 3.9386839067851334
     path: 400M-Slimpajama-400M-OpenR1-Math-220k/L18R
+    neuronpedia: deepseek-r1-distill-llama-8b/18-llamascope-slimpj-openr1-res-32k
   - id: l19r_400m_slimpajama_400m_openr1_math
     norm_scaling_factor: 3.584045063066589
     path: 400M-Slimpajama-400M-OpenR1-Math-220k/L19R
+    neuronpedia: deepseek-r1-distill-llama-8b/19-llamascope-slimpj-openr1-res-32k
   - id: l20r_400m_slimpajama_400m_openr1_math
     norm_scaling_factor: 3.4122850442674064
     path: 400M-Slimpajama-400M-OpenR1-Math-220k/L20R
+    neuronpedia: deepseek-r1-distill-llama-8b/20-llamascope-slimpj-openr1-res-32k
   - id: l21r_400m_slimpajama_400m_openr1_math
     norm_scaling_factor: 2.9930188471058385
     path: 400M-Slimpajama-400M-OpenR1-Math-220k/L21R
+    neuronpedia: deepseek-r1-distill-llama-8b/21-llamascope-slimpj-openr1-res-32k
   - id: l22r_400m_slimpajama_400m_openr1_math
     norm_scaling_factor: 2.7548717844301582
     path: 400M-Slimpajama-400M-OpenR1-Math-220k/L22R
+    neuronpedia: deepseek-r1-distill-llama-8b/22-llamascope-slimpj-openr1-res-32k
   - id: l23r_400m_slimpajama_400m_openr1_math
     norm_scaling_factor: 2.5281942698718076
     path: 400M-Slimpajama-400M-OpenR1-Math-220k/L23R
+    neuronpedia: deepseek-r1-distill-llama-8b/23-llamascope-slimpj-openr1-res-32k
   - id: l24r_400m_slimpajama_400m_openr1_math
     norm_scaling_factor: 2.326851186904894
     path: 400M-Slimpajama-400M-OpenR1-Math-220k/L24R
+    neuronpedia: deepseek-r1-distill-llama-8b/24-llamascope-slimpj-openr1-res-32k
   - id: l25r_400m_slimpajama_400m_openr1_math
     norm_scaling_factor: 2.101068654605767
     path: 400M-Slimpajama-400M-OpenR1-Math-220k/L25R
+    neuronpedia: deepseek-r1-distill-llama-8b/25-llamascope-slimpj-openr1-res-32k
   - id: l26r_400m_slimpajama_400m_openr1_math
     norm_scaling_factor: 1.9361189375890395
     path: 400M-Slimpajama-400M-OpenR1-Math-220k/L26R
+    neuronpedia: deepseek-r1-distill-llama-8b/26-llamascope-slimpj-openr1-res-32k
   - id: l27r_400m_slimpajama_400m_openr1_math
     norm_scaling_factor: 1.7784660082777055
     path: 400M-Slimpajama-400M-OpenR1-Math-220k/L27R
+    neuronpedia: deepseek-r1-distill-llama-8b/27-llamascope-slimpj-openr1-res-32k
   - id: l28r_400m_slimpajama_400m_openr1_math
     norm_scaling_factor: 1.6635049539624462
     path: 400M-Slimpajama-400M-OpenR1-Math-220k/L28R
+    neuronpedia: deepseek-r1-distill-llama-8b/28-llamascope-slimpj-openr1-res-32k
   - id: l29r_400m_slimpajama_400m_openr1_math
     norm_scaling_factor: 1.448853212514504
     path: 400M-Slimpajama-400M-OpenR1-Math-220k/L29R
+    neuronpedia: deepseek-r1-distill-llama-8b/29-llamascope-slimpj-openr1-res-32k
   - id: l30r_400m_slimpajama_400m_openr1_math
     norm_scaling_factor: 1.157008764313032
     path: 400M-Slimpajama-400M-OpenR1-Math-220k/L30R
+    neuronpedia: deepseek-r1-distill-llama-8b/30-llamascope-slimpj-openr1-res-32k
   - id: l31r_400m_slimpajama_400m_openr1_math
     norm_scaling_factor: 1.041977999933546
     path: 400M-Slimpajama-400M-OpenR1-Math-220k/L31R
+    neuronpedia: deepseek-r1-distill-llama-8b/31-llamascope-slimpj-openr1-res-32k
   - id: l0r_800m_openr1_math
     norm_scaling_factor: 54.308791085956486
     path: 0-Slimpajama-800M-OpenR1-Math-220k/L0R
+    neuronpedia: deepseek-r1-distill-llama-8b/0-llamascope-openr1-res-32k
   - id: l1r_800m_openr1_math
     norm_scaling_factor: 36.49473030775242
     path: 0-Slimpajama-800M-OpenR1-Math-220k/L1R
+    neuronpedia: deepseek-r1-distill-llama-8b/1-llamascope-openr1-res-32k
   - id: l2r_800m_openr1_math
     norm_scaling_factor: 26.96126387031055
     path: 0-Slimpajama-800M-OpenR1-Math-220k/L2R
+    neuronpedia: deepseek-r1-distill-llama-8b/2-llamascope-openr1-res-32k
   - id: l3r_800m_openr1_math
     norm_scaling_factor: 20.52210199911164
     path: 0-Slimpajama-800M-OpenR1-Math-220k/L3R
+    neuronpedia: deepseek-r1-distill-llama-8b/3-llamascope-openr1-res-32k
   - id: l4r_800m_openr1_math
     norm_scaling_factor: 16.67733543806145
     path: 0-Slimpajama-800M-OpenR1-Math-220k/L4R
+    neuronpedia: deepseek-r1-distill-llama-8b/4-llamascope-openr1-res-32k
   - id: l5r_800m_openr1_math
     norm_scaling_factor: 14.067505043509176
     path: 0-Slimpajama-800M-OpenR1-Math-220k/L5R
+    neuronpedia: deepseek-r1-distill-llama-8b/5-llamascope-openr1-res-32k
   - id: l6r_800m_openr1_math
     norm_scaling_factor: 12.034338704494331
     path: 0-Slimpajama-800M-OpenR1-Math-220k/L6R
+    neuronpedia: deepseek-r1-distill-llama-8b/6-llamascope-openr1-res-32k
   - id: l7r_800m_openr1_math
     norm_scaling_factor: 10.495662821867164
     path: 0-Slimpajama-800M-OpenR1-Math-220k/L7R
+    neuronpedia: deepseek-r1-distill-llama-8b/7-llamascope-openr1-res-32k
   - id: l8r_800m_openr1_math
     norm_scaling_factor: 9.683004157081735
     path: 0-Slimpajama-800M-OpenR1-Math-220k/L8R
+    neuronpedia: deepseek-r1-distill-llama-8b/8-llamascope-openr1-res-32k
   - id: l9r_800m_openr1_math
     norm_scaling_factor: 8.679730500864236
     path: 0-Slimpajama-800M-OpenR1-Math-220k/L9R
+    neuronpedia: deepseek-r1-distill-llama-8b/9-llamascope-openr1-res-32k
   - id: l10r_800m_openr1_math
     norm_scaling_factor: 7.988383971728427
     path: 0-Slimpajama-800M-OpenR1-Math-220k/L10R
+    neuronpedia: deepseek-r1-distill-llama-8b/10-llamascope-openr1-res-32k
   - id: l11r_800m_openr1_math
     norm_scaling_factor: 7.237531143695951
     path: 0-Slimpajama-800M-OpenR1-Math-220k/L11R
+    neuronpedia: deepseek-r1-distill-llama-8b/11-llamascope-openr1-res-32k
   - id: l12r_800m_openr1_math
     norm_scaling_factor: 6.69444885029299
     path: 0-Slimpajama-800M-OpenR1-Math-220k/L12R
+    neuronpedia: deepseek-r1-distill-llama-8b/12-llamascope-openr1-res-32k
   - id: l13r_800m_openr1_math
     norm_scaling_factor: 6.0489858065009265
     path: 0-Slimpajama-800M-OpenR1-Math-220k/L13R
+    neuronpedia: deepseek-r1-distill-llama-8b/13-llamascope-openr1-res-32k
   - id: l14r_800m_openr1_math
     norm_scaling_factor: 5.4935929917888595
     path: 0-Slimpajama-800M-OpenR1-Math-220k/L14R
+    neuronpedia: deepseek-r1-distill-llama-8b/14-llamascope-openr1-res-32k
   - id: l15r_800m_openr1_math
     norm_scaling_factor: 4.970860531188141
     path: 0-Slimpajama-800M-OpenR1-Math-220k/L15R
+    neuronpedia: deepseek-r1-distill-llama-8b/15-llamascope-openr1-res-32k
   - id: l16r_800m_openr1_math
     norm_scaling_factor: 4.541887865516153
     path: 0-Slimpajama-800M-OpenR1-Math-220k/L16R
+    neuronpedia: deepseek-r1-distill-llama-8b/16-llamascope-openr1-res-32k
   - id: l17r_800m_openr1_math
     norm_scaling_factor: 4.111292885351861
     path: 0-Slimpajama-800M-OpenR1-Math-220k/L17R
+    neuronpedia: deepseek-r1-distill-llama-8b/17-llamascope-openr1-res-32k
   - id: l18r_800m_openr1_math
     norm_scaling_factor: 3.7319009471881754
     path: 0-Slimpajama-800M-OpenR1-Math-220k/L18R
+    neuronpedia: deepseek-r1-distill-llama-8b/18-llamascope-openr1-res-32k
   - id: l19r_800m_openr1_math
     norm_scaling_factor: 3.4464218438335172
     path: 0-Slimpajama-800M-OpenR1-Math-220k/L19R
+    neuronpedia: deepseek-r1-distill-llama-8b/19-llamascope-openr1-res-32k
   - id: l20r_800m_openr1_math
     norm_scaling_factor: 3.1614163309538377
     path: 0-Slimpajama-800M-OpenR1-Math-220k/L20R
+    neuronpedia: deepseek-r1-distill-llama-8b/20-llamascope-openr1-res-32k
   - id: l21r_800m_openr1_math
     norm_scaling_factor: 2.8600260547627334
     path: 0-Slimpajama-800M-OpenR1-Math-220k/L21R
+    neuronpedia: deepseek-r1-distill-llama-8b/21-llamascope-openr1-res-32k
   - id: l22r_800m_openr1_math
     norm_scaling_factor: 2.636157171207381
     path: 0-Slimpajama-800M-OpenR1-Math-220k/L22R
+    neuronpedia: deepseek-r1-distill-llama-8b/22-llamascope-openr1-res-32k
   - id: l23r_800m_openr1_math
     norm_scaling_factor: 2.4287397996449367
     path: 0-Slimpajama-800M-OpenR1-Math-220k/L23R
+    neuronpedia: deepseek-r1-distill-llama-8b/23-llamascope-openr1-res-32k
   - id: l24r_800m_openr1_math
     norm_scaling_factor: 2.2405978768214556
     path: 0-Slimpajama-800M-OpenR1-Math-220k/L24R
+    neuronpedia: deepseek-r1-distill-llama-8b/24-llamascope-openr1-res-32k
   - id: l25r_800m_openr1_math
     norm_scaling_factor: 2.034659098936678
     path: 0-Slimpajama-800M-OpenR1-Math-220k/L25R
+    neuronpedia: deepseek-r1-distill-llama-8b/25-llamascope-openr1-res-32k
   - id: l26r_800m_openr1_math
     norm_scaling_factor: 1.8430054630341937
     path: 0-Slimpajama-800M-OpenR1-Math-220k/L26R
+    neuronpedia: deepseek-r1-distill-llama-8b/26-llamascope-openr1-res-32k
   - id: l27r_800m_openr1_math
     norm_scaling_factor: 1.6554423260870552
     path: 0-Slimpajama-800M-OpenR1-Math-220k/L27R
+    neuronpedia: deepseek-r1-distill-llama-8b/27-llamascope-openr1-res-32k
   - id: l28r_800m_openr1_math
     norm_scaling_factor: 1.477070442772071
     path: 0-Slimpajama-800M-OpenR1-Math-220k/L28R
+    neuronpedia: deepseek-r1-distill-llama-8b/28-llamascope-openr1-res-32k
   - id: l29r_800m_openr1_math
     norm_scaling_factor: 1.3361543238773446
     path: 0-Slimpajama-800M-OpenR1-Math-220k/L29R
+    neuronpedia: deepseek-r1-distill-llama-8b/29-llamascope-openr1-res-32k
   - id: l30r_800m_openr1_math
     norm_scaling_factor: 1.1387454210154435
     path: 0-Slimpajama-800M-OpenR1-Math-220k/L30R
+    neuronpedia: deepseek-r1-distill-llama-8b/30-llamascope-openr1-res-32k
   - id: l31r_800m_openr1_math
     norm_scaling_factor: 0.926395749048437
     path: 0-Slimpajama-800M-OpenR1-Math-220k/L31R
+    neuronpedia: deepseek-r1-distill-llama-8b/31-llamascope-openr1-res-32k
 mistral-7b-res-wg:
   config_overrides:
     normalize_activations: constant_norm_rescale
@@ -13492,3 +13584,381 @@ sae_bench_pythia70m_sweep_topk_ctx128_0730:
   - id: blocks.4.hook_resid_post__trainer_8
     neuronpedia: pythia-70m-deduped/4-sae_bench-topk-res-4k__trainer_8_step_final
     path: pythia70m_sweep_topk_ctx128_0730/resid_post_layer_4/trainer_8
+gemma-2-2b-res-matryoshka-dc:
+  conversion_func: null
+  links:
+    model: https://huggingface.co/google/gemma-2-2b
+  model: gemma-2-2b
+  repo_id: chanind/gemma-2-2b-batch-topk-matryoshka-saes-w-32k-l0-40
+  saes:
+  - id: blocks.0.hook_resid_post
+    path: standard/blocks.0.hook_resid_post
+    l0: 40.0
+  - id: blocks.1.hook_resid_post
+    path: standard/blocks.1.hook_resid_post
+    l0: 40.0
+  - id: blocks.2.hook_resid_post
+    path: standard/blocks.2.hook_resid_post
+    l0: 40.0
+  - id: blocks.3.hook_resid_post
+    path: standard/blocks.3.hook_resid_post
+    l0: 40.0
+  - id: blocks.4.hook_resid_post
+    path: standard/blocks.4.hook_resid_post
+    l0: 40.0
+  - id: blocks.5.hook_resid_post
+    path: standard/blocks.5.hook_resid_post
+    l0: 40.0
+  - id: blocks.6.hook_resid_post
+    path: standard/blocks.6.hook_resid_post
+    l0: 40.0
+  - id: blocks.7.hook_resid_post
+    path: standard/blocks.7.hook_resid_post
+    l0: 40.0
+  - id: blocks.8.hook_resid_post
+    path: standard/blocks.8.hook_resid_post
+    l0: 40.0
+  - id: blocks.9.hook_resid_post
+    path: standard/blocks.9.hook_resid_post
+    l0: 40.0
+  - id: blocks.10.hook_resid_post
+    path: standard/blocks.10.hook_resid_post
+    l0: 40.0
+  - id: blocks.11.hook_resid_post
+    path: standard/blocks.11.hook_resid_post
+    l0: 40.0
+  - id: blocks.12.hook_resid_post
+    path: standard/blocks.12.hook_resid_post
+    l0: 40.0
+    neuronpedia: gemma-2-2b/12-res-matryoshka-dc
+  - id: blocks.13.hook_resid_post
+    path: standard/blocks.13.hook_resid_post
+    l0: 40.0
+  - id: blocks.14.hook_resid_post
+    path: standard/blocks.14.hook_resid_post
+    l0: 40.0
+  - id: blocks.15.hook_resid_post
+    path: standard/blocks.15.hook_resid_post
+    l0: 40.0
+  - id: blocks.16.hook_resid_post
+    path: standard/blocks.16.hook_resid_post
+    l0: 40.0
+  - id: blocks.17.hook_resid_post
+    path: standard/blocks.17.hook_resid_post
+    l0: 40.0
+  - id: blocks.18.hook_resid_post
+    path: standard/blocks.18.hook_resid_post
+    l0: 40.0
+  - id: blocks.19.hook_resid_post
+    path: standard/blocks.19.hook_resid_post
+    l0: 40.0
+  - id: blocks.20.hook_resid_post
+    path: standard/blocks.20.hook_resid_post
+    l0: 40.0
+  - id: blocks.21.hook_resid_post
+    path: standard/blocks.21.hook_resid_post
+    l0: 40.0
+  - id: blocks.22.hook_resid_post
+    path: standard/blocks.22.hook_resid_post
+    l0: 40.0
+  - id: blocks.23.hook_resid_post
+    path: standard/blocks.23.hook_resid_post
+    l0: 40.0
+  - id: blocks.24.hook_resid_post
+    path: standard/blocks.24.hook_resid_post
+    l0: 40.0
+gemma-2-2b-res-snap-matryoshka-dc:
+  conversion_func: null
+  links:
+    model: https://huggingface.co/google/gemma-2-2b
+  model: gemma-2-2b
+  repo_id: chanind/gemma-2-2b-batch-topk-matryoshka-saes-w-32k-l0-40
+  saes:
+  - id: blocks.0.hook_resid_post
+    path: snap/blocks.0.hook_resid_post
+    l0: 40.0
+  - id: blocks.1.hook_resid_post
+    path: snap/blocks.1.hook_resid_post
+    l0: 40.0
+  - id: blocks.2.hook_resid_post
+    path: snap/blocks.2.hook_resid_post
+    l0: 40.0
+  - id: blocks.3.hook_resid_post
+    path: snap/blocks.3.hook_resid_post
+    l0: 40.0
+  - id: blocks.4.hook_resid_post
+    path: snap/blocks.4.hook_resid_post
+    l0: 40.0
+  - id: blocks.5.hook_resid_post
+    path: snap/blocks.5.hook_resid_post
+    l0: 40.0
+  - id: blocks.6.hook_resid_post
+    path: snap/blocks.6.hook_resid_post
+    l0: 40.0
+  - id: blocks.7.hook_resid_post
+    path: snap/blocks.7.hook_resid_post
+    l0: 40.0
+  - id: blocks.8.hook_resid_post
+    path: snap/blocks.8.hook_resid_post
+    l0: 40.0
+  - id: blocks.9.hook_resid_post
+    path: snap/blocks.9.hook_resid_post
+    l0: 40.0
+  - id: blocks.10.hook_resid_post
+    path: snap/blocks.10.hook_resid_post
+    l0: 40.0
+  - id: blocks.11.hook_resid_post
+    path: snap/blocks.11.hook_resid_post
+    l0: 40.0
+  - id: blocks.12.hook_resid_post
+    path: snap/blocks.12.hook_resid_post
+    l0: 40.0
+  - id: blocks.13.hook_resid_post
+    path: snap/blocks.13.hook_resid_post
+    l0: 40.0
+  - id: blocks.14.hook_resid_post
+    path: snap/blocks.14.hook_resid_post
+    l0: 40.0
+  - id: blocks.15.hook_resid_post
+    path: snap/blocks.15.hook_resid_post
+    l0: 40.0
+  - id: blocks.16.hook_resid_post
+    path: snap/blocks.16.hook_resid_post
+    l0: 40.0
+  - id: blocks.17.hook_resid_post
+    path: snap/blocks.17.hook_resid_post
+    l0: 40.0
+  - id: blocks.18.hook_resid_post
+    path: snap/blocks.18.hook_resid_post
+    l0: 40.0
+  - id: blocks.19.hook_resid_post
+    path: snap/blocks.19.hook_resid_post
+    l0: 40.0
+  - id: blocks.20.hook_resid_post
+    path: snap/blocks.20.hook_resid_post
+    l0: 40.0
+  - id: blocks.21.hook_resid_post
+    path: snap/blocks.21.hook_resid_post
+    l0: 40.0
+  - id: blocks.22.hook_resid_post
+    path: snap/blocks.22.hook_resid_post
+    l0: 40.0
+  - id: blocks.23.hook_resid_post
+    path: snap/blocks.23.hook_resid_post
+    l0: 40.0
+  - id: blocks.24.hook_resid_post
+    path: snap/blocks.24.hook_resid_post
+    l0: 40.0
+gemma-2-9b-res-matryoshka-dc:
+  conversion_func: null
+  links:
+    model: https://huggingface.co/google/gemma-2-9b
+  model: gemma-2-9b
+  repo_id: chanind/gemma-2-9b-batch-topk-matryoshka-saes-w-32k-l0-60
+  saes:
+  - id: blocks.0.hook_resid_post
+    path: blocks.0.hook_resid_post
+    l0: 60.0
+  - id: blocks.1.hook_resid_post
+    path: blocks.1.hook_resid_post
+    l0: 60.0
+  - id: blocks.2.hook_resid_post
+    path: blocks.2.hook_resid_post
+    l0: 60.0
+  - id: blocks.3.hook_resid_post
+    path: blocks.3.hook_resid_post
+    l0: 60.0
+  - id: blocks.4.hook_resid_post
+    path: blocks.4.hook_resid_post
+    l0: 60.0
+  - id: blocks.5.hook_resid_post
+    path: blocks.5.hook_resid_post
+    l0: 60.0
+  - id: blocks.6.hook_resid_post
+    path: blocks.6.hook_resid_post
+    l0: 60.0
+  - id: blocks.7.hook_resid_post
+    path: blocks.7.hook_resid_post
+    l0: 60.0
+  - id: blocks.8.hook_resid_post
+    path: blocks.8.hook_resid_post
+    l0: 60.0
+  - id: blocks.9.hook_resid_post
+    path: blocks.9.hook_resid_post
+    l0: 60.0
+  - id: blocks.10.hook_resid_post
+    path: blocks.10.hook_resid_post
+    l0: 60.0
+  - id: blocks.11.hook_resid_post
+    path: blocks.11.hook_resid_post
+    l0: 60.0
+  - id: blocks.12.hook_resid_post
+    path: blocks.12.hook_resid_post
+    l0: 60.0
+  - id: blocks.13.hook_resid_post
+    path: blocks.13.hook_resid_post
+    l0: 60.0
+  - id: blocks.14.hook_resid_post
+    path: blocks.14.hook_resid_post
+    l0: 60.0
+  - id: blocks.15.hook_resid_post
+    path: blocks.15.hook_resid_post
+    l0: 60.0
+  - id: blocks.16.hook_resid_post
+    path: blocks.16.hook_resid_post
+    l0: 60.0
+  - id: blocks.17.hook_resid_post
+    path: blocks.17.hook_resid_post
+    l0: 60.0
+  - id: blocks.18.hook_resid_post
+    path: blocks.18.hook_resid_post
+    l0: 60.0
+  - id: blocks.19.hook_resid_post
+    path: blocks.19.hook_resid_post
+    l0: 60.0
+  - id: blocks.20.hook_resid_post
+    path: blocks.20.hook_resid_post
+    l0: 60.0
+    neuronpedia: gemma-2-9b/20-res-matryoshka-dc
+  - id: blocks.21.hook_resid_post
+    path: blocks.21.hook_resid_post
+    l0: 60.0
+  - id: blocks.22.hook_resid_post
+    path: blocks.22.hook_resid_post
+    l0: 60.0
+  - id: blocks.23.hook_resid_post
+    path: blocks.23.hook_resid_post
+    l0: 60.0
+  - id: blocks.24.hook_resid_post
+    path: blocks.24.hook_resid_post
+    l0: 60.0
+  - id: blocks.25.hook_resid_post
+    path: blocks.25.hook_resid_post
+    l0: 60.0
+  - id: blocks.26.hook_resid_post
+    path: blocks.26.hook_resid_post
+    l0: 60.0
+  - id: blocks.27.hook_resid_post
+    path: blocks.27.hook_resid_post
+    l0: 60.0
+  - id: blocks.28.hook_resid_post
+    path: blocks.28.hook_resid_post
+    l0: 60.0
+  - id: blocks.29.hook_resid_post
+    path: blocks.29.hook_resid_post
+    l0: 60.0
+  - id: blocks.30.hook_resid_post
+    path: blocks.30.hook_resid_post
+    l0: 60.0
+  - id: blocks.31.hook_resid_post
+    path: blocks.31.hook_resid_post
+    l0: 60.0
+  - id: blocks.32.hook_resid_post
+    path: blocks.32.hook_resid_post
+    l0: 60.0
+  - id: blocks.33.hook_resid_post
+    path: blocks.33.hook_resid_post
+    l0: 60.0
+  - id: blocks.34.hook_resid_post
+    path: blocks.34.hook_resid_post
+    l0: 60.0
+  - id: blocks.35.hook_resid_post
+    path: blocks.35.hook_resid_post
+    l0: 60.0
+  - id: blocks.36.hook_resid_post
+    path: blocks.36.hook_resid_post
+    l0: 60.0
+  - id: blocks.37.hook_resid_post
+    path: blocks.37.hook_resid_post
+    l0: 60.0
+  - id: blocks.38.hook_resid_post
+    path: blocks.38.hook_resid_post
+    l0: 60.0
+  - id: blocks.39.hook_resid_post
+    path: blocks.39.hook_resid_post
+    l0: 60.0
+  - id: blocks.40.hook_resid_post
+    path: blocks.40.hook_resid_post
+    l0: 60.0
+gemma-3-1b-res-matryoshka-dc:
+  conversion_func: null
+  links:
+    model: https://huggingface.co/google/gemma-3-1b-pt
+  model: gemma-3-1b
+  repo_id: chanind/gemma-3-1b-batch-topk-matryoshka-saes-w-32k-l0-40
+  saes:
+  - id: blocks.0.hook_resid_post
+    path: blocks.0.hook_resid_post
+    l0: 40.0
+  - id: blocks.1.hook_resid_post
+    path: blocks.1.hook_resid_post
+    l0: 40.0
+  - id: blocks.2.hook_resid_post
+    path: blocks.2.hook_resid_post
+    l0: 40.0
+  - id: blocks.3.hook_resid_post
+    path: blocks.3.hook_resid_post
+    l0: 40.0
+  - id: blocks.4.hook_resid_post
+    path: blocks.4.hook_resid_post
+    l0: 40.0
+  - id: blocks.5.hook_resid_post
+    path: blocks.5.hook_resid_post
+    l0: 40.0
+  - id: blocks.6.hook_resid_post
+    path: blocks.6.hook_resid_post
+    l0: 40.0
+  - id: blocks.7.hook_resid_post
+    path: blocks.7.hook_resid_post
+    l0: 40.0
+  - id: blocks.8.hook_resid_post
+    path: blocks.8.hook_resid_post
+    l0: 40.0
+  - id: blocks.9.hook_resid_post
+    path: blocks.9.hook_resid_post
+    l0: 40.0
+  - id: blocks.10.hook_resid_post
+    path: blocks.10.hook_resid_post
+    l0: 40.0
+  - id: blocks.11.hook_resid_post
+    path: blocks.11.hook_resid_post
+    l0: 40.0
+  - id: blocks.12.hook_resid_post
+    path: blocks.12.hook_resid_post
+    l0: 40.0
+  - id: blocks.13.hook_resid_post
+    path: blocks.13.hook_resid_post
+    l0: 40.0
+  - id: blocks.14.hook_resid_post
+    path: blocks.14.hook_resid_post
+    l0: 40.0
+  - id: blocks.15.hook_resid_post
+    path: blocks.15.hook_resid_post
+    l0: 40.0
+  - id: blocks.16.hook_resid_post
+    path: blocks.16.hook_resid_post
+    l0: 40.0
+  - id: blocks.17.hook_resid_post
+    path: blocks.17.hook_resid_post
+    l0: 40.0
+  - id: blocks.18.hook_resid_post
+    path: blocks.18.hook_resid_post
+    l0: 40.0
+  - id: blocks.19.hook_resid_post
+    path: blocks.19.hook_resid_post
+    l0: 40.0
+  - id: blocks.20.hook_resid_post
+    path: blocks.20.hook_resid_post
+    l0: 40.0
+  - id: blocks.21.hook_resid_post
+    path: blocks.21.hook_resid_post
+    l0: 40.0
+  - id: blocks.22.hook_resid_post
+    path: blocks.22.hook_resid_post
+    l0: 40.0
+  - id: blocks.23.hook_resid_post
+    path: blocks.23.hook_resid_post
+    l0: 40.0
+  - id: blocks.24.hook_resid_post
+    path: blocks.24.hook_resid_post
+    l0: 40.0

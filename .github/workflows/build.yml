@@ -17,11 +17,11 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        # Huggingface gets mad about us spamming them in CI, so try to run fewer versions of tests
+        python-version: ["3.10"] # , "3.11", "3.12"]
 
     steps:
       - uses: actions/checkout@v4
@@ -40,8 +40,8 @@ jobs:
         id: cached-poetry
         uses: actions/cache@v4
         with:
-          path: ~/.local  # the path depends on the OS
-          key: poetry-${{ runner.os }}-${{ matrix.python-version }}-1  # increment to reset cache
+          path: ~/.local # the path depends on the OS
+          key: poetry-${{ runner.os }}-${{ matrix.python-version }}-1 # increment to reset cache
       - name: Install Poetry
         if: steps.cached-poetry.outputs.cache-hit != 'true'
         uses: snok/install-poetry@v1
@@ -67,8 +67,10 @@ jobs:
       - name: type checking
         run: poetry run pyright
       - name: Run Unit Tests
-    #   Would use make, but want cov report in xml format
+        #   Would use make, but want cov report in xml format
         run: poetry run pytest -v --cov=sae_lens/ --cov-report=term-missing --cov-branch tests --cov-report=xml
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4.0.1
         with:
@@ -76,7 +78,6 @@ jobs:
           slug: jbloomAus/SAELens
 
   release:
-
     needs: build
     permissions:
       contents: write
