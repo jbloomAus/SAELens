@@ -17,7 +17,12 @@ from torch import nn
 from transformer_lens.hook_points import HookedRootModule, HookPoint
 from typing_extensions import deprecated
 
-from sae_lens.config import DTYPE_MAP
+from sae_lens.config import (
+    DTYPE_MAP,
+    SAE_CFG_FILENAME,
+    SAE_WEIGHTS_FILENAME,
+    SPARSITY_FILENAME,
+)
 from sae_lens.toolkit.pretrained_sae_loaders import (
     NAMED_PRETRAINED_SAE_LOADERS,
     PretrainedSaeDiskLoader,
@@ -32,10 +37,6 @@ from sae_lens.toolkit.pretrained_saes_directory import (
     get_pretrained_saes_directory,
     get_repo_id_and_folder_name,
 )
-
-SPARSITY_FILENAME = "sparsity.safetensors"
-SAE_WEIGHTS_FILENAME = "sae_weights.safetensors"
-SAE_CFG_FILENAME = "cfg.json"
 
 T = TypeVar("T", bound="SAE")
 
