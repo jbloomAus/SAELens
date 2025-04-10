@@ -551,9 +551,11 @@ class SAE(HookedRootModule):
         cls,
         path: str,
         device: str = "cpu",
+        dtype: str | None = None,
         converter: PretrainedSaeDiskLoader = sae_lens_disk_loader,
     ) -> "SAE":
-        cfg_dict, state_dict = converter(path, device, cfg_overrides=None)
+        overrides = {"dtype": dtype} if dtype is not None else None
+        cfg_dict, state_dict = converter(path, device, cfg_overrides=overrides)
         cfg_dict = handle_config_defaulting(cfg_dict)
         sae_cfg = SAEConfig.from_dict(cfg_dict)
         sae = cls(sae_cfg)
