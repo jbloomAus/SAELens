@@ -72,7 +72,7 @@ I wrote a tutorial to show users how to do some basic exploration of their SAE:
 
 ## Example WandB Dashboard
 
-WandB Dashboards provide lots of useful insights while training SAE's. Here's a screenshot from one training run.
+WandB Dashboards provide lots of useful insights while training SAEs. Here's a screenshot from one training run.
 
 ![screenshot](dashboard_screenshot.png)
 
