@@ -2,6 +2,43 @@
 
 
 
+## v5.9.0 (2025-04-11)
+
+### Feature
+
+* feat: custom loading converters for SAE.from_pretrained() and SAE.load_from_disk() (#433)
+
+* WIP
+
+* polishing loaders and docs
+
+* Update docs/index.md
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update docs/index.md
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update sae_lens/sae.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update sae_lens/training/training_sae.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* changes from cr
+
+* fixing type checking
+
+* fixing circular import
+
+---------
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt; ([`e117ed8`](https://github.com/jbloomAus/SAELens/commit/e117ed838bcd0694cc24f950942d0c9d19b23266))
+
+
 ## v5.8.1 (2025-04-06)
 
 ### Fix
