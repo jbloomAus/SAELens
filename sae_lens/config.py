@@ -31,6 +31,11 @@ DTYPE_MAP = {
 HfDataset = DatasetDict | Dataset | IterableDatasetDict | IterableDataset
 
 
+SPARSITY_FILENAME = "sparsity.safetensors"
+SAE_WEIGHTS_FILENAME = "sae_weights.safetensors"
+SAE_CFG_FILENAME = "cfg.json"
+
+
 # calling this "json_dict" so error messages will reference "json_dict" being invalid
 def json_dict(s: str) -> Any:
     res = json.loads(s)

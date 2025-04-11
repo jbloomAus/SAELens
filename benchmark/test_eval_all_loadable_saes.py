@@ -18,8 +18,7 @@ from sae_lens.evals import (
     run_evaluations,
 )
 from sae_lens.toolkit.pretrained_sae_loaders import (
-    SAEConfigLoadOptions,
-    get_sae_config_from_hf,
+    load_sae_config_from_huggingface,
 )
 from tests.helpers import load_model_cached
 
@@ -38,12 +37,11 @@ because they just didn't hold with such nonsense.
 """
 
 
-def test_get_sae_config():
+def test_load_sae_config_from_huggingface():
     repo_id = "jbloom/GPT2-Small-SAEs-Reformatted"
-    cfg = get_sae_config_from_hf(
-        repo_id=repo_id,
-        folder_name="blocks.0.hook_resid_pre",
-        options=SAEConfigLoadOptions(),
+    cfg = load_sae_config_from_huggingface(
+        release=repo_id,
+        sae_id="blocks.0.hook_resid_pre",
     )
     assert cfg is not None
 

@@ -3,7 +3,6 @@ https://github.com/ArthurConmy/sae/blob/main/sae/model.py
 """
 
 import json
-import os
 import warnings
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -16,22 +15,28 @@ from jaxtyping import Float
 from safetensors.torch import save_file
 from torch import nn
 from transformer_lens.hook_points import HookedRootModule, HookPoint
+from typing_extensions import deprecated
 
-from sae_lens.config import DTYPE_MAP
+from sae_lens.config import (
+    DTYPE_MAP,
+    SAE_CFG_FILENAME,
+    SAE_WEIGHTS_FILENAME,
+    SPARSITY_FILENAME,
+)
 from sae_lens.toolkit.pretrained_sae_loaders import (
     NAMED_PRETRAINED_SAE_LOADERS,
+    PretrainedSaeDiskLoader,
+    PretrainedSaeHuggingfaceLoader,
     get_conversion_loader_name,
     handle_config_defaulting,
-    read_sae_from_disk,
+    sae_lens_disk_loader,
 )
 from sae_lens.toolkit.pretrained_saes_directory import (
+    get_config_overrides,
     get_norm_scaling_factor,
     get_pretrained_saes_directory,
+    get_repo_id_and_folder_name,
 )
-
-SPARSITY_FILENAME = "sparsity.safetensors"
-SAE_WEIGHTS_FILENAME = "sae_weights.safetensors"
-SAE_CFG_FILENAME = "cfg.json"
 
 T = TypeVar("T", bound="SAE")
 
@@ -532,31 +537,31 @@ class SAE(HookedRootModule):
         pass
 
     @classmethod
+    @deprecated("Use load_from_disk instead")
     def load_from_pretrained(
         cls, path: str, device: str = "cpu", dtype: str | None = None
     ) -> "SAE":
-        # get the config
-        config_path = os.path.join(path, SAE_CFG_FILENAME)
-        with open(config_path) as f:
-            cfg_dict = json.load(f)
-        cfg_dict = handle_config_defaulting(cfg_dict)
-        cfg_dict["device"] = device
+        sae = cls.load_from_disk(path, device)
         if dtype is not None:
-            cfg_dict["dtype"] = dtype
+            sae.cfg.dtype = dtype
+            sae = sae.to(dtype)
+        return sae
 
-        weight_path = os.path.join(path, SAE_WEIGHTS_FILENAME)
-        cfg_dict, state_dict = read_sae_from_disk(
-            cfg_dict=cfg_dict,
-            weight_path=weight_path,
-            device=device,
-        )
-
+    @classmethod
+    def load_from_disk(
+        cls,
+        path: str,
+        device: str = "cpu",
+        dtype: str | None = None,
+        converter: PretrainedSaeDiskLoader = sae_lens_disk_loader,
+    ) -> "SAE":
+        overrides = {"dtype": dtype} if dtype is not None else None
+        cfg_dict, state_dict = converter(path, device, cfg_overrides=overrides)
+        cfg_dict = handle_config_defaulting(cfg_dict)
         sae_cfg = SAEConfig.from_dict(cfg_dict)
-
         sae = cls(sae_cfg)
         sae.process_state_dict_for_loading(state_dict)
         sae.load_state_dict(state_dict)
-
         return sae
 
     @classmethod
@@ -565,9 +570,10 @@ class SAE(HookedRootModule):
         release: str,
         sae_id: str,
         device: str = "cpu",
+        force_download: bool = False,
+        converter: PretrainedSaeHuggingfaceLoader | None = None,
     ) -> tuple["SAE", dict[str, Any], torch.Tensor | None]:
         """
-
         Load a pretrained SAE from the Hugging Face model hub.
 
         Args:
@@ -616,19 +622,23 @@ class SAE(HookedRootModule):
                 f"ID {sae_id} not found in release {release}. Valid IDs are {str_valid_ids}."
                 + value_suffix
             )
-        sae_info = sae_directory.get(release, None)
-        config_overrides = sae_info.config_overrides if sae_info is not None else None
 
-        conversion_loader_name = get_conversion_loader_name(sae_info)
-        conversion_loader = NAMED_PRETRAINED_SAE_LOADERS[conversion_loader_name]
+        conversion_loader = (
+            converter
+            or NAMED_PRETRAINED_SAE_LOADERS[get_conversion_loader_name(release)]
+        )
+        repo_id, folder_name = get_repo_id_and_folder_name(release, sae_id)
+        config_overrides = get_config_overrides(release, sae_id)
+        config_overrides["device"] = device
 
         cfg_dict, state_dict, log_sparsities = conversion_loader(
-            release,
-            sae_id=sae_id,
+            repo_id=repo_id,
+            folder_name=folder_name,
             device=device,
-            force_download=False,
+            force_download=force_download,
             cfg_overrides=config_overrides,
         )
+        cfg_dict = handle_config_defaulting(cfg_dict)
 
         sae = cls(SAEConfig.from_dict(cfg_dict))
         sae.process_state_dict_for_loading(state_dict)

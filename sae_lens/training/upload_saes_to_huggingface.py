@@ -9,7 +9,12 @@ from huggingface_hub.utils import EntryNotFoundError, RepositoryNotFoundError
 from tqdm.autonotebook import tqdm
 
 from sae_lens import logger
-from sae_lens.sae import SAE, SAE_CFG_FILENAME, SAE_WEIGHTS_FILENAME, SPARSITY_FILENAME
+from sae_lens.config import (
+    SAE_CFG_FILENAME,
+    SAE_WEIGHTS_FILENAME,
+    SPARSITY_FILENAME,
+)
+from sae_lens.sae import SAE
 
 
 def upload_saes_to_huggingface(

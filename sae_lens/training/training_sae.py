@@ -2,8 +2,6 @@
 https://github.com/ArthurConmy/sae/blob/main/sae/model.py
 """
 
-import json
-import os
 from dataclasses import dataclass, fields
 from typing import Any
 
@@ -12,13 +10,15 @@ import numpy as np
 import torch
 from jaxtyping import Float
 from torch import nn
+from typing_extensions import deprecated
 
 from sae_lens import logger
 from sae_lens.config import LanguageModelSAERunnerConfig
 from sae_lens.sae import SAE, SAEConfig
 from sae_lens.toolkit.pretrained_sae_loaders import (
+    PretrainedSaeDiskLoader,
     handle_config_defaulting,
-    read_sae_from_disk,
+    sae_lens_disk_loader,
 )
 
 SPARSITY_PATH = "sparsity.safetensors"
@@ -562,33 +562,27 @@ class TrainingSAE(SAE):
             state_dict["log_threshold"] = torch.log(threshold).detach().contiguous()
 
     @classmethod
+    @deprecated("Use load_from_disk instead")
     def load_from_pretrained(
+        cls, path: str, device: str = "cpu", dtype: str | None = None
+    ) -> "TrainingSAE":
+        return cls.load_from_disk(path, device, dtype)
+
+    @classmethod
+    def load_from_disk(
         cls,
         path: str,
         device: str = "cpu",
         dtype: str | None = None,
+        converter: PretrainedSaeDiskLoader = sae_lens_disk_loader,
     ) -> "TrainingSAE":
-        # get the config
-        config_path = os.path.join(path, SAE_CFG_PATH)
-        with open(config_path) as f:
-            cfg_dict = json.load(f)
+        overrides = {"dtype": dtype} if dtype is not None else None
+        cfg_dict, state_dict = converter(path, device, cfg_overrides=overrides)
         cfg_dict = handle_config_defaulting(cfg_dict)
-        cfg_dict["device"] = device
-        if dtype is not None:
-            cfg_dict["dtype"] = dtype
-
-        weight_path = os.path.join(path, SAE_WEIGHTS_PATH)
-        cfg_dict, state_dict = read_sae_from_disk(
-            cfg_dict=cfg_dict,
-            weight_path=weight_path,
-            device=device,
-        )
         sae_cfg = TrainingSAEConfig.from_dict(cfg_dict)
-
         sae = cls(sae_cfg)
         sae.process_state_dict_for_loading(state_dict)
         sae.load_state_dict(state_dict)
-
         return sae
 
     def initialize_weights_complex(self):
