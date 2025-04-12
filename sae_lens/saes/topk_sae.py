@@ -285,32 +285,30 @@ class TopKTrainingSAE(BaseTrainingSAE):
         them reconstruct the residual error from the live neurons. It's a key part of
         preventing neuron death in TopK SAEs.
         """
-        # Check if we have any dead neurons to work with
-        if (
-            dead_neuron_mask is not None
-            and (num_dead := int(dead_neuron_mask.sum())) > 0
-        ):
-            residual = sae_in - sae_out
+        # Mostly taken from https://github.com/EleutherAI/sae/blob/main/sae/sae.py, except without variance normalization
+        # NOTE: checking the number of dead neurons will force a GPU sync, so performance can likely be improved here
+        if dead_neuron_mask is None or (num_dead := int(dead_neuron_mask.sum())) == 0:
+            return sae_out.new_tensor(0.0)
+        residual = (sae_in - sae_out).detach()
 
-            # Heuristic from Appendix B.1 in the paper - use ~50% of features
-            k_aux = hidden_pre.shape[-1] // 2
+        # Heuristic from Appendix B.1 in the paper
+        k_aux = sae_in.shape[-1] // 2
 
-            # Reduce the scale of the loss if there are fewer dead neurons than k_aux
-            scale = min(num_dead / k_aux, 1.0)
-            k_aux = min(k_aux, num_dead)
+        # Reduce the scale of the loss if there are a small number of dead latents
+        scale = min(num_dead / k_aux, 1.0)
+        k_aux = min(k_aux, num_dead)
 
-            # Calculate the activations for the top-k dead neurons
-            auxk_acts = self._calculate_topk_aux_acts(
-                k_aux, hidden_pre, dead_neuron_mask
-            )
+        auxk_acts = _calculate_topk_aux_acts(
+            k_aux=k_aux,
+            hidden_pre=hidden_pre,
+            dead_neuron_mask=dead_neuron_mask,
+        )
 
-            # Encourage the top dead latents to predict the residual
-            recons = self.decode(auxk_acts)
-            auxk_loss = (recons - residual).pow(2).sum(dim=-1).mean()
-            return scale * auxk_loss
-
-        # If no dead neurons or mask not provided, return zero loss
-        return torch.tensor(0.0, device=self.device)
+        # Encourage the top ~50% of dead latents to predict the residual of the
+        # top k living latents
+        recons = self.decode(auxk_acts)
+        auxk_loss = (recons - residual).pow(2).sum(dim=-1).mean()
+        return scale * auxk_loss
 
     def _calculate_topk_aux_acts(
         self,
@@ -344,3 +342,19 @@ class TopKTrainingSAE(BaseTrainingSAE):
         auxk_acts.scatter_(-1, auxk_topk.indices, auxk_topk.values)
 
         return auxk_acts
+
+
+def _calculate_topk_aux_acts(
+    k_aux: int,
+    hidden_pre: torch.Tensor,
+    dead_neuron_mask: torch.Tensor,
+) -> torch.Tensor:
+    # Don't include living latents in this loss
+    auxk_latents = torch.where(dead_neuron_mask[None], hidden_pre, -torch.inf)
+    # Top-k dead latents
+    auxk_topk = auxk_latents.topk(k_aux, sorted=False)
+    # Set the activations to zero for all but the top k_aux dead latents
+    auxk_acts = torch.zeros_like(hidden_pre)
+    auxk_acts.scatter_(-1, auxk_topk.indices, auxk_topk.values)
+    # Set activations to zero for all but top k_aux dead latents
+    return auxk_acts
