@@ -200,3 +200,34 @@ def test_build_train_step_log_dict(trainer: CrosscoderSAETrainer) -> None:
     }.items():
         assert abs(val - log_dict[key]) < 1e-6
 
+
+def test_train_sae_group_on_language_model__runs(
+    ts_model: HookedTransformer,
+    tmp_path: Path,
+) -> None:
+    checkpoint_dir = tmp_path / "checkpoint"
+    cfg = build_sae_cfg(
+        checkpoint_path=str(checkpoint_dir),
+        training_tokens=20,
+        context_size=8,
+        hook_name="blocks.{}.hook_mlp_out",
+        hook_layers=[1,2,3],
+        normalize_sae_decoder=False,
+        scale_sparsity_penalty_by_decoder_norm=True,
+    )
+    # just a tiny datast which will run quickly
+    dataset = Dataset.from_list([{"text": "hello world"}] * 100)
+    activation_store = ActivationsStore.from_config(
+        ts_model, cfg, override_dataset=dataset
+    )
+    sae = TrainingCrosscoderSAE.from_dict(cfg.get_training_sae_cfg_dict(),
+                                          use_error_term=True)
+    sae = CrosscoderSAETrainer(
+        model=ts_model,
+        sae=sae,
+        activation_store=activation_store,
+        save_checkpoint_fn=lambda *args, **kwargs: None,  # noqa: ARG005
+        cfg=cfg,
+    ).fit()
+
+    assert isinstance(sae, TrainingCrosscoderSAE)
