@@ -22,7 +22,7 @@ Please refer to the [documentation](https://jbloomaus.github.io/SAELens/) for in
 
 SAE Lens is the result of many contributors working collectively to improve humanity's understanding of neural networks, many of whom are motivated by a desire to [safeguard humanity from risks posed by artificial intelligence](https://80000hours.org/problem-profiles/artificial-intelligence/).
 
-This library is maintained by [Joseph Bloom](https://www.jbloomaus.com/) and [David Chanin](https://github.com/chanind).
+This library is maintained by [Joseph Bloom](https://www.jbloomaus.com/), [Curt Tigges](https://curttigges.com/), [Anthony Duong](https://github.com/anthonyduong9) and [David Chanin](https://github.com/chanind).
 
 ## Loading Pre-trained SAEs.
 
@@ -49,7 +49,7 @@ Please cite the package as follows:
 ```
 @misc{bloom2024saetrainingcodebase,
    title = {SAELens},
-   author = {Joseph Bloom, Curt Tigges and David Chanin},
+   author = {Joseph Bloom, Curt Tigges, Anthony Duong and David Chanin},
    year = {2024},
    howpublished = {\url{https://github.com/jbloomAus/SAELens}},
 }
