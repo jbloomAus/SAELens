@@ -98,7 +98,6 @@ class TrainingCrosscoderSAE(CrosscoderSAE, TrainingSAE):
     def __init__(self,
                  cfg: TrainingCrosscoderSAEConfig,
                  use_error_term: bool = False):
-        print(cfg)
         super().__init__(cfg, use_error_term=use_error_term)
 
     @classmethod
