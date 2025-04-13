@@ -210,3 +210,41 @@ def test_sae_forward_with_mse_loss_norm(
         == training_crosscoder_sae.cfg.l1_coefficient * expected_l1_loss.detach().float()
     )
 
+
+def test_SparseAutoencoder_forward_can_add_noise_to_hidden_pre() -> None:
+    clean_cfg = build_sae_cfg(
+        d_in=2,
+        d_sae=4,
+        noise_scale=0,
+        hook_layers=[1,2,3,4,5],
+        normalize_sae_decoder=False,
+        scale_sparsity_penalty_by_decoder_norm=True
+    )
+    noisy_cfg = build_sae_cfg(
+        d_in=2,
+        d_sae=4,
+        noise_scale=100,
+        hook_layers=[1,2,3,4,5],
+        normalize_sae_decoder=False,
+        scale_sparsity_penalty_by_decoder_norm=True
+    )
+    clean_sae = TrainingCrosscoderSAE(
+        TrainingCrosscoderSAEConfig.from_sae_runner_config(clean_cfg),
+        use_error_term=True)
+    noisy_sae = TrainingCrosscoderSAE(
+        TrainingCrosscoderSAEConfig.from_sae_runner_config(noisy_cfg),
+        use_error_term=True)
+
+    input = torch.randn(3, 5, 2)
+
+    clean_output1 = clean_sae.forward(input)
+    clean_output2 = clean_sae.forward(input)
+    noisy_output1 = noisy_sae.forward(input)
+    noisy_output2 = noisy_sae.forward(input)
+
+    # with no noise, the outputs should be identical
+    assert torch.allclose(clean_output1, clean_output2)
+    # noisy outputs should be different
+    assert not torch.allclose(noisy_output1, noisy_output2)
+    assert not torch.allclose(clean_output1, noisy_output1)
+
