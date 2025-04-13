@@ -149,3 +149,64 @@ def test_sae_forward(training_crosscoder_sae: TrainingCrosscoderSAE):
         == training_crosscoder_sae.cfg.l1_coefficient * expected_l1_loss.detach().float()
     )
 
+
+def test_sae_forward_with_mse_loss_norm(
+    training_crosscoder_sae: TrainingCrosscoderSAE,
+):
+    # change the confgi and ensure the mse loss is calculated correctly
+    training_crosscoder_sae.cfg.mse_loss_normalization = "dense_batch"
+    training_crosscoder_sae.mse_loss_fn = training_crosscoder_sae._get_mse_loss_fn()
+
+    batch_size = 32
+    d_in = training_crosscoder_sae.cfg.d_in
+    n_layers = len(training_crosscoder_sae.cfg.hook_layers)
+    d_sae = training_crosscoder_sae.cfg.d_sae
+
+    x = torch.randn(batch_size, n_layers, d_in)
+    train_step_output = training_crosscoder_sae.training_forward_pass(
+        sae_in=x,
+        current_l1_coefficient=training_crosscoder_sae.cfg.l1_coefficient,
+    )
+
+    assert train_step_output.sae_out.shape == (batch_size, n_layers, d_in)
+    assert train_step_output.feature_acts.shape == (batch_size, d_sae)
+    assert "ghost_grad_loss" not in train_step_output.losses
+
+    x_centred = x - x.mean(dim=0, keepdim=True)
+    expected_mse_loss = (
+        (
+            torch.nn.functional.mse_loss(train_step_output.sae_out, x, reduction="none")
+            / (1e-6 + x_centred.norm(dim=-1, keepdim=True))
+        )
+        .sum(dim=-1)
+        .mean()
+        .detach()
+        .item()
+    )
+
+    assert (
+        pytest.approx(train_step_output.losses["mse_loss"].item()) == expected_mse_loss  # type: ignore
+    )
+
+    assert (
+        pytest.approx(train_step_output.loss.detach(), rel=1e-3)
+        == (
+            train_step_output.losses["mse_loss"]
+            + train_step_output.losses["l1_loss"]
+            + train_step_output.losses.get("ghost_grad_loss", 0.0)
+        )
+        .detach()  # type: ignore
+        .numpy()
+    )
+
+    expected_l1_loss = (
+        (train_step_output.feature_acts *
+         training_crosscoder_sae.W_dec.norm(dim=2).sum(dim=1))
+        .norm(dim=1, p=1)
+        .mean()
+    )
+    assert (
+        pytest.approx(train_step_output.losses["l1_loss"].item(), rel=1e-3)  # type: ignore
+        == training_crosscoder_sae.cfg.l1_coefficient * expected_l1_loss.detach().float()
+    )
+
