@@ -1,7 +1,8 @@
 import json
 import math
 import os
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
 from typing import Any, Literal, Optional, cast
 
 import torch
@@ -28,6 +29,51 @@ DTYPE_MAP = {
 }
 
 HfDataset = DatasetDict | Dataset | IterableDatasetDict | IterableDataset
+
+
+@dataclass
+class LoggingConfig:
+    # WANDB
+    log_to_wandb: bool = True
+    log_activations_store_to_wandb: bool = False
+    log_optimizer_state_to_wandb: bool = False
+    wandb_project: str = "sae_lens_training"
+    wandb_id: str | None = None
+    run_name: str | None = None
+    wandb_entity: str | None = None
+    wandb_log_frequency: int = 10
+    eval_every_n_wandb_logs: int = 100  # logs every 100 steps.
+
+    def log(
+        self,
+        trainer: Any,  # avoid import cycle from importing SAETrainer
+        weights_path: Path | str,
+        cfg_path: Path | str,
+        sparsity_path: Path | str,
+        wandb_aliases: list[str] | None = None,
+    ) -> None:
+        # Avoid wandb saving errors such as:
+        #   ValueError: Artifact name may only contain alphanumeric characters, dashes, underscores, and dots. Invalid name: sae_google/gemma-2b_etc
+        sae_name = trainer.sae.get_name().replace("/", "__")
+
+        # save model weights and cfg
+        model_artifact = wandb.Artifact(
+            sae_name,
+            type="model",
+            metadata=dict(trainer.cfg.__dict__),
+        )
+        model_artifact.add_file(str(weights_path))
+        model_artifact.add_file(str(cfg_path))
+        wandb.log_artifact(model_artifact, aliases=wandb_aliases)
+
+        # save log feature sparsity
+        sparsity_artifact = wandb.Artifact(
+            f"{sae_name}_log_feature_sparsity",
+            type="log_feature_sparsity",
+            metadata=dict(trainer.cfg.__dict__),
+        )
+        sparsity_artifact.add_file(str(sparsity_path))
+        wandb.log_artifact(sparsity_artifact)
 
 
 @dataclass
@@ -223,16 +269,7 @@ class LanguageModelSAERunnerConfig:
     n_eval_batches: int = 10
     eval_batch_size_prompts: int | None = None  # useful if evals cause OOM
 
-    # WANDB
-    log_to_wandb: bool = True
-    log_activations_store_to_wandb: bool = False
-    log_optimizer_state_to_wandb: bool = False
-    wandb_project: str = "mats_sae_training_language_model"
-    wandb_id: Optional[str] = None
-    run_name: Optional[str] = None
-    wandb_entity: Optional[str] = None
-    wandb_log_frequency: int = 10
-    eval_every_n_wandb_logs: int = 100  # logs every 1000 steps.
+    logger: LoggingConfig = field(default_factory=LoggingConfig)
 
     # Misc
     resume: bool = False
@@ -288,8 +325,8 @@ class LanguageModelSAERunnerConfig:
             self.train_batch_size_tokens * self.context_size * self.n_batches_in_buffer
         )
 
-        if self.run_name is None:
-            self.run_name = f"{self.d_sae}-L1-{self.l1_coefficient}-LR-{self.lr}-Tokens-{self.training_tokens:3.3e}"
+        if self.logger.run_name is None:
+            self.logger.run_name = f"{self.d_sae}-L1-{self.l1_coefficient}-LR-{self.lr}-Tokens-{self.training_tokens:3.3e}"
 
         if self.model_from_pretrained_kwargs is None:
             if self.model_class_name == "HookedTransformer":
@@ -334,7 +371,7 @@ class LanguageModelSAERunnerConfig:
         if self.lr_end is None:
             self.lr_end = self.lr / 10
 
-        unique_id = self.wandb_id
+        unique_id = self.logger.wandb_id
         if unique_id is None:
             unique_id = cast(
                 Any, wandb
@@ -366,7 +403,9 @@ class LanguageModelSAERunnerConfig:
             ) // self.train_batch_size_tokens
             logger.info(f"Total training steps: {total_training_steps}")
 
-            total_wandb_updates = total_training_steps // self.wandb_log_frequency
+            total_wandb_updates = (
+                total_training_steps // self.logger.wandb_log_frequency
+            )
             logger.info(f"Total wandb updates: {total_wandb_updates}")
 
             # how many times will we sample dead neurons?
@@ -456,13 +495,16 @@ class LanguageModelSAERunnerConfig:
         }
 
     def to_dict(self) -> dict[str, Any]:
-        return {
-            **self.__dict__,
-            # some args may not be serializable by default
-            "dtype": str(self.dtype),
-            "device": str(self.device),
-            "act_store_device": str(self.act_store_device),
-        }
+        # Make a shallow copy of config’s dictionary
+        d = dict(self.__dict__)
+
+        d["logger"] = asdict(self.logger)
+
+        # Overwrite fields that might not be JSON-serializable
+        d["dtype"] = str(self.dtype)
+        d["device"] = str(self.device)
+        d["act_store_device"] = str(self.act_store_device)
+        return d
 
     def to_json(self, path: str) -> None:
         if not os.path.exists(os.path.dirname(path)):
