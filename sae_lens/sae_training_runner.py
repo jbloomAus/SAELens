@@ -160,6 +160,7 @@ class SAETrainingRunner:
         return sae
 
     # TODO: move this into the SAE trainer or Training SAE class
+    # TODO(mkbehr): support crosscoders.
     def _init_sae_group_b_decs(
         self,
     ) -> None:
