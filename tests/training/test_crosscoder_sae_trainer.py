@@ -151,3 +151,52 @@ def test_train_step__sparsity_updates_based_on_feature_act_sparsity(
         == 0
     )
     assert train_output.feature_acts is feature_acts
+
+def test_build_train_step_log_dict(trainer: CrosscoderSAETrainer) -> None:
+    sae_in = torch.tensor([[[-1, 0], [-2, 0]],
+                           [[0, 2], [0, 3]],
+                           [[1, 1], [1, 1]]]).float()
+    sae_out = torch.tensor([[[0, 0], [0, 0]],
+                            [[0, 2], [0, 3]],
+                            [[0.5, 1], [1, 0.5]]]).float()
+    train_output = TrainStepOutput(
+        sae_in=sae_in,
+        sae_out=sae_out,
+        feature_acts=torch.tensor([[0, 0, 0, 1], [1, 0, 0, 1], [1, 0, 1, 1]]).float(),
+        hidden_pre=torch.tensor([[-1, 0, 0, 1], [1, -1, 0, 1], [1, -1, 1, 1]]).float(),
+        loss=torch.tensor(0.5),
+        losses={
+            "mse_loss": 0.25,
+            "l1_loss": 0.1,
+            "ghost_grad_loss": 0.15,
+        },
+    )
+
+    per_token_l2_loss = (sae_out - sae_in).pow(2).sum(dim=(-2, -1)).squeeze()
+    total_variance = (sae_in - sae_in.mean(0)).pow(2).sum((-2, -1))
+    explained_variance = 1 - per_token_l2_loss / total_variance
+
+    # we're relying on the trainer only for some of the metrics here
+    # we should more / less try to break this and push
+    # everything through the train step output if we can.
+    log_dict = trainer._build_train_step_log_dict(
+        output=train_output, n_training_tokens=123
+    )
+    for key, val in {
+        "losses/mse_loss": 0.25,
+        # l1 loss is scaled by l1_coefficient
+        "losses/l1_loss": train_output.losses["l1_loss"] / trainer.cfg.l1_coefficient,
+        "losses/raw_l1_loss": train_output.losses["l1_loss"],
+        "losses/overall_loss": 0.5,
+        "losses/ghost_grad_loss": 0.15,
+        "metrics/explained_variance": explained_variance.mean().item(),
+        "metrics/explained_variance_std": explained_variance.std().item(),
+        "metrics/l0": 2.0,
+        "sparsity/mean_passes_since_fired": trainer.n_forward_passes_since_fired.mean().item(),
+        "sparsity/dead_features": trainer.dead_neurons.sum().item(),
+        "details/current_learning_rate": 2e-4,
+        "details/current_l1_coefficient": trainer.cfg.l1_coefficient,
+        "details/n_training_tokens": 123,
+    }.items():
+        assert abs(val - log_dict[key]) < 1e-6
+

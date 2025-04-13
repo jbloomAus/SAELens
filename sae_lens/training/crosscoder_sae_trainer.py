@@ -5,7 +5,7 @@ import wandb
 from tqdm import tqdm
 
 from sae_lens.evals import run_evals
-from sae_lens.training.sae_trainer import SAETrainer
+from sae_lens.training.sae_trainer import SAETrainer, _unwrap_item
 from sae_lens.training.training_sae import TrainingSAE, TrainStepOutput
 
 # TODO(mkbehr): probably too much copypasting here
