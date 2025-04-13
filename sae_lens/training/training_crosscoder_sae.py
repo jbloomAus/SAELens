@@ -101,8 +101,11 @@ class TrainingCrosscoderSAE(CrosscoderSAE, TrainingSAE):
         super().__init__(cfg, use_error_term=use_error_term)
 
     @classmethod
-    def from_dict(cls, config_dict: dict[str, Any]) -> "TrainingSAE":
-        return cls(TrainingCrosscoderSAEConfig.from_dict(config_dict))
+    def from_dict(cls,
+                  config_dict: dict[str, Any],
+                  use_error_term: bool = False) -> "TrainingSAE":
+        return cls(TrainingCrosscoderSAEConfig.from_dict(config_dict),
+                   use_error_term = use_error_term)
 
     # TODO(mkbehr): hacking around multiple inheritance. there's
     # probably a better way.

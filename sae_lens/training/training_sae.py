@@ -185,7 +185,7 @@ class TrainingSAEConfig(SAEConfig):
             elif not isinstance(valid_config_dict["seqpos_slice"], tuple):
                 valid_config_dict["seqpos_slice"] = (valid_config_dict["seqpos_slice"],)
 
-        return TrainingSAEConfig(**valid_config_dict)
+        return cls(**valid_config_dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
