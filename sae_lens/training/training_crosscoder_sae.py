@@ -117,6 +117,8 @@ class TrainingCrosscoderSAE(CrosscoderSAE, TrainingSAE):
             raise ValueError("Crosscoders require scale_sparsity_penalty_by_decoder_norm")
         if not self.use_error_term:
             raise NotImplementedError("TODO(mkbehr): support causal crosscoders")
+        if self.cfg.use_ghost_grads:
+            raise NotImplementedError("TODO(mkbehr): support ghost grads")
         super().check_cfg_compatibility()
 
     def encode_with_hidden_pre(
