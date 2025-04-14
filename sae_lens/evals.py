@@ -5,11 +5,12 @@ import math
 import re
 import subprocess
 from collections import defaultdict
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from functools import partial
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Union
+from typing import Any
 
 import einops
 import pandas as pd
@@ -225,6 +226,9 @@ def run_evals(
                     "explained_variance": sparsity_variance_metrics[
                         "explained_variance"
                     ],
+                    "explained_variance_legacy": sparsity_variance_metrics[
+                        "explained_variance_legacy"
+                    ],
                     "mse": sparsity_variance_metrics["mse"],
                     "cossim": sparsity_variance_metrics["cossim"],
                 }
@@ -388,8 +392,14 @@ def get_sparsity_and_variance_metrics(
     if compute_sparsity_metrics:
         metric_dict["l0"] = []
         metric_dict["l1"] = []
+
+    mean_sum_of_squares = []  # for explained variance
+    mean_act_per_dimension = []  # for explained variance
+    mean_sum_of_resid_squared = []  # for explained variance
     if compute_variance_metrics:
-        metric_dict["explained_variance"] = []
+        # explained_variance is left out of the dict here, since we don't want to naively
+        # average over the batch dimension. This is handled later in the function.
+        metric_dict["explained_variance_legacy"] = []
         metric_dict["mse"] = []
         metric_dict["cossim"] = []
     if compute_featurewise_density_statistics:
@@ -460,9 +470,15 @@ def get_sparsity_and_variance_metrics(
         # TODO: Clean this up.
         # apply mask
         masked_sae_feature_activations = sae_feature_activations * mask.unsqueeze(-1)
-        flattened_sae_input = flattened_sae_input[flattened_mask]
-        flattened_sae_feature_acts = flattened_sae_feature_acts[flattened_mask]
-        flattened_sae_out = flattened_sae_out[flattened_mask]
+        flattened_sae_input = flattened_sae_input[
+            flattened_mask.to(flattened_sae_input.device)
+        ]
+        flattened_sae_feature_acts = flattened_sae_feature_acts[
+            flattened_mask.to(flattened_sae_feature_acts.device)
+        ]
+        flattened_sae_out = flattened_sae_out[
+            flattened_mask.to(flattened_sae_out.device)
+        ]
 
         if compute_l2_norms:
             l2_norm_in = torch.norm(flattened_sae_input, dim=-1)
@@ -496,12 +512,28 @@ def get_sparsity_and_variance_metrics(
             resid_sum_of_squares = (
                 (flattened_sae_input - flattened_sae_out).pow(2).sum(dim=-1)
             )
-            total_sum_of_squares = (
-                (flattened_sae_input - flattened_sae_input.mean(dim=0)).pow(2).sum(-1)
-            )
 
             mse = resid_sum_of_squares / flattened_mask.sum()
-            explained_variance = 1 - resid_sum_of_squares / total_sum_of_squares
+            # Explained variance (old, incorrect, formula)
+            batched_variance_sum = (
+                (flattened_sae_input - flattened_sae_input.mean(dim=0))
+                .pow(2)
+                .sum(dim=-1)
+            )
+            explained_variance_legacy = 1 - resid_sum_of_squares / batched_variance_sum
+            metric_dict["explained_variance_legacy"].append(explained_variance_legacy)
+            # Individual sums for the new (correct) formula. We're taking the mean over the batch
+            # dimension here to save memory, but we could also pass the full tensors and take the
+            # mean later (like we do for other metrics).
+            mean_sum_of_squares.append(
+                (flattened_sae_input).pow(2).sum(dim=-1).mean(dim=0)  # scalar
+            )
+            mean_act_per_dimension.append(
+                (flattened_sae_input).pow(2).mean(dim=0)  # [d_model]
+            )
+            mean_sum_of_resid_squared.append(
+                resid_sum_of_squares.mean(dim=0)  # scalar
+            )
 
             x_normed = flattened_sae_input / torch.norm(
                 flattened_sae_input, dim=-1, keepdim=True
@@ -511,7 +543,6 @@ def get_sparsity_and_variance_metrics(
             )
             cossim = (x_normed * x_hat_normed).sum(dim=-1)
 
-            metric_dict["explained_variance"].append(explained_variance)
             metric_dict["mse"].append(mse)
             metric_dict["cossim"].append(cossim)
 
@@ -527,6 +558,14 @@ def get_sparsity_and_variance_metrics(
     metrics: dict[str, float] = {}
     for metric_name, metric_values in metric_dict.items():
         metrics[f"{metric_name}"] = torch.cat(metric_values).mean().item()
+
+    # calculate explained variance
+    if compute_variance_metrics:
+        mean_sum_of_squares = torch.stack(mean_sum_of_squares).mean(dim=0)
+        mean_act_per_dimension = torch.cat(mean_act_per_dimension).mean(dim=0)
+        total_variance = mean_sum_of_squares - mean_act_per_dimension**2
+        residual_variance = torch.stack(mean_sum_of_resid_squared).mean(dim=0)
+        metrics["explained_variance"] = (1 - residual_variance / total_variance).item()
 
     # Aggregate feature-wise metrics
     feature_metrics: dict[str, list[float]] = {}
@@ -746,7 +785,7 @@ def multiple_evals(
     ctx_lens: list[int] = [128],
     output_dir: str = "eval_results",
     verbose: bool = False,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     filtered_saes = get_saes_from_regex(sae_regex_pattern, sae_block_pattern)
@@ -829,7 +868,7 @@ def multiple_evals(
     return eval_results
 
 
-def run_evaluations(args: argparse.Namespace) -> List[Dict[str, Any]]:
+def run_evaluations(args: argparse.Namespace) -> list[dict[str, Any]]:
     # Filter SAEs based on regex patterns
     filtered_saes = get_saes_from_regex(args.sae_regex_pattern, args.sae_block_pattern)
 
@@ -864,8 +903,8 @@ def replace_nans_with_negative_one(obj: Any) -> Any:
 
 
 def process_results(
-    eval_results: List[Dict[str, Any]], output_dir: str
-) -> Dict[str, Union[List[Path], Path]]:
+    eval_results: list[dict[str, Any]], output_dir: str
+) -> dict[str, list[Path] | Path]:
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 

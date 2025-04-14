@@ -1,7 +1,6 @@
 import os
 import re
 import string
-from typing import Optional
 
 import nltk
 import numpy as np
@@ -161,9 +160,9 @@ def plot_top_k_feature_projections_by_token_and_category(
     dec_projection_onto_W_U: torch.Tensor,
     k: int = 5,
     projection_onto: str = "W_U",
-    features: Optional[list[int]] = None,
+    features: list[int] | None = None,
     log_y: bool = True,
-    histnorm: Optional[str] = None,
+    histnorm: str | None = None,
 ):
     if not os.path.exists("es_plots"):
         os.makedirs("es_plots")

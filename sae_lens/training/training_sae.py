@@ -2,21 +2,21 @@
 https://github.com/ArthurConmy/sae/blob/main/sae/model.py
 """
 
-import json
-import os
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional, Tuple, Union
+from typing import Any, Callable
 
 import einops
 import torch
 from jaxtyping import Float
 from torch import nn
+from typing_extensions import deprecated
 
 from sae_lens import logger
 from sae_lens.config import LanguageModelSAERunnerConfig
 from sae_lens.loading.pretrained_sae_loaders import (
+    PretrainedSaeDiskLoader,
     handle_config_defaulting,
-    read_sae_from_disk,
+    sae_lens_disk_loader,
 )
 from sae_lens.sae import SAE
 from sae_lens.saes.gated_sae import GatedTrainingSAE
@@ -142,7 +142,7 @@ class TrainingSAE(SAE):
 
     def __init__(
         self,
-        cfg: Union[TrainingSAEConfig, LanguageModelSAERunnerConfig],
+        cfg: TrainingSAEConfig | LanguageModelSAERunnerConfig,
         use_error_term: bool = False,
     ):
         """Initialize with the appropriate training SAE implementation."""
@@ -178,19 +178,19 @@ class TrainingSAE(SAE):
     # Basic delegation methods with training-specific functionality
     def encode_with_hidden_pre(
         self, x: Float[torch.Tensor, "... d_in"]
-    ) -> Tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
+    ) -> tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
         """Forward to the internal implementation's encode_with_hidden_pre method."""
         return self._sae.encode_with_hidden_pre(x)
 
     def encode_with_hidden_pre_fn(
         self, x: Float[torch.Tensor, "... d_in"]
-    ) -> Tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
+    ) -> tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
         """Forward to the appropriate encode_with_hidden_pre method based on architecture."""
         return self._sae.encode_with_hidden_pre(x)
 
     def encode_with_hidden_pre_gated(
         self, x: Float[torch.Tensor, "... d_in"]
-    ) -> Tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
+    ) -> tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
         """Forward to GatedTrainingSAE's encode_with_hidden_pre method."""
         if not isinstance(self._sae, GatedTrainingSAE):
             raise TypeError("This method is only available for Gated SAEs")
@@ -198,7 +198,7 @@ class TrainingSAE(SAE):
 
     def encode_with_hidden_pre_jumprelu(
         self, x: Float[torch.Tensor, "... d_in"]
-    ) -> Tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
+    ) -> tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
         """Forward to JumpReLUTrainingSAE's encode_with_hidden_pre method."""
         if not isinstance(self._sae, JumpReLUTrainingSAE):
             raise TypeError("This method is only available for JumpReLU SAEs")
@@ -208,7 +208,7 @@ class TrainingSAE(SAE):
         self,
         sae_in: torch.Tensor,
         current_l1_coefficient: float,
-        dead_neuron_mask: Optional[torch.Tensor] = None,
+        dead_neuron_mask: torch.Tensor | None = None,
     ) -> TrainStepOutput:
         """
         Forward to the internal implementation's training_forward_pass.
@@ -249,14 +249,14 @@ class TrainingSAE(SAE):
         return self._sae._get_mse_loss_fn()
 
     # State dict processing methods
-    def process_state_dict_for_saving(self, state_dict: Dict[str, Any]) -> None:
+    def process_state_dict_for_saving(self, state_dict: dict[str, Any]) -> None:
         """Forward to the internal implementation's process_state_dict_for_saving method."""
         if hasattr(self._sae, "process_state_dict_for_saving"):
             method = getattr(self._sae, "process_state_dict_for_saving")
             if callable(method):
                 method(state_dict)
 
-    def process_state_dict_for_loading(self, state_dict: Dict[str, Any]) -> None:
+    def process_state_dict_for_loading(self, state_dict: dict[str, Any]) -> None:
         """Forward to the internal implementation's process_state_dict_for_loading method."""
         if hasattr(self._sae, "process_state_dict_for_loading"):
             method = getattr(self._sae, "process_state_dict_for_loading")
@@ -311,38 +311,32 @@ class TrainingSAE(SAE):
 
     # Backward compatibility class methods
     @classmethod
-    def from_dict(cls, config_dict: Dict[str, Any]) -> "TrainingSAE":
+    def from_dict(cls, config_dict: dict[str, Any]) -> "TrainingSAE":
         """Create a TrainingSAE from a config dictionary."""
         return cls(TrainingSAEConfig.from_dict(config_dict))
 
     @classmethod
+    @deprecated("Use load_from_disk instead")
     def load_from_pretrained(
-        cls,
-        path: Union[str, Path],
-        device: str = "cpu",
-        dtype: Optional[str] = None,
+        cls, path: str | Path, device: str = "cpu", dtype: str | None = None
     ) -> "TrainingSAE":
-        """Load a pretrained TrainingSAE from disk."""
-        # get the config
-        config_path = os.path.join(path, SAE_CFG_PATH)
-        with open(config_path) as f:
-            cfg_dict = json.load(f)
+        return cls.load_from_disk(path, device, dtype)
+
+    @classmethod
+    def load_from_disk(
+        cls,
+        path: str | Path,
+        device: str = "cpu",
+        dtype: str | None = None,
+        converter: PretrainedSaeDiskLoader = sae_lens_disk_loader,
+    ) -> "TrainingSAE":
+        overrides = {"dtype": dtype} if dtype is not None else None
+        cfg_dict, state_dict = converter(path, device, cfg_overrides=overrides)
         cfg_dict = handle_config_defaulting(cfg_dict)
-        cfg_dict["device"] = device
-        if dtype is not None:
-            cfg_dict["dtype"] = dtype
-
-        weight_path = os.path.join(path, SAE_WEIGHTS_PATH)
-        cfg_dict, state_dict = read_sae_from_disk(
-            cfg_dict=cfg_dict,
-            weight_path=weight_path,
-            device=device,
-        )
-
         sae_cfg = TrainingSAEConfig.from_dict(cfg_dict)
         sae = cls(sae_cfg)
         sae.process_state_dict_for_loading(state_dict)
-        sae._sae.load_state_dict(state_dict)
+        sae.load_state_dict(state_dict)
         return sae
 
     def initialize_b_dec_with_precalculated(self, origin: torch.Tensor) -> None:
@@ -389,19 +383,3 @@ class TrainingSAE(SAE):
             hidden_pre=hidden_pre,
             dead_neuron_mask=dead_neuron_mask,
         )
-
-
-def _calculate_topk_aux_acts(
-    k_aux: int,
-    hidden_pre: torch.Tensor,
-    dead_neuron_mask: torch.Tensor,
-) -> torch.Tensor:
-    # Don't include living latents in this loss
-    auxk_latents = torch.where(dead_neuron_mask[None], hidden_pre, -torch.inf)
-    # Top-k dead latents
-    auxk_topk = auxk_latents.topk(k_aux, sorted=False)
-    # Set the activations to zero for all but the top k_aux dead latents
-    auxk_acts = torch.zeros_like(hidden_pre)
-    auxk_acts.scatter_(-1, auxk_topk.indices, auxk_topk.values)
-    # Set activations to zero for all but top k_aux dead latents
-    return auxk_acts

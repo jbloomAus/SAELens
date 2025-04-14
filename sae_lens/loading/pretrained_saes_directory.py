@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from functools import cache
 from importlib import resources
-from typing import Optional
+from typing import Any
 
 import yaml
 
@@ -56,7 +56,7 @@ def get_pretrained_saes_directory() -> dict[str, PretrainedSAELookup]:
     return directory
 
 
-def get_norm_scaling_factor(release: str, sae_id: str) -> Optional[float]:
+def get_norm_scaling_factor(release: str, sae_id: str) -> float | None:
     """
     Retrieve the norm_scaling_factor for a specific SAE if it exists.
 
@@ -65,7 +65,7 @@ def get_norm_scaling_factor(release: str, sae_id: str) -> Optional[float]:
         sae_id (str): The ID of the specific SAE.
 
     Returns:
-        Optional[float]: The norm_scaling_factor if it exists, None otherwise.
+        float | None: The norm_scaling_factor if it exists, None otherwise.
     """
     package = "sae_lens"
     with resources.open_text(package, "pretrained_saes.yaml") as file:
@@ -90,3 +90,14 @@ def get_repo_id_and_folder_name(release: str, sae_id: str) -> tuple[str, str]:
     repo_id = sae_info.repo_id
     folder_name = sae_info.saes_map[sae_id]
     return repo_id, folder_name
+
+
+def get_config_overrides(release: str, sae_id: str) -> dict[str, Any]:
+    saes_directory = get_pretrained_saes_directory()
+    sae_info = saes_directory.get(release, None)
+    config_overrides = {}
+    if sae_info is not None:
+        config_overrides = {**(sae_info.config_overrides or {})}
+        if sae_info.neuronpedia_id is not None and sae_id in sae_info.neuronpedia_id:
+            config_overrides["neuronpedia_id"] = sae_info.neuronpedia_id[sae_id]
+    return config_overrides

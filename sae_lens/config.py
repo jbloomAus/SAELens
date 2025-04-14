@@ -3,8 +3,9 @@ import math
 import os
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Literal, Optional, cast
+from typing import Any, Literal, cast
 
+import simple_parsing
 import torch
 import wandb
 from datasets import (
@@ -29,6 +30,28 @@ DTYPE_MAP = {
 }
 
 HfDataset = DatasetDict | Dataset | IterableDatasetDict | IterableDataset
+
+
+SPARSITY_FILENAME = "sparsity.safetensors"
+SAE_WEIGHTS_FILENAME = "sae_weights.safetensors"
+SAE_CFG_FILENAME = "cfg.json"
+
+
+# calling this "json_dict" so error messages will reference "json_dict" being invalid
+def json_dict(s: str) -> Any:
+    res = json.loads(s)
+    if res is not None and not isinstance(res, dict):
+        raise ValueError(f"Expected a dictionary, got {type(res)}")
+    return res
+
+
+def dict_field(default: dict[str, Any] | None, **kwargs: Any) -> Any:  # type: ignore
+    """
+    Helper to wrap simple_parsing.helpers.dict_field so we can load JSON fields from the command line.
+    """
+    if default is None:
+        return simple_parsing.helpers.field(default=None, type=json_dict, **kwargs)
+    return simple_parsing.helpers.dict_field(default, type=json_dict, **kwargs)
 
 
 @dataclass
@@ -172,30 +195,30 @@ class LanguageModelSAERunnerConfig:
     hook_name: str = "blocks.0.hook_mlp_out"
     hook_eval: str = "NOT_IN_USE"
     hook_layer: int = 0
-    hook_head_index: Optional[int] = None
+    hook_head_index: int | None = None
     dataset_path: str = ""
     dataset_trust_remote_code: bool = True
     streaming: bool = True
     is_dataset_tokenized: bool = True
     context_size: int = 128
     use_cached_activations: bool = False
-    cached_activations_path: Optional[str] = (
+    cached_activations_path: str | None = (
         None  # Defaults to "activations/{dataset}/{model}/{full_hook_name}_{hook_head_index}"
     )
 
     # SAE Parameters
     architecture: Literal["standard", "gated", "jumprelu", "topk"] = "standard"
     d_in: int = 512
-    d_sae: Optional[int] = None
+    d_sae: int | None = None
     b_dec_init_method: str = "geometric_median"
-    expansion_factor: Optional[int] = (
+    expansion_factor: int | None = (
         None  # defaults to 4 if d_sae and expansion_factor is None
     )
     activation_fn: str = None  # relu, tanh-relu, topk. Default is relu. # type: ignore
-    activation_fn_kwargs: dict[str, Any] = None  # for topk # type: ignore
+    activation_fn_kwargs: dict[str, int] = dict_field(default=None)  # for topk
     normalize_sae_decoder: bool = True
     noise_scale: float = 0.0
-    from_pretrained_path: Optional[str] = None
+    from_pretrained_path: str | None = None
     apply_b_dec_to_input: bool = True
     decoder_orthogonal_init: bool = False
     decoder_heuristic_init: bool = False
@@ -206,7 +229,6 @@ class LanguageModelSAERunnerConfig:
     training_tokens: int = 2_000_000
     finetuning_tokens: int = 0
     store_batch_size_prompts: int = 32
-    train_batch_size_tokens: int = 4096
     normalize_activations: str = "none"  # none, expected_average_only_in (Anthropic April Update), constant_norm_rescale (Anthropic Feb Update)
     seqpos_slice: tuple[int | None, ...] = (None,)
 
@@ -239,7 +261,7 @@ class LanguageModelSAERunnerConfig:
     adam_beta2: float = 0.999
 
     ## Loss Function
-    mse_loss_normalization: Optional[str] = None
+    mse_loss_normalization: str | None = None
     l1_coefficient: float = 1e-3
     lp_norm: float = 1
     scale_sparsity_penalty_by_decoder_norm: bool = False
@@ -251,12 +273,12 @@ class LanguageModelSAERunnerConfig:
         "constant"  # constant, cosineannealing, cosineannealingwarmrestarts
     )
     lr_warm_up_steps: int = 0
-    lr_end: Optional[float] = None  # only used for cosine annealing, default is lr / 10
+    lr_end: float | None = None  # only used for cosine annealing, default is lr / 10
     lr_decay_steps: int = 0
     n_restart_cycles: int = 1  # used only for cosineannealingwarmrestarts
 
     ## FineTuning
-    finetuning_method: Optional[str] = None  # scale, decoder or unrotated_decoder
+    finetuning_method: str | None = None  # scale, decoder or unrotated_decoder
 
     # Resampling protocol args
     use_ghost_grads: bool = False  # want to change this to true on some timeline.
@@ -276,8 +298,8 @@ class LanguageModelSAERunnerConfig:
     n_checkpoints: int = 0
     checkpoint_path: str = "checkpoints"
     verbose: bool = True
-    model_kwargs: dict[str, Any] = field(default_factory=dict)
-    model_from_pretrained_kwargs: dict[str, Any] | None = None
+    model_kwargs: dict[str, Any] = dict_field(default={})
+    model_from_pretrained_kwargs: dict[str, Any] | None = dict_field(default=None)
     sae_lens_version: str = field(default_factory=lambda: __version__)
     sae_lens_training_version: str = field(default_factory=lambda: __version__)
     exclude_special_tokens: bool | list[int] = False
@@ -668,77 +690,6 @@ class CacheActivationsRunnerConfig:
         return math.ceil(self.training_tokens / self.n_tokens_in_buffer)
 
 
-@dataclass
-class ToyModelSAERunnerConfig:
-    architecture: Literal["standard", "gated"] = "standard"
-
-    # ReLu Model Parameters
-    n_features: int = 5
-    n_hidden: int = 2
-    n_correlated_pairs: int = 0
-    n_anticorrelated_pairs: int = 0
-    feature_probability: float = 0.025
-    model_training_steps: int = 10_000
-
-    # SAE Parameters
-    d_sae: int = 5
-
-    # Training Parameters
-    l1_coefficient: float = 1e-3
-    lr: float = 3e-4
-    train_batch_size: int = 1024
-    b_dec_init_method: str = "geometric_median"
-
-    # Sparsity / Dead Feature Handling
-    use_ghost_grads: bool = (
-        False  # not currently implemented, but SAE class expects it.
-    )
-    feature_sampling_window: int = 100
-    dead_feature_window: int = 100  # unless this window is larger feature sampling,
-    dead_feature_threshold: float = 1e-8
-
-    # Activation Store Parameters
-    total_training_tokens: int = 25_000
-
-    # WANDB
-    log_to_wandb: bool = True
-    wandb_project: str = "mats_sae_training_toy_model"
-    wandb_entity: str | None = None
-    wandb_log_frequency: int = 50
-
-    # Misc
-    device: str = "cuda" if torch.cuda.is_available() else "cpu"
-    seed: int = 42
-    checkpoint_path: str = "checkpoints"
-    dtype: str | torch.dtype = "float32"
-
-    def __post_init__(self):
-        self.d_in = self.n_hidden  # hidden for the ReLu model is the input for the SAE
-
-        if isinstance(self.dtype, str) and self.dtype not in DTYPE_MAP:
-            raise ValueError(
-                f"dtype must be one of {list(DTYPE_MAP.keys())}. Got {self.dtype}"
-            )
-        if isinstance(self.dtype, str):
-            self.dtype = DTYPE_MAP[self.dtype]
-
-    def get_base_sae_cfg_dict(self) -> dict[str, Any]:
-        # TO DO: Have the same hyperparameters as in the main sae runner.
-        return {
-            "architecture": self.architecture,
-            "d_in": self.d_in,
-            "d_sae": self.d_sae,
-            "dtype": self.dtype,
-            "device": self.device,
-            "model_name": "ToyModel",
-            "hook_name": "ToyModelHookPoint",
-            "hook_layer": 0,
-            "hook_head_index": None,
-            "activation_fn": "relu",
-            "apply_b_dec_to_input": True,
-        }
-
-
 def _default_cached_activations_path(
     dataset_path: str,
     model_name: str,
@@ -770,6 +721,7 @@ def _validate_seqpos(seqpos: tuple[int | None, ...], context_size: int) -> None:
 class PretokenizeRunnerConfig:
     tokenizer_name: str = "gpt2"
     dataset_path: str = ""
+    dataset_name: str | None = None
     dataset_trust_remote_code: bool | None = None
     split: str | None = "train"
     data_files: list[str] | None = None

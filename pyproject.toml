@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sae-lens"
-version = "5.4.0"
+version = "5.9.0"
 description = "Training and Analyzing Sparse Autoencoders (SAEs)"
 authors = ["Joseph Bloom"]
 readme = "README.md"
@@ -58,6 +58,7 @@ mkdocstrings = "^0.25.2"
 mkdocstrings-python = "^1.10.9"
 tabulate = "^0.9.0"
 ruff = "^0.7.4"
+sparsify = {git = "https://github.com/EleutherAI/sparsify"}
 
 [tool.poetry.extras]
 mamba = ["mamba-lens"]
@@ -70,6 +71,13 @@ select = ["UP", "TID", "I", "F", "E", "ARG", "SIM", "RET", "LOG", "T20"]
 [tool.ruff.lint.per-file-ignores]
 "benchmark/*" = ["T20"]
 "scripts/*" = ["T20"]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"typing.Union".msg = "Use `|` instead"
+"typing.Optional".msg = "Use `| None` instead"
+"typing.Dict".msg = "Use `dict` instead"
+"typing.Tuple".msg = "Use `tuple` instead"
+"typing.List".msg = "Use `list` instead"
 
 [tool.pyright]
 typeCheckingMode = "strict"

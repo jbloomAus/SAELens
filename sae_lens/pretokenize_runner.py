@@ -25,8 +25,10 @@ class PretokenizedDatasetMetadata:
     sae_lens_version: str
     tokenizer_name: str
     original_dataset: str
+    original_dataset_name: str | None
     original_split: str | None
     original_data_files: list[str] | None
+    original_column_name: str | None
     context_size: int
     shuffled: bool
     seed: int | None
@@ -40,8 +42,10 @@ def metadata_from_config(cfg: PretokenizeRunnerConfig) -> PretokenizedDatasetMet
         sae_lens_version=__version__,
         tokenizer_name=cfg.tokenizer_name,
         original_dataset=cfg.dataset_path,
+        original_dataset_name=cfg.dataset_name,
         original_split=cfg.split,
         original_data_files=cfg.data_files,
+        original_column_name=cfg.column_name,
         context_size=cfg.context_size,
         shuffled=cfg.shuffle,
         seed=cfg.seed,
@@ -99,16 +103,32 @@ def pretokenize_dataset(
             )
         }
 
-    tokenized_dataset = dataset.map(
-        process_examples,
-        batched=True,
-        batch_size=cfg.pretokenize_batch_size,
-        num_proc=cfg.num_proc,
-        remove_columns=dataset.column_names,
-    )
+    if cfg.streaming:
+        if cfg.num_proc > 1:
+            raise ValueError("num_proc must be 1 when streaming is True")
+        tokenized_dataset = dataset.map(
+            process_examples,
+            batched=True,
+            batch_size=cfg.pretokenize_batch_size,
+            remove_columns=dataset.column_names,
+        )
+    else:
+        tokenized_dataset = dataset.map(
+            process_examples,
+            batched=True,
+            batch_size=cfg.pretokenize_batch_size,
+            num_proc=cfg.num_proc,
+            remove_columns=dataset.column_names,
+        )
+
     if cfg.shuffle:
         tokenized_dataset = tokenized_dataset.shuffle(seed=cfg.seed)
-    tokenized_dataset.set_format(type="torch", columns=["input_ids"])
+
+    if cfg.streaming:
+        tokenized_dataset = tokenized_dataset.with_format(type="torch")
+    else:
+        tokenized_dataset.set_format(type="torch", columns=["input_ids"])
+
     return tokenized_dataset
 
 
@@ -164,6 +184,7 @@ class PretokenizeRunner:
         """
         dataset = load_dataset(
             self.cfg.dataset_path,
+            name=self.cfg.dataset_name,
             data_dir=self.cfg.data_dir,
             data_files=self.cfg.data_files,
             split=self.cfg.split,
