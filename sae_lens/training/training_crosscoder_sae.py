@@ -76,8 +76,8 @@ class TrainingCrosscoderSAEConfig(CrosscoderSAEConfig, TrainingSAEConfig):
 
     def to_dict(self) -> dict[str, Any]:
         # TODO(mkbehr): double-check this multiple inheritance. seems messy.
-        return (TrainingSAE.to_dict(self)
-                | CrosscoderSAE.to_dict(self)
+        return (TrainingSAEConfig.to_dict(self)
+                | CrosscoderSAEConfig.to_dict(self)
                 | {
                     "sparsity_penalty_decoder_norm_lp_norm":
                     self.sparsity_penalty_decoder_norm_lp_norm,
