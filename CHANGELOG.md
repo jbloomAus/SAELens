@@ -2,6 +2,21 @@
 
 
 
+## v5.9.1 (2025-04-16)
+
+### Chore
+
+* chore: update maintainer citation (#461) ([`929fe06`](https://github.com/jbloomAus/SAELens/commit/929fe0657a31340584ec6078b51ff4905b881967))
+
+### Fix
+
+* fix: replaces clone of sparsify with eai-sparsify-package (#462)
+
+* replaces clone of sparsify with eai-sparsify-package
+
+* bumps version ([`67c290c`](https://github.com/jbloomAus/SAELens/commit/67c290cae2581c5948baa3a926fb2181a66026ef))
+
+
 ## v5.9.0 (2025-04-11)
 
 ### Feature
