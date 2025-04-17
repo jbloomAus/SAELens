@@ -373,6 +373,14 @@ class ActivationsStore:
                 ),
             )
 
+    def hook_names(self) -> List[str]:
+        # TODO(mkbehr): better config setup than putting a magic
+        # string in the name
+        if "{}" in self.hook_name:
+            return [self.hook_name.format(layer)
+                    for layer in self.hook_layers]
+        return [self.hook_name]
+
     def load_cached_activation_dataset(self) -> Dataset | None:
         """
         Load the cached activation dataset from disk.
@@ -394,7 +402,8 @@ class ActivationsStore:
         # ---
         # Actual code
         activations_dataset = datasets.load_from_disk(self.cached_activations_path)
-        columns = [self.hook_name]
+        # TODO(mkbehr): test multiple layers
+        columns = self.hook_names()
         if "token_ids" in activations_dataset.column_names:
             columns.append("token_ids")
         activations_dataset.set_format(
@@ -537,15 +546,7 @@ class ActivationsStore:
         else:
             autocast_if_enabled = contextlib.nullcontext()
 
-        # TODO(mkbehr): This is awkward. It may make more sense to
-        # have a list of hook names.
-        hook_names = []
-        for layer in self.hook_layers:
-            if "{}" in self.hook_name:
-                hook_names.append(self.hook_name.format(layer))
-            else:
-                hook_names.append(self.hook_name)
-
+        hook_names = self.hook_names()
         stop_at_layer = max(self.hook_layers) + 1
 
         with autocast_if_enabled:
@@ -607,8 +608,7 @@ class ActivationsStore:
         raises StopIteration
         """
         assert self.cached_activation_dataset is not None
-        # In future, could be a list of multiple hook names
-        hook_names = [self.hook_name]
+        hook_names = self.hook_names()
         if not set(hook_names).issubset(self.cached_activation_dataset.column_names):
             raise ValueError(
                 f"Missing columns in dataset. Expected {hook_names}, "
