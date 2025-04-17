@@ -47,7 +47,7 @@ class CrosscoderSAE(SAE):
 
     def get_name(self):
         # TODO(mkbehr): think about the correct name
-        layers = ','.join([str(l) for l in self.cfg.hook_layers])
+        layers = '_'.join([str(l) for l in self.cfg.hook_layers])
         return f"sae_{self.cfg.model_name}_{self.cfg.hook_name}_layers{layers}_{self.cfg.d_sae}"
 
     @classmethod
