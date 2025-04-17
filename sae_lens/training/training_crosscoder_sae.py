@@ -6,6 +6,7 @@ from typing import Any
 import einops
 import torch
 from jaxtyping import Float
+from torch import nn
 
 from sae_lens.config import LanguageModelSAERunnerConfig
 from sae_lens.crosscoder_sae import CrosscoderSAE, CrosscoderSAEConfig
@@ -228,6 +229,40 @@ class TrainingCrosscoderSAE(CrosscoderSAE, TrainingSAE):
         sae.load_state_dict(state_dict)
 
         return sae
+
+    def initialize_weights_complex(self):
+        if self.cfg.decoder_orthogonal_init:
+            self.W_dec.data = nn.init.orthogonal_(
+                self.W_dec.data.permute((1,2,0))
+            ).permute((2,0,1))
+
+        elif self.cfg.decoder_heuristic_init:
+            self.W_dec = nn.Parameter(
+                torch.rand(
+                    self.cfg.d_sae, *self.input_shape(), dtype=self.dtype, device=self.device
+                )
+            )
+            self.initialize_decoder_norm_constant_norm()
+
+        # Then we initialize the encoder weights (either as the transpose of decoder or not)
+        if self.cfg.init_encoder_as_decoder_transpose:
+            self.W_enc.data = self.W_dec.data.permute((1,2,0)).clone().contiguous()
+        else:
+            self.W_enc = nn.Parameter(
+                torch.nn.init.kaiming_uniform_(
+                    torch.empty(
+                        *self.input_shape(),
+                        self.cfg.d_sae,
+                        dtype=self.dtype,
+                        device=self.device,
+                    )
+                )
+            )
+
+        if self.cfg.normalize_sae_decoder:
+            with torch.no_grad():
+                # Anthropic normalize this to have unit columns
+                self.set_decoder_norm_to_unit_norm()
 
     @torch.no_grad()
     def set_decoder_norm_to_unit_norm(self):
