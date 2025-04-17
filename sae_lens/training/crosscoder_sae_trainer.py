@@ -11,6 +11,17 @@ from sae_lens.training.training_sae import TrainingSAE, TrainStepOutput
 # TODO(mkbehr): probably too much copypasting here
 
 class CrosscoderSAETrainer(SAETrainer):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # TODO(mkbehr) hardcoding causal evals off for now
+        self.trainer_eval_config.compute_ce_loss=False
+        self.trainer_eval_config.compute_kl=False
+        # TODO(mkbehr) hardcoding l2/sparsity/variance off, since
+        # those evals don't work yet
+        self.trainer_eval_config.compute_l2_norms=False
+        self.trainer_eval_config.compute_sparsity_metrics=False
+        self.trainer_eval_config.compute_variance_metrics=False
+
     def fit(self) -> TrainingSAE:
         pbar = tqdm(total=self.cfg.total_training_tokens, desc="Training SAE")
 
@@ -112,14 +123,16 @@ class CrosscoderSAETrainer(SAETrainer):
                 ignore_tokens = set(
                     self.activations_store.exclude_special_tokens.tolist()
                 )
-            eval_metrics, _ = run_evals(
-                sae=self.sae,
-                activation_store=self.activations_store,
-                model=self.model,
-                eval_config=self.trainer_eval_config,
-                ignore_tokens=ignore_tokens,
-                model_kwargs=self.cfg.model_kwargs,
-            )  # not calculating featurwise metrics here.
+            # TODO(mkbehr): get some evals working
+            eval_metrics = {}
+            # eval_metrics, _ = run_evals(
+            #     sae=self.sae,
+            #     activation_store=self.activations_store,
+            #     model=self.model,
+            #     eval_config=self.trainer_eval_config,
+            #     ignore_tokens=ignore_tokens,
+            #     model_kwargs=self.cfg.model_kwargs,
+            # )  # not calculating featurwise metrics here.
 
             # Remove eval metrics that are already logged during training
             eval_metrics.pop("metrics/explained_variance", None)
