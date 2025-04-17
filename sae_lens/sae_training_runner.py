@@ -14,6 +14,8 @@ from sae_lens import logger
 from sae_lens.config import HfDataset, LanguageModelSAERunnerConfig
 from sae_lens.load_model import load_model
 from sae_lens.training.activations_store import ActivationsStore
+from sae_lens.training.crosscoder_sae_trainer import CrosscoderSAETrainer
+from sae_lens.training.training_crosscoder_sae import TrainingCrosscoderSAE
 from sae_lens.training.geometric_median import compute_geometric_median
 from sae_lens.training.sae_trainer import SAETrainer
 from sae_lens.training.training_sae import TrainingSAE, TrainingSAEConfig
@@ -100,13 +102,23 @@ class SAETrainingRunner:
                 id=self.cfg.wandb_id,
             )
 
-        trainer = SAETrainer(
-            model=self.model,
-            sae=self.sae,
-            activation_store=self.activations_store,
-            save_checkpoint_fn=self.save_checkpoint,
-            cfg=self.cfg,
-        )
+        # TODO(mkbehr): make a better way to get the right trainer in
+        if isinstance(self.sae, TrainingCrosscoderSAE):
+            trainer = CrosscoderSAETrainer(
+                model=self.model,
+                sae=self.sae,
+                activation_store=self.activations_store,
+                save_checkpoint_fn=self.save_checkpoint,
+                cfg=self.cfg,
+            )
+        else:
+            trainer = SAETrainer(
+                model=self.model,
+                sae=self.sae,
+                activation_store=self.activations_store,
+                save_checkpoint_fn=self.save_checkpoint,
+                cfg=self.cfg,
+            )
 
         self._compile_if_needed()
         sae = self.run_trainer_with_interruption_handling(trainer)
