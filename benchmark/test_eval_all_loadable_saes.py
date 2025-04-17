@@ -17,9 +17,7 @@ from sae_lens.evals import (
     run_evals,
     run_evaluations,
 )
-from sae_lens.toolkit.pretrained_sae_loaders import (
-    load_sae_config_from_huggingface,
-)
+from sae_lens.loading.pretrained_sae_loaders import load_sae_config_from_huggingface
 from tests.helpers import load_model_cached
 
 # from sae_lens.evals import run_evals

@@ -1,6 +1,6 @@
 import torch
 
-from sae_lens.config import LanguageModelSAERunnerConfig
+from sae_lens.config import LanguageModelSAERunnerConfig, LoggingConfig
 from sae_lens.sae_training_runner import SAETrainingRunner
 
 # os.environ["WANDB_MODE"] = "offline"  # turn this off if you want to see the output
@@ -87,9 +87,10 @@ def test_language_model_sae_runner():
         # performance enhancement:
         compile_sae=False,
         # WANDB
-        log_to_wandb=True,  # always use wandb unless you are just testing code.
-        wandb_project="benchmark",
-        wandb_log_frequency=100,
+        logger=LoggingConfig(
+            wandb_project="benchmark",
+            wandb_log_frequency=100,
+        ),
         # Misc
         device=device,
         seed=42,
@@ -185,9 +186,10 @@ def test_language_model_sae_runner_gated():
         # performance enhancement:
         compile_sae=False,
         # WANDB
-        log_to_wandb=True,  # always use wandb unless you are just testing code.
-        wandb_project="benchmark",
-        wandb_log_frequency=100,
+        logger=LoggingConfig(
+            wandb_project="benchmark",
+            wandb_log_frequency=100,
+        ),
         # Misc
         device=device,
         seed=42,
@@ -276,9 +278,10 @@ def test_language_model_sae_runner_top_k():
         # performance enhancement:
         compile_sae=False,
         # WANDB
-        log_to_wandb=True,  # always use wandb unless you are just testing code.
-        wandb_project="benchmark",
-        wandb_log_frequency=100,
+        logger=LoggingConfig(
+            wandb_project="benchmark",
+            wandb_log_frequency=100,
+        ),
         # Misc
         device=device,
         seed=42,
@@ -353,10 +356,11 @@ def test_language_model_sae_runner_othellogpt():
         dead_feature_window=1000000,  # would effect resampling or ghost grads if we were using it.
         dead_feature_threshold=1e-4,  # would effect resampling or ghost grads if we were using it.
         # WANDB
-        log_to_wandb=False,  # always use wandb unless you are just testing code.
-        wandb_project="benchmark",
-        wandb_log_frequency=100,
-        eval_every_n_wandb_logs=20,
+        logger=LoggingConfig(
+            log_to_wandb=False,  # always use wandb unless you are just testing code.
+            wandb_project="benchmark",
+            wandb_log_frequency=100,
+        ),
         # Misc
         device=device,
         seed=42,

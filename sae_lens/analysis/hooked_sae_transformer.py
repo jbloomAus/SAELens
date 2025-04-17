@@ -215,9 +215,9 @@ class HookedSAETransformer(HookedTransformer):
         with self.saes(
             saes=saes, reset_saes_end=reset_saes_end, use_error_term=use_error_term
         ):
-            return self.run_with_cache(  # type: ignore
+            return super().run_with_cache(
                 *model_args,
-                return_cache_object=return_cache_object,  # type: ignore
+                return_cache_object=return_cache_object,
                 remove_batch_dim=remove_batch_dim,
                 **kwargs,
             )

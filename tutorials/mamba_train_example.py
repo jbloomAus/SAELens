@@ -6,7 +6,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
 # run this as python3 tutorials/mamba_train_example.py
 # i.e. from the root directory
-from sae_lens.config import LanguageModelSAERunnerConfig
+from sae_lens.config import LanguageModelSAERunnerConfig, LoggingConfig
 from sae_lens.sae_training_runner import SAETrainingRunner
 
 cfg = LanguageModelSAERunnerConfig(
@@ -39,10 +39,10 @@ cfg = LanguageModelSAERunnerConfig(
     dead_feature_window=5000,
     dead_feature_threshold=1e-6,
     # WANDB
-    log_to_wandb=True,
-    wandb_project="sae_training_mamba",
-    wandb_entity=None,
-    wandb_log_frequency=100,
+    logger=LoggingConfig(
+        wandb_project="sae_training_mamba",
+        wandb_log_frequency=100,
+    ),
     # Misc
     device="cuda",
     seed=42,

@@ -5,7 +5,7 @@ import torch
 
 sys.path.append("..")
 
-from sae_lens.config import LanguageModelSAERunnerConfig
+from sae_lens.config import LanguageModelSAERunnerConfig, LoggingConfig
 from sae_lens.sae_training_runner import SAETrainingRunner
 
 if torch.cuda.is_available():
@@ -95,10 +95,12 @@ for l1_coefficient in [0.1, 1, 2, 4, 10]:
             dead_feature_window=1000,
             dead_feature_threshold=1e-4,
             # WANDB
-            log_to_wandb=log_to_wandb,
-            wandb_project="gpt-2-sweep-14may24",
-            wandb_log_frequency=50,
-            eval_every_n_wandb_logs=10,
+            logger=LoggingConfig(
+                log_to_wandb=log_to_wandb,
+                wandb_project="gpt-2-sweep-14may24",
+                wandb_log_frequency=50,
+                eval_every_n_wandb_logs=10,
+            ),
             # Misc
             device=device,
             seed=42,
