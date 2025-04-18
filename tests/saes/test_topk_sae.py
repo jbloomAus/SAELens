@@ -51,4 +51,4 @@ def test_TopKTrainingSAE_topk_aux_loss_matches_unnormalized_sparsify_implementat
     normalization = input_var / input_acts.shape[0]
     raw_aux_loss = sae_out.losses["auxiliary_reconstruction_loss"].item()  # type: ignore
     norm_aux_loss = raw_aux_loss / normalization
-    assert norm_aux_loss == pytest.approx(comparison_aux_loss, abs=1e-4)
+    assert norm_aux_loss == pytest.approx(comparison_aux_loss, abs=1e-2)

@@ -220,6 +220,7 @@ class SAE(HookedRootModule):
 
             # Update the device property
             self._sae.device = device
+            self._sae.to(device)
 
         # Update dtype in config if provided
         if dtype_arg is not None:
@@ -229,7 +230,7 @@ class SAE(HookedRootModule):
             # Update the dtype property
             self._sae.dtype = dtype_arg
 
-        return result
+        return self
 
     def fold_activation_norm_scaling_factor(
         self, activation_norm_scaling_factor: float

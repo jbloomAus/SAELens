@@ -336,7 +336,7 @@ class TrainingSAE(SAE):
         sae_cfg = TrainingSAEConfig.from_dict(cfg_dict)
         sae = cls(sae_cfg)
         sae.process_state_dict_for_loading(state_dict)
-        sae.load_state_dict(state_dict)
+        sae._sae.load_state_dict(state_dict)
         return sae
 
     def initialize_b_dec_with_precalculated(self, origin: torch.Tensor) -> None:
