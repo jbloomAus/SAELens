@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, List
 
 import einops
 import torch
@@ -21,6 +21,13 @@ class CrosscoderSAEConfig(SAEConfig):
         return super().to_dict() | {
             "hook_layers": self.hook_layers,
         }
+
+    def hook_names(self) -> List[str]:
+        # TODO(mkbehr): better config setup than putting a magic
+        # string in the name
+        return [self.hook_name.format(layer)
+                for layer in self.hook_layers]
+
 
 class CrosscoderSAE(SAE):
     """

@@ -7,7 +7,7 @@ import warnings
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Literal, TypeVar, overload
+from typing import Any, Callable, List, Literal, TypeVar, overload
 
 import einops
 import torch
@@ -123,6 +123,9 @@ class SAEConfig:
             "model_from_pretrained_kwargs": self.model_from_pretrained_kwargs,
             "seqpos_slice": self.seqpos_slice,
         }
+
+    def hook_names(self) -> List[str]:
+        return [self.hook_name]
 
 
 class SAE(HookedRootModule):

@@ -378,7 +378,7 @@ def get_sparsity_and_variance_metrics(
     ignore_tokens: set[int | None] = set(),
     verbose: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    hook_name = sae.cfg.hook_name
+    hook_names = sae.cfg.hook_names()
     hook_head_index = sae.cfg.hook_head_index
 
     metric_dict = {}
@@ -434,8 +434,8 @@ def get_sparsity_and_variance_metrics(
         _, cache = model.run_with_cache(
             batch_tokens,
             prepend_bos=False,
-            names_filter=[hook_name],
-            stop_at_layer=sae.cfg.hook_layer + 1,
+            names_filter=hook_names,
+            stop_at_layer=max(sae.cfg.hook_layers) + 1,
             **model_kwargs,
         )
 
@@ -443,11 +443,21 @@ def get_sparsity_and_variance_metrics(
         # which will do their own reshaping for hook z.
         has_head_dim_key_substrings = ["hook_q", "hook_k", "hook_v", "hook_z"]
         if hook_head_index is not None:
-            original_act = cache[hook_name][:, :, hook_head_index]
-        elif any(substring in hook_name for substring in has_head_dim_key_substrings):
-            original_act = cache[hook_name].flatten(-2, -1)
+            # TODO(mkbehr) support head dimension for mutilayer evals
+            assert len(hook_names) == 1
+            original_act = cache[hook_names[0]][:, :, hook_head_index]
+        elif any(substring in hook_names[0] for substring in has_head_dim_key_substrings):
+            # TODO(mkbehr) support head dimension for mutilayer evals
+            original_act = cache[hook_names[0]].flatten(-2, -1)
+        elif len(hook_names) > 1:
+            # TODO(mkbehr): cleaner interface for multilayer evals
+            # TODO(mkbehr): support head dimension for mutilayer evals
+            layerwise_activations = [
+                cache[hook_name] for hook_name in hook_names
+            ]
+            original_act = torch.stack(layerwise_activations, dim=2)
         else:
-            original_act = cache[hook_name]
+            original_act = cache[hook_names[0]]
 
         # normalise if necessary (necessary in training only, otherwise we should fold the scaling in)
         if activation_store.normalize_activations == "expected_average_only_in":
@@ -461,14 +471,15 @@ def get_sparsity_and_variance_metrics(
         if activation_store.normalize_activations == "expected_average_only_in":
             sae_out = activation_store.unscale(sae_out)
 
-        flattened_sae_input = einops.rearrange(original_act, "b ctx d -> (b ctx) d")
+        flattened_sae_input = einops.rearrange(original_act, "b ctx d ... -> (b ctx) (d ...)")
         flattened_sae_feature_acts = einops.rearrange(
-            sae_feature_activations, "b ctx d -> (b ctx) d"
+            sae_feature_activations, "b ctx d ... -> (b ctx) (d ...)"
         )
-        flattened_sae_out = einops.rearrange(sae_out, "b ctx d -> (b ctx) d")
+        flattened_sae_out = einops.rearrange(sae_out, "b ctx d ... -> (b ctx) (d ...)")
 
         # TODO: Clean this up.
         # apply mask
+        # TODO(mkbehr): test mask support w/ multilayer
         masked_sae_feature_activations = sae_feature_activations * mask.unsqueeze(-1)
         flattened_sae_input = flattened_sae_input[
             flattened_mask.to(flattened_sae_input.device)
