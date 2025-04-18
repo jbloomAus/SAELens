@@ -6,7 +6,13 @@ import torch
 from jaxtyping import Float
 from torch import nn
 
-from sae_lens.saes.sae_base import BaseSAE, BaseTrainingSAE, SAEConfig, TrainStepOutput
+from sae_lens.saes.sae_base import (
+    BaseSAE,
+    BaseTrainingSAE,
+    SAEConfig,
+    TrainingSAEConfig,
+    TrainStepOutput,
+)
 
 
 class TopK(nn.Module):
@@ -51,6 +57,9 @@ class TopKSAE(BaseSAE):
             use_error_term: Whether to apply the error-term approach in the forward pass.
         """
         super().__init__(cfg, use_error_term)
+
+        if self.cfg.activation_fn != "topk":
+            raise ValueError("TopKSAE must use a TopK activation function.")
 
     def initialize_weights(self) -> None:
         """
@@ -129,6 +138,12 @@ class TopKTrainingSAE(BaseTrainingSAE):
     TopK variant with training functionality. Injects noise during training, optionally
     calculates a topk-related auxiliary loss, etc.
     """
+
+    def __init__(self, cfg: TrainingSAEConfig, use_error_term: bool = False):
+        super().__init__(cfg, use_error_term)
+
+        if self.cfg.activation_fn != "topk":
+            raise ValueError("TopKSAE must use a TopK activation function.")
 
     def initialize_weights(self) -> None:
         """Very similar to TopKSAE, using zero biases + Kaiming Uniform weights."""

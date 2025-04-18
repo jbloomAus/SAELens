@@ -13,13 +13,13 @@ from .config import (
     PretokenizeRunnerConfig,
 )
 from .evals import run_evals
-from .loading.pretrained_sae_loaders import (
-    PretrainedSaeDiskLoader,
-    PretrainedSaeHuggingfaceLoader,
-)
 from .pretokenize_runner import PretokenizeRunner, pretokenize_runner
 from .sae import SAE, SAEConfig
 from .sae_training_runner import SAETrainingRunner
+from .toolkit.pretrained_sae_loaders import (
+    PretrainedSaeDiskLoader,
+    PretrainedSaeHuggingfaceLoader,
+)
 from .training.activations_store import ActivationsStore
 from .training.training_sae import TrainingSAE, TrainingSAEConfig
 from .training.upload_saes_to_huggingface import upload_saes_to_huggingface

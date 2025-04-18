@@ -1,18 +1,23 @@
 import pytest
 import torch
 
-# Old modules
-from sae_lens.sae import SAE, SAEConfig
-
-# New JumpReLU modules
 from sae_lens.saes.jumprelu_sae import JumpReLUSAE, JumpReLUTrainingSAE
 from sae_lens.saes.sae_base import (
-    SAEConfig as NewSAEConfig,
+    SAEConfig,
+    TrainingSAEConfig,
 )
-from sae_lens.saes.sae_base import (
-    TrainingSAEConfig as NewTrainingSAEConfig,
+from tests._comparison.sae_lens_old.sae import (
+    SAE as OldSAE,
 )
-from sae_lens.training.training_sae import TrainingSAE, TrainingSAEConfig
+from tests._comparison.sae_lens_old.sae import (
+    SAEConfig as OldSAEConfig,
+)
+from tests._comparison.sae_lens_old.training.training_sae import (
+    TrainingSAE as OldTrainingSAE,
+)
+from tests._comparison.sae_lens_old.training.training_sae import (
+    TrainingSAEConfig as OldTrainingSAEConfig,
+)
 
 
 @pytest.fixture
@@ -25,14 +30,16 @@ def seed_everything():
     torch.manual_seed(0)
 
 
-def make_old_jumprelu_sae(d_in=16, d_sae=8, use_error_term=False) -> SAE:
+def make_old_jumprelu_sae(
+    d_in: int = 16, d_sae: int = 8, use_error_term: bool = False
+) -> OldSAE:  # Added types
     """
     Helper to instantiate an old JumpReLU SAE instance for testing.
     This creates an old SAE with architecture='jumprelu'.
     """
     # We replicate the logic from test_standard_sae_equivalence.make_old_sae,
     # but specify architecture="jumprelu".
-    old_cfg = SAEConfig(
+    old_cfg = OldSAEConfig(  # Use OldSAEConfig
         architecture="jumprelu",
         d_in=d_in,
         d_sae=d_sae,
@@ -42,29 +49,31 @@ def make_old_jumprelu_sae(d_in=16, d_sae=8, use_error_term=False) -> SAE:
         hook_name="blocks.0.hook_resid_pre",
         hook_layer=0,
         hook_head_index=None,
-        activation_fn="relu",
+        activation_fn_str="relu",
         activation_fn_kwargs={},
         apply_b_dec_to_input=False,
         finetuning_scaling_factor=False,
         normalize_activations="none",
-        context_size=None,
-        dataset_path=None,
+        context_size=128,  # Added default value
+        dataset_path="fake/path",  # Added default value
         dataset_trust_remote_code=False,
         sae_lens_training_version="test_version",
         model_from_pretrained_kwargs={},
-        seqpos_slice=None,
+        seqpos_slice=(None,),  # Added default value (tuple as in old config)
         prepend_bos=False,
     )
-    old_sae = SAE(old_cfg)
+    old_sae = OldSAE(old_cfg)  # Use OldSAE
     old_sae.use_error_term = use_error_term
     return old_sae
 
 
-def make_new_jumprelu_sae(d_in=16, d_sae=8, use_error_term=False) -> JumpReLUSAE:
+def make_new_jumprelu_sae(
+    d_in: int = 16, d_sae: int = 8, use_error_term: bool = False
+) -> JumpReLUSAE:  # Added types
     """
     Helper to instantiate a new JumpReLUSAE instance for testing (inference only).
     """
-    new_cfg = NewSAEConfig(
+    new_cfg = SAEConfig(  # Use SAEConfig (removed New prefix)
         architecture="jumprelu",
         d_in=d_in,
         d_sae=d_sae,
@@ -79,18 +88,20 @@ def make_new_jumprelu_sae(d_in=16, d_sae=8, use_error_term=False) -> JumpReLUSAE
         apply_b_dec_to_input=False,
         finetuning_scaling_factor=False,
         normalize_activations="none",
-        context_size=None,
-        dataset_path=None,
+        context_size=128,  # Added default value
+        dataset_path="fake/path",  # Added default value
         dataset_trust_remote_code=False,
         sae_lens_training_version="test_version",
         model_from_pretrained_kwargs={},
-        seqpos_slice=None,
+        seqpos_slice=None,  # Use None as per gated test (will adjust if linter still complains)
         prepend_bos=False,
     )
     return JumpReLUSAE(new_cfg, use_error_term=use_error_term)
 
 
-def compare_params(old_sae: SAE, new_sae: JumpReLUSAE):
+def compare_params(
+    old_sae: OldSAE | OldTrainingSAE, new_sae: JumpReLUSAE | JumpReLUTrainingSAE
+):  # Updated types
     """
     Compare parameter names and shapes between the old JumpReLU SAE and the new JumpReLUSAE.
     """
@@ -112,13 +123,20 @@ def compare_params(old_sae: SAE, new_sae: JumpReLUSAE):
 
 
 @pytest.mark.parametrize("use_error_term", [False, True])
-def test_jumprelu_inference_equivalence(use_error_term):  # type: ignore
+def test_jumprelu_inference_equivalence(use_error_term: bool):  # Added type
     """
     Test that the old vs new JumpReLU SAEs match in parameter shape and forward pass outputs,
     and can optionally test the error_term usage.
     """
     old_sae = make_old_jumprelu_sae(d_in=16, d_sae=8, use_error_term=use_error_term)
     new_sae = make_new_jumprelu_sae(d_in=16, d_sae=8, use_error_term=use_error_term)
+
+    # Ensure parameters are identical before comparing outputs
+    with torch.no_grad():
+        old_params = dict(old_sae.named_parameters())
+        new_params = dict(new_sae.named_parameters())
+        for k in sorted(old_params.keys()):
+            new_params[k].copy_(old_params[k])
 
     # Compare parameter shapes
     compare_params(old_sae, new_sae)
@@ -134,12 +152,18 @@ def test_jumprelu_inference_equivalence(use_error_term):  # type: ignore
     assert torch.isfinite(old_out).all()
     assert torch.isfinite(new_out).all()
 
+    # Check for numerical equivalence
+    assert torch.allclose(
+        old_out, new_out, atol=1e-5
+    ), "Outputs differ between old and new implementations."
+
     # If error_term is True, they might diverge for non-standard architectures,
     # but let's allow a tolerance for closeness or just check shape
     # It's okay if they differ numerically, but let's see if "jumprelu" lines up
-    if use_error_term:
-        # We might not expect exact equality, but we can still check shape
-        assert old_out.shape == new_out.shape
+    # No need for specific check if use_error_term is True, allclose covers it.
+    # if use_error_term:
+    #     # We might not expect exact equality, but we can still check shape
+    #     assert old_out.shape == new_out.shape
 
 
 @pytest.mark.parametrize(
@@ -186,43 +210,52 @@ def test_jumprelu_fold_equivalence(fold_fn):  # type: ignore
         old_out, new_out, atol=1e-5
     ), f"{fold_fn} mismatch between old and new"
 
+    # Also check the folded parameters directly
+    for k in sorted(old_params.keys()):
+        assert torch.allclose(
+            old_params[k], new_params[k], atol=1e-5
+        ), f"Parameter {k} differs after {fold_fn}"
 
-def test_jumprelu_run_hooks_equivalence():  # type: ignore
+
+def test_jumprelu_run_with_cache_equivalence():  # type: ignore
     """
-    Compare hooking behavior for JumpReLU. We'll check that hooking triggers
-    the same number of calls in old_sae vs new_sae and that output shapes match.
+    Compare run_with_cache behavior for JumpReLUSAE.
+    Checks outputs and cache contents for numerical equivalence.
     """
-
-    class Counter:
-        def __init__(self):
-            self.count = 0
-
-        def inc(self, *args, **kwargs):
-            self.count += 1
-
     old_sae = make_old_jumprelu_sae()
     new_sae = make_new_jumprelu_sae()
 
-    old_c = Counter()
-    new_c = Counter()
-
-    old_hooks_to_add = [k for k, _ in old_sae.hook_dict.items()]
-    new_hooks_to_add = [k for k, _ in new_sae.hook_dict.items()]
-
-    for name in old_hooks_to_add:
-        old_sae.add_hook(name, old_c.inc, dir="fwd")
-    for name in new_hooks_to_add:
-        new_sae.add_hook(name, new_c.inc, dir="fwd")
+    # Ensure parameters are identical before comparing outputs
+    with torch.no_grad():
+        old_params = dict(old_sae.named_parameters())
+        new_params = dict(new_sae.named_parameters())
+        for k in sorted(old_params.keys()):
+            new_params[k].copy_(old_params[k])
 
     x = torch.randn(2, 4, 16, dtype=torch.float32)
-    old_out = old_sae(x)
-    new_out = new_sae(x)
-    assert (
-        old_out.shape == new_out.shape
-    ), "Mismatch in forward shape with hooking test."
+    with torch.no_grad():
+        old_out, old_cache = old_sae.run_with_cache(x)
+        new_out, new_cache = new_sae.run_with_cache(x)
 
-    assert old_c.count > 0, "No hooks triggered in old JumpReLU SAE"
-    assert new_c.count > 0, "No hooks triggered in new JumpReLU SAE"
+    assert old_out.shape == new_out.shape, "Output shape mismatch."
+    assert torch.allclose(old_out, new_out, atol=1e-5), "Output values differ."
+
+    assert len(old_cache) == len(
+        new_cache
+    ), f"Cache length mismatch. Old: {len(old_cache)}, New: {len(new_cache)}"
+
+    # Sort keys to ensure consistent comparison order
+    old_keys = sorted(old_cache.keys())
+    new_keys = sorted(new_cache.keys())
+
+    assert old_keys == new_keys, f"Cache keys differ.\nOld: {old_keys}\nNew: {new_keys}"
+
+    for key in old_keys:
+        old_val = old_cache[key]
+        new_val = new_cache[key]
+        assert torch.allclose(
+            old_val, new_val, atol=1e-5
+        ), f"Cache values for key '{key}' differ."
 
 
 #####################################
@@ -230,11 +263,13 @@ def test_jumprelu_run_hooks_equivalence():  # type: ignore
 #####################################
 
 
-def make_old_jumprelu_training_sae(d_in=16, d_sae=8) -> TrainingSAE:
+def make_old_jumprelu_training_sae(
+    d_in: int = 16, d_sae: int = 8
+) -> OldTrainingSAE:  # Added types
     """
     Helper to instantiate an old TrainingSAE configured as JumpReLU for testing.
     """
-    old_training_cfg = TrainingSAEConfig(
+    old_training_cfg = OldTrainingSAEConfig(  # Use OldTrainingSAEConfig
         architecture="jumprelu",
         d_in=d_in,
         d_sae=d_sae,
@@ -244,17 +279,17 @@ def make_old_jumprelu_training_sae(d_in=16, d_sae=8) -> TrainingSAE:
         hook_name="blocks.0.hook_resid_pre",
         hook_layer=0,
         hook_head_index=None,
-        activation_fn="relu",
+        activation_fn_str="relu",
         activation_fn_kwargs={},
         apply_b_dec_to_input=False,
         finetuning_scaling_factor=False,
         normalize_activations="none",
-        context_size=None,
-        dataset_path=None,
+        context_size=128,  # Added default value
+        dataset_path="fake/path",  # Added default value
         dataset_trust_remote_code=False,
         sae_lens_training_version="test_version",
         model_from_pretrained_kwargs={},
-        seqpos_slice=None,
+        seqpos_slice=(None,),  # Added default value (tuple as in old config)
         prepend_bos=False,
         # training fields
         l1_coefficient=0.01,
@@ -270,14 +305,16 @@ def make_old_jumprelu_training_sae(d_in=16, d_sae=8) -> TrainingSAE:
         init_encoder_as_decoder_transpose=False,
         scale_sparsity_penalty_by_decoder_norm=False,
     )
-    return TrainingSAE(old_training_cfg)
+    return OldTrainingSAE(old_training_cfg)  # Use OldTrainingSAE
 
 
-def make_new_jumprelu_training_sae(d_in=16, d_sae=8) -> JumpReLUTrainingSAE:
+def make_new_jumprelu_training_sae(
+    d_in: int = 16, d_sae: int = 8
+) -> JumpReLUTrainingSAE:  # Added types
     """
     Helper to instantiate a new JumpReLUTrainingSAE instance.
     """
-    new_training_cfg = NewTrainingSAEConfig(
+    new_training_cfg = TrainingSAEConfig(  # Use TrainingSAEConfig (removed New prefix)
         architecture="jumprelu",
         d_in=d_in,
         d_sae=d_sae,
@@ -292,12 +329,12 @@ def make_new_jumprelu_training_sae(d_in=16, d_sae=8) -> JumpReLUTrainingSAE:
         apply_b_dec_to_input=False,
         finetuning_scaling_factor=False,
         normalize_activations="none",
-        context_size=None,
-        dataset_path=None,
+        context_size=128,  # Added default value
+        dataset_path="fake/path",  # Added default value
         dataset_trust_remote_code=False,
         sae_lens_training_version="test_version",
         model_from_pretrained_kwargs={},
-        seqpos_slice=None,
+        seqpos_slice=None,  # Use None as per gated test (will adjust if linter still complains)
         prepend_bos=False,
         l1_coefficient=0.01,
         lp_norm=1.0,
@@ -315,7 +352,7 @@ def make_new_jumprelu_training_sae(d_in=16, d_sae=8) -> JumpReLUTrainingSAE:
     return JumpReLUTrainingSAE(new_training_cfg)
 
 
-def test_jumprelu_training_equivalence():
+def test_jumprelu_training_equivalence():  # type: ignore # Kept ignore as return type is complex
     """
     Test that old vs new JumpReLU SAEs match shapes in outputs and remain finite.
     We won't require exact numeric equivalence, as the old code might differ in how it
@@ -324,8 +361,18 @@ def test_jumprelu_training_equivalence():
     old_sae = make_old_jumprelu_training_sae()
     new_sae = make_new_jumprelu_training_sae()
 
+    # Ensure parameters are identical before comparing outputs
+    with torch.no_grad():
+        old_params = dict(old_sae.named_parameters())
+        new_params = dict(new_sae.named_parameters())
+        for k in sorted(old_params.keys()):
+            new_params[k].copy_(old_params[k])
+
     old_sae.train()
     new_sae.train()
+
+    # Compare parameters post-alignment
+    compare_params(old_sae, new_sae)
 
     batch_size, seq_len, d_in = 2, 4, 16
     x = torch.randn(batch_size, seq_len, d_in, dtype=torch.float32)
@@ -351,6 +398,14 @@ def test_jumprelu_training_equivalence():
         new_out.sae_out
     ).all(), "New JumpReLU training out is not finite."
 
+    # Check if training forward pass is equivalent
+    assert torch.allclose(
+        old_out.sae_out, new_out.sae_out, atol=1e-5
+    ), "Output differs between old and new JumpReLU implementation"
+    assert torch.allclose(
+        old_out.loss, new_out.loss, atol=1e-5
+    ), "Total loss differs between old and new JumpReLU implementation"
+
     # Check that we do have MSE and L0 losses
     assert "mse_loss" in old_out.losses
     assert "mse_loss" in new_out.losses
@@ -360,5 +415,23 @@ def test_jumprelu_training_equivalence():
     assert old_l0_loss is not None, "Old JumpReLU training missing L0 or aux loss."
     assert new_l0_loss is not None, "New JumpReLU training missing L0 or aux loss."
 
-    assert torch.isfinite(old_l0_loss)
-    assert torch.isfinite(new_l0_loss)
+    # Ensure the loss is a tensor before checking isfinite
+    assert isinstance(
+        old_l0_loss, torch.Tensor
+    ), f"Old L0 loss is not a Tensor: {type(old_l0_loss)}"
+    assert isinstance(
+        new_l0_loss, torch.Tensor
+    ), f"New L0 loss is not a Tensor: {type(new_l0_loss)}"
+
+    assert torch.isfinite(old_l0_loss).all()  # Check tensor and use .all()
+    assert torch.isfinite(new_l0_loss).all()  # Check tensor and use .all()
+
+    # Compare individual loss components numerically
+    assert torch.allclose(
+        old_out.losses["mse_loss"],  # type: ignore
+        new_out.losses["mse_loss"],
+        atol=1e-5,
+    ), "MSE loss differs between old and new JumpReLU implementations"
+    assert torch.allclose(
+        old_l0_loss, new_l0_loss, atol=1e-5
+    ), "L0/Aux loss differs between old and new JumpReLU implementations"

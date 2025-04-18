@@ -1,18 +1,23 @@
 import pytest
 import torch
 
-# Old modules
-from sae_lens.sae import SAE, SAEConfig
-
-# New Gated modules
 from sae_lens.saes.gated_sae import GatedSAE, GatedTrainingSAE
 from sae_lens.saes.sae_base import (
-    SAEConfig as NewSAEConfig,
+    SAEConfig,
+    TrainingSAEConfig,
 )
-from sae_lens.saes.sae_base import (
-    TrainingSAEConfig as NewTrainingSAEConfig,
+from tests._comparison.sae_lens_old.sae import (
+    SAE as OldSAE,
 )
-from sae_lens.training.training_sae import TrainingSAE, TrainingSAEConfig
+from tests._comparison.sae_lens_old.sae import (
+    SAEConfig as OldSAEConfig,
+)
+from tests._comparison.sae_lens_old.training.training_sae import (
+    TrainingSAE as OldTrainingSAE,
+)
+from tests._comparison.sae_lens_old.training.training_sae import (
+    TrainingSAEConfig as OldTrainingSAEConfig,
+)
 
 
 @pytest.fixture
@@ -25,12 +30,14 @@ def seed_everything():
     torch.manual_seed(0)
 
 
-def make_old_gated_sae(d_in=16, d_sae=8, use_error_term=False) -> SAE:
+def make_old_gated_sae(
+    d_in: int = 16, d_sae: int = 8, use_error_term: bool = False
+) -> OldSAE:
     """
     Helper to instantiate an old Gated SAE instance for testing.
     This creates an old SAE with architecture='gated'.
     """
-    old_cfg = SAEConfig(
+    old_cfg = OldSAEConfig(
         architecture="gated",
         d_in=d_in,
         d_sae=d_sae,
@@ -40,30 +47,32 @@ def make_old_gated_sae(d_in=16, d_sae=8, use_error_term=False) -> SAE:
         hook_name="blocks.0.hook_resid_pre",
         hook_layer=0,
         hook_head_index=None,
-        activation_fn="relu",
+        activation_fn_str="relu",
         activation_fn_kwargs={},
         apply_b_dec_to_input=False,
         finetuning_scaling_factor=False,
         normalize_activations="none",
-        context_size=None,
-        dataset_path=None,
+        context_size=128,
+        dataset_path="fake/path",
         dataset_trust_remote_code=False,
         sae_lens_training_version="test_version",
         model_from_pretrained_kwargs={},
-        seqpos_slice=None,
+        seqpos_slice=(None,),
         prepend_bos=False,
     )
-    old_sae = SAE(old_cfg)
+    old_sae = OldSAE(old_cfg)
     # Note: Gated SAE doesn't support error term, so this should be False
     old_sae.use_error_term = use_error_term
     return old_sae
 
 
-def make_new_gated_sae(d_in=16, d_sae=8, use_error_term=False) -> GatedSAE:
+def make_new_gated_sae(
+    d_in: int = 16, d_sae: int = 8, use_error_term: bool = False
+) -> GatedSAE:
     """
     Helper to instantiate a new GatedSAE instance for testing (inference only).
     """
-    new_cfg = NewSAEConfig(
+    new_cfg = SAEConfig(
         architecture="gated",
         d_in=d_in,
         d_sae=d_sae,
@@ -78,8 +87,8 @@ def make_new_gated_sae(d_in=16, d_sae=8, use_error_term=False) -> GatedSAE:
         apply_b_dec_to_input=False,
         finetuning_scaling_factor=False,
         normalize_activations="none",
-        context_size=None,
-        dataset_path=None,
+        context_size=128,
+        dataset_path="fake/path",
         dataset_trust_remote_code=False,
         sae_lens_training_version="test_version",
         model_from_pretrained_kwargs={},
@@ -89,7 +98,9 @@ def make_new_gated_sae(d_in=16, d_sae=8, use_error_term=False) -> GatedSAE:
     return GatedSAE(new_cfg, use_error_term=use_error_term)
 
 
-def compare_params(old_sae: SAE, new_sae: GatedSAE):
+def compare_params(
+    old_sae: OldSAE | OldTrainingSAE, new_sae: GatedSAE | GatedTrainingSAE
+):
     """
     Compare parameter names and shapes between the old Gated SAE and the new GatedSAE.
     """
@@ -199,45 +210,37 @@ def test_gated_fold_equivalence(fold_fn):  # type: ignore
         ), f"Parameter {k} differs after {fold_fn}"
 
 
-def test_gated_run_hooks_equivalence():  # type: ignore
+def test_gated_run_with_cache_equivalence():  # type: ignore
     """
     Compare hooking behavior for GatedSAE. We'll check that hooking triggers
-    the same number of calls in old_sae vs new_sae and that output shapes match.
+    the same number of calls and that the actual values passed to hooks match.
     """
-
-    class Counter:
-        def __init__(self):
-            self.count = 0
-
-        def inc(self, *args, **kwargs):
-            self.count += 1
 
     old_sae = make_old_gated_sae()
     new_sae = make_new_gated_sae()
 
-    old_c = Counter()
-    new_c = Counter()
-
-    old_hooks_to_add = [k for k, _ in old_sae.hook_dict.items()]
-    new_hooks_to_add = [k for k, _ in new_sae.hook_dict.items()]
-
-    for name in old_hooks_to_add:
-        old_sae.add_hook(name, old_c.inc, dir="fwd")
-    for name in new_hooks_to_add:
-        new_sae.add_hook(name, new_c.inc, dir="fwd")
+    # Ensure parameters are identical before comparing outputs
+    with torch.no_grad():
+        old_params = dict(old_sae.named_parameters())
+        new_params = dict(new_sae.named_parameters())
+        for k in sorted(old_params.keys()):
+            new_params[k].copy_(old_params[k])
 
     x = torch.randn(2, 4, 16, dtype=torch.float32)
-    old_out = old_sae(x)
-    new_out = new_sae(x)
-    assert (
-        old_out.shape == new_out.shape
-    ), "Mismatch in forward shape with hooking test."
+    with torch.no_grad():
+        old_out, old_cache = old_sae.run_with_cache(x)
+        new_out, new_cache = new_sae.run_with_cache(x)
 
-    assert old_c.count > 0, "No hooks triggered in old Gated SAE"
-    assert new_c.count > 0, "No hooks triggered in new Gated SAE"
-    assert (
-        old_c.count == new_c.count
-    ), "Different number of hooks called in old vs new implementation"
+    assert old_out.shape == new_out.shape, "Output shape mismatch."
+    assert torch.allclose(old_out, new_out, atol=1e-5), "Output values differ."
+
+    assert len(old_cache) == len(new_cache), "Cache length mismatch."
+
+    for old_key, new_key in zip(old_cache.keys(), new_cache.keys()):
+        assert old_key == new_key, "Cache keys differ."
+        assert torch.allclose(
+            old_cache[old_key], new_cache[new_key], atol=1e-5
+        ), "Cache values differ."
 
 
 #####################################
@@ -245,11 +248,12 @@ def test_gated_run_hooks_equivalence():  # type: ignore
 #####################################
 
 
-def make_old_gated_training_sae(d_in=16, d_sae=8) -> TrainingSAE:
+def make_old_gated_training_sae(d_in: int = 16, d_sae: int = 8) -> OldTrainingSAE:
     """
     Helper to instantiate an old TrainingSAE configured as Gated for testing.
     """
-    old_training_cfg = TrainingSAEConfig(
+    old_training_cfg = OldTrainingSAEConfig(
+        activation_fn_str="relu",
         architecture="gated",
         d_in=d_in,
         d_sae=d_sae,
@@ -259,17 +263,16 @@ def make_old_gated_training_sae(d_in=16, d_sae=8) -> TrainingSAE:
         hook_name="blocks.0.hook_resid_pre",
         hook_layer=0,
         hook_head_index=None,
-        activation_fn="relu",
         activation_fn_kwargs={},
         apply_b_dec_to_input=False,
         finetuning_scaling_factor=False,
         normalize_activations="none",
-        context_size=None,
-        dataset_path=None,
+        context_size=128,
+        dataset_path="fake/path",
         dataset_trust_remote_code=False,
         sae_lens_training_version="test_version",
         model_from_pretrained_kwargs={},
-        seqpos_slice=None,
+        seqpos_slice=(None,),
         prepend_bos=False,
         # training fields
         l1_coefficient=0.01,
@@ -285,14 +288,14 @@ def make_old_gated_training_sae(d_in=16, d_sae=8) -> TrainingSAE:
         init_encoder_as_decoder_transpose=False,
         scale_sparsity_penalty_by_decoder_norm=False,
     )
-    return TrainingSAE(old_training_cfg)
+    return OldTrainingSAE(old_training_cfg)
 
 
-def make_new_gated_training_sae(d_in=16, d_sae=8) -> GatedTrainingSAE:
+def make_new_gated_training_sae(d_in: int = 16, d_sae: int = 8) -> GatedTrainingSAE:
     """
     Helper to instantiate a new GatedTrainingSAE instance.
     """
-    new_training_cfg = NewTrainingSAEConfig(
+    new_training_cfg = TrainingSAEConfig(
         architecture="gated",
         d_in=d_in,
         d_sae=d_sae,
@@ -307,8 +310,8 @@ def make_new_gated_training_sae(d_in=16, d_sae=8) -> GatedTrainingSAE:
         apply_b_dec_to_input=False,
         finetuning_scaling_factor=False,
         normalize_activations="none",
-        context_size=None,
-        dataset_path=None,
+        context_size=128,
+        dataset_path="fake/path",
         dataset_trust_remote_code=False,
         sae_lens_training_version="test_version",
         model_from_pretrained_kwargs={},

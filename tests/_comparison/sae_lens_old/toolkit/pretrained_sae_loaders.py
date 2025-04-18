@@ -10,14 +10,14 @@ from huggingface_hub.utils import EntryNotFoundError
 from safetensors import safe_open
 from safetensors.torch import load_file
 
-from sae_lens import logger
-from sae_lens.config import (
+from tests._comparison.sae_lens_old import logger
+from tests._comparison.sae_lens_old.config import (
     DTYPE_MAP,
     SAE_CFG_FILENAME,
     SAE_WEIGHTS_FILENAME,
     SPARSITY_FILENAME,
 )
-from sae_lens.loading.pretrained_saes_directory import (
+from tests._comparison.sae_lens_old.toolkit.pretrained_saes_directory import (
     get_config_overrides,
     get_pretrained_saes_directory,
     get_repo_id_and_folder_name,
@@ -174,38 +174,30 @@ def get_sae_lens_config_from_disk(
 
 
 def handle_config_defaulting(cfg_dict: dict[str, Any]) -> dict[str, Any]:
-    rename_keys_map = {
-        "hook_point": "hook_name",
-        "hook_point_layer": "hook_layer",
-        "hook_point_head_index": "hook_head_index",
-        "activation_fn_str": "activation_fn",
-    }
-    new_cfg = {rename_keys_map.get(k, k): v for k, v in cfg_dict.items()}
-
     # Set default values for backwards compatibility
-    new_cfg.setdefault("prepend_bos", True)
-    new_cfg.setdefault("dataset_trust_remote_code", True)
-    new_cfg.setdefault("apply_b_dec_to_input", True)
-    new_cfg.setdefault("finetuning_scaling_factor", False)
-    new_cfg.setdefault("sae_lens_training_version", None)
-    new_cfg.setdefault("activation_fn", new_cfg.get("activation_fn", "relu"))
-    new_cfg.setdefault("architecture", "standard")
-    new_cfg.setdefault("neuronpedia_id", None)
+    cfg_dict.setdefault("prepend_bos", True)
+    cfg_dict.setdefault("dataset_trust_remote_code", True)
+    cfg_dict.setdefault("apply_b_dec_to_input", True)
+    cfg_dict.setdefault("finetuning_scaling_factor", False)
+    cfg_dict.setdefault("sae_lens_training_version", None)
+    cfg_dict.setdefault("activation_fn_str", cfg_dict.get("activation_fn", "relu"))
+    cfg_dict.setdefault("architecture", "standard")
+    cfg_dict.setdefault("neuronpedia_id", None)
 
-    if "normalize_activations" in new_cfg and isinstance(
-        new_cfg["normalize_activations"], bool
+    if "normalize_activations" in cfg_dict and isinstance(
+        cfg_dict["normalize_activations"], bool
     ):
         # backwards compatibility
-        new_cfg["normalize_activations"] = (
+        cfg_dict["normalize_activations"] = (
             "none"
-            if not new_cfg["normalize_activations"]
+            if not cfg_dict["normalize_activations"]
             else "expected_average_only_in"
         )
 
-    new_cfg.setdefault("normalize_activations", "none")
-    new_cfg.setdefault("device", "cpu")
+    cfg_dict.setdefault("normalize_activations", "none")
+    cfg_dict.setdefault("device", "cpu")
 
-    return new_cfg
+    return cfg_dict
 
 
 def get_connor_rob_hook_z_config_from_hf(
@@ -231,7 +223,7 @@ def get_connor_rob_hook_z_config_from_hf(
         "hook_name": old_cfg_dict["act_name"],
         "hook_layer": old_cfg_dict["layer"],
         "hook_head_index": None,
-        "activation_fn": "relu",
+        "activation_fn_str": "relu",
         "apply_b_dec_to_input": True,
         "finetuning_scaling_factor": False,
         "sae_lens_training_version": None,
@@ -380,7 +372,7 @@ def get_gemma_2_config_from_hf(
         "hook_name": hook_name,
         "hook_layer": layer,
         "hook_head_index": None,
-        "activation_fn": "relu",
+        "activation_fn_str": "relu",
         "finetuning_scaling_factor": False,
         "sae_lens_training_version": None,
         "prepend_bos": True,
@@ -493,7 +485,7 @@ def get_llama_scope_config_from_hf(
         "hook_name": old_cfg_dict["hook_point_in"],
         "hook_layer": int(old_cfg_dict["hook_point_in"].split(".")[1]),
         "hook_head_index": None,
-        "activation_fn": "relu",
+        "activation_fn_str": "relu",
         "finetuning_scaling_factor": False,
         "sae_lens_training_version": None,
         "prepend_bos": True,
@@ -605,8 +597,8 @@ def get_dictionary_learning_config_1_from_hf(
 
     hook_point_name = f"blocks.{trainer['layer']}.hook_resid_post"
 
-    activation_fn = "topk" if trainer["dict_class"] == "AutoEncoderTopK" else "relu"
-    activation_fn_kwargs = {"k": trainer["k"]} if activation_fn == "topk" else {}
+    activation_fn_str = "topk" if trainer["dict_class"] == "AutoEncoderTopK" else "relu"
+    activation_fn_kwargs = {"k": trainer["k"]} if activation_fn_str == "topk" else {}
 
     return {
         "architecture": (
@@ -620,7 +612,7 @@ def get_dictionary_learning_config_1_from_hf(
         "hook_name": hook_point_name,
         "hook_layer": trainer["layer"],
         "hook_head_index": None,
-        "activation_fn": activation_fn,
+        "activation_fn_str": activation_fn_str,
         "activation_fn_kwargs": activation_fn_kwargs,
         "apply_b_dec_to_input": True,
         "finetuning_scaling_factor": False,
@@ -663,7 +655,7 @@ def get_deepseek_r1_config_from_hf(
         "dataset_path": "lmsys/lmsys-chat-1m",
         "dataset_trust_remote_code": True,
         "sae_lens_training_version": None,
-        "activation_fn": "relu",
+        "activation_fn_str": "relu",
         "normalize_activations": "none",
         "device": device,
         "apply_b_dec_to_input": False,
@@ -818,7 +810,7 @@ def get_llama_scope_r1_distill_config_from_hf(
         "hook_name": huggingface_cfg_dict["hook_point_in"],
         "hook_layer": int(huggingface_cfg_dict["hook_point_in"].split(".")[1]),
         "hook_head_index": None,
-        "activation_fn": "relu",
+        "activation_fn_str": "relu",
         "finetuning_scaling_factor": False,
         "sae_lens_training_version": None,
         "prepend_bos": True,

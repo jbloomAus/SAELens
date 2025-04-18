@@ -6,10 +6,10 @@ import torch
 from sparsify import SparseCoder, SparseCoderConfig
 
 from sae_lens.sae import SAE
+from sae_lens.saes.topk_sae import _calculate_topk_aux_acts
 from sae_lens.training.training_sae import (
     TrainingSAE,
     TrainingSAEConfig,
-    _calculate_topk_aux_acts,
 )
 from tests.helpers import build_sae_cfg
 

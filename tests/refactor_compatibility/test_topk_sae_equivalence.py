@@ -1,13 +1,26 @@
+from typing import Union
+
 import pytest
 import torch
 
-# Old modules (from the original code)
-from sae_lens.sae import SAE, SAEConfig
-
-# New modules (our re-implementation)
-from sae_lens.saes.sae_base import SAEConfig as NewSAEConfig
+# New modules
+from sae_lens.loading.pretrained_sae_loaders import handle_config_defaulting
+from sae_lens.saes.sae_base import SAEConfig, TrainingSAEConfig
 from sae_lens.saes.topk_sae import TopKSAE, TopKTrainingSAE
-from sae_lens.training.training_sae import TrainingSAE, TrainingSAEConfig
+
+# Old modules
+from tests._comparison.sae_lens_old.sae import (
+    SAE as OldSAE,
+)
+from tests._comparison.sae_lens_old.sae import (
+    SAEConfig as OldSAEConfig,
+)
+from tests._comparison.sae_lens_old.training.training_sae import (
+    TrainingSAE as OldTrainingSAE,
+)
+from tests._comparison.sae_lens_old.training.training_sae import (
+    TrainingSAEConfig as OldTrainingSAEConfig,
+)
 
 
 @pytest.fixture
@@ -20,7 +33,10 @@ def seed_everything():
     torch.manual_seed(0)
 
 
-def compare_params(old_model: SAE, new_model: TopKSAE):
+def compare_params(
+    old_model: Union[OldSAE, OldTrainingSAE],
+    new_model: Union[TopKSAE, TopKTrainingSAE],
+):
     """
     Compare parameter names and shapes between old and new SAEs.
     """
@@ -37,11 +53,13 @@ def compare_params(old_model: SAE, new_model: TopKSAE):
         )
 
 
-def make_old_topk_sae(d_in=16, d_sae=8, use_error_term=False) -> SAE:
+def make_old_topk_sae(
+    d_in: int = 16, d_sae: int = 8, use_error_term: bool = False
+) -> OldSAE:
     """
     Instantiate the old (original) topk SAE.
     """
-    cfg = SAEConfig(
+    cfg = OldSAEConfig(
         architecture="topk",
         d_in=d_in,
         d_sae=d_sae,
@@ -51,29 +69,31 @@ def make_old_topk_sae(d_in=16, d_sae=8, use_error_term=False) -> SAE:
         hook_name="blocks.0.hook_resid_pre",  # avoid hook_z for simpler shape
         hook_layer=0,
         hook_head_index=None,
-        activation_fn="topk",
+        activation_fn_str="topk",
         activation_fn_kwargs={"k": 4},  # example k
         apply_b_dec_to_input=False,
         finetuning_scaling_factor=False,
         normalize_activations="none",
-        context_size=None,
-        dataset_path=None,
+        context_size=128,
+        dataset_path="fake/path",
         dataset_trust_remote_code=False,
         sae_lens_training_version="test_version",
         model_from_pretrained_kwargs={},
-        seqpos_slice=None,
+        seqpos_slice=(None,),
         prepend_bos=False,
     )
-    old_sae = SAE(cfg)
+    old_sae = OldSAE(cfg)
     old_sae.use_error_term = use_error_term
     return old_sae
 
 
-def make_new_topk_sae(d_in=16, d_sae=8, use_error_term=False) -> TopKSAE:
+def make_new_topk_sae(
+    d_in: int = 16, d_sae: int = 8, use_error_term: bool = False
+) -> TopKSAE:
     """
     Instantiate the new TopKSAE re-implementation.
     """
-    new_cfg = NewSAEConfig(
+    new_cfg = SAEConfig(
         architecture="topk",
         d_in=d_in,
         d_sae=d_sae,
@@ -88,8 +108,8 @@ def make_new_topk_sae(d_in=16, d_sae=8, use_error_term=False) -> TopKSAE:
         apply_b_dec_to_input=False,
         finetuning_scaling_factor=False,
         normalize_activations="none",
-        context_size=None,
-        dataset_path=None,
+        context_size=128,
+        dataset_path="fake/path",
         dataset_trust_remote_code=False,
         sae_lens_training_version="test_version",
         model_from_pretrained_kwargs={},
@@ -111,6 +131,13 @@ def test_topk_sae_inference_equivalence():
 
     compare_params(old_sae, new_sae)
 
+    # Ensure parameters are identical before comparing outputs
+    with torch.no_grad():
+        old_params = dict(old_sae.named_parameters())
+        new_params = dict(new_sae.named_parameters())
+        for k in sorted(old_params.keys()):
+            new_params[k].copy_(old_params[k])
+
     # Provide example input
     x = torch.randn(2, 4, 16, dtype=torch.float32)
 
@@ -121,20 +148,66 @@ def test_topk_sae_inference_equivalence():
     assert old_out.shape == new_out.shape, "Output shape mismatch."
     assert torch.isfinite(old_out).all(), "Old SAE produced NaNs or inf"
     assert torch.isfinite(new_out).all(), "New SAE produced NaNs or inf"
+    # Check for numerical equality
+    assert torch.allclose(
+        old_out, new_out, atol=1e-5
+    ), "Outputs differ between old and new implementations."
 
     # Now test with error_term
     old_sae_err = make_old_topk_sae(d_in=16, d_sae=8, use_error_term=True)
     new_sae_err = make_new_topk_sae(d_in=16, d_sae=8, use_error_term=True)
 
+    # Align error term model parameters
+    with torch.no_grad():
+        old_params_err = dict(old_sae_err.named_parameters())
+        new_params_err = dict(new_sae_err.named_parameters())
+        for k in sorted(old_params_err.keys()):
+            new_params_err[k].copy_(old_params_err[k])
+
     with torch.no_grad():
         old_err_out = old_sae_err(x)
         new_err_out = new_sae_err(x)
 
-    # They won't necessarily match numerically (old topk does some specifics),
-    # but at least check shape & finiteness
+    # Check shape, finiteness, and numerical equality for error term outputs
     assert old_err_out.shape == new_err_out.shape
     assert torch.isfinite(old_err_out).all(), "Old error-term output has NaNs/inf"
     assert torch.isfinite(new_err_out).all(), "New error-term output has NaNs/inf"
+    assert torch.allclose(
+        old_err_out, new_err_out, atol=1e-5
+    ), "Error term outputs differ between old and new implementations."
+
+
+def test_topk_sae_run_with_cache_equivalence():  # type: ignore
+    """
+    Compare hooking behavior for TopKSAE. We'll check that hooking triggers
+    the same number of calls and that the actual values passed to hooks match.
+    """
+
+    old_sae = make_old_topk_sae()
+    new_sae = make_new_topk_sae()
+
+    # Ensure parameters are identical before comparing outputs
+    with torch.no_grad():
+        old_params = dict(old_sae.named_parameters())
+        new_params = dict(new_sae.named_parameters())
+        for k in sorted(old_params.keys()):
+            new_params[k].copy_(old_params[k])
+
+    x = torch.randn(2, 4, 16, dtype=torch.float32)
+    with torch.no_grad():
+        old_out, old_cache = old_sae.run_with_cache(x)
+        new_out, new_cache = new_sae.run_with_cache(x)
+
+    assert old_out.shape == new_out.shape, "Output shape mismatch."
+    assert torch.allclose(old_out, new_out, atol=1e-5), "Output values differ."
+
+    assert len(old_cache) == len(new_cache), "Cache length mismatch."
+
+    for old_key, new_key in zip(sorted(old_cache.keys()), sorted(new_cache.keys())):
+        assert old_key == new_key, f"Cache keys differ: {old_key} vs {new_key}"
+        assert torch.allclose(
+            old_cache[old_key], new_cache[new_key], atol=1e-5
+        ), f"Cache values differ for key: {old_key}"
 
 
 def test_topk_sae_training_equivalence():
@@ -145,7 +218,7 @@ def test_topk_sae_training_equivalence():
       - partial correctness of losses
     """
     # Build old vs new training configs
-    old_training_cfg = TrainingSAEConfig(
+    old_training_cfg = OldTrainingSAEConfig(
         architecture="topk",
         d_in=16,
         d_sae=8,
@@ -155,17 +228,17 @@ def test_topk_sae_training_equivalence():
         hook_name="blocks.0.hook_resid_pre",
         hook_layer=0,
         hook_head_index=None,
-        activation_fn="topk",
+        activation_fn_str="topk",
         activation_fn_kwargs={"k": 4},
         apply_b_dec_to_input=False,
         finetuning_scaling_factor=False,
         normalize_activations="none",
-        context_size=None,
-        dataset_path=None,
+        context_size=128,
+        dataset_path="fake/path",
         dataset_trust_remote_code=False,
         sae_lens_training_version="test_version",
         model_from_pretrained_kwargs={},
-        seqpos_slice=None,
+        seqpos_slice=(None,),
         prepend_bos=False,
         # Training-specific:
         l1_coefficient=0.01,
@@ -182,17 +255,23 @@ def test_topk_sae_training_equivalence():
         scale_sparsity_penalty_by_decoder_norm=False,
     )
 
-    old_training_sae = TrainingSAE(old_training_cfg)
-    new_training_sae = TopKTrainingSAE(old_training_cfg)
+    old_training_sae = OldTrainingSAE(old_training_cfg)
+    # Convert old config dict for new config, applying defaults
+    new_training_cfg_dict = old_training_cfg.to_dict()
+    new_training_cfg = TrainingSAEConfig(
+        **handle_config_defaulting(new_training_cfg_dict)
+    )
+    new_training_sae = TopKTrainingSAE(new_training_cfg)
 
-    # Compare param shapes
-    old_params = dict(old_training_sae.named_parameters())
-    new_params = dict(new_training_sae.named_parameters())
-    assert sorted(old_params.keys()) == sorted(new_params.keys()), "Param names differ"
-    for k in old_params:
-        assert (
-            old_params[k].shape == new_params[k].shape
-        ), f"Shape mismatch on param {k}"
+    # Compare param shapes using updated compare_params
+    compare_params(old_training_sae, new_training_sae)
+
+    # Align parameters for numerical comparison
+    with torch.no_grad():
+        old_params = dict(old_training_sae.named_parameters())
+        new_params = dict(new_training_sae.named_parameters())
+        for k in sorted(old_params.keys()):
+            new_params[k].copy_(old_params[k])
 
     # Provide random input
     x = torch.randn(2, 3, 16, dtype=torch.float32)
@@ -211,18 +290,15 @@ def test_topk_sae_training_equivalence():
         dead_neuron_mask=None,
     )
 
-    # Check output shape
-    assert old_out.sae_out.shape == new_out.sae_out.shape
-    # Check MSE loss is finite
-    assert torch.isfinite(old_out.losses["mse_loss"])
-    assert torch.isfinite(new_out.losses["mse_loss"])
-    # Compare total loss shape
-    assert old_out.loss.shape == new_out.loss.shape
-
-    # This test doesn't require them to be identical numerically,
-    # because the old code's topk might do something slightly different:
-    # e.g. standard topk vs new topk might differ in subtleties.
-
-    # But we confirm both are finite and the forward pass works
-    assert torch.isfinite(old_out.loss)
-    assert torch.isfinite(new_out.loss)
+    assert torch.allclose(
+        old_out.sae_out, new_out.sae_out, atol=1e-5
+    ), "Training sae_out differs between old and new implementations."
+    assert torch.allclose(
+        old_out.loss, new_out.loss, atol=1e-5
+    ), "Training loss differs between old and new implementations."
+    assert torch.allclose(
+        old_out.feature_acts, new_out.feature_acts, atol=1e-5
+    ), "Training feature_acts differ between old and new implementations."
+    assert torch.allclose(
+        old_out.hidden_pre, new_out.hidden_pre, atol=1e-5
+    ), "Training hidden_pre differ between old and new implementations."

@@ -2,13 +2,24 @@ import einops
 import pytest
 import torch
 
-# Old modules
-from sae_lens.sae import SAE, SAEConfig
-
 # New modules
-from sae_lens.saes.sae_base import SAEConfig as NewSAEConfig
+from sae_lens.loading.pretrained_sae_loaders import handle_config_defaulting
+from sae_lens.saes.sae_base import SAEConfig, TrainingSAEConfig
 from sae_lens.saes.standard_sae import StandardSAE, StandardTrainingSAE
-from sae_lens.training.training_sae import TrainingSAE, TrainingSAEConfig
+
+# Old modules
+from tests._comparison.sae_lens_old.sae import (
+    SAE as OldSAE,
+)
+from tests._comparison.sae_lens_old.sae import (
+    SAEConfig as OldSAEConfig,
+)
+from tests._comparison.sae_lens_old.training.training_sae import (
+    TrainingSAE as OldTrainingSAE,
+)
+from tests._comparison.sae_lens_old.training.training_sae import (
+    TrainingSAEConfig as OldTrainingSAEConfig,
+)
 
 
 @pytest.fixture
@@ -22,66 +33,73 @@ def seed_everything():
 
 
 def make_old_sae(
-    architecture="standard", d_in=16, d_sae=8, use_error_term=False
-) -> SAE:
+    d_in: int = 16,
+    d_sae: int = 8,
+    use_error_term: bool = False,
+    hook_name: str = "blocks.0.hook_resid_pre",
+    apply_b_dec_to_input: bool = False,
+) -> OldSAE:
     """
     Helper to instantiate an old SAE instance for testing.
     Note: use a hook_name that does NOT end with '_z', so that we avoid
     the old code's auto-flattening logic that changes shapes unexpectedly.
     """
-    old_cfg = SAEConfig(
-        architecture=architecture,
+    old_cfg = OldSAEConfig(
+        architecture="standard",
         d_in=d_in,
         d_sae=d_sae,
         dtype="float32",
         device="cpu",
         model_name="test_model",
-        # Use 'hook_resid_pre' to avoid hooking on '_z' and flattening
-        hook_name="blocks.0.hook_resid_pre",
+        hook_name=hook_name,
         hook_layer=0,
         hook_head_index=None,
-        activation_fn="relu",
+        activation_fn_str="relu",  # Use activation_fn_str
         activation_fn_kwargs={},
-        apply_b_dec_to_input=False,
+        apply_b_dec_to_input=apply_b_dec_to_input,
         finetuning_scaling_factor=False,
         normalize_activations="none",
-        context_size=None,
-        dataset_path=None,
+        context_size=128,  # Add default
+        dataset_path="fake/path",  # Add default
         dataset_trust_remote_code=False,
         sae_lens_training_version="test_version",
         model_from_pretrained_kwargs={},
-        seqpos_slice=None,
+        seqpos_slice=(None,),  # Use (None,)
         prepend_bos=False,
     )
-    old_sae = SAE(old_cfg)
+    old_sae = OldSAE(old_cfg)
     old_sae.use_error_term = use_error_term
     return old_sae
 
 
 def make_new_sae(
-    architecture="standard", d_in=16, d_sae=8, use_error_term=False
+    d_in: int = 16,
+    d_sae: int = 8,
+    use_error_term: bool = False,
+    hook_name: str = "blocks.0.hook_resid_pre",
+    apply_b_dec_to_input: bool = False,
 ) -> StandardSAE:
     """
     Helper to instantiate a new StandardSAE instance for testing.
     Mirror the same hook_name that does NOT end with '_z'.
     """
-    new_cfg = NewSAEConfig(
-        architecture=architecture,
+    new_cfg = SAEConfig(
+        architecture="standard",
         d_in=d_in,
         d_sae=d_sae,
         dtype="float32",
         device="cpu",
         model_name="test_model",
-        hook_name="blocks.0.hook_resid_pre",
+        hook_name=hook_name,
         hook_layer=0,
         hook_head_index=None,
         activation_fn="relu",
         activation_fn_kwargs={},
-        apply_b_dec_to_input=False,
+        apply_b_dec_to_input=apply_b_dec_to_input,
         finetuning_scaling_factor=False,
         normalize_activations="none",
-        context_size=None,
-        dataset_path=None,
+        context_size=128,  # Add default
+        dataset_path="fake/path",  # Add default
         dataset_trust_remote_code=False,
         sae_lens_training_version="test_version",
         model_from_pretrained_kwargs={},
@@ -91,7 +109,9 @@ def make_new_sae(
     return StandardSAE(new_cfg, use_error_term=use_error_term)
 
 
-def compare_params(old_sae: SAE, new_sae: StandardSAE):
+def compare_params(
+    old_sae: OldSAE | OldTrainingSAE, new_sae: StandardSAE | StandardTrainingSAE
+):
     """
     Compare parameter names and shapes between the old SAE and the new StandardSAE.
     """
@@ -112,26 +132,16 @@ def compare_params(old_sae: SAE, new_sae: StandardSAE):
         ), f"Param {key} shape mismatch: old {v_old.shape}, new {v_new.shape}"
 
 
-@pytest.mark.parametrize("architecture", ["standard", "gated", "jumprelu"])
-def test_standard_sae_inference_equivalence(architecture):  # type: ignore
+def test_standard_sae_inference_equivalence():
     """
     Extended test of old vs new SAE inference equivalence across multiple architectures:
       - compare param shape
       - compare forward pass output shapes & ensure finite
       - optionally test error_term usage
     """
-    if architecture in ("gated", "jumprelu"):
-        # The new code has separate classes for these; for brevity, we skip here.
-        pytest.skip(
-            f"{architecture} is tested in new classes separately, skipping for demonstration."
-        )
 
-    old_sae = make_old_sae(
-        architecture=architecture, d_in=16, d_sae=8, use_error_term=False
-    )
-    new_sae = make_new_sae(
-        architecture=architecture, d_in=16, d_sae=8, use_error_term=False
-    )
+    old_sae = make_old_sae(d_in=16, d_sae=8, use_error_term=False)
+    new_sae = make_new_sae(d_in=16, d_sae=8, use_error_term=False)
     compare_params(old_sae, new_sae)
 
     # Provide a random input
@@ -146,12 +156,8 @@ def test_standard_sae_inference_equivalence(architecture):  # type: ignore
     assert torch.isfinite(new_out).all()
 
     # Now test error_term usage
-    old_sae_error = make_old_sae(
-        architecture=architecture, d_in=16, d_sae=8, use_error_term=True
-    )
-    new_sae_error = make_new_sae(
-        architecture=architecture, d_in=16, d_sae=8, use_error_term=True
-    )
+    old_sae_error = make_old_sae(d_in=16, d_sae=8, use_error_term=True)
+    new_sae_error = make_new_sae(d_in=16, d_sae=8, use_error_term=True)
 
     with torch.no_grad():
         old_err_out = old_sae_error(x)
@@ -159,22 +165,21 @@ def test_standard_sae_inference_equivalence(architecture):  # type: ignore
 
     assert old_err_out.shape == new_err_out.shape
     # standard architecture can match exactly
-    if architecture == "standard":
-        assert torch.allclose(
-            old_err_out, new_err_out, atol=1e-5
-        ), "Mismatch in old/new output with error term (standard arch)"
+    assert torch.allclose(
+        old_err_out, new_err_out, atol=1e-5
+    ), "Mismatch in old/new output with error term (standard arch)"
 
 
 @pytest.mark.parametrize(
     "fold_fn", ["fold_W_dec_norm", "fold_activation_norm_scaling_factor"]
 )
-def test_standard_sae_fold_equivalence(fold_fn):
+def test_standard_sae_fold_equivalence(fold_fn: str):
     """
     Test that calling fold functions (like fold_W_dec_norm or fold_activation_norm_scaling_factor)
     on old vs new yields consistent results on forward passes.
     """
-    old_sae = make_old_sae(architecture="standard", use_error_term=False)
-    new_sae = make_new_sae(architecture="standard", use_error_term=False)
+    old_sae = make_old_sae(use_error_term=False)
+    new_sae = make_new_sae(use_error_term=False)
     compare_params(old_sae, new_sae)
 
     # We'll line up parameters by name so that p_old and p_new actually match in shape.
@@ -198,6 +203,12 @@ def test_standard_sae_fold_equivalence(fold_fn):
         old_sae.fold_activation_norm_scaling_factor(scale_factor)
         new_sae.fold_activation_norm_scaling_factor(scale_factor)
 
+    # Compare parameters post-folding
+    for k in sorted(old_params.keys()):
+        assert torch.allclose(
+            old_params[k], new_params[k], atol=1e-5
+        ), f"Parameter {k} differs after {fold_fn}"
+
     # Provide input, compare outputs
     x = torch.randn(2, 3, 16, dtype=torch.float32)
     old_out = old_sae(x)
@@ -214,40 +225,31 @@ def test_standard_sae_run_hooks_equivalence():
     We'll check that hooking triggers the same number of calls in old_sae vs new_sae
     and that output shapes match.
     """
-
-    class Counter:
-        def __init__(self):
-            self.count = 0
-
-        def inc(self, *args, **kwargs):
-            self.count += 1
-
     old_sae = make_old_sae()
     new_sae = make_new_sae()
 
-    # define hooks in the same way:
-    old_c = Counter()
-    new_c = Counter()
-
-    old_hooks_to_add = [k for k, _ in old_sae.hook_dict.items()]
-    new_hooks_to_add = [k for k, _ in new_sae.hook_dict.items()]
-
-    for name in old_hooks_to_add:
-        old_sae.add_hook(name, old_c.inc, dir="fwd")
-    for name in new_hooks_to_add:
-        new_sae.add_hook(name, new_c.inc, dir="fwd")
+    # Ensure parameters are identical before comparing outputs
+    with torch.no_grad():
+        old_params = dict(old_sae.named_parameters())
+        new_params = dict(new_sae.named_parameters())
+        for k in sorted(old_params.keys()):
+            new_params[k].copy_(old_params[k])
 
     x = torch.randn(2, 4, 16, dtype=torch.float32)
-    old_out = old_sae(x)
-    new_out = new_sae(x)
-    assert (
-        old_out.shape == new_out.shape
-    ), "Mismatch in forward shape with hooking test."
+    with torch.no_grad():
+        old_out, old_cache = old_sae.run_with_cache(x)
+        new_out, new_cache = new_sae.run_with_cache(x)
 
-    # We don't require an identical count if the new code has more internal sub-hooks,
-    # but both should have triggered at least once.
-    assert old_c.count > 0, "No hooks triggered in old SAE"
-    assert new_c.count > 0, "No hooks triggered in new SAE"
+    assert old_out.shape == new_out.shape, "Output shape mismatch."
+    assert torch.allclose(old_out, new_out, atol=1e-5), "Output values differ."
+
+    assert len(old_cache) == len(new_cache), "Cache length mismatch."
+
+    for old_key, new_key in zip(old_cache.keys(), new_cache.keys()):
+        assert old_key == new_key, "Cache keys differ."
+        assert torch.allclose(
+            old_cache[old_key], new_cache[new_key], atol=1e-5
+        ), "Cache values differ."
 
 
 @pytest.mark.parametrize(
@@ -257,7 +259,7 @@ def test_standard_sae_run_hooks_equivalence():
         "blocks.0.attn.hook_z",  # hook_z case
     ],
 )
-def test_standard_sae_hook_z_equivalence(hook_name):
+def test_standard_sae_hook_z_equivalence(hook_name: str):
     """
     Test that both old and new SAEs handle hook_z cases correctly.
     For hook_z, inputs should be reshaped from (..., n_heads, d_head) to (..., n_heads*d_head).
@@ -267,7 +269,33 @@ def test_standard_sae_hook_z_equivalence(hook_name):
     d_head = 8
     d_in = n_heads * d_head  # Always use flattened dimension for SAE config
 
-    def make_old_sae_with_hook(hook_name, d_in) -> SAE:
+    def make_old_sae_with_hook(hook_name: str, d_in: int) -> OldSAE:
+        cfg = OldSAEConfig(
+            architecture="standard",  # Explicitly set Literal
+            d_in=d_in,  # Always use flattened dimension
+            d_sae=32,
+            dtype="float32",
+            device="cpu",
+            model_name="test_model",
+            hook_name=hook_name,
+            hook_layer=0,
+            hook_head_index=None,
+            activation_fn_str="relu",
+            activation_fn_kwargs={},
+            apply_b_dec_to_input=False,  # Important: set to False to avoid shape issues
+            finetuning_scaling_factor=False,
+            normalize_activations="none",
+            context_size=128,  # Add default
+            dataset_path="fake/path",  # Add default
+            dataset_trust_remote_code=False,
+            sae_lens_training_version="test_version",
+            model_from_pretrained_kwargs={},
+            seqpos_slice=(None,),  # Use None
+            prepend_bos=False,
+        )
+        return OldSAE(cfg)
+
+    def make_new_sae_with_hook(hook_name: str, d_in: int) -> StandardSAE:
         cfg = SAEConfig(
             architecture="standard",
             d_in=d_in,  # Always use flattened dimension
@@ -284,33 +312,7 @@ def test_standard_sae_hook_z_equivalence(hook_name):
             finetuning_scaling_factor=False,
             normalize_activations="none",
             context_size=None,
-            dataset_path=None,
-            dataset_trust_remote_code=False,
-            sae_lens_training_version="test_version",
-            model_from_pretrained_kwargs={},
-            seqpos_slice=None,
-            prepend_bos=False,
-        )
-        return SAE(cfg)
-
-    def make_new_sae_with_hook(hook_name, d_in) -> StandardSAE:
-        cfg = NewSAEConfig(
-            architecture="standard",
-            d_in=d_in,  # Always use flattened dimension
-            d_sae=32,
-            dtype="float32",
-            device="cpu",
-            model_name="test_model",
-            hook_name=hook_name,
-            hook_layer=0,
-            hook_head_index=None,
-            activation_fn="relu",
-            activation_fn_kwargs={},
-            apply_b_dec_to_input=False,  # Important: set to False to avoid shape issues
-            finetuning_scaling_factor=False,
-            normalize_activations="none",
-            context_size=None,
-            dataset_path=None,
+            dataset_path="fake/path",  # Add default
             dataset_trust_remote_code=False,
             sae_lens_training_version="test_version",
             model_from_pretrained_kwargs={},
@@ -331,8 +333,6 @@ def test_standard_sae_hook_z_equivalence(hook_name):
 
         # New SAE needs explicit hook_z handling turned on
         new_sae.turn_on_forward_pass_hook_z_reshaping()
-        # Set d_head for proper reshaping
-        new_sae.d_head = d_head
     else:
         # Standard shape for other hooks: (batch, seq, d_in)
         x = torch.randn(batch_size, seq_len, d_in)
@@ -380,7 +380,7 @@ def test_standard_sae_hook_z_equivalence(hook_name):
         "blocks.0.attn.hook_z",  # hook_z case
     ],
 )
-def test_standard_sae_training_hook_z_equivalence(hook_name):
+def test_standard_sae_training_hook_z_equivalence(hook_name: str):
     """
     Test that training works correctly with hook_z reshaping.
     """
@@ -389,8 +389,8 @@ def test_standard_sae_training_hook_z_equivalence(hook_name):
     d_head = 8
     d_in = n_heads * d_head  # Always use flattened dimension
 
-    old_training_cfg = TrainingSAEConfig(
-        architecture="standard",
+    old_training_cfg = OldTrainingSAEConfig(
+        architecture="standard",  # Explicitly set Literal
         d_in=d_in,  # Always use flattened dimension
         d_sae=32,
         dtype="float32",
@@ -399,17 +399,17 @@ def test_standard_sae_training_hook_z_equivalence(hook_name):
         hook_name=hook_name,
         hook_layer=0,
         hook_head_index=None,
-        activation_fn="relu",
+        activation_fn_str="relu",
         activation_fn_kwargs={},
         apply_b_dec_to_input=False,  # Important: set to False
         finetuning_scaling_factor=False,
         normalize_activations="none",
-        context_size=None,
-        dataset_path=None,
+        context_size=128,  # Add default
+        dataset_path="fake/path",  # Add default
         dataset_trust_remote_code=False,
         sae_lens_training_version="test_version",
         model_from_pretrained_kwargs={},
-        seqpos_slice=None,
+        seqpos_slice=(None,),  # Use None
         prepend_bos=False,
         # Training-specific:
         l1_coefficient=0.01,
@@ -426,8 +426,14 @@ def test_standard_sae_training_hook_z_equivalence(hook_name):
         scale_sparsity_penalty_by_decoder_norm=False,
     )
 
-    old_training_sae = TrainingSAE(old_training_cfg)
-    new_training_sae = StandardTrainingSAE(old_training_cfg)
+    old_training_sae = OldTrainingSAE(old_training_cfg)
+    # Use the *new* TrainingSAEConfig for the new SAE
+    new_training_cfg_dict = old_training_cfg.to_dict()
+    # Remove old config specific args if any
+    new_training_cfg = TrainingSAEConfig(
+        **handle_config_defaulting(new_training_cfg_dict)
+    )
+    new_training_sae = StandardTrainingSAE(new_training_cfg)
 
     # Create appropriate input shape and prepare data for each implementation
     batch_size = 2
@@ -442,7 +448,6 @@ def test_standard_sae_training_hook_z_equivalence(hook_name):
 
         # Turn on hook_z reshaping for new SAE only (old one expects pre-flattened input)
         new_training_sae.turn_on_forward_pass_hook_z_reshaping()
-        new_training_sae.d_head = d_head
     else:
         # For non-hook_z case, both use the same shape
         new_input_data = torch.randn(batch_size, seq_len, d_in)
@@ -472,14 +477,16 @@ def test_standard_sae_training_hook_z_equivalence(hook_name):
 
     # Check losses exist and are finite
     assert "mse_loss" in old_out.losses and "mse_loss" in new_out.losses
-    assert torch.isfinite(old_out.losses["mse_loss"])
-    assert torch.isfinite(new_out.losses["mse_loss"])
+    assert torch.isfinite(old_out.losses["mse_loss"]).all()  # type: ignore
+    assert torch.isfinite(new_out.losses["mse_loss"]).all()
 
     # Check sparsity loss (name differs between implementations)
     old_sparsity_loss = old_out.losses.get("aux_loss", old_out.losses.get("l1_loss"))
     new_sparsity_loss = new_out.losses.get("aux_loss", new_out.losses.get("l1_loss"))
-    assert torch.isfinite(old_sparsity_loss)
-    assert torch.isfinite(new_sparsity_loss)
+    assert old_sparsity_loss is not None
+    assert new_sparsity_loss is not None
+    assert torch.isfinite(old_sparsity_loss).all()  # type: ignore
+    assert torch.isfinite(new_sparsity_loss).all()
 
     # For hook_z case, verify the internal shapes
     if hook_name.endswith("_z"):
@@ -505,3 +512,420 @@ def test_standard_sae_training_hook_z_equivalence(hook_name):
 
     if hook_name.endswith("_z"):
         new_training_sae.turn_off_forward_pass_hook_z_reshaping()
+
+
+def test_standard_sae_forward_equivalence():
+    """
+    Test standard forward pass equivalence (non-hook_z).
+    """
+    d_in = 16
+    d_sae = 32
+    hook_name = "blocks.0.hook_resid_pre"
+
+    old_sae = make_old_sae(
+        d_in=d_in, d_sae=d_sae, hook_name=hook_name, apply_b_dec_to_input=False
+    )
+    new_sae = make_new_sae(
+        d_in=d_in, d_sae=d_sae, hook_name=hook_name, apply_b_dec_to_input=False
+    )
+
+    # Align parameters
+    with torch.no_grad():
+        old_params = dict(old_sae.named_parameters())
+        new_params = dict(new_sae.named_parameters())
+        for k in sorted(old_params.keys()):
+            new_params[k].copy_(old_params[k])
+    compare_params(old_sae, new_sae)
+
+    # Standard input shape
+    batch_size = 2
+    seq_len = 4
+    x = torch.randn(batch_size, seq_len, d_in)
+
+    # Test forward pass
+    with torch.no_grad():
+        old_out = old_sae(x)
+        new_out = new_sae(x)
+
+    assert (
+        old_out.shape == x.shape
+    ), f"Old output shape mismatch. Got {old_out.shape}, expected {x.shape}"
+    assert (
+        new_out.shape == x.shape
+    ), f"New output shape mismatch. Got {new_out.shape}, expected {x.shape}"
+    assert torch.allclose(
+        old_out, new_out, atol=1e-5
+    ), "Standard forward outputs differ numerically."
+
+
+def test_sae_hook_z_forward_equivalence():
+    """
+    Test forward pass equivalence for the hook_z case, including internal reshaping checks.
+    """
+    n_heads = 8
+    d_head = 8
+    d_in = n_heads * d_head  # Flattened dimension for SAE config
+    d_sae = 32
+    hook_name = "blocks.0.attn.hook_z"
+
+    old_sae = make_old_sae(
+        d_in=d_in, d_sae=d_sae, hook_name=hook_name, apply_b_dec_to_input=False
+    )
+    new_sae = make_new_sae(
+        d_in=d_in, d_sae=d_sae, hook_name=hook_name, apply_b_dec_to_input=False
+    )
+
+    # Align parameters
+    with torch.no_grad():
+        old_params = dict(old_sae.named_parameters())
+        new_params = dict(new_sae.named_parameters())
+        for k in sorted(old_params.keys()):
+            new_params[k].copy_(old_params[k])
+    compare_params(old_sae, new_sae)
+
+    # Input shape for attention hook: (batch, seq, heads, d_head)
+    batch_size = 2
+    seq_len = 4
+    x = torch.randn(batch_size, seq_len, n_heads, d_head)
+
+    # Turn on hook_z reshaping for the new SAE
+    new_sae.turn_on_forward_pass_hook_z_reshaping()
+
+    try:
+        # Test forward pass
+        with torch.no_grad():
+            old_out = old_sae(
+                x
+            )  # Old SAE expects flattened input handled internally by HookedTransformer
+            new_out = new_sae(
+                x
+            )  # New SAE handles reshaping internally when hook_z is on
+
+        assert (
+            old_out.shape == x.shape
+        ), f"Old hook_z output shape mismatch. Got {old_out.shape}, expected {x.shape}"
+        assert (
+            new_out.shape == x.shape
+        ), f"New hook_z output shape mismatch. Got {new_out.shape}, expected {x.shape}"
+        assert torch.allclose(
+            old_out, new_out, atol=1e-5
+        ), "Hook_z forward outputs differ numerically."
+
+        # Verify internal shapes using run_with_cache
+        with torch.no_grad():
+            _, old_cache = old_sae.run_with_cache(x)
+            _, new_cache = new_sae.run_with_cache(x)
+
+        # Both should have flattened internal activations input to the SAE linear layers
+        assert (
+            old_cache["hook_sae_input"].shape[-1] == n_heads * d_head
+        ), "Old SAE didn't flatten hook_z input correctly"
+        assert (
+            new_cache["hook_sae_input"].shape[-1] == n_heads * d_head
+        ), "New SAE didn't flatten hook_z input correctly"
+        # Verify encoder output shape is correct
+        assert (
+            old_cache["hook_sae_acts_pre"].shape[-1] == old_sae.cfg.d_sae
+        ), "Old SAE encoder output shape incorrect"
+        assert (
+            new_cache["hook_sae_acts_pre"].shape[-1] == new_sae.cfg.d_sae
+        ), "New SAE encoder output shape incorrect"
+        # Check decoder input has correct shape
+        assert (
+            old_cache["hook_sae_acts_post"].shape[-1] == old_sae.cfg.d_sae
+        ), "Old SAE decoder input shape incorrect"
+        assert (
+            new_cache["hook_sae_acts_post"].shape[-1] == new_sae.cfg.d_sae
+        ), "New SAE decoder input shape incorrect"
+
+    finally:
+        # Clean up hook_z mode
+        new_sae.turn_off_forward_pass_hook_z_reshaping()
+
+
+#####################################
+# Training Equivalence Helpers
+#####################################
+
+
+def make_old_training_sae(
+    d_in: int = 16,
+    d_sae: int = 32,
+    hook_name: str = "blocks.0.hook_resid_pre",
+    l1_coefficient: float = 0.01,
+    apply_b_dec_to_input: bool = False,
+) -> OldTrainingSAE:
+    """Helper to instantiate an old TrainingSAE instance."""
+    old_training_cfg = OldTrainingSAEConfig(
+        architecture="standard",
+        d_in=d_in,
+        d_sae=d_sae,
+        dtype="float32",
+        device="cpu",
+        model_name="test_model",
+        hook_name=hook_name,
+        hook_layer=0,
+        hook_head_index=None,
+        activation_fn_str="relu",
+        activation_fn_kwargs={},
+        apply_b_dec_to_input=apply_b_dec_to_input,
+        finetuning_scaling_factor=False,
+        normalize_activations="none",
+        context_size=128,
+        dataset_path="fake/path",
+        dataset_trust_remote_code=False,
+        sae_lens_training_version="test_version",
+        model_from_pretrained_kwargs={},
+        seqpos_slice=(None,),
+        prepend_bos=False,
+        l1_coefficient=l1_coefficient,
+        lp_norm=1.0,
+        use_ghost_grads=False,
+        normalize_sae_decoder=False,
+        noise_scale=0.0,
+        decoder_orthogonal_init=False,
+        mse_loss_normalization=None,
+        jumprelu_init_threshold=0.0,  # Not used but part of config
+        jumprelu_bandwidth=1.0,  # Not used but part of config
+        decoder_heuristic_init=False,
+        init_encoder_as_decoder_transpose=False,
+        scale_sparsity_penalty_by_decoder_norm=False,
+    )
+    return OldTrainingSAE(old_training_cfg)
+
+
+def make_new_training_sae(
+    d_in: int = 16,
+    d_sae: int = 32,
+    hook_name: str = "blocks.0.hook_resid_pre",
+    l1_coefficient: float = 0.01,
+    apply_b_dec_to_input: bool = False,
+) -> StandardTrainingSAE:
+    """Helper to instantiate a new StandardTrainingSAE instance."""
+    # We can derive the new config from the old one for consistency
+    old_cfg_dict = OldTrainingSAEConfig(
+        architecture="standard",
+        d_in=d_in,
+        d_sae=d_sae,
+        dtype="float32",
+        device="cpu",
+        model_name="test_model",
+        hook_name=hook_name,
+        hook_layer=0,
+        hook_head_index=None,
+        activation_fn_str="relu",
+        activation_fn_kwargs={},
+        apply_b_dec_to_input=apply_b_dec_to_input,
+        finetuning_scaling_factor=False,
+        normalize_activations="none",
+        context_size=128,
+        dataset_path="fake/path",
+        dataset_trust_remote_code=False,
+        sae_lens_training_version="test_version",
+        model_from_pretrained_kwargs={},
+        seqpos_slice=(None,),
+        prepend_bos=False,
+        l1_coefficient=l1_coefficient,
+        lp_norm=1.0,
+        use_ghost_grads=False,
+        normalize_sae_decoder=False,
+        noise_scale=0.0,
+        decoder_orthogonal_init=False,
+        mse_loss_normalization=None,
+        jumprelu_init_threshold=0.0,  # Not used but part of config
+        jumprelu_bandwidth=1.0,  # Not used but part of config
+        decoder_heuristic_init=False,
+        init_encoder_as_decoder_transpose=False,
+        scale_sparsity_penalty_by_decoder_norm=False,
+    ).to_dict()
+
+    new_training_cfg = TrainingSAEConfig(**handle_config_defaulting(old_cfg_dict))
+    return StandardTrainingSAE(new_training_cfg)
+
+
+#####################################
+# Training Equivalence Tests
+#####################################
+
+
+def test_standard_sae_training_equivalence():
+    """
+    Test standard training pass equivalence (non-hook_z).
+    """
+    d_in = 16
+    d_sae = 32
+    hook_name = "blocks.0.hook_resid_pre"
+    l1_coefficient = 0.01
+
+    old_sae = make_old_training_sae(
+        d_in=d_in,
+        d_sae=d_sae,
+        hook_name=hook_name,
+        l1_coefficient=l1_coefficient,
+        apply_b_dec_to_input=False,
+    )
+    new_sae = make_new_training_sae(
+        d_in=d_in,
+        d_sae=d_sae,
+        hook_name=hook_name,
+        l1_coefficient=l1_coefficient,
+        apply_b_dec_to_input=False,
+    )
+
+    # Align parameters
+    with torch.no_grad():
+        old_params = dict(old_sae.named_parameters())
+        new_params = dict(new_sae.named_parameters())
+        for k in sorted(old_params.keys()):
+            new_params[k].copy_(old_params[k])
+    compare_params(old_sae, new_sae)
+
+    # Standard input shape
+    batch_size = 2
+    seq_len = 4
+    x = torch.randn(batch_size, seq_len, d_in)
+
+    old_sae.train()
+    new_sae.train()
+
+    # Forward pass
+    old_out = old_sae.training_forward_pass(
+        sae_in=x,
+        current_l1_coefficient=l1_coefficient,
+        dead_neuron_mask=None,
+    )
+    new_out = new_sae.training_forward_pass(
+        sae_in=x,
+        current_l1_coefficient=l1_coefficient,
+        dead_neuron_mask=None,
+    )
+
+    # Check shapes
+    assert old_out.sae_out.shape == x.shape, "Old output shape mismatch"
+    assert new_out.sae_out.shape == x.shape, "New output shape mismatch"
+
+    # Check numerical equivalence
+    assert torch.allclose(
+        old_out.sae_out, new_out.sae_out, atol=1e-5
+    ), "SAE output differs"
+    assert torch.allclose(old_out.loss, new_out.loss, atol=1e-5), "Total loss differs"
+
+    # Check loss components
+    old_mse = old_out.losses["mse_loss"]
+    new_mse = new_out.losses["mse_loss"]
+    old_sparsity = old_out.losses.get("aux_loss", old_out.losses.get("l1_loss"))
+    new_sparsity = new_out.losses.get("aux_loss", new_out.losses.get("l1_loss"))
+
+    assert old_sparsity is not None and new_sparsity is not None
+    assert isinstance(old_mse, torch.Tensor) and torch.isfinite(old_mse).all()
+    assert isinstance(new_mse, torch.Tensor) and torch.isfinite(new_mse).all()
+    assert isinstance(old_sparsity, torch.Tensor) and torch.isfinite(old_sparsity).all()
+    assert isinstance(new_sparsity, torch.Tensor) and torch.isfinite(new_sparsity).all()
+
+    assert torch.allclose(old_mse, new_mse, atol=1e-5), "MSE loss differs"
+    assert torch.allclose(
+        old_sparsity, new_sparsity, atol=1e-5
+    ), "Sparsity loss differs"
+
+
+def test_sae_hook_z_training_equivalence():
+    """
+    Test training pass equivalence for the hook_z case.
+    """
+    n_heads = 8
+    d_head = 8
+    d_in = n_heads * d_head
+    d_sae = 32
+    hook_name = "blocks.0.attn.hook_z"
+    l1_coefficient = 0.01
+
+    old_sae = make_old_training_sae(
+        d_in=d_in,
+        d_sae=d_sae,
+        hook_name=hook_name,
+        l1_coefficient=l1_coefficient,
+        apply_b_dec_to_input=False,
+    )
+    new_sae = make_new_training_sae(
+        d_in=d_in,
+        d_sae=d_sae,
+        hook_name=hook_name,
+        l1_coefficient=l1_coefficient,
+        apply_b_dec_to_input=False,
+    )
+
+    # Align parameters
+    with torch.no_grad():
+        old_params = dict(old_sae.named_parameters())
+        new_params = dict(new_sae.named_parameters())
+        for k in sorted(old_params.keys()):
+            new_params[k].copy_(old_params[k])
+    compare_params(old_sae, new_sae)
+
+    # Input shapes
+    batch_size = 2
+    seq_len = 4
+    # New SAE takes original shape, old SAE takes flattened
+    x_raw = torch.randn(batch_size, seq_len, n_heads, d_head)
+    x_reshaped = einops.rearrange(x_raw.clone(), "... h d -> ... (h d)")
+
+    old_sae.train()
+    new_sae.train()
+
+    # Forward pass
+    old_out = old_sae.training_forward_pass(
+        sae_in=x_reshaped,
+        current_l1_coefficient=l1_coefficient,
+        dead_neuron_mask=None,
+    )
+    new_out = new_sae.training_forward_pass(
+        sae_in=x_reshaped,
+        current_l1_coefficient=l1_coefficient,
+        dead_neuron_mask=None,
+    )
+
+    # Check shapes (output matches input shape for each)
+    assert old_out.sae_out.shape == x_reshaped.shape, "Old hook_z output shape mismatch"
+    assert new_out.sae_out.shape == x_reshaped.shape, "New hook_z output shape mismatch"
+
+    # Check numerical equivalence (reshape old output to match new)
+    assert torch.allclose(
+        old_out.sae_out, new_out.sae_out, atol=1e-5
+    ), "Hook_z SAE output differs"
+    assert torch.allclose(
+        old_out.loss, new_out.loss, atol=1e-5
+    ), "Hook_z total loss differs"
+
+    # Check loss components
+    old_mse = old_out.losses["mse_loss"]
+    new_mse = new_out.losses["mse_loss"]
+    old_sparsity = old_out.losses.get("aux_loss", old_out.losses.get("l1_loss"))
+    new_sparsity = new_out.losses.get("aux_loss", new_out.losses.get("l1_loss"))
+
+    assert old_sparsity is not None and new_sparsity is not None
+    assert isinstance(old_mse, torch.Tensor) and torch.isfinite(old_mse).all()
+    assert isinstance(new_mse, torch.Tensor) and torch.isfinite(new_mse).all()
+    assert isinstance(old_sparsity, torch.Tensor) and torch.isfinite(old_sparsity).all()
+    assert isinstance(new_sparsity, torch.Tensor) and torch.isfinite(new_sparsity).all()
+
+    assert torch.allclose(old_mse, new_mse, atol=1e-5), "Hook_z MSE loss differs"
+    assert torch.allclose(
+        old_sparsity, new_sparsity, atol=1e-5
+    ), "Hook_z Sparsity loss differs"
+
+    with torch.no_grad():
+        _, old_cache = old_sae.run_with_cache(x_reshaped)
+        _, new_cache = new_sae.run_with_cache(x_reshaped)
+
+    assert (
+        old_cache["hook_sae_input"].shape[-1] == n_heads * d_head
+    ), "Old SAE cache input shape incorrect"
+    assert (
+        new_cache["hook_sae_input"].shape[-1] == n_heads * d_head
+    ), "New SAE cache input shape incorrect"
+    assert (
+        old_cache["hook_sae_acts_pre"].shape[-1] == old_sae.cfg.d_sae
+    ), "Old SAE cache acts_pre shape incorrect"
+    assert (
+        new_cache["hook_sae_acts_pre"].shape[-1] == new_sae.cfg.d_sae
+    ), "New SAE cache acts_pre shape incorrect"
