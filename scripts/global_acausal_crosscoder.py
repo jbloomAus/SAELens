@@ -27,15 +27,15 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 # total_training_steps = 200_000
 total_training_steps = 50_000
 # total_training_steps = 1000
-# batch_size = 4096
+batch_size = 4096
 # batch_size = 256
-total_training_tokens = total_training_steps * 256
+total_training_tokens = total_training_steps * batch_size
 print(f"Total Training Tokens: {total_training_tokens}")
-# l1_coefficient = 1.0
-l1_coefficient = 1e-6              # DEBUG: if I mostly zero out the l1 loss, will it learn?
+l1_coefficient = 3e-2
 
 # change these configs
-model_name = "tiny-stories-2L-33M"
+# TODO(mkbehr): just do tiny-stories-1M with all 8 layers
+model_name = "tiny-stories-1M"
 dataset_path = "apollo-research/roneneldan-TinyStories-tokenizer-gpt2"
 new_cached_activations_path = (
     f"./cached_activations/{model_name}/{dataset_path}/{total_training_steps}"
@@ -54,8 +54,8 @@ cfg = LanguageModelSAERunnerConfig(
     # Pick a tiny model to make this easier.
     model_name=model_name,
     hook_name="blocks.{}.hook_mlp_out",
-    hook_layers=[0,1],
-    d_in=1024,
+    hook_layers=list(range(8)),
+    d_in=64,
     dataset_path=dataset_path,
     streaming=True,
     context_size=512,
