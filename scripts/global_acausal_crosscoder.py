@@ -25,44 +25,40 @@ print("Using device:", device)
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 # total_training_steps = 200_000
-total_training_steps = 50_000
+total_training_steps = 30_000
 # total_training_steps = 1000
 batch_size = 4096
 # batch_size = 256
 total_training_tokens = total_training_steps * batch_size
 print(f"Total Training Tokens: {total_training_tokens}")
-l1_coefficient = 3e-2
 
-# change these configs
-# TODO(mkbehr): just do tiny-stories-1M with all 8 layers
-model_name = "tiny-stories-1M"
+model_name = "tiny-stories-28M"
 dataset_path = "apollo-research/roneneldan-TinyStories-tokenizer-gpt2"
 new_cached_activations_path = (
     f"./cached_activations/{model_name}/{dataset_path}/{total_training_steps}"
 )
 
-lr_warm_up_steps = total_training_steps // 20
+lr_warm_up_steps = 0
 print(f"lr_warm_up_steps: {lr_warm_up_steps}")
 lr_decay_steps = total_training_steps // 5  # 20% of training steps.
 print(f"lr_decay_steps: {lr_decay_steps}")
-l1_warmup_steps = total_training_steps // 10
+l1_warmup_steps = total_training_steps // 20
 print(f"l1_warmup_steps: {l1_warmup_steps}")
 log_to_wandb = True
 # log_to_wandb = False
 
 cfg = LanguageModelSAERunnerConfig(
-    # Pick a tiny model to make this easier.
     model_name=model_name,
     hook_name="blocks.{}.hook_mlp_out",
-    hook_layers=list(range(8)),
-    d_in=64,
+    hook_layers=list(range(4)),
+    d_in=512,
     dataset_path=dataset_path,
     streaming=True,
     context_size=512,
     is_dataset_tokenized=True,
     prepend_bos=True,
     # How big do we want our SAE to be?
-    expansion_factor=64,
+    expansion_factor=16,
     # Dataset / Activation Store
     # When we do a proper test
     # training_tokens= 820_000_000, # 200k steps * 4096 batch size ~ 820M tokens (doable overnight on an A100)
@@ -70,16 +66,17 @@ cfg = LanguageModelSAERunnerConfig(
     use_cached_activations=False,
     # cached_activations_path="/home/paperspace/shared_volumes/activations_volume_1/gelu-1l",
     training_tokens=total_training_tokens,  # For initial testing I think this is a good number.
-    train_batch_size_tokens=4096,           # TODO(mkbehr) doesn't follow batch_size!
+    train_batch_size_tokens=batch_size,
     # Loss Function
     ## Reconstruction Coefficient.
     mse_loss_normalization=None,  # MSE Loss Normalization is not mentioned (so we use stanrd MSE Loss). But not we take an average over the batch.
     ## Anthropic does not mention using an Lp norm other than L1.
-    l1_coefficient=l1_coefficient,
+    l1_coefficient=5,
     lp_norm=1.0,
     # Instead, they multiply the L1 loss contribution
     # from each feature of the activations by the decoder norm of the corresponding feature.
     scale_sparsity_penalty_by_decoder_norm=True,
+    # TODO(mkbehr): plumb this through config
     # sparsity_penalty_decoder_norm_lp_norm=1.0,
     # Learning Rate
     lr_scheduler_name="constant",  # we set this independently of warmup and decay steps.
@@ -111,7 +108,7 @@ cfg = LanguageModelSAERunnerConfig(
     dead_feature_threshold=1e-4,
     # WANDB
     log_to_wandb=log_to_wandb,  # always use wandb unless you are just testing code.
-    wandb_project="crosscoder-global-acausal-tinystories",
+    wandb_project="crosscoder-acausal-tinystories-23M-layer0-3",
     wandb_log_frequency=50,
     eval_every_n_wandb_logs=10,
     # Misc
