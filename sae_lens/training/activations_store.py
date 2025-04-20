@@ -442,31 +442,36 @@ class ActivationsStore:
             raise ValueError(
                 "estimated_norm_scaling_factor is not set, call set_norm_scaling_factor_if_needed() first"
             )
-        return activations * self.estimated_norm_scaling_factor
+        return activations * self.estimated_norm_scaling_factor.unsqueeze(-1).to(activations.device)
 
     def unscale(self, activations: torch.Tensor) -> torch.Tensor:
         if self.estimated_norm_scaling_factor is None:
             raise ValueError(
                 "estimated_norm_scaling_factor is not set, call set_norm_scaling_factor_if_needed() first"
             )
-        return activations / self.estimated_norm_scaling_factor
+        return activations / self.estimated_norm_scaling_factor.unsqueeze(-1).to(activations.device)
 
     def get_norm_scaling_factor(self, activations: torch.Tensor) -> torch.Tensor:
         return (self.d_in**0.5) / activations.norm(dim=-1).mean()
 
     @torch.no_grad()
     def estimate_norm_scaling_factor(self, n_batches_for_norm_estimate: int = int(1e3)):
-        norms_per_batch = []
-        for _ in tqdm(
+        # TODO(mkbehr): test multilayer norm scaling, probably fix saving?
+        norms_per_batch = torch.empty(
+            len(self.hook_layers), n_batches_for_norm_estimate,
+            device=self.device)
+        for batch_i in tqdm(
             range(n_batches_for_norm_estimate), desc="Estimating norm scaling factor"
         ):
             # temporalily set estimated_norm_scaling_factor to 1.0 so the dataloader works
-            self.estimated_norm_scaling_factor = 1.0
+            self.estimated_norm_scaling_factor = torch.ones(1)
             acts = self.next_batch()[:, 0]
             self.estimated_norm_scaling_factor = None
-            norms_per_batch.append(acts.norm(dim=-1).mean().item())
-        mean_norm = np.mean(norms_per_batch)
-        return np.sqrt(self.d_in) / mean_norm
+            norms_per_batch[:, batch_i] = acts.norm(dim=-1).mean(dim=0)
+        mean_norm = norms_per_batch.mean(dim=1)
+        # TODO(mkbehr): make this a float in single-layer case for
+        # backwards compatibility
+        return (np.sqrt(self.d_in) / mean_norm)
 
     def shuffle_input_dataset(self, seed: int, buffer_size: int = 1):
         """

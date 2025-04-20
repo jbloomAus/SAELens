@@ -36,7 +36,6 @@ class CrosscoderSAE(SAE):
 
     # TODO(mkbehr): write
     # - remaining encode methods
-    # - fold_activation_norm
     # - hook_z reshaping support
 
     def __init__(
@@ -136,3 +135,16 @@ class CrosscoderSAE(SAE):
             self.b_enc.data = self.b_enc.data * W_dec_norms.squeeze()
         else:
             self.b_enc.data = self.b_enc.data * W_dec_norms.squeeze()
+
+    @torch.no_grad()
+    def fold_activation_norm_scaling_factor(
+        self, activation_norm_scaling_factor: Float[torch.Tensor, "n_layers"]
+    ):
+        self.W_enc.data = self.W_enc.data * activation_norm_scaling_factor.reshape((-1,1,1))
+        # previously weren't doing this.
+        self.W_dec.data = self.W_dec.data / activation_norm_scaling_factor.unsqueeze(-1)
+        self.b_dec.data = self.b_dec.data / activation_norm_scaling_factor.unsqueeze(-1)
+
+        # once we normalize, we shouldn't need to scale activations.
+        self.cfg.normalize_activations = "none"
+
