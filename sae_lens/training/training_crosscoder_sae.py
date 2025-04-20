@@ -242,6 +242,11 @@ class TrainingCrosscoderSAE(CrosscoderSAE, TrainingSAE):
                     self.cfg.d_sae, *self.input_shape(), dtype=self.dtype, device=self.device
                 )
             )
+            self.W_dec.data = (
+                self.W_dec.data
+                / self.W_dec.data.norm(dim=-1, keepdim=True)
+                * 0.1           # TODO(mkbehr): make norm configurable
+            )
             self.initialize_decoder_norm_constant_norm()
 
         # Then we initialize the encoder weights (either as the transpose of decoder or not)
