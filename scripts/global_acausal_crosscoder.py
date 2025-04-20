@@ -25,9 +25,9 @@ print("Using device:", device)
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 # total_training_steps = 200_000
-total_training_steps = 30_000
-# total_training_steps = 1000
-batch_size = 4096
+total_training_steps = 60_000
+# total_training_steps = 5000
+batch_size = 2048
 # batch_size = 256
 total_training_tokens = total_training_steps * batch_size
 print(f"Total Training Tokens: {total_training_tokens}")
@@ -38,14 +38,15 @@ new_cached_activations_path = (
     f"./cached_activations/{model_name}/{dataset_path}/{total_training_steps}"
 )
 
-lr_warm_up_steps = 0
+lr_warm_up_steps = total_training_steps // 40
 print(f"lr_warm_up_steps: {lr_warm_up_steps}")
 lr_decay_steps = total_training_steps // 5  # 20% of training steps.
 print(f"lr_decay_steps: {lr_decay_steps}")
 l1_warmup_steps = total_training_steps // 20
 print(f"l1_warmup_steps: {l1_warmup_steps}")
-log_to_wandb = True
-# log_to_wandb = False
+log_to_wandb = False
+if not log_to_wandb:
+    print("NOT LOGGING TO WANDB")
 
 cfg = LanguageModelSAERunnerConfig(
     model_name=model_name,
@@ -71,7 +72,7 @@ cfg = LanguageModelSAERunnerConfig(
     ## Reconstruction Coefficient.
     mse_loss_normalization=None,  # MSE Loss Normalization is not mentioned (so we use stanrd MSE Loss). But not we take an average over the batch.
     ## Anthropic does not mention using an Lp norm other than L1.
-    l1_coefficient=5,
+    l1_coefficient=1,
     lp_norm=1.0,
     # Instead, they multiply the L1 loss contribution
     # from each feature of the activations by the decoder norm of the corresponding feature.
@@ -94,7 +95,7 @@ cfg = LanguageModelSAERunnerConfig(
     decoder_heuristic_init=True,
     init_encoder_as_decoder_transpose=True,
     # Optimizer
-    lr=5e-5,
+    lr=1e-5,
     ## adam optimizer has no weight decay by default so worry about this.
     adam_beta1=0.9,
     adam_beta2=0.999,
