@@ -5,7 +5,7 @@ import torch
 
 # New modules
 from sae_lens.loading.pretrained_sae_loaders import handle_config_defaulting
-from sae_lens.saes.sae_base import SAEConfig, TrainingSAEConfig
+from sae_lens.saes.sae import SAEConfig, TrainingSAEConfig, TrainStepInput
 from sae_lens.saes.topk_sae import TopKSAE, TopKTrainingSAE
 
 # Old modules
@@ -285,9 +285,11 @@ def test_topk_sae_training_equivalence():
         dead_neuron_mask=None,
     )
     new_out = new_training_sae.training_forward_pass(
-        sae_in=x,
-        current_l1_coefficient=old_training_cfg.l1_coefficient,
-        dead_neuron_mask=None,
+        step_input=TrainStepInput(
+            sae_in=x,
+            current_l1_coefficient=old_training_cfg.l1_coefficient,
+            dead_neuron_mask=None,
+        )
     )
 
     assert torch.allclose(

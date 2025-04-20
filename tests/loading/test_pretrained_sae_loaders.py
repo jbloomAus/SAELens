@@ -5,7 +5,7 @@ from sae_lens.loading.pretrained_sae_loaders import (
     get_llama_scope_r1_distill_config_from_hf,
     load_sae_config_from_huggingface,
 )
-from sae_lens.sae import SAE
+from sae_lens.saes.sae import SAE
 
 
 def test_load_sae_config_from_huggingface():

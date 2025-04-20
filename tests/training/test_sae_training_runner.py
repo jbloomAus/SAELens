@@ -9,11 +9,10 @@ from datasets import Dataset
 from transformer_lens import HookedTransformer
 
 from sae_lens.config import LanguageModelSAERunnerConfig
-from sae_lens.sae import SAE
 from sae_lens.sae_training_runner import SAETrainingRunner, _parse_cfg_args, _run_cli
+from sae_lens.saes.sae import SAE, TrainingSAE
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.sae_trainer import SAETrainer
-from sae_lens.training.training_sae import TrainingSAE
 from tests.helpers import (
     TINYSTORIES_DATASET,
     TINYSTORIES_MODEL,

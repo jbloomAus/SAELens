@@ -7,9 +7,10 @@ from datasets import Dataset
 from transformer_lens import HookedTransformer
 
 from sae_lens.config import LanguageModelSAERunnerConfig
+from sae_lens.saes.jumprelu_sae import JumpReLU
+from sae_lens.saes.sae import TrainingSAE, TrainStepInput
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.sae_trainer import SAETrainer
-from sae_lens.training.training_sae import JumpReLU, TrainingSAE
 from tests.helpers import build_sae_cfg
 
 
@@ -76,7 +77,7 @@ def training_sae(cfg: Any):
     """
     Pytest fixture to create a mock instance of SparseAutoencoder.
     """
-    return TrainingSAE(cfg)
+    return TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
 
 
 @pytest.fixture
@@ -150,8 +151,11 @@ def test_sae_forward(training_sae: TrainingSAE):
     # print(f"SAE hook_z_reshaping_mode: {getattr(training_sae, 'hook_z_reshaping_mode', False)}")
 
     train_step_output = training_sae.training_forward_pass(
-        sae_in=x,
-        current_l1_coefficient=training_sae.cfg.l1_coefficient,
+        step_input=TrainStepInput(
+            sae_in=x,
+            current_l1_coefficient=training_sae.cfg.l1_coefficient,
+            dead_neuron_mask=None,
+        )
     )
 
     assert train_step_output.sae_out.shape == (batch_size, d_in)
@@ -203,8 +207,11 @@ def test_sae_forward_with_mse_loss_norm(
 
     x = torch.randn(batch_size, d_in)
     train_step_output = training_sae.training_forward_pass(
-        sae_in=x,
-        current_l1_coefficient=training_sae.cfg.l1_coefficient,
+        step_input=TrainStepInput(
+            sae_in=x,
+            current_l1_coefficient=training_sae.cfg.l1_coefficient,
+            dead_neuron_mask=None,
+        )
     )
 
     assert train_step_output.sae_out.shape == (batch_size, d_in)

@@ -6,7 +6,8 @@ from transformer_lens import HookedTransformer
 from transformer_lens.hook_points import HookPoint
 
 from sae_lens import HookedSAETransformer
-from sae_lens.sae import SAE, SAEConfig
+from sae_lens.saes.sae import SAE, SAEConfig
+from sae_lens.saes.standard_sae import StandardSAE
 
 MODEL = "solu-1l"
 prompt = "Hello World!"
@@ -65,7 +66,7 @@ def get_hooked_sae(model: HookedTransformer, act_name: str) -> SAE:
         model_from_pretrained_kwargs={},
     )
 
-    return SAE(sae_cfg)
+    return StandardSAE(sae_cfg)
 
 
 @pytest.fixture(

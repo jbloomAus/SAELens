@@ -3,7 +3,7 @@ import torch
 from huggingface_hub import hf_hub_download
 from safetensors import safe_open
 
-from sae_lens.sae import SAE
+from sae_lens.saes.sae import SAE
 
 
 def test_SparseAutoencoder_from_pretrained_loads_from_hugginface_using_shorthand():
@@ -37,10 +37,10 @@ def test_SparseAutoencoder_from_pretrained_loads_from_hugginface_using_shorthand
     assert sparsity.shape == (sae.cfg.d_sae,)
     assert sparsity.max() < 0.0
 
-    for k in sae._sae.state_dict():
+    for k in sae.state_dict():
         if k == "finetuning_scaling_factor":
             continue
-        assert torch.allclose(sae._sae.state_dict()[k], state_dict[k])
+        assert torch.allclose(sae.state_dict()[k], state_dict[k])
 
 
 def test_SparseAutoencoder_from_pretrained_can_load_arbitrary_saes_from_hugginface():
@@ -70,10 +70,10 @@ def test_SparseAutoencoder_from_pretrained_can_load_arbitrary_saes_from_hugginfa
     assert sparsity.shape == (sae.cfg.d_sae,)
     assert sparsity.max() < 0.0
 
-    for k in sae._sae.state_dict():
+    for k in sae.state_dict():
         if k == "finetuning_scaling_factor":
             continue
-        assert torch.allclose(sae._sae.state_dict()[k], state_dict[k])
+        assert torch.allclose(sae.state_dict()[k], state_dict[k])
 
 
 def test_SparseAutoencoder_from_pretrained_errors_for_invalid_releases():

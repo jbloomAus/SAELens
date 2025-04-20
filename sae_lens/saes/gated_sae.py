@@ -1,23 +1,28 @@
-from typing import Any, Optional
+from typing import Any
 
 import torch
 from jaxtyping import Float
+from numpy.typing import NDArray
 from torch import nn
 
-from sae_lens.saes.sae_base import (
-    BaseSAE,
-    BaseTrainingSAE,
+from sae_lens.saes.sae import (
+    SAE,
     SAEConfig,
+    TrainingSAE,
     TrainingSAEConfig,
-    TrainStepOutput,
+    TrainStepInput,
 )
 
 
-class GatedSAE(BaseSAE):
+class GatedSAE(SAE):
     """
     GatedSAE is an inference-only implementation of a Sparse Autoencoder (SAE)
     using a gated linear encoder and a standard linear decoder.
     """
+
+    b_gate: nn.Parameter
+    b_mag: nn.Parameter
+    r_mag: nn.Parameter
 
     def __init__(self, cfg: SAEConfig, use_error_term: bool = False):
         super().__init__(cfg, use_error_term)
@@ -118,18 +123,13 @@ class GatedSAE(BaseSAE):
         self.b_mag.data = self.b_mag.data * W_dec_norms.squeeze()
 
     @torch.no_grad()
-    def set_decoder_norm_to_unit_norm(self):
-        """Normalize decoder columns to unit norm."""
-        self.W_dec.data /= torch.norm(self.W_dec.data, dim=1, keepdim=True)
-
-    @torch.no_grad()
     def initialize_decoder_norm_constant_norm(self, norm: float = 0.1):
         """Initialize decoder with constant norm."""
         self.W_dec.data /= torch.norm(self.W_dec.data, dim=1, keepdim=True)
         self.W_dec.data *= norm
 
 
-class GatedTrainingSAE(BaseTrainingSAE):
+class GatedTrainingSAE(TrainingSAE):
     """
     GatedTrainingSAE is a concrete implementation of BaseTrainingSAE for the "gated" SAE architecture.
     It implements:
@@ -141,14 +141,16 @@ class GatedTrainingSAE(BaseTrainingSAE):
       - training_forward_pass: calls encode_with_hidden_pre, decode, and sums up MSE + gating losses.
     """
 
+    b_gate: nn.Parameter  # type: ignore
+    b_mag: nn.Parameter  # type: ignore
+    r_mag: nn.Parameter  # type: ignore
+
     def __init__(self, cfg: TrainingSAEConfig, use_error_term: bool = False):
         if use_error_term:
             raise ValueError(
                 "GatedSAE does not support `use_error_term`. Please set `use_error_term=False`."
             )
         super().__init__(cfg, use_error_term)
-        # Also ensure no b_enc for the training version
-        self.b_enc = None
 
     def initialize_weights(self) -> None:
         # Reuse the gating parameter initialization from GatedSAE:
@@ -168,29 +170,6 @@ class GatedTrainingSAE(BaseTrainingSAE):
             with torch.no_grad():
                 self.set_decoder_norm_to_unit_norm()
 
-        # after finishing:
-        self.b_enc = None
-
-    def encode(
-        self, x: Float[torch.Tensor, "... d_in"]
-    ) -> Float[torch.Tensor, "... d_sae"]:
-        # For inference usage, just compute the feature activations
-        features, _ = self.encode_with_hidden_pre(x)
-        return features
-
-    def decode(
-        self, feature_acts: Float[torch.Tensor, "... d_sae"]
-    ) -> Float[torch.Tensor, "... d_in"]:
-        """
-        Decode feature activations to input space, with hooking + optional scaling.
-        Matches GatedSAE.decode but includes any training logic if needed.
-        """
-        scaled_features = self.apply_finetuning_scaling_factor(feature_acts)
-        sae_out_pre = scaled_features @ self.W_dec + self.b_dec
-        sae_out_pre = self.hook_sae_recons(sae_out_pre)
-        sae_out_pre = self.run_time_activation_norm_fn_out(sae_out_pre)
-        return self.reshape_fn_out(sae_out_pre, self.d_head)
-
     def encode_with_hidden_pre(
         self, x: Float[torch.Tensor, "... d_in"]
     ) -> tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
@@ -206,7 +185,7 @@ class GatedTrainingSAE(BaseTrainingSAE):
 
         # Magnitude path
         magnitude_pre_activation = sae_in @ (self.W_enc * self.r_mag.exp()) + self.b_mag
-        if self.training:
+        if self.training and self.cfg.noise_scale > 0:
             magnitude_pre_activation += (
                 torch.randn_like(magnitude_pre_activation) * self.cfg.noise_scale
             )
@@ -222,19 +201,15 @@ class GatedTrainingSAE(BaseTrainingSAE):
 
     def calculate_aux_loss(
         self,
+        step_input: TrainStepInput,
         feature_acts: torch.Tensor,
         hidden_pre: torch.Tensor,
-        dead_neuron_mask: Optional[torch.Tensor],
-        current_l1_coefficient: float,
-        **kwargs: Any,
+        sae_out: torch.Tensor,
     ) -> dict[str, torch.Tensor]:
-        # Get the input tensor from kwargs
-        sae_in = kwargs.get("sae_in")
-        if sae_in is None:
-            raise ValueError("sae_in is required for gated auxiliary loss calculation")
-
         # Re-center the input if apply_b_dec_to_input is set
-        sae_in_centered = sae_in - (self.b_dec * self.cfg.apply_b_dec_to_input)
+        sae_in_centered = step_input.sae_in - (
+            self.b_dec * self.cfg.apply_b_dec_to_input
+        )
 
         # The gating pre-activation (pi_gate) for the auxiliary path
         pi_gate = sae_in_centered @ self.W_enc + self.b_gate
@@ -242,71 +217,28 @@ class GatedTrainingSAE(BaseTrainingSAE):
 
         # L1-like penalty scaled by W_dec norms
         l1_loss = (
-            current_l1_coefficient
+            step_input.current_l1_coefficient
             * torch.sum(pi_gate_act * self.W_dec.norm(dim=1), dim=-1).mean()
         )
 
         # Aux reconstruction: reconstruct x purely from gating path
         via_gate_reconstruction = pi_gate_act @ self.W_dec + self.b_dec
-        aux_recon_loss = (via_gate_reconstruction - sae_in).pow(2).sum(dim=-1).mean()
+        aux_recon_loss = (
+            (via_gate_reconstruction - step_input.sae_in).pow(2).sum(dim=-1).mean()
+        )
 
         # Return both losses separately
         return {"l1_loss": l1_loss, "auxiliary_reconstruction_loss": aux_recon_loss}
 
-    def training_forward_pass(
-        self,
-        sae_in: torch.Tensor,
-        current_l1_coefficient: float,
-        dead_neuron_mask: Optional[torch.Tensor] = None,
-    ) -> TrainStepOutput:
-        """
-        Perform a forward pass for training that exactly matches original implementation.
-        """
-        feature_acts, hidden_pre = self.encode_with_hidden_pre(sae_in)
-        sae_out = self.decode(feature_acts)
-
-        # MSE Loss calculation
-        per_item_mse_loss = self.mse_loss_fn(sae_out, sae_in)
-        mse_loss = per_item_mse_loss.sum(dim=-1).mean()
-
-        # Calculate auxiliary losses, passing sae_in as a keyword argument
-        aux_losses = self.calculate_aux_loss(
-            feature_acts=feature_acts,
-            hidden_pre=hidden_pre,
-            dead_neuron_mask=dead_neuron_mask,
-            current_l1_coefficient=current_l1_coefficient,
-            sae_in=sae_in,
-        )
-
-        # Total loss and losses dictionary
-        total_loss = (
-            mse_loss
-            + aux_losses["l1_loss"]
-            + aux_losses["auxiliary_reconstruction_loss"]
-        )
-
-        # Structure losses as in original implementation
-        losses = {
-            "mse_loss": mse_loss,
-            "l1_loss": aux_losses["l1_loss"],
-            "auxiliary_reconstruction_loss": aux_losses[
-                "auxiliary_reconstruction_loss"
-            ],
+    def log_histograms(self) -> dict[str, NDArray[Any]]:
+        """Log histograms of the weights and biases."""
+        b_gate_dist = self.b_gate.detach().float().cpu().numpy()
+        b_mag_dist = self.b_mag.detach().float().cpu().numpy()
+        return {
+            **super().log_histograms(),
+            "weights/b_gate": b_gate_dist,
+            "weights/b_mag": b_mag_dist,
         }
-
-        return TrainStepOutput(
-            sae_in=sae_in,
-            sae_out=sae_out,
-            feature_acts=feature_acts,
-            hidden_pre=hidden_pre,
-            loss=total_loss,
-            losses=losses,
-        )
-
-    @torch.no_grad()
-    def set_decoder_norm_to_unit_norm(self):
-        """Set decoder norms to unit norm"""
-        self.W_dec.data /= torch.norm(self.W_dec.data, dim=1, keepdim=True)
 
     @torch.no_grad()
     def initialize_decoder_norm_constant_norm(self, norm: float = 0.1):

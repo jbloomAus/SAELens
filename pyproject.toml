@@ -69,8 +69,9 @@ ignore = ["E203", "E501", "E731", "F722", "E741", "F821", "F403", "ARG002"]
 select = ["UP", "TID", "I", "F", "E", "ARG", "SIM", "RET", "LOG", "T20"]
 
 [tool.ruff.lint.per-file-ignores]
-"benchmark/*" = ["T20"]
+"benchmark/*" = ["T20", "TID251"]
 "scripts/*" = ["T20"]
+"tests/*" = ["TID251"]
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
 "typing.Union".msg = "Use `|` instead"
@@ -78,6 +79,7 @@ select = ["UP", "TID", "I", "F", "E", "ARG", "SIM", "RET", "LOG", "T20"]
 "typing.Dict".msg = "Use `dict` instead"
 "typing.Tuple".msg = "Use `tuple` instead"
 "typing.List".msg = "Use `list` instead"
+"tests".msg = "Do not import from tests in the main codebase."
 
 [tool.pyright]
 typeCheckingMode = "strict"

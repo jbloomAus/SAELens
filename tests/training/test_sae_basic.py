@@ -8,7 +8,7 @@ from torch import nn
 from transformer_lens.hook_points import HookPoint
 
 from sae_lens.config import LanguageModelSAERunnerConfig
-from sae_lens.sae import SAE, _disable_hooks
+from sae_lens.saes.sae import SAE, _disable_hooks
 from tests.helpers import ALL_ARCHITECTURES, build_sae_cfg
 
 

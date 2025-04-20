@@ -4,7 +4,7 @@ import torch
 
 # New modules
 from sae_lens.loading.pretrained_sae_loaders import handle_config_defaulting
-from sae_lens.saes.sae_base import SAEConfig, TrainingSAEConfig
+from sae_lens.saes.sae import SAEConfig, TrainingSAEConfig, TrainStepInput
 from sae_lens.saes.standard_sae import StandardSAE, StandardTrainingSAE
 
 # Old modules
@@ -463,9 +463,11 @@ def test_standard_sae_training_hook_z_equivalence(hook_name: str):
         dead_neuron_mask=None,
     )
     new_out = new_training_sae.training_forward_pass(
-        sae_in=new_input_data,
-        current_l1_coefficient=old_training_cfg.l1_coefficient,
-        dead_neuron_mask=None,
+        step_input=TrainStepInput(
+            sae_in=new_input_data,
+            current_l1_coefficient=old_training_cfg.l1_coefficient,
+            dead_neuron_mask=None,
+        )
     )
 
     # Check shapes match input
@@ -795,9 +797,11 @@ def test_standard_sae_training_equivalence():
         dead_neuron_mask=None,
     )
     new_out = new_sae.training_forward_pass(
-        sae_in=x,
-        current_l1_coefficient=l1_coefficient,
-        dead_neuron_mask=None,
+        step_input=TrainStepInput(
+            sae_in=x,
+            current_l1_coefficient=l1_coefficient,
+            dead_neuron_mask=None,
+        )
     )
 
     # Check shapes
@@ -879,9 +883,11 @@ def test_sae_hook_z_training_equivalence():
         dead_neuron_mask=None,
     )
     new_out = new_sae.training_forward_pass(
-        sae_in=x_reshaped,
-        current_l1_coefficient=l1_coefficient,
-        dead_neuron_mask=None,
+        step_input=TrainStepInput(
+            sae_in=x_reshaped,
+            current_l1_coefficient=l1_coefficient,
+            dead_neuron_mask=None,
+        )
     )
 
     # Check shapes (output matches input shape for each)

@@ -7,13 +7,19 @@ import numpy as np
 import pytest
 import torch
 
-from sae_lens.sae import SAE
+from sae_lens.saes.sae import SAE
 from tests.helpers import TINYSTORIES_MODEL, load_model_cached
 
 torch.set_grad_enabled(True)
 
 # sparsify's triton implementation breaks in CI, so just disable it
 os.environ["SPARSIFY_DISABLE_TRITON"] = "1"
+
+
+@pytest.fixture(autouse=True)
+def set_grad_enabled():
+    # somehow grad is getting disabled before some tests
+    torch.set_grad_enabled(True)
 
 
 @pytest.fixture(autouse=True)

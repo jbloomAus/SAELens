@@ -72,7 +72,7 @@ class LoggingConfig:
         trainer: Any,  # avoid import cycle from importing SAETrainer
         weights_path: Path | str,
         cfg_path: Path | str,
-        sparsity_path: Path | str,
+        sparsity_path: Path | str | None,
         wandb_aliases: list[str] | None = None,
     ) -> None:
         # Avoid wandb saving errors such as:
@@ -95,7 +95,8 @@ class LoggingConfig:
             type="log_feature_sparsity",
             metadata=dict(trainer.cfg.__dict__),
         )
-        sparsity_artifact.add_file(str(sparsity_path))
+        if sparsity_path is not None:
+            sparsity_artifact.add_file(str(sparsity_path))
         wandb.log_artifact(sparsity_artifact)
 
 

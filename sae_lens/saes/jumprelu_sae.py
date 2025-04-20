@@ -1,20 +1,91 @@
-from typing import Any, Optional, Tuple, Union
+from typing import Any
 
 import numpy as np
 import torch
 from jaxtyping import Float
 from torch import nn
+from typing_extensions import override
 
-from sae_lens.saes.sae_base import (
-    BaseSAE,
-    BaseTrainingSAE,
+from sae_lens.saes.sae import (
+    SAE,
     SAEConfig,
+    TrainingSAE,
     TrainingSAEConfig,
+    TrainStepInput,
     TrainStepOutput,
 )
 
 
-class JumpReLUSAE(BaseSAE):
+def rectangle(x: torch.Tensor) -> torch.Tensor:
+    return ((x > -0.5) & (x < 0.5)).to(x)
+
+
+class Step(torch.autograd.Function):
+    @staticmethod
+    def forward(
+        x: torch.Tensor,
+        threshold: torch.Tensor,
+        bandwidth: float,  # noqa: ARG004
+    ) -> torch.Tensor:
+        return (x > threshold).to(x)
+
+    @staticmethod
+    def setup_context(
+        ctx: Any, inputs: tuple[torch.Tensor, torch.Tensor, float], output: torch.Tensor
+    ) -> None:
+        x, threshold, bandwidth = inputs
+        del output
+        ctx.save_for_backward(x, threshold)
+        ctx.bandwidth = bandwidth
+
+    @staticmethod
+    def backward(  # type: ignore[override]
+        ctx: Any, grad_output: torch.Tensor
+    ) -> tuple[None, torch.Tensor, None]:
+        x, threshold = ctx.saved_tensors
+        bandwidth = ctx.bandwidth
+        threshold_grad = torch.sum(
+            -(1.0 / bandwidth) * rectangle((x - threshold) / bandwidth) * grad_output,
+            dim=0,
+        )
+        return None, threshold_grad, None
+
+
+class JumpReLU(torch.autograd.Function):
+    @staticmethod
+    def forward(
+        x: torch.Tensor,
+        threshold: torch.Tensor,
+        bandwidth: float,  # noqa: ARG004
+    ) -> torch.Tensor:
+        return (x * (x > threshold)).to(x)
+
+    @staticmethod
+    def setup_context(
+        ctx: Any, inputs: tuple[torch.Tensor, torch.Tensor, float], output: torch.Tensor
+    ) -> None:
+        x, threshold, bandwidth = inputs
+        del output
+        ctx.save_for_backward(x, threshold)
+        ctx.bandwidth = bandwidth
+
+    @staticmethod
+    def backward(  # type: ignore[override]
+        ctx: Any, grad_output: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor, None]:
+        x, threshold = ctx.saved_tensors
+        bandwidth = ctx.bandwidth
+        x_grad = (x > threshold) * grad_output  # We don't apply STE to x input
+        threshold_grad = torch.sum(
+            -(threshold / bandwidth)
+            * rectangle((x - threshold) / bandwidth)
+            * grad_output,
+            dim=0,
+        )
+        return x_grad, threshold_grad, None
+
+
+class JumpReLUSAE(SAE):
     """
     JumpReLUSAE is an inference-only implementation of a Sparse Autoencoder (SAE)
     using a JumpReLU activation. For each unit, if its pre-activation is
@@ -29,6 +100,9 @@ class JumpReLUSAE(BaseSAE):
     The BaseSAE.forward() method automatically calls encode and decode,
     including any error-term processing if configured.
     """
+
+    b_enc: nn.Parameter
+    threshold: nn.Parameter
 
     def __init__(self, cfg: SAEConfig, use_error_term: bool = False):
         super().__init__(cfg, use_error_term)
@@ -121,7 +195,7 @@ class JumpReLUSAE(BaseSAE):
         self.threshold.data = current_thresh * W_dec_norms
 
 
-class JumpReLUTrainingSAE(BaseTrainingSAE):
+class JumpReLUTrainingSAE(TrainingSAE):
     """
     JumpReLUTrainingSAE is a training-focused implementation of a SAE using a JumpReLU activation.
 
@@ -135,6 +209,9 @@ class JumpReLUTrainingSAE(BaseTrainingSAE):
     - encode_with_hidden_pre_jumprelu: runs a forward pass for training, optionally adding noise.
     - training_forward_pass: calculates MSE and auxiliary losses, returning a TrainStepOutput.
     """
+
+    b_enc: nn.Parameter
+    log_threshold: nn.Parameter
 
     def __init__(self, cfg: TrainingSAEConfig, use_error_term: bool = False):
         super().__init__(cfg, use_error_term)
@@ -202,120 +279,33 @@ class JumpReLUTrainingSAE(BaseTrainingSAE):
         """
         return torch.exp(self.log_threshold)
 
-    def encode(
+    def encode_with_hidden_pre(
         self, x: Float[torch.Tensor, "... d_in"]
-    ) -> Float[torch.Tensor, "... d_sae"]:
-        """
-        Overridden version of the standard encoding that uses the JumpReLU approach
-        for inference. For training, detailed logic is in encode_with_hidden_pre_jumprelu.
-        """
-        feature_acts, _ = self.encode_with_hidden_pre_jumprelu(x)
-        return feature_acts
-
-    def decode(
-        self, feature_acts: Float[torch.Tensor, "... d_sae"]
-    ) -> Float[torch.Tensor, "... d_in"]:
-        """
-        Decode function is largely identical to StandardTrainingSAE:
-        apply finetuning scale, linear transform, recons hook, out normalization,
-        and reshape if needed for heads.
-        """
-        scaled_features = self.apply_finetuning_scaling_factor(feature_acts)
-        sae_out_pre = scaled_features @ self.W_dec + self.b_dec
-        sae_out_pre = self.hook_sae_recons(sae_out_pre)
-        sae_out_pre = self.run_time_activation_norm_fn_out(sae_out_pre)
-        return self.reshape_fn_out(sae_out_pre, self.d_head)
-
-    def encode_with_hidden_pre_jumprelu(
-        self, x: Float[torch.Tensor, "... d_in"]
-    ) -> Tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
-        """
-        Training-aware version of the JumpReLU SAE encoding. Adds noise if self.training
-        is True. Then applies a JumpReLU step: base_acts = activation_fn(pre),
-        and zero out units with pre <= threshold.
-        """
+    ) -> tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
         sae_in = self.process_sae_in(x)
 
-        hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
+        hidden_pre = sae_in @ self.W_enc + self.b_enc
+
         if self.training and self.cfg.noise_scale > 0:
             hidden_pre = (
                 hidden_pre + torch.randn_like(hidden_pre) * self.cfg.noise_scale
             )
 
-        # Use the base activation configured (e.g. ReLU, tanh-relu, etc.)
-        base_acts = self.activation_fn(hidden_pre)
+        feature_acts = JumpReLU.apply(hidden_pre, self.threshold, self.bandwidth)
 
-        # Multiply by (pre > threshold)
-        jump_relu_mask = (hidden_pre > self.threshold).to(base_acts.dtype)
-        feature_acts = self.hook_sae_acts_post(base_acts * jump_relu_mask)
+        return feature_acts, hidden_pre  # type: ignore
 
-        return feature_acts, hidden_pre
-
-    def training_forward_pass(
-        self,
-        sae_in: torch.Tensor,
-        current_l1_coefficient: float,
-        dead_neuron_mask: Optional[torch.Tensor] = None,
-    ):
-        """
-        Main training pass.
-        1) Encodes with JumpReLU,
-        2) Decodes,
-        3) Computes MSE,
-        4) Computes L0 loss from (pre > threshold),
-        5) Returns the combined loss.
-        """
-        feature_acts, hidden_pre = self.encode_with_hidden_pre_jumprelu(sae_in)
-        sae_out = self.decode(feature_acts)
-
-        # MSE Loss
-        per_item_mse_loss = self.mse_loss_fn(sae_out, sae_in)
-        mse_loss = per_item_mse_loss.sum(dim=-1).mean()
-
-        # L0 Loss: Count how many times each unit is > threshold with Step.apply
-        # from the old approach, or simply sum boolean mask
-        step_mask = (hidden_pre > self.threshold).to(sae_out.dtype)
-        # L0 penalty is basically sum of step_mask.
-        # Typically scaled by current_l1_coefficient
-        l0_loss = (current_l1_coefficient * step_mask.sum(dim=-1)).mean()
-
-        loss = mse_loss + l0_loss
-        losses_dict = {
-            "mse_loss": mse_loss,
-            "l0_loss": l0_loss,
-            "l1_loss": l0_loss,  # Add this for backward compatibility
-        }
-
-        # Return the train step output
-        return self._create_train_step_output(
-            sae_in=sae_in,
-            sae_out=sae_out,
-            feature_acts=feature_acts,
-            hidden_pre=hidden_pre,
-            loss=loss,
-            losses=losses_dict,
-        )
-
-    def encode_with_hidden_pre(
-        self, x: Float[torch.Tensor, "... d_in"]
-    ) -> Tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
-        # In master code, we have a dedicated method named encode_with_hidden_pre_jumprelu
-        # so let's just call it here.
-        return self.encode_with_hidden_pre_jumprelu(x)
-
+    @override
     def calculate_aux_loss(
         self,
+        step_input: TrainStepInput,
         feature_acts: torch.Tensor,
         hidden_pre: torch.Tensor,
-        dead_neuron_mask: Optional[torch.Tensor],
-        current_l1_coefficient: float,
-        **kwargs: Any,
+        sae_out: torch.Tensor,
     ) -> dict[str, torch.Tensor]:
-        """
-        Calculate L0 penalty (number of units above threshold).
-        """
-        step_mask = (hidden_pre > self.threshold).to(feature_acts.dtype)
-        l0_loss = (current_l1_coefficient * step_mask.sum(dim=-1)).mean()
+        """Calculate architecture-specific auxiliary loss terms."""
+        l0 = torch.sum(Step.apply(hidden_pre, self.threshold, self.bandwidth), dim=-1)  # type: ignore
+        l0_loss = (step_input.current_l1_coefficient * l0).mean()
         return {"l0_loss": l0_loss}
 
     @torch.no_grad()
@@ -342,7 +332,7 @@ class JumpReLUTrainingSAE(BaseTrainingSAE):
         feature_acts: torch.Tensor,
         hidden_pre: torch.Tensor,
         loss: torch.Tensor,
-        losses: dict[str, Union[float, torch.Tensor]],
+        losses: dict[str, torch.Tensor],
     ) -> TrainStepOutput:
         """
         Helper to produce a TrainStepOutput from the trainer.
@@ -356,11 +346,6 @@ class JumpReLUTrainingSAE(BaseTrainingSAE):
             loss=loss,
             losses=losses,
         )
-
-    @torch.no_grad()
-    def set_decoder_norm_to_unit_norm(self):
-        """Set decoder norms to unit norm"""
-        self.W_dec.data /= torch.norm(self.W_dec.data, dim=1, keepdim=True)
 
     @torch.no_grad()
     def initialize_decoder_norm_constant_norm(self, norm: float = 0.1):

@@ -28,7 +28,7 @@ from sae_lens.config import (
     HfDataset,
     LanguageModelSAERunnerConfig,
 )
-from sae_lens.sae import SAE
+from sae_lens.saes.sae import SAE
 from sae_lens.tokenization_and_batching import concat_and_batch_sequences
 
 

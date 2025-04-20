@@ -2,7 +2,7 @@ import pytest
 import torch
 from sparsify import SparseCoder, SparseCoderConfig
 
-from sae_lens.saes.sae_base import TrainingSAEConfig
+from sae_lens.saes.sae import TrainingSAEConfig, TrainStepInput
 from sae_lens.saes.topk_sae import TopKTrainingSAE
 from tests.helpers import build_sae_cfg
 
@@ -39,9 +39,11 @@ def test_TopKTrainingSAE_topk_aux_loss_matches_unnormalized_sparsify_implementat
     input_var = (input_acts - input_acts.mean(0)).pow(2).sum()
 
     sae_out = sae.training_forward_pass(
-        sae_in=input_acts,
-        current_l1_coefficient=0.0,
-        dead_neuron_mask=dead_neuron_mask,
+        step_input=TrainStepInput(
+            sae_in=input_acts,
+            current_l1_coefficient=0.0,
+            dead_neuron_mask=dead_neuron_mask,
+        ),
     )
     comparison_sae_out = sparse_coder_sae.forward(
         input_acts, dead_mask=dead_neuron_mask

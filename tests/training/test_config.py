@@ -5,8 +5,7 @@ import pytest
 
 from sae_lens import __version__
 from sae_lens.config import CacheActivationsRunnerConfig, LanguageModelSAERunnerConfig
-from sae_lens.sae import SAEConfig
-from sae_lens.training.training_sae import TrainingSAEConfig
+from sae_lens.saes.sae import SAEConfig, TrainingSAEConfig
 
 TINYSTORIES_MODEL = "tiny-stories-1M"
 TINYSTORIES_DATASET = "roneneldan/TinyStories"

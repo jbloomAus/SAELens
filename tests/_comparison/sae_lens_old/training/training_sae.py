@@ -21,10 +21,6 @@ from tests._comparison.sae_lens_old.toolkit.pretrained_sae_loaders import (
     sae_lens_disk_loader,
 )
 
-SPARSITY_PATH = "sparsity.safetensors"
-SAE_WEIGHTS_PATH = "sae_weights.safetensors"
-SAE_CFG_PATH = "cfg.json"
-
 
 def rectangle(x: torch.Tensor) -> torch.Tensor:
     return ((x > -0.5) & (x < 0.5)).to(x)

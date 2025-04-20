@@ -14,12 +14,12 @@ from sae_lens.loading.pretrained_saes_directory import (
 )
 from sae_lens.saes.gated_sae import GatedSAE
 from sae_lens.saes.jumprelu_sae import JumpReLUSAE
-from sae_lens.saes.sae_base import BaseSAE, SAEConfig
+from sae_lens.saes.sae import SAE, SAEConfig
 from sae_lens.saes.standard_sae import StandardSAE
 from sae_lens.saes.topk_sae import TopKSAE
 
 
-def create_sae(cfg: SAEConfig, use_error_term: bool = False) -> BaseSAE:
+def create_sae(cfg: SAEConfig, use_error_term: bool = False) -> SAE:
     """
     Create an appropriate SAE instance based on the provided configuration.
 
@@ -47,7 +47,7 @@ def load_pretrained_sae(
     release: str,
     sae_id: str,
     device: str = "cpu",
-) -> Tuple[BaseSAE, Dict[str, Any], Optional[torch.Tensor]]:
+) -> Tuple[SAE, Dict[str, Any], Optional[torch.Tensor]]:
     """
     Load a pretrained SAE with the appropriate architecture.
 

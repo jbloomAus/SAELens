@@ -2,9 +2,10 @@ import pytest
 import torch
 
 from sae_lens.saes.jumprelu_sae import JumpReLUSAE, JumpReLUTrainingSAE
-from sae_lens.saes.sae_base import (
+from sae_lens.saes.sae import (
     SAEConfig,
     TrainingSAEConfig,
+    TrainStepInput,
 )
 from tests._comparison.sae_lens_old.sae import (
     SAE as OldSAE,
@@ -383,9 +384,11 @@ def test_jumprelu_training_equivalence():  # type: ignore # Kept ignore as retur
         dead_neuron_mask=None,
     )
     new_out = new_sae.training_forward_pass(
-        sae_in=x,
-        current_l1_coefficient=new_sae.cfg.l1_coefficient,
-        dead_neuron_mask=None,
+        step_input=TrainStepInput(
+            sae_in=x,
+            current_l1_coefficient=new_sae.cfg.l1_coefficient,
+            dead_neuron_mask=None,
+        )
     )
 
     assert (
@@ -399,30 +402,15 @@ def test_jumprelu_training_equivalence():  # type: ignore # Kept ignore as retur
     ).all(), "New JumpReLU training out is not finite."
 
     # Check if training forward pass is equivalent
-    assert torch.allclose(
-        old_out.sae_out, new_out.sae_out, atol=1e-5
-    ), "Output differs between old and new JumpReLU implementation"
-    assert torch.allclose(
-        old_out.loss, new_out.loss, atol=1e-5
-    ), "Total loss differs between old and new JumpReLU implementation"
+    assert torch.allclose(old_out.sae_out, new_out.sae_out, atol=1e-5)
 
     # Check that we do have MSE and L0 losses
     assert "mse_loss" in old_out.losses
     assert "mse_loss" in new_out.losses
-    # This old code calls it "l0_loss" if it uses Step, or it's an "aux_loss" fallback.
-    old_l0_loss = old_out.losses.get("l0_loss", old_out.losses.get("aux_loss"))
-    new_l0_loss = new_out.losses.get("l0_loss", new_out.losses.get("aux_loss"))
-    assert old_l0_loss is not None, "Old JumpReLU training missing L0 or aux loss."
-    assert new_l0_loss is not None, "New JumpReLU training missing L0 or aux loss."
+    old_l0_loss = old_out.losses["l0_loss"]
+    new_l0_loss = new_out.losses["l0_loss"]
 
-    # Ensure the loss is a tensor before checking isfinite
-    assert isinstance(
-        old_l0_loss, torch.Tensor
-    ), f"Old L0 loss is not a Tensor: {type(old_l0_loss)}"
-    assert isinstance(
-        new_l0_loss, torch.Tensor
-    ), f"New L0 loss is not a Tensor: {type(new_l0_loss)}"
-
+    assert isinstance(old_l0_loss, torch.Tensor)
     assert torch.isfinite(old_l0_loss).all()  # Check tensor and use .all()
     assert torch.isfinite(new_l0_loss).all()  # Check tensor and use .all()
 
@@ -431,7 +419,6 @@ def test_jumprelu_training_equivalence():  # type: ignore # Kept ignore as retur
         old_out.losses["mse_loss"],  # type: ignore
         new_out.losses["mse_loss"],
         atol=1e-5,
-    ), "MSE loss differs between old and new JumpReLU implementations"
-    assert torch.allclose(
-        old_l0_loss, new_l0_loss, atol=1e-5
-    ), "L0/Aux loss differs between old and new JumpReLU implementations"
+    )
+    assert torch.allclose(old_l0_loss, new_l0_loss, atol=1e-5)
+    assert torch.allclose(old_out.loss, new_out.loss, atol=1e-5)

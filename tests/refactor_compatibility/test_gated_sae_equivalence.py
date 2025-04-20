@@ -2,9 +2,10 @@ import pytest
 import torch
 
 from sae_lens.saes.gated_sae import GatedSAE, GatedTrainingSAE
-from sae_lens.saes.sae_base import (
+from sae_lens.saes.sae import (
     SAEConfig,
     TrainingSAEConfig,
+    TrainStepInput,
 )
 from tests._comparison.sae_lens_old.sae import (
     SAE as OldSAE,
@@ -366,9 +367,11 @@ def test_gated_training_equivalence():  # type: ignore
         dead_neuron_mask=None,
     )
     new_out = new_sae.training_forward_pass(
-        sae_in=x,
-        current_l1_coefficient=new_sae.cfg.l1_coefficient,
-        dead_neuron_mask=None,
+        step_input=TrainStepInput(
+            sae_in=x,
+            current_l1_coefficient=new_sae.cfg.l1_coefficient,
+            dead_neuron_mask=None,
+        )
     )
 
     # Check output shapes

@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from sae_lens.training.training_sae import TrainingSAE
+from sae_lens.saes.sae import TrainingSAE
 from tests.helpers import build_sae_cfg
 
 

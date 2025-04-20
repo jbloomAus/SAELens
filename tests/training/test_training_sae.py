@@ -5,12 +5,14 @@ import pytest
 import torch
 from sparsify import SparseCoder, SparseCoderConfig
 
-from sae_lens.sae import SAE
-from sae_lens.saes.topk_sae import _calculate_topk_aux_acts
-from sae_lens.training.training_sae import (
+from sae_lens.saes.jumprelu_sae import JumpReLUTrainingSAE
+from sae_lens.saes.sae import (
+    SAE,
     TrainingSAE,
     TrainingSAEConfig,
+    TrainStepInput,
 )
+from sae_lens.saes.topk_sae import TopKTrainingSAE, _calculate_topk_aux_acts
 from tests.helpers import build_sae_cfg
 
 
@@ -24,11 +26,16 @@ def test_TrainingSAE_training_forward_pass_can_scale_sparsity_penalty_by_decoder
         scale_sparsity_penalty_by_decoder_norm=scale_sparsity_penalty_by_decoder_norm,
         normalize_sae_decoder=False,
     )
-    training_sae = TrainingSAE(TrainingSAEConfig.from_sae_runner_config(cfg))
+    training_sae = TrainingSAE.from_dict(
+        TrainingSAEConfig.from_sae_runner_config(cfg).to_dict()
+    )
     x = torch.randn(32, 3)
     train_step_output = training_sae.training_forward_pass(
-        sae_in=x,
-        current_l1_coefficient=2.0,
+        step_input=TrainStepInput(
+            sae_in=x,
+            current_l1_coefficient=2.0,
+            dead_neuron_mask=None,
+        ),
     )
     feature_acts = train_step_output.feature_acts
     decoder_norm = training_sae.W_dec.norm(dim=1)
@@ -113,7 +120,9 @@ def test_TrainingSAE_topk_aux_loss_matches_unnormalized_sparsify_implementation(
         normalize_sae_decoder=False,
     )
 
-    sae = TrainingSAE(TrainingSAEConfig.from_sae_runner_config(cfg))
+    sae = TopKTrainingSAE.from_dict(
+        TrainingSAEConfig.from_sae_runner_config(cfg).to_dict()
+    )
     sparse_coder_sae = SparseCoder(
         d_in=d_in, cfg=SparseCoderConfig(num_latents=d_sae, k=26)
     )
@@ -134,9 +143,11 @@ def test_TrainingSAE_topk_aux_loss_matches_unnormalized_sparsify_implementation(
     input_var = (input_acts - input_acts.mean(0)).pow(2).sum()
 
     sae_out = sae.training_forward_pass(
-        sae_in=input_acts,
-        current_l1_coefficient=0.0,
-        dead_neuron_mask=dead_neuron_mask,
+        step_input=TrainStepInput(
+            sae_in=input_acts,
+            current_l1_coefficient=0.0,
+            dead_neuron_mask=dead_neuron_mask,
+        ),
     )
     comparison_sae_out = sparse_coder_sae.forward(
         input_acts, dead_mask=dead_neuron_mask
@@ -157,7 +168,9 @@ def test_TrainingSAE_calculate_topk_aux_loss():
         architecture="topk",
         normalize_sae_decoder=False,
     )
-    sae = TrainingSAE(TrainingSAEConfig.from_sae_runner_config(cfg))
+    sae = TopKTrainingSAE.from_dict(
+        TrainingSAEConfig.from_sae_runner_config(cfg).to_dict()
+    )
 
     # Set up test inputs
     hidden_pre = torch.tensor(
@@ -201,12 +214,16 @@ def test_TrainingSAE_forward_includes_topk_loss_with_topk_architecture():
         activation_fn_kwargs={"k": 2},
         normalize_sae_decoder=False,
     )
-    sae = TrainingSAE(TrainingSAEConfig.from_sae_runner_config(cfg))
+    sae = TopKTrainingSAE.from_dict(
+        TrainingSAEConfig.from_sae_runner_config(cfg).to_dict()
+    )
     x = torch.randn(32, 3)
     train_step_output = sae.training_forward_pass(
-        sae_in=x,
-        current_l1_coefficient=2.0,
-        dead_neuron_mask=None,
+        step_input=TrainStepInput(
+            sae_in=x,
+            current_l1_coefficient=2.0,
+            dead_neuron_mask=None,
+        ),
     )
     assert "auxiliary_reconstruction_loss" in train_step_output.losses
     assert train_step_output.losses["auxiliary_reconstruction_loss"] == 0.0
@@ -220,12 +237,16 @@ def test_TrainingSAE_forward_includes_topk_loss_is_nonzero_if_dead_neurons_prese
         activation_fn_kwargs={"k": 2},
         normalize_sae_decoder=False,
     )
-    sae = TrainingSAE(TrainingSAEConfig.from_sae_runner_config(cfg))
+    sae = TopKTrainingSAE.from_dict(
+        TrainingSAEConfig.from_sae_runner_config(cfg).to_dict()
+    )
     x = torch.randn(32, 3)
     train_step_output = sae.training_forward_pass(
-        sae_in=x,
-        current_l1_coefficient=2.0,
-        dead_neuron_mask=torch.tensor([False, True, False, True]),
+        step_input=TrainStepInput(
+            sae_in=x,
+            current_l1_coefficient=2.0,
+            dead_neuron_mask=torch.tensor([False, True, False, True]),
+        ),
     )
     assert "auxiliary_reconstruction_loss" in train_step_output.losses
     assert train_step_output.losses["auxiliary_reconstruction_loss"] > 0.0
@@ -236,27 +257,29 @@ def test_TrainingSAE_encode_returns_same_value_as_encode_with_hidden_pre(
     architecture: str,
 ):
     cfg = build_sae_cfg(architecture=architecture)
-    sae = TrainingSAE(TrainingSAEConfig.from_sae_runner_config(cfg))
+    sae = TrainingSAE.from_dict(TrainingSAEConfig.from_sae_runner_config(cfg).to_dict())
     x = torch.randn(32, cfg.d_in)
     encode_out = sae.encode(x)
-    encode_with_hidden_pre_out = sae.encode_with_hidden_pre_fn(x)[0]
+    encode_with_hidden_pre_out = sae.encode_with_hidden_pre(x)[0]
     assert torch.allclose(encode_out, encode_with_hidden_pre_out)
 
 
 def test_TrainingSAE_initializes_only_with_log_threshold_if_jumprelu():
     cfg = build_sae_cfg(architecture="jumprelu", jumprelu_init_threshold=0.01)
-    sae = TrainingSAE(TrainingSAEConfig.from_sae_runner_config(cfg))
+    sae = JumpReLUTrainingSAE.from_dict(
+        TrainingSAEConfig.from_sae_runner_config(cfg).to_dict()
+    )
     param_names = dict(sae.named_parameters()).keys()
 
     # Check that log_threshold is the only threshold-related parameter
     # Note: With the new architecture, parameter names include the _sae. prefix
-    assert "_sae.log_threshold" in param_names
-    assert "_sae.threshold" not in param_names
+    assert "log_threshold" in param_names
+    assert "threshold" not in param_names
 
     # Verify that the threshold value is correct by accessing it through the property
     assert torch.allclose(
         sae.threshold,
-        torch.ones_like(sae._sae.log_threshold.data) * cfg.jumprelu_init_threshold,
+        torch.ones_like(sae.log_threshold.data) * cfg.jumprelu_init_threshold,
     )
 
 
@@ -274,10 +297,8 @@ def test_TrainingSAE_jumprelu_save_and_load(tmp_path: Path):
         assert torch.allclose(param, loaded_training_sae.state_dict()[param_name])
 
     test_input = torch.randn(32, cfg.d_in)
-    training_sae_out = training_sae.encode_with_hidden_pre_fn(test_input)[0]
-    loaded_training_sae_out = loaded_training_sae.encode_with_hidden_pre_fn(test_input)[
-        0
-    ]
+    training_sae_out = training_sae.encode_with_hidden_pre(test_input)[0]
+    loaded_training_sae_out = loaded_training_sae.encode_with_hidden_pre(test_input)[0]
     loaded_sae_out = loaded_sae.encode(test_input)
     assert torch.allclose(training_sae_out, loaded_training_sae_out)
     assert torch.allclose(training_sae_out, loaded_sae_out)
@@ -286,7 +307,7 @@ def test_TrainingSAE_jumprelu_save_and_load(tmp_path: Path):
 @torch.no_grad()
 def test_TrainingSAE_fold_w_dec_norm_jumprelu():
     cfg = build_sae_cfg(architecture="jumprelu")
-    sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+    sae = JumpReLUTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
 
     # make sure all parameters are not 0s
     for param in sae.parameters():

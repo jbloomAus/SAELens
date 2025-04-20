@@ -11,9 +11,9 @@ from transformer_lens.hook_points import HookedRootModule
 from sae_lens import __version__
 from sae_lens.config import LanguageModelSAERunnerConfig
 from sae_lens.evals import EvalConfig, run_evals
+from sae_lens.saes.sae import TrainingSAE, TrainStepInput, TrainStepOutput
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.optim import L1Scheduler, get_lr_scheduler
-from sae_lens.training.training_sae import TrainingSAE, TrainStepOutput
 
 # used to map between parameters which are updated during finetuning and the config str.
 FINETUNING_PARAMETERS = {
@@ -235,9 +235,11 @@ class SAETrainer:
         # https://pytorch.org/tutorials/recipes/recipes/amp_recipe.html
         with self.autocast_if_enabled:
             train_step_output = self.sae.training_forward_pass(
-                sae_in=sae_in,
-                dead_neuron_mask=self.dead_neurons,
-                current_l1_coefficient=self.current_l1_coefficient,
+                step_input=TrainStepInput(
+                    sae_in=sae_in,
+                    dead_neuron_mask=self.dead_neurons,
+                    current_l1_coefficient=self.current_l1_coefficient,
+                ),
             )
 
             with torch.no_grad():
@@ -359,17 +361,8 @@ class SAETrainer:
             # Remove metrics that are not useful for wandb logging
             eval_metrics.pop("metrics/total_tokens_evaluated", None)
 
-            W_dec_norm_dist = self.sae.W_dec.detach().float().norm(dim=1).cpu().numpy()
-            eval_metrics["weights/W_dec_norms"] = wandb.Histogram(W_dec_norm_dist)  # type: ignore
-
-            if self.sae.cfg.architecture == "standard":
-                b_e_dist = self.sae.b_enc.detach().float().cpu().numpy()
-                eval_metrics["weights/b_e"] = wandb.Histogram(b_e_dist)  # type: ignore
-            elif self.sae.cfg.architecture == "gated":
-                b_gate_dist = self.sae.b_gate.detach().float().cpu().numpy()
-                eval_metrics["weights/b_gate"] = wandb.Histogram(b_gate_dist)  # type: ignore
-                b_mag_dist = self.sae.b_mag.detach().float().cpu().numpy()
-                eval_metrics["weights/b_mag"] = wandb.Histogram(b_mag_dist)  # type: ignore
+            for key, value in self.sae.log_histograms().items():
+                eval_metrics[key] = wandb.Histogram(value)  # type: ignore
 
             wandb.log(
                 eval_metrics,
