@@ -473,7 +473,7 @@ def get_sparsity_and_variance_metrics(
 
         flattened_sae_input = einops.rearrange(original_act, "b ctx d ... -> (b ctx) (d ...)")
         flattened_sae_feature_acts = einops.rearrange(
-            sae_feature_activations, "b ctx d ... -> (b ctx) (d ...)"
+            sae_feature_activations, "b ctx d -> (b ctx) d"
         )
         flattened_sae_out = einops.rearrange(sae_out, "b ctx d ... -> (b ctx) (d ...)")
 

@@ -7,6 +7,7 @@ from tqdm import tqdm
 from sae_lens.evals import run_evals
 from sae_lens.training.sae_trainer import SAETrainer, _unwrap_item
 from sae_lens.training.training_sae import TrainingSAE, TrainStepOutput
+from sae_lens.training.training_crosscoder_sae import TrainingCrosscoderSAE, TrainStepOutput
 
 # TODO(mkbehr): probably too much copypasting here
 
@@ -17,8 +18,8 @@ class CrosscoderSAETrainer(SAETrainer):
         self.trainer_eval_config.compute_ce_loss=False
         self.trainer_eval_config.compute_kl=False
 
-    def fit(self) -> TrainingSAE:
-        pbar = tqdm(total=self.cfg.total_training_tokens, desc="Training SAE")
+    def fit(self) -> TrainingCrosscoderSAE:
+        pbar = tqdm(total=self.cfg.total_training_tokens, desc="Training Crosscoder SAE")
 
         self.activations_store.set_norm_scaling_factor_if_needed()
 
