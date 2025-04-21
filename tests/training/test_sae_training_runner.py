@@ -11,6 +11,7 @@ from transformer_lens import HookedTransformer
 from sae_lens.config import LanguageModelSAERunnerConfig
 from sae_lens.sae_training_runner import SAETrainingRunner, _parse_cfg_args, _run_cli
 from sae_lens.saes.sae import SAE, TrainingSAE
+from sae_lens.saes.standard_sae import StandardTrainingSAE
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.sae_trainer import SAETrainer
 from tests.helpers import (
@@ -98,8 +99,8 @@ def test_training_runner_works_with_from_pretrained_path(
     loaded_runner = SAETrainingRunner(cfg)
 
     # the loaded runner should load the pretrained SAE
-    orig_sae = trainer.sae
-    new_sae = loaded_runner.sae
+    orig_sae: StandardTrainingSAE = trainer.sae  # type: ignore
+    new_sae: StandardTrainingSAE = loaded_runner.sae  # type: ignore
 
     assert orig_sae.cfg.to_dict() == new_sae.cfg.to_dict()
     assert torch.allclose(orig_sae.W_dec, new_sae.W_dec)

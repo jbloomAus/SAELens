@@ -311,7 +311,7 @@ def test_standard_sae_hook_z_equivalence(hook_name: str):
             apply_b_dec_to_input=False,  # Important: set to False to avoid shape issues
             finetuning_scaling_factor=False,
             normalize_activations="none",
-            context_size=None,
+            context_size=128,
             dataset_path="fake/path",  # Add default
             dataset_trust_remote_code=False,
             sae_lens_training_version="test_version",

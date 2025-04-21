@@ -279,7 +279,6 @@ def get_featurewise_weight_based_metrics(sae: SAE) -> dict[str, Any]:
     unit_norm_decoder = (sae.W_dec.T / sae.W_dec.T.norm(dim=0, keepdim=True)).cpu()
 
     encoder_norms = sae.W_enc.norm(dim=-2).cpu().tolist()
-    encoder_bias = sae.b_enc.cpu().tolist()
     encoder_decoder_cosine_sim = (
         torch.nn.functional.cosine_similarity(
             unit_norm_decoder.T,
@@ -289,11 +288,13 @@ def get_featurewise_weight_based_metrics(sae: SAE) -> dict[str, Any]:
         .tolist()
     )
 
-    return {
-        "encoder_bias": encoder_bias,
+    metrics = {
         "encoder_norm": encoder_norms,
         "encoder_decoder_cosine_sim": encoder_decoder_cosine_sim,
     }
+    if hasattr(sae, "b_enc") and sae.b_enc is not None:
+        metrics["encoder_bias"] = sae.b_enc.cpu().tolist()  # type: ignore
+    return metrics
 
 
 def get_downstream_reconstruction_metrics(

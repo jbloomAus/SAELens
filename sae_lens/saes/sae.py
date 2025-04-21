@@ -63,7 +63,7 @@ class SAEConfig:
     finetuning_scaling_factor: bool
     normalize_activations: str
     context_size: int
-    dataset_path: str | None
+    dataset_path: str
     dataset_trust_remote_code: bool
     sae_lens_training_version: str
     model_from_pretrained_kwargs: dict[str, Any] = field(default_factory=dict)

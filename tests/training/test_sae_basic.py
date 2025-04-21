@@ -8,7 +8,9 @@ from torch import nn
 from transformer_lens.hook_points import HookPoint
 
 from sae_lens.config import LanguageModelSAERunnerConfig
+from sae_lens.saes.jumprelu_sae import JumpReLUSAE
 from sae_lens.saes.sae import SAE, _disable_hooks
+from sae_lens.saes.standard_sae import StandardSAE
 from tests.helpers import ALL_ARCHITECTURES, build_sae_cfg
 
 
@@ -73,7 +75,7 @@ def test_sae_init(cfg: LanguageModelSAERunnerConfig):
 
 
 def test_sae_fold_w_dec_norm(cfg: LanguageModelSAERunnerConfig):
-    sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
+    sae = StandardSAE.from_dict(cfg.get_base_sae_cfg_dict())
     sae.turn_off_forward_pass_hook_z_reshaping()  # hook z reshaping not needed here.
     assert sae.W_dec.norm(dim=-1).mean().item() != pytest.approx(1.0, abs=1e-6)
     sae2 = deepcopy(sae)
@@ -409,7 +411,7 @@ def test_sae_jumprelu_initialization():
 @pytest.mark.parametrize("use_error_term", [True, False])
 def test_sae_jumprelu_forward(use_error_term: bool):
     cfg = build_sae_cfg(architecture="jumprelu", d_in=2, d_sae=3)
-    sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
+    sae = JumpReLUSAE.from_dict(cfg.get_base_sae_cfg_dict())
     sae.use_error_term = use_error_term
     sae.threshold.data = torch.tensor([1.0, 0.5, 0.25])
     sae.W_enc.data = torch.ones_like(sae.W_enc.data)

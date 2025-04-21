@@ -1,14 +1,16 @@
 import pytest
 import torch
 
-from sae_lens.saes.sae import TrainingSAE
+from sae_lens.saes.gated_sae import GatedTrainingSAE
+from sae_lens.saes.jumprelu_sae import JumpReLUTrainingSAE
+from sae_lens.saes.standard_sae import StandardTrainingSAE
 from tests.helpers import build_sae_cfg
 
 
 def test_SparseAutoencoder_initialization_standard():
     cfg = build_sae_cfg()
 
-    sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+    sae = StandardTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
 
     assert sae.W_enc.shape == (cfg.d_in, cfg.d_sae)
     assert sae.W_dec.shape == (cfg.d_sae, cfg.d_in)
@@ -36,7 +38,7 @@ def test_SparseAutoencoder_initialization_standard():
 def test_SparseAutoencoder_initialization_gated():
     cfg = build_sae_cfg()
     setattr(cfg, "architecture", "gated")
-    sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+    sae = GatedTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
 
     assert sae.W_enc.shape == (cfg.d_in, cfg.d_sae)
     assert sae.W_dec.shape == (cfg.d_sae, cfg.d_in)
@@ -66,7 +68,7 @@ def test_SparseAutoencoder_initialization_gated():
 
 def test_SparseAutoencoder_initialization_jumprelu():
     cfg = build_sae_cfg(architecture="jumprelu")
-    sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+    sae = JumpReLUTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
 
     assert sae.W_enc.shape == (cfg.d_in, cfg.d_sae)
     assert sae.W_dec.shape == (cfg.d_sae, cfg.d_in)
@@ -96,7 +98,7 @@ def test_SparseAutoencoder_initialization_jumprelu():
 def test_SparseAutoencoder_initialization_orthogonal_enc_dec():
     cfg = build_sae_cfg(decoder_orthogonal_init=True, expansion_factor=2)
 
-    sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+    sae = StandardTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
     projections = sae.W_dec.T @ sae.W_dec
     mask = ~torch.eye(projections.size(0), dtype=torch.bool)
 
@@ -110,7 +112,7 @@ def test_SparseAutoencoder_initialization_orthogonal_enc_dec():
 def test_SparseAutoencoder_initialization_normalize_decoder_norm():
     cfg = build_sae_cfg(normalize_sae_decoder=True)
 
-    sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+    sae = StandardTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
 
     assert torch.allclose(
         sae.W_dec.norm(dim=1), torch.ones_like(sae.W_dec.norm(dim=1)), atol=1e-6
@@ -124,7 +126,7 @@ def test_SparseAutoencoder_initialization_normalize_decoder_norm():
 def test_SparseAutoencoder_initialization_encoder_is_decoder_transpose():
     cfg = build_sae_cfg(init_encoder_as_decoder_transpose=True)
 
-    sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+    sae = StandardTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
 
     # If we decoder norms are 1 we need to unit norm W_enc first.
     unit_normed_W_enc = sae.W_enc / torch.norm(sae.W_enc, dim=0)
@@ -142,7 +144,7 @@ def test_SparseAutoencoder_initialization_enc_dec_T_no_unit_norm():
         normalize_sae_decoder=False,
     )
 
-    sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+    sae = StandardTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
 
     assert torch.allclose(sae.W_dec, sae.W_enc.T, atol=1e-6)
 
@@ -175,7 +177,7 @@ def test_SparseAutoencoder_initialization_heuristic_init():
         normalize_sae_decoder=False,
     )
 
-    sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+    sae = StandardTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
 
     decoder_norms = sae.W_dec.norm(dim=1)
 

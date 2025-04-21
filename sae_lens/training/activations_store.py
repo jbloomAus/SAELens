@@ -177,7 +177,7 @@ class ActivationsStore:
             dataset_trust_remote_code=sae.cfg.dataset_trust_remote_code,
             dtype=sae.cfg.dtype,
             device=torch.device(device),
-            seqpos_slice=sae.cfg.seqpos_slice,
+            seqpos_slice=sae.cfg.seqpos_slice or (None,),
         )
 
     def __init__(

@@ -24,6 +24,7 @@ from sae_lens.evals import (
 from sae_lens.load_model import load_model
 from sae_lens.loading.pretrained_saes_directory import PretrainedSAELookup
 from sae_lens.saes.sae import SAE, TrainingSAE
+from sae_lens.saes.standard_sae import StandardSAE
 from sae_lens.training.activations_store import ActivationsStore
 from tests.helpers import TINYSTORIES_MODEL, build_sae_cfg, load_model_cached
 
@@ -554,7 +555,7 @@ def test_get_sparsity_and_variance_metrics_identity_sae_perfect_reconstruction(
     )
 
     # Create an SAE and manually set weights to identity matrices
-    identity_sae = SAE.from_dict(identity_cfg.get_base_sae_cfg_dict())
+    identity_sae = StandardSAE.from_dict(identity_cfg.get_base_sae_cfg_dict())
     with torch.no_grad():
         # Set encoder and decoder weights to identity matrices
         identity_sae.W_dec.data = torch.cat([torch.eye(d_in), -1 * torch.eye(d_in)])
