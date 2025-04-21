@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sae-lens"
-version = "5.9.0"
+version = "5.9.1"
 description = "Training and Analyzing Sparse Autoencoders (SAEs)"
 authors = ["Joseph Bloom"]
 readme = "README.md"
@@ -58,7 +58,7 @@ mkdocstrings = "^0.25.2"
 mkdocstrings-python = "^1.10.9"
 tabulate = "^0.9.0"
 ruff = "^0.7.4"
-sparsify = { git = "https://github.com/EleutherAI/sparsify" }
+eai-sparsify = "^1.1.1"
 
 [tool.poetry.extras]
 mamba = ["mamba-lens"]
