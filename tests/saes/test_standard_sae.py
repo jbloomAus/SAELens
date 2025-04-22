@@ -1,16 +1,21 @@
+# Placeholder for standard SAE tests
+
 import os
 from copy import deepcopy
 from pathlib import Path
 
 import pytest
 import torch
+from huggingface_hub import hf_hub_download
+from safetensors import safe_open
 from torch import nn
 from transformer_lens.hook_points import HookPoint
 
 from sae_lens.config import LanguageModelSAERunnerConfig
-from sae_lens.saes.jumprelu_sae import JumpReLUSAE
+from sae_lens.saes.gated_sae import GatedTrainingSAE
+from sae_lens.saes.jumprelu_sae import JumpReLUSAE, JumpReLUTrainingSAE
 from sae_lens.saes.sae import SAE, _disable_hooks
-from sae_lens.saes.standard_sae import StandardSAE
+from sae_lens.saes.standard_sae import StandardSAE, StandardTrainingSAE
 from tests.helpers import ALL_ARCHITECTURES, build_sae_cfg
 
 
@@ -541,4 +546,276 @@ def test_sae_forward_pass_works_with_error_term_and_hooks(architecture: str):
     assert torch.all(ablated_cache["hook_sae_acts_post"] == 20)
     assert torch.allclose(
         original_cache["hook_sae_error"], ablated_cache["hook_sae_error"], rtol=1e-4
+    )
+
+
+def test_SparseAutoencoder_from_pretrained_loads_from_hugginface_using_shorthand():
+    sae, original_cfg_dict, sparsity = SAE.from_pretrained(
+        release="gpt2-small-res-jb",
+        sae_id="blocks.0.hook_resid_pre",
+        device="cpu",
+    )
+
+    assert (
+        sae.cfg.neuronpedia_id == "gpt2-small/0-res-jb"
+    )  # what we expect from the yml
+
+    # it should match what we get when manually loading from hf
+    repo_id = "jbloom/GPT2-Small-SAEs-Reformatted"
+    hook_point = "blocks.0.hook_resid_pre"
+    filename = f"{hook_point}/sae_weights.safetensors"
+    weight_path = hf_hub_download(repo_id=repo_id, filename=filename)
+    state_dict = {}
+    with safe_open(weight_path, framework="pt", device="cpu") as f:  # type: ignore
+        for k in f.keys():  # noqa: SIM118
+            state_dict[k] = f.get_tensor(k)
+
+    assert isinstance(sae, SAE)
+    assert sae.cfg.model_name == "gpt2-small"
+    assert sae.cfg.hook_name == "blocks.0.hook_resid_pre"
+
+    assert isinstance(original_cfg_dict, dict)
+
+    assert isinstance(sparsity, torch.Tensor)
+    assert sparsity.shape == (sae.cfg.d_sae,)
+    assert sparsity.max() < 0.0
+
+    for k in sae.state_dict():
+        if k == "finetuning_scaling_factor":
+            continue
+        assert torch.allclose(sae.state_dict()[k], state_dict[k])
+
+
+def test_SparseAutoencoder_from_pretrained_can_load_arbitrary_saes_from_hugginface():
+    sae, original_cfg_dict, sparsity = SAE.from_pretrained(
+        release="jbloom/GPT2-Small-SAEs-Reformatted",
+        sae_id="blocks.0.hook_resid_pre",
+        device="cpu",
+    )
+
+    # it should match what we get when manually loading from hf
+    repo_id = "jbloom/GPT2-Small-SAEs-Reformatted"
+    hook_point = "blocks.0.hook_resid_pre"
+    filename = f"{hook_point}/sae_weights.safetensors"
+    weight_path = hf_hub_download(repo_id=repo_id, filename=filename)
+    state_dict = {}
+    with safe_open(weight_path, framework="pt", device="cpu") as f:  # type: ignore
+        for k in f.keys():  # noqa: SIM118
+            state_dict[k] = f.get_tensor(k)
+
+    assert isinstance(sae, SAE)
+    assert sae.cfg.model_name == "gpt2-small"
+    assert sae.cfg.hook_name == "blocks.0.hook_resid_pre"
+
+    assert isinstance(original_cfg_dict, dict)
+
+    assert isinstance(sparsity, torch.Tensor)
+    assert sparsity.shape == (sae.cfg.d_sae,)
+    assert sparsity.max() < 0.0
+
+    for k in sae.state_dict():
+        if k == "finetuning_scaling_factor":
+            continue
+        assert torch.allclose(sae.state_dict()[k], state_dict[k])
+
+
+def test_SparseAutoencoder_from_pretrained_errors_for_invalid_releases():
+    with pytest.raises(ValueError):
+        SAE.from_pretrained(
+            release="wrong",
+            sae_id="blocks.0.hook_resid_pre",
+            device="cpu",
+        )
+
+
+def test_SparseAutoencoder_from_pretrained_errors_for_invalid_sae_ids():
+    with pytest.raises(ValueError):
+        SAE.from_pretrained(
+            release="gpt2-small-res-jb",
+            sae_id="wrong",
+            device="cpu",
+        )
+
+
+def test_SparseAutoencoder_initialization_standard():
+    cfg = build_sae_cfg()
+
+    sae = StandardTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+
+    assert sae.W_enc.shape == (cfg.d_in, cfg.d_sae)
+    assert sae.W_dec.shape == (cfg.d_sae, cfg.d_in)
+    assert sae.b_enc.shape == (cfg.d_sae,)
+    assert sae.b_dec.shape == (cfg.d_in,)
+    assert isinstance(sae.activation_fn, torch.nn.ReLU)
+    assert sae.device == torch.device("cpu")
+    assert sae.dtype == torch.float32
+
+    # biases
+    assert torch.allclose(sae.b_dec, torch.zeros_like(sae.b_dec), atol=1e-6)
+    assert torch.allclose(sae.b_enc, torch.zeros_like(sae.b_enc), atol=1e-6)
+
+    # check if the decoder weight norm is 1 by default
+    assert torch.allclose(
+        sae.W_dec.norm(dim=1), torch.ones_like(sae.W_dec.norm(dim=1)), atol=1e-6
+    )
+
+    #  Default currently shouldn't be tranpose initialization
+    unit_normed_W_enc = sae.W_enc / torch.norm(sae.W_enc, dim=0)
+    unit_normed_W_dec = sae.W_dec.T
+    assert not torch.allclose(unit_normed_W_enc, unit_normed_W_dec, atol=1e-6)
+
+
+def test_SparseAutoencoder_initialization_gated():
+    cfg = build_sae_cfg()
+    setattr(cfg, "architecture", "gated")
+    sae = GatedTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+
+    assert sae.W_enc.shape == (cfg.d_in, cfg.d_sae)
+    assert sae.W_dec.shape == (cfg.d_sae, cfg.d_in)
+    assert sae.b_mag.shape == (cfg.d_sae,)
+    assert sae.b_gate.shape == (cfg.d_sae,)
+    assert sae.r_mag.shape == (cfg.d_sae,)
+    assert sae.b_dec.shape == (cfg.d_in,)
+    assert isinstance(sae.activation_fn, torch.nn.ReLU)
+    assert sae.device == torch.device("cpu")
+    assert sae.dtype == torch.float32
+
+    # biases
+    assert torch.allclose(sae.b_dec, torch.zeros_like(sae.b_dec), atol=1e-6)
+    assert torch.allclose(sae.b_mag, torch.zeros_like(sae.b_mag), atol=1e-6)
+    assert torch.allclose(sae.b_gate, torch.zeros_like(sae.b_gate), atol=1e-6)
+
+    # check if the decoder weight norm is 1 by default
+    assert torch.allclose(
+        sae.W_dec.norm(dim=1), torch.ones_like(sae.W_dec.norm(dim=1)), atol=1e-6
+    )
+
+    #  Default currently shouldn't be tranpose initialization
+    unit_normed_W_enc = sae.W_enc / torch.norm(sae.W_enc, dim=0)
+    unit_normed_W_dec = sae.W_dec.T
+    assert not torch.allclose(unit_normed_W_enc, unit_normed_W_dec, atol=1e-6)
+
+
+def test_SparseAutoencoder_initialization_jumprelu():
+    cfg = build_sae_cfg(architecture="jumprelu")
+    sae = JumpReLUTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+
+    assert sae.W_enc.shape == (cfg.d_in, cfg.d_sae)
+    assert sae.W_dec.shape == (cfg.d_sae, cfg.d_in)
+    assert isinstance(sae.log_threshold, torch.nn.Parameter)
+    assert sae.log_threshold.shape == (cfg.d_sae,)
+    assert sae.b_enc.shape == (cfg.d_sae,)
+    assert sae.b_dec.shape == (cfg.d_in,)
+    assert isinstance(sae.activation_fn, torch.nn.ReLU)
+    assert sae.device == torch.device("cpu")
+    assert sae.dtype == torch.float32
+
+    # biases
+    assert torch.allclose(sae.b_dec, torch.zeros_like(sae.b_dec), atol=1e-6)
+    assert torch.allclose(sae.b_enc, torch.zeros_like(sae.b_enc), atol=1e-6)
+
+    # check if the decoder weight norm is 1 by default
+    assert torch.allclose(
+        sae.W_dec.norm(dim=1), torch.ones_like(sae.W_dec.norm(dim=1)), atol=1e-6
+    )
+
+    #  Default currently shouldn't be tranpose initialization
+    unit_normed_W_enc = sae.W_enc / torch.norm(sae.W_enc, dim=0)
+    unit_normed_W_dec = sae.W_dec.T
+    assert not torch.allclose(unit_normed_W_enc, unit_normed_W_dec, atol=1e-6)
+
+
+def test_SparseAutoencoder_initialization_orthogonal_enc_dec():
+    cfg = build_sae_cfg(decoder_orthogonal_init=True, expansion_factor=2)
+
+    sae = StandardTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+    projections = sae.W_dec.T @ sae.W_dec
+    mask = ~torch.eye(projections.size(0), dtype=torch.bool)
+
+    assert projections[mask].max() < 0.1
+
+    # initialized weights of biases are 0
+    assert torch.allclose(sae.b_dec, torch.zeros_like(sae.b_dec), atol=1e-6)
+    assert torch.allclose(sae.b_enc, torch.zeros_like(sae.b_enc), atol=1e-6)
+
+
+def test_SparseAutoencoder_initialization_normalize_decoder_norm():
+    cfg = build_sae_cfg(normalize_sae_decoder=True)
+
+    sae = StandardTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+
+    assert torch.allclose(
+        sae.W_dec.norm(dim=1), torch.ones_like(sae.W_dec.norm(dim=1)), atol=1e-6
+    )
+
+    # initialized weights of biases are 0
+    assert torch.allclose(sae.b_dec, torch.zeros_like(sae.b_dec), atol=1e-6)
+    assert torch.allclose(sae.b_enc, torch.zeros_like(sae.b_enc), atol=1e-6)
+
+
+def test_SparseAutoencoder_initialization_encoder_is_decoder_transpose():
+    cfg = build_sae_cfg(init_encoder_as_decoder_transpose=True)
+
+    sae = StandardTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+
+    # If we decoder norms are 1 we need to unit norm W_enc first.
+    unit_normed_W_enc = sae.W_enc / torch.norm(sae.W_enc, dim=0)
+    unit_normed_W_dec = sae.W_dec.T
+    assert torch.allclose(unit_normed_W_enc, unit_normed_W_dec, atol=1e-6)
+
+    # initialized weights of biases are 0
+    assert torch.allclose(sae.b_dec, torch.zeros_like(sae.b_dec), atol=1e-6)
+    assert torch.allclose(sae.b_enc, torch.zeros_like(sae.b_enc), atol=1e-6)
+
+
+def test_SparseAutoencoder_initialization_enc_dec_T_no_unit_norm():
+    cfg = build_sae_cfg(
+        init_encoder_as_decoder_transpose=True,
+        normalize_sae_decoder=False,
+    )
+
+    sae = StandardTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+
+    assert torch.allclose(sae.W_dec, sae.W_enc.T, atol=1e-6)
+
+    # initialized weights of biases are 0
+    assert torch.allclose(sae.b_dec, torch.zeros_like(sae.b_dec), atol=1e-6)
+    assert torch.allclose(sae.b_enc, torch.zeros_like(sae.b_enc), atol=1e-6)
+
+
+def test_SparseAutoencoder_initialization_heuristic_init_and_normalize_sae_decoder():
+    # assert that an error is raised
+    with pytest.raises(ValueError):
+        _ = build_sae_cfg(
+            decoder_heuristic_init=True,
+            normalize_sae_decoder=True,
+        )
+
+
+def test_SparseAutoencoder_initialization_decoder_norm_in_loss_and_normalize_sae_decoder():
+    # assert that an error is raised
+    with pytest.raises(ValueError):
+        _ = build_sae_cfg(
+            scale_sparsity_penalty_by_decoder_norm=True,
+            normalize_sae_decoder=True,
+        )
+
+
+def test_SparseAutoencoder_initialization_heuristic_init():
+    cfg = build_sae_cfg(
+        decoder_heuristic_init=True,
+        normalize_sae_decoder=False,
+    )
+
+    sae = StandardTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+
+    decoder_norms = sae.W_dec.norm(dim=1)
+
+    # not unit norms
+    assert not torch.allclose(
+        decoder_norms, torch.ones_like(sae.W_dec.norm(dim=1)), atol=1e-6
+    )
+
+    assert torch.allclose(
+        decoder_norms, torch.ones_like(decoder_norms) * 0.1, atol=5e-2
     )
