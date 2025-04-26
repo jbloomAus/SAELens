@@ -4,9 +4,13 @@ on:
   push:
     branches:
       - main
+      - alpha
+      - beta
   pull_request:
     branches:
       - main
+      - alpha
+      - beta
   # Allow this workflow to be called from other workflows
   workflow_call:
     inputs:
