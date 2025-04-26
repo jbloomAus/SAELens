@@ -2,33 +2,44 @@ from typing import TYPE_CHECKING
 
 # avoid circular imports
 if TYPE_CHECKING:
-    from sae_lens.saes.sae import SAE, TrainingSAE
+    from sae_lens.saes.sae import SAE, SAEConfig, TrainingSAE, TrainingSAEConfig
 
-SAE_CLASS_REGISTRY: dict[str, "type[SAE]"] = {}
-SAE_TRAINING_CLASS_REGISTRY: dict[str, "type[TrainingSAE]"] = {}
+SAE_CLASS_REGISTRY: dict[str, tuple["type[SAE]", "type[SAEConfig]"]] = {}
+SAE_TRAINING_CLASS_REGISTRY: dict[
+    str, tuple["type[TrainingSAE]", "type[TrainingSAEConfig]"]
+] = {}
 
 
-def register_sae_class(architecture: str, sae_class: "type[SAE]") -> None:
+def register_sae_class(
+    architecture: str, sae_class: "type[SAE]", sae_config_class: "type[SAEConfig]"
+) -> None:
     if architecture in SAE_CLASS_REGISTRY:
         raise ValueError(
             f"SAE class for architecture {architecture} already registered."
         )
-    SAE_CLASS_REGISTRY[architecture] = sae_class
+    SAE_CLASS_REGISTRY[architecture] = (sae_class, sae_config_class)
 
 
 def register_sae_training_class(
-    architecture: str, sae_training_class: "type[TrainingSAE]"
+    architecture: str,
+    sae_training_class: "type[TrainingSAE]",
+    sae_training_config_class: "type[TrainingSAEConfig]",
 ) -> None:
     if architecture in SAE_TRAINING_CLASS_REGISTRY:
         raise ValueError(
             f"SAE training class for architecture {architecture} already registered."
         )
-    SAE_TRAINING_CLASS_REGISTRY[architecture] = sae_training_class
+    SAE_TRAINING_CLASS_REGISTRY[architecture] = (
+        sae_training_class,
+        sae_training_config_class,
+    )
 
 
-def get_sae_class(architecture: str) -> "type[SAE]":
+def get_sae_class(architecture: str) -> tuple["type[SAE]", "type[SAEConfig]"]:
     return SAE_CLASS_REGISTRY[architecture]
 
 
-def get_sae_training_class(architecture: str) -> "type[TrainingSAE]":
+def get_sae_training_class(
+    architecture: str,
+) -> tuple["type[TrainingSAE]", "type[TrainingSAEConfig]"]:
     return SAE_TRAINING_CLASS_REGISTRY[architecture]

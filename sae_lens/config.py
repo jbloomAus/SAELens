@@ -17,6 +17,7 @@ from datasets import (
 )
 
 from sae_lens import __version__, logger
+from sae_lens.saes.sae import TrainingSAEConfig
 
 DTYPE_MAP = {
     "float32": torch.float32,
@@ -190,6 +191,8 @@ class LanguageModelSAERunnerConfig:
         exclude_special_tokens (bool | list[int]): Whether to exclude special tokens from the activations.
     """
 
+    sae: TrainingSAEConfig
+
     # Data Generating Function (Model + Training Distibuion)
     model_name: str = "gelu-2l"
     model_class_name: str = "HookedTransformer"
@@ -208,22 +211,7 @@ class LanguageModelSAERunnerConfig:
     )
 
     # SAE Parameters
-    architecture: Literal["standard", "gated", "jumprelu", "topk"] = "standard"
-    d_in: int = 512
-    d_sae: int | None = None
-    b_dec_init_method: str = "geometric_median"
-    expansion_factor: int | None = (
-        None  # defaults to 4 if d_sae and expansion_factor is None
-    )
-    activation_fn: str = None  # relu, tanh-relu, topk. Default is relu. # type: ignore
-    activation_fn_kwargs: dict[str, int] = dict_field(default=None)  # for topk
-    normalize_sae_decoder: bool = True
-    noise_scale: float = 0.0
     from_pretrained_path: str | None = None
-    apply_b_dec_to_input: bool = True
-    decoder_orthogonal_init: bool = False
-    decoder_heuristic_init: bool = False
-    init_encoder_as_decoder_transpose: bool = False
 
     # Activation Store Parameters
     n_batches_in_buffer: int = 20
@@ -239,10 +227,6 @@ class LanguageModelSAERunnerConfig:
     seed: int = 42
     dtype: str = "float32"  # type: ignore #
     prepend_bos: bool = True
-
-    # JumpReLU Parameters
-    jumprelu_init_threshold: float = 0.001
-    jumprelu_bandwidth: float = 0.001
 
     # Performance - see compilation section of lm_runner.py for info
     autocast: bool = False  # autocast to autocast_dtype during training
@@ -261,13 +245,6 @@ class LanguageModelSAERunnerConfig:
     adam_beta1: float = 0.0
     adam_beta2: float = 0.999
 
-    ## Loss Function
-    mse_loss_normalization: str | None = None
-    l1_coefficient: float = 1e-3
-    lp_norm: float = 1
-    scale_sparsity_penalty_by_decoder_norm: bool = False
-    l1_warm_up_steps: int = 0
-
     ## Learning Rate Schedule
     lr: float = 3e-4
     lr_scheduler_name: str = (
@@ -282,8 +259,6 @@ class LanguageModelSAERunnerConfig:
     finetuning_method: str | None = None  # scale, decoder or unrotated_decoder
 
     # Resampling protocol args
-    use_ghost_grads: bool = False  # want to change this to true on some timeline.
-    feature_sampling_window: int = 2000
     dead_feature_window: int = 1000  # unless this window is larger feature sampling,
 
     dead_feature_threshold: float = 1e-8
