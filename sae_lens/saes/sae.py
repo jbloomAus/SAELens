@@ -10,7 +10,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Generic,
     Literal,
     NamedTuple,
     Type,
@@ -152,10 +151,11 @@ class TrainStepInput:
 
 class TrainCoefficientConfig(NamedTuple):
     value: float
-    warm_up_steps: int
+    warmup_steps: int
+    decay_steps: int
 
 
-class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
+class SAE(HookedRootModule, ABC):
     """Abstract base class for all SAE architectures."""
 
     cfg: T_SAE_CONFIG
