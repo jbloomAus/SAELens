@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field, fields, replace
 from pathlib import Path
-from typing import Any, Callable, Generic, NamedTuple, Type, TypeVar
+from typing import Any, Callable, Generic, Literal, NamedTuple, Type, TypeVar
 
 import einops
 import torch
@@ -73,8 +73,10 @@ class SAEConfig(ABC):
     dtype: str = "float32"
     device: str = "cpu"
     apply_b_dec_to_input: bool = True
-    normalize_activations: str = "none"  # none, expected_average_only_in (Anthropic April Update), constant_norm_rescale (Anthropic Feb Update)
-    reshape_activations: str = "none"  # "none" or "hook_z"
+    normalize_activations: Literal[
+        "none", "expected_average_only_in", "constant_norm_rescale"
+    ] = "none"  # none, expected_average_only_in (Anthropic April Update), constant_norm_rescale (Anthropic Feb Update)
+    reshape_activations: Literal["none", "hook_z"] = "none"
     sae_metadata: SAEMetadata = field(default_factory=SAEMetadata)
 
     @classmethod
@@ -157,7 +159,7 @@ class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
         self.use_error_term = use_error_term
 
         # Set up activation function
-        self.activation_fn = self._get_activation_fn()
+        self.activation_fn = self.get_activation_fn()
 
         # Initialize weights
         self.initialize_weights()
@@ -188,40 +190,9 @@ class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
         self.b_dec.data /= scaling_factor  # type: ignore
         self.cfg.normalize_activations = "none"
 
-    def _get_activation_fn(self) -> Callable[[torch.Tensor], torch.Tensor]:
+    def get_activation_fn(self) -> Callable[[torch.Tensor], torch.Tensor]:
         """Get the activation function specified in config."""
-        return self._get_activation_fn_static(
-            self.cfg.activation_fn, **(self.cfg.activation_fn_kwargs or {})
-        )
-
-    @staticmethod
-    def _get_activation_fn_static(
-        activation_fn: str, **kwargs: Any
-    ) -> Callable[[torch.Tensor], torch.Tensor]:
-        """Get the activation function from a string specification."""
-        if activation_fn == "relu":
-            return torch.nn.ReLU()
-        if activation_fn == "tanh-relu":
-
-            def tanh_relu(input: torch.Tensor) -> torch.Tensor:
-                input = torch.relu(input)
-                return torch.tanh(input)
-
-            return tanh_relu
-        if activation_fn == "topk":
-            if "k" not in kwargs:
-                raise ValueError("TopK activation function requires a k value.")
-            k = kwargs.get("k", 1)  # Default k to 1 if not provided
-
-            def topk_fn(x: torch.Tensor) -> torch.Tensor:
-                topk = torch.topk(x.flatten(start_dim=-1), k=k, dim=-1)
-                values = torch.relu(topk.values)
-                result = torch.zeros_like(x.flatten(start_dim=-1))
-                result.scatter_(-1, topk.indices, values)
-                return result.view_as(x)
-
-            return topk_fn
-        raise ValueError(f"Unknown activation function: {activation_fn}")
+        return nn.ReLU()
 
     def _setup_activation_normalization(self):
         """Set up activation normalization functions based on config."""
@@ -264,10 +235,28 @@ class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
             self.run_time_activation_norm_fn_in = lambda x: x
             self.run_time_activation_norm_fn_out = lambda x: x
 
-    @abstractmethod
     def initialize_weights(self):
         """Initialize model weights."""
-        pass
+        self.b_dec = nn.Parameter(
+            torch.zeros(self.cfg.d_in, dtype=self.dtype, device=self.device)
+        )
+
+        w_enc_data = torch.empty(
+            self.cfg.d_in, self.cfg.d_sae, dtype=self.dtype, device=self.device
+        )
+        nn.init.kaiming_uniform_(w_enc_data)
+        self.W_enc = nn.Parameter(w_enc_data)
+
+        w_dec_data = torch.empty(
+            self.cfg.d_sae, self.cfg.d_in, dtype=self.dtype, device=self.device
+        )
+        nn.init.kaiming_uniform_(w_dec_data)
+        self.W_dec = nn.Parameter(w_dec_data)
+
+        # init decoder norm to unit norm and init encoder as decoder transpose
+        with torch.no_grad():
+            self.W_dec.data /= self.W_dec.norm(dim=-1, keepdim=True)
+        self.W_enc.data = self.W_dec.data.T.clone().contiguous()
 
     @abstractmethod
     def encode(
@@ -661,12 +650,9 @@ class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
 
 @dataclass(kw_only=True)
 class TrainingSAEConfig(SAEConfig, ABC):
-    normalize_sae_decoder: bool
-    noise_scale: float
-    decoder_orthogonal_init: bool
-    mse_loss_normalization: str | None
-    decoder_heuristic_init: bool
-    init_encoder_as_decoder_transpose: bool
+    noise_scale: float = 0.0
+    mse_loss_normalization: str | None = None
+    b_dec_init_method: Literal["none", "geometric_median", "mean"] = "none"
 
     @classmethod
     @abstractmethod
@@ -739,7 +725,6 @@ class TrainingSAE(SAE[T_TRAINING_SAE_CONFIG], ABC):
         # Turn off hook_z reshaping for training mode - the activation store
         # is expected to handle reshaping before passing data to the SAE
         self.turn_off_forward_pass_hook_z_reshaping()
-
         self.mse_loss_fn = self._get_mse_loss_fn()
 
     @abstractmethod
@@ -870,11 +855,6 @@ class TrainingSAE(SAE[T_TRAINING_SAE_CONFIG], ABC):
             self.W_dec.data,
             "d_sae, d_sae d_in -> d_sae d_in",
         )
-
-    @torch.no_grad()
-    def set_decoder_norm_to_unit_norm(self):
-        """Normalize decoder columns to unit norm."""
-        self.W_dec.data /= torch.norm(self.W_dec.data, dim=1, keepdim=True)
 
     @torch.no_grad()
     def log_histograms(self) -> dict[str, NDArray[Any]]:

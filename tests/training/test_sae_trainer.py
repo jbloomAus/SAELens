@@ -18,12 +18,12 @@ from sae_lens.training.sae_trainer import (
     _log_feature_sparsity,
     _update_sae_lens_training_version,
 )
-from tests.helpers import TINYSTORIES_MODEL, build_sae_cfg, load_model_cached
+from tests.helpers import TINYSTORIES_MODEL, build_runner_cfg, load_model_cached
 
 
 @pytest.fixture
 def cfg():
-    return build_sae_cfg(d_in=64, d_sae=128, hook_layer=0)
+    return build_runner_cfg(d_in=64, d_sae=128, hook_layer=0)
 
 
 @pytest.fixture
@@ -204,7 +204,7 @@ def test_train_sae_group_on_language_model__runs(
     tmp_path: Path,
 ) -> None:
     checkpoint_dir = tmp_path / "checkpoint"
-    cfg = build_sae_cfg(
+    cfg = build_runner_cfg(
         checkpoint_path=str(checkpoint_dir),
         training_tokens=20,
         context_size=8,
@@ -227,7 +227,7 @@ def test_train_sae_group_on_language_model__runs(
 
 
 def test_update_sae_lens_training_version_sets_the_current_version():
-    cfg = build_sae_cfg(sae_lens_training_version="0.1.0")
+    cfg = build_runner_cfg(sae_lens_training_version="0.1.0")
     sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
     _update_sae_lens_training_version(sae)
     assert sae.cfg.sae_lens_training_version == str(__version__)
@@ -242,7 +242,7 @@ def test_estimated_norm_scaling_factor_persistence(
     checkpoint_dir = tmp_path / "checkpoints"
     checkpoint_dir.mkdir(exist_ok=True)
 
-    cfg = build_sae_cfg(
+    cfg = build_runner_cfg(
         checkpoint_path=str(checkpoint_dir),
         training_tokens=100,  # Increased to ensure we hit checkpoints
         context_size=8,

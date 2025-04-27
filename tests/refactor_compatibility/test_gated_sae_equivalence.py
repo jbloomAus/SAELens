@@ -1,10 +1,13 @@
 import pytest
 import torch
 
-from sae_lens.saes.gated_sae import GatedSAE, GatedTrainingSAE
+from sae_lens.saes.gated_sae import (
+    GatedSAE,
+    GatedSAEConfig,
+    GatedTrainingSAE,
+    GatedTrainingSAEConfig,
+)
 from sae_lens.saes.sae import (
-    SAEConfig,
-    TrainingSAEConfig,
     TrainStepInput,
 )
 from tests._comparison.sae_lens_old.sae import (
@@ -73,28 +76,13 @@ def make_new_gated_sae(
     """
     Helper to instantiate a new GatedSAE instance for testing (inference only).
     """
-    new_cfg = SAEConfig(
-        architecture="gated",
+    new_cfg = GatedSAEConfig(
         d_in=d_in,
         d_sae=d_sae,
         dtype="float32",
         device="cpu",
-        model_name="test_model",
-        hook_name="blocks.0.hook_resid_pre",
-        hook_layer=0,
-        hook_head_index=None,
-        activation_fn="relu",
-        activation_fn_kwargs={},
         apply_b_dec_to_input=False,
-        finetuning_scaling_factor=False,
         normalize_activations="none",
-        context_size=128,
-        dataset_path="fake/path",
-        dataset_trust_remote_code=False,
-        sae_lens_training_version="test_version",
-        model_from_pretrained_kwargs={},
-        seqpos_slice=None,
-        prepend_bos=False,
     )
     return GatedSAE(new_cfg, use_error_term=use_error_term)
 
@@ -296,40 +284,16 @@ def make_new_gated_training_sae(d_in: int = 16, d_sae: int = 8) -> GatedTraining
     """
     Helper to instantiate a new GatedTrainingSAE instance.
     """
-    new_training_cfg = TrainingSAEConfig(
-        architecture="gated",
+    new_training_cfg = GatedTrainingSAEConfig(
         d_in=d_in,
         d_sae=d_sae,
         dtype="float32",
         device="cpu",
-        model_name="test_model",
-        hook_name="blocks.0.hook_resid_pre",
-        hook_layer=0,
-        hook_head_index=None,
-        activation_fn="relu",
-        activation_fn_kwargs={},
         apply_b_dec_to_input=False,
-        finetuning_scaling_factor=False,
         normalize_activations="none",
-        context_size=128,
-        dataset_path="fake/path",
-        dataset_trust_remote_code=False,
-        sae_lens_training_version="test_version",
-        model_from_pretrained_kwargs={},
-        seqpos_slice=None,
-        prepend_bos=False,
         l1_coefficient=0.01,
-        lp_norm=1.0,
-        use_ghost_grads=False,
-        normalize_sae_decoder=False,
         noise_scale=0.0,
-        decoder_orthogonal_init=False,
         mse_loss_normalization=None,
-        jumprelu_init_threshold=0.0,
-        jumprelu_bandwidth=1.0,
-        decoder_heuristic_init=False,
-        init_encoder_as_decoder_transpose=False,
-        scale_sparsity_penalty_by_decoder_norm=False,
     )
     return GatedTrainingSAE(new_training_cfg)
 
@@ -369,7 +333,7 @@ def test_gated_training_equivalence():  # type: ignore
     new_out = new_sae.training_forward_pass(
         step_input=TrainStepInput(
             sae_in=x,
-            current_l1_coefficient=new_sae.cfg.l1_coefficient,
+            coefficients={"l1": new_sae.cfg.l1_coefficient},
             dead_neuron_mask=None,
         )
     )

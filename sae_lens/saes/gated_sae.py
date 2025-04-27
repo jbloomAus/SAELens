@@ -40,43 +40,10 @@ class GatedSAE(SAE[GatedSAEConfig]):
         # Ensure b_enc does not exist for the gated architecture
         self.b_enc = None
 
+    @override
     def initialize_weights(self) -> None:
-        """
-        Initialize weights exactly as in the original SAE class for gated architecture.
-        """
-        # Use the same initialization methods and values as in original SAE
-        self.W_enc = nn.Parameter(
-            torch.nn.init.kaiming_uniform_(
-                torch.empty(
-                    self.cfg.d_in, self.cfg.d_sae, dtype=self.dtype, device=self.device
-                )
-            )
-        )
-        self.b_gate = nn.Parameter(
-            torch.zeros(self.cfg.d_sae, dtype=self.dtype, device=self.device)
-        )
-        # Ensure r_mag is initialized to zero as in original
-        self.r_mag = nn.Parameter(
-            torch.zeros(self.cfg.d_sae, dtype=self.dtype, device=self.device)
-        )
-        self.b_mag = nn.Parameter(
-            torch.zeros(self.cfg.d_sae, dtype=self.dtype, device=self.device)
-        )
-
-        # Decoder parameters with same initialization as original
-        self.W_dec = nn.Parameter(
-            torch.nn.init.kaiming_uniform_(
-                torch.empty(
-                    self.cfg.d_sae, self.cfg.d_in, dtype=self.dtype, device=self.device
-                )
-            )
-        )
-        self.b_dec = nn.Parameter(
-            torch.zeros(self.cfg.d_in, dtype=self.dtype, device=self.device)
-        )
-
-        # after defining b_gate, b_mag, etc.:
-        self.b_enc = None
+        super().initialize_weights()
+        _init_weights_gated(self)
 
     def encode(
         self, x: Float[torch.Tensor, "... d_in"]
@@ -174,22 +141,8 @@ class GatedTrainingSAE(TrainingSAE[GatedTrainingSAEConfig]):
         super().__init__(cfg, use_error_term)
 
     def initialize_weights(self) -> None:
-        # Reuse the gating parameter initialization from GatedSAE:
-        GatedSAE.initialize_weights(self)  # type: ignore
-
-        # Additional training-specific logic, e.g. orthogonal init or heuristics:
-        if self.cfg.decoder_orthogonal_init:
-            self.W_dec.data = nn.init.orthogonal_(self.W_dec.data.T).T
-        elif self.cfg.decoder_heuristic_init:
-            self.W_dec.data = torch.rand(
-                self.cfg.d_sae, self.cfg.d_in, dtype=self.dtype, device=self.device
-            )
-            self.initialize_decoder_norm_constant_norm()
-        if self.cfg.init_encoder_as_decoder_transpose:
-            self.W_enc.data = self.W_dec.data.T.clone().contiguous()
-        if self.cfg.normalize_sae_decoder:
-            with torch.no_grad():
-                self.set_decoder_norm_to_unit_norm()
+        super().initialize_weights()
+        _init_weights_gated(self)
 
     def encode_with_hidden_pre(
         self, x: Float[torch.Tensor, "... d_in"]
@@ -274,3 +227,18 @@ class GatedTrainingSAE(TrainingSAE[GatedTrainingSAEConfig]):
                 warm_up_steps=self.cfg.l1_warm_up_steps,
             ),
         }
+
+
+def _init_weights_gated(
+    sae: SAE[GatedSAEConfig] | TrainingSAE[GatedTrainingSAEConfig],
+) -> None:
+    sae.b_gate = nn.Parameter(
+        torch.zeros(sae.cfg.d_sae, dtype=sae.dtype, device=sae.device)
+    )
+    # Ensure r_mag is initialized to zero as in original
+    sae.r_mag = nn.Parameter(
+        torch.zeros(sae.cfg.d_sae, dtype=sae.dtype, device=sae.device)
+    )
+    sae.b_mag = nn.Parameter(
+        torch.zeros(sae.cfg.d_sae, dtype=sae.dtype, device=sae.device)
+    )

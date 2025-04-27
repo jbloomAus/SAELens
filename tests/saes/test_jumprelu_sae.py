@@ -1,14 +1,13 @@
 import pytest
 import torch
 
-from sae_lens.saes.jumprelu_sae import JumpReLU, JumpReLUTrainingSAE, TrainingSAE
+from sae_lens.saes.jumprelu_sae import JumpReLU, JumpReLUTrainingSAE
 from sae_lens.saes.sae import TrainStepInput
-from tests.helpers import build_sae_cfg
+from tests.helpers import build_jumprelu_sae_training_cfg
 
 
 def test_jumprelu_sae_encoding():
-    cfg = build_sae_cfg(architecture="jumprelu")
-    sae = JumpReLUTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+    sae = JumpReLUTrainingSAE(build_jumprelu_sae_training_cfg())
 
     batch_size = 32
     d_in = sae.cfg.d_in
@@ -32,8 +31,7 @@ def test_jumprelu_sae_encoding():
 
 
 def test_jumprelu_sae_training_forward_pass():
-    cfg = build_sae_cfg(architecture="jumprelu")
-    sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+    sae = JumpReLUTrainingSAE(build_jumprelu_sae_training_cfg())
 
     batch_size = 32
     d_in = sae.cfg.d_in
@@ -42,7 +40,7 @@ def test_jumprelu_sae_training_forward_pass():
     train_step_output = sae.training_forward_pass(
         step_input=TrainStepInput(
             sae_in=x,
-            current_l1_coefficient=sae.cfg.l1_coefficient,
+            coefficients={"l0": sae.cfg.l0_coefficient},
             dead_neuron_mask=None,
         ),
     )

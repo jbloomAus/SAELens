@@ -3,7 +3,7 @@ import math
 import os
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Literal, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 import simple_parsing
 import torch
@@ -17,7 +17,9 @@ from datasets import (
 )
 
 from sae_lens import __version__, logger
-from sae_lens.saes.sae import TrainingSAEConfig
+
+if TYPE_CHECKING:
+    from sae_lens.saes.sae import TrainingSAEConfig
 
 DTYPE_MAP = {
     "float32": torch.float32,
@@ -191,7 +193,7 @@ class LanguageModelSAERunnerConfig:
         exclude_special_tokens (bool | list[int]): Whether to exclude special tokens from the activations.
     """
 
-    sae: TrainingSAEConfig
+    sae: "TrainingSAEConfig"
 
     # Data Generating Function (Model + Training Distibuion)
     model_name: str = "gelu-2l"
@@ -216,7 +218,6 @@ class LanguageModelSAERunnerConfig:
     # Activation Store Parameters
     n_batches_in_buffer: int = 20
     training_tokens: int = 2_000_000
-    finetuning_tokens: int = 0
     store_batch_size_prompts: int = 32
     normalize_activations: str = "none"  # none, expected_average_only_in (Anthropic April Update), constant_norm_rescale (Anthropic Feb Update)
     seqpos_slice: tuple[int | None, ...] = (None,)
@@ -255,12 +256,9 @@ class LanguageModelSAERunnerConfig:
     lr_decay_steps: int = 0
     n_restart_cycles: int = 1  # used only for cosineannealingwarmrestarts
 
-    ## FineTuning
-    finetuning_method: str | None = None  # scale, decoder or unrotated_decoder
-
     # Resampling protocol args
     dead_feature_window: int = 1000  # unless this window is larger feature sampling,
-
+    feature_sampling_window: int = 2000
     dead_feature_threshold: float = 1e-8
 
     # Evals
@@ -294,64 +292,18 @@ class LanguageModelSAERunnerConfig:
                 self.hook_name,
                 self.hook_head_index,
             )
-
-        if self.activation_fn is None:
-            self.activation_fn = "topk" if self.architecture == "topk" else "relu"
-
-        if self.architecture == "topk" and self.activation_fn != "topk":
-            raise ValueError("If using topk architecture, activation_fn must be topk.")
-
-        if self.activation_fn_kwargs is None:
-            self.activation_fn_kwargs = (
-                {"k": 100} if self.activation_fn == "topk" else {}
-            )
-
-        if self.architecture == "topk" and self.activation_fn_kwargs.get("k") is None:
-            raise ValueError(
-                "activation_fn_kwargs.k must be provided for topk architecture."
-            )
-
-        if self.d_sae is not None and self.expansion_factor is not None:
-            raise ValueError("You can't set both d_sae and expansion_factor.")
-
-        if self.d_sae is None and self.expansion_factor is None:
-            self.expansion_factor = 4
-
-        if self.d_sae is None and self.expansion_factor is not None:
-            self.d_sae = self.d_in * self.expansion_factor
         self.tokens_per_buffer = (
             self.train_batch_size_tokens * self.context_size * self.n_batches_in_buffer
         )
 
         if self.logger.run_name is None:
-            self.logger.run_name = f"{self.d_sae}-L1-{self.l1_coefficient}-LR-{self.lr}-Tokens-{self.training_tokens:3.3e}"
+            self.logger.run_name = f"{self.sae.architecture()}-{self.sae.d_sae}-LR-{self.lr}-Tokens-{self.training_tokens:3.3e}"
 
         if self.model_from_pretrained_kwargs is None:
             if self.model_class_name == "HookedTransformer":
                 self.model_from_pretrained_kwargs = {"center_writing_weights": False}
             else:
                 self.model_from_pretrained_kwargs = {}
-
-        if self.b_dec_init_method not in ["geometric_median", "mean", "zeros"]:
-            raise ValueError(
-                f"b_dec_init_method must be geometric_median, mean, or zeros. Got {self.b_dec_init_method}"
-            )
-
-        if self.normalize_sae_decoder and self.decoder_heuristic_init:
-            raise ValueError(
-                "You can't normalize the decoder and use heuristic initialization."
-            )
-
-        if self.normalize_sae_decoder and self.scale_sparsity_penalty_by_decoder_norm:
-            raise ValueError(
-                "Weighting loss by decoder norm makes no sense if you are normalizing the decoder weight norms to 1"
-            )
-
-        # if we use decoder fine tuning, we can't be applying b_dec to the input
-        if (self.finetuning_method == "decoder") and (self.apply_b_dec_to_input):
-            raise ValueError(
-                "If we are fine tuning the decoder, we can't be applying b_dec to the input.\nSet apply_b_dec_to_input to False."
-            )
 
         if self.normalize_activations not in [
             "none",
@@ -378,7 +330,7 @@ class LanguageModelSAERunnerConfig:
 
         if self.verbose:
             logger.info(
-                f"Run name: {self.d_sae}-L1-{self.l1_coefficient}-LR-{self.lr}-Tokens-{self.training_tokens:3.3e}"
+                f"Run name: {self.sae.architecture()}-{self.sae.d_sae}-LR-{self.lr}-Tokens-{self.training_tokens:3.3e}"
             )
             # Print out some useful info:
             n_tokens_per_buffer = (
@@ -397,7 +349,7 @@ class LanguageModelSAERunnerConfig:
             )
 
             total_training_steps = (
-                self.training_tokens + self.finetuning_tokens
+                self.training_tokens
             ) // self.train_batch_size_tokens
             logger.info(f"Total training steps: {total_training_steps}")
 
@@ -425,9 +377,6 @@ class LanguageModelSAERunnerConfig:
                 f"Number tokens in sparsity calculation window: {self.feature_sampling_window * self.train_batch_size_tokens:.2e}"
             )
 
-        if self.use_ghost_grads:
-            logger.info("Using Ghost Grads.")
-
         if self.context_size < 0:
             raise ValueError(
                 f"The provided context_size is {self.context_size} is negative. Expecting positive context_size."
@@ -442,55 +391,17 @@ class LanguageModelSAERunnerConfig:
 
     @property
     def total_training_tokens(self) -> int:
-        return self.training_tokens + self.finetuning_tokens
+        return self.training_tokens
 
     @property
     def total_training_steps(self) -> int:
         return self.total_training_tokens // self.train_batch_size_tokens
 
-    def get_base_sae_cfg_dict(self) -> dict[str, Any]:
-        return {
-            # TEMP
-            "architecture": self.architecture,
-            "d_in": self.d_in,
-            "d_sae": self.d_sae,
-            "dtype": self.dtype,
-            "device": self.device,
-            "model_name": self.model_name,
-            "hook_name": self.hook_name,
-            "hook_layer": self.hook_layer,
-            "hook_head_index": self.hook_head_index,
-            "activation_fn": self.activation_fn,
-            "apply_b_dec_to_input": self.apply_b_dec_to_input,
-            "context_size": self.context_size,
-            "prepend_bos": self.prepend_bos,
-            "dataset_path": self.dataset_path,
-            "dataset_trust_remote_code": self.dataset_trust_remote_code,
-            "finetuning_scaling_factor": self.finetuning_method is not None,
-            "sae_lens_training_version": self.sae_lens_training_version,
-            "normalize_activations": self.normalize_activations,
-            "activation_fn_kwargs": self.activation_fn_kwargs,
-            "model_from_pretrained_kwargs": self.model_from_pretrained_kwargs,
-            "seqpos_slice": self.seqpos_slice,
-        }
+    # def get_base_sae_cfg_dict(self) -> dict[str, Any]:
+    #     return self.sae.to_dict()
 
     def get_training_sae_cfg_dict(self) -> dict[str, Any]:
-        return {
-            **self.get_base_sae_cfg_dict(),
-            "l1_coefficient": self.l1_coefficient,
-            "lp_norm": self.lp_norm,
-            "use_ghost_grads": self.use_ghost_grads,
-            "normalize_sae_decoder": self.normalize_sae_decoder,
-            "noise_scale": self.noise_scale,
-            "decoder_orthogonal_init": self.decoder_orthogonal_init,
-            "mse_loss_normalization": self.mse_loss_normalization,
-            "decoder_heuristic_init": self.decoder_heuristic_init,
-            "init_encoder_as_decoder_transpose": self.init_encoder_as_decoder_transpose,
-            "normalize_activations": self.normalize_activations,
-            "jumprelu_init_threshold": self.jumprelu_init_threshold,
-            "jumprelu_bandwidth": self.jumprelu_bandwidth,
-            "scale_sparsity_penalty_by_decoder_norm": self.scale_sparsity_penalty_by_decoder_norm,
-        }
+        return self.sae.to_dict()
 
     def to_dict(self) -> dict[str, Any]:
         # Make a shallow copy of config’s dictionary

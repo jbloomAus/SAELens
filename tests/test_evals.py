@@ -26,7 +26,7 @@ from sae_lens.loading.pretrained_saes_directory import PretrainedSAELookup
 from sae_lens.saes.sae import SAE, TrainingSAE
 from sae_lens.saes.standard_sae import StandardSAE
 from sae_lens.training.activations_store import ActivationsStore
-from tests.helpers import TINYSTORIES_MODEL, build_sae_cfg, load_model_cached
+from tests.helpers import TINYSTORIES_MODEL, build_runner_cfg, load_model_cached
 
 TRAINER_EVAL_CONFIG = EvalConfig(
     n_eval_reconstruction_batches=10,
@@ -115,7 +115,7 @@ def cfg(request: pytest.FixtureRequest):
     Pytest fixture to create a mock instance of LanguageModelSAERunnerConfig.
     """
     params = request.param
-    return build_sae_cfg(**params)
+    return build_runner_cfg(**params)
 
 
 @pytest.fixture
@@ -373,7 +373,7 @@ def test_get_downstream_reconstruction_metrics_with_hf_model_gives_same_results_
     )
     tlens_model = HookedTransformer.from_pretrained_no_processing("gpt2", device="cpu")
 
-    cfg = build_sae_cfg(hook_name="transformer.h.3")
+    cfg = build_runner_cfg(hook_name="transformer.h.3")
     gpt2_res_jb_l4_sae.cfg.hook_name = "transformer.h.3"
     hf_store = ActivationsStore.from_config(
         hf_model, cfg, override_dataset=example_dataset
@@ -388,7 +388,7 @@ def test_get_downstream_reconstruction_metrics_with_hf_model_gives_same_results_
         eval_batch_size_prompts=4,
     )
 
-    cfg = build_sae_cfg(hook_name="blocks.4.hook_resid_pre")
+    cfg = build_runner_cfg(hook_name="blocks.4.hook_resid_pre")
     gpt2_res_jb_l4_sae.cfg.hook_name = "blocks.4.hook_resid_pre"
     tlens_store = ActivationsStore.from_config(
         tlens_model, cfg, override_dataset=example_dataset
@@ -418,7 +418,7 @@ def test_get_sparsity_and_variance_metrics_with_hf_model_gives_same_results_as_t
     )
     tlens_model = HookedTransformer.from_pretrained_no_processing("gpt2", device="cpu")
 
-    cfg = build_sae_cfg(hook_name="transformer.h.3")
+    cfg = build_runner_cfg(hook_name="transformer.h.3")
     gpt2_res_jb_l4_sae.cfg.hook_name = "transformer.h.3"
     hf_store = ActivationsStore.from_config(
         hf_model, cfg, override_dataset=example_dataset
@@ -436,7 +436,7 @@ def test_get_sparsity_and_variance_metrics_with_hf_model_gives_same_results_as_t
         model_kwargs={},
     )
 
-    cfg = build_sae_cfg(hook_name="blocks.4.hook_resid_pre")
+    cfg = build_runner_cfg(hook_name="blocks.4.hook_resid_pre")
     gpt2_res_jb_l4_sae.cfg.hook_name = "blocks.4.hook_resid_pre"
     tlens_store = ActivationsStore.from_config(
         tlens_model, cfg, override_dataset=example_dataset
@@ -547,7 +547,7 @@ def test_get_sparsity_and_variance_metrics_identity_sae_perfect_reconstruction(
     """Test that an identity SAE (d_in = d_sae, W_enc = W_dec = Identity, zero biases) gets perfect variance explained."""
     # Create a special configuration for an identity SAE
     d_in = 64  # Choose a small dimension for test efficiency
-    identity_cfg = build_sae_cfg(
+    identity_cfg = build_runner_cfg(
         d_in=d_in,
         d_sae=2 * d_in,  # 2 x d_in, to do both pos and neg identity matrix
         hook_name="blocks.1.hook_resid_pre",

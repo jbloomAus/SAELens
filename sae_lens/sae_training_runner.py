@@ -34,7 +34,7 @@ class SAETrainingRunner:
 
     cfg: LanguageModelSAERunnerConfig
     model: HookedRootModule
-    sae: TrainingSAE
+    sae: TrainingSAE[Any]
     activations_store: ActivationsStore
 
     def __init__(
@@ -42,7 +42,7 @@ class SAETrainingRunner:
         cfg: LanguageModelSAERunnerConfig,
         override_dataset: HfDataset | None = None,
         override_model: HookedRootModule | None = None,
-        override_sae: TrainingSAE | None = None,
+        override_sae: TrainingSAE[Any] | None = None,
     ):
         if override_dataset is not None:
             logger.warning(
@@ -141,7 +141,7 @@ class SAETrainingRunner:
                 backend=backend,
             )  # type: ignore
 
-    def run_trainer_with_interruption_handling(self, trainer: SAETrainer):
+    def run_trainer_with_interruption_handling(self, trainer: SAETrainer[Any]):
         try:
             # signal handlers (if preempted)
             signal.signal(signal.SIGINT, interrupt_callback)
@@ -167,7 +167,7 @@ class SAETrainingRunner:
         extract all activations at a certain layer and use for sae b_dec initialization
         """
 
-        if self.cfg.b_dec_init_method == "geometric_median":
+        if self.cfg.sae.b_dec_init_method == "geometric_median":
             self.activations_store.set_norm_scaling_factor_if_needed()
             layer_acts = self.activations_store.storage_buffer.detach()[:, 0, :]
             # get geometric median of the activations if we're using those.
@@ -176,14 +176,14 @@ class SAETrainingRunner:
                 maxiter=100,
             ).median
             self.sae.initialize_b_dec_with_precalculated(median)
-        elif self.cfg.b_dec_init_method == "mean":
+        elif self.cfg.sae.b_dec_init_method == "mean":
             self.activations_store.set_norm_scaling_factor_if_needed()
             layer_acts = self.activations_store.storage_buffer.detach().cpu()[:, 0, :]
             self.sae.initialize_b_dec_with_mean(layer_acts)  # type: ignore
 
     @staticmethod
     def save_checkpoint(
-        trainer: SAETrainer,
+        trainer: SAETrainer[Any],
         checkpoint_name: str,
         wandb_aliases: list[str] | None = None,
     ) -> None:

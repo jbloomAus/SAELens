@@ -3,9 +3,13 @@ import pytest
 import torch
 
 # New modules
-from sae_lens.loading.pretrained_sae_loaders import handle_config_defaulting
-from sae_lens.saes.sae import SAEConfig, TrainingSAEConfig, TrainStepInput
-from sae_lens.saes.standard_sae import StandardSAE, StandardTrainingSAE
+from sae_lens.saes.sae import SAEMetadata, TrainStepInput
+from sae_lens.saes.standard_sae import (
+    StandardSAE,
+    StandardSAEConfig,
+    StandardTrainingSAE,
+    StandardTrainingSAEConfig,
+)
 
 # Old modules
 from tests._comparison.sae_lens_old.sae import (
@@ -83,28 +87,13 @@ def make_new_sae(
     Helper to instantiate a new StandardSAE instance for testing.
     Mirror the same hook_name that does NOT end with '_z'.
     """
-    new_cfg = SAEConfig(
-        architecture="standard",
+    new_cfg = StandardSAEConfig(
         d_in=d_in,
         d_sae=d_sae,
         dtype="float32",
         device="cpu",
-        model_name="test_model",
-        hook_name=hook_name,
-        hook_layer=0,
-        hook_head_index=None,
-        activation_fn="relu",
-        activation_fn_kwargs={},
         apply_b_dec_to_input=apply_b_dec_to_input,
-        finetuning_scaling_factor=False,
         normalize_activations="none",
-        context_size=128,  # Add default
-        dataset_path="fake/path",  # Add default
-        dataset_trust_remote_code=False,
-        sae_lens_training_version="test_version",
-        model_from_pretrained_kwargs={},
-        seqpos_slice=None,
-        prepend_bos=False,
     )
     return StandardSAE(new_cfg, use_error_term=use_error_term)
 
@@ -296,28 +285,17 @@ def test_standard_sae_hook_z_equivalence(hook_name: str):
         return OldSAE(cfg)
 
     def make_new_sae_with_hook(hook_name: str, d_in: int) -> StandardSAE:
-        cfg = SAEConfig(
-            architecture="standard",
+        cfg = StandardSAEConfig(
             d_in=d_in,  # Always use flattened dimension
             d_sae=32,
             dtype="float32",
             device="cpu",
-            model_name="test_model",
-            hook_name=hook_name,
-            hook_layer=0,
-            hook_head_index=None,
-            activation_fn="relu",
-            activation_fn_kwargs={},
             apply_b_dec_to_input=False,  # Important: set to False to avoid shape issues
-            finetuning_scaling_factor=False,
             normalize_activations="none",
-            context_size=128,
-            dataset_path="fake/path",  # Add default
-            dataset_trust_remote_code=False,
-            sae_lens_training_version="test_version",
-            model_from_pretrained_kwargs={},
-            seqpos_slice=None,
-            prepend_bos=False,
+            sae_metadata=SAEMetadata(
+                model_name="test_model",
+                hook_name=hook_name,
+            ),
         )
         return StandardSAE(cfg)
 
@@ -422,16 +400,18 @@ def test_standard_sae_training_hook_z_equivalence(hook_name: str):
         jumprelu_init_threshold=0.0,
         jumprelu_bandwidth=1.0,
         decoder_heuristic_init=False,
-        init_encoder_as_decoder_transpose=False,
-        scale_sparsity_penalty_by_decoder_norm=False,
+        init_encoder_as_decoder_transpose=True,
+        scale_sparsity_penalty_by_decoder_norm=True,
     )
 
     old_training_sae = OldTrainingSAE(old_training_cfg)
-    # Use the *new* TrainingSAEConfig for the new SAE
-    new_training_cfg_dict = old_training_cfg.to_dict()
     # Remove old config specific args if any
-    new_training_cfg = TrainingSAEConfig(
-        **handle_config_defaulting(new_training_cfg_dict)
+    new_training_cfg = StandardTrainingSAEConfig(
+        d_in=d_in,
+        d_sae=32,
+        noise_scale=0.0,
+        mse_loss_normalization=None,
+        l1_coefficient=0.01,
     )
     new_training_sae = StandardTrainingSAE(new_training_cfg)
 
@@ -465,7 +445,7 @@ def test_standard_sae_training_hook_z_equivalence(hook_name: str):
     new_out = new_training_sae.training_forward_pass(
         step_input=TrainStepInput(
             sae_in=new_input_data,
-            current_l1_coefficient=old_training_cfg.l1_coefficient,
+            coefficients={"l1": old_training_cfg.l1_coefficient},
             dead_neuron_mask=None,
         )
     )
@@ -691,7 +671,7 @@ def make_old_training_sae(
         jumprelu_bandwidth=1.0,  # Not used but part of config
         decoder_heuristic_init=False,
         init_encoder_as_decoder_transpose=False,
-        scale_sparsity_penalty_by_decoder_norm=False,
+        scale_sparsity_penalty_by_decoder_norm=True,
     )
     return OldTrainingSAE(old_training_cfg)
 
@@ -704,44 +684,21 @@ def make_new_training_sae(
     apply_b_dec_to_input: bool = False,
 ) -> StandardTrainingSAE:
     """Helper to instantiate a new StandardTrainingSAE instance."""
-    # We can derive the new config from the old one for consistency
-    old_cfg_dict = OldTrainingSAEConfig(
-        architecture="standard",
+    new_training_cfg = StandardTrainingSAEConfig(
         d_in=d_in,
         d_sae=d_sae,
-        dtype="float32",
-        device="cpu",
-        model_name="test_model",
-        hook_name=hook_name,
-        hook_layer=0,
-        hook_head_index=None,
-        activation_fn_str="relu",
-        activation_fn_kwargs={},
-        apply_b_dec_to_input=apply_b_dec_to_input,
-        finetuning_scaling_factor=False,
-        normalize_activations="none",
-        context_size=128,
-        dataset_path="fake/path",
-        dataset_trust_remote_code=False,
-        sae_lens_training_version="test_version",
-        model_from_pretrained_kwargs={},
-        seqpos_slice=(None,),
-        prepend_bos=False,
-        l1_coefficient=l1_coefficient,
-        lp_norm=1.0,
-        use_ghost_grads=False,
-        normalize_sae_decoder=False,
         noise_scale=0.0,
-        decoder_orthogonal_init=False,
         mse_loss_normalization=None,
-        jumprelu_init_threshold=0.0,  # Not used but part of config
-        jumprelu_bandwidth=1.0,  # Not used but part of config
-        decoder_heuristic_init=False,
-        init_encoder_as_decoder_transpose=False,
-        scale_sparsity_penalty_by_decoder_norm=False,
-    ).to_dict()
-
-    new_training_cfg = TrainingSAEConfig(**handle_config_defaulting(old_cfg_dict))
+        l1_coefficient=l1_coefficient,
+        apply_b_dec_to_input=apply_b_dec_to_input,
+        reshape_activations="hook_z" if "hook_z" in hook_name else "none",
+        sae_metadata=SAEMetadata(
+            model_name="test_model",
+            hook_name=hook_name,
+            hook_layer=0,
+            hook_head_index=None,
+        ),
+    )
     return StandardTrainingSAE(new_training_cfg)
 
 
@@ -799,7 +756,7 @@ def test_standard_sae_training_equivalence():
     new_out = new_sae.training_forward_pass(
         step_input=TrainStepInput(
             sae_in=x,
-            current_l1_coefficient=l1_coefficient,
+            coefficients={"l1": l1_coefficient},
             dead_neuron_mask=None,
         )
     )
@@ -885,7 +842,7 @@ def test_sae_hook_z_training_equivalence():
     new_out = new_sae.training_forward_pass(
         step_input=TrainStepInput(
             sae_in=x_reshaped,
-            current_l1_coefficient=l1_coefficient,
+            coefficients={"l1": l1_coefficient},
             dead_neuron_mask=None,
         )
     )

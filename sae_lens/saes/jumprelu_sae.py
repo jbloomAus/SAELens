@@ -88,14 +88,14 @@ class JumpReLU(torch.autograd.Function):
 
 
 @dataclass
-class JumpReLUConfig(SAEConfig):
+class JumpReLUSAEConfig(SAEConfig):
     @override
     @classmethod
     def architecture(cls) -> str:
         return "jumprelu"
 
 
-class JumpReLUSAE(SAE[JumpReLUConfig]):
+class JumpReLUSAE(SAE[JumpReLUSAEConfig]):
     """
     JumpReLUSAE is an inference-only implementation of a Sparse Autoencoder (SAE)
     using a JumpReLU activation. For each unit, if its pre-activation is
@@ -114,42 +114,18 @@ class JumpReLUSAE(SAE[JumpReLUConfig]):
     b_enc: nn.Parameter
     threshold: nn.Parameter
 
-    def __init__(self, cfg: JumpReLUConfig, use_error_term: bool = False):
+    def __init__(self, cfg: JumpReLUSAEConfig, use_error_term: bool = False):
         super().__init__(cfg, use_error_term)
 
+    @override
     def initialize_weights(self) -> None:
-        """
-        Initialize encoder and decoder weights, as well as biases.
-        Additionally, include a learnable `threshold` parameter that
-        determines when units "turn on" for the JumpReLU.
-        """
-        # Biases
-        self.b_enc = nn.Parameter(
-            torch.zeros(self.cfg.d_sae, dtype=self.dtype, device=self.device)
-        )
-        self.b_dec = nn.Parameter(
-            torch.zeros(self.cfg.d_in, dtype=self.dtype, device=self.device)
-        )
-
-        # Threshold for JumpReLU
-        # You can pick a default initialization (e.g., zeros means unit is off unless hidden_pre > 0)
-        # or see the training version for more advanced init with log_threshold, etc.
+        super().initialize_weights()
         self.threshold = nn.Parameter(
             torch.zeros(self.cfg.d_sae, dtype=self.dtype, device=self.device)
         )
-
-        # Encoder and Decoder weights
-        w_enc_data = torch.empty(
-            self.cfg.d_in, self.cfg.d_sae, dtype=self.dtype, device=self.device
+        self.b_enc = nn.Parameter(
+            torch.zeros(self.cfg.d_sae, dtype=self.dtype, device=self.device)
         )
-        nn.init.kaiming_uniform_(w_enc_data)
-        self.W_enc = nn.Parameter(w_enc_data)
-
-        w_dec_data = torch.empty(
-            self.cfg.d_sae, self.cfg.d_in, dtype=self.dtype, device=self.device
-        )
-        nn.init.kaiming_uniform_(w_dec_data)
-        self.W_dec = nn.Parameter(w_dec_data)
 
     def encode(
         self, x: Float[torch.Tensor, "... d_in"]
@@ -247,51 +223,16 @@ class JumpReLUTrainingSAE(TrainingSAE[JumpReLUTrainingSAEConfig]):
             * np.log(cfg.jumprelu_init_threshold)
         )
 
+    @override
     def initialize_weights(self) -> None:
         """
         Initialize parameters like the base SAE, but also add log_threshold.
         """
+        super().initialize_weights()
         # Encoder Bias
         self.b_enc = nn.Parameter(
             torch.zeros(self.cfg.d_sae, dtype=self.dtype, device=self.device)
         )
-        # Decoder Bias
-        self.b_dec = nn.Parameter(
-            torch.zeros(self.cfg.d_in, dtype=self.dtype, device=self.device)
-        )
-        # W_enc
-        w_enc_data = torch.nn.init.kaiming_uniform_(
-            torch.empty(
-                self.cfg.d_in, self.cfg.d_sae, dtype=self.dtype, device=self.device
-            )
-        )
-        self.W_enc = nn.Parameter(w_enc_data)
-
-        # W_dec
-        w_dec_data = torch.nn.init.kaiming_uniform_(
-            torch.empty(
-                self.cfg.d_sae, self.cfg.d_in, dtype=self.dtype, device=self.device
-            )
-        )
-        self.W_dec = nn.Parameter(w_dec_data)
-
-        # Optionally apply orthogonal or heuristic init
-        if self.cfg.decoder_orthogonal_init:
-            self.W_dec.data = nn.init.orthogonal_(self.W_dec.data.T).T
-        elif self.cfg.decoder_heuristic_init:
-            self.W_dec.data = torch.rand(
-                self.cfg.d_sae, self.cfg.d_in, dtype=self.dtype, device=self.device
-            )
-            self.initialize_decoder_norm_constant_norm()
-
-        # Optionally transpose
-        if self.cfg.init_encoder_as_decoder_transpose:
-            self.W_enc.data = self.W_dec.data.T.clone().contiguous()
-
-        # Optionally normalize columns of W_dec
-        if self.cfg.normalize_sae_decoder:
-            with torch.no_grad():
-                self.set_decoder_norm_to_unit_norm()
 
     @property
     def threshold(self) -> torch.Tensor:

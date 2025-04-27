@@ -12,8 +12,8 @@ from sae_lens.saes.gated_sae import (
     GatedTrainingSAEConfig,
 )
 from sae_lens.saes.jumprelu_sae import (
-    JumpReLUConfig,
     JumpReLUSAE,
+    JumpReLUSAEConfig,
     JumpReLUTrainingSAE,
     JumpReLUTrainingSAEConfig,
 )
@@ -55,7 +55,7 @@ register_sae_class("gated", GatedSAE, GatedSAEConfig)
 register_sae_training_class("gated", GatedTrainingSAE, GatedTrainingSAEConfig)
 register_sae_class("topk", TopKSAE, TopKSAEConfig)
 register_sae_training_class("topk", TopKTrainingSAE, TopKTrainingSAEConfig)
-register_sae_class("jumprelu", JumpReLUSAE, JumpReLUConfig)
+register_sae_class("jumprelu", JumpReLUSAE, JumpReLUSAEConfig)
 register_sae_training_class("jumprelu", JumpReLUTrainingSAE, JumpReLUTrainingSAEConfig)
 
 __all__ = [

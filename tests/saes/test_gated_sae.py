@@ -1,19 +1,20 @@
+import os
+from pathlib import Path
+
 import pytest
 import torch
 
-from sae_lens.saes.gated_sae import GatedTrainingSAE
-from sae_lens.saes.sae import TrainingSAE, TrainStepInput
-from tests.helpers import build_sae_cfg
+from sae_lens.saes.gated_sae import GatedSAE, GatedTrainingSAE
+from sae_lens.saes.sae import SAE, TrainStepInput
+from tests.helpers import build_gated_sae_cfg, build_gated_sae_training_cfg
 
 
 def test_gated_sae_initialization():
-    cfg = build_sae_cfg()
-    setattr(cfg, "architecture", "gated")
-    sae = GatedTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+    cfg = build_gated_sae_training_cfg()
+    sae = GatedTrainingSAE(cfg)
 
     assert sae.W_enc.shape == (cfg.d_in, cfg.d_sae)
     assert sae.W_dec.shape == (cfg.d_sae, cfg.d_in)
-    # assert sae.b_enc.shape == (cfg.d_sae,)
     assert sae.b_mag.shape == (cfg.d_sae,)
     assert sae.b_gate.shape == (cfg.d_sae,)
     assert sae.r_mag.shape == (cfg.d_sae,)
@@ -33,10 +34,50 @@ def test_gated_sae_initialization():
     )
 
 
+@pytest.mark.parametrize("use_error_term", [True, False])
+def test_sae_gated_forward(use_error_term: bool):
+    sae = GatedSAE(build_gated_sae_cfg(d_in=2, d_sae=3))
+    sae.use_error_term = use_error_term
+    sae.W_enc.data = torch.ones_like(sae.W_enc.data)
+    sae.W_dec.data = torch.ones_like(sae.W_dec.data)
+    sae.b_dec.data = torch.zeros_like(sae.b_dec.data)
+    sae.b_gate.data = torch.tensor([-2.0, 0.0, 1.0])
+    sae.r_mag.data = torch.tensor([1.0, 2.0, 3.0])
+    sae.b_mag.data = torch.tensor([1.0, 1.0, 1.0])
+
+    sae_in = torch.tensor([[0.3, 0.3]])
+
+    # expected gating pre acts: [0.6 - 2 = -1.4, 0.6, 0.6 + 1 = 1.6]
+    # so the first gate should be off
+    # mags should be [0.6 * exp(1), 0.6 * exp(2), 0.6 * exp(3)] + b_mag => [2.6310,  5.4334, 13.0513]
+
+    expected_recons = torch.tensor([[18.4848, 18.4848]])
+    # if we use error term, we should always get the same output as what we put in
+    expected_output = sae_in if use_error_term else expected_recons
+    out, cache = sae.run_with_cache(sae_in)
+
+    assert torch.allclose(out, expected_output, atol=1e-3)
+    assert torch.allclose(cache["hook_sae_input"], sae_in, atol=1e-3)
+    assert torch.allclose(cache["hook_sae_output"], out, atol=1e-3)
+    assert torch.allclose(cache["hook_sae_recons"], expected_recons, atol=1e-3)
+    assert torch.allclose(
+        cache["hook_sae_acts_pre"], torch.tensor([[2.6310, 5.4334, 13.0513]]), atol=1e-3
+    )
+    # the threshold of 1.0 should block the first latent from firing
+    assert torch.allclose(
+        cache["hook_sae_acts_post"],
+        torch.tensor([[0.0, 5.4334, 13.0513]]),
+        atol=1e-3,
+    )
+    if use_error_term:
+        assert torch.allclose(
+            cache["hook_sae_error"], expected_output - expected_recons
+        )
+
+
 def test_gated_sae_encoding():
-    cfg = build_sae_cfg()
-    setattr(cfg, "architecture", "gated")
-    sae = GatedTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+    cfg = build_gated_sae_training_cfg()
+    sae = GatedTrainingSAE(cfg)
 
     batch_size = 32
     d_in = sae.cfg.d_in
@@ -59,9 +100,8 @@ def test_gated_sae_encoding():
 
 
 def test_gated_sae_loss():
-    cfg = build_sae_cfg()
-    setattr(cfg, "architecture", "gated")
-    sae = GatedTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+    cfg = build_gated_sae_training_cfg()
+    sae = GatedTrainingSAE(cfg)
 
     batch_size = 32
     d_in = sae.cfg.d_in
@@ -70,7 +110,7 @@ def test_gated_sae_loss():
     train_step_output = sae.training_forward_pass(
         step_input=TrainStepInput(
             sae_in=x,
-            current_l1_coefficient=sae.cfg.l1_coefficient,
+            coefficients={"l1": sae.cfg.l1_coefficient},
             dead_neuron_mask=None,
         ),
     )
@@ -102,9 +142,8 @@ def test_gated_sae_loss():
 
 
 def test_gated_sae_forward_pass():
-    cfg = build_sae_cfg()
-    setattr(cfg, "architecture", "gated")
-    sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+    cfg = build_gated_sae_training_cfg()
+    sae = GatedTrainingSAE(cfg)
 
     batch_size = 32
     d_in = sae.cfg.d_in
@@ -115,10 +154,36 @@ def test_gated_sae_forward_pass():
     assert sae_out.shape == (batch_size, d_in)
 
 
+def test_sae_save_and_load_from_pretrained_gated(tmp_path: Path) -> None:
+    cfg = build_gated_sae_cfg()
+    model_path = str(tmp_path)
+    sae = GatedSAE(cfg)
+    sae_state_dict = sae.state_dict()
+    sae.save_model(model_path)
+
+    assert os.path.exists(model_path)
+
+    sae_loaded = SAE.load_from_pretrained(model_path, device="cpu")
+
+    assert isinstance(sae_loaded, GatedSAE)
+    sae_loaded_state_dict = sae_loaded.state_dict()
+
+    # check state_dict matches the original
+    for key in sae.state_dict():
+        assert torch.allclose(
+            sae_state_dict[key],
+            sae_loaded_state_dict[key],
+        )
+
+    sae_in = torch.randn(10, cfg.d_in, device=cfg.device)
+    sae_out_1 = sae(sae_in)
+    sae_out_2 = sae_loaded(sae_in)
+    assert torch.allclose(sae_out_1, sae_out_2)
+
+
 def test_gated_sae_training_forward_pass():
-    cfg = build_sae_cfg()
-    setattr(cfg, "architecture", "gated")
-    sae = GatedTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+    cfg = build_gated_sae_training_cfg()
+    sae = GatedTrainingSAE(cfg)
 
     batch_size = 32
     d_in = sae.cfg.d_in
@@ -127,7 +192,7 @@ def test_gated_sae_training_forward_pass():
     train_step_output = sae.training_forward_pass(
         step_input=TrainStepInput(
             sae_in=x,
-            current_l1_coefficient=sae.cfg.l1_coefficient,
+            coefficients={"l1": sae.cfg.l1_coefficient},
             dead_neuron_mask=None,
         ),
     )
