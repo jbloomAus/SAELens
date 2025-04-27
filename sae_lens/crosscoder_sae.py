@@ -11,13 +11,7 @@ from sae_lens import SAEConfig, SAE
 class CrosscoderSAEConfig(SAEConfig):
     hook_layers: list[int] = list
 
-    # @classmethod
-    # def from_dict(cls, config_dict: dict[str, Any]) -> "CrosscoderSAEConfig":
-    #     # TODO(mkbehr) is a new method needed here, or will the superclass's work w/o modification? I think it'll work. test it.
-    #     pass
-
     def to_dict(self) -> dict[str, Any]:
-        # TODO(mkbehr) test
         return super().to_dict() | {
             "hook_layers": self.hook_layers,
         }
@@ -31,7 +25,7 @@ class CrosscoderSAEConfig(SAEConfig):
 
 class CrosscoderSAE(SAE):
     """
-    TODO(mkbehr): docstring
+    Sparse autoencoder that acts on multiple layers of activations.
     """
 
     # TODO(mkbehr): write
@@ -63,19 +57,6 @@ class CrosscoderSAE(SAE):
     def input_shape(self):
         return (len(self.cfg.hook_layers), self.cfg.d_in)
 
-    # TODO(mkbehr): in sae.py this is noted to output "... d_sae" but
-    # I think that's wrong
-    # TODO(mkbehr): I don't think we actually need to change this
-    def process_sae_in(
-        self, sae_in: Float[torch.Tensor, "... n_layers d_in"]
-    ) -> Float[torch.Tensor, "... n_layers d_in"]:
-        sae_in = sae_in.to(self.dtype)
-        # TODO(mkbehr): n.b. that reshape_fn_in is set to the identity
-        # if we're not doing hook_z reshaping
-        sae_in = self.reshape_fn_in(sae_in)
-        sae_in = self.hook_sae_input(sae_in)
-        sae_in = self.run_time_activation_norm_fn_in(sae_in)
-        return sae_in - (self.b_dec * self.cfg.apply_b_dec_to_input)
 
     def encode_standard(
         self, x: Float[torch.Tensor, "... n_layers d_in"]
@@ -117,11 +98,6 @@ class CrosscoderSAE(SAE):
 
     @torch.no_grad()
     def fold_W_dec_norm(self):
-        # TODO(mkbehr)
-        # W_dec: d_sae, n_layers, d_in
-        # W_dec_norms: d_sae, 1, 1
-        # W_enc: n_layers, d_in, d_sae
-        # desired W_enc_norms: 1, 1, d_sae
         W_dec_norms = self.W_dec.norm(dim=[-2,-1], keepdim=True)
         self.W_dec.data = self.W_dec.data / W_dec_norms
         self.W_enc.data = self.W_enc.data * einops.rearrange(

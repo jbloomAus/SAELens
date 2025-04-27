@@ -465,7 +465,7 @@ class ActivationsStore:
         ):
             # temporalily set estimated_norm_scaling_factor to 1.0 so the dataloader works
             self.estimated_norm_scaling_factor = torch.ones(1)
-            acts = self.next_batch()[:, 0]
+            acts = self.next_batch()
             self.estimated_norm_scaling_factor = None
             norms_per_batch[:, batch_i] = acts.norm(dim=-1).mean(dim=0)
         mean_norm = norms_per_batch.mean(dim=1)
