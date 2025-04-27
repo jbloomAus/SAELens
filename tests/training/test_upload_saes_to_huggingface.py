@@ -12,7 +12,6 @@ from sae_lens.training.upload_saes_to_huggingface import (
     _repo_file_exists,
     _validate_sae_path,
 )
-from tests.helpers import build_sae_cfg
 
 
 def test_create_default_readme():

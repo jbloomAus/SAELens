@@ -12,6 +12,7 @@ from transformer_lens.hook_points import HookPoint
 
 from sae_lens.config import LanguageModelSAERunnerConfig
 from sae_lens.saes.sae import SAE, _disable_hooks
+<<<<<<< HEAD
 from sae_lens.saes.standard_sae import (
     StandardSAE,
     StandardTrainingSAE,
@@ -22,6 +23,12 @@ from tests.helpers import (
     build_runner_cfg,
     build_sae_cfg,
     build_sae_cfg_for_arch,
+=======
+from sae_lens.saes.standard_sae import StandardSAE, StandardTrainingSAE
+from tests.helpers import (
+    ALL_ARCHITECTURES,
+    build_runner_cfg,
+>>>>>>> ce93586 (wip: fixing tests)
 )
 
 
@@ -74,7 +81,11 @@ def cfg(request: pytest.FixtureRequest):
     return build_runner_cfg(**params)
 
 
+<<<<<<< HEAD
 def test_sae_init(cfg: LanguageModelSAERunnerConfig[StandardTrainingSAEConfig]):
+=======
+def test_sae_init(cfg: LanguageModelSAERunnerConfig):
+>>>>>>> ce93586 (wip: fixing tests)
     sae = StandardSAE(cfg.sae)  # type: ignore
 
     assert isinstance(sae, SAE)
@@ -85,9 +96,13 @@ def test_sae_init(cfg: LanguageModelSAERunnerConfig[StandardTrainingSAEConfig]):
     assert sae.b_dec.shape == (cfg.sae.d_in,)
 
 
+<<<<<<< HEAD
 def test_sae_fold_w_dec_norm(
     cfg: LanguageModelSAERunnerConfig[StandardTrainingSAEConfig],
 ):
+=======
+def test_sae_fold_w_dec_norm(cfg: LanguageModelSAERunnerConfig):
+>>>>>>> ce93586 (wip: fixing tests)
     sae = StandardSAE(cfg.sae)  # type: ignore
     sae.turn_off_forward_pass_hook_z_reshaping()  # hook z reshaping not needed here.
     # TODO: verify if we're initializing the SAE correctly by default since we now have unit normed W_dec
@@ -126,8 +141,13 @@ def test_sae_fold_w_dec_norm(
 @pytest.mark.parametrize("architecture", ALL_ARCHITECTURES)
 @torch.no_grad()
 def test_sae_fold_w_dec_norm_all_architectures(architecture: str):
+<<<<<<< HEAD
     cfg = build_sae_cfg_for_arch(architecture)
     sae = SAE.from_dict(cfg.to_dict())
+=======
+    cfg = build_runner_cfg(architecture=architecture)
+    sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
+>>>>>>> ce93586 (wip: fixing tests)
     sae.turn_off_forward_pass_hook_z_reshaping()  # hook z reshaping not needed here.
 
     # make sure all parameters are not 0s
@@ -142,7 +162,7 @@ def test_sae_fold_w_dec_norm_all_architectures(architecture: str):
     assert sae2.W_dec.norm(dim=-1).mean().item() == pytest.approx(1.0, abs=1e-6)
 
     # we expect activations of features to differ by W_dec norm weights.
-    activations = torch.randn(10, 4, cfg.d_in, device=cfg.device)
+    activations = torch.randn(10, 4, cfg.sae.d_in, device=cfg.device)
     feature_activations_1 = sae.encode(activations)
     feature_activations_2 = sae2.encode(activations)
 
@@ -208,7 +228,11 @@ def test_sae_fold_norm_scaling_factor(
 @pytest.mark.parametrize("architecture", ALL_ARCHITECTURES)
 @torch.no_grad()
 def test_sae_fold_norm_scaling_factor_all_architectures(architecture: str):
+<<<<<<< HEAD
     cfg = build_sae_cfg_for_arch(architecture)
+=======
+    cfg = build_runner_cfg(architecture=architecture)
+>>>>>>> ce93586 (wip: fixing tests)
     norm_scaling_factor = 3.0
 
     sae = SAE.from_dict(cfg.to_dict())
@@ -225,7 +249,7 @@ def test_sae_fold_norm_scaling_factor_all_architectures(architecture: str):
 
     # we expect activations of features to differ by W_dec norm weights.
     # assume activations are already scaled
-    activations = torch.randn(10, 4, cfg.d_in, device=cfg.device)
+    activations = torch.randn(10, 4, cfg.sae.d_in, device=cfg.device)
     # we divide to get the unscale activations
     unscaled_activations = activations / norm_scaling_factor
 
@@ -249,7 +273,7 @@ def test_sae_fold_norm_scaling_factor_all_architectures(architecture: str):
 
 
 def test_sae_save_and_load_from_pretrained(tmp_path: Path) -> None:
-    cfg = build_sae_cfg()
+    cfg = build_runner_cfg()
     model_path = str(tmp_path)
     sae = SAE.from_dict(cfg.to_dict())
     sae_state_dict = sae.state_dict()
@@ -314,7 +338,7 @@ def test_sae_forward_pass_works_with_error_term_and_hooks(architecture: str):
     cfg = build_sae_cfg_for_arch(architecture=architecture, d_in=32, d_sae=64)
     sae = SAE.from_dict(cfg.to_dict())
     sae.use_error_term = True
-    sae_in = torch.randn(10, cfg.d_in)
+    sae_in = torch.randn(10, cfg.sae.d_in)
     original_out, original_cache = sae.run_with_cache(sae_in)
 
     def ablate_hooked_sae(acts: torch.Tensor, hook: HookPoint):  # noqa: ARG001
@@ -359,7 +383,7 @@ def test_SparseAutoencoder_from_pretrained_loads_from_hugginface_using_shorthand
     assert isinstance(original_cfg_dict, dict)
 
     assert isinstance(sparsity, torch.Tensor)
-    assert sparsity.shape == (sae.cfg.d_sae,)
+    assert sparsity.shape == (sae.cfg.sae.d_sae,)
     assert sparsity.max() < 0.0
 
     for k in sae.state_dict():
@@ -392,7 +416,7 @@ def test_SparseAutoencoder_from_pretrained_can_load_arbitrary_saes_from_huggingf
     assert isinstance(original_cfg_dict, dict)
 
     assert isinstance(sparsity, torch.Tensor)
-    assert sparsity.shape == (sae.cfg.d_sae,)
+    assert sparsity.shape == (sae.cfg.sae.d_sae,)
     assert sparsity.max() < 0.0
 
     for k in sae.state_dict():
