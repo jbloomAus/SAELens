@@ -14,7 +14,7 @@ from sae_lens.training.training_crosscoder_sae import TrainingCrosscoderSAE, Tra
 class CrosscoderSAETrainer(SAETrainer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # TODO(mkbehr) hardcoding causal evals off for now
+        # Reconstruction metrics don't make sense for acausal crosscoders.
         self.trainer_eval_config.compute_ce_loss=False
         self.trainer_eval_config.compute_kl=False
 
@@ -67,44 +67,16 @@ class CrosscoderSAETrainer(SAETrainer):
         output: TrainStepOutput,
         n_training_tokens: int,
     ) -> dict[str, Any]:
-        sae_in = output.sae_in
-        sae_out = output.sae_out
-        feature_acts = output.feature_acts
-        loss = output.loss.item()
-
-        # metrics for currents acts
-        l0 = (feature_acts > 0).float().sum(-1).mean()
-        current_learning_rate = self.optimizer.param_groups[0]["lr"]
+        log_dict = super()._build_train_step_log_dict(output, n_training_tokens)
 
         per_token_l2_loss = (sae_out - sae_in).pow(2).sum(dim=(-2, -1)).squeeze()
         total_variance = (sae_in - sae_in.mean(0)).pow(2).sum((-2, -1))
         explained_variance = 1 - per_token_l2_loss / total_variance
 
-        log_dict = {
-            # losses
-            "losses/overall_loss": loss,
-            # variance explained
+        log_dict |= {
             "metrics/explained_variance": explained_variance.mean().item(),
             "metrics/explained_variance_std": explained_variance.std().item(),
-            "metrics/l0": l0.item(),
-            # sparsity
-            "sparsity/mean_passes_since_fired": self.n_forward_passes_since_fired.mean().item(),
-            "sparsity/dead_features": self.dead_neurons.sum().item(),
-            "details/current_learning_rate": current_learning_rate,
-            "details/current_l1_coefficient": self.current_l1_coefficient,
-            "details/n_training_tokens": n_training_tokens,
         }
-        for loss_name, loss_value in output.losses.items():
-            loss_item = _unwrap_item(loss_value)
-            # special case for l1 loss, which we normalize by the l1 coefficient
-            if loss_name == "l1_loss":
-                log_dict[f"losses/{loss_name}"] = (
-                    loss_item / self.current_l1_coefficient
-                )
-                log_dict[f"losses/raw_{loss_name}"] = loss_item
-            else:
-                log_dict[f"losses/{loss_name}"] = loss_item
-
         return log_dict
 
     @torch.no_grad()
