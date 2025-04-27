@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field, fields, replace
 from pathlib import Path
+<<<<<<< HEAD
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -15,6 +16,9 @@ from typing import (
     Type,
     TypeVar,
 )
+=======
+from typing import Any, Callable, Generic, NamedTuple, Type, TypeVar
+>>>>>>> 1872f1b (move to separate config classes per architecture)
 
 import einops
 import torch
@@ -52,10 +56,17 @@ from sae_lens.loading.pretrained_saes_directory import (
 )
 from sae_lens.registry import get_sae_class, get_sae_training_class
 
+<<<<<<< HEAD
 T_SAE_CONFIG = TypeVar("T_SAE_CONFIG", bound="SAEConfig")
 T_TRAINING_SAE_CONFIG = TypeVar("T_TRAINING_SAE_CONFIG", bound="TrainingSAEConfig")
 T_SAE = TypeVar("T_SAE", bound="SAE")  # type: ignore
 T_TRAINING_SAE = TypeVar("T_TRAINING_SAE", bound="TrainingSAE")  # type: ignore
+=======
+T_SAE = TypeVar("T_SAE", bound="SAE[Any]")
+T_TRAINING_SAE = TypeVar("T_TRAINING_SAE", bound="TrainingSAE[Any]")
+T_SAE_CONFIG = TypeVar("T_SAE_CONFIG", bound="SAEConfig")
+T_TRAINING_SAE_CONFIG = TypeVar("T_TRAINING_SAE_CONFIG", bound="TrainingSAEConfig")
+>>>>>>> 1872f1b (move to separate config classes per architecture)
 
 
 @dataclass
@@ -151,11 +162,10 @@ class TrainStepInput:
 
 class TrainCoefficientConfig(NamedTuple):
     value: float
-    warmup_steps: int
-    decay_steps: int
+    warm_up_steps: int
 
 
-class SAE(HookedRootModule, ABC):
+class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
     """Abstract base class for all SAE architectures."""
 
     cfg: T_SAE_CONFIG
