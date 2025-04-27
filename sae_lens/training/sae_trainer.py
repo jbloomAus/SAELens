@@ -1,6 +1,6 @@
 import contextlib
 from dataclasses import dataclass
-from typing import Any, Protocol, cast
+from typing import Any, Generic, Protocol, cast
 
 import torch
 import wandb
@@ -11,9 +11,15 @@ from transformer_lens.hook_points import HookedRootModule
 from sae_lens import __version__
 from sae_lens.config import LanguageModelSAERunnerConfig
 from sae_lens.evals import EvalConfig, run_evals
-from sae_lens.saes.sae import TrainingSAE, TrainStepInput, TrainStepOutput
+from sae_lens.saes.sae import (
+    T_TRAINING_SAE,
+    TrainCoefficientConfig,
+    TrainingSAE,
+    TrainStepInput,
+    TrainStepOutput,
+)
 from sae_lens.training.activations_store import ActivationsStore
-from sae_lens.training.optim import L1Scheduler, get_lr_scheduler
+from sae_lens.training.optim import CoefficientScheduler, get_lr_scheduler
 
 # used to map between parameters which are updated during finetuning and the config str.
 FINETUNING_PARAMETERS = {
@@ -29,7 +35,7 @@ def _log_feature_sparsity(
     return torch.log10(feature_sparsity + eps).detach().cpu()
 
 
-def _update_sae_lens_training_version(sae: TrainingSAE) -> None:
+def _update_sae_lens_training_version(sae: TrainingSAE[Any]) -> None:
     """
     Make sure we record the version of SAELens used for the training run
     """
@@ -38,7 +44,7 @@ def _update_sae_lens_training_version(sae: TrainingSAE) -> None:
 
 @dataclass
 class TrainSAEOutput:
-    sae: TrainingSAE
+    sae: TrainingSAE[Any]
     checkpoint_path: str
     log_feature_sparsities: torch.Tensor
 
@@ -46,13 +52,13 @@ class TrainSAEOutput:
 class SaveCheckpointFn(Protocol):
     def __call__(
         self,
-        trainer: "SAETrainer",
+        trainer: "SAETrainer[T_TRAINING_SAE]",
         checkpoint_name: str,
         wandb_aliases: list[str] | None = None,
     ) -> None: ...
 
 
-class SAETrainer:
+class SAETrainer(Generic[T_TRAINING_SAE]):
     """
     Core SAE class used for inference. For training, see TrainingSAE.
     """
@@ -60,7 +66,7 @@ class SAETrainer:
     def __init__(
         self,
         model: HookedRootModule,
-        sae: TrainingSAE,
+        sae: T_TRAINING_SAE,
         activation_store: ActivationsStore,
         save_checkpoint_fn: SaveCheckpointFn,
         cfg: LanguageModelSAERunnerConfig,
@@ -121,11 +127,14 @@ class SAETrainer:
             lr_end=cfg.lr_end,
             num_cycles=cfg.n_restart_cycles,
         )
-        self.l1_scheduler = L1Scheduler(
-            l1_warm_up_steps=cfg.l1_warm_up_steps,
-            total_steps=cfg.total_training_steps,
-            final_l1_coefficient=cfg.l1_coefficient,
-        )
+        self.coefficient_schedulers = {}
+        for name, coeff_cfg in self.sae.get_coefficients().items():
+            if not isinstance(coeff_cfg, TrainCoefficientConfig):
+                coeff_cfg = TrainCoefficientConfig(value=coeff_cfg, warm_up_steps=0)
+            self.coefficient_schedulers[name] = CoefficientScheduler(
+                warm_up_steps=coeff_cfg.warm_up_steps,
+                final_value=coeff_cfg.value,
+            )
 
         # Setup autocast if using
         self.scaler = torch.amp.GradScaler(
@@ -164,14 +173,10 @@ class SAETrainer:
         return _log_feature_sparsity(self.feature_sparsity)
 
     @property
-    def current_l1_coefficient(self) -> float:
-        return self.l1_scheduler.current_l1_coefficient
-
-    @property
     def dead_neurons(self) -> torch.Tensor:
         return (self.n_forward_passes_since_fired > self.cfg.dead_feature_window).bool()
 
-    def fit(self) -> TrainingSAE:
+    def fit(self) -> T_TRAINING_SAE:
         pbar = tqdm(total=self.cfg.total_training_tokens, desc="Training SAE")
 
         self.activations_store.set_norm_scaling_factor_if_needed()
@@ -216,12 +221,12 @@ class SAETrainer:
 
     def _train_step(
         self,
-        sae: TrainingSAE,
+        sae: T_TRAINING_SAE,
         sae_in: torch.Tensor,
     ) -> TrainStepOutput:
         sae.train()
         # Make sure the W_dec is still zero-norm
-        if self.cfg.normalize_sae_decoder:
+        if self.sae.cfg.normalize_sae_decoder:
             sae.set_decoder_norm_to_unit_norm()
 
         # log and then reset the feature sparsity every feature_sampling_window steps
@@ -238,7 +243,10 @@ class SAETrainer:
                 step_input=TrainStepInput(
                     sae_in=sae_in,
                     dead_neuron_mask=self.dead_neurons,
-                    current_l1_coefficient=self.current_l1_coefficient,
+                    coefficients={
+                        name: scheduler.value
+                        for name, scheduler in self.coefficient_schedulers.items()
+                    },
                 ),
             )
 
@@ -261,12 +269,13 @@ class SAETrainer:
         self.scaler.step(self.optimizer)  # just ctx.optimizer.step() if not autocasting
         self.scaler.update()
 
-        if self.cfg.normalize_sae_decoder:
+        if self.cfg.sae.normalize_sae_decoder:
             sae.remove_gradient_parallel_to_decoder_directions()
 
         self.optimizer.zero_grad()
         self.lr_scheduler.step()
-        self.l1_scheduler.step()
+        for scheduler in self.coefficient_schedulers.values():
+            scheduler.step()
 
         return train_step_output
 
@@ -280,6 +289,13 @@ class SAETrainer:
                 ),
                 step=self.n_training_steps,
             )
+
+    @torch.no_grad()
+    def get_coefficients(self) -> dict[str, float]:
+        return {
+            name: scheduler.value
+            for name, scheduler in self.coefficient_schedulers.items()
+        }
 
     @torch.no_grad()
     def _build_train_step_log_dict(
@@ -313,19 +329,15 @@ class SAETrainer:
             "sparsity/mean_passes_since_fired": self.n_forward_passes_since_fired.mean().item(),
             "sparsity/dead_features": self.dead_neurons.sum().item(),
             "details/current_learning_rate": current_learning_rate,
-            "details/current_l1_coefficient": self.current_l1_coefficient,
             "details/n_training_tokens": n_training_tokens,
+            **{
+                f"details/{name}_coefficient": scheduler.value
+                for name, scheduler in self.coefficient_schedulers.items()
+            },
         }
         for loss_name, loss_value in output.losses.items():
             loss_item = _unwrap_item(loss_value)
-            # special case for l1 loss, which we normalize by the l1 coefficient
-            if loss_name == "l1_loss":
-                log_dict[f"losses/{loss_name}"] = (
-                    loss_item / self.current_l1_coefficient
-                )
-                log_dict[f"losses/raw_{loss_name}"] = loss_item
-            else:
-                log_dict[f"losses/{loss_name}"] = loss_item
+            log_dict[f"losses/{loss_name}"] = loss_item
 
         return log_dict
 

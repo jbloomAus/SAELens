@@ -1,13 +1,31 @@
+from dataclasses import dataclass
+
 import numpy as np
 import torch
 from jaxtyping import Float
 from numpy.typing import NDArray
 from torch import nn
+from typing_extensions import override
 
-from sae_lens.saes.sae import SAE, SAEConfig, TrainingSAE, TrainStepInput
+from sae_lens.saes.sae import (
+    SAE,
+    SAEConfig,
+    TrainCoefficientConfig,
+    TrainingSAE,
+    TrainingSAEConfig,
+    TrainStepInput,
+)
 
 
-class StandardSAE(SAE):
+@dataclass
+class StandardSAEConfig(SAEConfig):
+    @override
+    @classmethod
+    def architecture(cls) -> str:
+        return "standard"
+
+
+class StandardSAE(SAE[StandardSAEConfig]):
     """
     StandardSAE is an inference-only implementation of a Sparse Autoencoder (SAE)
     using a simple linear encoder and decoder.
@@ -23,7 +41,7 @@ class StandardSAE(SAE):
 
     b_enc: nn.Parameter
 
-    def __init__(self, cfg: SAEConfig, use_error_term: bool = False):
+    def __init__(self, cfg: StandardSAEConfig, use_error_term: bool = False):
         super().__init__(cfg, use_error_term)
 
     def initialize_weights(self) -> None:
@@ -70,11 +88,9 @@ class StandardSAE(SAE):
         Decode the feature activations back to the input space.
         Now, if hook_z reshaping is turned on, we reverse the flattening.
         """
-        # 1) apply finetuning scaling if configured.
-        scaled_features = self.apply_finetuning_scaling_factor(feature_acts)
-        # 2) linear transform
-        sae_out_pre = scaled_features @ self.W_dec + self.b_dec
-        # 3) hook reconstruction
+        # 1) linear transform
+        sae_out_pre = feature_acts @ self.W_dec + self.b_dec
+        # 2) hook reconstruction
         sae_out_pre = self.hook_sae_recons(sae_out_pre)
         # 4) optional out-normalization (e.g. constant_norm_rescale or layer_norm)
         sae_out_pre = self.run_time_activation_norm_fn_out(sae_out_pre)
@@ -82,7 +98,20 @@ class StandardSAE(SAE):
         return self.reshape_fn_out(sae_out_pre, self.d_head)
 
 
-class StandardTrainingSAE(TrainingSAE):
+@dataclass
+class StandardTrainingSAEConfig(TrainingSAEConfig):
+    l1_coefficient: float = 1.0
+    lp_norm: float = 1.0
+    scale_sparsity_penalty_by_decoder_norm: bool = False
+    l1_warm_up_steps: int = 0
+
+    @override
+    @classmethod
+    def architecture(cls) -> str:
+        return "standard"
+
+
+class StandardTrainingSAE(TrainingSAE[StandardTrainingSAEConfig]):
     """
     StandardTrainingSAE is a concrete implementation of BaseTrainingSAE using the "standard" SAE architecture.
     It implements:
@@ -116,6 +145,15 @@ class StandardTrainingSAE(TrainingSAE):
         if self.cfg.normalize_sae_decoder:
             with torch.no_grad():
                 self.set_decoder_norm_to_unit_norm()
+
+    @override
+    def get_coefficients(self) -> dict[str, float | TrainCoefficientConfig]:
+        return {
+            "l1": TrainCoefficientConfig(
+                value=self.cfg.l1_coefficient,
+                warm_up_steps=self.cfg.l1_warm_up_steps,
+            ),
+        }
 
     @torch.no_grad()
     def initialize_decoder_norm_constant_norm(self, norm: float = 0.1):
@@ -154,7 +192,7 @@ class StandardTrainingSAE(TrainingSAE):
 
         # Compute the p-norm (set by cfg.lp_norm) over the feature dimension
         sparsity = weighted_feature_acts.norm(p=self.cfg.lp_norm, dim=-1)
-        l1_loss = (step_input.current_l1_coefficient * sparsity).mean()
+        l1_loss = (step_input.coefficients["l1"] * sparsity).mean()
 
         return {"l1_loss": l1_loss}
 

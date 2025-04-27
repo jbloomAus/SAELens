@@ -1,20 +1,31 @@
+from dataclasses import dataclass
 from typing import Any
 
 import torch
 from jaxtyping import Float
 from numpy.typing import NDArray
 from torch import nn
+from typing_extensions import override
 
 from sae_lens.saes.sae import (
     SAE,
     SAEConfig,
+    TrainCoefficientConfig,
     TrainingSAE,
     TrainingSAEConfig,
     TrainStepInput,
 )
 
 
-class GatedSAE(SAE):
+@dataclass
+class GatedSAEConfig(SAEConfig):
+    @override
+    @classmethod
+    def architecture(cls) -> str:
+        return "gated"
+
+
+class GatedSAE(SAE[GatedSAEConfig]):
     """
     GatedSAE is an inference-only implementation of a Sparse Autoencoder (SAE)
     using a gated linear encoder and a standard linear decoder.
@@ -24,7 +35,7 @@ class GatedSAE(SAE):
     b_mag: nn.Parameter
     r_mag: nn.Parameter
 
-    def __init__(self, cfg: SAEConfig, use_error_term: bool = False):
+    def __init__(self, cfg: GatedSAEConfig, use_error_term: bool = False):
         super().__init__(cfg, use_error_term)
         # Ensure b_enc does not exist for the gated architecture
         self.b_enc = None
@@ -101,9 +112,8 @@ class GatedSAE(SAE):
           4) If the SAE was reshaping hook_z activations, reshape back.
         """
         # 1) optional finetuning scaling
-        scaled_features = self.apply_finetuning_scaling_factor(feature_acts)
         # 2) linear transform
-        sae_out_pre = scaled_features @ self.W_dec + self.b_dec
+        sae_out_pre = feature_acts @ self.W_dec + self.b_dec
         # 3) hooking and normalization
         sae_out_pre = self.hook_sae_recons(sae_out_pre)
         sae_out_pre = self.run_time_activation_norm_fn_out(sae_out_pre)
@@ -129,7 +139,18 @@ class GatedSAE(SAE):
         self.W_dec.data *= norm
 
 
-class GatedTrainingSAE(TrainingSAE):
+@dataclass
+class GatedTrainingSAEConfig(TrainingSAEConfig):
+    l1_coefficient: float = 1.0
+    l1_warm_up_steps: int = 0
+
+    @override
+    @classmethod
+    def architecture(cls) -> str:
+        return "gated"
+
+
+class GatedTrainingSAE(TrainingSAE[GatedTrainingSAEConfig]):
     """
     GatedTrainingSAE is a concrete implementation of BaseTrainingSAE for the "gated" SAE architecture.
     It implements:
@@ -145,7 +166,7 @@ class GatedTrainingSAE(TrainingSAE):
     b_mag: nn.Parameter  # type: ignore
     r_mag: nn.Parameter  # type: ignore
 
-    def __init__(self, cfg: TrainingSAEConfig, use_error_term: bool = False):
+    def __init__(self, cfg: GatedTrainingSAEConfig, use_error_term: bool = False):
         if use_error_term:
             raise ValueError(
                 "GatedSAE does not support `use_error_term`. Please set `use_error_term=False`."
@@ -217,7 +238,7 @@ class GatedTrainingSAE(TrainingSAE):
 
         # L1-like penalty scaled by W_dec norms
         l1_loss = (
-            step_input.current_l1_coefficient
+            step_input.coefficients["l1"]
             * torch.sum(pi_gate_act * self.W_dec.norm(dim=1), dim=-1).mean()
         )
 
@@ -245,3 +266,11 @@ class GatedTrainingSAE(TrainingSAE):
         """Initialize decoder with constant norm"""
         self.W_dec.data /= torch.norm(self.W_dec.data, dim=1, keepdim=True)
         self.W_dec.data *= norm
+
+    def get_coefficients(self) -> dict[str, float | TrainCoefficientConfig]:
+        return {
+            "l1": TrainCoefficientConfig(
+                value=self.cfg.l1_coefficient,
+                warm_up_steps=self.cfg.l1_warm_up_steps,
+            ),
+        }
