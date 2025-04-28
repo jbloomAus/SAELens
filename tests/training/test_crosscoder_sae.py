@@ -154,7 +154,7 @@ def test_sae_fold_w_dec_norm_all_architectures(architecture: str):
 
 @torch.no_grad()
 def test_sae_fold_norm_scaling_factor(cfg: LanguageModelSAERunnerConfig):
-    norm_scaling_factor = 3.0
+    norm_scaling_factor = torch.Tensor([2.0, 3.0, 4.0])
 
     sae = CrosscoderSAE.from_dict(cfg.get_base_sae_cfg_dict())
     # make sure b_dec and b_enc are not 0s
@@ -167,13 +167,13 @@ def test_sae_fold_norm_scaling_factor(cfg: LanguageModelSAERunnerConfig):
 
     assert sae2.cfg.normalize_activations == "none"
 
-    assert torch.allclose(sae2.W_enc.data, sae.W_enc.data * norm_scaling_factor)
+    assert torch.allclose(sae2.W_enc.data, sae.W_enc.data * norm_scaling_factor.reshape((-1,1,1)))
 
     # we expect activations of features to differ by W_dec norm weights.
     # assume activations are already scaled
     activations = torch.randn(10, 4, len(cfg.hook_layers), cfg.d_in, device=cfg.device)
     # we divide to get the unscale activations
-    unscaled_activations = activations / norm_scaling_factor
+    unscaled_activations = activations / norm_scaling_factor.unsqueeze(-1)
 
     feature_activations_1 = sae.encode(activations)
     # with the scaling folded in, the unscaled activations should produce the same
@@ -188,7 +188,7 @@ def test_sae_fold_norm_scaling_factor(cfg: LanguageModelSAERunnerConfig):
     torch.testing.assert_close(feature_activations_2, feature_activations_1)
 
     sae_out_1 = sae.decode(feature_activations_1)
-    sae_out_2 = norm_scaling_factor * sae2.decode(feature_activations_2)
+    sae_out_2 = norm_scaling_factor.unsqueeze(-1) * sae2.decode(feature_activations_2)
 
     # but actual outputs should be the same
     torch.testing.assert_close(sae_out_1, sae_out_2)
@@ -200,7 +200,7 @@ def test_sae_fold_norm_scaling_factor_all_architectures(architecture: str):
     if architecture != "standard":
         pytest.xfail("TODO(mkbehr): support other architectures")
     cfg = build_sae_cfg(architecture=architecture, hook_layers=[1,2,3])
-    norm_scaling_factor = 3.0
+    norm_scaling_factor = torch.Tensor([2.0, 3.0, 4.0])
 
     sae = CrosscoderSAE.from_dict(cfg.get_base_sae_cfg_dict())
     # make sure all parameters are not 0s
@@ -212,13 +212,13 @@ def test_sae_fold_norm_scaling_factor_all_architectures(architecture: str):
 
     assert sae2.cfg.normalize_activations == "none"
 
-    assert torch.allclose(sae2.W_enc.data, sae.W_enc.data * norm_scaling_factor)
+    assert torch.allclose(sae2.W_enc.data, sae.W_enc.data * norm_scaling_factor.reshape((-1,1,1)))
 
     # we expect activations of features to differ by W_dec norm weights.
     # assume activations are already scaled
     activations = torch.randn(10, 4, len(cfg.hook_layers), cfg.d_in, device=cfg.device)
     # we divide to get the unscale activations
-    unscaled_activations = activations / norm_scaling_factor
+    unscaled_activations = activations / norm_scaling_factor.unsqueeze(-1)
 
     feature_activations_1 = sae.encode(activations)
     # with the scaling folded in, the unscaled activations should produce the same
@@ -233,7 +233,7 @@ def test_sae_fold_norm_scaling_factor_all_architectures(architecture: str):
     torch.testing.assert_close(feature_activations_2, feature_activations_1)
 
     sae_out_1 = sae.decode(feature_activations_1)
-    sae_out_2 = norm_scaling_factor * sae2.decode(feature_activations_2)
+    sae_out_2 = norm_scaling_factor.unsqueeze(-1) * sae2.decode(feature_activations_2)
 
     # but actual outputs should be the same
     torch.testing.assert_close(sae_out_1, sae_out_2)
@@ -317,4 +317,4 @@ def test_sae_save_and_load_from_pretrained_topk(tmp_path: Path) -> None:
 def test_sae_get_name_returns_correct_name_from_cfg_vals() -> None:
     cfg = build_sae_cfg(model_name="test_model", hook_name="blocks.{layer}.test_hook_name", d_sae=128, hook_layers=[1,2,3])
     sae = CrosscoderSAE.from_dict(cfg.get_base_sae_cfg_dict())
-    assert sae.get_name() == "sae_test_model_blocks.{layer}.test_hook_name_layers1,2,3_128"
+    assert sae.get_name() == "sae_test_model_blocks.{layer}.test_hook_name_layers1_2_3_128"
