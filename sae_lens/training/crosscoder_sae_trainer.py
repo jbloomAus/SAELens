@@ -75,6 +75,8 @@ class CrosscoderSAETrainer(SAETrainer):
     ) -> dict[str, Any]:
         log_dict = super()._build_train_step_log_dict(output, n_training_tokens)
 
+        sae_in = output.sae_in
+        sae_out = output.sae_out
         per_token_l2_loss = (sae_out - sae_in).pow(2).sum(dim=(-2, -1)).squeeze()
         total_variance = (sae_in - sae_in.mean(0)).pow(2).sum((-2, -1))
         explained_variance = 1 - per_token_l2_loss / total_variance
