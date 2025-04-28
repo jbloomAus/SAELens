@@ -292,7 +292,7 @@ def test_run_evals_crosscoder_training_sae(model):
     cfg=build_sae_cfg(
         model_name="tiny-stories-1M",
         dataset_path="roneneldan/TinyStories",
-        hook_name="blocks.{}.hook_resid_pre",
+        hook_name="blocks.{layer}.hook_resid_pre",
         hook_layers=[0, 1],
         d_in=64,
         normalize_sae_decoder=False,

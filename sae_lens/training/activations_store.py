@@ -376,8 +376,8 @@ class ActivationsStore:
     def hook_names(self) -> List[str]:
         # TODO(mkbehr): better config setup than putting a magic
         # string in the name
-        if "{}" in self.hook_name:
-            return [self.hook_name.format(layer)
+        if "{layer}" in self.hook_name:
+            return [self.hook_name.format(layer=layer)
                     for layer in self.hook_layers]
         return [self.hook_name]
 

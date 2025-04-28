@@ -19,7 +19,7 @@ class CrosscoderSAEConfig(SAEConfig):
     def hook_names(self) -> List[str]:
         # TODO(mkbehr): better config setup than putting a magic
         # string in the name
-        return [self.hook_name.format(layer)
+        return [self.hook_name.format(layer=layer)
                 for layer in self.hook_layers]
 
 

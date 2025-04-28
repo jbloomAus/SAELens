@@ -13,7 +13,7 @@ def test_activations_store_init_with_multiple_layers(ts_model: HookedTransformer
     """Test initialization with a list of layers instead of a single layer."""
     # Initialize with multiple layers
     cfg = build_sae_cfg(
-        hook_name="blocks.{}.hook_resid_pre",
+        hook_name="blocks.{layer}.hook_resid_pre",
         hook_layers=[0, 1, 2]
     )
 
@@ -24,7 +24,7 @@ def test_activations_store_init_with_multiple_layers(ts_model: HookedTransformer
 
     # Verify backward compatibility - a single hook_layer should be converted to a list
     cfg_single = build_sae_cfg(
-        hook_name="blocks.{}.hook_resid_pre",
+        hook_name="blocks.{layer}.hook_resid_pre",
         hook_layer=1
     )
 
@@ -36,7 +36,7 @@ def test_activations_store_get_activations_multiple_layers(ts_model: HookedTrans
     """Test that get_activations collects activations from all specified layers."""
     # Setup with multiple layers
     cfg = build_sae_cfg(
-        hook_name="blocks.{}.hook_resid_pre",
+        hook_name="blocks.{layer}.hook_resid_pre",
         hook_layers=[0, 1, 2],
         context_size=5
     )
@@ -77,7 +77,7 @@ def test_activations_store_get_buffer_multiple_layers(ts_model: HookedTransforme
     """Test buffer handling with multiple layers."""
     # Setup with multiple layers
     cfg = build_sae_cfg(
-        hook_name="blocks.{}.hook_resid_pre",
+        hook_name="blocks.{layer}.hook_resid_pre",
         hook_layers=[0, 1, 2],
         context_size=5
     )
@@ -98,7 +98,7 @@ def test_activations_store_next_batch_multiple_layers(ts_model: HookedTransforme
     """Test that next_batch returns correct batch shape with multiple layers."""
     # Setup with multiple layers
     cfg = build_sae_cfg(
-        hook_name="blocks.{}.hook_resid_pre",
+        hook_name="blocks.{layer}.hook_resid_pre",
         hook_layers=[0, 1, 2],
         context_size=5,
         train_batch_size_tokens=10
@@ -115,7 +115,7 @@ def test_activations_store_normalization_multiple_layers(ts_model: HookedTransfo
     """Test normalization when using multiple layers."""
     # Setup with normalization and multiple layers
     cfg = build_sae_cfg(
-        hook_name="blocks.{}.hook_resid_pre",
+        hook_name="blocks.{layer}.hook_resid_pre",
         hook_layers=[0, 1, 2],
         normalize_activations="expected_average_only_in",
         context_size=5
@@ -152,7 +152,7 @@ def test_backward_compatibility_single_layer(ts_model: HookedTransformer):
 
     # Create a store with single layer (new behavior)
     cfg_multi = build_sae_cfg(
-        hook_name="blocks.{}.hook_resid_pre",
+        hook_name="blocks.{layer}.hook_resid_pre",
         hook_layers=[0],
         context_size=5
     )
@@ -174,9 +174,9 @@ def test_backward_compatibility_single_layer(ts_model: HookedTransformer):
 
 def test_mixed_hook_formats(ts_model: HookedTransformer):
     """Test that both formatted and non-formatted hook names work with multiple layers."""
-    # Test with formatted hook name (with {})
+    # Test with formatted hook name (with {layer})
     cfg_formatted = build_sae_cfg(
-        hook_name="blocks.{}.hook_resid_pre",
+        hook_name="blocks.{layer}.hook_resid_pre",
         hook_layers=[0, 1],
         context_size=5
     )

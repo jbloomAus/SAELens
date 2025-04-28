@@ -26,7 +26,7 @@ def cfg():
     return build_sae_cfg(
         d_in=64,
         d_sae=128,
-        hook_name="blocks.{}.hook_mlp_out",
+        hook_name="blocks.{layer}.hook_mlp_out",
         hook_layers=[1,2,3],
         normalize_sae_decoder=False,
         scale_sparsity_penalty_by_decoder_norm=True,
@@ -210,7 +210,7 @@ def test_train_sae_group_on_language_model__runs(
         checkpoint_path=str(checkpoint_dir),
         training_tokens=20,
         context_size=8,
-        hook_name="blocks.{}.hook_mlp_out",
+        hook_name="blocks.{layer}.hook_mlp_out",
         hook_layers=[1,2,3],
         normalize_sae_decoder=False,
         scale_sparsity_penalty_by_decoder_norm=True,

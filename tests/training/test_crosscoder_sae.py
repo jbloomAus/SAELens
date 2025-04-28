@@ -20,14 +20,14 @@ from tests.helpers import ALL_ARCHITECTURES, build_sae_cfg
         {
             "model_name": "tiny-stories-1M",
             "dataset_path": "roneneldan/TinyStories",
-            "hook_name": "blocks.{}.hook_resid_pre",
+            "hook_name": "blocks.{layer}.hook_resid_pre",
             "hook_layers": [1,2,3],
             "d_in": 64,
         },
         {
             "model_name": "tiny-stories-1M",
             "dataset_path": "roneneldan/TinyStories",
-            "hook_name": "blocks.{}.hook_resid_pre",
+            "hook_name": "blocks.{layer}.hook_resid_pre",
             "hook_layers": [1,2,3],
             "d_in": 64,
             "normalize_sae_decoder": False,
@@ -36,7 +36,7 @@ from tests.helpers import ALL_ARCHITECTURES, build_sae_cfg
         {
             "model_name": "tiny-stories-1M",
             "dataset_path": "apollo-research/roneneldan-TinyStories-tokenizer-gpt2",
-            "hook_name": "blocks.{}.hook_resid_pre",
+            "hook_name": "blocks.{layer}.hook_resid_pre",
             "hook_layers": [1,2,3],
             "d_in": 64,
         },
@@ -44,7 +44,7 @@ from tests.helpers import ALL_ARCHITECTURES, build_sae_cfg
         # {
         #     "model_name": "tiny-stories-1M",
         #     "dataset_path": "roneneldan/TinyStories",
-        #     "hook_name": "blocks.{}.attn.hook_z",
+        #     "hook_name": "blocks.{layer}.attn.hook_z",
         #     "hook_layers": [1,2,3],
         #     "d_in": 64,
         # },
@@ -315,6 +315,6 @@ def test_sae_save_and_load_from_pretrained_topk(tmp_path: Path) -> None:
     assert torch.allclose(sae_out_1, sae_out_2)
 
 def test_sae_get_name_returns_correct_name_from_cfg_vals() -> None:
-    cfg = build_sae_cfg(model_name="test_model", hook_name="blocks.{}.test_hook_name", d_sae=128, hook_layers=[1,2,3])
+    cfg = build_sae_cfg(model_name="test_model", hook_name="blocks.{layer}.test_hook_name", d_sae=128, hook_layers=[1,2,3])
     sae = CrosscoderSAE.from_dict(cfg.get_base_sae_cfg_dict())
-    assert sae.get_name() == "sae_test_model_blocks.{}.test_hook_name_layers1,2,3_128"
+    assert sae.get_name() == "sae_test_model_blocks.{layer}.test_hook_name_layers1,2,3_128"

@@ -66,7 +66,7 @@ run_name = (
 
 cfg = LanguageModelSAERunnerConfig(
     model_name=model_name,
-    hook_name="blocks.{}.hook_mlp_out",
+    hook_name="blocks.{layer}.hook_mlp_out",
     hook_layers=layers,
     d_in=d_in,
     dataset_path=dataset_path,
