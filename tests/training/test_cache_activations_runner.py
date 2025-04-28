@@ -271,7 +271,7 @@ def test_cache_activations_runner_with_incorrect_d_in(tmp_path: Path):
     runner = CacheActivationsRunner(wrong_d_in_cfg)
     with pytest.raises(
         RuntimeError,
-        match=r"The expanded size of the tensor \(513\) must match the existing size \(512\) at non-singleton dimension 2.",
+        match=r"The expanded size of the tensor \(513\) must match the existing size \(512\) at non-singleton dimension 3.",
     ):
         runner.run()
 
