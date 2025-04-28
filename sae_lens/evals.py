@@ -435,7 +435,7 @@ def get_sparsity_and_variance_metrics(
             batch_tokens,
             prepend_bos=False,
             names_filter=hook_names,
-            stop_at_layer=max(sae.cfg.hook_layers) + 1,
+            stop_at_layer=sae.cfg.hook_layer + 1,
             **model_kwargs,
         )
 

@@ -11,6 +11,11 @@ from sae_lens import SAEConfig, SAE
 class CrosscoderSAEConfig(SAEConfig):
     hook_layers: list[int] = list
 
+    def __post_init__(self):
+        # For purposes of running the model, hook_layer is the last
+        # affected layer.
+        self.hook_layer = max(self.hook_layers)
+
     def to_dict(self) -> dict[str, Any]:
         return super().to_dict() | {
             "hook_layers": self.hook_layers,
