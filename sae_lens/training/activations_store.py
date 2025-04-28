@@ -168,6 +168,7 @@ class ActivationsStore:
             d_in=sae.cfg.d_in,
             hook_name=sae.cfg.hook_name,
             hook_layer=sae.cfg.hook_layer,
+            # TODO(mkbehr): set hook_layers if set in sae config
             hook_head_index=sae.cfg.hook_head_index,
             context_size=sae.cfg.context_size if context_size is None else context_size,
             prepend_bos=sae.cfg.prepend_bos,
@@ -374,9 +375,8 @@ class ActivationsStore:
             )
 
     def hook_names(self) -> List[str]:
-        # TODO(mkbehr): better config setup than putting a magic
-        # string in the name
-        if "{layer}" in self.hook_name:
+        # TODO(mkbehr): better config setup than len(hook_layers)
+        if len(self.hook_layers) > 1:
             return [self.hook_name.format(layer=layer)
                     for layer in self.hook_layers]
         return [self.hook_name]
@@ -442,14 +442,24 @@ class ActivationsStore:
             raise ValueError(
                 "estimated_norm_scaling_factor is not set, call set_norm_scaling_factor_if_needed() first"
             )
-        return activations * self.estimated_norm_scaling_factor.unsqueeze(-1).to(activations.device)
+        # TODO(mkbehr): better config setup than len(hook_layers)
+        if len(self.hook_layers) > 1:
+            # TODO(mkbehr): set the device somewhere better
+            return activations * self.estimated_norm_scaling_factor.unsqueeze(-1).to(activations.device)
+        else:
+            return activations * self.estimated_norm_scaling_factor
 
     def unscale(self, activations: torch.Tensor) -> torch.Tensor:
         if self.estimated_norm_scaling_factor is None:
             raise ValueError(
                 "estimated_norm_scaling_factor is not set, call set_norm_scaling_factor_if_needed() first"
             )
-        return activations / self.estimated_norm_scaling_factor.unsqueeze(-1).to(activations.device)
+        # TODO(mkbehr): better config setup than len(hook_layers)
+        if len(self.hook_layers) > 1:
+            # TODO(mkbehr): set the device somewhere better
+            return activations / self.estimated_norm_scaling_factor.unsqueeze(-1).to(activations.device)
+        else:
+            return activations / self.estimated_norm_scaling_factor
 
     def get_norm_scaling_factor(self, activations: torch.Tensor) -> torch.Tensor:
         return (self.d_in**0.5) / activations.norm(dim=-1).mean()
@@ -469,9 +479,11 @@ class ActivationsStore:
             self.estimated_norm_scaling_factor = None
             norms_per_batch[:, batch_i] = acts.norm(dim=-1).mean(dim=0)
         mean_norm = norms_per_batch.mean(dim=1)
-        # TODO(mkbehr): make this a float in single-layer case for
-        # backwards compatibility
-        return (np.sqrt(self.d_in) / mean_norm)
+        # TODO(mkbehr): better config setup than len(hook_layers)
+        if len(self.hook_layers) > 1:
+            return (np.sqrt(self.d_in) / mean_norm)
+        else:
+            return (np.sqrt(self.d_in) / mean_norm.item())
 
     def shuffle_input_dataset(self, seed: int, buffer_size: int = 1):
         """
