@@ -10,6 +10,12 @@ from sae_lens.training.training_sae import TrainingSAE, TrainStepOutput
 from sae_lens.training.training_crosscoder_sae import TrainingCrosscoderSAE, TrainStepOutput
 
 # TODO(mkbehr): probably too much copypasting here
+# why do I think that?
+# - fit is long
+#   - all it does is take the whole batch instead of the first layer
+#   - maybe a helper method to subclass?
+# - _run_and_log_evals is long
+#   - all it does differently is W_dec_norms (and presumably other architectures' things once those are implemented)
 
 class CrosscoderSAETrainer(SAETrainer):
     def __init__(self, *args, **kwargs):
