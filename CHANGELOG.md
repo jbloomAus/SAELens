@@ -2,6 +2,20 @@
 
 
 
+## v5.9.2 (2025-04-29)
+
+### Chore
+
+* chore: fixing incorrect citation format (#464) ([`be0e55f`](https://github.com/jbloomAus/SAELens/commit/be0e55f69d360a0100027de1cf3f1a1606cf5552))
+
+### Fix
+
+* fix: Use the whole batch when estimating norm scaling factor. (#467)
+
+The code was taking the first sample from the batch instead of the
+first layer. ([`de98213`](https://github.com/jbloomAus/SAELens/commit/de98213f321b4b8b5ee0b11184d742e90efe3b94))
+
+
 ## v5.9.1 (2025-04-16)
 
 ### Chore
