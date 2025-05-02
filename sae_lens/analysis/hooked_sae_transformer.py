@@ -77,7 +77,7 @@ class HookedSAETransformer(HookedTransformer):
             sae: SparseAutoencoderBase. The SAE to attach to the model
             use_error_term: (bool | None) If provided, will set the use_error_term attribute of the SAE to this value. Determines whether the SAE returns input or reconstruction. Defaults to None.
         """
-        act_name = sae.cfg.hook_name
+        act_name = sae.cfg.meta.hook_name
         if (act_name not in self.acts_to_saes) and (act_name not in self.hook_dict):
             logging.warning(
                 f"No hook found for {act_name}. Skipping. Check model.hook_dict for available hooks."
