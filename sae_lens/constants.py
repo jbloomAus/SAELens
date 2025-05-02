@@ -15,3 +15,4 @@ DTYPE_MAP = {
 SPARSITY_FILENAME = "sparsity.safetensors"
 SAE_WEIGHTS_FILENAME = "sae_weights.safetensors"
 SAE_CFG_FILENAME = "cfg.json"
+RUNNER_CFG_FILENAME = "runner_cfg.json"

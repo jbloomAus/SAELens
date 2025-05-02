@@ -368,7 +368,7 @@ def test_SparseAutoencoder_from_pretrained_loads_from_hugginface_using_shorthand
         assert torch.allclose(sae.state_dict()[k], state_dict[k])
 
 
-def test_SparseAutoencoder_from_pretrained_can_load_arbitrary_saes_from_hugginface():
+def test_SparseAutoencoder_from_pretrained_can_load_arbitrary_saes_from_huggingface():
     sae, original_cfg_dict, sparsity = SAE.from_pretrained(
         release="jbloom/GPT2-Small-SAEs-Reformatted",
         sae_id="blocks.0.hook_resid_pre",

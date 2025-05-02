@@ -31,7 +31,6 @@ from sae_lens.constants import (
     DTYPE_MAP,
     SAE_CFG_FILENAME,
     SAE_WEIGHTS_FILENAME,
-    SPARSITY_FILENAME,
 )
 from sae_lens.util import filter_valid_dataclass_fields
 
@@ -438,13 +437,10 @@ class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
             f"sae_{self.cfg.meta.model_name}_{self.cfg.meta.hook_name}_{self.cfg.d_sae}"
         )
 
-    def save_model(
-        self, path: str | Path, sparsity: torch.Tensor | None = None
-    ) -> tuple[Path, Path, Path | None]:
-        """Save model weights, config, and optional sparsity tensor to disk."""
+    def save_model(self, path: str | Path) -> tuple[Path, Path]:
+        """Save model weights and config to disk."""
         path = Path(path)
-        if not path.exists():
-            path.mkdir(parents=True)
+        path.mkdir(parents=True, exist_ok=True)
 
         # Generate the weights
         state_dict = self.state_dict()  # Use internal SAE state dict
@@ -458,13 +454,7 @@ class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
         with open(cfg_path, "w") as f:
             json.dump(config, f)
 
-        if sparsity is not None:
-            sparsity_in_dict = {"sparsity": sparsity}
-            sparsity_path = path / SPARSITY_FILENAME
-            save_file(sparsity_in_dict, sparsity_path)
-            return model_weights_path, cfg_path, sparsity_path
-
-        return model_weights_path, cfg_path, None
+        return model_weights_path, cfg_path
 
     ## Initialization Methods
     @torch.no_grad()
@@ -839,6 +829,39 @@ class TrainingSAE(SAE[T_TRAINING_SAE_CONFIG], ABC):
             loss=total_loss,
             losses=losses,
         )
+
+    def save_inference_model(self, path: str | Path) -> tuple[Path, Path]:
+        """Save inference version of model weights and config to disk."""
+        path = Path(path)
+        path.mkdir(parents=True, exist_ok=True)
+
+        # Generate the weights
+        state_dict = self.state_dict()  # Use internal SAE state dict
+        self.process_state_dict_for_saving_inference(state_dict)
+        model_weights_path = path / SAE_WEIGHTS_FILENAME
+        save_file(state_dict, model_weights_path)
+
+        # Save the config
+        config = self.to_inference_config_dict()
+        cfg_path = path / SAE_CFG_FILENAME
+        with open(cfg_path, "w") as f:
+            json.dump(config, f)
+
+        return model_weights_path, cfg_path
+
+    @abstractmethod
+    def to_inference_config_dict(self) -> dict[str, Any]:
+        """Convert the config into an inference SAE config dict."""
+        ...
+
+    def process_state_dict_for_saving_inference(
+        self, state_dict: dict[str, Any]
+    ) -> None:
+        """
+        Process the state dict for saving the inference model.
+        This is a hook that can be overridden to change how the state dict is processed for the inference model.
+        """
+        return self.process_state_dict_for_saving(state_dict)
 
     def _get_mse_loss_fn(self) -> Callable[[torch.Tensor, torch.Tensor], torch.Tensor]:
         """Get the MSE loss function based on config."""

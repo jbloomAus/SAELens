@@ -28,7 +28,7 @@ from sae_lens.config import (
     LanguageModelSAERunnerConfig,
 )
 from sae_lens.constants import DTYPE_MAP
-from sae_lens.saes.sae import SAE
+from sae_lens.saes.sae import SAE, T_SAE_CONFIG, T_TRAINING_SAE_CONFIG
 from sae_lens.tokenization_and_batching import concat_and_batch_sequences
 
 
@@ -91,7 +91,8 @@ class ActivationsStore:
     def from_config(
         cls,
         model: HookedRootModule,
-        cfg: LanguageModelSAERunnerConfig | CacheActivationsRunnerConfig,
+        cfg: LanguageModelSAERunnerConfig[T_TRAINING_SAE_CONFIG]
+        | CacheActivationsRunnerConfig,
         override_dataset: HfDataset | None = None,
     ) -> ActivationsStore:
         if isinstance(cfg, CacheActivationsRunnerConfig):
@@ -128,7 +129,9 @@ class ActivationsStore:
             hook_layer=cfg.hook_layer,
             hook_head_index=cfg.hook_head_index,
             context_size=cfg.context_size,
-            d_in=cfg.d_in,
+            d_in=cfg.d_in
+            if isinstance(cfg, CacheActivationsRunnerConfig)
+            else cfg.sae.d_in,
             n_batches_in_buffer=cfg.n_batches_in_buffer,
             total_training_tokens=cfg.training_tokens,
             store_batch_size_prompts=cfg.store_batch_size_prompts,
@@ -149,9 +152,10 @@ class ActivationsStore:
     def from_sae(
         cls,
         model: HookedRootModule,
-        sae: SAE,
+        sae: SAE[T_SAE_CONFIG],
+        dataset: HfDataset | str,
+        dataset_trust_remote_code: bool = False,
         context_size: int | None = None,
-        dataset: HfDataset | str | None = None,
         streaming: bool = True,
         store_batch_size_prompts: int = 8,
         n_batches_in_buffer: int = 8,
@@ -161,23 +165,25 @@ class ActivationsStore:
     ) -> ActivationsStore:
         return cls(
             model=model,
-            dataset=sae.cfg.dataset_path if dataset is None else dataset,
+            dataset=dataset,
             d_in=sae.cfg.d_in,
-            hook_name=sae.cfg.hook_name,
-            hook_layer=sae.cfg.hook_layer,
-            hook_head_index=sae.cfg.hook_head_index,
-            context_size=sae.cfg.context_size if context_size is None else context_size,
-            prepend_bos=sae.cfg.prepend_bos,
+            hook_name=sae.cfg.meta.hook_name,
+            hook_layer=sae.cfg.meta.hook_layer,
+            hook_head_index=sae.cfg.meta.hook_head_index,
+            context_size=sae.cfg.meta.context_size
+            if context_size is None
+            else context_size,
+            prepend_bos=sae.cfg.meta.prepend_bos,
             streaming=streaming,
             store_batch_size_prompts=store_batch_size_prompts,
             train_batch_size_tokens=train_batch_size_tokens,
             n_batches_in_buffer=n_batches_in_buffer,
             total_training_tokens=total_tokens,
             normalize_activations=sae.cfg.normalize_activations,
-            dataset_trust_remote_code=sae.cfg.dataset_trust_remote_code,
+            dataset_trust_remote_code=dataset_trust_remote_code,
             dtype=sae.cfg.dtype,
             device=torch.device(device),
-            seqpos_slice=sae.cfg.seqpos_slice or (None,),
+            seqpos_slice=sae.cfg.meta.seqpos_slice or (None,),
         )
 
     def __init__(

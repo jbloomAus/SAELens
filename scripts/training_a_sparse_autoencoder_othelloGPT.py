@@ -10,6 +10,7 @@ from sae_lens import (
     upload_saes_to_huggingface,
 )
 from sae_lens.config import LoggingConfig
+from sae_lens.saes.gated_sae import GatedTrainingSAEConfig
 
 if torch.cuda.is_available():
     device = "cuda"
@@ -33,14 +34,19 @@ training_tokens = int(1e3)
 train_batch_size_tokens = 2048
 n_steps = int(training_tokens / train_batch_size_tokens)
 
-print(LanguageModelSAERunnerConfig())
 runner_cfg = LanguageModelSAERunnerConfig(
+    sae=GatedTrainingSAEConfig(
+        d_in=model.cfg.d_mlp,
+        d_sae=model.cfg.d_mlp * 8,
+        apply_b_dec_to_input=True,
+        l1_coefficient=5,
+        l1_warm_up_steps=int(0.2 * n_steps),
+    ),
     #
     # Data generation
     model_name=model_name,
     hook_name=f"blocks.{layer}.mlp.hook_post",
     hook_layer=layer,
-    d_in=model.cfg.d_mlp,
     dataset_path=dataset_path,
     is_dataset_tokenized=True,
     prepend_bos=False,
@@ -48,16 +54,6 @@ runner_cfg = LanguageModelSAERunnerConfig(
     train_batch_size_tokens=train_batch_size_tokens,
     context_size=context_size,
     seqpos_slice=(5, -5),
-    #
-    # SAE achitecture
-    architecture="gated",
-    expansion_factor=8,
-    b_dec_init_method="zeros",
-    apply_b_dec_to_input=True,
-    normalize_sae_decoder=False,
-    scale_sparsity_penalty_by_decoder_norm=True,
-    decoder_heuristic_init=True,
-    init_encoder_as_decoder_transpose=True,
     #
     # Activations store
     n_batches_in_buffer=32,
@@ -72,10 +68,6 @@ runner_cfg = LanguageModelSAERunnerConfig(
     lr_warm_up_steps=int(0.2 * n_steps),
     lr_decay_steps=int(0.2 * n_steps),
     #
-    # Training hyperparameters (SAE-specific)
-    l1_coefficient=5,
-    l1_warm_up_steps=int(0.2 * n_steps),
-    use_ghost_grads=False,
     feature_sampling_window=1000,
     dead_feature_window=500,
     dead_feature_threshold=1e-5,

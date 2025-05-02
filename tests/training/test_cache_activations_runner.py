@@ -18,6 +18,7 @@ from sae_lens.config import (
 )
 from sae_lens.constants import DTYPE_MAP
 from sae_lens.load_model import load_model
+from sae_lens.saes.standard_sae import StandardTrainingSAEConfig
 from sae_lens.training.activations_store import ActivationsStore
 
 
@@ -134,12 +135,12 @@ def test_activations_store_refreshes_dataset_when_it_runs_out(tmp_path: Path):
     runner.run()
 
     cfg = LanguageModelSAERunnerConfig(
+        sae=StandardTrainingSAEConfig(d_in=512, d_sae=768),
         cached_activations_path=str(tmp_path),
         use_cached_activations=True,
         model_name="gelu-1l",
         hook_name="blocks.0.hook_mlp_out",
         hook_layer=0,
-        d_in=512,
         dataset_path="",
         context_size=context_size,
         is_dataset_tokenized=True,
@@ -163,7 +164,7 @@ def test_activations_store_refreshes_dataset_when_it_runs_out(tmp_path: Path):
             return torch.ones(16, 16)
 
         @property
-        def cfg(self) -> LanguageModelSAERunnerConfig:
+        def cfg(self) -> LanguageModelSAERunnerConfig[StandardTrainingSAEConfig]:
             return cfg
 
     dataset = Dataset.from_list([{"text": "hello world1"}] * 64)

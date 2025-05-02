@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 import torch
@@ -15,6 +16,7 @@ from sae_lens.saes.sae import (
     TrainingSAEConfig,
     TrainStepInput,
 )
+from sae_lens.util import filter_valid_dataclass_fields
 
 
 @dataclass
@@ -160,6 +162,9 @@ class StandardTrainingSAE(TrainingSAE[StandardTrainingSAEConfig]):
             **super().log_histograms(),
             "weights/b_e": b_e_dist,
         }
+
+    def to_inference_config_dict(self) -> dict[str, Any]:
+        return filter_valid_dataclass_fields(self, StandardSAEConfig)
 
 
 def _init_weights_standard(

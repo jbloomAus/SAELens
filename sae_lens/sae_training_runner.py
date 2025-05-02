@@ -7,13 +7,15 @@ from typing import Any, cast
 
 import torch
 import wandb
+from safetensors.torch import save_file
 from simple_parsing import ArgumentParser
 from transformer_lens.hook_points import HookedRootModule
 
 from sae_lens import logger
 from sae_lens.config import HfDataset, LanguageModelSAERunnerConfig
+from sae_lens.constants import RUNNER_CFG_FILENAME, SPARSITY_FILENAME
 from sae_lens.load_model import load_model
-from sae_lens.saes.sae import TrainingSAE, TrainingSAEConfig
+from sae_lens.saes.sae import T_TRAINING_SAE_CONFIG, TrainingSAE, TrainingSAEConfig
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.geometric_median import compute_geometric_median
 from sae_lens.training.sae_trainer import SAETrainer
@@ -32,14 +34,14 @@ class SAETrainingRunner:
     Class to run the training of a Sparse Autoencoder (SAE) on a TransformerLens model.
     """
 
-    cfg: LanguageModelSAERunnerConfig[TrainingSAEConfig]
+    cfg: LanguageModelSAERunnerConfig[Any]
     model: HookedRootModule
     sae: TrainingSAE[Any]
     activations_store: ActivationsStore
 
     def __init__(
         self,
-        cfg: LanguageModelSAERunnerConfig[TrainingSAEConfig],
+        cfg: LanguageModelSAERunnerConfig[T_TRAINING_SAE_CONFIG],
         override_dataset: HfDataset | None = None,
         override_model: HookedRootModule | None = None,
         override_sae: TrainingSAE[Any] | None = None,
@@ -185,7 +187,7 @@ class SAETrainingRunner:
 
     @staticmethod
     def save_checkpoint(
-        trainer: SAETrainer[TrainingSAE[TrainingSAEConfig], TrainingSAEConfig],
+        trainer: SAETrainer[TrainingSAE[Any], Any],
         checkpoint_name: str,
         wandb_aliases: list[str] | None = None,
     ) -> None:
@@ -196,16 +198,14 @@ class SAETrainingRunner:
             str(base_path / "activations_store_state.safetensors")
         )
 
-        weights_path, cfg_path, sparsity_path = trainer.sae.save_model(
-            str(base_path),
-            trainer.log_feature_sparsity,
-        )
+        weights_path, cfg_path = trainer.sae.save_model(str(base_path))
 
-        # let's over write the cfg file with the trainer cfg, which is a super set of the original cfg.
-        # and should not cause issues but give us more info about SAEs we trained in SAE Lens.
-        config = trainer.cfg.to_dict()
-        with open(cfg_path, "w") as f:
-            json.dump(config, f)
+        sparsity_path = base_path / SPARSITY_FILENAME
+        save_file({"sparsity": trainer.log_feature_sparsity}, sparsity_path)
+
+        runner_config = trainer.cfg.to_dict()
+        with open(base_path / RUNNER_CFG_FILENAME, "w") as f:
+            json.dump(runner_config, f)
 
         if trainer.cfg.logger.log_to_wandb:
             trainer.cfg.logger.log(

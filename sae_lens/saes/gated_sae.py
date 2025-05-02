@@ -15,6 +15,7 @@ from sae_lens.saes.sae import (
     TrainingSAEConfig,
     TrainStepInput,
 )
+from sae_lens.util import filter_valid_dataclass_fields
 
 
 @dataclass
@@ -227,6 +228,9 @@ class GatedTrainingSAE(TrainingSAE[GatedTrainingSAEConfig]):
                 warm_up_steps=self.cfg.l1_warm_up_steps,
             ),
         }
+
+    def to_inference_config_dict(self) -> dict[str, Any]:
+        return filter_valid_dataclass_fields(self, GatedSAEConfig)
 
 
 def _init_weights_gated(

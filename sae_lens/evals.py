@@ -20,7 +20,7 @@ from transformer_lens import HookedTransformer
 from transformer_lens.hook_points import HookedRootModule
 
 from sae_lens.loading.pretrained_saes_directory import get_pretrained_saes_directory
-from sae_lens.saes.sae import SAE
+from sae_lens.saes.sae import SAE, SAEConfig
 from sae_lens.training.activations_store import ActivationsStore
 
 
@@ -580,7 +580,7 @@ def get_sparsity_and_variance_metrics(
 
 @torch.no_grad()
 def get_recons_loss(
-    sae: SAE[Any],
+    sae: SAE[SAEConfig],
     model: HookedRootModule,
     batch_tokens: torch.Tensor,
     activation_store: ActivationsStore,
@@ -588,9 +588,13 @@ def get_recons_loss(
     compute_ce_loss: bool,
     ignore_tokens: set[int | None] = set(),
     model_kwargs: Mapping[str, Any] = {},
+    hook_name: str | None = None,
 ) -> dict[str, Any]:
-    hook_name = sae.cfg.hook_name
-    head_index = sae.cfg.hook_head_index
+    hook_name = hook_name or sae.cfg.meta.hook_name
+    head_index = sae.cfg.meta.hook_head_index
+
+    if hook_name is None:
+        raise ValueError("hook_name must be provided")
 
     original_logits, original_ce_loss = model(
         batch_tokens, return_type="both", loss_per_token=True, **model_kwargs
@@ -806,7 +810,6 @@ def multiple_evals(
 
     current_model = None
     current_model_str = None
-    print(filtered_saes)
     for sae_release_name, sae_id, _, _ in tqdm(filtered_saes):
         sae = SAE.from_pretrained(
             release=sae_release_name,  # see other options in sae_lens/pretrained_saes.yaml

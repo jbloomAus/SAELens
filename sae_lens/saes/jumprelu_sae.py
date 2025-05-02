@@ -16,6 +16,7 @@ from sae_lens.saes.sae import (
     TrainStepInput,
     TrainStepOutput,
 )
+from sae_lens.util import filter_valid_dataclass_fields
 
 
 def rectangle(x: torch.Tensor) -> torch.Tensor:
@@ -338,3 +339,6 @@ class JumpReLUTrainingSAE(TrainingSAE[JumpReLUTrainingSAEConfig]):
             threshold = state_dict["threshold"]
             del state_dict["threshold"]
             state_dict["log_threshold"] = torch.log(threshold).detach().contiguous()
+
+    def to_inference_config_dict(self) -> dict[str, Any]:
+        return filter_valid_dataclass_fields(self, JumpReLUSAEConfig)

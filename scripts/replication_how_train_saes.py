@@ -3,6 +3,8 @@ import sys
 
 import torch
 
+from sae_lens.saes.standard_sae import StandardTrainingSAEConfig
+
 sys.path.append("..")
 
 from sae_lens.config import LanguageModelSAERunnerConfig, LoggingConfig
@@ -39,19 +41,23 @@ log_to_wandb = True
 
 for l1_coefficient in [2, 5, 10]:
     cfg = LanguageModelSAERunnerConfig(
+        sae=StandardTrainingSAEConfig(
+            d_in=512,
+            d_sae=512 * 64,
+            l1_coefficient=l1_coefficient,
+            apply_b_dec_to_input=False,
+        ),
         # Pick a tiny model to make this easier.
         model_name="gelu-1l",
         ## MLP Layer 0 ##
         hook_name="blocks.0.hook_mlp_out",
         hook_layer=0,
-        d_in=512,
         dataset_path="NeelNanda/c4-tokenized-2b",
         streaming=False,
         context_size=1024,
         is_dataset_tokenized=True,
         prepend_bos=True,
         # How big do we want our SAE to be?
-        expansion_factor=64,
         # Dataset / Activation Store
         # When we do a proper test
         # training_tokens= 820_000_000, # 200k steps * 4096 batch size ~ 820M tokens (doable overnight on an A100)
@@ -62,28 +68,11 @@ for l1_coefficient in [2, 5, 10]:
         train_batch_size_tokens=4096,
         # Loss Function
         ## Reconstruction Coefficient.
-        mse_loss_normalization=None,  # MSE Loss Normalization is not mentioned (so we use stanrd MSE Loss). But not we take an average over the batch.
-        ## Anthropic does not mention using an Lp norm other than L1.
-        l1_coefficient=l1_coefficient,
-        lp_norm=1.0,
-        # Instead, they multiply the L1 loss contribution
-        # from each feature of the activations by the decoder norm of the corresponding feature.
-        scale_sparsity_penalty_by_decoder_norm=True,
         # Learning Rate
         lr_scheduler_name="constant",  # we set this independently of warmup and decay steps.
-        l1_warm_up_steps=l1_warmup_steps,
         lr_warm_up_steps=lr_warm_up_steps,
         lr_decay_steps=lr_warm_up_steps,
         ## No ghost grad term.
-        use_ghost_grads=False,
-        # Initialization / Architecture
-        apply_b_dec_to_input=False,
-        # encoder bias zero's. (I'm not sure what it is by default now)
-        # decoder bias zero's.
-        b_dec_init_method="zeros",
-        normalize_sae_decoder=False,
-        decoder_heuristic_init=True,
-        init_encoder_as_decoder_transpose=True,
         # Optimizer
         lr=5e-5,
         ## adam optimizer has no weight decay by default so worry about this.

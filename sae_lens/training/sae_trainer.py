@@ -16,7 +16,6 @@ from sae_lens.saes.sae import (
     T_TRAINING_SAE_CONFIG,
     TrainCoefficientConfig,
     TrainingSAE,
-    TrainingSAEConfig,
     TrainStepInput,
     TrainStepOutput,
 )
@@ -47,7 +46,7 @@ class TrainSAEOutput:
 class SaveCheckpointFn(Protocol):
     def __call__(
         self,
-        trainer: "SAETrainer[TrainingSAE[TrainingSAEConfig], TrainingSAEConfig]",
+        trainer: "SAETrainer[Any, Any]",
         checkpoint_name: str,
         wandb_aliases: list[str] | None = None,
     ) -> None: ...
@@ -203,7 +202,7 @@ class SAETrainer(Generic[T_TRAINING_SAE, T_TRAINING_SAE_CONFIG]):
 
         # save final sae group to checkpoints folder
         self.save_checkpoint(
-            trainer=self,  # type: ignore
+            trainer=self,
             checkpoint_name=f"final_{self.n_training_tokens}",
             wandb_aliases=["final_model"],
         )

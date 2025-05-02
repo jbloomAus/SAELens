@@ -68,7 +68,7 @@ class HookedSAETransformer(HookedTransformer):
         super().__init__(*model_args, **model_kwargs)
         self.acts_to_saes: dict[str, SAE] = {}  # type: ignore
 
-    def add_sae(self, sae: SAE, use_error_term: bool | None = None):
+    def add_sae(self, sae: SAE[Any], use_error_term: bool | None = None):
         """Attaches an SAE to the model
 
         WARNING: This sae will be permanantly attached until you remove it with reset_saes. This function will also overwrite any existing SAE attached to the same hook point.
@@ -92,7 +92,7 @@ class HookedSAETransformer(HookedTransformer):
         set_deep_attr(self, act_name, sae)
         self.setup()
 
-    def _reset_sae(self, act_name: str, prev_sae: SAE | None = None):
+    def _reset_sae(self, act_name: str, prev_sae: SAE[Any] | None = None):
         """Resets an SAE that was attached to the model
 
         By default will remove the SAE from that hook_point.
@@ -124,7 +124,7 @@ class HookedSAETransformer(HookedTransformer):
     def reset_saes(
         self,
         act_names: str | list[str] | None = None,
-        prev_saes: list[SAE | None] | None = None,
+        prev_saes: list[SAE[Any] | None] | None = None,
     ):
         """Reset the SAEs attached to the model
 
@@ -154,7 +154,7 @@ class HookedSAETransformer(HookedTransformer):
     def run_with_saes(
         self,
         *model_args: Any,
-        saes: SAE | list[SAE] = [],
+        saes: SAE[Any] | list[SAE[Any]] = [],
         reset_saes_end: bool = True,
         use_error_term: bool | None = None,
         **model_kwargs: Any,
@@ -183,7 +183,7 @@ class HookedSAETransformer(HookedTransformer):
     def run_with_cache_with_saes(
         self,
         *model_args: Any,
-        saes: SAE | list[SAE] = [],
+        saes: SAE[Any] | list[SAE[Any]] = [],
         reset_saes_end: bool = True,
         use_error_term: bool | None = None,
         return_cache_object: bool = True,
@@ -225,7 +225,7 @@ class HookedSAETransformer(HookedTransformer):
     def run_with_hooks_with_saes(
         self,
         *model_args: Any,
-        saes: SAE | list[SAE] = [],
+        saes: SAE[Any] | list[SAE[Any]] = [],
         reset_saes_end: bool = True,
         fwd_hooks: list[tuple[str | Callable, Callable]] = [],  # type: ignore
         bwd_hooks: list[tuple[str | Callable, Callable]] = [],  # type: ignore
@@ -261,7 +261,7 @@ class HookedSAETransformer(HookedTransformer):
     @contextmanager
     def saes(
         self,
-        saes: SAE | list[SAE] = [],
+        saes: SAE[Any] | list[SAE[Any]] = [],
         reset_saes_end: bool = True,
         use_error_term: bool | None = None,
     ):
@@ -295,8 +295,8 @@ class HookedSAETransformer(HookedTransformer):
             saes = [saes]
         try:
             for sae in saes:
-                act_names_to_reset.append(sae.cfg.hook_name)
-                prev_sae = self.acts_to_saes.get(sae.cfg.hook_name, None)
+                act_names_to_reset.append(sae.cfg.meta.hook_name)
+                prev_sae = self.acts_to_saes.get(sae.cfg.meta.hook_name, None)
                 prev_saes.append(prev_sae)
                 self.add_sae(sae, use_error_term=use_error_term)
             yield self

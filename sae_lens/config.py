@@ -258,7 +258,6 @@ class LanguageModelSAERunnerConfig(Generic[T_TRAINING_SAE_CONFIG]):
     logger: LoggingConfig = field(default_factory=LoggingConfig)
 
     # Misc
-    resume: bool = False
     n_checkpoints: int = 0
     checkpoint_path: str = "checkpoints"
     verbose: bool = True
@@ -269,12 +268,6 @@ class LanguageModelSAERunnerConfig(Generic[T_TRAINING_SAE_CONFIG]):
     exclude_special_tokens: bool | list[int] = False
 
     def __post_init__(self):
-        if self.resume:
-            raise ValueError(
-                "Resuming is no longer supported. You can finetune a trained SAE using cfg.from_pretrained path."
-                + "If you want to load an SAE with resume=True in the config, please manually set resume=False in that config."
-            )
-
         if self.use_cached_activations and self.cached_activations_path is None:
             self.cached_activations_path = _default_cached_activations_path(
                 self.dataset_path,
