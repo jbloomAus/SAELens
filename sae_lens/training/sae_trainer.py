@@ -202,7 +202,7 @@ class SAETrainer(Generic[T_TRAINING_SAE, T_TRAINING_SAE_CONFIG]):
 
         # save final sae group to checkpoints folder
         self.save_checkpoint(
-            trainer=self,
+            trainer=self,  # type: ignore
             checkpoint_name=f"final_{self.n_training_tokens}",
             wandb_aliases=["final_model"],
         )
