@@ -359,7 +359,7 @@ def test_SparseAutoencoder_from_pretrained_loads_from_hugginface_using_shorthand
     assert isinstance(original_cfg_dict, dict)
 
     assert isinstance(sparsity, torch.Tensor)
-    assert sparsity.shape == (sae.cfg.sae.d_sae,)
+    assert sparsity.shape == (sae.cfg.d_sae,)
     assert sparsity.max() < 0.0
 
     for k in sae.state_dict():

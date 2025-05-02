@@ -341,4 +341,6 @@ class JumpReLUTrainingSAE(TrainingSAE[JumpReLUTrainingSAEConfig]):
             state_dict["log_threshold"] = torch.log(threshold).detach().contiguous()
 
     def to_inference_config_dict(self) -> dict[str, Any]:
-        return filter_valid_dataclass_fields(self, JumpReLUSAEConfig)
+        return filter_valid_dataclass_fields(
+            self.cfg.to_dict(), JumpReLUSAEConfig, ["architecture"]
+        )

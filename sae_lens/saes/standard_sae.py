@@ -164,7 +164,9 @@ class StandardTrainingSAE(TrainingSAE[StandardTrainingSAEConfig]):
         }
 
     def to_inference_config_dict(self) -> dict[str, Any]:
-        return filter_valid_dataclass_fields(self, StandardSAEConfig)
+        return filter_valid_dataclass_fields(
+            self.cfg.to_dict(), StandardSAEConfig, ["architecture"]
+        )
 
 
 def _init_weights_standard(

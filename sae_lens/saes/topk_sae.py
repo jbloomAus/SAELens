@@ -257,7 +257,9 @@ class TopKTrainingSAE(TrainingSAE[TopKTrainingSAEConfig]):
         return auxk_acts
 
     def to_inference_config_dict(self) -> dict[str, Any]:
-        return filter_valid_dataclass_fields(self, TopKSAEConfig)
+        return filter_valid_dataclass_fields(
+            self.cfg.to_dict(), TopKSAEConfig, ["architecture"]
+        )
 
 
 def _calculate_topk_aux_acts(

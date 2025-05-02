@@ -230,7 +230,9 @@ class GatedTrainingSAE(TrainingSAE[GatedTrainingSAEConfig]):
         }
 
     def to_inference_config_dict(self) -> dict[str, Any]:
-        return filter_valid_dataclass_fields(self, GatedSAEConfig)
+        return filter_valid_dataclass_fields(
+            self.cfg.to_dict(), GatedSAEConfig, ["architecture"]
+        )
 
 
 def _init_weights_gated(

@@ -1,5 +1,5 @@
 from dataclasses import asdict, fields, is_dataclass
-from typing import TypeVar
+from typing import Sequence, TypeVar
 
 K = TypeVar("K")
 V = TypeVar("V")
@@ -10,7 +10,9 @@ def copy_and_remove_keys(d: dict[K, V], keys: list[K]) -> dict[K, V]:
 
 
 def filter_valid_dataclass_fields(
-    source: dict[str, V] | object, destination: object | type
+    source: dict[str, V] | object,
+    destination: object | type,
+    whitelist_fields: Sequence[str] | None = None,
 ) -> dict[str, V]:
     """Filter a source dict or dataclass instance to only include fields that are present in the destination dataclass."""
 
@@ -25,4 +27,6 @@ def filter_valid_dataclass_fields(
         raise ValueError(f"{source} is not a dict or dataclass")
 
     valid_field_names = {field.name for field in fields(destination)}
+    if whitelist_fields is not None:
+        valid_field_names = valid_field_names.union(whitelist_fields)
     return {key: val for key, val in source_dict.items() if key in valid_field_names}
