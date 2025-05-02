@@ -74,6 +74,7 @@ class SAEMetadata:
     neuronpedia_id: str | None = None
     context_size: int | None = None
     seqpos_slice: tuple[int | None, ...] | None = None
+    dataset_path: str | None = None
 
 
 @dataclass
@@ -587,44 +588,28 @@ class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
         )
         cfg_dict = handle_config_defaulting(cfg_dict)
 
-        # Rename keys to match SAEConfig field names
-        renamed_cfg_dict = {}
-        rename_map = {
-            "hook_point": "hook_name",
-            "hook_point_layer": "hook_layer",
-            "hook_point_head_index": "hook_head_index",
-            "activation_fn": "activation_fn",
-        }
-
-        for k, v in cfg_dict.items():
-            renamed_cfg_dict[rename_map.get(k, k)] = v
-
-        # Set default values for required fields
-        renamed_cfg_dict.setdefault("activation_fn_kwargs", {})
-        renamed_cfg_dict.setdefault("seqpos_slice", None)
-
         # Create SAE with appropriate architecture
         sae_config_cls = cls.get_sae_config_class_for_architecture(
-            renamed_cfg_dict["architecture"]
+            cfg_dict["architecture"]
         )
-        sae_cfg = sae_config_cls.from_dict(renamed_cfg_dict)
+        sae_cfg = sae_config_cls.from_dict(cfg_dict)
         sae_cls = cls.get_sae_class_for_architecture(sae_cfg.architecture())
         sae = sae_cls(sae_cfg)
         sae.process_state_dict_for_loading(state_dict)
         sae.load_state_dict(state_dict)
 
         # Apply normalization if needed
-        if renamed_cfg_dict.get("normalize_activations") == "expected_average_only_in":
+        if cfg_dict.get("normalize_activations") == "expected_average_only_in":
             norm_scaling_factor = get_norm_scaling_factor(release, sae_id)
             if norm_scaling_factor is not None:
                 sae.fold_activation_norm_scaling_factor(norm_scaling_factor)
-                renamed_cfg_dict["normalize_activations"] = "none"
+                cfg_dict["normalize_activations"] = "none"
             else:
                 warnings.warn(
                     f"norm_scaling_factor not found for {release} and {sae_id}, but normalize_activations is 'expected_average_only_in'. Skipping normalization folding."
                 )
 
-        return sae, renamed_cfg_dict, log_sparsities
+        return sae, cfg_dict, log_sparsities
 
     @classmethod
     def from_dict(cls: Type[T_SAE], config_dict: dict[str, Any]) -> T_SAE:
