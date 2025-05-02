@@ -6,7 +6,7 @@ from transformer_lens import HookedTransformer
 from sae_lens.config import LanguageModelSAERunnerConfig, LoggingConfig
 from sae_lens.saes.gated_sae import GatedSAEConfig, GatedTrainingSAEConfig
 from sae_lens.saes.jumprelu_sae import JumpReLUSAEConfig, JumpReLUTrainingSAEConfig
-from sae_lens.saes.sae import TrainingSAEConfig
+from sae_lens.saes.sae import T_TRAINING_SAE_CONFIG, SAEConfig, TrainingSAEConfig
 from sae_lens.saes.standard_sae import StandardSAEConfig, StandardTrainingSAEConfig
 from sae_lens.saes.topk_sae import TopKSAEConfig, TopKTrainingSAEConfig
 
@@ -176,10 +176,10 @@ def _get_default_runner_config() -> LanguageModelSAERunnerConfigDict:
 
 # Helper to separate kwargs and build final config
 def _build_runner_config(
-    SAEConfigClass: type[TrainingSAEConfig],
+    SAEConfigClass: type[T_TRAINING_SAE_CONFIG],
     default_sae_config: dict[str, Any],
     **kwargs: Any,
-) -> LanguageModelSAERunnerConfig:
+) -> LanguageModelSAERunnerConfig[T_TRAINING_SAE_CONFIG]:
     default_runner_config = _get_default_runner_config()
 
     runner_overrides: LanguageModelSAERunnerConfigDict = {}
@@ -227,7 +227,9 @@ def _build_runner_config(
 
 
 # --- Standard SAE Builder ---
-def build_runner_cfg(**kwargs: Any) -> LanguageModelSAERunnerConfig:
+def build_runner_cfg(
+    **kwargs: Any,
+) -> LanguageModelSAERunnerConfig[StandardTrainingSAEConfig]:
     """Helper to create a mock instance for Standard SAE."""
     default_sae_config: TrainingSAEConfigDict = {
         "d_in": 64,
@@ -266,7 +268,9 @@ def build_sae_cfg(**kwargs: Any) -> StandardSAEConfig:
 
 
 # --- JumpReLU SAE Builder ---
-def build_jumprelu_runner_cfg(**kwargs: Any) -> LanguageModelSAERunnerConfig:
+def build_jumprelu_runner_cfg(
+    **kwargs: Any,
+) -> LanguageModelSAERunnerConfig[JumpReLUTrainingSAEConfig]:
     """Helper to create a mock instance for JumpReLU SAE."""
     default_sae_config: TrainingSAEConfigDict = {
         "d_in": 64,
@@ -306,7 +310,9 @@ def build_jumprelu_sae_training_cfg(**kwargs: Any) -> JumpReLUTrainingSAEConfig:
 
 
 # --- Gated SAE Builder ---
-def build_gated_runner_cfg(**kwargs: Any) -> LanguageModelSAERunnerConfig:
+def build_gated_runner_cfg(
+    **kwargs: Any,
+) -> LanguageModelSAERunnerConfig[GatedTrainingSAEConfig]:
     """Helper to create a mock instance for Gated SAE."""
     default_sae_config: TrainingSAEConfigDict = {
         "d_in": 64,
@@ -344,7 +350,9 @@ def build_gated_sae_training_cfg(**kwargs: Any) -> GatedTrainingSAEConfig:
 
 
 # --- TopK SAE Builder ---
-def build_topk_runner_cfg(**kwargs: Any) -> LanguageModelSAERunnerConfig:
+def build_topk_runner_cfg(
+    **kwargs: Any,
+) -> LanguageModelSAERunnerConfig[TopKTrainingSAEConfig]:
     """Helper to create a mock instance for TopK SAE."""
     default_sae_config: TrainingSAEConfigDict = {
         "d_in": 64,
@@ -363,9 +371,6 @@ def build_topk_runner_cfg(**kwargs: Any) -> LanguageModelSAERunnerConfig:
         k: v for k, v in kwargs.items() if k in TrainingSAEConfigDict.__annotations__
     }
     temp_sae_config = {**default_sae_config, **temp_sae_overrides}
-    if "k" in temp_sae_config:
-        temp_sae_config["activation_fn_kwargs"] = {"k": temp_sae_config["k"]}
-
     # Update the default config *before* passing it to _build_runner_config
     final_default_sae_config = cast(dict[str, Any], temp_sae_config)
 
@@ -406,3 +411,15 @@ def load_model_cached(model_name: str) -> HookedTransformer:
         )
     # we copy here to prevent sharing state across tests
     return copy.deepcopy(MODEL_CACHE[model_name])
+
+
+def build_sae_cfg_for_arch(architecture: str, **kwargs: Any) -> SAEConfig:
+    if architecture == "standard":
+        return build_sae_cfg(**kwargs)
+    if architecture == "gated":
+        return build_gated_sae_cfg(**kwargs)
+    if architecture == "jumprelu":
+        return build_jumprelu_sae_cfg(**kwargs)
+    if architecture == "topk":
+        return build_topk_sae_cfg(**kwargs)
+    raise ValueError(f"Unknown architecture: {architecture}")

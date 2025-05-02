@@ -11,7 +11,7 @@ from safetensors import safe_open
 from safetensors.torch import load_file
 
 from sae_lens import logger
-from sae_lens.config import (
+from sae_lens.constants import (
     DTYPE_MAP,
     SAE_CFG_FILENAME,
     SAE_WEIGHTS_FILENAME,

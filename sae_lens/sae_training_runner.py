@@ -32,14 +32,14 @@ class SAETrainingRunner:
     Class to run the training of a Sparse Autoencoder (SAE) on a TransformerLens model.
     """
 
-    cfg: LanguageModelSAERunnerConfig
+    cfg: LanguageModelSAERunnerConfig[TrainingSAEConfig]
     model: HookedRootModule
     sae: TrainingSAE[Any]
     activations_store: ActivationsStore
 
     def __init__(
         self,
-        cfg: LanguageModelSAERunnerConfig,
+        cfg: LanguageModelSAERunnerConfig[TrainingSAEConfig],
         override_dataset: HfDataset | None = None,
         override_model: HookedRootModule | None = None,
         override_sae: TrainingSAE[Any] | None = None,
@@ -141,7 +141,9 @@ class SAETrainingRunner:
                 backend=backend,
             )  # type: ignore
 
-    def run_trainer_with_interruption_handling(self, trainer: SAETrainer[Any]):
+    def run_trainer_with_interruption_handling(
+        self, trainer: SAETrainer[TrainingSAE[TrainingSAEConfig], TrainingSAEConfig]
+    ):
         try:
             # signal handlers (if preempted)
             signal.signal(signal.SIGINT, interrupt_callback)
@@ -183,7 +185,7 @@ class SAETrainingRunner:
 
     @staticmethod
     def save_checkpoint(
-        trainer: SAETrainer[Any],
+        trainer: SAETrainer[TrainingSAE[TrainingSAEConfig], TrainingSAEConfig],
         checkpoint_name: str,
         wandb_aliases: list[str] | None = None,
     ) -> None:
@@ -193,9 +195,6 @@ class SAETrainingRunner:
         trainer.activations_store.save(
             str(base_path / "activations_store_state.safetensors")
         )
-
-        if trainer.sae.cfg.normalize_sae_decoder:
-            trainer.sae.set_decoder_norm_to_unit_norm()
 
         weights_path, cfg_path, sparsity_path = trainer.sae.save_model(
             str(base_path),
@@ -218,7 +217,9 @@ class SAETrainingRunner:
             )
 
 
-def _parse_cfg_args(args: Sequence[str]) -> LanguageModelSAERunnerConfig:
+def _parse_cfg_args(
+    args: Sequence[str],
+) -> LanguageModelSAERunnerConfig[TrainingSAEConfig]:
     if len(args) == 0:
         args = ["--help"]
     parser = ArgumentParser(exit_on_error=False)

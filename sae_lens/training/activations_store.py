@@ -23,11 +23,11 @@ from transformers import AutoTokenizer, PreTrainedTokenizerBase
 
 from sae_lens import logger
 from sae_lens.config import (
-    DTYPE_MAP,
     CacheActivationsRunnerConfig,
     HfDataset,
     LanguageModelSAERunnerConfig,
 )
+from sae_lens.constants import DTYPE_MAP
 from sae_lens.saes.sae import SAE
 from sae_lens.tokenization_and_batching import concat_and_batch_sequences
 

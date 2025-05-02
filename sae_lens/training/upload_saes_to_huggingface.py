@@ -9,7 +9,7 @@ from huggingface_hub.utils import EntryNotFoundError, RepositoryNotFoundError
 from tqdm.autonotebook import tqdm
 
 from sae_lens import logger
-from sae_lens.config import (
+from sae_lens.constants import (
     SAE_CFG_FILENAME,
     SAE_WEIGHTS_FILENAME,
     SPARSITY_FILENAME,

@@ -274,7 +274,7 @@ def run_evals(
     return all_metrics, feature_metrics
 
 
-def get_featurewise_weight_based_metrics(sae: SAE) -> dict[str, Any]:
+def get_featurewise_weight_based_metrics(sae: SAE[Any]) -> dict[str, Any]:
     unit_norm_encoders = (sae.W_enc / sae.W_enc.norm(dim=0, keepdim=True)).cpu()
     unit_norm_decoder = (sae.W_dec.T / sae.W_dec.T.norm(dim=0, keepdim=True)).cpu()
 
@@ -298,7 +298,7 @@ def get_featurewise_weight_based_metrics(sae: SAE) -> dict[str, Any]:
 
 
 def get_downstream_reconstruction_metrics(
-    sae: SAE,
+    sae: SAE[Any],
     model: HookedRootModule,
     activation_store: ActivationsStore,
     compute_kl: bool,
@@ -366,7 +366,7 @@ def get_downstream_reconstruction_metrics(
 
 
 def get_sparsity_and_variance_metrics(
-    sae: SAE,
+    sae: SAE[Any],
     model: HookedRootModule,
     activation_store: ActivationsStore,
     n_batches: int,
@@ -580,7 +580,7 @@ def get_sparsity_and_variance_metrics(
 
 @torch.no_grad()
 def get_recons_loss(
-    sae: SAE,
+    sae: SAE[Any],
     model: HookedRootModule,
     batch_tokens: torch.Tensor,
     activation_store: ActivationsStore,

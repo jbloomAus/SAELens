@@ -6,7 +6,7 @@ import torch
 from sparsify import SparseCoder, SparseCoderConfig
 
 from sae_lens.saes.sae import SAE, TrainStepInput
-from sae_lens.saes.topk_sae import TopKSAE, TopKTrainingSAE, TopKTrainingSAEConfig
+from sae_lens.saes.topk_sae import TopKSAE, TopKTrainingSAE
 from tests.helpers import (
     build_topk_sae_cfg,
     build_topk_sae_training_cfg,
@@ -22,7 +22,7 @@ def test_TopKTrainingSAE_topk_aux_loss_matches_unnormalized_sparsify_implementat
         k=26,
     )
 
-    sae = TopKTrainingSAE(TopKTrainingSAEConfig.from_sae_runner_config(cfg))
+    sae = TopKTrainingSAE(cfg)
     sparse_coder_sae = SparseCoder(
         d_in=d_in, cfg=SparseCoderConfig(num_latents=d_sae, k=26)
     )

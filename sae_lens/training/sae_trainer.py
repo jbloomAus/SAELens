@@ -13,20 +13,15 @@ from sae_lens.config import LanguageModelSAERunnerConfig
 from sae_lens.evals import EvalConfig, run_evals
 from sae_lens.saes.sae import (
     T_TRAINING_SAE,
+    T_TRAINING_SAE_CONFIG,
     TrainCoefficientConfig,
     TrainingSAE,
+    TrainingSAEConfig,
     TrainStepInput,
     TrainStepOutput,
 )
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.optim import CoefficientScheduler, get_lr_scheduler
-
-# used to map between parameters which are updated during finetuning and the config str.
-FINETUNING_PARAMETERS = {
-    "scale": ["scaling_factor"],
-    "decoder": ["scaling_factor", "W_dec", "b_dec"],
-    "unrotated_decoder": ["scaling_factor", "b_dec"],
-}
 
 
 def _log_feature_sparsity(
@@ -52,13 +47,13 @@ class TrainSAEOutput:
 class SaveCheckpointFn(Protocol):
     def __call__(
         self,
-        trainer: "SAETrainer[T_TRAINING_SAE]",
+        trainer: "SAETrainer[TrainingSAE[TrainingSAEConfig], TrainingSAEConfig]",
         checkpoint_name: str,
         wandb_aliases: list[str] | None = None,
     ) -> None: ...
 
 
-class SAETrainer(Generic[T_TRAINING_SAE]):
+class SAETrainer(Generic[T_TRAINING_SAE, T_TRAINING_SAE_CONFIG]):
     """
     Core SAE class used for inference. For training, see TrainingSAE.
     """
@@ -69,7 +64,7 @@ class SAETrainer(Generic[T_TRAINING_SAE]):
         sae: T_TRAINING_SAE,
         activation_store: ActivationsStore,
         save_checkpoint_fn: SaveCheckpointFn,
-        cfg: LanguageModelSAERunnerConfig,
+        cfg: LanguageModelSAERunnerConfig[T_TRAINING_SAE_CONFIG],
     ) -> None:
         self.model = model
         self.sae = sae
@@ -94,11 +89,11 @@ class SAETrainer(Generic[T_TRAINING_SAE]):
             )[1:]
 
         self.act_freq_scores = torch.zeros(
-            cast(int, cfg.d_sae),
+            cast(int, cfg.sae.d_sae),
             device=cfg.device,
         )
         self.n_forward_passes_since_fired = torch.zeros(
-            cast(int, cfg.d_sae),
+            cast(int, cfg.sae.d_sae),
             device=cfg.device,
         )
         self.n_frac_active_tokens = 0
@@ -199,9 +194,6 @@ class SAETrainer(Generic[T_TRAINING_SAE]):
             self.n_training_steps += 1
             self._update_pbar(step_output, pbar)
 
-            ### If n_training_tokens > sae_group.cfg.training_tokens, then we should switch to fine-tuning (if we haven't already)
-            self._begin_finetuning_if_needed()
-
         # fold the estimated norm scaling factor into the sae weights
         if self.activations_store.estimated_norm_scaling_factor is not None:
             self.sae.fold_activation_norm_scaling_factor(
@@ -211,7 +203,7 @@ class SAETrainer(Generic[T_TRAINING_SAE]):
 
         # save final sae group to checkpoints folder
         self.save_checkpoint(
-            trainer=self,
+            trainer=self,  # type: ignore
             checkpoint_name=f"final_{self.n_training_tokens}",
             wandb_aliases=["final_model"],
         )
@@ -225,9 +217,6 @@ class SAETrainer(Generic[T_TRAINING_SAE]):
         sae_in: torch.Tensor,
     ) -> TrainStepOutput:
         sae.train()
-        # Make sure the W_dec is still zero-norm
-        if self.sae.cfg.normalize_sae_decoder:
-            sae.set_decoder_norm_to_unit_norm()
 
         # log and then reset the feature sparsity every feature_sampling_window steps
         if (self.n_training_steps + 1) % self.cfg.feature_sampling_window == 0:
@@ -268,9 +257,6 @@ class SAETrainer(Generic[T_TRAINING_SAE]):
         torch.nn.utils.clip_grad_norm_(sae.parameters(), 1.0)
         self.scaler.step(self.optimizer)  # just ctx.optimizer.step() if not autocasting
         self.scaler.update()
-
-        if self.cfg.sae.normalize_sae_decoder:
-            sae.remove_gradient_parallel_to_decoder_directions()
 
         self.optimizer.zero_grad()
         self.lr_scheduler.step()
@@ -427,25 +413,6 @@ class SAETrainer(Generic[T_TRAINING_SAE]):
             )
             pbar.set_description(f"{self.n_training_steps}| {loss_strs}")
             pbar.update(update_interval * self.cfg.train_batch_size_tokens)
-
-    def _begin_finetuning_if_needed(self):
-        if (not self.started_fine_tuning) and (
-            self.n_training_tokens > self.cfg.training_tokens
-        ):
-            self.started_fine_tuning = True
-
-            # finetuning method should be set in the config
-            # if not, then we don't finetune
-            if not isinstance(self.cfg.finetuning_method, str):
-                return
-
-            for name, param in self.sae.named_parameters():
-                if name in FINETUNING_PARAMETERS[self.cfg.finetuning_method]:
-                    param.requires_grad = True
-                else:
-                    param.requires_grad = False
-
-            self.finetuning = True
 
 
 def _unwrap_item(item: float | torch.Tensor) -> float:

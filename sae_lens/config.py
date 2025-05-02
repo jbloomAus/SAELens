@@ -3,7 +3,7 @@ import math
 import os
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, cast
+from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar, cast
 
 import simple_parsing
 import torch
@@ -17,27 +17,17 @@ from datasets import (
 )
 
 from sae_lens import __version__, logger
+from sae_lens.saes.sae import TrainingSAEConfig  # Import the base class
 
 if TYPE_CHECKING:
-    from sae_lens.saes.sae import TrainingSAEConfig
+    # No need to import T_TRAINING_SAE_CONFIG here anymore
+    pass
+    # from sae_lens.saes.sae import T_TRAINING_SAE_CONFIG
 
-DTYPE_MAP = {
-    "float32": torch.float32,
-    "float64": torch.float64,
-    "float16": torch.float16,
-    "bfloat16": torch.bfloat16,
-    "torch.float32": torch.float32,
-    "torch.float64": torch.float64,
-    "torch.float16": torch.float16,
-    "torch.bfloat16": torch.bfloat16,
-}
+# Define the TypeVar with the bound
+T_TRAINING_SAE_CONFIG = TypeVar("T_TRAINING_SAE_CONFIG", bound=TrainingSAEConfig)
 
 HfDataset = DatasetDict | Dataset | IterableDatasetDict | IterableDataset
-
-
-SPARSITY_FILENAME = "sparsity.safetensors"
-SAE_WEIGHTS_FILENAME = "sae_weights.safetensors"
-SAE_CFG_FILENAME = "cfg.json"
 
 
 # calling this "json_dict" so error messages will reference "json_dict" being invalid
@@ -104,7 +94,7 @@ class LoggingConfig:
 
 
 @dataclass
-class LanguageModelSAERunnerConfig:
+class LanguageModelSAERunnerConfig(Generic[T_TRAINING_SAE_CONFIG]):
     """
     Configuration for training a sparse autoencoder on a language model.
 
@@ -193,7 +183,7 @@ class LanguageModelSAERunnerConfig:
         exclude_special_tokens (bool | list[int]): Whether to exclude special tokens from the activations.
     """
 
-    sae: "TrainingSAEConfig"
+    sae: T_TRAINING_SAE_CONFIG
 
     # Data Generating Function (Model + Training Distibuion)
     model_name: str = "gelu-2l"
@@ -404,7 +394,7 @@ class LanguageModelSAERunnerConfig:
         return self.sae.to_dict()
 
     def to_dict(self) -> dict[str, Any]:
-        # Make a shallow copy of config’s dictionary
+        # Make a shallow copy of config's dictionary
         d = dict(self.__dict__)
 
         d["logger"] = asdict(self.logger)
@@ -423,7 +413,7 @@ class LanguageModelSAERunnerConfig:
             json.dump(self.to_dict(), f, indent=2)
 
     @classmethod
-    def from_json(cls, path: str) -> "LanguageModelSAERunnerConfig":
+    def from_json(cls, path: str) -> "LanguageModelSAERunnerConfig[Any]":
         with open(path + "cfg.json") as f:
             cfg = json.load(f)
 

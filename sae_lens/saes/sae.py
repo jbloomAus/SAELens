@@ -6,7 +6,16 @@ from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field, fields, replace
 from pathlib import Path
-from typing import Any, Callable, Generic, Literal, NamedTuple, Type, TypeVar
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Generic,
+    Literal,
+    NamedTuple,
+    Type,
+    TypeVar,
+)
 
 import einops
 import torch
@@ -18,13 +27,17 @@ from transformer_lens.hook_points import HookedRootModule, HookPoint
 from typing_extensions import deprecated, overload
 
 from sae_lens import logger
-from sae_lens.config import (
+from sae_lens.constants import (
     DTYPE_MAP,
     SAE_CFG_FILENAME,
     SAE_WEIGHTS_FILENAME,
     SPARSITY_FILENAME,
-    LanguageModelSAERunnerConfig,
 )
+from sae_lens.util import filter_valid_dataclass_fields
+
+if TYPE_CHECKING:
+    from sae_lens.config import LanguageModelSAERunnerConfig
+
 from sae_lens.loading.pretrained_sae_loaders import (
     NAMED_PRETRAINED_SAE_LOADERS,
     PretrainedSaeDiskLoader,
@@ -41,10 +54,10 @@ from sae_lens.loading.pretrained_saes_directory import (
 )
 from sae_lens.regsitry import get_sae_class, get_sae_training_class
 
-T_SAE = TypeVar("T_SAE", bound="SAE[Any]")
-T_TRAINING_SAE = TypeVar("T_TRAINING_SAE", bound="TrainingSAE[Any]")
 T_SAE_CONFIG = TypeVar("T_SAE_CONFIG", bound="SAEConfig")
 T_TRAINING_SAE_CONFIG = TypeVar("T_TRAINING_SAE_CONFIG", bound="TrainingSAEConfig")
+T_SAE = TypeVar("T_SAE", bound="SAE")  # type: ignore
+T_TRAINING_SAE = TypeVar("T_TRAINING_SAE", bound="TrainingSAE")  # type: ignore
 
 
 @dataclass
@@ -77,7 +90,7 @@ class SAEConfig(ABC):
         "none", "expected_average_only_in", "constant_norm_rescale"
     ] = "none"  # none, expected_average_only_in (Anthropic April Update), constant_norm_rescale (Anthropic Feb Update)
     reshape_activations: Literal["none", "hook_z"] = "none"
-    sae_metadata: SAEMetadata = field(default_factory=SAEMetadata)
+    meta: SAEMetadata = field(default_factory=SAEMetadata)
 
     @classmethod
     @abstractmethod
@@ -85,18 +98,22 @@ class SAEConfig(ABC):
 
     def to_dict(self) -> dict[str, Any]:
         res = {field.name: getattr(self, field.name) for field in fields(self)}
-        res["sae_metadata"] = asdict(self.sae_metadata)
+        res["meta"] = asdict(self.meta)
         res["architecture"] = self.architecture()
         return res
 
     @classmethod
     def from_dict(cls: type[T_SAE_CONFIG], config_dict: dict[str, Any]) -> T_SAE_CONFIG:
         cfg_class = get_sae_class(config_dict["architecture"])[1]
-        if not isinstance(cfg_class, cls):
+        filtered_config_dict = filter_valid_dataclass_fields(config_dict, cfg_class)
+        res = cfg_class(**filtered_config_dict)
+        if "meta" in config_dict:
+            res.meta = SAEMetadata(**config_dict["meta"])
+        if not isinstance(res, cls):
             raise ValueError(
-                f"SAE config class {cls} does not match dict config class {type(cfg_class)}"
+                f"SAE config class {cls} does not match dict config class {type(res)}"
             )
-        return cfg_class(**config_dict)
+        return res
 
 
 @dataclass
@@ -145,7 +162,7 @@ class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
 
         self.cfg = cfg
 
-        if cfg.sae_metadata and cfg.sae_metadata.model_from_pretrained_kwargs:
+        if cfg.meta and cfg.meta.model_from_pretrained_kwargs:
             warnings.warn(
                 "\nThis SAE has non-empty model_from_pretrained_kwargs. "
                 "\nFor optimal performance, load the model like so:\n"
@@ -273,9 +290,8 @@ class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
         pass
 
     def turn_on_forward_pass_hook_z_reshaping(self):
-        if (
-            self.cfg.sae_metadata.hook_name is not None
-            and not self.cfg.sae_metadata.hook_name.endswith("_z")
+        if self.cfg.meta.hook_name is not None and not self.cfg.meta.hook_name.endswith(
+            "_z"
         ):
             raise ValueError("This method should only be called for hook_z SAEs.")
 
@@ -418,7 +434,9 @@ class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
 
     def get_name(self):
         """Generate a name for this SAE."""
-        return f"sae_{self.cfg.sae_metadata.model_name}_{self.cfg.sae_metadata.hook_name}_{self.cfg.d_sae}"
+        return (
+            f"sae_{self.cfg.meta.model_name}_{self.cfg.meta.hook_name}_{self.cfg.d_sae}"
+        )
 
     def save_model(
         self, path: str | Path, sparsity: torch.Tensor | None = None
@@ -633,7 +651,7 @@ class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
     ) -> Type[T_SAE]:
         """Get the SAE class for a given architecture."""
         sae_cls, _ = get_sae_class(architecture)
-        if not isinstance(sae_cls, cls):
+        if not issubclass(sae_cls, cls):
             raise ValueError(
                 f"Loaded SAE is not of type {cls.__name__}. Use {sae_cls.__name__} instead"
             )
@@ -652,7 +670,7 @@ class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
 class TrainingSAEConfig(SAEConfig, ABC):
     noise_scale: float = 0.0
     mse_loss_normalization: str | None = None
-    b_dec_init_method: Literal["none", "geometric_median", "mean"] = "none"
+    b_dec_init_method: Literal["zeros", "geometric_median", "mean"] = "zeros"
 
     @classmethod
     @abstractmethod
@@ -660,8 +678,9 @@ class TrainingSAEConfig(SAEConfig, ABC):
 
     @classmethod
     def from_sae_runner_config(
-        cls: type[T_SAE_CONFIG], cfg: LanguageModelSAERunnerConfig
-    ) -> T_SAE_CONFIG:
+        cls: type[T_TRAINING_SAE_CONFIG],
+        cfg: "LanguageModelSAERunnerConfig[T_TRAINING_SAE_CONFIG]",
+    ) -> T_TRAINING_SAE_CONFIG:
         metadata = SAEMetadata(
             model_name=cfg.model_name,
             hook_name=cfg.hook_name,
@@ -679,18 +698,21 @@ class TrainingSAEConfig(SAEConfig, ABC):
         return replace(cfg.sae, metadata=metadata)
 
     @classmethod
-    def from_dict(cls: type[T_SAE_CONFIG], config_dict: dict[str, Any]) -> T_SAE_CONFIG:
+    def from_dict(
+        cls: type[T_TRAINING_SAE_CONFIG], config_dict: dict[str, Any]
+    ) -> T_TRAINING_SAE_CONFIG:
         # remove any keys that are not in the dataclass
         # since we sometimes enhance the config with the whole LM runner config
-        valid_field_names = {field.name for field in fields(cls)}
-        valid_config_dict = {
-            key: val for key, val in config_dict.items() if key in valid_field_names
-        }
-        cfg_class = get_sae_training_class(valid_config_dict["architecture"])[1]
-        if not isinstance(cfg_class, cls):
+        valid_config_dict = filter_valid_dataclass_fields(config_dict, cls)
+        cfg_class = cls
+        if "architecture" in config_dict:
+            cfg_class = get_sae_training_class(config_dict["architecture"])[1]
+        if not issubclass(cfg_class, cls):
             raise ValueError(
                 f"SAE config class {cls} does not match dict config class {type(cfg_class)}"
             )
+        if "meta" in config_dict:
+            valid_config_dict["meta"] = SAEMetadata(**config_dict["meta"])
         return cfg_class(**valid_config_dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -870,7 +892,7 @@ class TrainingSAE(SAE[T_TRAINING_SAE_CONFIG], ABC):
     ) -> Type[T_TRAINING_SAE]:
         """Get the SAE class for a given architecture."""
         sae_cls, _ = get_sae_training_class(architecture)
-        if not isinstance(sae_cls, cls):
+        if not issubclass(sae_cls, cls):
             raise ValueError(
                 f"Loaded SAE is not of type {cls.__name__}. Use {sae_cls.__name__} instead"
             )

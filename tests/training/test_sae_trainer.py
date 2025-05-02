@@ -11,6 +11,7 @@ from sae_lens import __version__
 from sae_lens.config import LanguageModelSAERunnerConfig
 from sae_lens.sae_training_runner import SAETrainingRunner
 from sae_lens.saes.sae import TrainingSAE
+from sae_lens.saes.standard_sae import StandardTrainingSAE, StandardTrainingSAEConfig
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.sae_trainer import (
     SAETrainer,
@@ -32,21 +33,24 @@ def model():
 
 
 @pytest.fixture
-def activation_store(model: HookedTransformer, cfg: LanguageModelSAERunnerConfig):
+def activation_store(
+    model: HookedTransformer,
+    cfg: LanguageModelSAERunnerConfig[StandardTrainingSAEConfig],
+):
     return ActivationsStore.from_config(
         model, cfg, override_dataset=Dataset.from_list([{"text": "hello world"}] * 2000)
     )
 
 
 @pytest.fixture
-def training_sae(cfg: LanguageModelSAERunnerConfig):
-    return TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+def training_sae(cfg: LanguageModelSAERunnerConfig[StandardTrainingSAEConfig]):
+    return StandardTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
 
 
 @pytest.fixture
 def trainer(
-    cfg: LanguageModelSAERunnerConfig,
-    training_sae: TrainingSAE,
+    cfg: LanguageModelSAERunnerConfig[StandardTrainingSAEConfig],
+    training_sae: StandardTrainingSAE,
     model: HookedTransformer,
     activation_store: ActivationsStore,
 ):
@@ -59,7 +63,9 @@ def trainer(
     )
 
 
-def modify_sae_output(sae: TrainingSAE, modifier: Callable[[torch.Tensor], Any]):
+def modify_sae_output(
+    sae: StandardTrainingSAE, modifier: Callable[[torch.Tensor], Any]
+):
     """
     Helper to modify the output of the SAE forward pass for use in patching, for use in patch side_effect.
     We need real grads during training, so we can't just mock the whole forward pass directly.
@@ -73,7 +79,7 @@ def modify_sae_output(sae: TrainingSAE, modifier: Callable[[torch.Tensor], Any])
 
 
 def test_train_step__reduces_loss_when_called_repeatedly_on_same_acts(
-    trainer: SAETrainer,
+    trainer: SAETrainer[StandardTrainingSAE, StandardTrainingSAEConfig],
 ) -> None:
     layer_acts = trainer.activations_store.next_batch()
 
@@ -117,7 +123,7 @@ def test_train_step__output_looks_reasonable(trainer: SAETrainer) -> None:
 
 
 def test_train_step__sparsity_updates_based_on_feature_act_sparsity(
-    trainer: SAETrainer,
+    trainer: SAETrainer[StandardTrainingSAE, StandardTrainingSAEConfig],
 ) -> None:
     trainer._reset_running_sparsity_stats()
     layer_acts = trainer.activations_store.next_batch()
@@ -157,7 +163,9 @@ def test_log_feature_sparsity__handles_zeroes_by_default_fp16() -> None:
     assert _log_feature_sparsity(fp16_zeroes).item() != float("-inf")
 
 
-def test_build_train_step_log_dict(trainer: SAETrainer) -> None:
+def test_build_train_step_log_dict(
+    trainer: SAETrainer[StandardTrainingSAE, StandardTrainingSAEConfig],
+) -> None:
     train_output = TrainStepOutput(
         sae_in=torch.tensor([[-1, 0], [0, 2], [1, 1]]).float(),
         sae_out=torch.tensor([[0, 0], [0, 2], [0.5, 1]]).float(),
@@ -182,7 +190,7 @@ def test_build_train_step_log_dict(trainer: SAETrainer) -> None:
             "losses/mse_loss": 0.25,
             # l1 loss is scaled by l1_coefficient
             "losses/l1_loss": train_output.losses["l1_loss"].item()
-            / trainer.cfg.l1_coefficient,
+            / trainer.cfg.sae.l1_coefficient,
             "losses/raw_l1_loss": train_output.losses["l1_loss"].item(),
             "losses/overall_loss": 0.5,
             "losses/ghost_grad_loss": 0.15,
@@ -193,7 +201,7 @@ def test_build_train_step_log_dict(trainer: SAETrainer) -> None:
             "sparsity/mean_passes_since_fired": trainer.n_forward_passes_since_fired.mean().item(),
             "sparsity/dead_features": trainer.dead_neurons.sum().item(),
             "details/current_learning_rate": 2e-4,
-            "details/current_l1_coefficient": trainer.cfg.l1_coefficient,
+            "details/current_l1_coefficient": trainer.cfg.sae.l1_coefficient,
             "details/n_training_tokens": 123,
         }
     )

@@ -1,0 +1,17 @@
+import torch
+
+DTYPE_MAP = {
+    "float32": torch.float32,
+    "float64": torch.float64,
+    "float16": torch.float16,
+    "bfloat16": torch.bfloat16,
+    "torch.float32": torch.float32,
+    "torch.float64": torch.float64,
+    "torch.float16": torch.float16,
+    "torch.bfloat16": torch.bfloat16,
+}
+
+
+SPARSITY_FILENAME = "sparsity.safetensors"
+SAE_WEIGHTS_FILENAME = "sae_weights.safetensors"
+SAE_CFG_FILENAME = "cfg.json"

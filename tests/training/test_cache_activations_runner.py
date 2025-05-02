@@ -13,10 +13,10 @@ from transformer_lens import HookedTransformer
 
 from sae_lens.cache_activations_runner import CacheActivationsRunner
 from sae_lens.config import (
-    DTYPE_MAP,
     CacheActivationsRunnerConfig,
     LanguageModelSAERunnerConfig,
 )
+from sae_lens.constants import DTYPE_MAP
 from sae_lens.load_model import load_model
 from sae_lens.training.activations_store import ActivationsStore
 
