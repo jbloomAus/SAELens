@@ -967,7 +967,7 @@ def get_gemma_2_transcoder_config_from_hf(
     model_name, d_in = model_info
 
     # Hooks: input after pre-MLP RMSNorm, output after MLP
-    hook_name_in = f"blocks.{layer}.hook_resid_post"  # matches Gemma Scope conv.
+    hook_name_in = f"blocks.{layer}.hook_mlp_in"
     hook_name_out = f"blocks.{layer}.hook_mlp_out"
 
     cfg_dict: dict[str, Any] = {
