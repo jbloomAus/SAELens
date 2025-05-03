@@ -109,6 +109,7 @@ cfg = LanguageModelSAERunnerConfig(
     b_dec_init_method="zeros",
     normalize_sae_decoder=False,
     decoder_heuristic_init=True,
+    decoder_heuristic_init_norm=0.1,
     init_encoder_as_decoder_transpose=True,
     # Optimizer
     lr=learning_rate,

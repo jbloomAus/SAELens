@@ -57,3 +57,19 @@ def test_TrainingCrosscoderSAE_encode_returns_same_value_as_encode_with_hidden_p
     encode_out = sae.encode(x)
     encode_with_hidden_pre_out = sae.encode_with_hidden_pre_fn(x)[0]
     assert torch.allclose(encode_out, encode_with_hidden_pre_out)
+
+def test_TrainingCrosscoderSAE_heuristic_init():
+    cfg = build_crosscoder_sae_cfg(
+        d_in=3,
+        d_sae=5,
+        decoder_heuristic_init=True,
+        decoder_heuristic_init_norm=0.2,
+    )
+    sae = TrainingCrosscoderSAE(
+        TrainingCrosscoderSAEConfig.from_sae_runner_config(cfg),
+        use_error_term=True)
+    print(sae.W_dec.norm(dim=0))
+    print(sae.W_dec.norm(dim=1))
+    print(sae.W_dec.norm(dim=2))
+    torch.testing.assert_close(sae.W_dec.norm(dim=[1,2]),
+                               torch.full((5,), 0.2))

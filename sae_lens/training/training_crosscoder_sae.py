@@ -66,6 +66,7 @@ class TrainingCrosscoderSAEConfig(CrosscoderSAEConfig, TrainingSAEConfig):
             decoder_orthogonal_init=cfg.decoder_orthogonal_init,
             mse_loss_normalization=cfg.mse_loss_normalization,
             decoder_heuristic_init=cfg.decoder_heuristic_init,
+            decoder_heuristic_init_norm=cfg.decoder_heuristic_init_norm,
             init_encoder_as_decoder_transpose=cfg.init_encoder_as_decoder_transpose,
             scale_sparsity_penalty_by_decoder_norm=cfg.scale_sparsity_penalty_by_decoder_norm,
             normalize_activations=cfg.normalize_activations,
@@ -242,12 +243,7 @@ class TrainingCrosscoderSAE(CrosscoderSAE, TrainingSAE):
                     self.cfg.d_sae, *self.input_shape(), dtype=self.dtype, device=self.device
                 )
             )
-            self.W_dec.data = (
-                self.W_dec.data
-                / self.W_dec.data.norm(dim=-1, keepdim=True)
-                * 0.1           # TODO(mkbehr): make norm configurable
-            )
-            self.initialize_decoder_norm_constant_norm()
+            self.initialize_decoder_norm_constant_norm(self.cfg.decoder_heuristic_init_norm)
 
         # Then we initialize the encoder weights (either as the transpose of decoder or not)
         if self.cfg.init_encoder_as_decoder_transpose:
