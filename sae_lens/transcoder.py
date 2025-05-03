@@ -200,6 +200,10 @@ class Transcoder(SAE):
                 )
             )
 
+        # --- Fetch release info and potential revision ---
+        sae_release_from_dir = sae_directory[release]
+        # --------------------------------------------------
+
         conversion_loader_name = get_conversion_loader_name(release)
         config_getter = (
             NAMED_PRETRAINED_SAE_CONFIG_GETTERS[
@@ -217,7 +221,19 @@ class Transcoder(SAE):
         config_overrides = get_config_overrides(
             release, sae_id
         )
+        # Ensure config_overrides is a dict
+        if config_overrides is None:
+            config_overrides = {}
         config_overrides["device"] = device
+
+        # --- Add revision from directory to overrides ---
+        # if sae_release_from_dir.revision is not None:
+        #     config_overrides.setdefault("revision", sae_release_from_dir.revision)
+        # Safely check for revision attribute
+        release_revision = getattr(sae_release_from_dir, "revision", None)
+        if release_revision is not None:
+            config_overrides.setdefault("revision", release_revision)
+        # ------------------------------------------------
 
         # 1. Get the config dictionary using the appropriate getter
         cfg_dict = config_getter(

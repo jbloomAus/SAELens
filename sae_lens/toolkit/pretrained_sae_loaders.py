@@ -1030,11 +1030,16 @@ def gemma_2_transcoder_huggingface_loader(
         cfg_overrides,
     )
 
+    # --- Get revision from overrides ---
+    revision = cfg_overrides.get("revision") if cfg_overrides else None
+    # ---------------------------------
+
     # Download weights
     sae_path = hf_hub_download(
         repo_id=repo_id,
         filename="params.npz",
         subfolder=folder_name,
+        revision=revision,    # Pass the revision
         force_download=force_download,
     )
 
@@ -1070,7 +1075,7 @@ def gemma_2_transcoder_huggingface_loader(
 # ---------------------------------------------------------------------------
 
 
-def llama_skip_transcoder_huggingface_loader(
+def llama_relu_skip_transcoder_huggingface_loader(
     repo_id: str,
     folder_name: str,
     device: str = "cpu",
@@ -1093,10 +1098,15 @@ def llama_skip_transcoder_huggingface_loader(
         Optional overrides for the returned config dict.
     """
 
+    # --- Get revision from overrides ---
+    revision = cfg_overrides.get("revision") if cfg_overrides else None
+    # ---------------------------------
+
     # Download the safetensors weight file
     sae_path = hf_hub_download(
         repo_id=repo_id,
         filename=folder_name,
+        revision=revision,    # Pass the revision
         force_download=force_download,
     )
 
@@ -1153,23 +1163,20 @@ def llama_skip_transcoder_huggingface_loader(
     return cfg_dict, state_dict, None
 
 
-# Register loader & config getter placeholders
-NAMED_PRETRAINED_SAE_LOADERS["llama_skip_transcoder"] = (
-    llama_skip_transcoder_huggingface_loader
-)
+
 
 # Config getter uses the loader internally (loads weights briefly). This keeps
 # interface consistent without maintaining a separate function.
 
 
-def get_llama_skip_transcoder_config_from_hf(
+def get_llama_relu_skip_transcoder_config_from_hf(
     repo_id: str,
     folder_name: str,
     device: str = "cpu",
     force_download: bool = False,
     cfg_overrides: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    cfg, _, _ = llama_skip_transcoder_huggingface_loader(
+    cfg, _, _ = llama_relu_skip_transcoder_huggingface_loader(
         repo_id,
         folder_name,
         device=device,
@@ -1179,9 +1186,7 @@ def get_llama_skip_transcoder_config_from_hf(
     return cfg
 
 
-NAMED_PRETRAINED_SAE_CONFIG_GETTERS["llama_skip_transcoder"] = (
-    get_llama_skip_transcoder_config_from_hf
-)
+
 
 NAMED_PRETRAINED_SAE_LOADERS: dict[str, PretrainedSaeHuggingfaceLoader] = {
     "sae_lens": sae_lens_huggingface_loader,
@@ -1192,7 +1197,7 @@ NAMED_PRETRAINED_SAE_LOADERS: dict[str, PretrainedSaeHuggingfaceLoader] = {
     "dictionary_learning_1": dictionary_learning_sae_huggingface_loader_1,
     "deepseek_r1": deepseek_r1_sae_huggingface_loader,
     "gemma_2_transcoder": gemma_2_transcoder_huggingface_loader,
-    "llama_skip_transcoder": llama_skip_transcoder_huggingface_loader,
+    "llama_relu_skip_transcoder": llama_relu_skip_transcoder_huggingface_loader,
 }
 
 
@@ -1205,5 +1210,5 @@ NAMED_PRETRAINED_SAE_CONFIG_GETTERS: dict[str, PretrainedSaeConfigHuggingfaceLoa
     "dictionary_learning_1": get_dictionary_learning_config_1_from_hf,
     "deepseek_r1": get_deepseek_r1_config_from_hf,
     "gemma_2_transcoder": get_gemma_2_transcoder_config_from_hf,
-    "llama_skip_transcoder": get_llama_skip_transcoder_config_from_hf,
+    "llama_relu_skip_transcoder": get_llama_relu_skip_transcoder_config_from_hf,
 }
