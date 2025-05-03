@@ -171,6 +171,7 @@ class LanguageModelSAERunnerConfig:
     apply_b_dec_to_input: bool = True
     decoder_orthogonal_init: bool = False
     decoder_heuristic_init: bool = False
+    decoder_heuristic_init_norm: float = 0.1
     init_encoder_as_decoder_transpose: bool = False
 
     # Activation Store Parameters
@@ -465,6 +466,7 @@ class LanguageModelSAERunnerConfig:
             "decoder_orthogonal_init": self.decoder_orthogonal_init,
             "mse_loss_normalization": self.mse_loss_normalization,
             "decoder_heuristic_init": self.decoder_heuristic_init,
+            "decoder_heuristic_init_norm": self.decoder_heuristic_init_norm,
             "init_encoder_as_decoder_transpose": self.init_encoder_as_decoder_transpose,
             "normalize_activations": self.normalize_activations,
             "jumprelu_init_threshold": self.jumprelu_init_threshold,

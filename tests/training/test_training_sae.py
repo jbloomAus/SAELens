@@ -316,3 +316,15 @@ def test_TrainingSAE_fold_w_dec_norm_jumprelu():
 
     # but actual outputs should be the same
     torch.testing.assert_close(sae_out_1, sae_out_2)
+
+
+def test_TrainingSAE_heuristic_init():
+    cfg = build_sae_cfg(
+        d_in=3,
+        d_sae=5,
+        normalize_sae_decoder=False,
+        decoder_heuristic_init=True,
+        decoder_heuristic_init_norm=0.2,
+    )
+    training_sae = TrainingSAE(TrainingSAEConfig.from_sae_runner_config(cfg))
+    torch.testing.assert_close(training_sae.W_dec.norm(dim=1), torch.full((5,), 0.2))
