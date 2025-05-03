@@ -2,7 +2,7 @@ from collections import defaultdict
 
 from huggingface_hub import HfApi
 
-from sae_lens.toolkit.pretrained_saes_directory import get_pretrained_saes_directory
+from sae_lens.loading.pretrained_saes_directory import get_pretrained_saes_directory
 
 
 def is_model_file(filepath: str) -> bool:

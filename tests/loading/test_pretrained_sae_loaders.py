@@ -1,11 +1,11 @@
 import pytest
 
-from sae_lens.sae import SAE
-from sae_lens.toolkit.pretrained_sae_loaders import (
+from sae_lens.loading.pretrained_sae_loaders import (
     get_deepseek_r1_config_from_hf,
     get_llama_scope_r1_distill_config_from_hf,
     load_sae_config_from_huggingface,
 )
+from sae_lens.saes.sae import SAE
 
 
 def test_load_sae_config_from_huggingface():
@@ -15,13 +15,13 @@ def test_load_sae_config_from_huggingface():
     )
 
     expected_cfg_dict = {
-        "activation_fn_str": "relu",
+        "activation_fn": "relu",
         "apply_b_dec_to_input": True,
         "architecture": "standard",
         "model_name": "gpt2-small",
-        "hook_point": "blocks.0.hook_resid_pre",
-        "hook_point_layer": 0,
-        "hook_point_head_index": None,
+        "hook_name": "blocks.0.hook_resid_pre",
+        "hook_layer": 0,
+        "hook_head_index": None,
         "dataset_path": "Skylion007/openwebtext",
         "dataset_trust_remote_code": True,
         "is_dataset_tokenized": False,
@@ -89,7 +89,7 @@ def test_load_sae_config_from_huggingface_connor_rob_hook_z():
         "hook_name": "blocks.0.attn.hook_z",
         "hook_layer": 0,
         "hook_head_index": None,
-        "activation_fn_str": "relu",
+        "activation_fn": "relu",
         "apply_b_dec_to_input": True,
         "finetuning_scaling_factor": False,
         "sae_lens_training_version": None,
@@ -119,7 +119,7 @@ def test_load_sae_config_from_huggingface_gemma_2():
         "hook_name": "hook_embed",
         "hook_layer": 0,
         "hook_head_index": None,
-        "activation_fn_str": "relu",
+        "activation_fn": "relu",
         "finetuning_scaling_factor": False,
         "sae_lens_training_version": None,
         "prepend_bos": True,
@@ -151,7 +151,7 @@ def test_load_sae_config_from_huggingface_dictionary_learning_1():
         "hook_name": "blocks.12.hook_resid_post",
         "hook_layer": 12,
         "hook_head_index": None,
-        "activation_fn_str": "topk",
+        "activation_fn": "topk",
         "activation_fn_kwargs": {"k": 20},
         "apply_b_dec_to_input": True,
         "finetuning_scaling_factor": False,
@@ -179,7 +179,15 @@ def test_load_sae_config_from_huggingface_matches_from_pretrained():
         device="cpu",
     )
 
-    assert direct_sae_cfg == from_pretrained_cfg_dict
+    # Apply the same renaming that happens in SAE.from_pretrained
+    renamed_direct_sae_cfg = {**direct_sae_cfg}
+    # Add default values that SAE.from_pretrained adds
+    if "activation_fn_kwargs" not in renamed_direct_sae_cfg:
+        renamed_direct_sae_cfg["activation_fn_kwargs"] = {}
+    if "seqpos_slice" not in renamed_direct_sae_cfg:
+        renamed_direct_sae_cfg["seqpos_slice"] = None
+
+    assert renamed_direct_sae_cfg == from_pretrained_cfg_dict
 
 
 def test_get_deepseek_r1_config_from_hf():
@@ -204,7 +212,7 @@ def test_get_deepseek_r1_config_from_hf():
         "dataset_path": "lmsys/lmsys-chat-1m",
         "dataset_trust_remote_code": True,
         "sae_lens_training_version": None,
-        "activation_fn_str": "relu",
+        "activation_fn": "relu",
         "normalize_activations": "none",
         "device": "cpu",
         "apply_b_dec_to_input": False,
@@ -244,7 +252,7 @@ def test_get_llama_scope_r1_distill_config_from_hf():
         "hook_name": "blocks.5.hook_resid_post",
         "hook_layer": 5,
         "hook_head_index": None,
-        "activation_fn_str": "relu",
+        "activation_fn": "relu",
         "finetuning_scaling_factor": False,
         "sae_lens_training_version": None,
         "prepend_bos": True,

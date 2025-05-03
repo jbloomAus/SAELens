@@ -8,7 +8,8 @@ from transformer_lens.hook_points import HookPoint  # Hooking utilities
 from transformer_lens.HookedTransformer import Loss
 
 from sae_lens.analysis.hooked_sae_transformer import HookedSAETransformer, get_deep_attr
-from sae_lens.sae import SAE, SAEConfig
+from sae_lens.saes.sae import SAE, SAEConfig
+from sae_lens.saes.standard_sae import StandardSAE
 
 MODEL = "solu-1l"
 prompt = "Hello World!"
@@ -67,7 +68,8 @@ def get_hooked_sae(model: HookedTransformer, act_name: str) -> SAE:
         hook_name=act_name,
         hook_layer=0,
         hook_head_index=None,
-        activation_fn_str="relu",
+        activation_fn="relu",
+        activation_fn_kwargs={},
         prepend_bos=True,
         context_size=128,
         dataset_path="test",
@@ -76,9 +78,9 @@ def get_hooked_sae(model: HookedTransformer, act_name: str) -> SAE:
         finetuning_scaling_factor=False,
         sae_lens_training_version=None,
         normalize_activations="none",
+        model_from_pretrained_kwargs={},
     )
-
-    return SAE(sae_cfg)  # type: ignore
+    return StandardSAE(sae_cfg)
 
 
 @pytest.fixture(

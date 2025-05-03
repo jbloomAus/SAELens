@@ -12,18 +12,14 @@ from jaxtyping import Float
 from torch import nn
 from typing_extensions import deprecated
 
-from sae_lens import logger
-from sae_lens.config import LanguageModelSAERunnerConfig
-from sae_lens.sae import SAE, SAEConfig
-from sae_lens.toolkit.pretrained_sae_loaders import (
+from tests._comparison.sae_lens_old import logger
+from tests._comparison.sae_lens_old.config import LanguageModelSAERunnerConfig
+from tests._comparison.sae_lens_old.sae import SAE, SAEConfig
+from tests._comparison.sae_lens_old.toolkit.pretrained_sae_loaders import (
     PretrainedSaeDiskLoader,
     handle_config_defaulting,
     sae_lens_disk_loader,
 )
-
-SPARSITY_PATH = "sparsity.safetensors"
-SAE_WEIGHTS_PATH = "sae_weights.safetensors"
-SAE_CFG_PATH = "cfg.json"
 
 
 def rectangle(x: torch.Tensor) -> torch.Tensor:

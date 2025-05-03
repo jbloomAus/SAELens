@@ -14,7 +14,7 @@ from sae_lens.config import (
     SAE_WEIGHTS_FILENAME,
     SPARSITY_FILENAME,
 )
-from sae_lens.sae import SAE
+from sae_lens.saes.sae import SAE
 
 
 def upload_saes_to_huggingface(

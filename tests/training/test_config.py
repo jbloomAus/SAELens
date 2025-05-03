@@ -5,8 +5,7 @@ import pytest
 
 from sae_lens import __version__
 from sae_lens.config import CacheActivationsRunnerConfig, LanguageModelSAERunnerConfig
-from sae_lens.sae import SAEConfig
-from sae_lens.training.training_sae import TrainingSAEConfig
+from sae_lens.saes.sae import SAEConfig, TrainingSAEConfig
 
 TINYSTORIES_MODEL = "tiny-stories-1M"
 TINYSTORIES_DATASET = "roneneldan/TinyStories"
@@ -84,7 +83,7 @@ def test_sae_training_runner_config_get_sae_base_parameters():
         "architecture": "standard",
         "d_in": 512,
         "d_sae": 2048,
-        "activation_fn_str": "relu",
+        "activation_fn": "relu",
         "activation_fn_kwargs": {},
         "apply_b_dec_to_input": True,
         "dtype": "float32",

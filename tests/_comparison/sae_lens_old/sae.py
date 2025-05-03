@@ -17,13 +17,13 @@ from torch import nn
 from transformer_lens.hook_points import HookedRootModule, HookPoint
 from typing_extensions import deprecated
 
-from sae_lens.config import (
+from tests._comparison.sae_lens_old.config import (
     DTYPE_MAP,
     SAE_CFG_FILENAME,
     SAE_WEIGHTS_FILENAME,
     SPARSITY_FILENAME,
 )
-from sae_lens.toolkit.pretrained_sae_loaders import (
+from tests._comparison.sae_lens_old.toolkit.pretrained_sae_loaders import (
     NAMED_PRETRAINED_SAE_LOADERS,
     PretrainedSaeDiskLoader,
     PretrainedSaeHuggingfaceLoader,
@@ -31,7 +31,7 @@ from sae_lens.toolkit.pretrained_sae_loaders import (
     handle_config_defaulting,
     sae_lens_disk_loader,
 )
-from sae_lens.toolkit.pretrained_saes_directory import (
+from tests._comparison.sae_lens_old.toolkit.pretrained_saes_directory import (
     get_config_overrides,
     get_norm_scaling_factor,
     get_pretrained_saes_directory,

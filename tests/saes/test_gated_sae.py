@@ -1,14 +1,15 @@
 import pytest
 import torch
 
-from sae_lens.training.training_sae import TrainingSAE
+from sae_lens.saes.gated_sae import GatedTrainingSAE
+from sae_lens.saes.sae import TrainingSAE, TrainStepInput
 from tests.helpers import build_sae_cfg
 
 
 def test_gated_sae_initialization():
     cfg = build_sae_cfg()
     setattr(cfg, "architecture", "gated")
-    sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+    sae = GatedTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
 
     assert sae.W_enc.shape == (cfg.d_in, cfg.d_sae)
     assert sae.W_dec.shape == (cfg.d_sae, cfg.d_in)
@@ -35,14 +36,14 @@ def test_gated_sae_initialization():
 def test_gated_sae_encoding():
     cfg = build_sae_cfg()
     setattr(cfg, "architecture", "gated")
-    sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+    sae = GatedTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
 
     batch_size = 32
     d_in = sae.cfg.d_in
     d_sae = sae.cfg.d_sae
 
     x = torch.randn(batch_size, d_in)
-    feature_acts, hidden_pre = sae.encode_with_hidden_pre_gated(x)
+    feature_acts, hidden_pre = sae.encode_with_hidden_pre(x)
 
     assert feature_acts.shape == (batch_size, d_sae)
     assert hidden_pre.shape == (batch_size, d_sae)
@@ -60,15 +61,18 @@ def test_gated_sae_encoding():
 def test_gated_sae_loss():
     cfg = build_sae_cfg()
     setattr(cfg, "architecture", "gated")
-    sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+    sae = GatedTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
 
     batch_size = 32
     d_in = sae.cfg.d_in
     x = torch.randn(batch_size, d_in)
 
     train_step_output = sae.training_forward_pass(
-        sae_in=x,
-        current_l1_coefficient=sae.cfg.l1_coefficient,
+        step_input=TrainStepInput(
+            sae_in=x,
+            current_l1_coefficient=sae.cfg.l1_coefficient,
+            dead_neuron_mask=None,
+        ),
     )
 
     assert train_step_output.sae_out.shape == (batch_size, d_in)
@@ -114,15 +118,18 @@ def test_gated_sae_forward_pass():
 def test_gated_sae_training_forward_pass():
     cfg = build_sae_cfg()
     setattr(cfg, "architecture", "gated")
-    sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+    sae = GatedTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
 
     batch_size = 32
     d_in = sae.cfg.d_in
 
     x = torch.randn(batch_size, d_in)
     train_step_output = sae.training_forward_pass(
-        sae_in=x,
-        current_l1_coefficient=sae.cfg.l1_coefficient,
+        step_input=TrainStepInput(
+            sae_in=x,
+            current_l1_coefficient=sae.cfg.l1_coefficient,
+            dead_neuron_mask=None,
+        ),
     )
 
     assert train_step_output.sae_out.shape == (batch_size, d_in)

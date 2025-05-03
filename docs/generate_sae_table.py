@@ -8,7 +8,7 @@ import yaml
 from tqdm import tqdm
 
 from sae_lens import SAEConfig
-from sae_lens.toolkit.pretrained_sae_loaders import (
+from sae_lens.loading.pretrained_sae_loaders import (
     handle_config_defaulting,
     load_sae_config_from_huggingface,
 )

@@ -28,7 +28,7 @@ from sae_lens.config import (
     HfDataset,
     LanguageModelSAERunnerConfig,
 )
-from sae_lens.sae import SAE
+from sae_lens.saes.sae import SAE
 from sae_lens.tokenization_and_batching import concat_and_batch_sequences
 
 
@@ -177,7 +177,7 @@ class ActivationsStore:
             dataset_trust_remote_code=sae.cfg.dataset_trust_remote_code,
             dtype=sae.cfg.dtype,
             device=torch.device(device),
-            seqpos_slice=sae.cfg.seqpos_slice,
+            seqpos_slice=sae.cfg.seqpos_slice or (None,),
         )
 
     def __init__(

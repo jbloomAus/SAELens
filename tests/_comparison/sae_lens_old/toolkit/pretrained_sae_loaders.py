@@ -10,14 +10,14 @@ from huggingface_hub.utils import EntryNotFoundError
 from safetensors import safe_open
 from safetensors.torch import load_file
 
-from sae_lens import logger
-from sae_lens.config import (
+from tests._comparison.sae_lens_old import logger
+from tests._comparison.sae_lens_old.config import (
     DTYPE_MAP,
     SAE_CFG_FILENAME,
     SAE_WEIGHTS_FILENAME,
     SPARSITY_FILENAME,
 )
-from sae_lens.toolkit.pretrained_saes_directory import (
+from tests._comparison.sae_lens_old.toolkit.pretrained_saes_directory import (
     get_config_overrides,
     get_pretrained_saes_directory,
     get_repo_id_and_folder_name,
