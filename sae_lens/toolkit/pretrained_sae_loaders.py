@@ -1064,6 +1064,125 @@ def gemma_2_transcoder_huggingface_loader(
 
     return cfg_dict, state_dict, log_sparsity
 
+
+# ---------------------------------------------------------------------------
+#                 LLAMA 1B  SkipTranscoder Loader
+# ---------------------------------------------------------------------------
+
+
+def llama_skip_transcoder_huggingface_loader(
+    repo_id: str,
+    folder_name: str,
+    device: str = "cpu",
+    force_download: bool = False,
+    cfg_overrides: dict[str, Any] | None = None,
+) -> tuple[dict[str, Any], dict[str, torch.Tensor], None]:
+    """Load a *skip* transcoder trained on Llama-3-1B.
+
+    Parameters
+    ----------
+    repo_id
+        HF repo id, e.g. ``mntss/skip-transcoder-Llama-3.2-1B-131k-nobos``.
+    folder_name
+        Path to the ``layer_{n}.safetensors`` file inside *repo_id*.
+    device
+        Target device for tensors (``cpu`` or ``cuda``).
+    force_download
+        Whether to bypass local cache.
+    cfg_overrides
+        Optional overrides for the returned config dict.
+    """
+
+    # Download the safetensors weight file
+    sae_path = hf_hub_download(
+        repo_id=repo_id,
+        filename=folder_name,
+        force_download=force_download,
+    )
+
+    # Load weights
+    state_dict_loaded = load_file(sae_path, device=device)
+
+    # Deduce dimensions from W_enc (stored as d_sae × d_in)
+    d_sae, d_in = state_dict_loaded["W_enc"].shape
+
+    # Build config (Transcoder + skip)
+    layer_match = re.search(r"layer_(\d+)", folder_name)
+    layer_idx = int(layer_match.group(1)) if layer_match else 0
+
+    cfg_dict: dict[str, Any] = {
+        "architecture": "standard", #ReLU
+        "d_in": d_in,
+        "d_sae": d_sae,
+        "d_out": d_in,
+        "dtype": "float32",
+        "model_name": "meta-llama/Llama-3.2-1B",
+        # input hook
+        "hook_name": f"blocks.{layer_idx}.hook_resid_mid",
+        "hook_layer": layer_idx,
+        "hook_head_index": None,
+        # output hook after MLP
+        "hook_name_out": f"blocks.{layer_idx}.hook_mlp_out",
+        "hook_layer_out": layer_idx,
+        "hook_head_index_out": None,
+        "activation_fn_str": "relu",
+        "finetuning_scaling_factor": False,
+        "sae_lens_training_version": None,
+        "prepend_bos": False, # guess from the repo name
+        "dataset_path": "EleutherAI/rpj-v2-sample",
+        "context_size": 1024,
+        "dataset_trust_remote_code": True,
+        "apply_b_dec_to_input": False,
+        "normalize_activations": None,
+        "device": device,
+    }
+
+    if cfg_overrides is not None:
+        cfg_dict.update(cfg_overrides)
+
+    # Convert state dict tensors to float32 on target device and fix shapes
+    state_dict: dict[str, torch.Tensor] = {
+        "W_enc": state_dict_loaded["W_enc"].T.to(dtype=torch.float32),
+        "W_dec": state_dict_loaded["W_dec"].T.to(dtype=torch.float32),
+        "W_skip": state_dict_loaded["W_skip"].to(dtype=torch.float32),
+        "b_enc": state_dict_loaded["b_enc"].to(dtype=torch.float32),
+        "b_dec": state_dict_loaded["b_dec"].to(dtype=torch.float32),
+    }
+
+    # No sparsity tensor for skip transcoders
+    return cfg_dict, state_dict, None
+
+
+# Register loader & config getter placeholders
+NAMED_PRETRAINED_SAE_LOADERS["llama_skip_transcoder"] = (
+    llama_skip_transcoder_huggingface_loader
+)
+
+# Config getter uses the loader internally (loads weights briefly). This keeps
+# interface consistent without maintaining a separate function.
+
+
+def get_llama_skip_transcoder_config_from_hf(
+    repo_id: str,
+    folder_name: str,
+    device: str = "cpu",
+    force_download: bool = False,
+    cfg_overrides: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    cfg, _, _ = llama_skip_transcoder_huggingface_loader(
+        repo_id,
+        folder_name,
+        device=device,
+        force_download=force_download,
+        cfg_overrides=cfg_overrides,
+    )
+    return cfg
+
+
+NAMED_PRETRAINED_SAE_CONFIG_GETTERS["llama_skip_transcoder"] = (
+    get_llama_skip_transcoder_config_from_hf
+)
+
 NAMED_PRETRAINED_SAE_LOADERS: dict[str, PretrainedSaeHuggingfaceLoader] = {
     "sae_lens": sae_lens_huggingface_loader,
     "connor_rob_hook_z": connor_rob_hook_z_huggingface_loader,
@@ -1072,6 +1191,8 @@ NAMED_PRETRAINED_SAE_LOADERS: dict[str, PretrainedSaeHuggingfaceLoader] = {
     "llama_scope_r1_distill": llama_scope_r1_distill_sae_huggingface_loader,
     "dictionary_learning_1": dictionary_learning_sae_huggingface_loader_1,
     "deepseek_r1": deepseek_r1_sae_huggingface_loader,
+    "gemma_2_transcoder": gemma_2_transcoder_huggingface_loader,
+    "llama_skip_transcoder": llama_skip_transcoder_huggingface_loader,
 }
 
 
@@ -1083,12 +1204,6 @@ NAMED_PRETRAINED_SAE_CONFIG_GETTERS: dict[str, PretrainedSaeConfigHuggingfaceLoa
     "llama_scope_r1_distill": get_llama_scope_r1_distill_config_from_hf,
     "dictionary_learning_1": get_dictionary_learning_config_1_from_hf,
     "deepseek_r1": get_deepseek_r1_config_from_hf,
+    "gemma_2_transcoder": get_gemma_2_transcoder_config_from_hf,
+    "llama_skip_transcoder": get_llama_skip_transcoder_config_from_hf,
 }
-
-# Register in the global dicts so high-level helpers can find it.
-NAMED_PRETRAINED_SAE_LOADERS["gemma_2_transcoder"] = gemma_2_transcoder_huggingface_loader
-
-# For config only retrieval
-NAMED_PRETRAINED_SAE_CONFIG_GETTERS["gemma_2_transcoder"] = (
-    get_gemma_2_transcoder_config_from_hf
-)

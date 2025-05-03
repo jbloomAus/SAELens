@@ -143,8 +143,7 @@ class Transcoder(SAE):
         sae_id: str,
         device: str = "cpu",
         force_download: bool = False,
-        # Note: We don't accept a converter override here, as Transcoders
-        # rely on specific loader logic (like gemma_2_transcoder).
+        converter: Any | None = None,  # kept for API compatibility, ignored
     ) -> tuple["Transcoder", dict[str, Any], torch.Tensor | None]:
         """
         Load a pretrained Transcoder from the Hugging Face model hub.
@@ -182,10 +181,11 @@ class Transcoder(SAE):
 
         # Validate release and sae_id (same logic as SAE.from_pretrained)
         if release not in sae_directory:
-            if "/" not in release:
-                raise ValueError(
-                    f"Release {release} not found in pretrained SAEs directory, and is not a valid huggingface repo."
-                )
+            msg = (
+                "Release {release} not found in pretrained SAEs directory, "
+                "and is not a valid huggingface repo."
+            )
+            raise ValueError(msg.format(release=release))
         elif sae_id not in sae_directory[release].saes_map:
             valid_ids = list(sae_directory[release].saes_map.keys())
             if len(valid_ids) > 5:
@@ -194,14 +194,29 @@ class Transcoder(SAE):
                 str_valid_ids = str(valid_ids)
             # Add specific Transcoder hints if applicable (optional)
             raise ValueError(
-                f"ID {sae_id} not found in release {release}. Valid IDs are {str_valid_ids}."
+                (
+                    f"ID {sae_id} not found in release {release}. "
+                    f"Valid IDs are {str_valid_ids}."
+                )
             )
 
         conversion_loader_name = get_conversion_loader_name(release)
-        config_getter = NAMED_PRETRAINED_SAE_CONFIG_GETTERS[conversion_loader_name]
-        conversion_loader = NAMED_PRETRAINED_SAE_LOADERS[conversion_loader_name]
-        repo_id, folder_name = get_repo_id_and_folder_name(release, sae_id)
-        config_overrides = get_config_overrides(release, sae_id)
+        config_getter = (
+            NAMED_PRETRAINED_SAE_CONFIG_GETTERS[
+                conversion_loader_name
+            ]
+        )
+        conversion_loader = (
+            NAMED_PRETRAINED_SAE_LOADERS[
+                conversion_loader_name
+            ]
+        )
+        repo_id, folder_name = get_repo_id_and_folder_name(
+            release, sae_id
+        )
+        config_overrides = get_config_overrides(
+            release, sae_id
+        )
         config_overrides["device"] = device
 
         # 1. Get the config dictionary using the appropriate getter
@@ -224,7 +239,8 @@ class Transcoder(SAE):
             folder_name=folder_name,
             device=device,
             force_download=force_download,
-            cfg_overrides=cfg_dict, # Pass potentially modified cfg_dict back
+            # Pass potentially modified cfg_dict back
+            cfg_overrides=cfg_dict,
         )
 
         # 4. Instantiate the Transcoder
@@ -236,15 +252,94 @@ class Transcoder(SAE):
         if transcoder_cfg.normalize_activations == "expected_average_only_in":
             norm_scaling_factor = get_norm_scaling_factor(release, sae_id)
             if norm_scaling_factor is not None:
-                transcoder.fold_activation_norm_scaling_factor(norm_scaling_factor)
+                transcoder.fold_activation_norm_scaling_factor(
+                    norm_scaling_factor
+                )
                 # Update cfg_dict as well, as it's returned
                 cfg_dict["normalize_activations"] = "none"
             else:
-                import warnings # local import
-                warnings.warn(
-                    f"norm_scaling_factor not found for {release} and {sae_id}, "
-                    f"but normalize_activations is 'expected_average_only_in'. "
-                    f"Skipping normalization folding."
+                import warnings  # local import
+
+                msg = (
+                    "norm_scaling_factor not found for {rel} and {sid}, "
+                    "but normalize_activations is 'expected_average_only_in'. "
+                    "Skipping normalization folding."
+                ).format(
+                    rel=release,
+                    sid=sae_id,
                 )
+                warnings.warn(msg)
 
         return transcoder, cfg_dict, log_sparsities 
+
+
+# ---------------------------------------------------------------------------
+#                             SKIP  TRANSCODER
+# ---------------------------------------------------------------------------
+
+
+__all__.append("SkipTranscoder")
+
+
+class SkipTranscoder(Transcoder):
+    """Transcoder with an additional learnable *skip* connection.
+
+    Implements
+
+        f(x) = W_dec · JumpReLU(W_enc x + b_enc) + W_skip x + b_dec
+
+    as described in Gemma-Scope (Appx. B).  `W_skip` is initialised to
+    zeros, so the model starts as a constant function.
+    """
+
+    def __init__(
+        self,
+        cfg: TranscoderConfig,
+        subtract_bias: bool = True,
+        use_error_term: bool = False,
+    ):
+        # Store flag before the parent constructor sets up parameters
+        self.subtract_bias = subtract_bias
+
+        super().__init__(cfg, use_error_term=use_error_term)
+
+        # Skip connection weight (initialised to zeros)
+        self.W_skip = nn.Parameter(
+            torch.zeros(
+                self.cfg.d_in,
+                self.cfg.d_out,
+                dtype=self.dtype,
+                device=self.device,
+            )
+        )
+
+        # Extra hook for inspecting skip contribution
+        from transformer_lens.hook_points import HookPoint
+
+        self.hook_skip = HookPoint()
+
+    # ------------------------------------------------------------------
+    #                             Forward pass
+    # ------------------------------------------------------------------
+
+    def compute_skip(self, input_acts: torch.Tensor) -> torch.Tensor:
+        """Compute the linear skip term *x · W_skip^T*."""
+
+        return input_acts @ self.W_skip.T
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:  # type: ignore[override]
+        """Encode → decode → add skip connection."""
+
+        # Encode & decode (Transcoder logic)
+        feature_acts = self.encode(x)
+        decoded = self.decode(feature_acts)
+
+        # Compute skip term. Optionally subtract bias first (training uses it).
+        skip_input = x - self.b_dec if self.subtract_bias else x
+        skip = self.hook_skip(
+            self.compute_skip(skip_input)
+        )
+
+        return self.hook_sae_output(
+            decoded + skip
+        ) 
