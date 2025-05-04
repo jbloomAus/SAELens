@@ -11,7 +11,7 @@ from transformer_lens.hook_points import HookPoint
 from sae_lens.config import LanguageModelSAERunnerConfig
 from sae_lens.crosscoder_sae import CrosscoderSAE
 from sae_lens.sae import _disable_hooks
-from tests.helpers import ALL_ARCHITECTURES, build_sae_cfg
+from tests.helpers import ALL_ARCHITECTURES, build_multilayer_sae_cfg
 
 
 # Define a new fixture for different configurations
@@ -20,15 +20,17 @@ from tests.helpers import ALL_ARCHITECTURES, build_sae_cfg
         {
             "model_name": "tiny-stories-1M",
             "dataset_path": "roneneldan/TinyStories",
-            "hook_name": "blocks.{layer}.hook_resid_pre",
-            "hook_layers": [1,2,3],
+            "hook_name_template": "blocks.{layer}.hook_resid_pre",
+            "hook_layers": [0,1,2],
             "d_in": 64,
+            "normalize_sae_decoder": False,
+            "scale_sparsity_penalty_by_decoder_norm": True,
         },
         {
             "model_name": "tiny-stories-1M",
             "dataset_path": "roneneldan/TinyStories",
-            "hook_name": "blocks.{layer}.hook_resid_pre",
-            "hook_layers": [1,2,3],
+            "hook_name_template": "blocks.{layer}.hook_resid_pre",
+            "hook_layers": [0,1,2],
             "d_in": 64,
             "normalize_sae_decoder": False,
             "scale_sparsity_penalty_by_decoder_norm": True,
@@ -36,17 +38,21 @@ from tests.helpers import ALL_ARCHITECTURES, build_sae_cfg
         {
             "model_name": "tiny-stories-1M",
             "dataset_path": "apollo-research/roneneldan-TinyStories-tokenizer-gpt2",
-            "hook_name": "blocks.{layer}.hook_resid_pre",
-            "hook_layers": [1,2,3],
+            "hook_name_template": "blocks.{layer}.hook_resid_pre",
+            "hook_layers": [0,1,2],
             "d_in": 64,
+            "normalize_sae_decoder": False,
+            "scale_sparsity_penalty_by_decoder_norm": True,
         },
         # TODO(mkbehr): hook_z support
         # {
         #     "model_name": "tiny-stories-1M",
         #     "dataset_path": "roneneldan/TinyStories",
         #     "hook_name": "blocks.{layer}.attn.hook_z",
-        #     "hook_layers": [1,2,3],
+        #     "hook_layers": [0,1,2],
         #     "d_in": 64,
+        #     "normalize_sae_decoder": False,
+        #     "scale_sparsity_penalty_by_decoder_norm": True,
         # },
     ],
     ids=[
@@ -61,7 +67,7 @@ def cfg(request: pytest.FixtureRequest):
     Pytest fixture to create a mock instance of LanguageModelSAERunnerConfig.
     """
     params = request.param
-    return build_sae_cfg(**params)
+    return build_multilayer_sae_cfg(**params)
 
 
 def test_crosscoder_sae_init(cfg: LanguageModelSAERunnerConfig):
@@ -69,7 +75,7 @@ def test_crosscoder_sae_init(cfg: LanguageModelSAERunnerConfig):
 
     assert isinstance(sae, CrosscoderSAE)
 
-    n_layers = len(cfg.hook_layers)
+    n_layers = len(cfg.hook_names)
     assert sae.W_enc.shape == (n_layers, cfg.d_in, cfg.d_sae)
     assert sae.W_dec.shape == (cfg.d_sae, n_layers, cfg.d_in)
     assert sae.b_enc.shape == (cfg.d_sae,)
@@ -94,7 +100,7 @@ def test_crosscoder_sae_fold_w_dec_norm(cfg: LanguageModelSAERunnerConfig):
     assert sae2.W_dec.norm(dim=[-2,-1]).mean().item() == pytest.approx(1.0, abs=1e-6)
 
     # we expect activations of features to differ by W_dec norm weights.
-    activations = torch.randn(10, 4, len(cfg.hook_layers), cfg.d_in,
+    activations = torch.randn(10, 4, len(cfg.hook_names), cfg.d_in,
                               device=cfg.device)
     feature_activations_1 = sae.encode(activations)
     feature_activations_2 = sae2.encode(activations)
@@ -118,7 +124,7 @@ def test_crosscoder_sae_fold_w_dec_norm(cfg: LanguageModelSAERunnerConfig):
 def test_sae_fold_w_dec_norm_all_architectures(architecture: str):
     if architecture != "standard":
         pytest.xfail("TODO(mkbehr): support other architectures")
-    cfg = build_sae_cfg(architecture=architecture, hook_layers=[1,2,3])
+    cfg = build_multilayer_sae_cfg(architecture=architecture, hook_layers=[0,1,2])
     sae = CrosscoderSAE.from_dict(cfg.get_base_sae_cfg_dict())
     sae.turn_off_forward_pass_hook_z_reshaping()  # hook z reshaping not needed here.
 
@@ -134,7 +140,7 @@ def test_sae_fold_w_dec_norm_all_architectures(architecture: str):
     assert sae2.W_dec.norm(dim=[-2,-1]).mean().item() == pytest.approx(1.0, abs=1e-6)
 
     # we expect activations of features to differ by W_dec norm weights.
-    activations = torch.randn(10, 4, len(cfg.hook_layers), cfg.d_in, device=cfg.device)
+    activations = torch.randn(10, 4, len(cfg.hook_names), cfg.d_in, device=cfg.device)
     feature_activations_1 = sae.encode(activations)
     feature_activations_2 = sae2.encode(activations)
 
@@ -158,7 +164,7 @@ def test_sae_fold_norm_scaling_factor(cfg: LanguageModelSAERunnerConfig):
 
     sae = CrosscoderSAE.from_dict(cfg.get_base_sae_cfg_dict())
     # make sure b_dec and b_enc are not 0s
-    sae.b_dec.data = torch.randn(len(cfg.hook_layers), cfg.d_in, device=cfg.device)
+    sae.b_dec.data = torch.randn(len(cfg.hook_names), cfg.d_in, device=cfg.device)
     sae.b_enc.data = torch.randn(cfg.d_sae, device=cfg.device)  # type: ignore
     sae.turn_off_forward_pass_hook_z_reshaping()  # hook z reshaping not needed here.
 
@@ -171,7 +177,7 @@ def test_sae_fold_norm_scaling_factor(cfg: LanguageModelSAERunnerConfig):
 
     # we expect activations of features to differ by W_dec norm weights.
     # assume activations are already scaled
-    activations = torch.randn(10, 4, len(cfg.hook_layers), cfg.d_in, device=cfg.device)
+    activations = torch.randn(10, 4, len(cfg.hook_names), cfg.d_in, device=cfg.device)
     # we divide to get the unscale activations
     unscaled_activations = activations / norm_scaling_factor.unsqueeze(-1)
 
@@ -199,7 +205,7 @@ def test_sae_fold_norm_scaling_factor(cfg: LanguageModelSAERunnerConfig):
 def test_sae_fold_norm_scaling_factor_all_architectures(architecture: str):
     if architecture != "standard":
         pytest.xfail("TODO(mkbehr): support other architectures")
-    cfg = build_sae_cfg(architecture=architecture, hook_layers=[1,2,3])
+    cfg = build_multilayer_sae_cfg(architecture=architecture, hook_layers=[0,1,2])
     norm_scaling_factor = torch.Tensor([2.0, 3.0, 4.0])
 
     sae = CrosscoderSAE.from_dict(cfg.get_base_sae_cfg_dict())
@@ -216,7 +222,7 @@ def test_sae_fold_norm_scaling_factor_all_architectures(architecture: str):
 
     # we expect activations of features to differ by W_dec norm weights.
     # assume activations are already scaled
-    activations = torch.randn(10, 4, len(cfg.hook_layers), cfg.d_in, device=cfg.device)
+    activations = torch.randn(10, 4, len(cfg.hook_names), cfg.d_in, device=cfg.device)
     # we divide to get the unscale activations
     unscaled_activations = activations / norm_scaling_factor.unsqueeze(-1)
 
@@ -239,7 +245,7 @@ def test_sae_fold_norm_scaling_factor_all_architectures(architecture: str):
     torch.testing.assert_close(sae_out_1, sae_out_2)
 
 def test_sae_save_and_load_from_pretrained(tmp_path: Path) -> None:
-    cfg = build_sae_cfg(hook_layers=[1,2,3])
+    cfg = build_multilayer_sae_cfg(hook_layers=[0,1,2])
     model_path = str(tmp_path)
     sae = CrosscoderSAE.from_dict(cfg.get_base_sae_cfg_dict())
     sae_state_dict = sae.state_dict()
@@ -258,14 +264,14 @@ def test_sae_save_and_load_from_pretrained(tmp_path: Path) -> None:
             sae_loaded_state_dict[key],
         )
 
-    sae_in = torch.randn(10, len(cfg.hook_layers), cfg.d_in, device=cfg.device)
+    sae_in = torch.randn(10, len(cfg.hook_names), cfg.d_in, device=cfg.device)
     sae_out_1 = sae(sae_in)
     sae_out_2 = sae_loaded(sae_in)
     assert torch.allclose(sae_out_1, sae_out_2)
 
 @pytest.mark.xfail(reason="TODO(mkbehr): support other architectures")
 def test_sae_save_and_load_from_pretrained_gated(tmp_path: Path) -> None:
-    cfg = build_sae_cfg(architecture="gated", hook_layers=[1,2,3])
+    cfg = build_multilayer_sae_cfg(architecture="gated", hook_layers=[0,1,2])
     model_path = str(tmp_path)
     sae = CrosscoderSAE.from_dict(cfg.get_base_sae_cfg_dict())
     sae_state_dict = sae.state_dict()
@@ -284,13 +290,13 @@ def test_sae_save_and_load_from_pretrained_gated(tmp_path: Path) -> None:
             sae_loaded_state_dict[key],
         )
 
-    sae_in = torch.randn(10, len(cfg.hook_layers), cfg.d_in, device=cfg.device)
+    sae_in = torch.randn(10, len(cfg.hook_names), cfg.d_in, device=cfg.device)
     sae_out_1 = sae(sae_in)
     sae_out_2 = sae_loaded(sae_in)
     assert torch.allclose(sae_out_1, sae_out_2)
 
 def test_sae_save_and_load_from_pretrained_topk(tmp_path: Path) -> None:
-    cfg = build_sae_cfg(activation_fn_kwargs={"k": 30}, hook_layers=[1,2,3])
+    cfg = build_multilayer_sae_cfg(activation_fn_kwargs={"k": 30}, hook_layers=[0,1,2])
     model_path = str(tmp_path)
     sae = CrosscoderSAE.from_dict(cfg.get_base_sae_cfg_dict())
     sae_state_dict = sae.state_dict()
@@ -309,12 +315,12 @@ def test_sae_save_and_load_from_pretrained_topk(tmp_path: Path) -> None:
             sae_loaded_state_dict[key],
         )
 
-    sae_in = torch.randn(10, len(cfg.hook_layers), cfg.d_in, device=cfg.device)
+    sae_in = torch.randn(10, len(cfg.hook_names), cfg.d_in, device=cfg.device)
     sae_out_1 = sae(sae_in)
     sae_out_2 = sae_loaded(sae_in)
     assert torch.allclose(sae_out_1, sae_out_2)
 
 def test_sae_get_name_returns_correct_name_from_cfg_vals() -> None:
-    cfg = build_sae_cfg(model_name="test_model", hook_name="blocks.{layer}.test_hook_name", d_sae=128, hook_layers=[1,2,3])
+    cfg = build_multilayer_sae_cfg(model_name="test_model", hook_name_template="blocks.{layer}.test_hook_name", d_sae=128, hook_layers=[0,1,2])
     sae = CrosscoderSAE.from_dict(cfg.get_base_sae_cfg_dict())
-    assert sae.get_name() == "sae_test_model_blocks.{layer}.test_hook_name_layers1_2_3_128"
+    assert sae.get_name() == "sae_test_model_blocks.layers_0_through_2.test_hook_name_128"
