@@ -94,6 +94,10 @@ def make_new_sae(
         device="cpu",
         apply_b_dec_to_input=apply_b_dec_to_input,
         normalize_activations="none",
+        meta=SAEMetadata(
+            model_name="test_model",
+            hook_name=hook_name,
+        ),
     )
     return StandardSAE(new_cfg, use_error_term=use_error_term)
 
