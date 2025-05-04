@@ -30,7 +30,7 @@ from sae_lens.training.training_crosscoder_sae import (
     TrainingCrosscoderSAEConfig,
 )
 from sae_lens.training.training_sae import TrainingSAE
-from tests.helpers import TINYSTORIES_MODEL, build_sae_cfg, load_model_cached
+from tests.helpers import TINYSTORIES_MODEL, build_sae_cfg, build_multilayer_sae_cfg, load_model_cached
 
 TRAINER_EVAL_CONFIG = EvalConfig(
     n_eval_reconstruction_batches=10,
@@ -289,10 +289,10 @@ def test_run_empty_evals(
 
 # TODO(mkbehr): consider parameterizing
 def test_run_evals_crosscoder_training_sae(model):
-    cfg=build_sae_cfg(
+    cfg=build_multilayer_sae_cfg(
         model_name="tiny-stories-1M",
         dataset_path="roneneldan/TinyStories",
-        hook_name="blocks.{layer}.hook_resid_pre",
+        hook_name_template="blocks.{layer}.hook_resid_pre",
         hook_layers=[0, 1],
         d_in=64,
         normalize_sae_decoder=False,

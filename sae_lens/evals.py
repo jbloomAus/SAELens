@@ -378,7 +378,7 @@ def get_sparsity_and_variance_metrics(
     ignore_tokens: set[int | None] = set(),
     verbose: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    hook_names = sae.cfg.hook_names()
+    hook_names = sae.cfg.hook_names or [sae.cfg.hook_name]
     hook_head_index = sae.cfg.hook_head_index
 
     metric_dict = {}
@@ -449,8 +449,7 @@ def get_sparsity_and_variance_metrics(
         elif any(substring in hook_names[0] for substring in has_head_dim_key_substrings):
             # TODO(mkbehr) support head dimension for mutilayer evals
             original_act = cache[hook_names[0]].flatten(-2, -1)
-        elif len(hook_names) > 1:
-            # TODO(mkbehr): cleaner interface for multilayer evals
+        elif sae.cfg.hook_names:
             # TODO(mkbehr): support head dimension for mutilayer evals
             layerwise_activations = [
                 cache[hook_name] for hook_name in hook_names
