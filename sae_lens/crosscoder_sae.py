@@ -9,24 +9,12 @@ from sae_lens import SAEConfig, SAE
 
 @dataclass
 class CrosscoderSAEConfig(SAEConfig):
-    hook_layers: list[int] = list
-
-    def __post_init__(self):
-        # For purposes of running the model, hook_layer is the last
-        # affected layer.
-        self.hook_layer = max(self.hook_layers)
+    hook_names: list[int] = list
 
     def to_dict(self) -> dict[str, Any]:
         return super().to_dict() | {
-            "hook_layers": self.hook_layers,
+            "hook_names": self.hook_names,
         }
-
-    def hook_names(self) -> List[str]:
-        # TODO(mkbehr): better config setup than putting a magic
-        # string in the name
-        return [self.hook_name.format(layer=layer)
-                for layer in self.hook_layers]
-
 
 class CrosscoderSAE(SAE):
     """
@@ -50,17 +38,12 @@ class CrosscoderSAE(SAE):
         if self.hook_z_reshaping_mode:
             raise NotImplementedError("TODO(mkbehr): support hook_z")
 
-    def get_name(self):
-        # TODO(mkbehr): think about the correct name
-        layers = '_'.join([str(l) for l in self.cfg.hook_layers])
-        return f"sae_{self.cfg.model_name}_{self.cfg.hook_name}_layers{layers}_{self.cfg.d_sae}"
-
     @classmethod
     def from_dict(cls, config_dict: dict[str, Any]) -> "CrosscoderSAE":
         return cls(CrosscoderSAEConfig.from_dict(config_dict))
 
     def input_shape(self):
-        return (len(self.cfg.hook_layers), self.cfg.d_in)
+        return (len(self.cfg.hook_names), self.cfg.d_in)
 
 
     def encode_standard(
