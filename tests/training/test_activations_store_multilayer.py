@@ -6,37 +6,41 @@ from datasets import Dataset
 from transformer_lens import HookedTransformer
 
 from sae_lens.training.activations_store import ActivationsStore
-from tests.helpers import build_sae_cfg, load_model_cached
+from tests.helpers import build_sae_cfg, build_multilayer_sae_cfg, load_model_cached
 
 
 def test_activations_store_init_with_multiple_layers(ts_model: HookedTransformer):
     """Test initialization with a list of layers instead of a single layer."""
     # Initialize with multiple layers
-    cfg = build_sae_cfg(
-        hook_name="blocks.{layer}.hook_resid_pre",
+    cfg = build_multilayer_sae_cfg(
+        hook_name_template="blocks.{layer}.hook_resid_pre",
         hook_layers=[0, 1, 2]
     )
 
     activation_store = ActivationsStore.from_config(ts_model, cfg)
 
-    # Check that the hook layers are correctly stored
-    assert activation_store.hook_layers == [0, 1, 2]
+    assert activation_store.hook_names == [
+        "blocks.0.hook_resid_pre",
+        "blocks.1.hook_resid_pre",
+        "blocks.2.hook_resid_pre",
+    ]
 
-    # Verify backward compatibility - a single hook_layer should be converted to a list
-    cfg_single = build_sae_cfg(
-        hook_name="blocks.{layer}.hook_resid_pre",
-        hook_layer=1
+    cfg_single = build_multilayer_sae_cfg(
+        hook_name_template="blocks.{layer}.hook_resid_pre",
+        hook_layers=[1]
     )
 
     single_layer_store = ActivationsStore.from_config(ts_model, cfg_single)
-    assert single_layer_store.hook_layers == [1]
+    assert single_layer_store.hook_names == [
+        "blocks.1.hook_resid_pre",
+    ]
 
 
 def test_activations_store_get_activations_multiple_layers(ts_model: HookedTransformer):
     """Test that get_activations collects activations from all specified layers."""
     # Setup with multiple layers
-    cfg = build_sae_cfg(
-        hook_name="blocks.{layer}.hook_resid_pre",
+    cfg = build_multilayer_sae_cfg(
+        hook_name_template="blocks.{layer}.hook_resid_pre",
         hook_layers=[0, 1, 2],
         context_size=5
     )
@@ -50,10 +54,10 @@ def test_activations_store_get_activations_multiple_layers(ts_model: HookedTrans
 
     # Check shape: [batch_size, context_size, num_layers, d_in]
     assert activations.shape == (
-        activation_store.store_batch_size_prompts,
-        activation_store.context_size,
-        len(activation_store.hook_layers),
-        activation_store.d_in
+        cfg.store_batch_size_prompts,
+        cfg.context_size,
+        len(cfg.hook_names),
+        cfg.d_in
     )
 
     # Verify that layers are in the correct order
@@ -76,8 +80,8 @@ def test_activations_store_get_activations_multiple_layers(ts_model: HookedTrans
 def test_activations_store_get_buffer_multiple_layers(ts_model: HookedTransformer):
     """Test buffer handling with multiple layers."""
     # Setup with multiple layers
-    cfg = build_sae_cfg(
-        hook_name="blocks.{layer}.hook_resid_pre",
+    cfg = build_multilayer_sae_cfg(
+        hook_name_template="blocks.{layer}.hook_resid_pre",
         hook_layers=[0, 1, 2],
         context_size=5
     )
@@ -89,16 +93,16 @@ def test_activations_store_get_buffer_multiple_layers(ts_model: HookedTransforme
     buffer_activations, buffer_tokens = activation_store.get_buffer(n_batches_in_buffer=2)
 
     # Check shape: [(batch_size * context_size * n_batches), num_layers, d_in]
-    expected_size = activation_store.store_batch_size_prompts * activation_store.context_size * 2
-    assert buffer_activations.shape == (expected_size, len(activation_store.hook_layers), activation_store.d_in)
+    expected_size = cfg.store_batch_size_prompts * cfg.context_size * 2
+    assert buffer_activations.shape == (expected_size, len(cfg.hook_names), cfg.d_in)
     assert buffer_tokens.shape == (expected_size,)
 
 
 def test_activations_store_next_batch_multiple_layers(ts_model: HookedTransformer):
     """Test that next_batch returns correct batch shape with multiple layers."""
     # Setup with multiple layers
-    cfg = build_sae_cfg(
-        hook_name="blocks.{layer}.hook_resid_pre",
+    cfg = build_multilayer_sae_cfg(
+        hook_name_template="blocks.{layer}.hook_resid_pre",
         hook_layers=[0, 1, 2],
         context_size=5,
         train_batch_size_tokens=10
@@ -108,14 +112,14 @@ def test_activations_store_next_batch_multiple_layers(ts_model: HookedTransforme
     activation_store = ActivationsStore.from_config(ts_model, cfg, override_dataset=dataset)
 
     batch = activation_store.next_batch()
-    assert batch.shape == (10, len(cfg.hook_layers), activation_store.d_in)
+    assert batch.shape == (10, len(cfg.hook_names), activation_store.d_in)
 
 @pytest.mark.skip("TODO(mkbehr): does activation need to be handled differently?")
 def test_activations_store_normalization_multiple_layers(ts_model: HookedTransformer):
     """Test normalization when using multiple layers."""
     # Setup with normalization and multiple layers
-    cfg = build_sae_cfg(
-        hook_name="blocks.{layer}.hook_resid_pre",
+    cfg = build_multilayer_sae_cfg(
+        hook_name_template="blocks.{layer}.hook_resid_pre",
         hook_layers=[0, 1, 2],
         normalize_activations="expected_average_only_in",
         context_size=5
@@ -151,8 +155,8 @@ def test_backward_compatibility_single_layer(ts_model: HookedTransformer):
     single_store = ActivationsStore.from_config(ts_model, cfg_single, override_dataset=dataset)
 
     # Create a store with single layer (new behavior)
-    cfg_multi = build_sae_cfg(
-        hook_name="blocks.{layer}.hook_resid_pre",
+    cfg_multi = build_multilayer_sae_cfg(
+        hook_name_template="blocks.{layer}.hook_resid_pre",
         hook_layers=[0],
         context_size=5
     )
@@ -165,58 +169,5 @@ def test_backward_compatibility_single_layer(ts_model: HookedTransformer):
     batch_tokens_multi = multi_store.get_batch_tokens()
     activations_multi = multi_store.get_activations(batch_tokens_multi)
 
-    # Check that activations have the same shape and values
-    assert activations_single.shape == activations_multi.shape
-    # Run with deterministic seed to ensure tokens are the same
-    if torch.allclose(batch_tokens_single, batch_tokens_multi):
-        assert torch.allclose(activations_single, activations_multi, atol=1e-5)
-
-
-def test_mixed_hook_formats(ts_model: HookedTransformer):
-    """Test that both formatted and non-formatted hook names work with multiple layers."""
-    # Test with formatted hook name (with {layer})
-    cfg_formatted = build_sae_cfg(
-        hook_name="blocks.{layer}.hook_resid_pre",
-        hook_layers=[0, 1],
-        context_size=5
-    )
-
-    # Test with non-formatted hook name
-    cfg_non_formatted = build_sae_cfg(
-        hook_name="blocks.0.hook_resid_pre",  # Specific to layer 0
-        hook_layers=[0],  # Only layer 0 works with this hook
-        context_size=5
-    )
-
-    dataset = Dataset.from_list([{"text": "hello world"}] * 10)
-
-    # Both should initialize without errors
-    store_formatted = ActivationsStore.from_config(
-        ts_model, cfg_formatted, override_dataset=dataset
-    )
-    store_non_formatted = ActivationsStore.from_config(
-        ts_model, cfg_non_formatted, override_dataset=dataset
-    )
-
-    # Both should be able to get activations
-    activations_formatted = store_formatted.get_activations(
-        store_formatted.get_batch_tokens()
-    )
-    activations_non_formatted = store_non_formatted.get_activations(
-        store_non_formatted.get_batch_tokens()
-    )
-
-    # Check shapes
-    assert activations_formatted.shape == (
-        store_formatted.store_batch_size_prompts,
-        store_formatted.context_size,
-        len(store_formatted.hook_layers),
-        store_formatted.d_in
-    )
-
-    assert activations_non_formatted.shape == (
-        store_non_formatted.store_batch_size_prompts,
-        store_non_formatted.context_size,
-        len(store_non_formatted.hook_layers),
-        store_non_formatted.d_in
-    )
+    torch.testing.assert_close(batch_tokens_single, batch_tokens_multi)
+    torch.testing.assert_close(activations_single, activations_multi)
