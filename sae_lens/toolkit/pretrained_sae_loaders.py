@@ -1,7 +1,7 @@
 import json
 import re
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Protocol, TypeVar
 
 import numpy as np
 import torch
@@ -22,6 +22,10 @@ from sae_lens.toolkit.pretrained_saes_directory import (
     get_pretrained_saes_directory,
     get_repo_id_and_folder_name,
 )
+from sae_lens.sae import SAE
+from sae_lens.transcoder import SkipTranscoder, Transcoder
+
+ArtifactType = TypeVar("ArtifactType", bound=SAE)
 
 
 # loaders take in a release, sae_id, device, and whether to force download, and returns a tuple of config, state_dict, and log sparsity
@@ -1212,3 +1216,135 @@ NAMED_PRETRAINED_SAE_CONFIG_GETTERS: dict[str, PretrainedSaeConfigHuggingfaceLoa
     "gemma_2_transcoder": get_gemma_2_transcoder_config_from_hf,
     "llama_relu_skip_transcoder": get_llama_relu_skip_transcoder_config_from_hf,
 }
+
+
+# Helper function to get combined info including type
+def get_sae_info(release: str, sae_id: str) -> dict[str, Any]:
+    """
+    Retrieves combined configuration information for a specific SAE/Transcoder
+    from the predefined directory, including its type.
+
+    Args:
+        release: The release name.
+        sae_id: The ID of the SAE/Transcoder within the release.
+
+    Returns:
+        A dictionary containing the combined information.
+
+    Raises:
+        ValueError: If the release or ID is not found.
+    """
+    directory = get_pretrained_saes_directory()
+    if release not in directory:
+        # Attempt to find case-insensitive match
+        release_lower = release.lower()
+        matched_release = next(
+            (k for k in directory if k.lower() == release_lower), None
+        )
+        if matched_release:
+            release = matched_release
+        else:
+            raise ValueError(
+                f"Release '{release}' not found. Available releases: {list(directory.keys())}"
+            )
+
+    release_info = directory[release]
+
+    # Attempt case-insensitive match for sae_id as well
+    sae_id_lower = sae_id.lower()
+    sae_data = release_info.saes_map.get(sae_id)
+    if sae_data is None:
+        matched_sae_id = next(
+            (k for k in release_info.saes_map if k.lower() == sae_id_lower), None
+        )
+        if matched_sae_id:
+            sae_id = matched_sae_id
+            sae_data = release_info.saes_map[sae_id]
+        else:
+            # Provide helpful error message with valid IDs
+            valid_ids = list(release_info.saes_map.keys())
+            if len(valid_ids) > 5:
+                str_valid_ids = str(valid_ids[:5])[:-1] + ", ...]"
+            else:
+                str_valid_ids = str(valid_ids)
+            raise ValueError(
+                f"ID '{sae_id}' not found in release '{release}'. Valid IDs: {str_valid_ids}"
+            )
+
+    # Combine base release info with SAE-specific info
+    # Assuming Pydantic models, otherwise adapt attribute access/dict conversion
+    try:
+        combined_info = release_info.model_dump(exclude={'saes_map'})
+        combined_info.update(sae_data.model_dump())
+    except AttributeError: # Fallback for non-Pydantic objects
+        combined_info = release_info.__dict__.copy()
+        if 'saes_map' in combined_info: del combined_info['saes_map']
+        combined_info.update(sae_data.__dict__)
+
+
+    # Handle config_overrides merging
+    base_overrides = getattr(release_info, 'config_overrides', {}) or {}
+    sae_overrides = getattr(sae_data, 'config_overrides', {}) or {}
+    combined_info['config_overrides'] = {**base_overrides, **sae_overrides}
+
+    # Ensure 'type' is present, defaulting to 'sae'
+    combined_info.setdefault("type", "sae")
+
+    return combined_info
+
+
+# Unified loading function
+def load_artifact_from_pretrained(
+    release: str,
+    sae_id: str,
+    device: str = "cpu",
+    force_download: bool = False,
+    # Add other potential args like 'converter' if needed by specific classes
+    **kwargs: Any,
+) -> tuple[ArtifactType, dict[str, Any], torch.Tensor | None]:
+    """
+    Loads a pretrained artifact (SAE, Transcoder, SkipTranscoder) from the
+    Hugging Face model hub or local cache, automatically determining the
+    correct class based on the YAML configuration.
+
+    Args:
+        release: The release name.
+        sae_id: The id of the artifact to load.
+        device: The device to load the artifact on.
+        force_download: Whether to force download.
+        **kwargs: Additional keyword arguments passed down to the specific
+                  class's from_pretrained method (e.g., `converter`).
+
+    Returns:
+        A tuple containing the loaded artifact (typed generically),
+        its config dictionary, and the log sparsity tensor (or None).
+    """
+    # 1. Get YAML info including the type
+    artifact_info = get_sae_info(release, sae_id)
+    artifact_type = artifact_info.get("type", "sae")  # Default to 'sae'
+
+    # 2. Select the appropriate class
+    if artifact_type == "transcoder":
+        cls = Transcoder
+    elif artifact_type == "skip_transcoder":
+        cls = SkipTranscoder
+    elif artifact_type == "sae":
+        cls = SAE
+    else:
+        raise ValueError(
+            f"Unknown artifact type '{artifact_type}' specified in YAML "
+            f"for {release}/{sae_id}"
+        )
+
+    # 3. Call the class's from_pretrained method
+    # Pass kwargs directly, assuming from_pretrained handles them appropriately
+    artifact, cfg_dict, log_sparsity = cls.from_pretrained(
+        release=release,
+        sae_id=sae_id,
+        device=device,
+        force_download=force_download,
+        **kwargs,
+    )
+
+    # Cast the return type hint for clarity, though it's already generic
+    return artifact, cfg_dict, log_sparsity # type: ignore

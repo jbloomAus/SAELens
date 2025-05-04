@@ -81,6 +81,20 @@ class Transcoder(SAE):
             raise NotImplementedError(
                 "Error-term mode is not implemented for Transcoder yet."
             )
+
+        # === Runtime Type Check ===
+        if not hasattr(cfg, 'd_out') or not hasattr(cfg, 'hook_name_out'):
+            raise TypeError(
+                "Configuration object seems to be for a standard SAE "
+                "(missing 'd_out' or 'hook_name_out'). Please use "
+                "SAE.from_pretrained() or load_artifact_from_pretrained()."
+            )
+        # Check if trying to load SkipTranscoder with base Transcoder class
+        # (This relies on a hypothetical config flag or check in the loader)
+        # Example: if cfg.architecture == "skip_transcoder" and not isinstance(self, SkipTranscoder):
+        #    raise TypeError("Config indicates SkipTranscoder, use SkipTranscoder.from_pretrained()")
+        # ==========================
+
         # Perform the usual SAE initialisation first.
         super().__init__(cfg, use_error_term=False)
 
