@@ -22,9 +22,12 @@ from sae_lens.toolkit.pretrained_saes_directory import (
     get_pretrained_saes_directory,
     get_repo_id_and_folder_name,
 )
-from sae_lens.sae import SAE
 
-ArtifactType = TypeVar("ArtifactType", bound=SAE)
+# Note: We avoid importing SAE, Transcoder, etc. at module import time to
+# prevent circular import issues. These classes are imported lazily inside
+# `load_artifact_from_pretrained` where needed.
+
+ArtifactType = TypeVar("ArtifactType")
 
 
 # loaders take in a release, sae_id, device, and whether to force download, and returns a tuple of config, state_dict, and log sparsity
