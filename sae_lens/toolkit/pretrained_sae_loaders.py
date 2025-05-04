@@ -21,10 +21,8 @@ from sae_lens.toolkit.pretrained_saes_directory import (
     get_config_overrides,
     get_pretrained_saes_directory,
     get_repo_id_and_folder_name,
-    PretrainedSAEInfo,
 )
 from sae_lens.sae import SAE
-from sae_lens.transcoder import SkipTranscoder, Transcoder
 
 ArtifactType = TypeVar("ArtifactType", bound=SAE)
 
@@ -1273,15 +1271,16 @@ def get_sae_info(release: str, sae_id: str) -> dict[str, Any]:
             )
 
     # Combine base release info with SAE-specific info
-    # Assuming Pydantic models, otherwise adapt attribute access/dict conversion
-    try:
-        combined_info = release_info.model_dump(exclude={'saes_map'})
-        combined_info.update(sae_data.model_dump())
-    except AttributeError: # Fallback for non-Pydantic objects
-        combined_info = release_info.__dict__.copy()
-        if 'saes_map' in combined_info: del combined_info['saes_map']
+    # Use standard attribute access as these are not Pydantic models
+    combined_info = release_info.__dict__.copy()
+    # Avoid copying the large map of all SAEs for the release
+    if 'saes_map' in combined_info: del combined_info['saes_map']
+    # Update with sae_data attributes, handling potential non-dict types
+    if hasattr(sae_data, '__dict__'):
         combined_info.update(sae_data.__dict__)
-
+    elif isinstance(sae_data, str): # Handle cases where sae_data might just be a path string
+        combined_info['path'] = sae_data # Add path explicitly if it's just a string
+    # Add other potential types for sae_data if necessary
 
     # Handle config_overrides merging
     base_overrides = getattr(release_info, 'config_overrides', {}) or {}
