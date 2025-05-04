@@ -381,7 +381,7 @@ class LanguageModelSAERunnerConfig(Generic[T_TRAINING_SAE_CONFIG]):
         d = dict(self.__dict__)
 
         d["logger"] = asdict(self.logger)
-
+        d["sae"] = self.sae.to_dict()
         # Overwrite fields that might not be JSON-serializable
         d["dtype"] = str(self.dtype)
         d["device"] = str(self.device)

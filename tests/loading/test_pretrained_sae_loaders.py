@@ -31,6 +31,7 @@ def test_load_sae_config_from_huggingface():
             "neuronpedia_id": "gpt2-small/0-res-jb",
             "prepend_bos": True,
             "dataset_path": "Skylion007/openwebtext",
+            "sae_lens_training_version": None,
         },
         "architecture": "standard",
     }
@@ -60,6 +61,7 @@ def test_load_sae_config_from_huggingface_connor_rob_hook_z():
             "dataset_path": "Skylion007/openwebtext",
             "context_size": 128,
             "neuronpedia_id": "gpt2-small/0-att-kk",
+            "sae_lens_training_version": None,
         },
         "architecture": "standard",
     }
@@ -89,6 +91,7 @@ def test_load_sae_config_from_huggingface_gemma_2():
             "dataset_path": "monology/pile-uncopyrighted",
             "context_size": 1024,
             "neuronpedia_id": None,
+            "sae_lens_training_version": None,
         },
         "architecture": "jumprelu",
     }
@@ -118,6 +121,7 @@ def test_load_sae_config_from_huggingface_dictionary_learning_1():
             "dataset_path": "monology/pile-uncopyrighted",
             "context_size": 128,
             "neuronpedia_id": "gemma-2-2b/12-sae_bench-topk-res-65k__trainer_0_step_final",
+            "sae_lens_training_version": None,
         },
         "architecture": "standard",
     }

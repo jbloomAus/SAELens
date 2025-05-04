@@ -381,7 +381,7 @@ class SAETrainer(Generic[T_TRAINING_SAE, T_TRAINING_SAE_CONFIG]):
     @torch.no_grad()
     def _reset_running_sparsity_stats(self) -> None:
         self.act_freq_scores = torch.zeros(
-            self.cfg.d_sae,  # type: ignore
+            self.cfg.sae.d_sae,  # type: ignore
             device=self.cfg.device,
         )
         self.n_frac_active_tokens = 0

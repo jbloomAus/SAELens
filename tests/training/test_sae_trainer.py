@@ -175,7 +175,6 @@ def test_build_train_step_log_dict(
         losses={
             "mse_loss": torch.tensor(0.25),
             "l1_loss": torch.tensor(0.1),
-            "ghost_grad_loss": torch.tensor(0.15),
         },
     )
 
@@ -185,26 +184,22 @@ def test_build_train_step_log_dict(
     log_dict = trainer._build_train_step_log_dict(
         output=train_output, n_training_tokens=123
     )
-    assert log_dict == pytest.approx(
-        {
-            "losses/mse_loss": 0.25,
-            # l1 loss is scaled by l1_coefficient
-            "losses/l1_loss": train_output.losses["l1_loss"].item()
-            / trainer.cfg.sae.l1_coefficient,
-            "losses/raw_l1_loss": train_output.losses["l1_loss"].item(),
-            "losses/overall_loss": 0.5,
-            "losses/ghost_grad_loss": 0.15,
-            "metrics/explained_variance": 0.6875,
-            "metrics/explained_variance_legacy": 0.75,
-            "metrics/explained_variance_legacy_std": 0.25,
-            "metrics/l0": 2.0,
-            "sparsity/mean_passes_since_fired": trainer.n_forward_passes_since_fired.mean().item(),
-            "sparsity/dead_features": trainer.dead_neurons.sum().item(),
-            "details/current_learning_rate": 2e-4,
-            "details/current_l1_coefficient": trainer.cfg.sae.l1_coefficient,
-            "details/n_training_tokens": 123,
-        }
-    )
+    expected = {
+        "losses/mse_loss": 0.25,
+        "losses/l1_loss": train_output.losses["l1_loss"].item(),
+        "losses/overall_loss": 0.5,
+        "metrics/explained_variance": 0.6875,
+        "metrics/explained_variance_legacy": 0.75,
+        "metrics/explained_variance_legacy_std": 0.25,
+        "metrics/l0": 2.0,
+        "sparsity/mean_passes_since_fired": trainer.n_forward_passes_since_fired.mean().item(),
+        "sparsity/dead_features": trainer.dead_neurons.sum().item(),
+        "details/current_learning_rate": 2e-4,
+        "details/l1_coefficient": trainer.cfg.sae.l1_coefficient,
+        "details/n_training_tokens": 123,
+    }
+    assert log_dict.keys() == expected.keys()
+    assert log_dict == pytest.approx(expected)
 
 
 def test_train_sae_group_on_language_model__runs(
