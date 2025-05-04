@@ -14,6 +14,7 @@ from transformer_lens import HookedTransformer
 from sae_lens.config import LanguageModelSAERunnerConfig, PretokenizeRunnerConfig
 from sae_lens.load_model import load_model
 from sae_lens.pretokenize_runner import pretokenize_dataset
+from sae_lens.saes.standard_sae import StandardTrainingSAEConfig
 from sae_lens.training.activations_store import (
     ActivationsStore,
     _filter_buffer_acts,
@@ -86,14 +87,16 @@ def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
         "gpt2",
     ],
 )
-def cfg(request: pytest.FixtureRequest) -> LanguageModelSAERunnerConfig:
+def cfg(
+    request: pytest.FixtureRequest,
+) -> LanguageModelSAERunnerConfig[StandardTrainingSAEConfig]:
     # This function will be called with each parameter set
     params = request.param
     return build_runner_cfg(**params)
 
 
 @pytest.fixture
-def model(cfg: LanguageModelSAERunnerConfig):
+def model(cfg: LanguageModelSAERunnerConfig[StandardTrainingSAEConfig]):
     return load_model_cached(cfg.model_name)
 
 
@@ -101,7 +104,8 @@ def model(cfg: LanguageModelSAERunnerConfig):
 # so do lots of stuff in this one test to make each load of model / data count
 # poetry run py.test tests/training/test_activations_store.py -k 'test_activations_store__shapes_look_correct_with_real_models_and_datasets' --profile-svg -s
 def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
-    cfg: LanguageModelSAERunnerConfig, model: HookedTransformer
+    cfg: LanguageModelSAERunnerConfig[StandardTrainingSAEConfig],
+    model: HookedTransformer,
 ):
     # --- first, test initialisation ---
 
@@ -113,7 +117,7 @@ def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
 
     store = ActivationsStore.from_config(model, cfg)
 
-    if cfg.normalize_activations == "expected_average_only_in":
+    if cfg.sae.normalize_activations == "expected_average_only_in":
         store.estimated_norm_scaling_factor = 10.399
 
     assert store.model == model
@@ -124,7 +128,7 @@ def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
     expected_size = (
         cfg.store_batch_size_prompts * cfg.context_size * cfg.n_batches_in_buffer // 2
     )
-    assert store.storage_buffer.shape[1:] == (1, cfg.d_in)
+    assert store.storage_buffer.shape[1:] == (1, cfg.sae.d_in)
     # if exluding special tokens, the buffer will be smaller
     assert store.storage_buffer.shape[0] <= expected_size
 
@@ -169,7 +173,7 @@ def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
     assert tok_buffer.device == store.device
 
     # check the buffer norm
-    if cfg.normalize_activations == "expected_average_only_in":
+    if cfg.sae.normalize_activations == "expected_average_only_in":
         assert torch.allclose(
             act_buffer.norm(dim=-1),
             np.sqrt(store.d_in) * torch.ones_like(act_buffer.norm(dim=-1)),
@@ -332,7 +336,8 @@ def test_activations_store_moves_with_model(ts_model: HookedTransformer):
 
 
 def test_activations_store_estimate_norm_scaling_factor(
-    cfg: LanguageModelSAERunnerConfig, model: HookedTransformer
+    cfg: LanguageModelSAERunnerConfig[StandardTrainingSAEConfig],
+    model: HookedTransformer,
 ):
     # --- first, test initialisation ---
 
@@ -581,7 +586,7 @@ def test_activations_store_respects_position_offsets(ts_model: HookedTransformer
     activations = activation_store.get_activations(batch)
 
     assert batch.shape == (1, 10)  # Full context size
-    assert activations.shape == (1, 6, 1, cfg.d_in)  # Only 6 positions (2 to 7)
+    assert activations.shape == (1, 6, 1, cfg.sae.d_in)  # Only 6 positions (2 to 7)
 
 
 @pytest.mark.parametrize(

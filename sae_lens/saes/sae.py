@@ -26,7 +26,7 @@ from torch import nn
 from transformer_lens.hook_points import HookedRootModule, HookPoint
 from typing_extensions import deprecated, overload
 
-from sae_lens import logger
+from sae_lens import __version__, logger
 from sae_lens.constants import (
     DTYPE_MAP,
     SAE_CFG_FILENAME,
@@ -75,6 +75,8 @@ class SAEMetadata:
     context_size: int | None = None
     seqpos_slice: tuple[int | None, ...] | None = None
     dataset_path: str | None = None
+    sae_lens_version: str = field(default_factory=lambda: __version__)
+    sae_lens_training_version: str = field(default_factory=lambda: __version__)
 
 
 @dataclass
@@ -87,7 +89,7 @@ class SAEConfig(ABC):
     device: str = "cpu"
     apply_b_dec_to_input: bool = True
     normalize_activations: Literal[
-        "none", "expected_average_only_in", "constant_norm_rescale"
+        "none", "expected_average_only_in", "constant_norm_rescale", "layer_norm"
     ] = "none"  # none, expected_average_only_in (Anthropic April Update), constant_norm_rescale (Anthropic Feb Update)
     reshape_activations: Literal["none", "hook_z"] = "none"
     meta: SAEMetadata = field(default_factory=SAEMetadata)
@@ -114,6 +116,17 @@ class SAEConfig(ABC):
                 f"SAE config class {cls} does not match dict config class {type(res)}"
             )
         return res
+
+    def __post_init__(self):
+        if self.normalize_activations not in [
+            "none",
+            "expected_average_only_in",
+            "constant_norm_rescale",
+            "layer_norm",
+        ]:
+            raise ValueError(
+                f"normalize_activations must be none, expected_average_only_in, or constant_norm_rescale. Got {self.normalize_activations}"
+            )
 
 
 @dataclass

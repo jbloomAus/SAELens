@@ -100,7 +100,7 @@ def test_train_step__reduces_loss_when_called_repeatedly_on_same_acts(
     )  # should increment each step by batch_size (5*4)
 
 
-def test_train_step__output_looks_reasonable(trainer: SAETrainer) -> None:
+def test_train_step__output_looks_reasonable(trainer: SAETrainer[Any, Any]) -> None:
     layer_acts = trainer.activations_store.next_batch()
 
     output = trainer._train_step(

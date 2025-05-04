@@ -65,15 +65,6 @@ def _replace_nan(list: list[float]) -> list[float]:
         },
         {
             "model_name": "tiny-stories-1M",
-            "dataset_path": "roneneldan/TinyStories",
-            "hook_name": "blocks.1.hook_resid_pre",
-            "hook_layer": 1,
-            "d_in": 64,
-            "normalize_sae_decoder": False,
-            "scale_sparsity_penalty_by_decoder_norm": True,
-        },
-        {
-            "model_name": "tiny-stories-1M",
             "dataset_path": "apollo-research/roneneldan-TinyStories-tokenizer-gpt2",
             "hook_name": "blocks.1.hook_resid_pre",
             "hook_layer": 1,
@@ -104,7 +95,6 @@ def _replace_nan(list: list[float]) -> list[float]:
     ],
     ids=[
         "tiny-stories-1M-resid-pre",
-        "tiny-stories-1M-resid-pre-L1-W-dec-Norm",
         "tiny-stories-1M-resid-pre-pretokenized",
         "tiny-stories-1M-hook-z",
         "tiny-stories-1M-hook-q",

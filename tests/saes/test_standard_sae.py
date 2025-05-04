@@ -386,13 +386,13 @@ def test_SparseAutoencoder_from_pretrained_can_load_arbitrary_saes_from_huggingf
             state_dict[k] = f.get_tensor(k)
 
     assert isinstance(sae, SAE)
-    assert sae.cfg.model_name == "gpt2-small"
-    assert sae.cfg.hook_name == "blocks.0.hook_resid_pre"
+    assert sae.cfg.meta.model_name == "gpt2-small"
+    assert sae.cfg.meta.hook_name == "blocks.0.hook_resid_pre"
 
     assert isinstance(original_cfg_dict, dict)
 
     assert isinstance(sparsity, torch.Tensor)
-    assert sparsity.shape == (sae.cfg.sae.d_sae,)
+    assert sparsity.shape == (sae.cfg.d_sae,)
     assert sparsity.max() < 0.0
 
     for k in sae.state_dict():

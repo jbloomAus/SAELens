@@ -17,6 +17,7 @@ from datasets import (
 )
 
 from sae_lens import __version__, logger
+from sae_lens.constants import DTYPE_MAP
 from sae_lens.saes.sae import TrainingSAEConfig  # Import the base class
 
 if TYPE_CHECKING:
@@ -209,7 +210,6 @@ class LanguageModelSAERunnerConfig(Generic[T_TRAINING_SAE_CONFIG]):
     n_batches_in_buffer: int = 20
     training_tokens: int = 2_000_000
     store_batch_size_prompts: int = 32
-    normalize_activations: str = "none"  # none, expected_average_only_in (Anthropic April Update), constant_norm_rescale (Anthropic Feb Update)
     seqpos_slice: tuple[int | None, ...] = (None,)
 
     # Misc
@@ -287,16 +287,6 @@ class LanguageModelSAERunnerConfig(Generic[T_TRAINING_SAE_CONFIG]):
                 self.model_from_pretrained_kwargs = {"center_writing_weights": False}
             else:
                 self.model_from_pretrained_kwargs = {}
-
-        if self.normalize_activations not in [
-            "none",
-            "expected_average_only_in",
-            "constant_norm_rescale",
-            "layer_norm",
-        ]:
-            raise ValueError(
-                f"normalize_activations must be none, layer_norm, expected_average_only_in, or constant_norm_rescale. Got {self.normalize_activations}"
-            )
 
         if self.act_store_device == "with_model":
             self.act_store_device = self.device

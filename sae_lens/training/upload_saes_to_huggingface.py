@@ -2,7 +2,7 @@ import io
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from textwrap import dedent
-from typing import Iterable
+from typing import Any, Iterable
 
 from huggingface_hub import HfApi, create_repo, get_hf_file_metadata, hf_hub_url
 from huggingface_hub.utils import EntryNotFoundError, RepositoryNotFoundError
@@ -18,7 +18,7 @@ from sae_lens.saes.sae import SAE
 
 
 def upload_saes_to_huggingface(
-    saes_dict: dict[str, SAE | Path | str],
+    saes_dict: dict[str, SAE[Any] | Path | str],
     hf_repo_id: str,
     hf_revision: str = "main",
     show_progress: bool = True,
@@ -123,7 +123,7 @@ def _upload_sae(api: HfApi, sae_path: Path, repo_id: str, sae_id: str, revision:
     )
 
 
-def _build_sae_path(sae_ref: SAE | Path | str, tmp_dir: str) -> Path:
+def _build_sae_path(sae_ref: SAE[Any] | Path | str, tmp_dir: str) -> Path:
     if isinstance(sae_ref, SAE):
         sae_ref.save_model(tmp_dir)
         return Path(tmp_dir)

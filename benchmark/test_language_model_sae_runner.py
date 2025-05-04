@@ -74,7 +74,6 @@ def test_language_model_sae_runner():
         # Buffer details won't matter in we cache / shuffle our activations ahead of time.
         n_batches_in_buffer=64,
         store_batch_size_prompts=16,
-        normalize_activations="none",
         # Feature Store
         feature_sampling_window=1000,
         dead_feature_window=1000,
@@ -161,7 +160,6 @@ def test_language_model_sae_runner_gated():
         # Buffer details won't matter in we cache / shuffle our activations ahead of time.
         n_batches_in_buffer=64,
         store_batch_size_prompts=16,
-        normalize_activations="none",
         # Feature Store
         feature_sampling_window=1000,
         dead_feature_window=1000,
@@ -296,6 +294,7 @@ def test_language_model_sae_runner_othellogpt():
             l1_coefficient=0.001,
             lp_norm=1.0,
             l1_warm_up_steps=l1_warmup_steps,
+            normalize_activations="expected_average_only_in",
         ),
         # Data Generating Function (Model + Training Distibuion)
         model_name="othello-gpt",  # othello-gpt model
@@ -304,7 +303,6 @@ def test_language_model_sae_runner_othellogpt():
         dataset_path="taufeeque/othellogpt",  # this is a tokenized language dataset on Huggingface for OthelloGPT games.
         is_dataset_tokenized=True,
         streaming=True,  # we could pre-download the token dataset if it was small.
-        normalize_activations="expected_average_only_in",
         # Training Parameters
         lr=0.00003,  # lower the better, we'll go fairly high to speed up the tutorial.
         adam_beta1=0.9,  # adam params (default, but once upon a time we experimented with these.)

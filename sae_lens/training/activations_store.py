@@ -137,7 +137,7 @@ class ActivationsStore:
             store_batch_size_prompts=cfg.store_batch_size_prompts,
             train_batch_size_tokens=cfg.train_batch_size_tokens,
             prepend_bos=cfg.prepend_bos,
-            normalize_activations=cfg.normalize_activations,
+            normalize_activations=cfg.sae.normalize_activations,
             device=device,
             dtype=cfg.dtype,
             cached_activations_path=cached_activations_path,
@@ -163,6 +163,16 @@ class ActivationsStore:
         total_tokens: int = 10**9,
         device: str = "cpu",
     ) -> ActivationsStore:
+        if sae.cfg.meta.hook_name is None:
+            raise ValueError("hook_name is required")
+        if sae.cfg.meta.hook_layer is None:
+            raise ValueError("hook_layer is required")
+        if sae.cfg.meta.hook_head_index is None:
+            raise ValueError("hook_head_index is required")
+        if sae.cfg.meta.context_size is None:
+            raise ValueError("context_size is required")
+        if sae.cfg.meta.prepend_bos is None:
+            raise ValueError("prepend_bos is required")
         return cls(
             model=model,
             dataset=dataset,

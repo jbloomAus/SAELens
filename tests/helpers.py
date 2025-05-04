@@ -128,7 +128,6 @@ def _get_default_runner_config() -> LanguageModelSAERunnerConfigDict:
         "n_batches_in_buffer": 2,
         "training_tokens": 1_000_000,
         "store_batch_size_prompts": 4,
-        "normalize_activations": "none",
         "seqpos_slice": (None,),
         "device": "cpu",
         "act_store_device": "cpu",

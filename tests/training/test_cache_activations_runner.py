@@ -149,7 +149,6 @@ def test_activations_store_refreshes_dataset_when_it_runs_out(tmp_path: Path):
         train_batch_size_tokens=8,
         n_batches_in_buffer=n_batches_in_buffer,
         store_batch_size_prompts=store_batch_size,
-        normalize_activations="none",
         device="cpu",
         seed=42,
         dtype="float16",

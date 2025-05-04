@@ -177,9 +177,11 @@ def get_sae_lens_config_from_disk(
 
 
 def handle_config_defaulting(cfg_dict: dict[str, Any]) -> dict[str, Any]:
-    if "sae_lens_version" not in cfg_dict or Version(
-        cfg_dict["sae_lens_version"]
-    ) < Version("6.0"):
+    sae_lens_version = cfg_dict.get("sae_lens_version")
+    if not sae_lens_version and "meta" in cfg_dict:
+        sae_lens_version = cfg_dict["meta"].get("sae_lens_version")
+
+    if sae_lens_version and Version(sae_lens_version) < Version("6.0"):
         cfg_dict = handle_pre_6_0_config(cfg_dict)
     return cfg_dict
 
