@@ -13,7 +13,7 @@ from sae_lens.training.training_crosscoder_sae import (
     TrainingCrosscoderSAE,
     TrainingCrosscoderSAEConfig
 )
-from tests.helpers import build_sae_cfg
+from tests.helpers import build_multilayer_sae_cfg
 
 
 # Define a new fixture for different configurations
@@ -23,7 +23,7 @@ from tests.helpers import build_sae_cfg
             "model_name": "tiny-stories-1M",
             "dataset_path": "roneneldan/TinyStories",
             "hook_name": "blocks.{layer}.hook_resid_pre",
-            "hook_layers": [1,2,3],
+            "hook_layers": [0,1,2],
             "d_in": 64,
             "normalize_sae_decoder": False,
             "scale_sparsity_penalty_by_decoder_norm": True,
@@ -32,7 +32,7 @@ from tests.helpers import build_sae_cfg
             "model_name": "tiny-stories-1M",
             "dataset_path": "apollo-research/roneneldan-TinyStories-tokenizer-gpt2",
             "hook_name": "blocks.{layer}.hook_resid_pre",
-            "hook_layers": [1,2,3],
+            "hook_layers": [0,1,2],
             "d_in": 64,
             "normalize_sae_decoder": False,
             "scale_sparsity_penalty_by_decoder_norm": True,
@@ -41,7 +41,7 @@ from tests.helpers import build_sae_cfg
             "model_name": "tiny-stories-1M",
             "dataset_path": "apollo-research/roneneldan-TinyStories-tokenizer-gpt2",
             "hook_name": "blocks.{layer}.hook_resid_pre",
-            "hook_layers": [1,2,3],
+            "hook_layers": [0,1,2],
             "d_in": 64,
             "normalize_activations": "constant_norm_rescale",
             "normalize_sae_decoder": False,
@@ -59,7 +59,7 @@ def cfg(request: pytest.FixtureRequest):
     Pytest fixture to create a mock instance of LanguageModelSAERunnerConfig.
     """
     params = request.param
-    return build_sae_cfg(**params)
+    return build_multilayer_sae_cfg(**params)
 
 
 @pytest.fixture
@@ -103,7 +103,7 @@ def trainer(
 def test_sae_forward(training_crosscoder_sae: TrainingCrosscoderSAE):
     batch_size = 32
     d_in = training_crosscoder_sae.cfg.d_in
-    n_layers = len(training_crosscoder_sae.cfg.hook_layers)
+    n_layers = len(training_crosscoder_sae.cfg.hook_names)
     d_sae = training_crosscoder_sae.cfg.d_sae
 
     x = torch.randn(batch_size, n_layers, d_in)
@@ -159,7 +159,7 @@ def test_sae_forward_with_mse_loss_norm(
 
     batch_size = 32
     d_in = training_crosscoder_sae.cfg.d_in
-    n_layers = len(training_crosscoder_sae.cfg.hook_layers)
+    n_layers = len(training_crosscoder_sae.cfg.hook_names)
     d_sae = training_crosscoder_sae.cfg.d_sae
 
     x = torch.randn(batch_size, n_layers, d_in)
@@ -212,7 +212,7 @@ def test_sae_forward_with_mse_loss_norm(
 
 
 def test_SparseAutoencoder_forward_can_add_noise_to_hidden_pre() -> None:
-    clean_cfg = build_sae_cfg(
+    clean_cfg = build_multilayer_sae_cfg(
         d_in=2,
         d_sae=4,
         noise_scale=0,
@@ -220,7 +220,7 @@ def test_SparseAutoencoder_forward_can_add_noise_to_hidden_pre() -> None:
         normalize_sae_decoder=False,
         scale_sparsity_penalty_by_decoder_norm=True
     )
-    noisy_cfg = build_sae_cfg(
+    noisy_cfg = build_multilayer_sae_cfg(
         d_in=2,
         d_sae=4,
         noise_scale=100,

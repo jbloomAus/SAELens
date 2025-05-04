@@ -18,16 +18,16 @@ from sae_lens.training.sae_trainer import (
     _update_sae_lens_training_version,
 )
 from sae_lens.training.training_crosscoder_sae import TrainingCrosscoderSAE
-from tests.helpers import TINYSTORIES_MODEL, build_sae_cfg, load_model_cached
+from tests.helpers import TINYSTORIES_MODEL, build_multilayer_sae_cfg, load_model_cached
 
 
 @pytest.fixture
 def cfg():
-    return build_sae_cfg(
+    return build_multilayer_sae_cfg(
         d_in=64,
         d_sae=128,
-        hook_name="blocks.{layer}.hook_mlp_out",
-        hook_layers=[1,2,3],
+        hook_name_template="blocks.{layer}.hook_mlp_out",
+        hook_layers=[0,1,2],
         normalize_sae_decoder=False,
         scale_sparsity_penalty_by_decoder_norm=True,
     )
@@ -206,12 +206,12 @@ def test_train_sae_group_on_language_model__runs(
     tmp_path: Path,
 ) -> None:
     checkpoint_dir = tmp_path / "checkpoint"
-    cfg = build_sae_cfg(
+    cfg = build_multilayer_sae_cfg(
         checkpoint_path=str(checkpoint_dir),
         training_tokens=20,
         context_size=8,
-        hook_name="blocks.{layer}.hook_mlp_out",
-        hook_layers=[1,2,3],
+        hook_name_template="blocks.{layer}.hook_mlp_out",
+        hook_layers=[0,1,2],
         normalize_sae_decoder=False,
         scale_sparsity_penalty_by_decoder_norm=True,
     )

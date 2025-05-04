@@ -45,8 +45,8 @@ class TrainingCrosscoderSAEConfig(CrosscoderSAEConfig, TrainingSAEConfig):
             device=cfg.device,
             model_name=cfg.model_name,
             hook_name=cfg.hook_name,
+            hook_names=cfg.hook_names,
             hook_layer=cfg.hook_layer,
-            hook_layers=cfg.hook_layers,
             hook_head_index=cfg.hook_head_index,
             activation_fn_str=cfg.activation_fn,
             activation_fn_kwargs=cfg.activation_fn_kwargs,
@@ -87,7 +87,7 @@ class TrainingCrosscoderSAEConfig(CrosscoderSAEConfig, TrainingSAEConfig):
 
     def get_base_sae_cfg_dict(self) -> dict[str, Any]:
         return (TrainingSAEConfig.get_base_sae_cfg_dict(self)
-                | { "hook_layers": self.hook_layers })
+                | { "hook_names": self.hook_names })
 
 class TrainingCrosscoderSAE(CrosscoderSAE, TrainingSAE):
     # TODO(mkbehr) future implementation
