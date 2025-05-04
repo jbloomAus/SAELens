@@ -2,6 +2,43 @@
 
 
 
+## v6.0.0-rc.1 (2025-04-26)
+
+### Breaking
+
+* feat: refactor config
+
+BREAKING CHANGE: refactor config options ([`ccd0d54`](https://github.com/jbloomAus/SAELens/commit/ccd0d5415340d099aaccad29c4073713fe5e57ad))
+
+### Chore
+
+* chore: fixing incorrect citation format (#464) ([`be0e55f`](https://github.com/jbloomAus/SAELens/commit/be0e55f69d360a0100027de1cf3f1a1606cf5552))
+
+### Unknown
+
+* updating semantic release config to hopefully run alpha/beta builds ([`5a8e667`](https://github.com/jbloomAus/SAELens/commit/5a8e667be270784eaf06586d70faf2e0d27c78c5))
+
+* updating workflow to run on pushes to alpha and beta ([`cce904c`](https://github.com/jbloomAus/SAELens/commit/cce904c97d71d6ad635319933ef8c34655322c5a))
+
+* Merge branch &#39;main&#39; into refactor-sae-classes ([`411bcc0`](https://github.com/jbloomAus/SAELens/commit/411bcc0e8c23026941bf317256f047e61c95308d))
+
+* allow running deploy on alpha and beta branches
+
+BREAKING CHANGE: incompatible config structure ([`2b9a28a`](https://github.com/jbloomAus/SAELens/commit/2b9a28a8a97f50e7fc3ed9ee4830dd8d492fbc61))
+
+* move tests around ([`69d1dbe`](https://github.com/jbloomAus/SAELens/commit/69d1dbe2260f067becae85f35c9201015a22b292))
+
+* Merge branch &#39;main&#39; into refactor-sae-classes ([`d8d15c7`](https://github.com/jbloomAus/SAELens/commit/d8d15c71e33ad19e3ab8cc094234b8aa7129a8b8))
+
+* fixing type errors ([`a879768`](https://github.com/jbloomAus/SAELens/commit/a879768148f5a662121444734a3659c7d8beb53d))
+
+* removing proxy classes ([`5d9671b`](https://github.com/jbloomAus/SAELens/commit/5d9671b7ba078c04485149f91ec8100dc80a7126))
+
+* getting tests passing again ([`abad316`](https://github.com/jbloomAus/SAELens/commit/abad316eb5b508aab0132cc544be7eeae84b6b05))
+
+* fixing equivalence tests ([`bf597e8`](https://github.com/jbloomAus/SAELens/commit/bf597e8058c3a2ab9f89a0de2b4b5dd63b64ac81))
+
+
 ## v5.9.1 (2025-04-16)
 
 ### Chore
@@ -15,6 +52,22 @@
 * replaces clone of sparsify with eai-sparsify-package
 
 * bumps version ([`67c290c`](https://github.com/jbloomAus/SAELens/commit/67c290cae2581c5948baa3a926fb2181a66026ef))
+
+### Unknown
+
+* Merge branch &#39;main&#39; into refactor-sae-classes ([`8cdb111`](https://github.com/jbloomAus/SAELens/commit/8cdb111aa9b1dad4bc984f43d59a40625131da15))
+
+* extracts logging fields to class (#444)
+
+* extracts logging fields to class
+
+* applies make format
+
+* fixes comment
+
+* changes default value for wandb_project ([`a51d77b`](https://github.com/jbloomAus/SAELens/commit/a51d77b33fc28f7f1d639e65285f5e9682ef58d0))
+
+* importing changes to topk SAE aux loss from #432 ([`2be6a1d`](https://github.com/jbloomAus/SAELens/commit/2be6a1d163f3fcf045ff010e76b297b11e095436))
 
 
 ## v5.9.0 (2025-04-11)
@@ -217,6 +270,22 @@ Co-authored-by: Keltin Grimes &lt;kgrimes@sei.cmu.edu&gt; ([`1dc4ef6`](https://g
 
 Co-authored-by: David Chanin &lt;chanindav@gmail.com&gt; ([`40a5924`](https://github.com/jbloomAus/SAELens/commit/40a59240f1999c716415d81fccc891170ef19d03))
 
+### Unknown
+
+* merged from refactor-pr ([`1a4a0dc`](https://github.com/jbloomAus/SAELens/commit/1a4a0dce70859262d3c046bca950911f86874b75))
+
+* formatting fixes ([`0466597`](https://github.com/jbloomAus/SAELens/commit/046659768fa9176e2d0e8de62bdd2a770374f726))
+
+* HookedSAETransformer now passing tests ([`a9db178`](https://github.com/jbloomAus/SAELens/commit/a9db178c8af06d592db20804819da9dce419c984))
+
+* All tests passing with restructured SAE classes ([`99d4343`](https://github.com/jbloomAus/SAELens/commit/99d4343a38cb0f933d7f6c8fb8ee86ed5b150319))
+
+* SAEs passing most tests ([`9baaf9c`](https://github.com/jbloomAus/SAELens/commit/9baaf9c38cd771cdb8c4a75b1debe6e584c4e184))
+
+* training SAE wrapper now passing tests ([`0a02f8c`](https://github.com/jbloomAus/SAELens/commit/0a02f8ca38a1991ad0094a26f5d3950b038a3cc0))
+
+* working, tested equivalents to old sae types ([`ea1ab83`](https://github.com/jbloomAus/SAELens/commit/ea1ab83c6fa9a6a5ffdec476f171594c079137fc))
+
 
 ## v5.5.2 (2025-02-25)
 
@@ -299,6 +368,10 @@ Supports llama scope r1 distill SAEs ([`cf754b3`](https://github.com/jbloomAus/S
 
 * Update config.py ([`a5ac0f0`](https://github.com/jbloomAus/SAELens/commit/a5ac0f0ea5fa9d5d1895956e5ba1358fdd65bc8a))
 
+### Unknown
+
+* Working implementation of separated standard SAE ([`b931627`](https://github.com/jbloomAus/SAELens/commit/b9316275750ac261d6bfcc8c58f6bd4cb21b378a))
+
 
 ## v5.4.1 (2025-02-03)
 
@@ -317,6 +390,16 @@ Supports llama scope r1 distill SAEs ([`cf754b3`](https://github.com/jbloomAus/S
 ### Fix
 
 * fix: ensure flattened_mask is on correct device in evals (#418) ([`38370d4`](https://github.com/jbloomAus/SAELens/commit/38370d41c02507d84f95fa58e5b070d46fb88d7f))
+
+### Unknown
+
+* First draft of base and standard SAEs ([`ef58e84`](https://github.com/jbloomAus/SAELens/commit/ef58e846962fb92d76f6d4897035e2a4524b2cdf))
+
+* fixing toolkit paths ([`5dd7b84`](https://github.com/jbloomAus/SAELens/commit/5dd7b84a9f1c1878889e5f8e363979fbbfd432c6))
+
+* Merge branch &#39;main&#39; into refactor-pr ([`42a702f`](https://github.com/jbloomAus/SAELens/commit/42a702fc98255d35ed5cdc86536dbbdb9ea5009d))
+
+* Reorganized folders ([`8a2cbae`](https://github.com/jbloomAus/SAELens/commit/8a2cbae0cf92e920a2e085d4101ae6ef4ca1247c))
 
 
 ## v5.4.0 (2025-02-02)
