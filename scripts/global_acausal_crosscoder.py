@@ -27,16 +27,16 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 # total_training_steps = 200_000
 # total_training_steps = 60_000
 total_training_steps = 10_000
-batch_size = 2048
+batch_size = 4092
 # batch_size = 256
 total_training_tokens = total_training_steps * batch_size
 print(f"Total Training Tokens: {total_training_tokens}")
 
-layers = list(range(3))
-# layers = [0]
+hook_name_template = "blocks.{layer}.hook_mlp_out"
+layers = list(range(2))
 
-model_name = "tiny-stories-28M"
-dataset_path = "apollo-research/roneneldan-TinyStories-tokenizer-gpt2"
+model_name = "gpt2-small"
+dataset_path = "apollo-research/SkyLion007-openwebtext-tokenizer-gpt2"
 new_cached_activations_path = (
     f"./cached_activations/{model_name}/{dataset_path}/{total_training_steps}"
 )
@@ -51,23 +51,21 @@ log_to_wandb = True
 if not log_to_wandb:
     print("NOT LOGGING TO WANDB")
 
-d_in = 512
-expansion_factor = 16
+d_in = 768
+expansion_factor = 32
 d_sae = d_in * expansion_factor
-learning_rate = 5e-5
+learning_rate = 2e-5
 l1_coefficient = 1
-run_name = (
-    f"{d_sae}"
-    f"-Layers-{'_'.join([str(l) for l in layers])}"
-    f"-L1-{l1_coefficient}"
-    f"-LR-{learning_rate}"
-    f"-Tokens-{total_training_tokens:3.3e}"
-    )
+hook_name = hook_name_template.format(
+    layer=f"{min(layers)}_through_{max(layers)}"
+)
+hook_names = [hook_name_template.format(layer=layer) for layer in layers]
 
 cfg = LanguageModelSAERunnerConfig(
     model_name=model_name,
-    hook_name="blocks.{layer}.hook_mlp_out",
-    hook_layers=layers,
+    hook_name=hook_name,
+    hook_names=hook_names,
+    hook_layer=max(layers),
     d_in=d_in,
     dataset_path=dataset_path,
     streaming=True,
@@ -117,7 +115,7 @@ cfg = LanguageModelSAERunnerConfig(
     adam_beta1=0.9,
     adam_beta2=0.999,
     # Buffer details won't matter in we cache / shuffle our activations ahead of time.
-    n_batches_in_buffer=64,
+    n_batches_in_buffer=32,
     store_batch_size_prompts=16,
     normalize_activations="expected_average_only_in",
     # Feature Store
@@ -126,8 +124,7 @@ cfg = LanguageModelSAERunnerConfig(
     dead_feature_threshold=1e-4,
     # WANDB
     log_to_wandb=log_to_wandb,  # always use wandb unless you are just testing code.
-    wandb_project="crosscoder-acausal-tinystories-23M",
-    run_name=run_name,
+    wandb_project="crosscoder-acausal-gpt2-small",
     wandb_log_frequency=50,
     eval_every_n_wandb_logs=10,
     # Misc
