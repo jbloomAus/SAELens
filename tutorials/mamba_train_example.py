@@ -2,6 +2,8 @@
 import os
 import sys
 
+from sae_lens.saes.standard_sae import StandardTrainingSAEConfig
+
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
 # run this as python3 tutorials/mamba_train_example.py
@@ -10,21 +12,25 @@ from sae_lens.config import LanguageModelSAERunnerConfig, LoggingConfig
 from sae_lens.sae_training_runner import SAETrainingRunner
 
 cfg = LanguageModelSAERunnerConfig(
+    sae=StandardTrainingSAEConfig(
+        d_sae=2048 * 16,
+        d_in=2048,
+        dtype="float32",
+        device="cuda",
+        b_dec_init_method="geometric_median",
+        l1_coefficient=0.00006 * 0.2,
+    ),
     # Data Generating Function (Model + Training Distibuion)
     model_name="state-spaces/mamba-370m",
     model_class_name="HookedMamba",
     hook_name="blocks.39.hook_ssm_input",
     hook_layer=39,
     hook_eval="blocks.39.hook_ssm_output",  # we compare this when replace hook_point activations with autoencode.decode(autoencoder.encode( hook_point activations))
-    d_in=2048,
     dataset_path="NeelNanda/openwebtext-tokenized-9b",
     is_dataset_tokenized=True,
     # SAE Parameters
-    expansion_factor=64,
-    b_dec_init_method="geometric_median",
     # Training Parameters
     lr=0.0004,
-    l1_coefficient=0.00006 * 0.2,
     lr_scheduler_name="cosineannealingwarmrestarts",
     train_batch_size_tokens=4096,
     context_size=128,
@@ -34,7 +40,6 @@ cfg = LanguageModelSAERunnerConfig(
     training_tokens=1_000_000 * 300,
     store_batch_size_prompts=32,
     # Dead Neurons and Sparsity
-    use_ghost_grads=True,
     feature_sampling_window=1000,
     dead_feature_window=5000,
     dead_feature_threshold=1e-6,

@@ -101,61 +101,85 @@ def _get_main_lr_scheduler(
     raise ValueError(f"Unsupported scheduler: {scheduler_name}")
 
 
-class L1Scheduler:
+class CoefficientScheduler:
+    """Linearly warms up a scalar value from 0.0 to a final value."""
+
     def __init__(
         self,
-        l1_warm_up_steps: float,
-        total_steps: int,
-        final_l1_coefficient: float,
+        warm_up_steps: float,
+        final_value: float,
     ):
-        self.l1_warmup_steps = l1_warm_up_steps
-        # assume using warm-up
-        if self.l1_warmup_steps != 0:
-            self.current_l1_coefficient = 0.0
-        else:
-            self.current_l1_coefficient = final_l1_coefficient
-
-        self.final_l1_coefficient = final_l1_coefficient
-
+        self.warm_up_steps = warm_up_steps
+        self.final_value = final_value
         self.current_step = 0
-        self.total_steps = total_steps
-        if not isinstance(self.final_l1_coefficient, (float, int)):
+
+        if not isinstance(self.final_value, (float, int)):
             raise TypeError(
-                f"final_l1_coefficient must be float or int, got {type(self.final_l1_coefficient)}."
+                f"final_value must be float or int, got {type(self.final_value)}."
             )
+
+        # Initialize current_value based on whether warm-up is used
+        if self.warm_up_steps > 0:
+            self.current_value = 0.0
+        else:
+            self.current_value = self.final_value
 
     def __repr__(self) -> str:
         return (
-            f"L1Scheduler(final_l1_value={self.final_l1_coefficient}, "
-            f"l1_warmup_steps={self.l1_warmup_steps}, "
-            f"total_steps={self.total_steps})"
+            f"{self.__class__.__name__}(final_value={self.final_value}, "
+            f"warm_up_steps={self.warm_up_steps})"
         )
 
-    def step(self):
+    def step(self) -> float:
         """
-        Updates the l1 coefficient of the sparse autoencoder.
+        Updates the scalar value based on the current step.
+
+        Returns:
+            The current scalar value after the step.
         """
-        step = self.current_step
-        if step < self.l1_warmup_steps:
-            self.current_l1_coefficient = self.final_l1_coefficient * (
-                (1 + step) / self.l1_warmup_steps
-            )  # type: ignore
+        if self.current_step < self.warm_up_steps:
+            self.current_value = self.final_value * (
+                (self.current_step + 1) / self.warm_up_steps
+            )
         else:
-            self.current_l1_coefficient = self.final_l1_coefficient  # type: ignore
+            # Ensure the value stays at final_value after warm-up
+            self.current_value = self.final_value
 
         self.current_step += 1
+        return self.current_value
 
-    def state_dict(self):
-        """State dict for serializing as part of an SAETrainContext."""
+    @property
+    def value(self) -> float:
+        """Returns the current scalar value."""
+        return self.current_value
+
+    def state_dict(self) -> dict[str, Any]:
+        """State dict for serialization."""
         return {
-            "l1_warmup_steps": self.l1_warmup_steps,
-            "total_steps": self.total_steps,
-            "current_l1_coefficient": self.current_l1_coefficient,
-            "final_l1_coefficient": self.final_l1_coefficient,
+            "warm_up_steps": self.warm_up_steps,
+            "final_value": self.final_value,
             "current_step": self.current_step,
+            "current_value": self.current_value,
         }
 
     def load_state_dict(self, state_dict: dict[str, Any]):
-        """Loads all state apart from attached SAE."""
-        for k in state_dict:
-            setattr(self, k, state_dict[k])
+        """Loads the scheduler state."""
+        self.warm_up_steps = state_dict["warm_up_steps"]
+        self.final_value = state_dict["final_value"]
+        self.current_step = state_dict["current_step"]
+        # Maintain consistency: re-calculate current_value based on loaded step
+        # This handles resuming correctly if stopped mid-warmup.
+        if self.current_step <= self.warm_up_steps and self.warm_up_steps > 0:
+            # Use max(0, ...) to handle case where current_step might be loaded as -1 or similar before first step
+            step_for_calc = max(0, self.current_step)
+            # Recalculate based on the step *before* the one about to be taken
+            # Or simply use the saved current_value if available and consistent
+            if "current_value" in state_dict:
+                self.current_value = state_dict["current_value"]
+            else:  # Legacy state dicts might not have current_value
+                self.current_value = self.final_value * (
+                    step_for_calc / self.warm_up_steps
+                )
+
+        else:
+            self.current_value = self.final_value

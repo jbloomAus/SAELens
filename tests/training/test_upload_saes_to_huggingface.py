@@ -41,8 +41,8 @@ def test_create_default_readme():
 
 
 def test_build_sae_path_saves_live_saes_to_tmpdir(tmp_path: Path):
-    cfg = build_sae_cfg(device="cpu")
-    sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
+    cfg = build_sae_cfg()
+    sae = SAE.from_dict(cfg.to_dict())
     sae_path = _build_sae_path(sae, str(tmp_path))
     assert sae_path == tmp_path
     assert (tmp_path / "sae_weights.safetensors").exists()
