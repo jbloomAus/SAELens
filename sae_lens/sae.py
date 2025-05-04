@@ -124,9 +124,6 @@ class SAEConfig:
             "seqpos_slice": self.seqpos_slice,
         }
 
-    def hook_names(self) -> List[str]:
-        return [self.hook_name]
-
 
 class SAE(HookedRootModule):
     """

@@ -148,7 +148,7 @@ class LanguageModelSAERunnerConfig:
     model_name: str = "gelu-2l"
     model_class_name: str = "HookedTransformer"
     hook_name: str = "blocks.0.hook_mlp_out"
-    hook_names: list[str] = list
+    hook_names: list[str] = field(default_factory=list)
     hook_eval: str = "NOT_IN_USE"
     hook_layer: int = 0
     hook_head_index: int | None = None
@@ -561,7 +561,7 @@ class CacheActivationsRunnerConfig:
     d_in: int
     training_tokens: int
 
-    hook_names: list[str] = list
+    hook_names: list[str] = field(default_factory=list)
     context_size: int = -1  # Required if dataset is not tokenized
     model_class_name: str = "HookedTransformer"
     # defaults to "activations/{dataset}/{model}/{hook_name}

@@ -235,7 +235,7 @@ class ActivationsStore:
                 )
 
         self.hook_name = hook_name
-        self.hook_names = hook_names
+        self.hook_names = hook_names if hook_names is not None else []
         self.hook_layer = hook_layer
         self.hook_head_index = hook_head_index
         self.context_size = context_size

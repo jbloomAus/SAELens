@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, List
 
 import einops
@@ -9,7 +9,7 @@ from sae_lens import SAEConfig, SAE
 
 @dataclass
 class CrosscoderSAEConfig(SAEConfig):
-    hook_names: list[int] = list
+    hook_names: list[int] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return super().to_dict() | {
