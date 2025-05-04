@@ -52,8 +52,6 @@ class CrosscoderSAE(SAE):
         """
         Calculate SAE features from inputs
         """
-        # TODO(mkbehr): instead of changing this and the W_enc/b_enc
-        # dimensions, we could change reshape_fn_in
         sae_in = self.process_sae_in(x)
 
         hidden_pre = self.hook_sae_acts_pre(

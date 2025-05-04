@@ -224,8 +224,7 @@ class SAETrainingRunner:
         if trainer.cfg.log_to_wandb:
             # Avoid wandb saving errors such as:
             #   ValueError: Artifact name may only contain alphanumeric characters, dashes, underscores, and dots. Invalid name: sae_google/gemma-2b_etc
-            # TODO(mkbehr) name better
-            sae_name = trainer.sae.get_name().replace("/", "__").replace("{}", "__")
+            sae_name = trainer.sae.get_name().replace("/", "__")
 
             # save model weights and cfg
             model_artifact = wandb.Artifact(
