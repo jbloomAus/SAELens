@@ -24,7 +24,7 @@ from numpy.typing import NDArray
 from safetensors.torch import save_file
 from torch import nn
 from transformer_lens.hook_points import HookedRootModule, HookPoint
-from typing_extensions import deprecated, overload
+from typing_extensions import deprecated, overload, override
 
 from sae_lens import __version__, logger
 from sae_lens.constants import (
@@ -271,22 +271,14 @@ class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
             torch.zeros(self.cfg.d_in, dtype=self.dtype, device=self.device)
         )
 
-        w_enc_data = torch.empty(
-            self.cfg.d_in, self.cfg.d_sae, dtype=self.dtype, device=self.device
-        )
-        nn.init.kaiming_uniform_(w_enc_data)
-        self.W_enc = nn.Parameter(w_enc_data)
-
         w_dec_data = torch.empty(
             self.cfg.d_sae, self.cfg.d_in, dtype=self.dtype, device=self.device
         )
         nn.init.kaiming_uniform_(w_dec_data)
         self.W_dec = nn.Parameter(w_dec_data)
 
-        # init decoder norm to unit norm and init encoder as decoder transpose
-        with torch.no_grad():
-            self.W_dec.data /= self.W_dec.norm(dim=-1, keepdim=True)
-        self.W_enc.data = self.W_dec.data.T.clone().contiguous()
+        w_enc_data = self.W_dec.data.T.clone().detach().contiguous()
+        self.W_enc = nn.Parameter(w_enc_data)
 
     @abstractmethod
     def encode(
@@ -659,6 +651,9 @@ class TrainingSAEConfig(SAEConfig, ABC):
     noise_scale: float = 0.0
     mse_loss_normalization: str | None = None
     b_dec_init_method: Literal["zeros", "geometric_median", "mean"] = "zeros"
+    # https://transformer-circuits.pub/2024/april-update/index.html#training-saes
+    # 0.1 corresponds to the "heuristic" initialization, use None to disable
+    decoder_init_norm: float | None = 0.1
 
     @classmethod
     @abstractmethod
@@ -768,6 +763,15 @@ class TrainingSAE(SAE[T_TRAINING_SAE_CONFIG], ABC):
         sae_out_pre = self.hook_sae_recons(sae_out_pre)
         sae_out_pre = self.run_time_activation_norm_fn_out(sae_out_pre)
         return self.reshape_fn_out(sae_out_pre, self.d_head)
+
+    @override
+    def initialize_weights(self):
+        super().initialize_weights()
+        if self.cfg.decoder_init_norm is not None:
+            with torch.no_grad():
+                self.W_dec.data /= self.W_dec.norm(dim=-1, keepdim=True)
+                self.W_dec.data *= self.cfg.decoder_init_norm
+            self.W_enc.data = self.W_dec.data.T.clone().detach().contiguous()
 
     @abstractmethod
     def calculate_aux_loss(

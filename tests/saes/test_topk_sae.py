@@ -20,6 +20,7 @@ def test_TopKTrainingSAE_topk_aux_loss_matches_unnormalized_sparsify_implementat
         d_in=d_in,
         d_sae=d_sae,
         k=26,
+        decoder_init_norm=1.0,  # TODO: why is this needed??
     )
 
     sae = TopKTrainingSAE(cfg)

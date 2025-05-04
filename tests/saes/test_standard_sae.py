@@ -436,40 +436,23 @@ def test_SparseAutoencoder_initialization_standard():
     assert torch.allclose(sae.b_dec, torch.zeros_like(sae.b_dec), atol=1e-6)
     assert torch.allclose(sae.b_enc, torch.zeros_like(sae.b_enc), atol=1e-6)
 
-    # check if the decoder weight norm is 1 by default
+    # check if the decoder weight norm is 0.1 by default
     assert torch.allclose(
-        sae.W_dec.norm(dim=1), torch.ones_like(sae.W_dec.norm(dim=1)), atol=1e-6
+        sae.W_dec.norm(dim=1), 0.1 * torch.ones_like(sae.W_dec.norm(dim=1)), atol=1e-6
     )
 
     #  Default currently should be tranpose initialization
-    unit_normed_W_enc = sae.W_enc / torch.norm(sae.W_enc, dim=0)
-    unit_normed_W_dec = sae.W_dec.T
-    assert torch.allclose(unit_normed_W_enc, unit_normed_W_dec, atol=1e-6)
+    assert torch.allclose(sae.W_enc, sae.W_dec.T, atol=1e-6)
 
 
-def test_SparseAutoencoder_initialization_normalize_decoder_norm():
-    cfg = build_runner_cfg(normalize_sae_decoder=True)
+def test_SparseAutoencoder_initialization_decoder_norm():
+    cfg = build_runner_cfg(decoder_init_norm=0.7)
 
     sae = StandardTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
 
     assert torch.allclose(
-        sae.W_dec.norm(dim=1), torch.ones_like(sae.W_dec.norm(dim=1)), atol=1e-6
+        sae.W_dec.norm(dim=1), 0.7 * torch.ones_like(sae.W_dec.norm(dim=1)), atol=1e-6
     )
-
-    # initialized weights of biases are 0
-    assert torch.allclose(sae.b_dec, torch.zeros_like(sae.b_dec), atol=1e-6)
-    assert torch.allclose(sae.b_enc, torch.zeros_like(sae.b_enc), atol=1e-6)
-
-
-def test_SparseAutoencoder_initialization_encoder_is_decoder_transpose():
-    cfg = build_runner_cfg(init_encoder_as_decoder_transpose=True)
-
-    sae = StandardTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
-
-    # If we decoder norms are 1 we need to unit norm W_enc first.
-    unit_normed_W_enc = sae.W_enc / torch.norm(sae.W_enc, dim=0)
-    unit_normed_W_dec = sae.W_dec.T
-    assert torch.allclose(unit_normed_W_enc, unit_normed_W_dec, atol=1e-6)
 
     # initialized weights of biases are 0
     assert torch.allclose(sae.b_dec, torch.zeros_like(sae.b_dec), atol=1e-6)

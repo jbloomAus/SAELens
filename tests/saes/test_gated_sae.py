@@ -29,9 +29,9 @@ def test_gated_sae_initialization():
     assert torch.allclose(sae.b_mag, torch.zeros_like(sae.b_mag), atol=1e-6)
     assert torch.allclose(sae.b_gate, torch.zeros_like(sae.b_gate), atol=1e-6)
 
-    # check if the decoder weight norm is 1 by default
+    # check if the decoder weight norm is 0.1 by default
     assert torch.allclose(
-        sae.W_dec.norm(dim=1), torch.ones_like(sae.W_dec.norm(dim=1)), atol=1e-6
+        sae.W_dec.norm(dim=1), 0.1 * torch.ones_like(sae.W_dec.norm(dim=1)), atol=1e-6
     )
 
 
@@ -101,7 +101,9 @@ def test_gated_sae_encoding():
 
 
 def test_gated_sae_loss():
-    cfg = build_gated_sae_training_cfg()
+    cfg = build_gated_sae_training_cfg(
+        decoder_init_norm=1.0,  # TODO: why is this needed??
+    )
     sae = GatedTrainingSAE(cfg)
 
     batch_size = 32
@@ -261,12 +263,10 @@ def test_SparseAutoencoder_initialization_gated():
     assert torch.allclose(sae.b_mag, torch.zeros_like(sae.b_mag), atol=1e-6)
     assert torch.allclose(sae.b_gate, torch.zeros_like(sae.b_gate), atol=1e-6)
 
-    # check if the decoder weight norm is 1 by default
+    # check if the decoder weight norm is 0.1 by default
     assert torch.allclose(
-        sae.W_dec.norm(dim=1), torch.ones_like(sae.W_dec.norm(dim=1)), atol=1e-6
+        sae.W_dec.norm(dim=1), 0.1 * torch.ones_like(sae.W_dec.norm(dim=1)), atol=1e-6
     )
 
     #  Default currently should be tranpose initialization
-    unit_normed_W_enc = sae.W_enc / torch.norm(sae.W_enc, dim=0)
-    unit_normed_W_dec = sae.W_dec.T
-    assert torch.allclose(unit_normed_W_enc, unit_normed_W_dec, atol=1e-6)
+    assert torch.allclose(sae.W_enc, sae.W_dec.T, atol=1e-6)
