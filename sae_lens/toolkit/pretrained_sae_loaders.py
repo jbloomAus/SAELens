@@ -21,6 +21,7 @@ from sae_lens.toolkit.pretrained_saes_directory import (
     get_config_overrides,
     get_pretrained_saes_directory,
     get_repo_id_and_folder_name,
+    PretrainedSAEInfo,
 )
 from sae_lens.sae import SAE
 from sae_lens.transcoder import SkipTranscoder, Transcoder
@@ -1301,7 +1302,7 @@ def load_artifact_from_pretrained(
     force_download: bool = False,
     # Add other potential args like 'converter' if needed by specific classes
     **kwargs: Any,
-) -> tuple[ArtifactType, dict[str, Any], torch.Tensor | None]:
+) -> tuple[Any, dict[str, Any], torch.Tensor | None]:
     """
     Loads a pretrained artifact (SAE, Transcoder, SkipTranscoder) from the
     Hugging Face model hub or local cache, automatically determining the
@@ -1319,6 +1320,11 @@ def load_artifact_from_pretrained(
         A tuple containing the loaded artifact (typed generically),
         its config dictionary, and the log sparsity tensor (or None).
     """
+    # === Import Classes Inside Function to Avoid Circular Import ===
+    from sae_lens.sae import SAE
+    from sae_lens.transcoder import SkipTranscoder, Transcoder
+    # ==============================================================
+
     # 1. Get YAML info including the type
     artifact_info = get_sae_info(release, sae_id)
     artifact_type = artifact_info.get("type", "sae")  # Default to 'sae'
@@ -1347,4 +1353,4 @@ def load_artifact_from_pretrained(
     )
 
     # Cast the return type hint for clarity, though it's already generic
-    return artifact, cfg_dict, log_sparsity # type: ignore
+    return artifact, cfg_dict, log_sparsity
