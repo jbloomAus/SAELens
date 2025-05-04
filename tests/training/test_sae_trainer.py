@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from typing import Any, Callable
 
@@ -234,6 +235,65 @@ def test_update_sae_lens_training_version_sets_the_current_version():
     sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
     _update_sae_lens_training_version(sae)
     assert sae.cfg.sae_lens_training_version == str(__version__)
+
+
+def test_final_checkpoint_saves_runner_cfg(
+    ts_model: HookedTransformer,
+    tmp_path: Path,
+):
+    """Test that estimated_norm_scaling_factor is correctly persisted in intermediate checkpoints
+    but not in the final checkpoint."""
+    checkpoint_dir = tmp_path / "checkpoints"
+    checkpoint_dir.mkdir(exist_ok=True)
+
+    cfg = build_runner_cfg(
+        checkpoint_path=str(checkpoint_dir),
+        training_tokens=100,  # Increased to ensure we hit checkpoints
+        context_size=8,
+        n_checkpoints=2,  # Explicitly request 2 checkpoints during training
+    )
+
+    # Create a small dataset
+    dataset = Dataset.from_list([{"text": "hello world"}] * 100)
+    activation_store = ActivationsStore.from_config(
+        ts_model, cfg, override_dataset=dataset
+    )
+    sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+
+    trainer = SAETrainer(
+        model=ts_model,
+        sae=sae,
+        activation_store=activation_store,
+        save_checkpoint_fn=SAETrainingRunner.save_checkpoint,
+        cfg=cfg,
+    )
+
+    # Train the model - this should create checkpoints
+    trainer.fit()
+    checkpoint_cfg_paths = list(checkpoint_dir.glob("**/cfg.json"))
+    checkpoint_runner_cfg_paths = list(checkpoint_dir.glob("**/runner_cfg.json"))
+    # We should have exactly 2 checkpoints:
+    assert (
+        len(checkpoint_cfg_paths) == 2
+    ), f"Expected 2 sae cfg but got {len(checkpoint_cfg_paths)}"
+    assert (
+        len(checkpoint_runner_cfg_paths) == 2
+    ), f"Expected 2 runner cfg but got {len(checkpoint_runner_cfg_paths)}"
+
+    for checkpoint_cfg_path in checkpoint_cfg_paths:
+        with open(checkpoint_cfg_path) as f:
+            checkpoint_cfg = json.load(f)
+        assert checkpoint_cfg == cfg.get_training_sae_cfg_dict()
+
+    for checkpoint_runner_cfg_path in checkpoint_runner_cfg_paths:
+        with open(checkpoint_runner_cfg_path) as f:
+            runner_cfg = json.load(f)
+
+        expected_cfg = cfg.to_dict()
+        # seqpos_slice is a tuple when saved, but list when loaded. Just ignore it.
+        del runner_cfg["seqpos_slice"]
+        del expected_cfg["seqpos_slice"]
+        assert runner_cfg == expected_cfg
 
 
 def test_estimated_norm_scaling_factor_persistence(

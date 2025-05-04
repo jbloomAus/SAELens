@@ -10,6 +10,7 @@ from tqdm.autonotebook import tqdm
 
 from sae_lens import logger
 from sae_lens.constants import (
+    RUNNER_CFG_FILENAME,
     SAE_CFG_FILENAME,
     SAE_WEIGHTS_FILENAME,
     SPARSITY_FILENAME,
@@ -119,7 +120,12 @@ def _upload_sae(api: HfApi, sae_path: Path, repo_id: str, sae_id: str, revision:
         revision=revision,
         repo_type="model",
         commit_message=f"Upload SAE {sae_id}",
-        allow_patterns=[SAE_CFG_FILENAME, SAE_WEIGHTS_FILENAME, SPARSITY_FILENAME],
+        allow_patterns=[
+            SAE_CFG_FILENAME,
+            SAE_WEIGHTS_FILENAME,
+            SPARSITY_FILENAME,
+            RUNNER_CFG_FILENAME,
+        ],
     )
 
 
