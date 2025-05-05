@@ -2,6 +2,17 @@
 
 
 
+## v5.10.0 (2025-05-05)
+
+### Chore
+
+* chore: deletes dict_to_nested() (#470) ([`73d4659`](https://github.com/jbloomAus/SAELens/commit/73d465992c8c956cd81d6e8e77dad8aa73af2ccf))
+
+### Feature
+
+* feat: Add configuration for decoder norms under decoder_heuristic_init. (#471) ([`3395e3d`](https://github.com/jbloomAus/SAELens/commit/3395e3dcf47f112a5b610be03c45e12d4eb4d1c6))
+
+
 ## v5.9.2 (2025-04-29)
 
 ### Chore
