@@ -118,6 +118,7 @@ class TrainingSAEConfig(SAEConfig):
     jumprelu_init_threshold: float
     jumprelu_bandwidth: float
     decoder_heuristic_init: bool
+    decoder_heuristic_init_norm: float
     init_encoder_as_decoder_transpose: bool
     scale_sparsity_penalty_by_decoder_norm: bool
 
@@ -154,6 +155,7 @@ class TrainingSAEConfig(SAEConfig):
             decoder_orthogonal_init=cfg.decoder_orthogonal_init,
             mse_loss_normalization=cfg.mse_loss_normalization,
             decoder_heuristic_init=cfg.decoder_heuristic_init,
+            decoder_heuristic_init_norm=cfg.decoder_heuristic_init_norm,
             init_encoder_as_decoder_transpose=cfg.init_encoder_as_decoder_transpose,
             scale_sparsity_penalty_by_decoder_norm=cfg.scale_sparsity_penalty_by_decoder_norm,
             normalize_activations=cfg.normalize_activations,
@@ -197,6 +199,7 @@ class TrainingSAEConfig(SAEConfig):
             "init_encoder_as_decoder_transpose": self.init_encoder_as_decoder_transpose,
             "mse_loss_normalization": self.mse_loss_normalization,
             "decoder_heuristic_init": self.decoder_heuristic_init,
+            "decoder_heuristic_init_norm": self.decoder_heuristic_init_norm,
             "scale_sparsity_penalty_by_decoder_norm": self.scale_sparsity_penalty_by_decoder_norm,
             "normalize_activations": self.normalize_activations,
             "jumprelu_init_threshold": self.jumprelu_init_threshold,
@@ -597,7 +600,9 @@ class TrainingSAE(SAE):
                     self.cfg.d_sae, self.cfg.d_in, dtype=self.dtype, device=self.device
                 )
             )
-            self.initialize_decoder_norm_constant_norm()
+            self.initialize_decoder_norm_constant_norm(
+                self.cfg.decoder_heuristic_init_norm
+            )
 
         # Then we initialize the encoder weights (either as the transpose of decoder or not)
         if self.cfg.init_encoder_as_decoder_transpose:
