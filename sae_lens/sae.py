@@ -146,12 +146,12 @@ class SAE(HookedRootModule):
         super().__init__()
 
         # === Runtime Type Check ===
-        if hasattr(cfg, 'd_out') or hasattr(cfg, 'hook_name_out'):
-            raise TypeError(
-                "Configuration object seems to be for a Transcoder "
-                "(contains 'd_out' or 'hook_name_out'). Please use "
-                "Transcoder.from_pretrained() or load_artifact_from_pretrained()."
-            )
+        # if hasattr(cfg, 'd_out') or hasattr(cfg, 'hook_name_out'):
+        #     raise TypeError(
+        #         "Configuration object seems to be for a Transcoder "
+        #         "(contains 'd_out' or 'hook_name_out'). Please use "
+        #         "Transcoder.from_pretrained() or load_artifact_from_pretrained()."
+        #     )
         # ==========================
 
         self.cfg = cfg
