@@ -1144,7 +1144,7 @@ def llama_relu_skip_transcoder_huggingface_loader(
         "activation_fn_str": "relu",
         "finetuning_scaling_factor": False,
         "sae_lens_training_version": None,
-        "prepend_bos": False, # guess from the repo name
+        "prepend_bos": True,
         "dataset_path": "EleutherAI/rpj-v2-sample",
         "context_size": 1024,
         "dataset_trust_remote_code": True,
