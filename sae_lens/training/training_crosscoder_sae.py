@@ -25,13 +25,10 @@ SAE_WEIGHTS_PATH = "sae_weights.safetensors"
 SAE_CFG_PATH = "cfg.json"
 
 
-# TODO(mkbehr) will this multiple inheritance work?
 @dataclass(kw_only=True)
 class TrainingCrosscoderSAEConfig(CrosscoderSAEConfig, TrainingSAEConfig):
     sparsity_penalty_decoder_norm_lp_norm: float = 1
 
-    # TODO(mkbehr): copypasting from TrainingSAEConfig and adding a few
-    # params. There should be a better way.
     @classmethod
     def from_sae_runner_config(
         cls, cfg: LanguageModelSAERunnerConfig
@@ -77,7 +74,6 @@ class TrainingCrosscoderSAEConfig(CrosscoderSAEConfig, TrainingSAEConfig):
         )
 
     def to_dict(self) -> dict[str, Any]:
-        # TODO(mkbehr): double-check this multiple inheritance. seems messy.
         return (TrainingSAEConfig.to_dict(self)
                 | CrosscoderSAEConfig.to_dict(self)
                 | {
@@ -109,8 +105,6 @@ class TrainingCrosscoderSAE(CrosscoderSAE, TrainingSAE):
         return cls(TrainingCrosscoderSAEConfig.from_dict(config_dict),
                    use_error_term = use_error_term)
 
-    # TODO(mkbehr): hacking around multiple inheritance. there's
-    # probably a better way.
     @staticmethod
     def base_sae_cfg(cfg: TrainingCrosscoderSAEConfig):
         return CrosscoderSAEConfig.from_dict(cfg.get_base_sae_cfg_dict())

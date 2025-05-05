@@ -438,7 +438,6 @@ class ActivationsStore:
         # Norm scaling factor is a float in the single-layer case, and
         # a tensor in the multilayer case.
         if self.hook_names:
-            # TODO(mkbehr): set the device somewhere better
             return activations * self.estimated_norm_scaling_factor.unsqueeze(-1).to(activations.device)
         else:
             return activations * self.estimated_norm_scaling_factor
@@ -449,8 +448,7 @@ class ActivationsStore:
                 "estimated_norm_scaling_factor is not set, call set_norm_scaling_factor_if_needed() first"
             )
         if self.hook_names:
-            # TODO(mkbehr): set the device somewhere better
-            return activations / self.estimated_norm_scaling_factor.unsqueeze(-1).to(activations.device)
+            return activations / self.estimated_norm_scaling_factor.unsqueeze(-1)
         else:
             return activations / self.estimated_norm_scaling_factor
 
@@ -467,7 +465,7 @@ class ActivationsStore:
             range(n_batches_for_norm_estimate), desc="Estimating norm scaling factor"
         ):
             # temporalily set estimated_norm_scaling_factor to 1.0 so the dataloader works
-            self.estimated_norm_scaling_factor = torch.ones(1)
+            self.estimated_norm_scaling_factor = torch.ones(1, device=self.device)
             acts = self.next_batch()
             self.estimated_norm_scaling_factor = None
             norms_per_batch[:, batch_i] = acts.norm(dim=-1).mean(dim=0)

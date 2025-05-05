@@ -290,8 +290,6 @@ class TrainingSAE(SAE):
     def from_dict(cls, config_dict: dict[str, Any]) -> "TrainingSAE":
         return cls(TrainingSAEConfig.from_dict(config_dict))
 
-    # TODO(mkbehr): hacking around multiple inheritance. there's
-    # probably a better way.
     @staticmethod
     def base_sae_cfg(cfg: TrainingSAEConfig):
         return SAEConfig.from_dict(cfg.get_base_sae_cfg_dict())

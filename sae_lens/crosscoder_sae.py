@@ -21,17 +21,14 @@ class CrosscoderSAE(SAE):
     Sparse autoencoder that acts on multiple layers of activations.
     """
 
-    # TODO(mkbehr): write
-    # - remaining encode methods
-    # - hook_z reshaping support
-
     def __init__(
             self,
             cfg: CrosscoderSAEConfig,
             use_error_term: bool = False,
             ):
         if cfg.architecture != "standard":
-            raise NotImplementedError("TODO(mkbehr): support other archs")
+            raise NotImplementedError(
+                "TODO(mkbehr): support other architectures")
 
         super().__init__(cfg=cfg, use_error_term=use_error_term)
 
