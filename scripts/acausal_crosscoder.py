@@ -1,5 +1,3 @@
-# TODO(mkbehr): don't really commit this
-
 import os
 import sys
 
@@ -71,25 +69,15 @@ cfg = LanguageModelSAERunnerConfig(
     streaming=True,
     context_size=512,
     is_dataset_tokenized=True,
-    prepend_bos=False,          # TODO(mkbehr): probably better to prepend bosg but then remove that token's activations
-    # How big do we want our SAE to be?
+    prepend_bos=True,
     expansion_factor=expansion_factor,
-    # Dataset / Activation Store
-    # When we do a proper test
-    # training_tokens= 820_000_000, # 200k steps * 4096 batch size ~ 820M tokens (doable overnight on an A100)
-    # For now.
     use_cached_activations=False,
-    # cached_activations_path="/home/paperspace/shared_volumes/activations_volume_1/gelu-1l",
-    training_tokens=total_training_tokens,  # For initial testing I think this is a good number.
+    training_tokens=total_training_tokens,
     train_batch_size_tokens=batch_size,
     # Loss Function
-    ## Reconstruction Coefficient.
-    mse_loss_normalization=None,  # MSE Loss Normalization is not mentioned (so we use stanrd MSE Loss). But not we take an average over the batch.
-    ## Anthropic does not mention using an Lp norm other than L1.
+    mse_loss_normalization=None,
     l1_coefficient=l1_coefficient,
     lp_norm=1.0,
-    # Instead, they multiply the L1 loss contribution
-    # from each feature of the activations by the decoder norm of the corresponding feature.
     scale_sparsity_penalty_by_decoder_norm=True,
     # TODO(mkbehr): plumb this through config
     # sparsity_penalty_decoder_norm_lp_norm=1.0,
@@ -98,12 +86,9 @@ cfg = LanguageModelSAERunnerConfig(
     l1_warm_up_steps=l1_warmup_steps,
     lr_warm_up_steps=lr_warm_up_steps,
     lr_decay_steps=lr_warm_up_steps,
-    ## No ghost grad term.
     use_ghost_grads=False,
     # Initialization / Architecture
     apply_b_dec_to_input=False,
-    # encoder bias zero's. (I'm not sure what it is by default now)
-    # decoder bias zero's.
     b_dec_init_method="zeros",
     normalize_sae_decoder=False,
     decoder_heuristic_init=True,
@@ -135,7 +120,6 @@ cfg = LanguageModelSAERunnerConfig(
     dtype="float32",
 )
 
-# look at the next cell to see some instruction for what to do while this is running.
 sae = SAETrainingRunner(
     cfg,
     override_sae = TrainingCrosscoderSAE(

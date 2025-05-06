@@ -463,7 +463,7 @@ class ActivationsStore:
         for batch_i in tqdm(
             range(n_batches_for_norm_estimate), desc="Estimating norm scaling factor"
         ):
-            # temporalily set estimated_norm_scaling_factor to 1.0 so the dataloader works
+            # temporarily set estimated_norm_scaling_factor to 1.0 so the dataloader works
             self.estimated_norm_scaling_factor = torch.ones(1, device=self.device)
             acts = self.next_batch()
             self.estimated_norm_scaling_factor = None

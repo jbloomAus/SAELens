@@ -16,7 +16,6 @@ from tests.helpers import build_sae_cfg, build_multilayer_sae_cfg, load_model_ca
 
 def test_activations_store_init_with_multiple_layers(ts_model: HookedTransformer):
     """Test initialization with a list of layers instead of a single layer."""
-    # Initialize with multiple layers
     cfg = build_multilayer_sae_cfg(
         hook_name_template="blocks.{layer}.hook_resid_pre",
         hook_layers=[0, 1, 2]
@@ -43,7 +42,6 @@ def test_activations_store_init_with_multiple_layers(ts_model: HookedTransformer
 
 def test_activations_store_get_activations_multiple_layers(ts_model: HookedTransformer):
     """Test that get_activations collects activations from all specified layers."""
-    # Setup with multiple layers
     cfg = build_multilayer_sae_cfg(
         hook_name_template="blocks.{layer}.hook_resid_pre",
         hook_layers=[0, 1, 2],
@@ -53,7 +51,6 @@ def test_activations_store_get_activations_multiple_layers(ts_model: HookedTrans
     dataset = Dataset.from_list([{"text": "hello world"}] * 10)
     activation_store = ActivationsStore.from_config(ts_model, cfg, override_dataset=dataset)
 
-    # Get a batch of tokens and activations
     batch_tokens = activation_store.get_batch_tokens()
     activations = activation_store.get_activations(batch_tokens)
 
@@ -84,7 +81,6 @@ def test_activations_store_get_activations_multiple_layers(ts_model: HookedTrans
 
 def test_activations_store_get_buffer_multiple_layers(ts_model: HookedTransformer):
     """Test buffer handling with multiple layers."""
-    # Setup with multiple layers
     cfg = build_multilayer_sae_cfg(
         hook_name_template="blocks.{layer}.hook_resid_pre",
         hook_layers=[0, 1, 2],
@@ -94,7 +90,6 @@ def test_activations_store_get_buffer_multiple_layers(ts_model: HookedTransforme
     dataset = Dataset.from_list([{"text": "hello world"}] * 20)
     activation_store = ActivationsStore.from_config(ts_model, cfg, override_dataset=dataset)
 
-    # Get buffer with 2 batches
     buffer_activations, buffer_tokens = activation_store.get_buffer(n_batches_in_buffer=2)
 
     # Check shape: [(batch_size * context_size * n_batches), num_layers, d_in]
@@ -105,7 +100,6 @@ def test_activations_store_get_buffer_multiple_layers(ts_model: HookedTransforme
 
 def test_activations_store_next_batch_multiple_layers(ts_model: HookedTransformer):
     """Test that next_batch returns correct batch shape with multiple layers."""
-    # Setup with multiple layers
     cfg = build_multilayer_sae_cfg(
         hook_name_template="blocks.{layer}.hook_resid_pre",
         hook_layers=[0, 1, 2],
@@ -158,7 +152,6 @@ def test_backward_compatibility_single_layer(ts_model: HookedTransformer):
     )
     multi_store = ActivationsStore.from_config(ts_model, cfg_multi, override_dataset=dataset)
 
-    # Get tokens and activations from both
     batch_tokens_single = single_store.get_batch_tokens()
     activations_single = single_store.get_activations(batch_tokens_single)
 
