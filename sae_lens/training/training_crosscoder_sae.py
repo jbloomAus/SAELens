@@ -16,8 +16,9 @@ from sae_lens.training.training_sae import (
     TrainStepOutput,
     )
 from sae_lens.toolkit.pretrained_sae_loaders import (
+    PretrainedSaeDiskLoader,
     handle_config_defaulting,
-    read_sae_from_disk,
+    sae_lens_disk_loader,
 )
 
 SPARSITY_PATH = "sparsity.safetensors"
@@ -196,33 +197,20 @@ class TrainingCrosscoderSAE(CrosscoderSAE, TrainingSAE):
         )
 
     @classmethod
-    def load_from_pretrained(
+    def load_from_disk(
         cls,
         path: str,
         device: str = "cpu",
         dtype: str | None = None,
+        converter: PretrainedSaeDiskLoader = sae_lens_disk_loader,
     ) -> "TrainingCrosscoderSAE":
-        # get the config
-        config_path = os.path.join(path, SAE_CFG_PATH)
-        with open(config_path) as f:
-            cfg_dict = json.load(f)
+        overrides = {"dtype": dtype} if dtype is not None else None
+        cfg_dict, state_dict = converter(path, device, cfg_overrides=overrides)
         cfg_dict = handle_config_defaulting(cfg_dict)
-        cfg_dict["device"] = device
-        if dtype is not None:
-            cfg_dict["dtype"] = dtype
-
-        weight_path = os.path.join(path, SAE_WEIGHTS_PATH)
-        cfg_dict, state_dict = read_sae_from_disk(
-            cfg_dict=cfg_dict,
-            weight_path=weight_path,
-            device=device,
-        )
         sae_cfg = TrainingCrosscoderSAEConfig.from_dict(cfg_dict)
-
         sae = cls(sae_cfg)
         sae.process_state_dict_for_loading(state_dict)
         sae.load_state_dict(state_dict)
-
         return sae
 
     def initialize_weights_complex(self):

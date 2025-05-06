@@ -6,6 +6,11 @@ import torch
 from jaxtyping import Float
 
 from sae_lens import SAEConfig, SAE
+from sae_lens.toolkit.pretrained_sae_loaders import (
+    PretrainedSaeDiskLoader,
+    handle_config_defaulting,
+    sae_lens_disk_loader,
+)
 
 @dataclass
 class CrosscoderSAEConfig(SAEConfig):
@@ -107,3 +112,19 @@ class CrosscoderSAE(SAE):
         # once we normalize, we shouldn't need to scale activations.
         self.cfg.normalize_activations = "none"
 
+    @classmethod
+    def load_from_disk(
+        cls,
+        path: str,
+        device: str = "cpu",
+        dtype: str | None = None,
+        converter: PretrainedSaeDiskLoader = sae_lens_disk_loader,
+    ) -> "CrosscoderSAE":
+        overrides = {"dtype": dtype} if dtype is not None else None
+        cfg_dict, state_dict = converter(path, device, cfg_overrides=overrides)
+        cfg_dict = handle_config_defaulting(cfg_dict)
+        sae_cfg = CrosscoderSAEConfig.from_dict(cfg_dict)
+        sae = cls(sae_cfg)
+        sae.process_state_dict_for_loading(state_dict)
+        sae.load_state_dict(state_dict)
+        return sae

@@ -121,7 +121,7 @@ def test_crosscoder_sae_fold_w_dec_norm(cfg: LanguageModelSAERunnerConfig):
 
 @pytest.mark.parametrize("architecture", ALL_ARCHITECTURES)
 @torch.no_grad()
-def test_sae_fold_w_dec_norm_all_architectures(architecture: str):
+def test_crosscoder_sae_fold_w_dec_norm_all_architectures(architecture: str):
     if architecture != "standard":
         pytest.xfail("TODO(mkbehr): support other architectures")
     cfg = build_multilayer_sae_cfg(architecture=architecture, hook_layers=[0,1,2])
@@ -159,7 +159,7 @@ def test_sae_fold_w_dec_norm_all_architectures(architecture: str):
     torch.testing.assert_close(sae_out_1, sae_out_2)
 
 @torch.no_grad()
-def test_sae_fold_norm_scaling_factor(cfg: LanguageModelSAERunnerConfig):
+def test_crosscoder_sae_fold_norm_scaling_factor(cfg: LanguageModelSAERunnerConfig):
     norm_scaling_factor = torch.Tensor([2.0, 3.0, 4.0])
 
     sae = CrosscoderSAE.from_dict(cfg.get_base_sae_cfg_dict())
@@ -202,7 +202,7 @@ def test_sae_fold_norm_scaling_factor(cfg: LanguageModelSAERunnerConfig):
 
 @pytest.mark.parametrize("architecture", ALL_ARCHITECTURES)
 @torch.no_grad()
-def test_sae_fold_norm_scaling_factor_all_architectures(architecture: str):
+def test_crosscoder_sae_fold_norm_scaling_factor_all_architectures(architecture: str):
     if architecture != "standard":
         pytest.xfail("TODO(mkbehr): support other architectures")
     cfg = build_multilayer_sae_cfg(architecture=architecture, hook_layers=[0,1,2])
@@ -244,7 +244,7 @@ def test_sae_fold_norm_scaling_factor_all_architectures(architecture: str):
     # but actual outputs should be the same
     torch.testing.assert_close(sae_out_1, sae_out_2)
 
-def test_sae_save_and_load_from_pretrained(tmp_path: Path) -> None:
+def test_crosscoder_sae_save_and_load_from_pretrained(tmp_path: Path) -> None:
     cfg = build_multilayer_sae_cfg(hook_layers=[0,1,2])
     model_path = str(tmp_path)
     sae = CrosscoderSAE.from_dict(cfg.get_base_sae_cfg_dict())
@@ -270,7 +270,7 @@ def test_sae_save_and_load_from_pretrained(tmp_path: Path) -> None:
     assert torch.allclose(sae_out_1, sae_out_2)
 
 @pytest.mark.xfail(reason="TODO(mkbehr): support other architectures")
-def test_sae_save_and_load_from_pretrained_gated(tmp_path: Path) -> None:
+def test_crosscoder_sae_save_and_load_from_pretrained_gated(tmp_path: Path) -> None:
     cfg = build_multilayer_sae_cfg(architecture="gated", hook_layers=[0,1,2])
     model_path = str(tmp_path)
     sae = CrosscoderSAE.from_dict(cfg.get_base_sae_cfg_dict())
@@ -295,7 +295,7 @@ def test_sae_save_and_load_from_pretrained_gated(tmp_path: Path) -> None:
     sae_out_2 = sae_loaded(sae_in)
     assert torch.allclose(sae_out_1, sae_out_2)
 
-def test_sae_save_and_load_from_pretrained_topk(tmp_path: Path) -> None:
+def test_crosscoder_sae_save_and_load_from_pretrained_topk(tmp_path: Path) -> None:
     cfg = build_multilayer_sae_cfg(activation_fn_kwargs={"k": 30}, hook_layers=[0,1,2])
     model_path = str(tmp_path)
     sae = CrosscoderSAE.from_dict(cfg.get_base_sae_cfg_dict())
@@ -320,7 +320,7 @@ def test_sae_save_and_load_from_pretrained_topk(tmp_path: Path) -> None:
     sae_out_2 = sae_loaded(sae_in)
     assert torch.allclose(sae_out_1, sae_out_2)
 
-def test_sae_get_name_returns_correct_name_from_cfg_vals() -> None:
+def test_crosscoder_sae_get_name_returns_correct_name_from_cfg_vals() -> None:
     cfg = build_multilayer_sae_cfg(model_name="test_model", hook_name_template="blocks.{layer}.test_hook_name", d_sae=128, hook_layers=[0,1,2])
     sae = CrosscoderSAE.from_dict(cfg.get_base_sae_cfg_dict())
     assert sae.get_name() == "sae_test_model_blocks.layers_0_through_2.test_hook_name_128"
