@@ -114,10 +114,9 @@ def test_activations_store_next_batch_multiple_layers(ts_model: HookedTransforme
     batch = activation_store.next_batch()
     assert batch.shape == (10, len(cfg.hook_names), activation_store.d_in)
 
-@pytest.mark.skip("TODO(mkbehr): does activation need to be handled differently?")
+
 def test_activations_store_normalization_multiple_layers(ts_model: HookedTransformer):
     """Test normalization when using multiple layers."""
-    # Setup with normalization and multiple layers
     cfg = build_multilayer_sae_cfg(
         hook_name_template="blocks.{layer}.hook_resid_pre",
         hook_layers=[0, 1, 2],
@@ -129,22 +128,15 @@ def test_activations_store_normalization_multiple_layers(ts_model: HookedTransfo
     activation_store = ActivationsStore.from_config(ts_model, cfg, override_dataset=dataset)
     activation_store.set_norm_scaling_factor_if_needed()
 
-    # Get a batch with normalized activations
     batch = activation_store.next_batch()
 
-    # Check that the activations have been properly normalized
-    # The norm should be approximately sqrt(d_in) for each layer
-    for layer_idx in range(len(activation_store.hook_layers)):
-        layer_activations = batch[:, layer_idx, :]
-        # Check if average norm is approximately as expected (allowing for some variance)
-        avg_norm = layer_activations.norm(dim=-1).mean()
-        expected_norm = (activation_store.d_in ** 0.5)
-        assert avg_norm.item() == pytest.approx(expected_norm, abs=2.0)
+    avg_norm = batch.norm(dim=-1).mean(dim=1)
+    expected_norm = torch.full_like(avg_norm, cfg.d_in ** 0.5)
+    torch.testing.assert_close(avg_norm, expected_norm, atol=1.0, rtol=0.1)
 
 
 def test_backward_compatibility_single_layer(ts_model: HookedTransformer):
     """Test that single layer behavior is unchanged with the multi-layer support."""
-    # Create a store with single layer (old behavior)
     cfg_single = build_sae_cfg(
         hook_name="blocks.0.hook_resid_pre",
         hook_layer=0,
@@ -154,7 +146,6 @@ def test_backward_compatibility_single_layer(ts_model: HookedTransformer):
     dataset = Dataset.from_list([{"text": "hello world"}] * 10)
     single_store = ActivationsStore.from_config(ts_model, cfg_single, override_dataset=dataset)
 
-    # Create a store with single layer (new behavior)
     cfg_multi = build_multilayer_sae_cfg(
         hook_name_template="blocks.{layer}.hook_resid_pre",
         hook_layers=[0],
