@@ -457,7 +457,6 @@ class ActivationsStore:
 
     @torch.no_grad()
     def estimate_norm_scaling_factor(self, n_batches_for_norm_estimate: int = int(1e3)):
-        # TODO(mkbehr): test multilayer norm scaling, probably fix saving?
         norms_per_batch = torch.empty(
             len(self.hook_names) or 1, n_batches_for_norm_estimate,
             device=self.device)

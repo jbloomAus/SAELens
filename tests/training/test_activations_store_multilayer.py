@@ -1,8 +1,13 @@
 """Tests for ActivationsStore with multiple layer support."""
 
+import os
+import tempfile
+from typing import Any
+
 import pytest
 import torch
 from datasets import Dataset
+from safetensors.torch import load_file
 from transformer_lens import HookedTransformer
 
 from sae_lens.training.activations_store import ActivationsStore
@@ -162,3 +167,29 @@ def test_backward_compatibility_single_layer(ts_model: HookedTransformer):
 
     torch.testing.assert_close(batch_tokens_single, batch_tokens_multi)
     torch.testing.assert_close(activations_single, activations_multi)
+
+
+def test_activations_store_multilayer_save_with_norm_scaling_factor(
+    ts_model: HookedTransformer,
+):
+    cfg = build_multilayer_sae_cfg(
+        hook_name_template="blocks.{layer}.hook_resid_pre",
+        hook_layers=[0, 1, 2],
+        normalize_activations="expected_average_only_in",
+        context_size=5
+    )
+    activation_store = ActivationsStore.from_config(ts_model, cfg)
+    activation_store.set_norm_scaling_factor_if_needed()
+    assert activation_store.estimated_norm_scaling_factor is not None
+    with tempfile.NamedTemporaryFile() as temp_file:
+        activation_store.save(temp_file.name)
+        assert os.path.exists(temp_file.name)
+        state_dict = load_file(temp_file.name)
+        assert isinstance(state_dict, dict)
+        assert "estimated_norm_scaling_factor" in state_dict
+        estimated_norm_scaling_factor = state_dict["estimated_norm_scaling_factor"]
+        assert estimated_norm_scaling_factor.shape == (len(cfg.hook_names),)
+        torch.testing.assert_close(
+            estimated_norm_scaling_factor,
+            activation_store.estimated_norm_scaling_factor
+        )
