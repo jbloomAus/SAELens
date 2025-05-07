@@ -177,11 +177,11 @@ def test_SparseAutoencoder_initialization_heuristic_init():
 
     sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
 
-    decoder_norms = sae.W_dec.norm(dim=1)
-
     # Check for both positive and negative values in the decoder weights
     assert torch.any(sae.W_dec > 0)
     assert torch.any(sae.W_dec < 0)
+
+    decoder_norms = sae.W_dec.norm(dim=1)
 
     # not unit norms
     assert not torch.allclose(
