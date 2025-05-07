@@ -1,9 +1,9 @@
 from typing import Any
 
 import torch
+import wandb
 from tqdm import tqdm
 
-import wandb
 from sae_lens.evals import run_evals
 from sae_lens.training.sae_trainer import SAETrainer
 from sae_lens.training.training_crosscoder_sae import TrainingCrosscoderSAE

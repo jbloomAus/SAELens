@@ -6,6 +6,7 @@ from typing import Any, Literal, cast
 
 import simple_parsing
 import torch
+import wandb
 from datasets import (
     Dataset,
     DatasetDict,
@@ -14,7 +15,6 @@ from datasets import (
     load_dataset,
 )
 
-import wandb
 from sae_lens import __version__, logger
 
 DTYPE_MAP = {

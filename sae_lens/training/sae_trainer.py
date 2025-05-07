@@ -3,11 +3,11 @@ from dataclasses import dataclass
 from typing import Any, Protocol, cast
 
 import torch
+import wandb
 from torch.optim import Adam
 from tqdm import tqdm
 from transformer_lens.hook_points import HookedRootModule
 
-import wandb
 from sae_lens import __version__
 from sae_lens.config import LanguageModelSAERunnerConfig
 from sae_lens.evals import EvalConfig, run_evals
