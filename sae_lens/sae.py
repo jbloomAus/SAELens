@@ -7,7 +7,7 @@ import warnings
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, List, Literal, TypeVar, overload
+from typing import Any, Callable, Literal, TypeVar, overload
 
 import einops
 import torch
@@ -257,7 +257,10 @@ class SAE(HookedRootModule):
         self.W_dec = nn.Parameter(
             torch.nn.init.kaiming_uniform_(
                 torch.empty(
-                    self.cfg.d_sae, *self.input_shape(), dtype=self.dtype, device=self.device
+                    self.cfg.d_sae,
+                    *self.input_shape(),
+                    dtype=self.dtype,
+                    device=self.device,
                 )
             )
         )
@@ -265,7 +268,10 @@ class SAE(HookedRootModule):
         self.W_enc = nn.Parameter(
             torch.nn.init.kaiming_uniform_(
                 torch.empty(
-                    *self.input_shape(), self.cfg.d_sae, dtype=self.dtype, device=self.device
+                    *self.input_shape(),
+                    self.cfg.d_sae,
+                    dtype=self.dtype,
+                    device=self.device,
                 )
             )
         )
@@ -287,7 +293,10 @@ class SAE(HookedRootModule):
         self.W_enc = nn.Parameter(
             torch.nn.init.kaiming_uniform_(
                 torch.empty(
-                    *self.input_shape(), self.cfg.d_sae, dtype=self.dtype, device=self.device
+                    *self.input_shape(),
+                    self.cfg.d_sae,
+                    dtype=self.dtype,
+                    device=self.device,
                 )
             )
         )
@@ -307,7 +316,10 @@ class SAE(HookedRootModule):
         self.W_dec = nn.Parameter(
             torch.nn.init.kaiming_uniform_(
                 torch.empty(
-                    self.cfg.d_sae, *self.input_shape(), dtype=self.dtype, device=self.device
+                    self.cfg.d_sae,
+                    *self.input_shape(),
+                    dtype=self.dtype,
+                    device=self.device,
                 )
             )
         )

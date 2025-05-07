@@ -1,32 +1,33 @@
 from typing import Any
 
 import torch
-import wandb
 from tqdm import tqdm
 
+import wandb
 from sae_lens.evals import run_evals
-from sae_lens.training.sae_trainer import SAETrainer, _unwrap_item
-from sae_lens.training.training_sae import TrainingSAE, TrainStepOutput
-from sae_lens.training.training_crosscoder_sae import TrainingCrosscoderSAE, TrainStepOutput
+from sae_lens.training.sae_trainer import SAETrainer
+from sae_lens.training.training_crosscoder_sae import TrainingCrosscoderSAE
+from sae_lens.training.training_sae import TrainStepOutput
+
 
 class CrosscoderSAETrainer(SAETrainer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Reconstruction metrics don't make sense for acausal crosscoders.
-        self.trainer_eval_config.compute_ce_loss=False
-        self.trainer_eval_config.compute_kl=False
+        self.trainer_eval_config.compute_ce_loss = False
+        self.trainer_eval_config.compute_kl = False
 
     def fit(self) -> TrainingCrosscoderSAE:
-        pbar = tqdm(total=self.cfg.total_training_tokens, desc="Training Crosscoder SAE")
+        pbar = tqdm(
+            total=self.cfg.total_training_tokens, desc="Training Crosscoder SAE"
+        )
 
         self.activations_store.set_norm_scaling_factor_if_needed()
 
         # Train loop
         while self.n_training_tokens < self.cfg.total_training_tokens:
             # Do a training step.
-            layer_acts = self.activations_store.next_batch().to(
-                self.sae.device
-            )
+            layer_acts = self.activations_store.next_batch().to(self.sae.device)
             self.n_training_tokens += self.cfg.train_batch_size_tokens
 
             step_output = self._train_step(sae=self.sae, sae_in=layer_acts)
@@ -110,7 +111,9 @@ class CrosscoderSAETrainer(SAETrainer):
             # Remove metrics that are not useful for wandb logging
             eval_metrics.pop("metrics/total_tokens_evaluated", None)
 
-            W_dec_norm_dist = self.sae.W_dec.detach().float().norm(dim=(1,2)).cpu().numpy()
+            W_dec_norm_dist = (
+                self.sae.W_dec.detach().float().norm(dim=(1, 2)).cpu().numpy()
+            )
             eval_metrics["weights/W_dec_norms"] = wandb.Histogram(W_dec_norm_dist)  # type: ignore
 
             if self.sae.cfg.architecture == "standard":

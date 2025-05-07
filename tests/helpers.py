@@ -97,21 +97,26 @@ def build_sae_cfg(**kwargs: Any) -> LanguageModelSAERunnerConfig:
 
     return mock_config
 
+
 def build_multilayer_sae_cfg(
-        hook_name_template : str = "blocks.{layer}.hook_mlp_out",
-        hook_layers = [0,1,2],
-        **kwargs: Any) -> LanguageModelSAERunnerConfig:
+    hook_name_template: str = "blocks.{layer}.hook_mlp_out",
+    hook_layers=[0, 1, 2],
+    **kwargs: Any,
+) -> LanguageModelSAERunnerConfig:
     hook_name = hook_name_template.format(
         layer=f"layers_{min(hook_layers)}_through_{max(hook_layers)}"
-        )
+    )
     hook_names = [hook_name_template.format(layer=layer) for layer in hook_layers]
     return build_sae_cfg(
-        **({
-            "hook_name": hook_name,
-            "hook_names": hook_names,
-            "hook_layer": max(hook_layers),
+        **(
+            {
+                "hook_name": hook_name,
+                "hook_names": hook_names,
+                "hook_layer": max(hook_layers),
             }
-           | kwargs))
+            | kwargs
+        )
+    )
 
 
 MODEL_CACHE: dict[str, HookedTransformer] = {}

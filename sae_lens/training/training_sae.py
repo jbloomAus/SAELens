@@ -600,7 +600,10 @@ class TrainingSAE(SAE):
         elif self.cfg.decoder_heuristic_init:
             self.W_dec = nn.Parameter(
                 torch.rand(
-                    self.cfg.d_sae, *self.input_shape(), dtype=self.dtype, device=self.device
+                    self.cfg.d_sae,
+                    *self.input_shape(),
+                    dtype=self.dtype,
+                    device=self.device,
                 )
             )
             self.initialize_decoder_norm_constant_norm(

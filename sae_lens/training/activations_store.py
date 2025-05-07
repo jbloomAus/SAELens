@@ -438,9 +438,10 @@ class ActivationsStore:
         # Norm scaling factor is a float in the single-layer case, and
         # a tensor in the multilayer case.
         if self.hook_names:
-            return activations * self.estimated_norm_scaling_factor.unsqueeze(-1).to(activations.device)
-        else:
-            return activations * self.estimated_norm_scaling_factor
+            return activations * self.estimated_norm_scaling_factor.unsqueeze(-1).to(
+                activations.device
+            )
+        return activations * self.estimated_norm_scaling_factor
 
     def unscale(self, activations: torch.Tensor) -> torch.Tensor:
         if self.estimated_norm_scaling_factor is None:
@@ -449,8 +450,7 @@ class ActivationsStore:
             )
         if self.hook_names:
             return activations / self.estimated_norm_scaling_factor.unsqueeze(-1)
-        else:
-            return activations / self.estimated_norm_scaling_factor
+        return activations / self.estimated_norm_scaling_factor
 
     def get_norm_scaling_factor(self, activations: torch.Tensor) -> torch.Tensor:
         return (self.d_in**0.5) / activations.norm(dim=-1).mean()
@@ -458,8 +458,8 @@ class ActivationsStore:
     @torch.no_grad()
     def estimate_norm_scaling_factor(self, n_batches_for_norm_estimate: int = int(1e3)):
         norms_per_batch = torch.empty(
-            len(self.hook_names) or 1, n_batches_for_norm_estimate,
-            device=self.device)
+            len(self.hook_names) or 1, n_batches_for_norm_estimate, device=self.device
+        )
         for batch_i in tqdm(
             range(n_batches_for_norm_estimate), desc="Estimating norm scaling factor"
         ):
@@ -472,9 +472,8 @@ class ActivationsStore:
         # Norm scaling factor is a float in the single-layer case, and
         # a tensor in the multilayer case.
         if self.hook_names:
-            return (np.sqrt(self.d_in) / mean_norm)
-        else:
-            return (np.sqrt(self.d_in) / mean_norm.item())
+            return np.sqrt(self.d_in) / mean_norm
+        return np.sqrt(self.d_in) / mean_norm.item()
 
     def shuffle_input_dataset(self, seed: int, buffer_size: int = 1):
         """
@@ -567,9 +566,7 @@ class ActivationsStore:
             )[1]
 
         layerwise_activations = [
-            layerwise_activations_cache[hook_name][
-                :, slice(*self.seqpos_slice)
-            ]
+            layerwise_activations_cache[hook_name][:, slice(*self.seqpos_slice)]
             for hook_name in hook_names
         ]
 
@@ -578,7 +575,7 @@ class ActivationsStore:
         if self.hook_head_index is not None:
             layerwise_activations = [
                 activation[:, :, self.hook_head_index]
-                 for activation in layerwise_activations
+                for activation in layerwise_activations
             ]
         elif layerwise_activations[0].ndim > 3:  # if we have a head dimension
             try:

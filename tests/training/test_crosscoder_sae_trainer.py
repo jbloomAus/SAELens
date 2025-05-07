@@ -4,18 +4,13 @@ from typing import Any, Callable
 import pytest
 import torch
 from datasets import Dataset
-from safetensors.torch import load_file
 from transformer_lens import HookedTransformer
 
-from sae_lens import __version__
 from sae_lens.config import LanguageModelSAERunnerConfig
-from sae_lens.sae_training_runner import SAETrainingRunner
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.crosscoder_sae_trainer import CrosscoderSAETrainer
 from sae_lens.training.sae_trainer import (
     TrainStepOutput,
-    _log_feature_sparsity,
-    _update_sae_lens_training_version,
 )
 from sae_lens.training.training_crosscoder_sae import TrainingCrosscoderSAE
 from tests.helpers import TINYSTORIES_MODEL, build_multilayer_sae_cfg, load_model_cached
@@ -27,7 +22,7 @@ def cfg():
         d_in=64,
         d_sae=128,
         hook_name_template="blocks.{layer}.hook_mlp_out",
-        hook_layers=[0,1,2],
+        hook_layers=[0, 1, 2],
         normalize_sae_decoder=False,
         scale_sparsity_penalty_by_decoder_norm=True,
     )
@@ -47,8 +42,9 @@ def activation_store(model: HookedTransformer, cfg: LanguageModelSAERunnerConfig
 
 @pytest.fixture
 def training_sae(cfg: LanguageModelSAERunnerConfig):
-    return TrainingCrosscoderSAE.from_dict(cfg.get_training_sae_cfg_dict(),
-                                           use_error_term=True)
+    return TrainingCrosscoderSAE.from_dict(
+        cfg.get_training_sae_cfg_dict(), use_error_term=True
+    )
 
 
 @pytest.fixture
@@ -67,7 +63,9 @@ def trainer(
     )
 
 
-def modify_sae_output(sae: TrainingCrosscoderSAE, modifier: Callable[[torch.Tensor], Any]):
+def modify_sae_output(
+    sae: TrainingCrosscoderSAE, modifier: Callable[[torch.Tensor], Any]
+):
     """
     Helper to modify the output of the SAE forward pass for use in patching, for use in patch side_effect.
     We need real grads during training, so we can't just mock the whole forward pass directly.
@@ -152,13 +150,14 @@ def test_train_step__sparsity_updates_based_on_feature_act_sparsity(
     )
     assert train_output.feature_acts is feature_acts
 
+
 def test_build_train_step_log_dict(trainer: CrosscoderSAETrainer) -> None:
-    sae_in = torch.tensor([[[-1, 0], [-2, 0]],
-                           [[0, 2], [0, 3]],
-                           [[1, 1], [1, 1]]]).float()
-    sae_out = torch.tensor([[[0, 0], [0, 0]],
-                            [[0, 2], [0, 3]],
-                            [[0.5, 1], [1, 0.5]]]).float()
+    sae_in = torch.tensor(
+        [[[-1, 0], [-2, 0]], [[0, 2], [0, 3]], [[1, 1], [1, 1]]]
+    ).float()
+    sae_out = torch.tensor(
+        [[[0, 0], [0, 0]], [[0, 2], [0, 3]], [[0.5, 1], [1, 0.5]]]
+    ).float()
     train_output = TrainStepOutput(
         sae_in=sae_in,
         sae_out=sae_out,
@@ -211,7 +210,7 @@ def test_train_sae_group_on_language_model__runs(
         training_tokens=20,
         context_size=8,
         hook_name_template="blocks.{layer}.hook_mlp_out",
-        hook_layers=[0,1,2],
+        hook_layers=[0, 1, 2],
         normalize_sae_decoder=False,
         scale_sparsity_penalty_by_decoder_norm=True,
     )
@@ -220,8 +219,9 @@ def test_train_sae_group_on_language_model__runs(
     activation_store = ActivationsStore.from_config(
         ts_model, cfg, override_dataset=dataset
     )
-    sae = TrainingCrosscoderSAE.from_dict(cfg.get_training_sae_cfg_dict(),
-                                          use_error_term=True)
+    sae = TrainingCrosscoderSAE.from_dict(
+        cfg.get_training_sae_cfg_dict(), use_error_term=True
+    )
     sae = CrosscoderSAETrainer(
         model=ts_model,
         sae=sae,

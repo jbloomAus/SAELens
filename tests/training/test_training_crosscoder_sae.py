@@ -1,18 +1,18 @@
 import pytest
 import torch
 
-from sae_lens.crosscoder_sae import CrosscoderSAE
 from sae_lens.training.training_crosscoder_sae import (
     TrainingCrosscoderSAE,
     TrainingCrosscoderSAEConfig,
 )
 from tests.helpers import build_multilayer_sae_cfg
 
+
 def test_TrainingCrosscoderSAE_training_forward_pass_can_scale_sparsity_penalty_by_decoder_norm():
     cfg = build_multilayer_sae_cfg(
         d_in=3,
         d_sae=5,
-        hook_layers=[0,1,2,3],
+        hook_layers=[0, 1, 2, 3],
         normalize_sae_decoder=False,
         scale_sparsity_penalty_by_decoder_norm=True,
     )
@@ -37,6 +37,7 @@ def test_TrainingCrosscoderSAE_training_forward_pass_can_scale_sparsity_penalty_
         == 2.0 * scaled_feature_acts.norm(p=1, dim=1).mean().detach().item()
     )
 
+
 @pytest.mark.parametrize("architecture", ["standard", "gated", "jumprelu", "topk"])
 def test_TrainingCrosscoderSAE_encode_returns_same_value_as_encode_with_hidden_pre(
     architecture: str,
@@ -45,7 +46,7 @@ def test_TrainingCrosscoderSAE_encode_returns_same_value_as_encode_with_hidden_p
         pytest.xfail("TODO(mkbehr): support other architectures")
     cfg = build_multilayer_sae_cfg(
         architecture=architecture,
-        hook_layers=[0,1,2,3],
+        hook_layers=[0, 1, 2, 3],
         normalize_sae_decoder=False,
         scale_sparsity_penalty_by_decoder_norm=True,
     )
@@ -58,18 +59,18 @@ def test_TrainingCrosscoderSAE_encode_returns_same_value_as_encode_with_hidden_p
     encode_with_hidden_pre_out = sae.encode_with_hidden_pre_fn(x)[0]
     assert torch.allclose(encode_out, encode_with_hidden_pre_out)
 
+
 def test_TrainingCrosscoderSAE_heuristic_init():
     cfg = build_multilayer_sae_cfg(
         d_in=3,
         d_sae=5,
-        hook_layers=[0,1,2,3],
+        hook_layers=[0, 1, 2, 3],
         normalize_sae_decoder=False,
         scale_sparsity_penalty_by_decoder_norm=True,
         decoder_heuristic_init=True,
         decoder_heuristic_init_norm=0.2,
     )
     sae = TrainingCrosscoderSAE(
-        TrainingCrosscoderSAEConfig.from_sae_runner_config(cfg),
-        use_error_term=True)
-    torch.testing.assert_close(sae.W_dec.norm(dim=[1,2]),
-                               torch.full((5,), 0.2))
+        TrainingCrosscoderSAEConfig.from_sae_runner_config(cfg), use_error_term=True
+    )
+    torch.testing.assert_close(sae.W_dec.norm(dim=[1, 2]), torch.full((5,), 0.2))

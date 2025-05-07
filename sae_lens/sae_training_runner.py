@@ -6,18 +6,18 @@ from pathlib import Path
 from typing import Any, cast
 
 import torch
-import wandb
 from simple_parsing import ArgumentParser
 from transformer_lens.hook_points import HookedRootModule
 
+import wandb
 from sae_lens import logger
 from sae_lens.config import HfDataset, LanguageModelSAERunnerConfig
 from sae_lens.load_model import load_model
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.crosscoder_sae_trainer import CrosscoderSAETrainer
-from sae_lens.training.training_crosscoder_sae import TrainingCrosscoderSAE
 from sae_lens.training.geometric_median import compute_geometric_median
 from sae_lens.training.sae_trainer import SAETrainer
+from sae_lens.training.training_crosscoder_sae import TrainingCrosscoderSAE
 from sae_lens.training.training_sae import TrainingSAE, TrainingSAEConfig
 
 

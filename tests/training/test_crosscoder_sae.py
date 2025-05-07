@@ -5,12 +5,9 @@ from pathlib import Path
 import einops
 import pytest
 import torch
-from torch import nn
-from transformer_lens.hook_points import HookPoint
 
 from sae_lens.config import LanguageModelSAERunnerConfig
 from sae_lens.crosscoder_sae import CrosscoderSAE
-from sae_lens.sae import _disable_hooks
 from tests.helpers import ALL_ARCHITECTURES, build_multilayer_sae_cfg
 
 
@@ -21,7 +18,7 @@ from tests.helpers import ALL_ARCHITECTURES, build_multilayer_sae_cfg
             "model_name": "tiny-stories-1M",
             "dataset_path": "roneneldan/TinyStories",
             "hook_name_template": "blocks.{layer}.hook_resid_pre",
-            "hook_layers": [0,1,2],
+            "hook_layers": [0, 1, 2],
             "d_in": 64,
             "normalize_sae_decoder": False,
             "scale_sparsity_penalty_by_decoder_norm": True,
@@ -30,7 +27,7 @@ from tests.helpers import ALL_ARCHITECTURES, build_multilayer_sae_cfg
             "model_name": "tiny-stories-1M",
             "dataset_path": "roneneldan/TinyStories",
             "hook_name_template": "blocks.{layer}.hook_resid_pre",
-            "hook_layers": [0,1,2],
+            "hook_layers": [0, 1, 2],
             "d_in": 64,
             "normalize_sae_decoder": False,
             "scale_sparsity_penalty_by_decoder_norm": True,
@@ -39,7 +36,7 @@ from tests.helpers import ALL_ARCHITECTURES, build_multilayer_sae_cfg
             "model_name": "tiny-stories-1M",
             "dataset_path": "apollo-research/roneneldan-TinyStories-tokenizer-gpt2",
             "hook_name_template": "blocks.{layer}.hook_resid_pre",
-            "hook_layers": [0,1,2],
+            "hook_layers": [0, 1, 2],
             "d_in": 64,
             "normalize_sae_decoder": False,
             "scale_sparsity_penalty_by_decoder_norm": True,
@@ -85,59 +82,20 @@ def test_crosscoder_sae_init(cfg: LanguageModelSAERunnerConfig):
 def test_crosscoder_sae_fold_w_dec_norm(cfg: LanguageModelSAERunnerConfig):
     sae = CrosscoderSAE.from_dict(cfg.get_base_sae_cfg_dict())
     sae.turn_off_forward_pass_hook_z_reshaping()  # hook z reshaping not needed here.
-    assert sae.W_dec.norm(dim=[-2,-1]).mean().item() != pytest.approx(1.0, abs=1e-6)
+    assert sae.W_dec.norm(dim=[-2, -1]).mean().item() != pytest.approx(1.0, abs=1e-6)
     sae2 = deepcopy(sae)
     sae2.fold_W_dec_norm()
 
-    W_dec_norms = sae.W_dec.norm(dim=[-2,-1], keepdim=True)
+    W_dec_norms = sae.W_dec.norm(dim=[-2, -1], keepdim=True)
     assert torch.allclose(sae2.W_dec.data, sae.W_dec.data / W_dec_norms)
-    assert torch.allclose(sae2.W_enc.data,
-                          sae.W_enc.data * einops.rearrange(
-                              W_dec_norms, "d_sae 1 1 -> 1 1 d_sae"))
+    assert torch.allclose(
+        sae2.W_enc.data,
+        sae.W_enc.data * einops.rearrange(W_dec_norms, "d_sae 1 1 -> 1 1 d_sae"),
+    )
     assert torch.allclose(sae2.b_enc.data, sae.b_enc.data * W_dec_norms.squeeze())
 
     # fold_W_dec_norm should normalize W_dec to have unit norm.
-    assert sae2.W_dec.norm(dim=[-2,-1]).mean().item() == pytest.approx(1.0, abs=1e-6)
-
-    # we expect activations of features to differ by W_dec norm weights.
-    activations = torch.randn(10, 4, len(cfg.hook_names), cfg.d_in,
-                              device=cfg.device)
-    feature_activations_1 = sae.encode(activations)
-    feature_activations_2 = sae2.encode(activations)
-
-    assert torch.allclose(
-        feature_activations_1.nonzero(),
-        feature_activations_2.nonzero(),
-    )
-
-    expected_feature_activations_2 = feature_activations_1 * sae.W_dec.norm(dim=[-2,-1])
-    torch.testing.assert_close(feature_activations_2, expected_feature_activations_2)
-
-    sae_out_1 = sae.decode(feature_activations_1)
-    sae_out_2 = sae2.decode(feature_activations_2)
-
-    # but actual outputs should be the same
-    torch.testing.assert_close(sae_out_1, sae_out_2)
-
-@pytest.mark.parametrize("architecture", ALL_ARCHITECTURES)
-@torch.no_grad()
-def test_crosscoder_sae_fold_w_dec_norm_all_architectures(architecture: str):
-    if architecture != "standard":
-        pytest.xfail("TODO(mkbehr): support other architectures")
-    cfg = build_multilayer_sae_cfg(architecture=architecture, hook_layers=[0,1,2])
-    sae = CrosscoderSAE.from_dict(cfg.get_base_sae_cfg_dict())
-    sae.turn_off_forward_pass_hook_z_reshaping()  # hook z reshaping not needed here.
-
-    # make sure all parameters are not 0s
-    for param in sae.parameters():
-        param.data = torch.rand_like(param)
-
-    assert sae.W_dec.norm(dim=[-2,-1]).mean().item() != pytest.approx(1.0, abs=1e-6)
-    sae2 = deepcopy(sae)
-    sae2.fold_W_dec_norm()
-
-    # fold_W_dec_norm should normalize W_dec to have unit norm.
-    assert sae2.W_dec.norm(dim=[-2,-1]).mean().item() == pytest.approx(1.0, abs=1e-6)
+    assert sae2.W_dec.norm(dim=[-2, -1]).mean().item() == pytest.approx(1.0, abs=1e-6)
 
     # we expect activations of features to differ by W_dec norm weights.
     activations = torch.randn(10, 4, len(cfg.hook_names), cfg.d_in, device=cfg.device)
@@ -149,7 +107,9 @@ def test_crosscoder_sae_fold_w_dec_norm_all_architectures(architecture: str):
         feature_activations_2.nonzero(),
     )
 
-    expected_feature_activations_2 = feature_activations_1 * sae.W_dec.norm(dim=[-2,-1])
+    expected_feature_activations_2 = feature_activations_1 * sae.W_dec.norm(
+        dim=[-2, -1]
+    )
     torch.testing.assert_close(feature_activations_2, expected_feature_activations_2)
 
     sae_out_1 = sae.decode(feature_activations_1)
@@ -157,6 +117,49 @@ def test_crosscoder_sae_fold_w_dec_norm_all_architectures(architecture: str):
 
     # but actual outputs should be the same
     torch.testing.assert_close(sae_out_1, sae_out_2)
+
+
+@pytest.mark.parametrize("architecture", ALL_ARCHITECTURES)
+@torch.no_grad()
+def test_crosscoder_sae_fold_w_dec_norm_all_architectures(architecture: str):
+    if architecture != "standard":
+        pytest.xfail("TODO(mkbehr): support other architectures")
+    cfg = build_multilayer_sae_cfg(architecture=architecture, hook_layers=[0, 1, 2])
+    sae = CrosscoderSAE.from_dict(cfg.get_base_sae_cfg_dict())
+    sae.turn_off_forward_pass_hook_z_reshaping()  # hook z reshaping not needed here.
+
+    # make sure all parameters are not 0s
+    for param in sae.parameters():
+        param.data = torch.rand_like(param)
+
+    assert sae.W_dec.norm(dim=[-2, -1]).mean().item() != pytest.approx(1.0, abs=1e-6)
+    sae2 = deepcopy(sae)
+    sae2.fold_W_dec_norm()
+
+    # fold_W_dec_norm should normalize W_dec to have unit norm.
+    assert sae2.W_dec.norm(dim=[-2, -1]).mean().item() == pytest.approx(1.0, abs=1e-6)
+
+    # we expect activations of features to differ by W_dec norm weights.
+    activations = torch.randn(10, 4, len(cfg.hook_names), cfg.d_in, device=cfg.device)
+    feature_activations_1 = sae.encode(activations)
+    feature_activations_2 = sae2.encode(activations)
+
+    assert torch.allclose(
+        feature_activations_1.nonzero(),
+        feature_activations_2.nonzero(),
+    )
+
+    expected_feature_activations_2 = feature_activations_1 * sae.W_dec.norm(
+        dim=[-2, -1]
+    )
+    torch.testing.assert_close(feature_activations_2, expected_feature_activations_2)
+
+    sae_out_1 = sae.decode(feature_activations_1)
+    sae_out_2 = sae2.decode(feature_activations_2)
+
+    # but actual outputs should be the same
+    torch.testing.assert_close(sae_out_1, sae_out_2)
+
 
 @torch.no_grad()
 def test_crosscoder_sae_fold_norm_scaling_factor(cfg: LanguageModelSAERunnerConfig):
@@ -173,7 +176,9 @@ def test_crosscoder_sae_fold_norm_scaling_factor(cfg: LanguageModelSAERunnerConf
 
     assert sae2.cfg.normalize_activations == "none"
 
-    assert torch.allclose(sae2.W_enc.data, sae.W_enc.data * norm_scaling_factor.reshape((-1,1,1)))
+    assert torch.allclose(
+        sae2.W_enc.data, sae.W_enc.data * norm_scaling_factor.reshape((-1, 1, 1))
+    )
 
     # we expect activations of features to differ by W_dec norm weights.
     # assume activations are already scaled
@@ -205,7 +210,7 @@ def test_crosscoder_sae_fold_norm_scaling_factor(cfg: LanguageModelSAERunnerConf
 def test_crosscoder_sae_fold_norm_scaling_factor_all_architectures(architecture: str):
     if architecture != "standard":
         pytest.xfail("TODO(mkbehr): support other architectures")
-    cfg = build_multilayer_sae_cfg(architecture=architecture, hook_layers=[0,1,2])
+    cfg = build_multilayer_sae_cfg(architecture=architecture, hook_layers=[0, 1, 2])
     norm_scaling_factor = torch.Tensor([2.0, 3.0, 4.0])
 
     sae = CrosscoderSAE.from_dict(cfg.get_base_sae_cfg_dict())
@@ -218,7 +223,9 @@ def test_crosscoder_sae_fold_norm_scaling_factor_all_architectures(architecture:
 
     assert sae2.cfg.normalize_activations == "none"
 
-    assert torch.allclose(sae2.W_enc.data, sae.W_enc.data * norm_scaling_factor.reshape((-1,1,1)))
+    assert torch.allclose(
+        sae2.W_enc.data, sae.W_enc.data * norm_scaling_factor.reshape((-1, 1, 1))
+    )
 
     # we expect activations of features to differ by W_dec norm weights.
     # assume activations are already scaled
@@ -244,8 +251,9 @@ def test_crosscoder_sae_fold_norm_scaling_factor_all_architectures(architecture:
     # but actual outputs should be the same
     torch.testing.assert_close(sae_out_1, sae_out_2)
 
+
 def test_crosscoder_sae_save_and_load_from_pretrained(tmp_path: Path) -> None:
-    cfg = build_multilayer_sae_cfg(hook_layers=[0,1,2])
+    cfg = build_multilayer_sae_cfg(hook_layers=[0, 1, 2])
     model_path = str(tmp_path)
     sae = CrosscoderSAE.from_dict(cfg.get_base_sae_cfg_dict())
     sae_state_dict = sae.state_dict()
@@ -268,10 +276,11 @@ def test_crosscoder_sae_save_and_load_from_pretrained(tmp_path: Path) -> None:
     sae_out_1 = sae(sae_in)
     sae_out_2 = sae_loaded(sae_in)
     assert torch.allclose(sae_out_1, sae_out_2)
+
 
 @pytest.mark.xfail(reason="TODO(mkbehr): support other architectures")
 def test_crosscoder_sae_save_and_load_from_pretrained_gated(tmp_path: Path) -> None:
-    cfg = build_multilayer_sae_cfg(architecture="gated", hook_layers=[0,1,2])
+    cfg = build_multilayer_sae_cfg(architecture="gated", hook_layers=[0, 1, 2])
     model_path = str(tmp_path)
     sae = CrosscoderSAE.from_dict(cfg.get_base_sae_cfg_dict())
     sae_state_dict = sae.state_dict()
@@ -294,9 +303,12 @@ def test_crosscoder_sae_save_and_load_from_pretrained_gated(tmp_path: Path) -> N
     sae_out_1 = sae(sae_in)
     sae_out_2 = sae_loaded(sae_in)
     assert torch.allclose(sae_out_1, sae_out_2)
+
 
 def test_crosscoder_sae_save_and_load_from_pretrained_topk(tmp_path: Path) -> None:
-    cfg = build_multilayer_sae_cfg(activation_fn_kwargs={"k": 30}, hook_layers=[0,1,2])
+    cfg = build_multilayer_sae_cfg(
+        activation_fn_kwargs={"k": 30}, hook_layers=[0, 1, 2]
+    )
     model_path = str(tmp_path)
     sae = CrosscoderSAE.from_dict(cfg.get_base_sae_cfg_dict())
     sae_state_dict = sae.state_dict()
@@ -320,7 +332,15 @@ def test_crosscoder_sae_save_and_load_from_pretrained_topk(tmp_path: Path) -> No
     sae_out_2 = sae_loaded(sae_in)
     assert torch.allclose(sae_out_1, sae_out_2)
 
+
 def test_crosscoder_sae_get_name_returns_correct_name_from_cfg_vals() -> None:
-    cfg = build_multilayer_sae_cfg(model_name="test_model", hook_name_template="blocks.{layer}.test_hook_name", d_sae=128, hook_layers=[0,1,2])
+    cfg = build_multilayer_sae_cfg(
+        model_name="test_model",
+        hook_name_template="blocks.{layer}.test_hook_name",
+        d_sae=128,
+        hook_layers=[0, 1, 2],
+    )
     sae = CrosscoderSAE.from_dict(cfg.get_base_sae_cfg_dict())
-    assert sae.get_name() == "sae_test_model_blocks.layers_0_through_2.test_hook_name_128"
+    assert (
+        sae.get_name() == "sae_test_model_blocks.layers_0_through_2.test_hook_name_128"
+    )

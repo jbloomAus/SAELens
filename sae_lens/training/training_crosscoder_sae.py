@@ -1,5 +1,3 @@
-import json
-import os
 from dataclasses import dataclass
 from typing import Any
 
@@ -10,15 +8,15 @@ from torch import nn
 
 from sae_lens.config import LanguageModelSAERunnerConfig
 from sae_lens.crosscoder_sae import CrosscoderSAE, CrosscoderSAEConfig
-from sae_lens.training.training_sae import (
-    TrainingSAEConfig,
-    TrainingSAE,
-    TrainStepOutput,
-    )
 from sae_lens.toolkit.pretrained_sae_loaders import (
     PretrainedSaeDiskLoader,
     handle_config_defaulting,
     sae_lens_disk_loader,
+)
+from sae_lens.training.training_sae import (
+    TrainingSAE,
+    TrainingSAEConfig,
+    TrainStepOutput,
 )
 
 SPARSITY_PATH = "sparsity.safetensors"
@@ -75,16 +73,19 @@ class TrainingCrosscoderSAEConfig(CrosscoderSAEConfig, TrainingSAEConfig):
         )
 
     def to_dict(self) -> dict[str, Any]:
-        return (TrainingSAEConfig.to_dict(self)
-                | CrosscoderSAEConfig.to_dict(self)
-                | {
-                    "sparsity_penalty_decoder_norm_lp_norm":
-                    self.sparsity_penalty_decoder_norm_lp_norm,
-                })
+        return (
+            TrainingSAEConfig.to_dict(self)
+            | CrosscoderSAEConfig.to_dict(self)
+            | {
+                "sparsity_penalty_decoder_norm_lp_norm": self.sparsity_penalty_decoder_norm_lp_norm,
+            }
+        )
 
     def get_base_sae_cfg_dict(self) -> dict[str, Any]:
-        return (TrainingSAEConfig.get_base_sae_cfg_dict(self)
-                | { "hook_names": self.hook_names })
+        return TrainingSAEConfig.get_base_sae_cfg_dict(self) | {
+            "hook_names": self.hook_names
+        }
+
 
 class TrainingCrosscoderSAE(CrosscoderSAE, TrainingSAE):
     # TODO(mkbehr) future implementation
@@ -94,17 +95,17 @@ class TrainingCrosscoderSAE(CrosscoderSAE, TrainingSAE):
     # calculate_ghost_grad_loss
     # fold_W_dec_norm for jumprelu
 
-    def __init__(self,
-                 cfg: TrainingCrosscoderSAEConfig,
-                 use_error_term: bool = False):
+    def __init__(self, cfg: TrainingCrosscoderSAEConfig, use_error_term: bool = False):
         super().__init__(cfg, use_error_term=use_error_term)
 
     @classmethod
-    def from_dict(cls,
-                  config_dict: dict[str, Any],
-                  use_error_term: bool = False) -> "TrainingSAE":
-        return cls(TrainingCrosscoderSAEConfig.from_dict(config_dict),
-                   use_error_term = use_error_term)
+    def from_dict(
+        cls, config_dict: dict[str, Any], use_error_term: bool = False
+    ) -> "TrainingSAE":
+        return cls(
+            TrainingCrosscoderSAEConfig.from_dict(config_dict),
+            use_error_term=use_error_term,
+        )
 
     @staticmethod
     def base_sae_cfg(cfg: TrainingCrosscoderSAEConfig):
@@ -114,7 +115,9 @@ class TrainingCrosscoderSAE(CrosscoderSAE, TrainingSAE):
         if self.cfg.architecture != "standard":
             raise NotImplementedError("TODO(mkbehr): support other archs")
         if not self.cfg.scale_sparsity_penalty_by_decoder_norm:
-            raise ValueError("Crosscoders require scale_sparsity_penalty_by_decoder_norm")
+            raise ValueError(
+                "Crosscoders require scale_sparsity_penalty_by_decoder_norm"
+            )
         if not self.use_error_term:
             raise NotImplementedError("TODO(mkbehr): support causal crosscoders")
         if self.cfg.use_ghost_grads:
@@ -128,10 +131,12 @@ class TrainingCrosscoderSAE(CrosscoderSAE, TrainingSAE):
 
         hidden_pre = self.hook_sae_acts_pre(
             einops.einsum(
-                sae_in, self.W_enc,
-                "... n_layers d_in, n_layers d_in d_sae -> ... d_sae"
-                )
-            + self.b_enc)
+                sae_in,
+                self.W_enc,
+                "... n_layers d_in, n_layers d_in d_sae -> ... d_sae",
+            )
+            + self.b_enc
+        )
         hidden_pre_noised = hidden_pre + (
             torch.randn_like(hidden_pre) * self.cfg.noise_scale * self.training
         )
@@ -159,8 +164,7 @@ class TrainingCrosscoderSAE(CrosscoderSAE, TrainingSAE):
         assert self.cfg.scale_sparsity_penalty_by_decoder_norm
         decoder_norms = self.W_dec.norm(dim=2)
         feature_act_weights = decoder_norms.norm(
-            p=self.cfg.sparsity_penalty_decoder_norm_lp_norm,
-            dim=1
+            p=self.cfg.sparsity_penalty_decoder_norm_lp_norm, dim=1
         )
         weighted_feature_acts = feature_acts * feature_act_weights
         sparsity = weighted_feature_acts.norm(
@@ -169,11 +173,7 @@ class TrainingCrosscoderSAE(CrosscoderSAE, TrainingSAE):
 
         l1_loss = (current_l1_coefficient * sparsity).mean()
         loss = mse_loss + l1_loss
-        if (
-            self.cfg.use_ghost_grads
-            and self.training
-            and dead_neuron_mask is not None
-        ):
+        if self.cfg.use_ghost_grads and self.training and dead_neuron_mask is not None:
             ghost_grad_loss = self.calculate_ghost_grad_loss(
                 x=sae_in,
                 sae_out=sae_out,
@@ -216,20 +216,25 @@ class TrainingCrosscoderSAE(CrosscoderSAE, TrainingSAE):
     def initialize_weights_complex(self):
         if self.cfg.decoder_orthogonal_init:
             self.W_dec.data = nn.init.orthogonal_(
-                self.W_dec.data.permute((1,2,0))
-            ).permute((2,0,1))
+                self.W_dec.data.permute((1, 2, 0))
+            ).permute((2, 0, 1))
 
         elif self.cfg.decoder_heuristic_init:
             self.W_dec = nn.Parameter(
                 torch.rand(
-                    self.cfg.d_sae, *self.input_shape(), dtype=self.dtype, device=self.device
+                    self.cfg.d_sae,
+                    *self.input_shape(),
+                    dtype=self.dtype,
+                    device=self.device,
                 )
             )
-            self.initialize_decoder_norm_constant_norm(self.cfg.decoder_heuristic_init_norm)
+            self.initialize_decoder_norm_constant_norm(
+                self.cfg.decoder_heuristic_init_norm
+            )
 
         # Then we initialize the encoder weights (either as the transpose of decoder or not)
         if self.cfg.init_encoder_as_decoder_transpose:
-            self.W_enc.data = self.W_dec.data.permute((1,2,0)).clone().contiguous()
+            self.W_enc.data = self.W_dec.data.permute((1, 2, 0)).clone().contiguous()
         else:
             self.W_enc = nn.Parameter(
                 torch.nn.init.kaiming_uniform_(
@@ -249,7 +254,7 @@ class TrainingCrosscoderSAE(CrosscoderSAE, TrainingSAE):
 
     @torch.no_grad()
     def set_decoder_norm_to_unit_norm(self):
-        self.W_dec.data /= torch.norm(self.W_dec.data, dim=[1,2], keepdim=True)
+        self.W_dec.data /= torch.norm(self.W_dec.data, dim=[1, 2], keepdim=True)
 
     @torch.no_grad()
     def initialize_decoder_norm_constant_norm(self, norm: float = 0.1):
@@ -260,7 +265,7 @@ class TrainingCrosscoderSAE(CrosscoderSAE, TrainingSAE):
         # TODO: Parameterise this as a function of m and n
 
         # ensure W_dec norms at unit norm
-        self.W_dec.data /= torch.norm(self.W_dec.data, dim=[1,2], keepdim=True)
+        self.W_dec.data /= torch.norm(self.W_dec.data, dim=[1, 2], keepdim=True)
         self.W_dec.data *= norm  # will break tests but do this for now.
 
     @torch.no_grad()
@@ -281,4 +286,3 @@ class TrainingCrosscoderSAE(CrosscoderSAE, TrainingSAE):
             self.W_dec.data,
             "d_sae, d_sae n_layers d_in -> d_sae n_layers d_in",
         )
-

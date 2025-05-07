@@ -30,7 +30,12 @@ from sae_lens.training.training_crosscoder_sae import (
     TrainingCrosscoderSAEConfig,
 )
 from sae_lens.training.training_sae import TrainingSAE
-from tests.helpers import TINYSTORIES_MODEL, build_sae_cfg, build_multilayer_sae_cfg, load_model_cached
+from tests.helpers import (
+    TINYSTORIES_MODEL,
+    build_multilayer_sae_cfg,
+    build_sae_cfg,
+    load_model_cached,
+)
 
 TRAINER_EVAL_CONFIG = EvalConfig(
     n_eval_reconstruction_batches=10,
@@ -287,9 +292,10 @@ def test_run_empty_evals(
     assert "token_stats" in eval_metrics, "Expected token_stats in eval_metrics"
     assert len(feature_metrics) == 0, "Expected empty feature_metrics"
 
+
 # TODO(mkbehr): consider parameterizing
 def test_run_evals_crosscoder_training_sae(model):
-    cfg=build_multilayer_sae_cfg(
+    cfg = build_multilayer_sae_cfg(
         model_name="tiny-stories-1M",
         dataset_path="roneneldan/TinyStories",
         hook_name_template="blocks.{layer}.hook_resid_pre",
@@ -302,8 +308,8 @@ def test_run_evals_crosscoder_training_sae(model):
         model, cfg, override_dataset=Dataset.from_list([{"text": "hello world"}] * 2000)
     )
     training_crosscoder_sae = TrainingCrosscoderSAE(
-        TrainingCrosscoderSAEConfig.from_sae_runner_config(cfg),
-        use_error_term=True)
+        TrainingCrosscoderSAEConfig.from_sae_runner_config(cfg), use_error_term=True
+    )
     eval_config = EvalConfig(
         compute_l2_norms=True,
         compute_sparsity_metrics=True,
@@ -326,7 +332,9 @@ def test_run_evals_crosscoder_training_sae(model):
     ]
     assert set(eval_metrics.keys()) == set(expected_keys)
     assert set(feature_metrics.keys()) == set(
-        ["feature_density", "consistent_activation_heuristic"])
+        ["feature_density", "consistent_activation_heuristic"]
+    )
+
 
 @pytest.fixture
 def mock_args():

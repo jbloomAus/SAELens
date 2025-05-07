@@ -378,7 +378,9 @@ def get_sparsity_and_variance_metrics(
     ignore_tokens: set[int | None] = set(),
     verbose: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    hook_names = sae.cfg.hook_names if hasattr(sae.cfg, "hook_names") else [sae.cfg.hook_name]
+    hook_names = (
+        sae.cfg.hook_names if hasattr(sae.cfg, "hook_names") else [sae.cfg.hook_name]
+    )
     hook_head_index = sae.cfg.hook_head_index
 
     metric_dict = {}
@@ -446,14 +448,14 @@ def get_sparsity_and_variance_metrics(
             # TODO(mkbehr) support head dimension for mutilayer evals
             assert len(hook_names) == 1
             original_act = cache[hook_names[0]][:, :, hook_head_index]
-        elif any(substring in hook_names[0] for substring in has_head_dim_key_substrings):
+        elif any(
+            substring in hook_names[0] for substring in has_head_dim_key_substrings
+        ):
             # TODO(mkbehr) support head dimension for mutilayer evals
             original_act = cache[hook_names[0]].flatten(-2, -1)
         elif hasattr(sae.cfg, "hook_names"):
             # TODO(mkbehr): support head dimension for mutilayer evals
-            layerwise_activations = [
-                cache[hook_name] for hook_name in hook_names
-            ]
+            layerwise_activations = [cache[hook_name] for hook_name in hook_names]
             original_act = torch.stack(layerwise_activations, dim=2)
         else:
             original_act = cache[hook_names[0]]
@@ -470,7 +472,9 @@ def get_sparsity_and_variance_metrics(
         if activation_store.normalize_activations == "expected_average_only_in":
             sae_out = activation_store.unscale(sae_out)
 
-        flattened_sae_input = einops.rearrange(original_act, "b ctx d ... -> (b ctx) (d ...)")
+        flattened_sae_input = einops.rearrange(
+            original_act, "b ctx d ... -> (b ctx) (d ...)"
+        )
         flattened_sae_feature_acts = einops.rearrange(
             sae_feature_activations, "b ctx d -> (b ctx) d"
         )

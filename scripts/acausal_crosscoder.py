@@ -6,11 +6,11 @@ import torch
 sys.path.append("..")
 
 from sae_lens.config import LanguageModelSAERunnerConfig
+from sae_lens.sae_training_runner import SAETrainingRunner
 from sae_lens.training.training_crosscoder_sae import (
     TrainingCrosscoderSAE,
-    TrainingCrosscoderSAEConfig
+    TrainingCrosscoderSAEConfig,
 )
-from sae_lens.sae_training_runner import SAETrainingRunner
 
 if torch.cuda.is_available():
     device = "cuda"
@@ -54,9 +54,7 @@ expansion_factor = 32
 d_sae = d_in * expansion_factor
 learning_rate = 2e-5
 l1_coefficient = 1
-hook_name = hook_name_template.format(
-    layer=f"{min(layers)}_through_{max(layers)}"
-)
+hook_name = hook_name_template.format(layer=f"{min(layers)}_through_{max(layers)}")
 hook_names = [hook_name_template.format(layer=layer) for layer in layers]
 
 cfg = LanguageModelSAERunnerConfig(
@@ -122,10 +120,10 @@ cfg = LanguageModelSAERunnerConfig(
 
 sae = SAETrainingRunner(
     cfg,
-    override_sae = TrainingCrosscoderSAE(
+    override_sae=TrainingCrosscoderSAE(
         TrainingCrosscoderSAEConfig.from_sae_runner_config(cfg),
         use_error_term=True,
-    )).run()
+    ),
+).run()
 
 print("=" * 50)
-

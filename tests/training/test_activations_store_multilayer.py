@@ -2,23 +2,20 @@
 
 import os
 import tempfile
-from typing import Any
 
-import pytest
 import torch
 from datasets import Dataset
 from safetensors.torch import load_file
 from transformer_lens import HookedTransformer
 
 from sae_lens.training.activations_store import ActivationsStore
-from tests.helpers import build_sae_cfg, build_multilayer_sae_cfg, load_model_cached
+from tests.helpers import build_multilayer_sae_cfg, build_sae_cfg
 
 
 def test_activations_store_init_with_multiple_layers(ts_model: HookedTransformer):
     """Test initialization with a list of layers instead of a single layer."""
     cfg = build_multilayer_sae_cfg(
-        hook_name_template="blocks.{layer}.hook_resid_pre",
-        hook_layers=[0, 1, 2]
+        hook_name_template="blocks.{layer}.hook_resid_pre", hook_layers=[0, 1, 2]
     )
 
     activation_store = ActivationsStore.from_config(ts_model, cfg)
@@ -30,8 +27,7 @@ def test_activations_store_init_with_multiple_layers(ts_model: HookedTransformer
     ]
 
     cfg_single = build_multilayer_sae_cfg(
-        hook_name_template="blocks.{layer}.hook_resid_pre",
-        hook_layers=[1]
+        hook_name_template="blocks.{layer}.hook_resid_pre", hook_layers=[1]
     )
 
     single_layer_store = ActivationsStore.from_config(ts_model, cfg_single)
@@ -45,11 +41,13 @@ def test_activations_store_get_activations_multiple_layers(ts_model: HookedTrans
     cfg = build_multilayer_sae_cfg(
         hook_name_template="blocks.{layer}.hook_resid_pre",
         hook_layers=[0, 1, 2],
-        context_size=5
+        context_size=5,
     )
 
     dataset = Dataset.from_list([{"text": "hello world"}] * 10)
-    activation_store = ActivationsStore.from_config(ts_model, cfg, override_dataset=dataset)
+    activation_store = ActivationsStore.from_config(
+        ts_model, cfg, override_dataset=dataset
+    )
 
     batch_tokens = activation_store.get_batch_tokens()
     activations = activation_store.get_activations(batch_tokens)
@@ -59,24 +57,19 @@ def test_activations_store_get_activations_multiple_layers(ts_model: HookedTrans
         cfg.store_batch_size_prompts,
         cfg.context_size,
         len(cfg.hook_names),
-        cfg.d_in
+        cfg.d_in,
     )
 
     # Verify that layers are in the correct order
     # Run with cache directly to compare against
     _, cache = ts_model.run_with_cache(
-        batch_tokens,
-        names_filter=[f"blocks.{i}.hook_resid_pre" for i in [0, 1, 2]]
+        batch_tokens, names_filter=[f"blocks.{i}.hook_resid_pre" for i in [0, 1, 2]]
     )
 
     for i, layer in enumerate([0, 1, 2]):
         hook_name = f"blocks.{layer}.hook_resid_pre"
         # Compare the activations for this layer with what we got from run_with_cache
-        assert torch.allclose(
-            activations[:, :, i, :],
-            cache[hook_name],
-            atol=1e-5
-        )
+        assert torch.allclose(activations[:, :, i, :], cache[hook_name], atol=1e-5)
 
 
 def test_activations_store_get_buffer_multiple_layers(ts_model: HookedTransformer):
@@ -84,13 +77,17 @@ def test_activations_store_get_buffer_multiple_layers(ts_model: HookedTransforme
     cfg = build_multilayer_sae_cfg(
         hook_name_template="blocks.{layer}.hook_resid_pre",
         hook_layers=[0, 1, 2],
-        context_size=5
+        context_size=5,
     )
 
     dataset = Dataset.from_list([{"text": "hello world"}] * 20)
-    activation_store = ActivationsStore.from_config(ts_model, cfg, override_dataset=dataset)
+    activation_store = ActivationsStore.from_config(
+        ts_model, cfg, override_dataset=dataset
+    )
 
-    buffer_activations, buffer_tokens = activation_store.get_buffer(n_batches_in_buffer=2)
+    buffer_activations, buffer_tokens = activation_store.get_buffer(
+        n_batches_in_buffer=2
+    )
 
     # Check shape: [(batch_size * context_size * n_batches), num_layers, d_in]
     expected_size = cfg.store_batch_size_prompts * cfg.context_size * 2
@@ -104,11 +101,13 @@ def test_activations_store_next_batch_multiple_layers(ts_model: HookedTransforme
         hook_name_template="blocks.{layer}.hook_resid_pre",
         hook_layers=[0, 1, 2],
         context_size=5,
-        train_batch_size_tokens=10
+        train_batch_size_tokens=10,
     )
 
     dataset = Dataset.from_list([{"text": "hello world"}] * 20)
-    activation_store = ActivationsStore.from_config(ts_model, cfg, override_dataset=dataset)
+    activation_store = ActivationsStore.from_config(
+        ts_model, cfg, override_dataset=dataset
+    )
 
     batch = activation_store.next_batch()
     assert batch.shape == (10, len(cfg.hook_names), activation_store.d_in)
@@ -120,37 +119,41 @@ def test_activations_store_normalization_multiple_layers(ts_model: HookedTransfo
         hook_name_template="blocks.{layer}.hook_resid_pre",
         hook_layers=[0, 1, 2],
         normalize_activations="expected_average_only_in",
-        context_size=5
+        context_size=5,
     )
 
     dataset = Dataset.from_list([{"text": "hello world"}] * 20)
-    activation_store = ActivationsStore.from_config(ts_model, cfg, override_dataset=dataset)
+    activation_store = ActivationsStore.from_config(
+        ts_model, cfg, override_dataset=dataset
+    )
     activation_store.set_norm_scaling_factor_if_needed()
 
     batch = activation_store.next_batch()
 
     avg_norm = batch.norm(dim=-1).mean(dim=1)
-    expected_norm = torch.full_like(avg_norm, cfg.d_in ** 0.5)
+    expected_norm = torch.full_like(avg_norm, cfg.d_in**0.5)
     torch.testing.assert_close(avg_norm, expected_norm, atol=1.0, rtol=0.1)
 
 
 def test_backward_compatibility_single_layer(ts_model: HookedTransformer):
     """Test that single layer behavior is unchanged with the multi-layer support."""
     cfg_single = build_sae_cfg(
-        hook_name="blocks.0.hook_resid_pre",
-        hook_layer=0,
-        context_size=5
+        hook_name="blocks.0.hook_resid_pre", hook_layer=0, context_size=5
     )
 
     dataset = Dataset.from_list([{"text": "hello world"}] * 10)
-    single_store = ActivationsStore.from_config(ts_model, cfg_single, override_dataset=dataset)
+    single_store = ActivationsStore.from_config(
+        ts_model, cfg_single, override_dataset=dataset
+    )
 
     cfg_multi = build_multilayer_sae_cfg(
         hook_name_template="blocks.{layer}.hook_resid_pre",
         hook_layers=[0],
-        context_size=5
+        context_size=5,
     )
-    multi_store = ActivationsStore.from_config(ts_model, cfg_multi, override_dataset=dataset)
+    multi_store = ActivationsStore.from_config(
+        ts_model, cfg_multi, override_dataset=dataset
+    )
 
     batch_tokens_single = single_store.get_batch_tokens()
     activations_single = single_store.get_activations(batch_tokens_single)
@@ -169,7 +172,7 @@ def test_activations_store_multilayer_save_with_norm_scaling_factor(
         hook_name_template="blocks.{layer}.hook_resid_pre",
         hook_layers=[0, 1, 2],
         normalize_activations="expected_average_only_in",
-        context_size=5
+        context_size=5,
     )
     activation_store = ActivationsStore.from_config(ts_model, cfg)
     activation_store.set_norm_scaling_factor_if_needed()
@@ -184,5 +187,5 @@ def test_activations_store_multilayer_save_with_norm_scaling_factor(
         assert estimated_norm_scaling_factor.shape == (len(cfg.hook_names),)
         torch.testing.assert_close(
             estimated_norm_scaling_factor,
-            activation_store.estimated_norm_scaling_factor
+            activation_store.estimated_norm_scaling_factor,
         )

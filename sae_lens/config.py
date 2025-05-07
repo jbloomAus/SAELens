@@ -6,7 +6,6 @@ from typing import Any, Literal, cast
 
 import simple_parsing
 import torch
-import wandb
 from datasets import (
     Dataset,
     DatasetDict,
@@ -15,6 +14,7 @@ from datasets import (
     load_dataset,
 )
 
+import wandb
 from sae_lens import __version__, logger
 
 DTYPE_MAP = {
@@ -437,7 +437,7 @@ class LanguageModelSAERunnerConfig:
         return self.total_training_tokens // self.train_batch_size_tokens
 
     def get_base_sae_cfg_dict(self) -> dict[str, Any]:
-        cfg_dict = {
+        return {
             # TEMP
             "architecture": self.architecture,
             "d_in": self.d_in,
@@ -462,8 +462,6 @@ class LanguageModelSAERunnerConfig:
             "model_from_pretrained_kwargs": self.model_from_pretrained_kwargs,
             "seqpos_slice": self.seqpos_slice,
         }
-
-        return cfg_dict
 
     def get_training_sae_cfg_dict(self) -> dict[str, Any]:
         return {
