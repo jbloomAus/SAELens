@@ -2,6 +2,23 @@
 
 
 
+## v5.10.1 (2025-05-07)
+
+### Fix
+
+* fix: heuristic init should place latents anywhere in the space (#474)
+
+* fix: heuristic init should place latents anywhere in the space
+
+* Update tests/training/test_sae_initialization.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+---------
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt; ([`38ca106`](https://github.com/jbloomAus/SAELens/commit/38ca1067a45df683f456268a0fc2e2a586255bc6))
+
+
 ## v5.10.0 (2025-05-05)
 
 ### Chore
