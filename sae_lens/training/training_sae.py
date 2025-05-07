@@ -185,7 +185,7 @@ class TrainingSAEConfig(SAEConfig):
             elif not isinstance(valid_config_dict["seqpos_slice"], tuple):
                 valid_config_dict["seqpos_slice"] = (valid_config_dict["seqpos_slice"],)
 
-        return TrainingSAEConfig(**valid_config_dict)
+        return cls(**valid_config_dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -244,8 +244,7 @@ class TrainingSAE(SAE):
     device: torch.device
 
     def __init__(self, cfg: TrainingSAEConfig, use_error_term: bool = False):
-        base_sae_cfg = SAEConfig.from_dict(cfg.get_base_sae_cfg_dict())
-        super().__init__(base_sae_cfg)
+        super().__init__(self.base_sae_cfg(cfg), use_error_term=use_error_term)
         self.cfg = cfg  # type: ignore
 
         if cfg.architecture == "standard" or cfg.architecture == "topk":
@@ -290,6 +289,10 @@ class TrainingSAE(SAE):
     @classmethod
     def from_dict(cls, config_dict: dict[str, Any]) -> "TrainingSAE":
         return cls(TrainingSAEConfig.from_dict(config_dict))
+
+    @staticmethod
+    def base_sae_cfg(cfg: TrainingSAEConfig):
+        return SAEConfig.from_dict(cfg.get_base_sae_cfg_dict())
 
     def check_cfg_compatibility(self):
         if self.cfg.architecture != "standard" and self.cfg.use_ghost_grads:
@@ -597,7 +600,10 @@ class TrainingSAE(SAE):
         elif self.cfg.decoder_heuristic_init:
             self.W_dec = nn.Parameter(
                 torch.rand(
-                    self.cfg.d_sae, self.cfg.d_in, dtype=self.dtype, device=self.device
+                    self.cfg.d_sae,
+                    *self.input_shape(),
+                    dtype=self.dtype,
+                    device=self.device,
                 )
             )
             self.initialize_decoder_norm_constant_norm(
@@ -611,7 +617,7 @@ class TrainingSAE(SAE):
             self.W_enc = nn.Parameter(
                 torch.nn.init.kaiming_uniform_(
                     torch.empty(
-                        self.cfg.d_in,
+                        *self.input_shape(),
                         self.cfg.d_sae,
                         dtype=self.dtype,
                         device=self.device,

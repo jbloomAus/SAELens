@@ -25,8 +25,17 @@ from sae_lens.load_model import load_model
 from sae_lens.sae import SAE
 from sae_lens.toolkit.pretrained_saes_directory import PretrainedSAELookup
 from sae_lens.training.activations_store import ActivationsStore
+from sae_lens.training.training_crosscoder_sae import (
+    TrainingCrosscoderSAE,
+    TrainingCrosscoderSAEConfig,
+)
 from sae_lens.training.training_sae import TrainingSAE
-from tests.helpers import TINYSTORIES_MODEL, build_sae_cfg, load_model_cached
+from tests.helpers import (
+    TINYSTORIES_MODEL,
+    build_multilayer_sae_cfg,
+    build_sae_cfg,
+    load_model_cached,
+)
 
 TRAINER_EVAL_CONFIG = EvalConfig(
     n_eval_reconstruction_batches=10,
@@ -282,6 +291,51 @@ def test_run_empty_evals(
     assert len(eval_metrics) == 1, "Expected only token_stats in eval_metrics"
     assert "token_stats" in eval_metrics, "Expected token_stats in eval_metrics"
     assert len(feature_metrics) == 0, "Expected empty feature_metrics"
+
+
+# TODO(mkbehr): consider parameterizing
+def test_run_evals_crosscoder_training_sae(
+    model: HookedTransformer,
+):
+    cfg = build_multilayer_sae_cfg(
+        model_name="tiny-stories-1M",
+        dataset_path="roneneldan/TinyStories",
+        hook_name_template="blocks.{layer}.hook_resid_pre",
+        hook_layers=[0, 1],
+        d_in=64,
+        normalize_sae_decoder=False,
+        scale_sparsity_penalty_by_decoder_norm=True,
+    )
+    activation_store = ActivationsStore.from_config(
+        model, cfg, override_dataset=Dataset.from_list([{"text": "hello world"}] * 2000)
+    )
+    training_crosscoder_sae = TrainingCrosscoderSAE(
+        TrainingCrosscoderSAEConfig.from_sae_runner_config(cfg), use_error_term=True
+    )
+    eval_config = EvalConfig(
+        compute_l2_norms=True,
+        compute_sparsity_metrics=True,
+        compute_variance_metrics=True,
+        # TODO(mkbehr): featurewise metrics
+        compute_featurewise_density_statistics=False,
+        compute_featurewise_weight_based_metrics=False,
+    )
+    eval_metrics, feature_metrics = run_evals(
+        sae=training_crosscoder_sae,
+        activation_store=activation_store,
+        model=model,
+        eval_config=eval_config,
+    )
+    expected_keys = [
+        "reconstruction_quality",
+        "shrinkage",
+        "sparsity",
+        "token_stats",
+    ]
+    assert set(eval_metrics.keys()) == set(expected_keys)
+    assert set(feature_metrics.keys()) == set(
+        ["feature_density", "consistent_activation_heuristic"]
+    )
 
 
 @pytest.fixture

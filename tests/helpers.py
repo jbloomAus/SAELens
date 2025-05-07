@@ -16,6 +16,7 @@ class LanguageModelSAERunnerConfigDict(TypedDict, total=False):
     model_name: str
     hook_name: str
     hook_layer: int
+    hook_names: list[int] | None
     hook_head_index: int | None
     dataset_path: str
     dataset_trust_remote_code: bool
@@ -53,6 +54,7 @@ def build_sae_cfg(**kwargs: Any) -> LanguageModelSAERunnerConfig:
     mock_config_dict: LanguageModelSAERunnerConfigDict = {
         "model_name": TINYSTORIES_MODEL,
         "hook_name": "blocks.0.hook_mlp_out",
+        "hook_names": [],
         "hook_layer": 0,
         "hook_head_index": None,
         # use a small, non-streaming dataset for testing. Huggingface gives too many requests errors otherwise.
@@ -94,6 +96,27 @@ def build_sae_cfg(**kwargs: Any) -> LanguageModelSAERunnerConfig:
     mock_config.checkpoint_path = kwargs.get("checkpoint_path", "test/checkpoints")
 
     return mock_config
+
+
+def build_multilayer_sae_cfg(
+    hook_name_template: str = "blocks.{layer}.hook_mlp_out",
+    hook_layers: list[int] = [0, 1, 2],
+    **kwargs: Any,
+) -> LanguageModelSAERunnerConfig:
+    hook_name = hook_name_template.format(
+        layer=f"layers_{min(hook_layers)}_through_{max(hook_layers)}"
+    )
+    hook_names = [hook_name_template.format(layer=str(layer)) for layer in hook_layers]
+    return build_sae_cfg(
+        **(
+            {
+                "hook_name": hook_name,
+                "hook_names": hook_names,
+                "hook_layer": max(hook_layers),
+            }
+            | kwargs
+        )
+    )
 
 
 MODEL_CACHE: dict[str, HookedTransformer] = {}

@@ -45,6 +45,7 @@ class ActivationsStore:
     cached_activation_dataset: Dataset | None = None
     tokens_column: Literal["tokens", "input_ids", "text", "problem"]
     hook_name: str
+    hook_names: list[str]
     hook_layer: int
     hook_head_index: int | None
     _dataloader: Iterator[Any] | None = None
@@ -66,6 +67,7 @@ class ActivationsStore:
             dtype=cfg.dtype,
             hook_name=cfg.hook_name,
             hook_layer=cfg.hook_layer,
+            # TODO(mkbehr): set hook layers if set in cached activations
             context_size=cfg.context_size,
             d_in=cfg.d_in,
             n_batches_in_buffer=cfg.n_batches_in_buffer,
@@ -125,6 +127,7 @@ class ActivationsStore:
             dataset=override_dataset or cfg.dataset_path,
             streaming=cfg.streaming,
             hook_name=cfg.hook_name,
+            hook_names=cfg.hook_names,
             hook_layer=cfg.hook_layer,
             hook_head_index=cfg.hook_head_index,
             context_size=cfg.context_size,
@@ -164,6 +167,7 @@ class ActivationsStore:
             dataset=sae.cfg.dataset_path if dataset is None else dataset,
             d_in=sae.cfg.d_in,
             hook_name=sae.cfg.hook_name,
+            hook_names=sae.cfg.hook_names,
             hook_layer=sae.cfg.hook_layer,
             hook_head_index=sae.cfg.hook_head_index,
             context_size=sae.cfg.context_size if context_size is None else context_size,
@@ -198,6 +202,7 @@ class ActivationsStore:
         normalize_activations: str,
         device: torch.device,
         dtype: str,
+        hook_names: list[str] | None = None,
         cached_activations_path: str | None = None,
         model_kwargs: dict[str, Any] | None = None,
         autocast_lm: bool = False,
@@ -230,6 +235,7 @@ class ActivationsStore:
                 )
 
         self.hook_name = hook_name
+        self.hook_names = hook_names if hook_names is not None else []
         self.hook_layer = hook_layer
         self.hook_head_index = hook_head_index
         self.context_size = context_size
@@ -389,7 +395,8 @@ class ActivationsStore:
         # ---
         # Actual code
         activations_dataset = datasets.load_from_disk(self.cached_activations_path)
-        columns = [self.hook_name]
+        # TODO(mkbehr): test multiple layers
+        columns = self.hook_names or [self.hook_name]
         if "token_ids" in activations_dataset.column_names:
             columns.append("token_ids")
         activations_dataset.set_format(
@@ -428,6 +435,12 @@ class ActivationsStore:
             raise ValueError(
                 "estimated_norm_scaling_factor is not set, call set_norm_scaling_factor_if_needed() first"
             )
+        # Norm scaling factor is a float in the single-layer case, and
+        # a tensor in the multilayer case.
+        if self.hook_names:
+            return activations * self.estimated_norm_scaling_factor.unsqueeze(-1).to(
+                activations.device
+            )
         return activations * self.estimated_norm_scaling_factor
 
     def unscale(self, activations: torch.Tensor) -> torch.Tensor:
@@ -435,6 +448,8 @@ class ActivationsStore:
             raise ValueError(
                 "estimated_norm_scaling_factor is not set, call set_norm_scaling_factor_if_needed() first"
             )
+        if self.hook_names:
+            return activations / self.estimated_norm_scaling_factor.unsqueeze(-1)
         return activations / self.estimated_norm_scaling_factor
 
     def get_norm_scaling_factor(self, activations: torch.Tensor) -> torch.Tensor:
@@ -442,17 +457,23 @@ class ActivationsStore:
 
     @torch.no_grad()
     def estimate_norm_scaling_factor(self, n_batches_for_norm_estimate: int = int(1e3)):
-        norms_per_batch = []
-        for _ in tqdm(
+        norms_per_batch = torch.empty(
+            len(self.hook_names) or 1, n_batches_for_norm_estimate, device=self.device
+        )
+        for batch_i in tqdm(
             range(n_batches_for_norm_estimate), desc="Estimating norm scaling factor"
         ):
-            # temporalily set estimated_norm_scaling_factor to 1.0 so the dataloader works
-            self.estimated_norm_scaling_factor = 1.0
-            acts = self.next_batch()[:, 0]
+            # temporarily set estimated_norm_scaling_factor to 1.0 so the dataloader works
+            self.estimated_norm_scaling_factor = torch.ones(1, device=self.device)
+            acts = self.next_batch()
             self.estimated_norm_scaling_factor = None
-            norms_per_batch.append(acts.norm(dim=-1).mean().item())
-        mean_norm = np.mean(norms_per_batch)
-        return np.sqrt(self.d_in) / mean_norm
+            norms_per_batch[:, batch_i] = acts.norm(dim=-1).mean(dim=0)
+        mean_norm = norms_per_batch.mean(dim=1)
+        # Norm scaling factor is a float in the single-layer case, and
+        # a tensor in the multilayer case.
+        if self.hook_names:
+            return np.sqrt(self.d_in) / mean_norm
+        return np.sqrt(self.d_in) / mean_norm.item()
 
     def shuffle_input_dataset(self, seed: int, buffer_size: int = 1):
         """
@@ -532,42 +553,45 @@ class ActivationsStore:
         else:
             autocast_if_enabled = contextlib.nullcontext()
 
+        hook_names = self.hook_names or [self.hook_name]
+        stop_at_layer = self.hook_layer + 1
+
         with autocast_if_enabled:
             layerwise_activations_cache = self.model.run_with_cache(
                 batch_tokens,
-                names_filter=[self.hook_name],
-                stop_at_layer=self.hook_layer + 1,
+                names_filter=hook_names,
+                stop_at_layer=stop_at_layer,
                 prepend_bos=False,
                 **self.model_kwargs,
             )[1]
 
-        layerwise_activations = layerwise_activations_cache[self.hook_name][
-            :, slice(*self.seqpos_slice)
+        layerwise_activations = [
+            layerwise_activations_cache[hook_name][:, slice(*self.seqpos_slice)]
+            for hook_name in hook_names
         ]
 
-        n_batches, n_context = layerwise_activations.shape[:2]
-
-        stacked_activations = torch.zeros((n_batches, n_context, 1, self.d_in))
+        n_batches, n_context = layerwise_activations[0].shape[:2]
 
         if self.hook_head_index is not None:
-            stacked_activations[:, :, 0] = layerwise_activations[
-                :, :, self.hook_head_index
+            layerwise_activations = [
+                activation[:, :, self.hook_head_index]
+                for activation in layerwise_activations
             ]
-        elif layerwise_activations.ndim > 3:  # if we have a head dimension
+        elif layerwise_activations[0].ndim > 3:  # if we have a head dimension
             try:
-                stacked_activations[:, :, 0] = layerwise_activations.view(
-                    n_batches, n_context, -1
-                )
+                layerwise_activations = [
+                    activation.view(n_batches, n_context, -1)
+                    for activation in layerwise_activations
+                ]
             except RuntimeError as e:
                 logger.error(f"Error during view operation: {e}")
                 logger.info("Attempting to use reshape instead...")
-                stacked_activations[:, :, 0] = layerwise_activations.reshape(
-                    n_batches, n_context, -1
-                )
-        else:
-            stacked_activations[:, :, 0] = layerwise_activations
+                layerwise_activations = [
+                    activation.reshape(n_batches, n_context, -1)
+                    for activation in layerwise_activations
+                ]
 
-        return stacked_activations
+        return torch.stack(layerwise_activations, dim=2)
 
     def _load_buffer_from_cached(
         self,
@@ -589,8 +613,7 @@ class ActivationsStore:
         raises StopIteration
         """
         assert self.cached_activation_dataset is not None
-        # In future, could be a list of multiple hook names
-        hook_names = [self.hook_name]
+        hook_names = self.hook_names or [self.hook_name]
         if not set(hook_names).issubset(self.cached_activation_dataset.column_names):
             raise ValueError(
                 f"Missing columns in dataset. Expected {hook_names}, "
@@ -660,7 +683,7 @@ class ActivationsStore:
         batch_size = self.store_batch_size_prompts
         d_in = self.d_in
         total_size = batch_size * n_batches_in_buffer
-        num_layers = 1
+        num_layers = len(self.hook_names) or 1
 
         if self.cached_activation_dataset is not None:
             return self._load_buffer_from_cached(

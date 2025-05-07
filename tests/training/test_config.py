@@ -90,6 +90,7 @@ def test_sae_training_runner_config_get_sae_base_parameters():
         "dtype": "float32",
         "model_name": "gelu-2l",
         "hook_name": "blocks.0.hook_mlp_out",
+        "hook_names": [],
         "hook_layer": 0,
         "hook_head_index": None,
         "device": "cpu",

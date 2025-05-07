@@ -63,6 +63,7 @@ class LanguageModelSAERunnerConfig:
         model_name (str): The name of the model to use. This should be the name of the model in the Hugging Face model hub.
         model_class_name (str): The name of the class of the model to use. This should be either `HookedTransformer` or `HookedMamba`.
         hook_name (str): The name of the hook to use. This should be a valid TransformerLens hook.
+        hook_names (list[str], optional): The names of multiple hooks to use, in order of evaluation. If this is nonempty, a CrosscoderSAE will be used. hook_name should be a descriptive name, and hook_layer should be the index of the last layer to hook.
         hook_eval (str): NOT CURRENTLY IN USE. The name of the hook to use for evaluation.
         hook_layer (int): The index of the layer to hook. Used to stop forward passes early and speed up processing.
         hook_head_index (int, optional): When the hook if for an activatio with a head index, we can specify a specific head to use here.
@@ -147,6 +148,7 @@ class LanguageModelSAERunnerConfig:
     model_name: str = "gelu-2l"
     model_class_name: str = "HookedTransformer"
     hook_name: str = "blocks.0.hook_mlp_out"
+    hook_names: list[str] = field(default_factory=list)
     hook_eval: str = "NOT_IN_USE"
     hook_layer: int = 0
     hook_head_index: int | None = None
@@ -444,6 +446,7 @@ class LanguageModelSAERunnerConfig:
             "device": self.device,
             "model_name": self.model_name,
             "hook_name": self.hook_name,
+            "hook_names": self.hook_names,
             "hook_layer": self.hook_layer,
             "hook_head_index": self.hook_head_index,
             "activation_fn_str": self.activation_fn,
@@ -521,6 +524,7 @@ class CacheActivationsRunnerConfig:
         model_name (str): The name of the model to use.
         model_batch_size (int): How many prompts are in the batch of the language model when generating activations.
         hook_name (str): The name of the hook to use.
+        hook_names (list[str], optional): The names of multiple hooks to use, in order of evaluation. If this is nonempty, a CrosscoderSAE will be used.
         hook_layer (int): The layer of the final hook. Currently only support a single hook, so this should be the same as hook_name.
         d_in (int): Dimension of the model.
         total_training_tokens (int): Total number of tokens to process.
@@ -555,6 +559,7 @@ class CacheActivationsRunnerConfig:
     d_in: int
     training_tokens: int
 
+    hook_names: list[str] = field(default_factory=list)
     context_size: int = -1  # Required if dataset is not tokenized
     model_class_name: str = "HookedTransformer"
     # defaults to "activations/{dataset}/{model}/{hook_name}
@@ -608,8 +613,9 @@ class CacheActivationsRunnerConfig:
             )
 
         if self.new_cached_activations_path is None:
+            hook_name_str = self.hook_name
             self.new_cached_activations_path = _default_cached_activations_path(  # type: ignore
-                self.dataset_path, self.model_name, self.hook_name, None
+                self.dataset_path, self.model_name, hook_name_str, None
             )
 
     @property
