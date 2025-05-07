@@ -294,7 +294,9 @@ def test_run_empty_evals(
 
 
 # TODO(mkbehr): consider parameterizing
-def test_run_evals_crosscoder_training_sae(model):
+def test_run_evals_crosscoder_training_sae(
+    model: HookedTransformer,
+):
     cfg = build_multilayer_sae_cfg(
         model_name="tiny-stories-1M",
         dataset_path="roneneldan/TinyStories",

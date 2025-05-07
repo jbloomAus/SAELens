@@ -100,13 +100,13 @@ def build_sae_cfg(**kwargs: Any) -> LanguageModelSAERunnerConfig:
 
 def build_multilayer_sae_cfg(
     hook_name_template: str = "blocks.{layer}.hook_mlp_out",
-    hook_layers=[0, 1, 2],
+    hook_layers: list[int] = [0, 1, 2],
     **kwargs: Any,
 ) -> LanguageModelSAERunnerConfig:
     hook_name = hook_name_template.format(
         layer=f"layers_{min(hook_layers)}_through_{max(hook_layers)}"
     )
-    hook_names = [hook_name_template.format(layer=layer) for layer in hook_layers]
+    hook_names = [hook_name_template.format(layer=str(layer)) for layer in hook_layers]
     return build_sae_cfg(
         **(
             {

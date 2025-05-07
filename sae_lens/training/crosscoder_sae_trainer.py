@@ -11,7 +11,7 @@ from sae_lens.training.training_sae import TrainStepOutput
 
 
 class CrosscoderSAETrainer(SAETrainer):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         # Reconstruction metrics don't make sense for acausal crosscoders.
         self.trainer_eval_config.compute_ce_loss = False

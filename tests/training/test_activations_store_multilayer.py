@@ -92,6 +92,7 @@ def test_activations_store_get_buffer_multiple_layers(ts_model: HookedTransforme
     # Check shape: [(batch_size * context_size * n_batches), num_layers, d_in]
     expected_size = cfg.store_batch_size_prompts * cfg.context_size * 2
     assert buffer_activations.shape == (expected_size, len(cfg.hook_names), cfg.d_in)
+    assert buffer_tokens is not None
     assert buffer_tokens.shape == (expected_size,)
 
 

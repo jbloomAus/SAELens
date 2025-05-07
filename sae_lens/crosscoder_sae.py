@@ -15,7 +15,7 @@ from sae_lens.toolkit.pretrained_sae_loaders import (
 
 @dataclass
 class CrosscoderSAEConfig(SAEConfig):
-    hook_names: list[int] = field(default_factory=list)
+    hook_names: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return super().to_dict() | {
@@ -37,16 +37,17 @@ class CrosscoderSAE(SAE):
             raise NotImplementedError("TODO(mkbehr): support other architectures")
 
         super().__init__(cfg=cfg, use_error_term=use_error_term)
+        self.cfg = cfg
 
         if self.hook_z_reshaping_mode:
             raise NotImplementedError("TODO(mkbehr): support hook_z")
 
     @classmethod
     def from_dict(cls, config_dict: dict[str, Any]) -> "CrosscoderSAE":
-        return cls(CrosscoderSAEConfig.from_dict(config_dict))
+        return cls(CrosscoderSAEConfig.from_dict(config_dict))  # type: ignore
 
     def input_shape(self):
-        return (len(self.cfg.hook_names), self.cfg.d_in)
+        return [len(self.cfg.hook_names), self.cfg.d_in]
 
     def encode_standard(
         self, x: Float[torch.Tensor, "... n_layers d_in"]
@@ -130,7 +131,7 @@ class CrosscoderSAE(SAE):
         cfg_dict, state_dict = converter(path, device, cfg_overrides=overrides)
         cfg_dict = handle_config_defaulting(cfg_dict)
         sae_cfg = CrosscoderSAEConfig.from_dict(cfg_dict)
-        sae = cls(sae_cfg)
+        sae = cls(sae_cfg)  # type: ignore
         sae.process_state_dict_for_loading(state_dict)
         sae.load_state_dict(state_dict)
         return sae

@@ -245,7 +245,7 @@ class SAE(HookedRootModule):
         self.setup()  # Required for `HookedRootModule`s
 
     def input_shape(self):
-        return (self.cfg.d_in,)
+        return [self.cfg.d_in]
 
     def initialize_weights_basic(self):
         # no config changes encoder bias init for now.
