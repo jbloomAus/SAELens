@@ -906,43 +906,65 @@ def get_sparsify_config_from_hf(
     force_download: bool = False,
     cfg_overrides: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    # each folder has a cfg.json
+    cfg_filename = f"{folder_name}/{SAE_CFG_FILENAME}"
     cfg_path = hf_hub_download(
-        repo_id, f"{folder_name}/{SAE_CFG_FILENAME}", force_download=force_download
+        repo_id,
+        filename=cfg_filename,
+        force_download=force_download,
     )
-    with open(cfg_path) as f:
-        huggingface_cfg_dict = json.load(f)
+    sae_path = Path(cfg_path).parent
+    return get_sparsify_config_from_disk(
+        sae_path, device=device, cfg_overrides=cfg_overrides
+    )
 
+
+def get_sparsify_config_from_disk(
+    path: str | Path,
+    device: str | None = None,
+    cfg_overrides: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    path = Path(path)
+
+    with open(path / SAE_CFG_FILENAME) as f:
+        old_cfg_dict = json.load(f)
+
+    config_path = path.parent / "config.json"
+    if config_path.exists():
+        with open(config_path) as f:
+            config_dict = json.load(f)
+    else:
+        config_dict = {}
+
+    folder_name = path.name
     if folder_name == "embed_tokens":
         hook_name, layer = "hook_embed", 0
     else:
-        m = re.search(r"layers[._](\d+)", folder_name)
-        if m is None:
+        match = re.search(r"layers[._](\d+)", folder_name)
+        if match is None:
             raise ValueError(f"Unrecognized Sparsify folder: {folder_name}")
-        layer = int(m.group(1))
+        layer = int(match.group(1))
         hook_name = f"blocks.{layer}.hook_resid_post"
 
     cfg_dict: dict[str, Any] = {
         "architecture": "standard",
-        "d_in": huggingface_cfg_dict["d_in"],
-        "d_sae": huggingface_cfg_dict["d_in"]
-        * huggingface_cfg_dict["expansion_factor"],
+        "d_in": old_cfg_dict["d_in"],
+        "d_sae": old_cfg_dict["d_in"] * old_cfg_dict["expansion_factor"],
         "dtype": "bfloat16",
-        "device": device,
-        "model_name": repo_id.split("/")[-1],
+        "device": device or "cpu",
+        "model_name": config_dict.get("model", path.parts[-2]),
         "hook_name": hook_name,
         "hook_layer": layer,
         "hook_head_index": None,
         "activation_fn_str": "topk",
         "activation_fn_kwargs": {
-            "k": huggingface_cfg_dict["k"],
-            "signed": huggingface_cfg_dict.get("signed", False),
+            "k": old_cfg_dict["k"],
+            "signed": old_cfg_dict.get("signed", False),
         },
-        "apply_b_dec_to_input": not huggingface_cfg_dict.get(
-            "normalize_decoder", False
+        "apply_b_dec_to_input": not old_cfg_dict.get("normalize_decoder", False),
+        "dataset_path": config_dict.get(
+            "dataset", "togethercomputer/RedPajama-Data-1T-Sample"
         ),
-        "dataset_path": "togethercomputer/RedPajama-Data-1T-Sample",
-        "context_size": 2048,
+        "context_size": config_dict.get("ctx_len", 2048),
         "finetuning_scaling_factor": False,
         "sae_lens_training_version": None,
         "prepend_bos": True,
@@ -951,26 +973,9 @@ def get_sparsify_config_from_hf(
         "neuronpedia_id": None,
     }
 
-    try:
-        config_path = hf_hub_download(
-            repo_id, "config.json", force_download=force_download
-        )
-        with open(config_path) as f:
-            huggingface_config_dict = json.load(f)
-        cfg_dict["dataset_path"] = huggingface_config_dict.get(
-            "dataset", cfg_dict["dataset_path"]
-        )
-        cfg_dict["context_size"] = huggingface_config_dict.get(
-            "ctx_len", cfg_dict["context_size"]
-        )
-        cfg_dict["model_name"] = huggingface_config_dict.get(
-            "model", cfg_dict["model_name"]
-        )
-    except EntryNotFoundError:
-        pass
-
     if cfg_overrides:
         cfg_dict.update(cfg_overrides)
+
     return cfg_dict
 
 
@@ -980,54 +985,59 @@ def sparsify_huggingface_loader(
     device: str = "cpu",
     force_download: bool = False,
     cfg_overrides: dict[str, Any] | None = None,
-) -> tuple[dict[str, Any], dict[str, torch.Tensor], torch.Tensor | None]:
-    cfg_dict = get_sparsify_config_from_hf(
-        repo_id,
-        folder_name=folder_name,
-        device=device,
-        force_download=force_download,
-        cfg_overrides=cfg_overrides,
-    )
-
+) -> tuple[dict[str, Any], dict[str, torch.Tensor], None]:
     weights_filename = f"{folder_name}/{SPARSIFY_WEIGHTS_FILENAME}"
     sae_path = hf_hub_download(
         repo_id,
         filename=weights_filename,
         force_download=force_download,
     )
-    state_dict_loaded = load_file(sae_path, device=device)
+    cfg_dict, state_dict = sparsify_disk_loader(
+        Path(sae_path).parent, device=device, cfg_overrides=cfg_overrides
+    )
+    return cfg_dict, state_dict, None
 
-    target_dtype = DTYPE_MAP[cfg_dict["dtype"]]
+
+def sparsify_disk_loader(
+    path: str | Path,
+    device: str = "cpu",
+    cfg_overrides: dict[str, Any] | None = None,
+) -> tuple[dict[str, Any], dict[str, torch.Tensor]]:
+    cfg_dict = get_sparsify_config_from_disk(path, device, cfg_overrides)
+
+    weight_path = Path(path) / SPARSIFY_WEIGHTS_FILENAME
+    state_dict_loaded = load_file(weight_path, device=device)
+
+    dtype = DTYPE_MAP[cfg_dict["dtype"]]
+
+    W_enc = (
+        state_dict_loaded["W_enc"]
+        if "W_enc" in state_dict_loaded
+        else state_dict_loaded["encoder.weight"].T
+    ).to(dtype)
+
+    W_dec = (
+        state_dict_loaded["W_dec"]
+        if "W_dec" in state_dict_loaded
+        else state_dict_loaded["decoder.weight"].T
+    ).to(dtype)
 
     if "b_enc" in state_dict_loaded:
-        b_enc = state_dict_loaded["b_enc"].to(target_dtype)
+        b_enc = state_dict_loaded["b_enc"].to(dtype)
     elif "encoder.bias" in state_dict_loaded:
-        b_enc = state_dict_loaded["encoder.bias"].to(target_dtype)
-    else:  # bias not saved (e.g. signed Top‑K)
-        b_enc = torch.zeros(cfg_dict["d_sae"], dtype=target_dtype, device=device)
-
-    # same pattern for b_dec
-    if "b_dec" in state_dict_loaded:
-        b_dec = state_dict_loaded["b_dec"].to(target_dtype)
+        b_enc = state_dict_loaded["encoder.bias"].to(dtype)
     else:
-        b_dec = state_dict_loaded["decoder.bias"].to(target_dtype)
+        b_enc = torch.zeros(cfg_dict["d_sae"], dtype=dtype, device=device)
 
-    state_dict = {
-        "W_enc": (
-            state_dict_loaded["W_enc"]
-            if "W_enc" in state_dict_loaded
-            else state_dict_loaded["encoder.weight"].T
-        ).to(target_dtype),
-        "b_enc": b_enc,
-        "W_dec": (
-            state_dict_loaded["W_dec"]
-            if "W_dec" in state_dict_loaded
-            else state_dict_loaded["decoder.weight"].T
-        ).to(target_dtype),
-        "b_dec": b_dec,
-    }
+    if "b_dec" in state_dict_loaded:
+        b_dec = state_dict_loaded["b_dec"].to(dtype)
+    elif "decoder.bias" in state_dict_loaded:
+        b_dec = state_dict_loaded["decoder.bias"].to(dtype)
+    else:
+        b_dec = torch.zeros(cfg_dict["d_in"], dtype=dtype, device=device)
 
-    return cfg_dict, state_dict, None
+    state_dict = {"W_enc": W_enc, "b_enc": b_enc, "W_dec": W_dec, "b_dec": b_dec}
+    return cfg_dict, state_dict
 
 
 NAMED_PRETRAINED_SAE_LOADERS: dict[str, PretrainedSaeHuggingfaceLoader] = {
