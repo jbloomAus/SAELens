@@ -15,6 +15,7 @@ from sae_lens.config import (
     DTYPE_MAP,
     SAE_CFG_FILENAME,
     SAE_WEIGHTS_FILENAME,
+    SPARSIFY_WEIGHTS_FILENAME,
     SPARSITY_FILENAME,
 )
 from sae_lens.toolkit.pretrained_saes_directory import (
@@ -898,6 +899,137 @@ def llama_scope_r1_distill_sae_huggingface_loader(
     return cfg_dict, state_dict, log_sparsity
 
 
+def get_sparsify_config_from_hf(
+    repo_id: str,
+    folder_name: str,
+    device: str,
+    force_download: bool = False,
+    cfg_overrides: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    # each folder has a cfg.json
+    cfg_path = hf_hub_download(
+        repo_id, f"{folder_name}/{SAE_CFG_FILENAME}", force_download=force_download
+    )
+    with open(cfg_path) as f:
+        huggingface_cfg_dict = json.load(f)
+
+    if folder_name == "embed_tokens":
+        hook_name, layer = "hook_embed", 0
+    else:
+        m = re.search(r"layers[._](\d+)", folder_name)
+        if m is None:
+            raise ValueError(f"Unrecognized Sparsify folder: {folder_name}")
+        layer = int(m.group(1))
+        hook_name = f"blocks.{layer}.hook_resid_post"
+
+    cfg_dict: dict[str, Any] = {
+        "architecture": "standard",
+        "d_in": huggingface_cfg_dict["d_in"],
+        "d_sae": huggingface_cfg_dict["d_in"]
+        * huggingface_cfg_dict["expansion_factor"],
+        "dtype": "bfloat16",
+        "device": device,
+        "model_name": repo_id.split("/")[-1],
+        "hook_name": hook_name,
+        "hook_layer": layer,
+        "hook_head_index": None,
+        "activation_fn_str": "topk",
+        "activation_fn_kwargs": {
+            "k": huggingface_cfg_dict["k"],
+            "signed": huggingface_cfg_dict.get("signed", False),
+        },
+        "apply_b_dec_to_input": not huggingface_cfg_dict.get(
+            "normalize_decoder", False
+        ),
+        "dataset_path": "togethercomputer/RedPajama-Data-1T-Sample",
+        "context_size": 2048,
+        "finetuning_scaling_factor": False,
+        "sae_lens_training_version": None,
+        "prepend_bos": True,
+        "dataset_trust_remote_code": True,
+        "normalize_activations": "none",
+        "neuronpedia_id": None,
+    }
+
+    try:
+        config_path = hf_hub_download(
+            repo_id, "config.json", force_download=force_download
+        )
+        with open(config_path) as f:
+            huggingface_config_dict = json.load(f)
+        cfg_dict["dataset_path"] = huggingface_config_dict.get(
+            "dataset", cfg_dict["dataset_path"]
+        )
+        cfg_dict["context_size"] = huggingface_config_dict.get(
+            "ctx_len", cfg_dict["context_size"]
+        )
+        cfg_dict["model_name"] = huggingface_config_dict.get(
+            "model", cfg_dict["model_name"]
+        )
+    except EntryNotFoundError:
+        pass
+
+    if cfg_overrides:
+        cfg_dict.update(cfg_overrides)
+    return cfg_dict
+
+
+def sparsify_huggingface_loader(
+    repo_id: str,
+    folder_name: str,
+    device: str = "cpu",
+    force_download: bool = False,
+    cfg_overrides: dict[str, Any] | None = None,
+) -> tuple[dict[str, Any], dict[str, torch.Tensor], torch.Tensor | None]:
+    cfg_dict = get_sparsify_config_from_hf(
+        repo_id,
+        folder_name=folder_name,
+        device=device,
+        force_download=force_download,
+        cfg_overrides=cfg_overrides,
+    )
+
+    weights_filename = f"{folder_name}/{SPARSIFY_WEIGHTS_FILENAME}"
+    sae_path = hf_hub_download(
+        repo_id,
+        filename=weights_filename,
+        force_download=force_download,
+    )
+    state_dict_loaded = load_file(sae_path, device=device)
+
+    target_dtype = DTYPE_MAP[cfg_dict["dtype"]]
+
+    if "b_enc" in state_dict_loaded:
+        b_enc = state_dict_loaded["b_enc"].to(target_dtype)
+    elif "encoder.bias" in state_dict_loaded:
+        b_enc = state_dict_loaded["encoder.bias"].to(target_dtype)
+    else:  # bias not saved (e.g. signed Top‑K)
+        b_enc = torch.zeros(cfg_dict["d_sae"], dtype=target_dtype, device=device)
+
+    # same pattern for b_dec
+    if "b_dec" in state_dict_loaded:
+        b_dec = state_dict_loaded["b_dec"].to(target_dtype)
+    else:
+        b_dec = state_dict_loaded["decoder.bias"].to(target_dtype)
+
+    state_dict = {
+        "W_enc": (
+            state_dict_loaded["W_enc"]
+            if "W_enc" in state_dict_loaded
+            else state_dict_loaded["encoder.weight"].T
+        ).to(target_dtype),
+        "b_enc": b_enc,
+        "W_dec": (
+            state_dict_loaded["W_dec"]
+            if "W_dec" in state_dict_loaded
+            else state_dict_loaded["decoder.weight"].T
+        ).to(target_dtype),
+        "b_dec": b_dec,
+    }
+
+    return cfg_dict, state_dict, None
+
+
 NAMED_PRETRAINED_SAE_LOADERS: dict[str, PretrainedSaeHuggingfaceLoader] = {
     "sae_lens": sae_lens_huggingface_loader,
     "connor_rob_hook_z": connor_rob_hook_z_huggingface_loader,
@@ -906,6 +1038,7 @@ NAMED_PRETRAINED_SAE_LOADERS: dict[str, PretrainedSaeHuggingfaceLoader] = {
     "llama_scope_r1_distill": llama_scope_r1_distill_sae_huggingface_loader,
     "dictionary_learning_1": dictionary_learning_sae_huggingface_loader_1,
     "deepseek_r1": deepseek_r1_sae_huggingface_loader,
+    "sparsify": sparsify_huggingface_loader,
 }
 
 
@@ -917,4 +1050,5 @@ NAMED_PRETRAINED_SAE_CONFIG_GETTERS: dict[str, PretrainedSaeConfigHuggingfaceLoa
     "llama_scope_r1_distill": get_llama_scope_r1_distill_config_from_hf,
     "dictionary_learning_1": get_dictionary_learning_config_1_from_hf,
     "deepseek_r1": get_deepseek_r1_config_from_hf,
+    "sparsify": get_sparsify_config_from_hf,
 }
