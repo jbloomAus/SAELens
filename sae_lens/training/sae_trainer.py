@@ -231,10 +231,7 @@ class SAETrainer(Generic[T_TRAINING_SAE, T_TRAINING_SAE_CONFIG]):
                 step_input=TrainStepInput(
                     sae_in=sae_in,
                     dead_neuron_mask=self.dead_neurons,
-                    coefficients={
-                        name: scheduler.value
-                        for name, scheduler in self.coefficient_schedulers.items()
-                    },
+                    coefficients=self.get_coefficients(),
                 ),
             )
 
