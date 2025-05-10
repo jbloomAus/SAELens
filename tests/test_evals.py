@@ -365,7 +365,7 @@ def test_get_downstream_reconstruction_metrics_with_hf_model_gives_same_results_
     tlens_model = HookedTransformer.from_pretrained_no_processing("gpt2", device="cpu")
 
     cfg = build_runner_cfg(hook_name="transformer.h.3")
-    gpt2_res_jb_l4_sae.cfg.meta.hook_name = "transformer.h.3"
+    gpt2_res_jb_l4_sae.cfg.metadata.hook_name = "transformer.h.3"
     hf_store = ActivationsStore.from_config(
         hf_model, cfg, override_dataset=example_dataset
     )
@@ -380,7 +380,7 @@ def test_get_downstream_reconstruction_metrics_with_hf_model_gives_same_results_
     )
 
     cfg = build_runner_cfg(hook_name="blocks.4.hook_resid_pre")
-    gpt2_res_jb_l4_sae.cfg.meta.hook_name = "blocks.4.hook_resid_pre"
+    gpt2_res_jb_l4_sae.cfg.metadata.hook_name = "blocks.4.hook_resid_pre"
     tlens_store = ActivationsStore.from_config(
         tlens_model, cfg, override_dataset=example_dataset
     )

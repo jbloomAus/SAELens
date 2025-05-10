@@ -178,8 +178,8 @@ def get_sae_lens_config_from_disk(
 
 def handle_config_defaulting(cfg_dict: dict[str, Any]) -> dict[str, Any]:
     sae_lens_version = cfg_dict.get("sae_lens_version")
-    if not sae_lens_version and "meta" in cfg_dict:
-        sae_lens_version = cfg_dict["meta"].get("sae_lens_version")
+    if not sae_lens_version and "metadata" in cfg_dict:
+        sae_lens_version = cfg_dict["metadata"].get("sae_lens_version")
 
     if not sae_lens_version or Version(sae_lens_version) < Version("6.0.0-rc.0"):
         cfg_dict = handle_pre_6_0_config(cfg_dict)
@@ -234,7 +234,7 @@ def handle_pre_6_0_config(cfg_dict: dict[str, Any]) -> dict[str, Any]:
     from sae_lens.saes.sae import SAEMetadata
 
     meta_dict = filter_valid_dataclass_fields(new_cfg, SAEMetadata)
-    sae_cfg_dict["meta"] = meta_dict
+    sae_cfg_dict["metadata"] = meta_dict
     sae_cfg_dict["architecture"] = architecture
     return sae_cfg_dict
 

@@ -339,7 +339,7 @@ def test_SparseAutoencoder_from_pretrained_loads_from_hugginface_using_shorthand
     )
 
     assert (
-        sae.cfg.meta.neuronpedia_id == "gpt2-small/0-res-jb"
+        sae.cfg.metadata.neuronpedia_id == "gpt2-small/0-res-jb"
     )  # what we expect from the yml
 
     # it should match what we get when manually loading from hf
@@ -353,8 +353,8 @@ def test_SparseAutoencoder_from_pretrained_loads_from_hugginface_using_shorthand
             state_dict[k] = f.get_tensor(k)
 
     assert isinstance(sae, SAE)
-    assert sae.cfg.meta.model_name == "gpt2-small"
-    assert sae.cfg.meta.hook_name == "blocks.0.hook_resid_pre"
+    assert sae.cfg.metadata.model_name == "gpt2-small"
+    assert sae.cfg.metadata.hook_name == "blocks.0.hook_resid_pre"
 
     assert isinstance(original_cfg_dict, dict)
 
@@ -386,8 +386,8 @@ def test_SparseAutoencoder_from_pretrained_can_load_arbitrary_saes_from_huggingf
             state_dict[k] = f.get_tensor(k)
 
     assert isinstance(sae, SAE)
-    assert sae.cfg.meta.model_name == "gpt2-small"
-    assert sae.cfg.meta.hook_name == "blocks.0.hook_resid_pre"
+    assert sae.cfg.metadata.model_name == "gpt2-small"
+    assert sae.cfg.metadata.hook_name == "blocks.0.hook_resid_pre"
 
     assert isinstance(original_cfg_dict, dict)
 

@@ -108,7 +108,7 @@ def run_evals(
     ignore_tokens: set[int | None] = set(),
     verbose: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    hook_name = sae.cfg.meta.hook_name
+    hook_name = sae.cfg.metadata.hook_name
     actual_batch_size = (
         eval_config.batch_size_prompts or activation_store.store_batch_size_prompts
     )
@@ -379,8 +379,8 @@ def get_sparsity_and_variance_metrics(
     ignore_tokens: set[int | None] = set(),
     verbose: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    hook_name = sae.cfg.meta.hook_name
-    hook_head_index = sae.cfg.meta.hook_head_index
+    hook_name = sae.cfg.metadata.hook_name
+    hook_head_index = sae.cfg.metadata.hook_head_index
 
     metric_dict = {}
     feature_metric_dict = {}
@@ -436,7 +436,7 @@ def get_sparsity_and_variance_metrics(
             batch_tokens,
             prepend_bos=False,
             names_filter=[hook_name],
-            stop_at_layer=sae.cfg.meta.hook_layer + 1,
+            stop_at_layer=sae.cfg.metadata.hook_layer + 1,
             **model_kwargs,
         )
 

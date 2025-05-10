@@ -87,7 +87,7 @@ def hooked_sae(
 def test_forward_reconstructs_input(model: HookedTransformer, hooked_sae: SAE):
     """Verfiy that the HookedSAE returns an output with the same shape as the input activations."""
 
-    act_name = hooked_sae.cfg.meta.hook_name
+    act_name = hooked_sae.cfg.metadata.hook_name
     _, cache = model.run_with_cache(prompt, names_filter=act_name)
     x = cache[act_name]
 
@@ -98,7 +98,7 @@ def test_forward_reconstructs_input(model: HookedTransformer, hooked_sae: SAE):
 def test_run_with_cache(model: HookedTransformer, hooked_sae: SAE):
     """Verifies that run_with_cache caches SAE activations"""
 
-    act_name = hooked_sae.cfg.meta.hook_name
+    act_name = hooked_sae.cfg.metadata.hook_name
     _, cache = model.run_with_cache(prompt, names_filter=act_name)
     x = cache[act_name]
 
@@ -116,7 +116,7 @@ def test_run_with_hooks(model: HookedTransformer, hooked_sae: SAE):
     """Verifies that run_with_hooks works with SAE activations"""
 
     c = Counter()
-    act_name = hooked_sae.cfg.meta.hook_name
+    act_name = hooked_sae.cfg.metadata.hook_name
 
     _, cache = model.run_with_cache(prompt, names_filter=act_name)
     x = cache[act_name]
@@ -141,7 +141,7 @@ def test_error_term(model: HookedTransformer, hooked_sae: SAE):
     """Verifies that that if we use error_terms, HookedSAE returns an output that is equal tdef test_feature_grads_with_error_term(model: HookedTransformer, hooked_sae: SparseAutoencoderBase):
     o the input activations."""
 
-    act_name = hooked_sae.cfg.meta.hook_name
+    act_name = hooked_sae.cfg.metadata.hook_name
     hooked_sae.use_error_term = True
 
     _, cache = model.run_with_cache(prompt, names_filter=act_name)
@@ -153,7 +153,7 @@ def test_error_term(model: HookedTransformer, hooked_sae: SAE):
 
     """Verifies that pytorch backward computes the correct feature gradients when using error_terms. Motivated by the need to compute feature gradients for attribution patching."""
 
-    act_name = hooked_sae.cfg.meta.hook_name
+    act_name = hooked_sae.cfg.metadata.hook_name
     hooked_sae.use_error_term = True
 
     # Get input activations
