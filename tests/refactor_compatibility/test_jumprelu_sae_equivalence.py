@@ -303,21 +303,19 @@ def make_new_jumprelu_training_sae(
     """
     Helper to instantiate a new JumpReLUTrainingSAE instance.
     """
-    new_training_cfg = (
-        JumpReLUTrainingSAEConfig(
-            d_in=d_in,
-            d_sae=d_sae,
-            dtype="float32",
-            device="cpu",
-            apply_b_dec_to_input=False,
-            normalize_activations="none",
-            noise_scale=0.0,
-            mse_loss_normalization=None,
-            jumprelu_init_threshold=0.0,
-            jumprelu_bandwidth=1.0,
-            l0_coefficient=0.01,
-            l0_warm_up_steps=0,
-        )
+    new_training_cfg = JumpReLUTrainingSAEConfig(
+        d_in=d_in,
+        d_sae=d_sae,
+        dtype="float32",
+        device="cpu",
+        apply_b_dec_to_input=False,
+        normalize_activations="none",
+        noise_scale=0.0,
+        mse_loss_normalization=None,
+        jumprelu_init_threshold=0.0,
+        jumprelu_bandwidth=1.0,
+        l0_coefficient=0.01,
+        l0_warm_up_steps=0,
     )
     return JumpReLUTrainingSAE(new_training_cfg)
 
