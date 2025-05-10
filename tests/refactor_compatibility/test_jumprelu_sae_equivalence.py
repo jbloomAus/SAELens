@@ -304,7 +304,7 @@ def make_new_jumprelu_training_sae(
     Helper to instantiate a new JumpReLUTrainingSAE instance.
     """
     new_training_cfg = (
-        JumpReLUTrainingSAEConfig(  # Use TrainingSAEConfig (removed New prefix)
+        JumpReLUTrainingSAEConfig(
             d_in=d_in,
             d_sae=d_sae,
             dtype="float32",
