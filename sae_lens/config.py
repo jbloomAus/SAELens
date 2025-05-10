@@ -21,9 +21,7 @@ from sae_lens.constants import DTYPE_MAP
 from sae_lens.saes.sae import TrainingSAEConfig
 
 if TYPE_CHECKING:
-    # No need to import T_TRAINING_SAE_CONFIG here anymore
     pass
-    # from sae_lens.saes.sae import T_TRAINING_SAE_CONFIG
 
 # Define the TypeVar with the bound
 T_TRAINING_SAE_CONFIG = TypeVar("T_TRAINING_SAE_CONFIG", bound=TrainingSAEConfig)
