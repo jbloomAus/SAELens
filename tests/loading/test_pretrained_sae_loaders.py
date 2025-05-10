@@ -21,7 +21,7 @@ def test_load_sae_config_from_huggingface():
         "d_sae": 24576,
         "apply_b_dec_to_input": True,
         "normalize_activations": "none",
-        "meta": {
+        "metadata": {
             "model_name": "gpt2-small",
             "hook_name": "blocks.0.hook_resid_pre",
             "hook_layer": 0,
@@ -52,7 +52,7 @@ def test_load_sae_config_from_huggingface_connor_rob_hook_z():
         "device": "cpu",
         "apply_b_dec_to_input": True,
         "normalize_activations": "none",
-        "meta": {
+        "metadata": {
             "model_name": "gpt2-small",
             "hook_name": "blocks.0.attn.hook_z",
             "hook_layer": 0,
@@ -82,7 +82,7 @@ def test_load_sae_config_from_huggingface_gemma_2():
         "apply_b_dec_to_input": False,
         "normalize_activations": None,
         "device": "cpu",
-        "meta": {
+        "metadata": {
             "model_name": "gemma-2-2b",
             "hook_name": "hook_embed",
             "hook_layer": 0,
@@ -112,7 +112,7 @@ def test_load_sae_config_from_huggingface_dictionary_learning_1():
         "device": "cpu",
         "apply_b_dec_to_input": True,
         "normalize_activations": "none",
-        "meta": {
+        "metadata": {
             "model_name": "gemma-2-2b",
             "hook_name": "blocks.12.hook_resid_post",
             "hook_layer": 12,

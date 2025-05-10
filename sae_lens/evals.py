@@ -590,8 +590,8 @@ def get_recons_loss(
     model_kwargs: Mapping[str, Any] = {},
     hook_name: str | None = None,
 ) -> dict[str, Any]:
-    hook_name = hook_name or sae.cfg.meta.hook_name
-    head_index = sae.cfg.meta.hook_head_index
+    hook_name = hook_name or sae.cfg.metadata.hook_name
+    head_index = sae.cfg.metadata.hook_head_index
 
     if hook_name is None:
         raise ValueError("hook_name must be provided")

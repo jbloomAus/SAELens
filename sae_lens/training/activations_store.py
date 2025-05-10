@@ -163,27 +163,27 @@ class ActivationsStore:
         total_tokens: int = 10**9,
         device: str = "cpu",
     ) -> ActivationsStore:
-        if sae.cfg.meta.hook_name is None:
+        if sae.cfg.metadata.hook_name is None:
             raise ValueError("hook_name is required")
-        if sae.cfg.meta.hook_layer is None:
+        if sae.cfg.metadata.hook_layer is None:
             raise ValueError("hook_layer is required")
-        if sae.cfg.meta.hook_head_index is None:
+        if sae.cfg.metadata.hook_head_index is None:
             raise ValueError("hook_head_index is required")
-        if sae.cfg.meta.context_size is None:
+        if sae.cfg.metadata.context_size is None:
             raise ValueError("context_size is required")
-        if sae.cfg.meta.prepend_bos is None:
+        if sae.cfg.metadata.prepend_bos is None:
             raise ValueError("prepend_bos is required")
         return cls(
             model=model,
             dataset=dataset,
             d_in=sae.cfg.d_in,
-            hook_name=sae.cfg.meta.hook_name,
-            hook_layer=sae.cfg.meta.hook_layer,
-            hook_head_index=sae.cfg.meta.hook_head_index,
-            context_size=sae.cfg.meta.context_size
+            hook_name=sae.cfg.metadata.hook_name,
+            hook_layer=sae.cfg.metadata.hook_layer,
+            hook_head_index=sae.cfg.metadata.hook_head_index,
+            context_size=sae.cfg.metadata.context_size
             if context_size is None
             else context_size,
-            prepend_bos=sae.cfg.meta.prepend_bos,
+            prepend_bos=sae.cfg.metadata.prepend_bos,
             streaming=streaming,
             store_batch_size_prompts=store_batch_size_prompts,
             train_batch_size_tokens=train_batch_size_tokens,
@@ -193,7 +193,7 @@ class ActivationsStore:
             dataset_trust_remote_code=dataset_trust_remote_code,
             dtype=sae.cfg.dtype,
             device=torch.device(device),
-            seqpos_slice=sae.cfg.meta.seqpos_slice or (None,),
+            seqpos_slice=sae.cfg.metadata.seqpos_slice or (None,),
         )
 
     def __init__(

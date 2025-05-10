@@ -92,7 +92,7 @@ class SAEConfig(ABC):
         "none", "expected_average_only_in", "constant_norm_rescale", "layer_norm"
     ] = "none"  # none, expected_average_only_in (Anthropic April Update), constant_norm_rescale (Anthropic Feb Update)
     reshape_activations: Literal["none", "hook_z"] = "none"
-    meta: SAEMetadata = field(default_factory=SAEMetadata)
+    metadata: SAEMetadata = field(default_factory=SAEMetadata)
 
     @classmethod
     @abstractmethod
@@ -100,7 +100,7 @@ class SAEConfig(ABC):
 
     def to_dict(self) -> dict[str, Any]:
         res = {field.name: getattr(self, field.name) for field in fields(self)}
-        res["meta"] = asdict(self.meta)
+        res["metadata"] = asdict(self.metadata)
         res["architecture"] = self.architecture()
         return res
 
@@ -109,8 +109,8 @@ class SAEConfig(ABC):
         cfg_class = get_sae_class(config_dict["architecture"])[1]
         filtered_config_dict = filter_valid_dataclass_fields(config_dict, cfg_class)
         res = cfg_class(**filtered_config_dict)
-        if "meta" in config_dict:
-            res.meta = SAEMetadata(**config_dict["meta"])
+        if "metadata" in config_dict:
+            res.metadata = SAEMetadata(**config_dict["metadata"])
         if not isinstance(res, cls):
             raise ValueError(
                 f"SAE config class {cls} does not match dict config class {type(res)}"
@@ -175,7 +175,7 @@ class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
 
         self.cfg = cfg
 
-        if cfg.meta and cfg.meta.model_from_pretrained_kwargs:
+        if cfg.metadata and cfg.metadata.model_from_pretrained_kwargs:
             warnings.warn(
                 "\nThis SAE has non-empty model_from_pretrained_kwargs. "
                 "\nFor optimal performance, load the model like so:\n"
@@ -295,8 +295,9 @@ class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
         pass
 
     def turn_on_forward_pass_hook_z_reshaping(self):
-        if self.cfg.meta.hook_name is not None and not self.cfg.meta.hook_name.endswith(
-            "_z"
+        if (
+            self.cfg.metadata.hook_name is not None
+            and not self.cfg.metadata.hook_name.endswith("_z")
         ):
             raise ValueError("This method should only be called for hook_z SAEs.")
 
@@ -439,9 +440,7 @@ class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
 
     def get_name(self):
         """Generate a name for this SAE."""
-        return (
-            f"sae_{self.cfg.meta.model_name}_{self.cfg.meta.hook_name}_{self.cfg.d_sae}"
-        )
+        return f"sae_{self.cfg.metadata.model_name}_{self.cfg.metadata.hook_name}_{self.cfg.d_sae}"
 
     def save_model(self, path: str | Path) -> tuple[Path, Path]:
         """Save model weights and config to disk."""
@@ -694,8 +693,8 @@ class TrainingSAEConfig(SAEConfig, ABC):
             raise ValueError(
                 f"SAE config class {cls} does not match dict config class {type(cfg_class)}"
             )
-        if "meta" in config_dict:
-            valid_config_dict["meta"] = SAEMetadata(**config_dict["meta"])
+        if "metadata" in config_dict:
+            valid_config_dict["metadata"] = SAEMetadata(**config_dict["metadata"])
         return cfg_class(**valid_config_dict)
 
     def to_dict(self) -> dict[str, Any]:

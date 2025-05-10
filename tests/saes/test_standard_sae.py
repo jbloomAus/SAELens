@@ -276,8 +276,8 @@ def test_sae_save_and_load_from_pretrained(tmp_path: Path) -> None:
 
 def test_sae_get_name_returns_correct_name_from_cfg_vals() -> None:
     cfg = build_sae_cfg(d_sae=128)
-    cfg.meta.model_name = "test_model"
-    cfg.meta.hook_name = "test_hook_name"
+    cfg.metadata.model_name = "test_model"
+    cfg.metadata.hook_name = "test_hook_name"
     sae = SAE.from_dict(cfg.to_dict())
     assert sae.get_name() == "sae_test_model_test_hook_name_128"
 

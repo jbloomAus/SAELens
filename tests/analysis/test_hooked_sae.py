@@ -50,7 +50,7 @@ def get_hooked_sae(model: HookedTransformer, act_name: str) -> SAE:
         device="cpu",
         apply_b_dec_to_input=False,
         reshape_activations="hook_z" if act_name.endswith("hook_z") else "none",
-        meta=SAEMetadata(
+        metadata=SAEMetadata(
             hook_name=act_name,
             model_name=MODEL,
             hook_layer=0,

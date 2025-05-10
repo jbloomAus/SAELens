@@ -94,7 +94,7 @@ def make_new_sae(
         device="cpu",
         apply_b_dec_to_input=apply_b_dec_to_input,
         normalize_activations="none",
-        meta=SAEMetadata(
+        metadata=SAEMetadata(
             model_name="test_model",
             hook_name=hook_name,
         ),
@@ -296,7 +296,7 @@ def test_standard_sae_hook_z_equivalence(hook_name: str):
             device="cpu",
             apply_b_dec_to_input=False,  # Important: set to False to avoid shape issues
             normalize_activations="none",
-            meta=SAEMetadata(
+            metadata=SAEMetadata(
                 model_name="test_model",
                 hook_name=hook_name,
             ),
@@ -696,7 +696,7 @@ def make_new_training_sae(
         l1_coefficient=l1_coefficient,
         apply_b_dec_to_input=apply_b_dec_to_input,
         reshape_activations="hook_z" if "hook_z" in hook_name else "none",
-        meta=SAEMetadata(
+        metadata=SAEMetadata(
             model_name="test_model",
             hook_name=hook_name,
             hook_layer=0,

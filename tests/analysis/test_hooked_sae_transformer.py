@@ -64,7 +64,7 @@ def get_hooked_sae(model: HookedTransformer, act_name: str) -> SAE:
         dtype="float32",
         device="cpu",
         reshape_activations="hook_z" if act_name.endswith("hook_z") else "none",
-        meta=SAEMetadata(
+        metadata=SAEMetadata(
             model_name=MODEL,
             hook_name=act_name,
             hook_layer=0,

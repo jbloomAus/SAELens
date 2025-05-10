@@ -249,13 +249,13 @@ def build_runner_cfg(
         cast(dict[str, Any], default_sae_config),
         **kwargs,
     )
-    runner_cfg.sae.meta.hook_name = runner_cfg.hook_name
-    runner_cfg.sae.meta.hook_layer = runner_cfg.hook_layer
-    runner_cfg.sae.meta.hook_head_index = runner_cfg.hook_head_index
-    runner_cfg.sae.meta.model_name = runner_cfg.model_name
-    runner_cfg.sae.meta.model_class_name = runner_cfg.model_class_name
-    runner_cfg.sae.meta.dataset_path = runner_cfg.dataset_path
-    runner_cfg.sae.meta.prepend_bos = runner_cfg.prepend_bos
+    runner_cfg.sae.metadata.hook_name = runner_cfg.hook_name
+    runner_cfg.sae.metadata.hook_layer = runner_cfg.hook_layer
+    runner_cfg.sae.metadata.hook_head_index = runner_cfg.hook_head_index
+    runner_cfg.sae.metadata.model_name = runner_cfg.model_name
+    runner_cfg.sae.metadata.model_class_name = runner_cfg.model_class_name
+    runner_cfg.sae.metadata.dataset_path = runner_cfg.dataset_path
+    runner_cfg.sae.metadata.prepend_bos = runner_cfg.prepend_bos
     return runner_cfg
 
 
