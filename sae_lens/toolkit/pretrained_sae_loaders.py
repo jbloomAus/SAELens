@@ -1046,11 +1046,13 @@ def get_dictionary_learning_config_from_hf(
     force_download: bool = False,
     cfg_overrides: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    cfg_path = hf_hub_download(
-        repo_id, f"{folder_name}/config.json", force_download=force_download
+    config_filename = f"{folder_name}/config.json"
+    config_path = hf_hub_download(
+        repo_id, filename=config_filename, force_download=force_download
     )
+    sae_path = Path(config_path).parent
     return get_dictionary_learning_config_from_disk(
-        Path(cfg_path).parent, device, cfg_overrides
+        sae_path, device=device, cfg_overrides=cfg_overrides
     )
 
 
@@ -1060,14 +1062,15 @@ def get_dictionary_learning_config_from_disk(
     cfg_overrides: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     path = Path(path)
+
     with open(path / "config.json") as f:
-        cfg = json.load(f)
+        config = json.load(f)
 
-    tr = cfg["trainer"]
-    buf = cfg.get("buffer", {})
-    cls = tr["trainer_class"]
+    trainer = config["trainer"]
+    buffer = config.get("buffer", {})
+    trainer_class = trainer["trainer_class"]
 
-    if cls in {
+    if trainer_class in {
         "StandardTrainer",
         "PAnnealTrainer",
         "StandardTrainerAprilUpdate",
@@ -1075,31 +1078,32 @@ def get_dictionary_learning_config_from_disk(
         "MatryoshkaBatchTopKTrainer",
         "TopKTrainer",
     }:
-        architecture = "standard" if "TopK" not in cls else "topk"
-    elif cls == "GatedSAETrainer":
+        architecture = "standard" if "TopK" not in trainer_class else "topk"
+    elif trainer_class == "GatedSAETrainer":
         architecture = "gated"
-    elif cls == "JumpReluTrainer":
+    elif trainer_class == "JumpReluTrainer":
         architecture = "jumprelu"
     else:
         architecture = "standard"
 
-    if "TopK" in cls:
+    if "TopK" in trainer_class:
         activation_fn_str = "topk"
-        activation_fn_kwargs = {"k": tr["k"]}
+        activation_fn_kwargs = {"k": trainer["k"]}
     else:
         activation_fn_str = "relu"
         activation_fn_kwargs = {}
 
-    hook_name = f"blocks.{tr['layer']}.hook_resid_post"
+    hook_name = f"blocks.{trainer['layer']}.hook_resid_post"
+
     cfg_dict: dict[str, Any] = {
         "architecture": architecture,
-        "d_in": tr["activation_dim"],
-        "d_sae": tr["dict_size"],
+        "d_in": trainer["activation_dim"],
+        "d_sae": trainer["dict_size"],
         "dtype": "float32",
         "device": device or "cpu",
-        "model_name": tr["lm_name"].split("/")[-1],
+        "model_name": trainer["lm_name"].split("/")[-1],
         "hook_name": hook_name,
-        "hook_layer": tr["layer"],
+        "hook_layer": trainer["layer"],
         "hook_head_index": None,
         "activation_fn_str": activation_fn_str,
         **(
@@ -1112,13 +1116,15 @@ def get_dictionary_learning_config_from_disk(
         "sae_lens_training_version": None,
         "prepend_bos": True,
         "dataset_path": "monology/pile-uncopyrighted",
-        "context_size": buf.get("ctx_len", 128),
+        "context_size": buffer.get("ctx_len", 128),
         "normalize_activations": "none",
         "neuronpedia_id": None,
         "dataset_trust_remote_code": True,
     }
+
     if cfg_overrides:
         cfg_dict.update(cfg_overrides)
+
     return cfg_dict
 
 
@@ -1130,13 +1136,12 @@ def dictionary_learning_huggingface_loader(
     cfg_overrides: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], dict[str, torch.Tensor], None]:
     sae_path = hf_hub_download(
-        repo_id, f"{folder_name}/ae.pt", force_download=force_download
+        repo_id, filename=f"{folder_name}/ae.pt", force_download=force_download
     )
-    hf_hub_download(
-        repo_id, f"{folder_name}/config.json", force_download=force_download
-    )
+    config_path = f"{folder_name}/config.json"
+    hf_hub_download(repo_id, filename=config_path, force_download=force_download)
     cfg_dict, state_dict = dictionary_learning_disk_loader(
-        Path(sae_path).parent, device, cfg_overrides
+        Path(sae_path).parent, device=device, cfg_overrides=cfg_overrides
     )
     return cfg_dict, state_dict, None
 
@@ -1149,44 +1154,55 @@ def dictionary_learning_disk_loader(
     cfg_dict = get_dictionary_learning_config_from_disk(path, device, cfg_overrides)
 
     weight_path = Path(path) / "ae.pt"
-    raw = (
+    state_dict_loaded = (
         load_file(weight_path, device=device)
         if weight_path.suffix == ".safetensors"
         else torch.load(weight_path, map_location=device)
     )
-    raw.pop("group_sizes", None)
+    state_dict_loaded.pop("group_sizes", None)
 
     dtype = DTYPE_MAP[cfg_dict["dtype"]]
 
-    W_enc = (raw["W_enc"] if "W_enc" in raw else raw["encoder.weight"].T).to(dtype)
-    W_dec = (raw["W_dec"] if "W_dec" in raw else raw["decoder.weight"].T).to(dtype)
+    W_enc = (
+        state_dict_loaded["W_enc"]
+        if "W_enc" in state_dict_loaded
+        else state_dict_loaded["encoder.weight"].T
+    ).to(dtype)
 
-    if "b_enc" in raw:
-        b_enc = raw["b_enc"].to(dtype)
-    elif "encoder.bias" in raw:
-        b_enc = raw["encoder.bias"].to(dtype)
+    W_dec = (
+        state_dict_loaded["W_dec"]
+        if "W_dec" in state_dict_loaded
+        else state_dict_loaded["decoder.weight"].T
+    ).to(dtype)
+
+    if "b_enc" in state_dict_loaded:
+        b_enc = state_dict_loaded["b_enc"].to(dtype)
+    elif "encoder.bias" in state_dict_loaded:
+        b_enc = state_dict_loaded["encoder.bias"].to(dtype)
     else:
         b_enc = torch.zeros(cfg_dict["d_sae"], dtype=dtype, device=device)
 
-    if "b_dec" in raw:
-        b_dec = raw["b_dec"].to(dtype)
-    elif "bias" in raw:
-        b_dec = raw["bias"].to(dtype)
-    elif "decoder.bias" in raw:
-        b_dec = raw["decoder.bias"].to(dtype)
+    if "b_dec" in state_dict_loaded:
+        b_dec = state_dict_loaded["b_dec"].to(dtype)
+    elif "bias" in state_dict_loaded:
+        b_dec = state_dict_loaded["bias"].to(dtype)
+    elif "decoder.bias" in state_dict_loaded:
+        b_dec = state_dict_loaded["decoder.bias"].to(dtype)
     else:
         b_dec = torch.zeros(cfg_dict["d_in"], dtype=dtype, device=device)
 
     state_dict = {"W_enc": W_enc, "b_enc": b_enc, "W_dec": W_dec, "b_dec": b_dec}
 
-    arch = cfg_dict["architecture"]
-    if arch == "jumprelu" and "threshold" in raw:
-        state_dict["threshold"] = raw["threshold"].to(dtype)
-    if arch == "gated":
+    architecture = cfg_dict["architecture"]
+    if architecture == "jumprelu" and "threshold" in state_dict_loaded:
+        state_dict["threshold"] = state_dict_loaded["threshold"].to(dtype)
+    if architecture == "gated":
         state_dict.pop("b_enc", None)
-        state_dict["r_mag"] = raw["r_mag"].to(dtype)
-        state_dict["b_mag"] = raw.get("b_mag", raw["mag_bias"]).to(dtype)
-        state_dict["b_gate"] = raw["gate_bias"].to(dtype)
+        state_dict["r_mag"] = state_dict_loaded["r_mag"].to(dtype)
+        state_dict["b_mag"] = state_dict_loaded.get(
+            "b_mag", state_dict_loaded["mag_bias"]
+        ).to(dtype)
+        state_dict["b_gate"] = state_dict_loaded["gate_bias"].to(dtype)
 
     return cfg_dict, state_dict
 
