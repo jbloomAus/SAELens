@@ -23,7 +23,7 @@ from sae_lens.loading.pretrained_saes_directory import (
     get_pretrained_saes_directory,
     get_repo_id_and_folder_name,
 )
-from sae_lens.regsitry import get_sae_class
+from sae_lens.registry import get_sae_class
 from sae_lens.util import filter_valid_dataclass_fields
 
 

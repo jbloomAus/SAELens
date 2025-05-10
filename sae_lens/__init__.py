@@ -43,7 +43,7 @@ from .loading.pretrained_sae_loaders import (
     PretrainedSaeHuggingfaceLoader,
 )
 from .pretokenize_runner import PretokenizeRunner, pretokenize_runner
-from .regsitry import register_sae_class, register_sae_training_class
+from .registry import register_sae_class, register_sae_training_class
 from .sae_training_runner import SAETrainingRunner
 from .saes.sae import SAE, SAEConfig, TrainingSAE, TrainingSAEConfig
 from .training.activations_store import ActivationsStore

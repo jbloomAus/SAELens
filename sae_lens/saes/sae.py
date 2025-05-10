@@ -51,7 +51,7 @@ from sae_lens.loading.pretrained_saes_directory import (
     get_pretrained_saes_directory,
     get_repo_id_and_folder_name,
 )
-from sae_lens.regsitry import get_sae_class, get_sae_training_class
+from sae_lens.registry import get_sae_class, get_sae_training_class
 
 T_SAE_CONFIG = TypeVar("T_SAE_CONFIG", bound="SAEConfig")
 T_TRAINING_SAE_CONFIG = TypeVar("T_TRAINING_SAE_CONFIG", bound="TrainingSAEConfig")
