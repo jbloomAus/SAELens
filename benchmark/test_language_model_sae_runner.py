@@ -39,7 +39,7 @@ def test_language_model_sae_runner():
             device=device,
             apply_b_dec_to_input=False,
             b_dec_init_method="zeros",
-            l1_coefficient=0.5,
+            l1_coefficient=5,
             lp_norm=1.0,
             l1_warm_up_steps=l1_warmup_steps,
         ),
@@ -128,7 +128,7 @@ def test_language_model_sae_runner_gated():
             device=device,
             apply_b_dec_to_input=False,
             b_dec_init_method="zeros",
-            l1_coefficient=0.5,
+            l1_coefficient=5,
             l1_warm_up_steps=l1_warmup_steps,
         ),
         # Pick a tiny model to make this easier.
