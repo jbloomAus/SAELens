@@ -23,7 +23,6 @@ from sae_lens.saes.sae import TrainingSAEConfig
 if TYPE_CHECKING:
     pass
 
-# Define the TypeVar with the bound
 T_TRAINING_SAE_CONFIG = TypeVar("T_TRAINING_SAE_CONFIG", bound=TrainingSAEConfig)
 
 HfDataset = DatasetDict | Dataset | IterableDatasetDict | IterableDataset
