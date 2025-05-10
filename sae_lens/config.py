@@ -367,9 +367,6 @@ class LanguageModelSAERunnerConfig(Generic[T_TRAINING_SAE_CONFIG]):
     def total_training_steps(self) -> int:
         return self.total_training_tokens // self.train_batch_size_tokens
 
-    # def get_base_sae_cfg_dict(self) -> dict[str, Any]:
-    #     return self.sae.to_dict()
-
     def get_training_sae_cfg_dict(self) -> dict[str, Any]:
         return self.sae.to_dict()
 
