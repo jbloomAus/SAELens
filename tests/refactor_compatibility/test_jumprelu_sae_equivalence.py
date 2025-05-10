@@ -77,7 +77,7 @@ def make_new_jumprelu_sae(
     """
     Helper to instantiate a new JumpReLUSAE instance for testing (inference only).
     """
-    new_cfg = JumpReLUSAEConfig(  # Use SAEConfig (removed New prefix)
+    new_cfg = JumpReLUSAEConfig(
         d_in=d_in,
         d_sae=d_sae,
         dtype="float32",
