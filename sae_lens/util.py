@@ -5,10 +5,6 @@ K = TypeVar("K")
 V = TypeVar("V")
 
 
-def copy_and_remove_keys(d: dict[K, V], keys: list[K]) -> dict[K, V]:
-    return {k: v for k, v in d.items() if k not in keys}
-
-
 def filter_valid_dataclass_fields(
     source: dict[str, V] | object,
     destination: object | type,
