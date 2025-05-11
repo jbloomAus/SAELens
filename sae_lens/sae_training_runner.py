@@ -17,7 +17,10 @@ from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.crosscoder_sae_trainer import CrosscoderSAETrainer
 from sae_lens.training.geometric_median import compute_geometric_median
 from sae_lens.training.sae_trainer import SAETrainer
-from sae_lens.training.training_crosscoder_sae import TrainingCrosscoderSAE
+from sae_lens.training.training_crosscoder_sae import (
+    TrainingCrosscoderSAE,
+    TrainingCrosscoderSAEConfig,
+)
 from sae_lens.training.training_sae import TrainingSAE, TrainingSAEConfig
 
 
@@ -78,6 +81,16 @@ class SAETrainingRunner:
                 self.sae = TrainingSAE.load_from_pretrained(
                     self.cfg.from_pretrained_path, self.cfg.device
                 )
+            elif self.cfg.hook_names:
+                self.sae = TrainingCrosscoderSAE(
+                    TrainingCrosscoderSAEConfig.from_dict(
+                        self.cfg.get_training_sae_cfg_dict(),
+                    ),
+                    # TODO(mkbehr): When causal crosscoders are
+                    # implemented, set use_error_term false for those.
+                    use_error_term=True,
+                )
+                self._init_sae_group_b_decs()
             else:
                 self.sae = TrainingSAE(
                     TrainingSAEConfig.from_dict(
@@ -102,8 +115,7 @@ class SAETrainingRunner:
                 id=self.cfg.wandb_id,
             )
 
-        # TODO(mkbehr): make a better way to get the right trainer in
-        if isinstance(self.sae, TrainingCrosscoderSAE):
+        if self.cfg.hook_names:
             trainer = CrosscoderSAETrainer(
                 model=self.model,
                 sae=self.sae,
@@ -172,13 +184,15 @@ class SAETrainingRunner:
         return sae
 
     # TODO: move this into the SAE trainer or Training SAE class
-    # TODO(mkbehr): support crosscoders.
     def _init_sae_group_b_decs(
         self,
     ) -> None:
         """
         extract all activations at a certain layer and use for sae b_dec initialization
         """
+
+        if self.cfg.hook_names and self.cfg.b_dec_init_method != "zeros":
+            raise NotImplementedError("TODO(mkbehr): For crosscoders, only b_dec_init_method='zeros' is implemented.")
 
         if self.cfg.b_dec_init_method == "geometric_median":
             self.activations_store.set_norm_scaling_factor_if_needed()

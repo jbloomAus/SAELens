@@ -7,10 +7,6 @@ sys.path.append("..")
 
 from sae_lens.config import LanguageModelSAERunnerConfig
 from sae_lens.sae_training_runner import SAETrainingRunner
-from sae_lens.training.training_crosscoder_sae import (
-    TrainingCrosscoderSAE,
-    TrainingCrosscoderSAEConfig,
-)
 
 if torch.cuda.is_available():
     device = "cuda"
@@ -118,12 +114,6 @@ cfg = LanguageModelSAERunnerConfig(
     dtype="float32",
 )
 
-sae = SAETrainingRunner(
-    cfg,
-    override_sae=TrainingCrosscoderSAE(
-        TrainingCrosscoderSAEConfig.from_sae_runner_config(cfg),
-        use_error_term=True,
-    ),
-).run()
+sae = SAETrainingRunner(cfg).run()
 
 print("=" * 50)
