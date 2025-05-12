@@ -1016,11 +1016,10 @@ def sparsify_disk_loader(
         else state_dict_loaded["encoder.weight"].T
     ).to(dtype)
 
-    W_dec = (
-        state_dict_loaded["W_dec"]
-        if "W_dec" in state_dict_loaded
-        else state_dict_loaded["decoder.weight"].T
-    ).to(dtype)
+    if "W_dec" in state_dict_loaded:
+        W_dec = state_dict_loaded["W_dec"].T.to(dtype)
+    else:
+        W_dec = state_dict_loaded["decoder.weight"].T.to(dtype)
 
     if "b_enc" in state_dict_loaded:
         b_enc = state_dict_loaded["b_enc"].to(dtype)
