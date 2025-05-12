@@ -2,6 +2,13 @@
 
 
 
+## v5.10.2 (2025-05-12)
+
+### Fix
+
+* fix: add more matryoshka SAEs to neuronpedia inference (#478) ([`e59354b`](https://github.com/jbloomAus/SAELens/commit/e59354bfca032f1b7fd3ccf6cf24fe416fec0b95))
+
+
 ## v5.10.1 (2025-05-07)
 
 ### Fix
