@@ -13634,39 +13634,51 @@ gemma-2-2b-res-matryoshka-dc:
   - id: blocks.13.hook_resid_post
     path: standard/blocks.13.hook_resid_post
     l0: 40.0
+    neuronpedia: gemma-2-2b/13-res-matryoshka-dc
   - id: blocks.14.hook_resid_post
     path: standard/blocks.14.hook_resid_post
     l0: 40.0
+    neuronpedia: gemma-2-2b/14-res-matryoshka-dc
   - id: blocks.15.hook_resid_post
     path: standard/blocks.15.hook_resid_post
     l0: 40.0
+    neuronpedia: gemma-2-2b/15-res-matryoshka-dc
   - id: blocks.16.hook_resid_post
     path: standard/blocks.16.hook_resid_post
     l0: 40.0
+    neuronpedia: gemma-2-2b/16-res-matryoshka-dc
   - id: blocks.17.hook_resid_post
     path: standard/blocks.17.hook_resid_post
     l0: 40.0
+    neuronpedia: gemma-2-2b/17-res-matryoshka-dc
   - id: blocks.18.hook_resid_post
     path: standard/blocks.18.hook_resid_post
     l0: 40.0
+    neuronpedia: gemma-2-2b/18-res-matryoshka-dc
   - id: blocks.19.hook_resid_post
     path: standard/blocks.19.hook_resid_post
     l0: 40.0
+    neuronpedia: gemma-2-2b/19-res-matryoshka-dc
   - id: blocks.20.hook_resid_post
     path: standard/blocks.20.hook_resid_post
     l0: 40.0
+    neuronpedia: gemma-2-2b/20-res-matryoshka-dc
   - id: blocks.21.hook_resid_post
     path: standard/blocks.21.hook_resid_post
     l0: 40.0
+    neuronpedia: gemma-2-2b/21-res-matryoshka-dc
   - id: blocks.22.hook_resid_post
     path: standard/blocks.22.hook_resid_post
     l0: 40.0
+    neuronpedia: gemma-2-2b/22-res-matryoshka-dc
   - id: blocks.23.hook_resid_post
     path: standard/blocks.23.hook_resid_post
     l0: 40.0
+    neuronpedia: gemma-2-2b/23-res-matryoshka-dc
   - id: blocks.24.hook_resid_post
     path: standard/blocks.24.hook_resid_post
     l0: 40.0
+    neuronpedia: gemma-2-2b/24-res-matryoshka-dc
 gemma-2-2b-res-snap-matryoshka-dc:
   conversion_func: null
   links:
