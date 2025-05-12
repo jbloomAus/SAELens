@@ -10,6 +10,7 @@ from sae_lens.toolkit.pretrained_sae_loaders import (
     get_llama_scope_r1_distill_config_from_hf,
     load_sae_config_from_huggingface,
     sparsify_disk_loader,
+    sparsify_huggingface_loader,
 )
 
 
@@ -282,6 +283,36 @@ def test_get_llama_scope_r1_distill_config_with_overrides():
     assert cfg["dtype"] == "float16"
     assert cfg["d_sae"] == 8192
     assert cfg["hook_layer"] == 10
+
+
+def test_sparsify_huggingface_loader():
+    sparsify_sae = SparseCoder.load_from_hub(
+        "EleutherAI/sae-llama-3-8b-32x", hookpoint="layers.10"
+    )
+
+    cfg_dict, state_dict, _ = sparsify_huggingface_loader(
+        "EleutherAI/sae-llama-3-8b-32x", folder_name="layers.10"
+    )
+
+    assert cfg_dict["d_in"] == sparsify_sae.d_in
+    assert cfg_dict["d_sae"] == sparsify_sae.num_latents
+    assert cfg_dict["activation_fn_str"] == sparsify_sae.cfg.activation
+    assert cfg_dict["activation_fn_kwargs"]["k"] == sparsify_sae.cfg.k
+
+    torch.testing.assert_close(
+        state_dict["W_enc"], sparsify_sae.encoder.weight.data.T, check_dtype=False
+    )
+    torch.testing.assert_close(
+        state_dict["b_enc"], sparsify_sae.encoder.bias.data, check_dtype=False
+    )
+    # sparsify_sae.W_dec is Optional in the type stubs, so first assert it's present
+    assert sparsify_sae.W_dec is not None
+    torch.testing.assert_close(
+        state_dict["W_dec"], sparsify_sae.W_dec.detach().T, check_dtype=False
+    )
+    torch.testing.assert_close(
+        state_dict["b_dec"], sparsify_sae.b_dec.data, check_dtype=False
+    )
 
 
 def test_sparsify_disk_loader(tmp_path: Path):
