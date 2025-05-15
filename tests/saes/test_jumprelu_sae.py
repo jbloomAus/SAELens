@@ -33,7 +33,7 @@ def test_JumpReLUTrainingSAE_encoding():
 
     torch.testing.assert_close(
         feature_acts, expected_feature_acts, atol=1e-6, rtol=1e-5
-    )  # type: ignore
+    )
 
 
 def test_JumpReLUTrainingSAE_training_forward_pass():
