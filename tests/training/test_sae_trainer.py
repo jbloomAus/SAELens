@@ -119,15 +119,16 @@ def test_train_step__output_looks_reasonable(trainer: SAETrainer[Any, Any]) -> N
 
     assert output.loss > 0
     # only hook_point_layer=0 acts should be passed to the SAE
-    assert torch.allclose(output.sae_in, layer_acts)
+    torch.testing.assert_close(output.sae_in, layer_acts)
     assert output.sae_out.shape == output.sae_in.shape
     assert output.feature_acts.shape == (4, 128)  # batch_size, d_sae
     # ghots grads shouldn't trigger until dead_feature_window, which hasn't been reached yet
     assert output.losses.get("ghost_grad_loss", 0) == 0
     assert trainer.n_frac_active_samples == 4
     assert trainer.act_freq_scores.sum() > 0  # at least SOME acts should have fired
-    assert torch.allclose(
-        trainer.act_freq_scores, (output.feature_acts.abs() > 0).float().sum(0)
+    torch.testing.assert_close(
+        trainer.act_freq_scores,
+        (output.feature_acts.abs() > 0).float().sum(0),
     )
 
 
@@ -146,8 +147,9 @@ def test_train_step__sparsity_updates_based_on_feature_act_sparsity(
     # should increase by batch_size
     assert trainer.n_frac_active_samples == 4
     # add freq scores for all non-zero feature acts
-    assert torch.allclose(
-        trainer.act_freq_scores, (feature_acts > 0).float().sum(dim=0)
+    torch.testing.assert_close(
+        trainer.act_freq_scores,
+        (feature_acts > 0).float().sum(dim=0),
     )
 
     # check that features that just fired have n_forward_passes_since_fired = 0

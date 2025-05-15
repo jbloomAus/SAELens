@@ -148,7 +148,7 @@ def test_error_term(model: HookedTransformer, hooked_sae: SAE):
 
     sae_output = hooked_sae(x)
     assert sae_output.shape == x.shape
-    assert torch.allclose(sae_output, x, atol=1e-6)
+    torch.testing.assert_close(sae_output, x, atol=1e-6, rtol=1e-5)
 
     """Verifies that pytorch backward computes the correct feature gradients when using error_terms. Motivated by the need to compute feature gradients for attribution patching."""
 
@@ -170,7 +170,7 @@ def test_error_term(model: HookedTransformer, hooked_sae: SAE):
     hooked_sae.add_hook("hook_sae_output", backward_cache_hook, "bwd")  # type: ignore
 
     sae_output = hooked_sae(x)
-    assert torch.allclose(sae_output, x, atol=1e-6)
+    torch.testing.assert_close(sae_output, x, atol=1e-6, rtol=1e-5)
     value = sae_output.sum()
     value.backward()
     hooked_sae.reset_hooks()
@@ -185,4 +185,6 @@ def test_error_term(model: HookedTransformer, hooked_sae: SAE):
         analytic_grad = grad_cache["hook_sae_output"] @ hooked_sae.W_dec.T
 
     # Compare analytic gradient with pytorch computed gradient
-    assert torch.allclose(grad_cache["hook_sae_acts_post"], analytic_grad, atol=1e-6)
+    torch.testing.assert_close(
+        grad_cache["hook_sae_acts_post"], analytic_grad, atol=1e-6, rtol=1e-5
+    )

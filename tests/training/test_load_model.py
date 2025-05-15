@@ -73,9 +73,9 @@ def test_HookedProxyLM_gives_same_cached_states_as_original_implementation():
 
     hf_output = hf_model(input_ids, output_hidden_states=True)
 
-    assert torch.allclose(proxy_logits, hf_output.logits)
+    torch.testing.assert_close(proxy_logits, hf_output.logits)
     for i in range(len(hf_output.hidden_states) - 2):
-        assert torch.allclose(
+        torch.testing.assert_close(
             cache[f"transformer.h.{i}"], hf_output.hidden_states[i + 1]
         )
 
@@ -89,10 +89,11 @@ def test_HookedProxyLM_gives_same_cached_states_as_tlens_implementation(
     hf_cache = gpt2_proxy_model.run_with_cache(input_ids)[1]
     tlens_cache = tlens_model.run_with_cache(input_ids)[1]
     for i in range(12):
-        assert torch.allclose(
+        torch.testing.assert_close(
             hf_cache[f"transformer.h.{i}"],
             tlens_cache[f"blocks.{i}.hook_resid_post"],
             atol=1e-3,
+            rtol=1e-5,
         )
 
 
@@ -108,8 +109,8 @@ def test_HookedProxyLM_forward_gives_same_output_as_tlens(
     # Seems like tlens removes the means before softmaxing
     hf_logits_normed = hf_output[0] - hf_output[0].mean(dim=-1, keepdim=True)
 
-    assert torch.allclose(tlens_output[0], hf_logits_normed, atol=1e-3)
-    assert torch.allclose(tlens_output[1], hf_output[1], atol=1e-3)
+    torch.testing.assert_close(tlens_output[0], hf_logits_normed, atol=1e-3, rtol=1e-5)
+    torch.testing.assert_close(tlens_output[1], hf_output[1], atol=1e-3, rtol=1e-5)
 
 
 def test_extract_logits_from_output_works_with_multiple_return_types():
@@ -122,7 +123,7 @@ def test_extract_logits_from_output_works_with_multiple_return_types():
     logits_dict = _extract_logits_from_output(out_dict)
     logits_tuple = _extract_logits_from_output(out_tuple)
 
-    assert torch.allclose(logits_dict, logits_tuple)
+    torch.testing.assert_close(logits_dict, logits_tuple)
 
 
 def test_HookedProxyLM_to_tokens_gives_same_output_as_tlens(
@@ -137,7 +138,7 @@ def test_HookedProxyLM_to_tokens_gives_same_output_as_tlens(
         "hi there", prepend_bos=False, truncate=False, move_to_device=False
     )
 
-    assert torch.allclose(tl_tokens, hf_tokens)
+    torch.testing.assert_close(tl_tokens, hf_tokens)
 
 
 @pytest.mark.skipif(

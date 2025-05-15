@@ -32,22 +32,31 @@ def test_GatedSAE_forward(use_error_term: bool):
     expected_output = sae_in if use_error_term else expected_recons
     out, cache = sae.run_with_cache(sae_in)
 
-    assert torch.allclose(out, expected_output, atol=1e-3)
-    assert torch.allclose(cache["hook_sae_input"], sae_in, atol=1e-3)
-    assert torch.allclose(cache["hook_sae_output"], out, atol=1e-3)
-    assert torch.allclose(cache["hook_sae_recons"], expected_recons, atol=1e-3)
-    assert torch.allclose(
-        cache["hook_sae_acts_pre"], torch.tensor([[2.6310, 5.4334, 13.0513]]), atol=1e-3
+    torch.testing.assert_close(out, expected_output, atol=1e-3, rtol=1e-5)
+    torch.testing.assert_close(cache["hook_sae_input"], sae_in, atol=1e-3, rtol=1e-5)
+    torch.testing.assert_close(cache["hook_sae_output"], out, atol=1e-3, rtol=1e-5)
+    torch.testing.assert_close(
+        cache["hook_sae_recons"], expected_recons, atol=1e-3, rtol=1e-5
+    )
+    torch.testing.assert_close(
+        cache["hook_sae_acts_pre"],
+        torch.tensor([[2.6310, 5.4334, 13.0513]]),
+        atol=1e-3,
+        rtol=1e-5,
     )
     # the threshold of 1.0 should block the first latent from firing
-    assert torch.allclose(
+    torch.testing.assert_close(
         cache["hook_sae_acts_post"],
         torch.tensor([[0.0, 5.4334, 13.0513]]),
         atol=1e-3,
+        rtol=1e-5,
     )
     if use_error_term:
-        assert torch.allclose(
-            cache["hook_sae_error"], expected_output - expected_recons
+        torch.testing.assert_close(
+            cache["hook_sae_error"],
+            expected_output - expected_recons,
+            atol=1e-8,
+            rtol=1e-5,
         )
 
 
@@ -72,7 +81,9 @@ def test_GatedTrainingSAE_encoding():
     feature_magnitudes = sae.activation_fn(magnitude_pre_activation)
 
     expected_feature_acts = active_features * feature_magnitudes
-    assert torch.allclose(feature_acts, expected_feature_acts, atol=1e-6)
+    torch.testing.assert_close(
+        feature_acts, expected_feature_acts, atol=1e-6, rtol=1e-5
+    )
 
 
 def test_GatedTrainingSAE_loss():
@@ -135,7 +146,7 @@ def test_GatedSAE_save_and_load_from_pretrained(tmp_path: Path) -> None:
 
     # check state_dict matches the original
     for key in sae.state_dict():
-        assert torch.allclose(
+        torch.testing.assert_close(
             sae_state_dict[key],
             sae_loaded_state_dict[key],
         )
@@ -143,7 +154,7 @@ def test_GatedSAE_save_and_load_from_pretrained(tmp_path: Path) -> None:
     sae_in = torch.randn(10, cfg.d_in, device=cfg.device)
     sae_out_1 = sae(sae_in)
     sae_out_2 = sae_loaded(sae_in)
-    assert torch.allclose(sae_out_1, sae_out_2)
+    torch.testing.assert_close(sae_out_1, sae_out_2)
 
 
 def test_GatedTrainingSAE_forward_pass():
@@ -198,12 +209,32 @@ def test_GatedSAE_initialization():
     assert sae.r_mag.shape == (cfg.d_sae,)
     assert sae.b_mag.shape == (cfg.d_sae,)
 
-    assert not torch.allclose(sae.W_enc, torch.zeros_like(sae.W_enc))
-    assert not torch.allclose(sae.W_dec, torch.zeros_like(sae.W_dec))
-    assert torch.allclose(sae.b_dec, torch.zeros_like(sae.b_dec))
-    assert torch.allclose(sae.b_gate, torch.zeros_like(sae.b_gate))
-    assert torch.allclose(sae.r_mag, torch.zeros_like(sae.r_mag))
-    assert torch.allclose(sae.b_mag, torch.zeros_like(sae.b_mag))
+    with pytest.raises(AssertionError):
+        torch.testing.assert_close(
+            sae.W_enc,
+            torch.zeros_like(sae.W_enc),
+        )
+    with pytest.raises(AssertionError):
+        torch.testing.assert_close(
+            sae.W_dec,
+            torch.zeros_like(sae.W_dec),
+        )
+    torch.testing.assert_close(
+        sae.b_dec,
+        torch.zeros_like(sae.b_dec),
+    )
+    torch.testing.assert_close(
+        sae.b_gate,
+        torch.zeros_like(sae.b_gate),
+    )
+    torch.testing.assert_close(
+        sae.r_mag,
+        torch.zeros_like(sae.r_mag),
+    )
+    torch.testing.assert_close(
+        sae.b_mag,
+        torch.zeros_like(sae.b_mag),
+    )
 
 
 def test_GatedTrainingSAE_initialization():
@@ -221,17 +252,26 @@ def test_GatedTrainingSAE_initialization():
     assert sae.dtype == torch.float32
 
     # biases
-    assert torch.allclose(sae.b_dec, torch.zeros_like(sae.b_dec), atol=1e-6)
-    assert torch.allclose(sae.b_mag, torch.zeros_like(sae.b_mag), atol=1e-6)
-    assert torch.allclose(sae.b_gate, torch.zeros_like(sae.b_gate), atol=1e-6)
+    torch.testing.assert_close(
+        sae.b_dec, torch.zeros_like(sae.b_dec), atol=1e-6, rtol=1e-5
+    )
+    torch.testing.assert_close(
+        sae.b_mag, torch.zeros_like(sae.b_mag), atol=1e-6, rtol=1e-5
+    )
+    torch.testing.assert_close(
+        sae.b_gate, torch.zeros_like(sae.b_gate), atol=1e-6, rtol=1e-5
+    )
 
     # check if the decoder weight norm is 0.1 by default
-    assert torch.allclose(
-        sae.W_dec.norm(dim=1), 0.1 * torch.ones_like(sae.W_dec.norm(dim=1)), atol=1e-6
+    torch.testing.assert_close(
+        sae.W_dec.norm(dim=1),
+        0.1 * torch.ones_like(sae.W_dec.norm(dim=1)),
+        atol=1e-6,
+        rtol=1e-5,
     )
 
     #  Default currently should be tranpose initialization
-    assert torch.allclose(sae.W_enc, sae.W_dec.T, atol=1e-6)
+    torch.testing.assert_close(sae.W_enc, sae.W_dec.T, atol=1e-6, rtol=1e-5)
 
 
 def test_GatedTrainingSAE_save_and_load_inference_sae(tmp_path: Path) -> None:

@@ -243,7 +243,7 @@ def test_compare_cached_activations_end_to_end_with_ground_truth(tmp_path: Path)
 
     ground_truth_acts = torch.cat(ground_truth_acts, dim=0).cpu()
 
-    assert torch.allclose(ground_truth_acts, dataset_acts, rtol=1e-3, atol=5e-2)
+    torch.testing.assert_close(ground_truth_acts, dataset_acts, rtol=1e-3, atol=5e-2)
 
 
 def test_load_activations_store_with_nonexistent_dataset(tmp_path: Path):
@@ -439,4 +439,4 @@ def test_cache_activations_runner_shuffling(tmp_path: Path):
         # Find where this token went in shuffled version
         shuffled_idx = torch.where(shuffled_tokens == token)[0][0]
         # Verify activations moved with it
-        assert torch.allclose(unshuffled_acts[i], shuffled_acts[shuffled_idx])
+        torch.testing.assert_close(unshuffled_acts[i], shuffled_acts[shuffled_idx])
