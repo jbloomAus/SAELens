@@ -96,9 +96,9 @@ def test_sae_fold_w_dec_norm(
     sae2.fold_W_dec_norm()
 
     W_dec_norms = sae.W_dec.norm(dim=-1).unsqueeze(1)
-    assert torch.allclose(sae2.W_dec.data, sae.W_dec.data / W_dec_norms)
-    assert torch.allclose(sae2.W_enc.data, sae.W_enc.data * W_dec_norms.T)
-    assert torch.allclose(sae2.b_enc.data, sae.b_enc.data * W_dec_norms.squeeze())
+    torch.testing.assert_close(sae2.W_dec.data, sae.W_dec.data / W_dec_norms)
+    torch.testing.assert_close(sae2.W_enc.data, sae.W_enc.data * W_dec_norms.T)
+    torch.testing.assert_close(sae2.b_enc.data, sae.b_enc.data * W_dec_norms.squeeze())
 
     # fold_W_dec_norm should normalize W_dec to have unit norm.
     assert sae2.W_dec.norm(dim=-1).mean().item() == pytest.approx(1.0, abs=1e-6)
@@ -108,7 +108,7 @@ def test_sae_fold_w_dec_norm(
     feature_activations_1 = sae.encode(activations)
     feature_activations_2 = sae2.encode(activations)
 
-    assert torch.allclose(
+    torch.testing.assert_close(
         feature_activations_1.nonzero(),
         feature_activations_2.nonzero(),
     )
@@ -146,7 +146,7 @@ def test_sae_fold_w_dec_norm_all_architectures(architecture: str):
     feature_activations_1 = sae.encode(activations)
     feature_activations_2 = sae2.encode(activations)
 
-    assert torch.allclose(
+    torch.testing.assert_close(
         feature_activations_1.nonzero(),
         feature_activations_2.nonzero(),
     )
@@ -178,7 +178,7 @@ def test_sae_fold_norm_scaling_factor(
 
     assert sae2.cfg.normalize_activations == "none"
 
-    assert torch.allclose(sae2.W_enc.data, sae.W_enc.data * norm_scaling_factor)
+    torch.testing.assert_close(sae2.W_enc.data, sae.W_enc.data * norm_scaling_factor)
 
     # we expect activations of features to differ by W_dec norm weights.
     # assume activations are already scaled
@@ -191,7 +191,7 @@ def test_sae_fold_norm_scaling_factor(
     # result.
     feature_activations_2 = sae2.encode(unscaled_activations)
 
-    assert torch.allclose(
+    torch.testing.assert_close(
         feature_activations_1.nonzero(),
         feature_activations_2.nonzero(),
     )
@@ -221,7 +221,7 @@ def test_sae_fold_norm_scaling_factor_all_architectures(architecture: str):
 
     assert sae2.cfg.normalize_activations == "none"
 
-    assert torch.allclose(sae2.W_enc.data, sae.W_enc.data * norm_scaling_factor)
+    torch.testing.assert_close(sae2.W_enc.data, sae.W_enc.data * norm_scaling_factor)
 
     # we expect activations of features to differ by W_dec norm weights.
     # assume activations are already scaled
@@ -234,7 +234,7 @@ def test_sae_fold_norm_scaling_factor_all_architectures(architecture: str):
     # result.
     feature_activations_2 = sae2.encode(unscaled_activations)
 
-    assert torch.allclose(
+    torch.testing.assert_close(
         feature_activations_1.nonzero(),
         feature_activations_2.nonzero(),
     )
@@ -263,7 +263,7 @@ def test_sae_save_and_load_from_pretrained(tmp_path: Path) -> None:
 
     # check state_dict matches the original
     for key in sae.state_dict():
-        assert torch.allclose(
+        torch.testing.assert_close(
             sae_state_dict[key],
             sae_loaded_state_dict[key],
         )
@@ -271,7 +271,7 @@ def test_sae_save_and_load_from_pretrained(tmp_path: Path) -> None:
     sae_in = torch.randn(10, cfg.d_in, device=cfg.device)
     sae_out_1 = sae(sae_in)
     sae_out_2 = sae_loaded(sae_in)
-    assert torch.allclose(sae_out_1, sae_out_2)
+    torch.testing.assert_close(sae_out_1, sae_out_2)
 
 
 def test_sae_get_name_returns_correct_name_from_cfg_vals() -> None:
@@ -302,11 +302,11 @@ def test_disable_hooks_temporarily_stops_hooks_from_running():
         disabled_out, disabled_cache = sae.run_with_cache(sae_in)
     subseq_out, subseq_cache = sae.run_with_cache(sae_in)
 
-    assert torch.allclose(orig_out, disabled_out)
-    assert torch.allclose(orig_out, subseq_out)
+    torch.testing.assert_close(orig_out, disabled_out)
+    torch.testing.assert_close(orig_out, subseq_out)
     assert disabled_cache.keys() == set()
     for key in orig_cache:
-        assert torch.allclose(orig_cache[key], subseq_cache[key])
+        torch.testing.assert_close(orig_cache[key], subseq_cache[key])
 
 
 @pytest.mark.parametrize("architecture", ["standard", "gated", "jumprelu"])
@@ -324,10 +324,14 @@ def test_sae_forward_pass_works_with_error_term_and_hooks(architecture: str):
     with sae.hooks(fwd_hooks=[("hook_sae_acts_post", ablate_hooked_sae)]):
         ablated_out, ablated_cache = sae.run_with_cache(sae_in)
 
-    assert not torch.allclose(original_out, ablated_out, rtol=1e-2)
+    with pytest.raises(AssertionError):
+        torch.testing.assert_close(original_out, ablated_out, rtol=1e-2, atol=1e-8)
     assert torch.all(ablated_cache["hook_sae_acts_post"] == 20)
-    assert torch.allclose(
-        original_cache["hook_sae_error"], ablated_cache["hook_sae_error"], rtol=1e-4
+    torch.testing.assert_close(
+        original_cache["hook_sae_error"],
+        ablated_cache["hook_sae_error"],
+        rtol=1e-4,
+        atol=1e-8,
     )
 
 
@@ -365,7 +369,7 @@ def test_SparseAutoencoder_from_pretrained_loads_from_hugginface_using_shorthand
     for k in sae.state_dict():
         if k == "finetuning_scaling_factor":
             continue
-        assert torch.allclose(sae.state_dict()[k], state_dict[k])
+        torch.testing.assert_close(sae.state_dict()[k], state_dict[k])
 
 
 def test_SparseAutoencoder_from_pretrained_can_load_arbitrary_saes_from_huggingface():
@@ -398,7 +402,7 @@ def test_SparseAutoencoder_from_pretrained_can_load_arbitrary_saes_from_huggingf
     for k in sae.state_dict():
         if k == "finetuning_scaling_factor":
             continue
-        assert torch.allclose(sae.state_dict()[k], state_dict[k])
+        torch.testing.assert_close(sae.state_dict()[k], state_dict[k])
 
 
 def test_SparseAutoencoder_from_pretrained_errors_for_invalid_releases():
@@ -433,16 +437,23 @@ def test_SparseAutoencoder_initialization_standard():
     assert sae.dtype == torch.float32
 
     # biases
-    assert torch.allclose(sae.b_dec, torch.zeros_like(sae.b_dec), atol=1e-6)
-    assert torch.allclose(sae.b_enc, torch.zeros_like(sae.b_enc), atol=1e-6)
+    torch.testing.assert_close(
+        sae.b_dec, torch.zeros_like(sae.b_dec), atol=1e-6, rtol=1e-5
+    )
+    torch.testing.assert_close(
+        sae.b_enc, torch.zeros_like(sae.b_enc), atol=1e-6, rtol=1e-5
+    )
 
     # check if the decoder weight norm is 0.1 by default
-    assert torch.allclose(
-        sae.W_dec.norm(dim=1), 0.1 * torch.ones_like(sae.W_dec.norm(dim=1)), atol=1e-6
+    torch.testing.assert_close(
+        sae.W_dec.norm(dim=1),
+        0.1 * torch.ones_like(sae.W_dec.norm(dim=1)),
+        atol=1e-6,
+        rtol=1e-5,
     )
 
     #  Default currently should be tranpose initialization
-    assert torch.allclose(sae.W_enc, sae.W_dec.T, atol=1e-6)
+    torch.testing.assert_close(sae.W_enc, sae.W_dec.T, atol=1e-6, rtol=1e-5)
 
 
 def test_SparseAutoencoder_initialization_decoder_norm():
@@ -450,13 +461,18 @@ def test_SparseAutoencoder_initialization_decoder_norm():
 
     sae = StandardTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
 
-    assert torch.allclose(
-        sae.W_dec.norm(dim=1), 0.7 * torch.ones_like(sae.W_dec.norm(dim=1)), atol=1e-6
+    torch.testing.assert_close(
+        sae.W_dec.norm(dim=1),
+        0.7 * torch.ones_like(sae.W_dec.norm(dim=1)),
     )
 
     # initialized weights of biases are 0
-    assert torch.allclose(sae.b_dec, torch.zeros_like(sae.b_dec), atol=1e-6)
-    assert torch.allclose(sae.b_enc, torch.zeros_like(sae.b_enc), atol=1e-6)
+    torch.testing.assert_close(
+        sae.b_dec, torch.zeros_like(sae.b_dec), atol=1e-6, rtol=1e-5
+    )
+    torch.testing.assert_close(
+        sae.b_enc, torch.zeros_like(sae.b_enc), atol=1e-6, rtol=1e-5
+    )
 
 
 def test_SparseAutoencoder_initialization_enc_dec_T_no_unit_norm():
@@ -467,8 +483,12 @@ def test_SparseAutoencoder_initialization_enc_dec_T_no_unit_norm():
 
     sae = StandardTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
 
-    assert torch.allclose(sae.W_dec, sae.W_enc.T, atol=1e-6)
+    torch.testing.assert_close(sae.W_dec, sae.W_enc.T, atol=1e-6, rtol=1e-5)
 
     # initialized weights of biases are 0
-    assert torch.allclose(sae.b_dec, torch.zeros_like(sae.b_dec), atol=1e-6)
-    assert torch.allclose(sae.b_enc, torch.zeros_like(sae.b_enc), atol=1e-6)
+    torch.testing.assert_close(
+        sae.b_dec, torch.zeros_like(sae.b_dec), atol=1e-6, rtol=1e-5
+    )
+    torch.testing.assert_close(
+        sae.b_enc, torch.zeros_like(sae.b_enc), atol=1e-6, rtol=1e-5
+    )
