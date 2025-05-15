@@ -147,7 +147,7 @@ def test_jumprelu_inference_equivalence(use_error_term: bool):  # Added type
         new_out,
         atol=1e-5,
         rtol=1e-5,
-        msg="Outputs differ between old and new implementations.",
+        msg=lambda msg: f"Outputs differ between old and new implementations.\n\n{msg}",
     )
 
     # If error_term is True, they might diverge for non-standard architectures,
@@ -204,7 +204,7 @@ def test_jumprelu_fold_equivalence(fold_fn):  # type: ignore
         new_out,
         atol=1e-5,
         rtol=1e-5,
-        msg=f"{fold_fn} mismatch between old and new",
+        msg=lambda msg: f"{fold_fn} mismatch between old and new\n\n{msg}",
     )
 
     # Also check the folded parameters directly
@@ -214,7 +214,7 @@ def test_jumprelu_fold_equivalence(fold_fn):  # type: ignore
             new_params[k],
             atol=1e-5,
             rtol=1e-5,
-            msg=f"Parameter {k} differs after {fold_fn}",
+            msg=lambda msg: f"Parameter {k} differs after {fold_fn}\n\n{msg}",
         )
 
 
@@ -240,7 +240,11 @@ def test_jumprelu_run_with_cache_equivalence():  # type: ignore
 
     assert old_out.shape == new_out.shape, "Output shape mismatch."
     torch.testing.assert_close(
-        old_out, new_out, atol=1e-5, rtol=1e-5, msg="Output values differ."
+        old_out,
+        new_out,
+        atol=1e-5,
+        rtol=1e-5,
+        msg=lambda msg: f"Output values differ.\n\n{msg}",
     )
 
     assert len(old_cache) == len(
@@ -261,7 +265,7 @@ def test_jumprelu_run_with_cache_equivalence():  # type: ignore
             new_val,
             atol=1e-5,
             rtol=1e-5,
-            msg=f"Cache values for key '{key}' differ.",
+            msg=lambda msg: f"Cache values for key '{key}' differ.\n\n{msg}",
         )
 
 
