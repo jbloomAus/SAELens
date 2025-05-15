@@ -141,9 +141,13 @@ def test_gated_inference_equivalence(use_error_term):  # type: ignore
     assert torch.isfinite(new_out).all(), "New output contains non-finite values."
 
     # Now they really should match, since we forcibly aligned params
-    assert torch.allclose(
-        old_out, new_out, atol=1e-5
-    ), "Outputs differ between old and new implementations."
+    torch.testing.assert_close(
+        old_out,
+        new_out,
+        atol=1e-5,
+        rtol=1e-5,
+        msg=lambda msg: f"Outputs differ between old and new implementations.\n\n{msg}",
+    )
 
 
 @pytest.mark.parametrize(
@@ -188,15 +192,23 @@ def test_gated_fold_equivalence(fold_fn):  # type: ignore
     assert old_out.shape == new_out.shape, f"Output shape mismatch after {fold_fn}"
 
     # Compare the actual values - they should match closely after folding
-    assert torch.allclose(
-        old_out, new_out, atol=1e-5
-    ), f"{fold_fn} produces different results between old and new implementations"
+    torch.testing.assert_close(
+        old_out,
+        new_out,
+        atol=1e-5,
+        rtol=1e-5,
+        msg=lambda msg: f"{fold_fn} produces different results between old and new implementations\n\n{msg}",
+    )
 
     # Also check the folded parameters directly
     for k in sorted(old_params.keys()):
-        assert torch.allclose(
-            old_params[k], new_params[k], atol=1e-5
-        ), f"Parameter {k} differs after {fold_fn}"
+        torch.testing.assert_close(
+            old_params[k],
+            new_params[k],
+            atol=1e-5,
+            rtol=1e-5,
+            msg=lambda msg: f"Parameter {k} differs after {fold_fn}\n\n{msg}",
+        )
 
 
 def test_gated_run_with_cache_equivalence():  # type: ignore
@@ -221,15 +233,25 @@ def test_gated_run_with_cache_equivalence():  # type: ignore
         new_out, new_cache = new_sae.run_with_cache(x)
 
     assert old_out.shape == new_out.shape, "Output shape mismatch."
-    assert torch.allclose(old_out, new_out, atol=1e-5), "Output values differ."
+    torch.testing.assert_close(
+        old_out,
+        new_out,
+        atol=1e-5,
+        rtol=1e-5,
+        msg=lambda msg: f"Output values differ.\n\n{msg}",
+    )
 
     assert len(old_cache) == len(new_cache), "Cache length mismatch."
 
     for old_key, new_key in zip(old_cache.keys(), new_cache.keys()):
         assert old_key == new_key, "Cache keys differ."
-        assert torch.allclose(
-            old_cache[old_key], new_cache[new_key], atol=1e-5
-        ), "Cache values differ."
+        torch.testing.assert_close(
+            old_cache[old_key],
+            new_cache[new_key],
+            rtol=1e-5,
+            atol=1e-5,
+            msg=lambda msg: f"Cache values differ.\n\n{msg}",
+        )
 
 
 #####################################
@@ -366,9 +388,17 @@ def test_gated_training_equivalence():  # type: ignore
     ), "New Gated training missing expected loss terms."
 
     # Check if training forward pass is equivalent
-    assert torch.allclose(
-        old_out.sae_out, new_out.sae_out, atol=1e-5
-    ), "Output differs between old and new Gated implementation"
-    assert torch.allclose(
-        old_out.loss, new_out.loss, atol=1e-5
-    ), "Loss differs between old and new Gated implementation"
+    torch.testing.assert_close(
+        old_out.sae_out,
+        new_out.sae_out,
+        atol=1e-5,
+        rtol=1e-5,
+        msg=lambda msg: f"Output differs between old and new Gated implementation\n\n{msg}",
+    )
+    torch.testing.assert_close(
+        old_out.loss,
+        new_out.loss,
+        atol=1e-5,
+        rtol=1e-5,
+        msg=lambda msg: f"Loss differs between old and new Gated implementation\n\n{msg}",
+    )
