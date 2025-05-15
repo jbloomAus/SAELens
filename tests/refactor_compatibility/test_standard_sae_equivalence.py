@@ -164,7 +164,7 @@ def test_standard_sae_inference_equivalence():
         new_err_out,
         atol=1e-5,
         rtol=1e-5,
-        msg="Mismatch in old/new output with error term (standard arch)",
+        msg=lambda msg: f"Mismatch in old/new output with error term (standard arch)\n\n{msg}",
     )
 
 
@@ -208,7 +208,7 @@ def test_standard_sae_fold_equivalence(fold_fn: str):
             new_params[k],
             atol=1e-5,
             rtol=1e-5,
-            msg=f"Parameter {k} differs after {fold_fn}",
+            msg=lambda msg: f"Parameter {k} differs after {fold_fn}\n\n{msg}",
         )
 
     # Provide input, compare outputs
@@ -221,7 +221,7 @@ def test_standard_sae_fold_equivalence(fold_fn: str):
         new_out,
         atol=1e-5,
         rtol=1e-5,
-        msg=f"{fold_fn} mismatch between old and new",
+        msg=lambda msg: f"{fold_fn} mismatch between old and new\n\n{msg}",
     )
 
 
@@ -248,7 +248,11 @@ def test_standard_sae_run_hooks_equivalence():
 
     assert old_out.shape == new_out.shape, "Output shape mismatch."
     torch.testing.assert_close(
-        old_out, new_out, atol=1e-5, rtol=1e-5, msg="Output values differ."
+        old_out,
+        new_out,
+        atol=1e-5,
+        rtol=1e-5,
+        msg=lambda msg: f"Output values differ.\n\n{msg}",
     )
 
     assert len(old_cache) == len(new_cache), "Cache length mismatch."
@@ -260,7 +264,7 @@ def test_standard_sae_run_hooks_equivalence():
             new_cache[new_key],
             atol=1e-5,
             rtol=1e-5,
-            msg="Cache values differ.",
+            msg=lambda msg: f"Cache values differ.\n\n{msg}",
         )
 
 
@@ -562,7 +566,7 @@ def test_standard_sae_forward_equivalence():
         new_out,
         atol=1e-5,
         rtol=1e-5,
-        msg="Standard forward outputs differ numerically.",
+        msg=lambda msg: f"Standard forward outputs differ numerically.\n\n{msg}",
     )
 
 
@@ -620,7 +624,7 @@ def test_sae_hook_z_forward_equivalence():
             new_out,
             atol=1e-5,
             rtol=1e-5,
-            msg="Hook_z forward outputs differ numerically.",
+            msg=lambda msg: f"Hook_z forward outputs differ numerically.\n\n{msg}",
         )
 
         # Verify internal shapes using run_with_cache
@@ -795,10 +799,18 @@ def test_standard_sae_training_equivalence():
 
     # Check numerical equivalence
     torch.testing.assert_close(
-        old_out.sae_out, new_out.sae_out, atol=1e-5, rtol=1e-5, msg="SAE output differs"
+        old_out.sae_out,
+        new_out.sae_out,
+        atol=1e-5,
+        rtol=1e-5,
+        msg=lambda msg: f"SAE output differs\n\n{msg}",
     )
     torch.testing.assert_close(
-        old_out.loss, new_out.loss, atol=1e-5, rtol=1e-5, msg="Total loss differs"
+        old_out.loss,
+        new_out.loss,
+        atol=1e-5,
+        rtol=1e-5,
+        msg=lambda msg: f"Total loss differs\n\n{msg}",
     )
 
     # Check loss components
@@ -814,10 +826,18 @@ def test_standard_sae_training_equivalence():
     assert isinstance(new_sparsity, torch.Tensor) and torch.isfinite(new_sparsity).all()
 
     torch.testing.assert_close(
-        old_mse, new_mse, atol=1e-5, rtol=1e-5, msg="MSE loss differs"
+        old_mse,
+        new_mse,
+        atol=1e-5,
+        rtol=1e-5,
+        msg=lambda msg: f"MSE loss differs\n\n{msg}",
     )
     torch.testing.assert_close(
-        old_sparsity, new_sparsity, atol=1e-5, rtol=1e-5, msg="Sparsity loss differs"
+        old_sparsity,
+        new_sparsity,
+        atol=1e-5,
+        rtol=1e-5,
+        msg=lambda msg: f"Sparsity loss differs\n\n{msg}",
     )
 
 
@@ -889,14 +909,14 @@ def test_sae_hook_z_training_equivalence():
         new_out.sae_out,
         atol=1e-5,
         rtol=1e-5,
-        msg="Hook_z SAE output differs",
+        msg=lambda msg: f"Hook_z SAE output differs\n\n{msg}",
     )
     torch.testing.assert_close(
         old_out.loss,
         new_out.loss,
         atol=1e-5,
         rtol=1e-5,
-        msg="Hook_z total loss differs",
+        msg=lambda msg: f"Hook_z total loss differs\n\n{msg}",
     )
 
     # Check loss components
@@ -912,14 +932,18 @@ def test_sae_hook_z_training_equivalence():
     assert isinstance(new_sparsity, torch.Tensor) and torch.isfinite(new_sparsity).all()
 
     torch.testing.assert_close(
-        old_mse, new_mse, atol=1e-5, rtol=1e-5, msg="Hook_z Sparsity loss differs"
+        old_mse,
+        new_mse,
+        atol=1e-5,
+        rtol=1e-5,
+        msg=lambda msg: f"Hook_z Sparsity loss differs\n\n{msg}",
     )
     torch.testing.assert_close(
         old_sparsity,
         new_sparsity,
         atol=1e-5,
         rtol=1e-5,
-        msg="Hook_z Sparsity loss differs",
+        msg=lambda msg: f"Hook_z Sparsity loss differs\n\n{msg}",
     )
 
     with torch.no_grad():

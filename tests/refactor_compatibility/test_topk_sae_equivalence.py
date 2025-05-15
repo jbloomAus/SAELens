@@ -144,7 +144,7 @@ def test_topk_sae_inference_equivalence():
         new_out,
         atol=1e-5,
         rtol=1e-5,
-        msg="Outputs differ between old and new implementations.",
+        msg=lambda msg: f"Outputs differ between old and new implementations.\n\n{msg}",
     )
 
     # Now test with error_term
@@ -171,7 +171,7 @@ def test_topk_sae_inference_equivalence():
         new_err_out,
         atol=1e-5,
         rtol=1e-5,
-        msg="Error term outputs differ between old and new implementations.",
+        msg=lambda msg: f"Error term outputs differ between old and new implementations.\n\n{msg}",
     )
 
 
@@ -198,7 +198,11 @@ def test_topk_sae_run_with_cache_equivalence():  # type: ignore
 
     assert old_out.shape == new_out.shape, "Output shape mismatch."
     torch.testing.assert_close(
-        old_out, new_out, atol=1e-5, rtol=1e-5, msg="Output values differ."
+        old_out,
+        new_out,
+        atol=1e-5,
+        rtol=1e-5,
+        msg=lambda msg: f"Output values differ.\n\n{msg}",
     )
 
     assert len(old_cache) == len(new_cache), "Cache length mismatch."
@@ -210,7 +214,7 @@ def test_topk_sae_run_with_cache_equivalence():  # type: ignore
             new_cache[new_key],
             atol=1e-5,
             rtol=1e-5,
-            msg=f"Cache values differ for key: {old_key}",
+            msg=lambda msg: f"Cache values differ for key: {old_key}\n\n{msg}",
         )
 
 
@@ -303,26 +307,26 @@ def test_topk_sae_training_equivalence():
         new_out.sae_out,
         atol=1e-5,
         rtol=1e-5,
-        msg="Training sae_out differs between old and new implementations.",
+        msg=lambda msg: f"Training sae_out differs between old and new implementations.\n\n{msg}",
     )
     torch.testing.assert_close(
         old_out.loss,
         new_out.loss,
         atol=1e-5,
         rtol=1e-5,
-        msg="Training loss differs between old and new implementations.",
+        msg=lambda msg: f"Training loss differs between old and new implementations.\n\n{msg}",
     )
     torch.testing.assert_close(
         old_out.feature_acts,
         new_out.feature_acts,
         atol=1e-5,
         rtol=1e-5,
-        msg="Training feature_acts differ between old and new implementations.",
+        msg=lambda msg: f"Training feature_acts differ between old and new implementations.\n\n{msg}",
     )
     torch.testing.assert_close(
         old_out.hidden_pre,
         new_out.hidden_pre,
         atol=1e-5,
         rtol=1e-5,
-        msg="Training hidden_pre differ between old and new implementations.",
+        msg=lambda msg: f"Training hidden_pre differ between old and new implementations.\n\n{msg}",
     )

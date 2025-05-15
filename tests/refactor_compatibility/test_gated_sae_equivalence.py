@@ -146,7 +146,7 @@ def test_gated_inference_equivalence(use_error_term):  # type: ignore
         new_out,
         atol=1e-5,
         rtol=1e-5,
-        msg="Outputs differ between old and new implementations.",
+        msg=lambda msg: f"Outputs differ between old and new implementations.\n\n{msg}",
     )
 
 
@@ -201,7 +201,7 @@ def test_gated_fold_equivalence(fold_fn):  # type: ignore
         new_out,
         atol=1e-5,
         rtol=1e-5,
-        msg=f"{fold_fn} produces different results between old and new implementations",
+        msg=lambda msg: f"{fold_fn} produces different results between old and new implementations\n\n{msg}",
     )
 
     # Also check the folded parameters directly
@@ -211,7 +211,7 @@ def test_gated_fold_equivalence(fold_fn):  # type: ignore
             new_params[k],
             atol=1e-5,
             rtol=1e-5,
-            msg=f"Parameter {k} differs after {fold_fn}",
+            msg=lambda msg: f"Parameter {k} differs after {fold_fn}\n\n{msg}",
         )
 
 
@@ -238,7 +238,11 @@ def test_gated_run_with_cache_equivalence():  # type: ignore
 
     assert old_out.shape == new_out.shape, "Output shape mismatch."
     torch.testing.assert_close(
-        old_out, new_out, atol=1e-5, rtol=1e-5, msg="Output values differ."
+        old_out,
+        new_out,
+        atol=1e-5,
+        rtol=1e-5,
+        msg=lambda msg: f"Output values differ.\n\n{msg}",
     )
 
     assert len(old_cache) == len(new_cache), "Cache length mismatch."
@@ -250,7 +254,7 @@ def test_gated_run_with_cache_equivalence():  # type: ignore
             new_cache[new_key],
             rtol=1e-5,
             atol=1e-5,
-            msg="Cache values differ.",
+            msg=lambda msg: f"Cache values differ.\n\n{msg}",
         )
 
 
@@ -392,12 +396,12 @@ def test_gated_training_equivalence():  # type: ignore
         new_out.sae_out,
         atol=1e-5,
         rtol=1e-5,
-        msg="Output differs between old and new Gated implementation",
+        msg=lambda msg: f"Output differs between old and new Gated implementation\n\n{msg}",
     )
     torch.testing.assert_close(
         old_out.loss,
         new_out.loss,
         atol=1e-5,
         rtol=1e-5,
-        msg="Loss differs between old and new Gated implementation",
+        msg=lambda msg: f"Loss differs between old and new Gated implementation\n\n{msg}",
     )
