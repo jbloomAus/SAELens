@@ -152,6 +152,7 @@ def test_eval_all_loadable_saes(
     activation_store = ActivationsStore.from_sae(
         model=model,
         sae=sae,
+        dataset=sae.cfg.metadata.dataset_path,
         streaming=True,
         # fairly conservative parameters here so can use same for larger
         # models without running out of memory.

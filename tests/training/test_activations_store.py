@@ -14,6 +14,7 @@ from transformer_lens import HookedTransformer
 from sae_lens.config import LanguageModelSAERunnerConfig, PretokenizeRunnerConfig
 from sae_lens.load_model import load_model
 from sae_lens.pretokenize_runner import pretokenize_dataset
+from sae_lens.saes.standard_sae import StandardTrainingSAEConfig
 from sae_lens.training.activations_store import (
     ActivationsStore,
     _filter_buffer_acts,
@@ -21,7 +22,7 @@ from sae_lens.training.activations_store import (
     permute_together,
     validate_pretokenized_dataset_tokenizer,
 )
-from tests.helpers import NEEL_NANDA_C4_10K_DATASET, build_sae_cfg, load_model_cached
+from tests.helpers import NEEL_NANDA_C4_10K_DATASET, build_runner_cfg, load_model_cached
 
 
 def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
@@ -86,14 +87,16 @@ def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
         "gpt2",
     ],
 )
-def cfg(request: pytest.FixtureRequest) -> LanguageModelSAERunnerConfig:
+def cfg(
+    request: pytest.FixtureRequest,
+) -> LanguageModelSAERunnerConfig[StandardTrainingSAEConfig]:
     # This function will be called with each parameter set
     params = request.param
-    return build_sae_cfg(**params)
+    return build_runner_cfg(**params)
 
 
 @pytest.fixture
-def model(cfg: LanguageModelSAERunnerConfig):
+def model(cfg: LanguageModelSAERunnerConfig[StandardTrainingSAEConfig]):
     return load_model_cached(cfg.model_name)
 
 
@@ -101,7 +104,8 @@ def model(cfg: LanguageModelSAERunnerConfig):
 # so do lots of stuff in this one test to make each load of model / data count
 # poetry run py.test tests/training/test_activations_store.py -k 'test_activations_store__shapes_look_correct_with_real_models_and_datasets' --profile-svg -s
 def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
-    cfg: LanguageModelSAERunnerConfig, model: HookedTransformer
+    cfg: LanguageModelSAERunnerConfig[StandardTrainingSAEConfig],
+    model: HookedTransformer,
 ):
     # --- first, test initialisation ---
 
@@ -113,7 +117,7 @@ def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
 
     store = ActivationsStore.from_config(model, cfg)
 
-    if cfg.normalize_activations == "expected_average_only_in":
+    if cfg.sae.normalize_activations == "expected_average_only_in":
         store.estimated_norm_scaling_factor = 10.399
 
     assert store.model == model
@@ -124,7 +128,7 @@ def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
     expected_size = (
         cfg.store_batch_size_prompts * cfg.context_size * cfg.n_batches_in_buffer // 2
     )
-    assert store.storage_buffer.shape[1:] == (1, cfg.d_in)
+    assert store.storage_buffer.shape[1:] == (1, cfg.sae.d_in)
     # if exluding special tokens, the buffer will be smaller
     assert store.storage_buffer.shape[0] <= expected_size
 
@@ -169,7 +173,7 @@ def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
     assert tok_buffer.device == store.device
 
     # check the buffer norm
-    if cfg.normalize_activations == "expected_average_only_in":
+    if cfg.sae.normalize_activations == "expected_average_only_in":
         assert torch.allclose(
             act_buffer.norm(dim=-1),
             np.sqrt(store.d_in) * torch.ones_like(act_buffer.norm(dim=-1)),
@@ -178,7 +182,7 @@ def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
 
 
 def test_activations_store__get_activations_head_hook(ts_model: HookedTransformer):
-    cfg = build_sae_cfg(
+    cfg = build_runner_cfg(
         hook_name="blocks.0.attn.hook_q",
         hook_head_index=2,
         hook_layer=1,
@@ -212,14 +216,14 @@ def test_activations_store__get_activations__gives_same_results_with_hf_model_an
         * 100
     )
 
-    cfg = build_sae_cfg(hook_name="blocks.4.hook_resid_post", hook_layer=4, d_in=768)
+    cfg = build_runner_cfg(hook_name="blocks.4.hook_resid_post", hook_layer=4, d_in=768)
     store_tlens = ActivationsStore.from_config(
         tlens_model, cfg, override_dataset=dataset
     )
     batch_tlens = store_tlens.get_batch_tokens()
     activations_tlens = store_tlens.get_activations(batch_tlens)
 
-    cfg = build_sae_cfg(hook_name="transformer.h.4", hook_layer=4, d_in=768)
+    cfg = build_runner_cfg(hook_name="transformer.h.4", hook_layer=4, d_in=768)
     store_hf = ActivationsStore.from_config(hf_model, cfg, override_dataset=dataset)
     batch_hf = store_hf.get_batch_tokens()
     activations_hf = store_hf.get_activations(batch_hf)
@@ -239,7 +243,7 @@ def test_activations_store__get_batch_tokens__fills_the_context_separated_by_bos
         ]
         * 100
     )
-    cfg = build_sae_cfg(
+    cfg = build_runner_cfg(
         store_batch_size_prompts=2,
         context_size=context_size,
     )
@@ -266,7 +270,7 @@ def test_activations_store__iterate_raw_dataset_tokens__tokenizes_each_example_i
 ):
     tokenizer = ts_model.tokenizer
     assert tokenizer is not None
-    cfg = build_sae_cfg()
+    cfg = build_runner_cfg()
     dataset = Dataset.from_list(
         [
             {"text": "hello world1"},
@@ -287,7 +291,7 @@ def test_activations_store__iterate_raw_dataset_tokens__tokenizes_each_example_i
 def test_activations_store__iterate_raw_dataset_tokens__can_handle_long_examples(
     ts_model: HookedTransformer,
 ):
-    cfg = build_sae_cfg()
+    cfg = build_runner_cfg()
     dataset = Dataset.from_list(
         [
             {"text": " France" * 3000},
@@ -302,7 +306,7 @@ def test_activations_store__iterate_raw_dataset_tokens__can_handle_long_examples
 
 
 def test_activations_store_goes_to_cpu(ts_model: HookedTransformer):
-    cfg = build_sae_cfg(act_store_device="cpu")
+    cfg = build_runner_cfg(act_store_device="cpu")
     activation_store = ActivationsStore.from_config(ts_model, cfg)
     activations = activation_store.next_batch()
     assert activations[0].device == torch.device("cpu")
@@ -312,7 +316,7 @@ def test_activations_store_goes_to_cpu(ts_model: HookedTransformer):
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="No GPU to test on.")
 def test_activations_store_with_model_on_gpu(ts_model: HookedTransformer):
-    cfg = build_sae_cfg(act_store_device="cpu", device="cuda:0")
+    cfg = build_runner_cfg(act_store_device="cpu", device="cuda:0")
     activation_store = ActivationsStore.from_config(ts_model.to("cuda:0"), cfg)  # type: ignore
     activations = activation_store.next_batch()
     assert activations[0].device == torch.device("cpu")
@@ -323,7 +327,7 @@ def test_activations_store_with_model_on_gpu(ts_model: HookedTransformer):
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="No GPU to test on.")
 def test_activations_store_moves_with_model(ts_model: HookedTransformer):
     # "with_model" resets to default so the second post_init in build_sae_cfg works
-    cfg = build_sae_cfg(act_store_device="with_model", device="cuda:0")
+    cfg = build_runner_cfg(act_store_device="with_model", device="cuda:0")
     activation_store = ActivationsStore.from_config(ts_model.to("cuda:0"), cfg)  # type: ignore
     activations = activation_store.next_batch()
     assert activations[0].device == torch.device("cpu")
@@ -332,7 +336,8 @@ def test_activations_store_moves_with_model(ts_model: HookedTransformer):
 
 
 def test_activations_store_estimate_norm_scaling_factor(
-    cfg: LanguageModelSAERunnerConfig, model: HookedTransformer
+    cfg: LanguageModelSAERunnerConfig[StandardTrainingSAEConfig],
+    model: HookedTransformer,
 ):
     # --- first, test initialisation ---
 
@@ -357,7 +362,7 @@ def test_activations_store___iterate_tokenized_sequences__yields_concat_and_batc
 ):
     tokenizer = ts_model.tokenizer
     assert tokenizer is not None
-    cfg = build_sae_cfg(prepend_bos=True, context_size=5)
+    cfg = build_runner_cfg(prepend_bos=True, context_size=5)
     dataset = Dataset.from_list(
         [
             {"text": "hello world1"},
@@ -386,7 +391,7 @@ def test_activations_store___iterate_tokenized_sequences__yields_sequences_of_co
 ):
     tokenizer = ts_model.tokenizer
     assert tokenizer is not None
-    cfg = build_sae_cfg(prepend_bos=True, context_size=5)
+    cfg = build_runner_cfg(prepend_bos=True, context_size=5)
     dataset = Dataset.from_list(
         [
             {"text": "hello world1"},
@@ -408,7 +413,7 @@ def test_activations_store___iterate_tokenized_sequences__works_with_huggingface
         model_name="gpt2",
         device="cpu",
     )
-    cfg = build_sae_cfg(prepend_bos=True, context_size=5)
+    cfg = build_runner_cfg(prepend_bos=True, context_size=5)
     dataset = Dataset.from_list(
         [
             {"text": "hello world1"},
@@ -435,7 +440,7 @@ def test_activations_store__errors_on_context_size_mismatch(
 ):
     tokenizer = ts_model.tokenizer
     assert tokenizer is not None
-    cfg = build_sae_cfg(prepend_bos=True, context_size=context_size)
+    cfg = build_runner_cfg(prepend_bos=True, context_size=context_size)
     dataset = Dataset.from_list(
         [
             {"text": "hello world1"},
@@ -467,7 +472,7 @@ def test_activations_store__errors_on_context_size_mismatch(
 def test_activations_store__errors_on_negative_context_size():
     with pytest.raises(ValueError):
         # We should raise an error when the context_size is negative
-        build_sae_cfg(prepend_bos=True, context_size=-1)
+        build_runner_cfg(prepend_bos=True, context_size=-1)
 
 
 def test_activations_store___iterate_tokenized_sequences__yields_identical_results_with_and_without_pretokenizing(
@@ -475,7 +480,7 @@ def test_activations_store___iterate_tokenized_sequences__yields_identical_resul
 ):
     tokenizer = ts_model.tokenizer
     assert tokenizer is not None
-    cfg = build_sae_cfg(prepend_bos=True, context_size=5)
+    cfg = build_runner_cfg(prepend_bos=True, context_size=5)
     dataset = Dataset.from_list(
         [
             {"text": "hello world1"},
@@ -509,7 +514,7 @@ def test_activations_store___iterate_tokenized_sequences__yields_identical_resul
 def test_activation_store__errors_if_neither_dataset_nor_dataset_path(
     ts_model: HookedTransformer,
 ):
-    cfg = build_sae_cfg(dataset_path="")
+    cfg = build_runner_cfg(dataset_path="")
 
     example_ds = Dataset.from_list(
         [
@@ -562,7 +567,7 @@ def test_validate_pretokenized_dataset_tokenizer_does_nothing_if_the_dataset_pat
 
 
 def test_activations_store_respects_position_offsets(ts_model: HookedTransformer):
-    cfg = build_sae_cfg(
+    cfg = build_runner_cfg(
         context_size=10,
         seqpos_slice=(2, 8),  # Only consider positions 2 to 7 (inclusive)
     )
@@ -581,7 +586,7 @@ def test_activations_store_respects_position_offsets(ts_model: HookedTransformer
     activations = activation_store.get_activations(batch)
 
     assert batch.shape == (1, 10)  # Full context size
-    assert activations.shape == (1, 6, 1, cfg.d_in)  # Only 6 positions (2 to 7)
+    assert activations.shape == (1, 6, 1, cfg.sae.d_in)  # Only 6 positions (2 to 7)
 
 
 @pytest.mark.parametrize(
@@ -604,7 +609,7 @@ def test_activations_store_respects_position_offsets(ts_model: HookedTransformer
 def test_activations_store_save_with_norm_scaling_factor(
     ts_model: HookedTransformer, params: dict[str, Any]
 ):
-    cfg = build_sae_cfg(**params["sae_kwargs"])
+    cfg = build_runner_cfg(**params["sae_kwargs"])
     activation_store = ActivationsStore.from_config(ts_model, cfg)
     activation_store.set_norm_scaling_factor_if_needed()
     if params["sae_kwargs"]["normalize_activations"] == "expected_average_only_in":
@@ -660,7 +665,7 @@ def test_get_special_token_ids_works_with_real_models(ts_model: HookedTransforme
 
 def test_activations_store_buffer_contains_token_ids(ts_model: HookedTransformer):
     """Test that the buffer contains both activations and token IDs."""
-    cfg = build_sae_cfg(context_size=3, store_batch_size_prompts=5)
+    cfg = build_runner_cfg(context_size=3, store_batch_size_prompts=5)
     dataset = Dataset.from_list([{"text": "hello world"}] * 100)
 
     store = ActivationsStore.from_config(ts_model, cfg, override_dataset=dataset)
@@ -676,7 +681,7 @@ def test_activations_store_buffer_contains_token_ids(ts_model: HookedTransformer
 
 def test_activations_store_buffer_shuffling(ts_model: HookedTransformer):
     """Test that buffer shuffling maintains alignment between acts and token_ids."""
-    cfg = build_sae_cfg()
+    cfg = build_runner_cfg()
     dataset = Dataset.from_list([{"text": "hello world"}] * 100)
 
     # Get unshuffled buffer
@@ -713,13 +718,13 @@ def test_activations_store_storage_buffer_excludes_special_tokens(
     ts_model: HookedTransformer,
 ):
     hook_name = "blocks.0.hook_resid_post"
-    base_cfg = build_sae_cfg(
+    base_cfg = build_runner_cfg(
         exclude_special_tokens=False,
         context_size=5,
         store_batch_size_prompts=2,
         hook_name=hook_name,
     )
-    cfg = build_sae_cfg(
+    cfg = build_runner_cfg(
         exclude_special_tokens=True,
         context_size=5,
         store_batch_size_prompts=2,
@@ -751,14 +756,14 @@ def test_activations_next_batch_excludes_special_tokens(
     ts_model: HookedTransformer,
 ):
     hook_name = "blocks.0.hook_resid_post"
-    base_cfg = build_sae_cfg(
+    base_cfg = build_runner_cfg(
         exclude_special_tokens=False,
         context_size=5,
         store_batch_size_prompts=2,
         hook_name=hook_name,
         train_batch_size_tokens=5,
     )
-    cfg = build_sae_cfg(
+    cfg = build_runner_cfg(
         exclude_special_tokens=True,
         context_size=5,
         store_batch_size_prompts=2,

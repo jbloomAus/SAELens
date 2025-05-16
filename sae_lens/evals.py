@@ -20,7 +20,7 @@ from transformer_lens import HookedTransformer
 from transformer_lens.hook_points import HookedRootModule
 
 from sae_lens.loading.pretrained_saes_directory import get_pretrained_saes_directory
-from sae_lens.saes.sae import SAE
+from sae_lens.saes.sae import SAE, SAEConfig
 from sae_lens.training.activations_store import ActivationsStore
 
 
@@ -100,7 +100,7 @@ def get_eval_everything_config(
 
 @torch.no_grad()
 def run_evals(
-    sae: SAE,
+    sae: SAE[Any],
     activation_store: ActivationsStore,
     model: HookedRootModule,
     eval_config: EvalConfig = EvalConfig(),
@@ -108,7 +108,7 @@ def run_evals(
     ignore_tokens: set[int | None] = set(),
     verbose: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    hook_name = sae.cfg.hook_name
+    hook_name = sae.cfg.metadata.hook_name
     actual_batch_size = (
         eval_config.batch_size_prompts or activation_store.store_batch_size_prompts
     )
@@ -274,7 +274,7 @@ def run_evals(
     return all_metrics, feature_metrics
 
 
-def get_featurewise_weight_based_metrics(sae: SAE) -> dict[str, Any]:
+def get_featurewise_weight_based_metrics(sae: SAE[Any]) -> dict[str, Any]:
     unit_norm_encoders = (sae.W_enc / sae.W_enc.norm(dim=0, keepdim=True)).cpu()
     unit_norm_decoder = (sae.W_dec.T / sae.W_dec.T.norm(dim=0, keepdim=True)).cpu()
 
@@ -298,7 +298,7 @@ def get_featurewise_weight_based_metrics(sae: SAE) -> dict[str, Any]:
 
 
 def get_downstream_reconstruction_metrics(
-    sae: SAE,
+    sae: SAE[Any],
     model: HookedRootModule,
     activation_store: ActivationsStore,
     compute_kl: bool,
@@ -366,7 +366,7 @@ def get_downstream_reconstruction_metrics(
 
 
 def get_sparsity_and_variance_metrics(
-    sae: SAE,
+    sae: SAE[Any],
     model: HookedRootModule,
     activation_store: ActivationsStore,
     n_batches: int,
@@ -379,8 +379,8 @@ def get_sparsity_and_variance_metrics(
     ignore_tokens: set[int | None] = set(),
     verbose: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    hook_name = sae.cfg.hook_name
-    hook_head_index = sae.cfg.hook_head_index
+    hook_name = sae.cfg.metadata.hook_name
+    hook_head_index = sae.cfg.metadata.hook_head_index
 
     metric_dict = {}
     feature_metric_dict = {}
@@ -436,7 +436,7 @@ def get_sparsity_and_variance_metrics(
             batch_tokens,
             prepend_bos=False,
             names_filter=[hook_name],
-            stop_at_layer=sae.cfg.hook_layer + 1,
+            stop_at_layer=sae.cfg.metadata.hook_layer + 1,
             **model_kwargs,
         )
 
@@ -580,7 +580,7 @@ def get_sparsity_and_variance_metrics(
 
 @torch.no_grad()
 def get_recons_loss(
-    sae: SAE,
+    sae: SAE[SAEConfig],
     model: HookedRootModule,
     batch_tokens: torch.Tensor,
     activation_store: ActivationsStore,
@@ -588,9 +588,13 @@ def get_recons_loss(
     compute_ce_loss: bool,
     ignore_tokens: set[int | None] = set(),
     model_kwargs: Mapping[str, Any] = {},
+    hook_name: str | None = None,
 ) -> dict[str, Any]:
-    hook_name = sae.cfg.hook_name
-    head_index = sae.cfg.hook_head_index
+    hook_name = hook_name or sae.cfg.metadata.hook_name
+    head_index = sae.cfg.metadata.hook_head_index
+
+    if hook_name is None:
+        raise ValueError("hook_name must be provided")
 
     original_logits, original_ce_loss = model(
         batch_tokens, return_type="both", loss_per_token=True, **model_kwargs
@@ -806,7 +810,6 @@ def multiple_evals(
 
     current_model = None
     current_model_str = None
-    print(filtered_saes)
     for sae_release_name, sae_id, _, _ in tqdm(filtered_saes):
         sae = SAE.from_pretrained(
             release=sae_release_name,  # see other options in sae_lens/pretrained_saes.yaml

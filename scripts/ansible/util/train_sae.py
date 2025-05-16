@@ -46,7 +46,8 @@ with open(job_config_path) as file:
 if config is None:
     raise ValueError("Error: The config is not loaded.")
 
-print(f"l1_warm_up_steps: {config.l1_warm_up_steps}")
+if hasattr(config.sae, "l1_warm_up_steps"):
+    print(f"l1_warm_up_steps: {config.sae.l1_warm_up_steps}")
 print(f"lr_warm_up_steps: {config.lr_warm_up_steps}")
 print(f"lr_decay_steps: {config.lr_decay_steps}")
 

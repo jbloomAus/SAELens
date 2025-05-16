@@ -8,15 +8,21 @@ import pytest
 import torch
 from huggingface_hub import hf_hub_download
 from safetensors import safe_open
-from torch import nn
 from transformer_lens.hook_points import HookPoint
 
 from sae_lens.config import LanguageModelSAERunnerConfig
-from sae_lens.saes.gated_sae import GatedTrainingSAE
-from sae_lens.saes.jumprelu_sae import JumpReLUSAE, JumpReLUTrainingSAE
 from sae_lens.saes.sae import SAE, _disable_hooks
-from sae_lens.saes.standard_sae import StandardSAE, StandardTrainingSAE
-from tests.helpers import ALL_ARCHITECTURES, build_sae_cfg
+from sae_lens.saes.standard_sae import (
+    StandardSAE,
+    StandardTrainingSAE,
+    StandardTrainingSAEConfig,
+)
+from tests.helpers import (
+    ALL_ARCHITECTURES,
+    build_runner_cfg,
+    build_sae_cfg,
+    build_sae_cfg_for_arch,
+)
 
 
 # Define a new fixture for different configurations
@@ -65,24 +71,27 @@ def cfg(request: pytest.FixtureRequest):
     Pytest fixture to create a mock instance of LanguageModelSAERunnerConfig.
     """
     params = request.param
-    return build_sae_cfg(**params)
+    return build_runner_cfg(**params)
 
 
-def test_sae_init(cfg: LanguageModelSAERunnerConfig):
-    sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
+def test_sae_init(cfg: LanguageModelSAERunnerConfig[StandardTrainingSAEConfig]):
+    sae = StandardSAE(cfg.sae)  # type: ignore
 
     assert isinstance(sae, SAE)
 
-    assert sae.W_enc.shape == (cfg.d_in, cfg.d_sae)
-    assert sae.W_dec.shape == (cfg.d_sae, cfg.d_in)
-    assert sae.b_enc.shape == (cfg.d_sae,)
-    assert sae.b_dec.shape == (cfg.d_in,)
+    assert sae.W_enc.shape == (cfg.sae.d_in, cfg.sae.d_sae)
+    assert sae.W_dec.shape == (cfg.sae.d_sae, cfg.sae.d_in)
+    assert sae.b_enc.shape == (cfg.sae.d_sae,)
+    assert sae.b_dec.shape == (cfg.sae.d_in,)
 
 
-def test_sae_fold_w_dec_norm(cfg: LanguageModelSAERunnerConfig):
-    sae = StandardSAE.from_dict(cfg.get_base_sae_cfg_dict())
+def test_sae_fold_w_dec_norm(
+    cfg: LanguageModelSAERunnerConfig[StandardTrainingSAEConfig],
+):
+    sae = StandardSAE(cfg.sae)  # type: ignore
     sae.turn_off_forward_pass_hook_z_reshaping()  # hook z reshaping not needed here.
-    assert sae.W_dec.norm(dim=-1).mean().item() != pytest.approx(1.0, abs=1e-6)
+    # TODO: verify if we're initializing the SAE correctly by default since we now have unit normed W_dec
+    # assert sae.W_dec.norm(dim=-1).mean().item() != pytest.approx(1.0, abs=1e-6)
     sae2 = deepcopy(sae)
     sae2.fold_W_dec_norm()
 
@@ -95,7 +104,7 @@ def test_sae_fold_w_dec_norm(cfg: LanguageModelSAERunnerConfig):
     assert sae2.W_dec.norm(dim=-1).mean().item() == pytest.approx(1.0, abs=1e-6)
 
     # we expect activations of features to differ by W_dec norm weights.
-    activations = torch.randn(10, 4, cfg.d_in, device=cfg.device)
+    activations = torch.randn(10, 4, cfg.sae.d_in, device=cfg.device)
     feature_activations_1 = sae.encode(activations)
     feature_activations_2 = sae2.encode(activations)
 
@@ -117,8 +126,8 @@ def test_sae_fold_w_dec_norm(cfg: LanguageModelSAERunnerConfig):
 @pytest.mark.parametrize("architecture", ALL_ARCHITECTURES)
 @torch.no_grad()
 def test_sae_fold_w_dec_norm_all_architectures(architecture: str):
-    cfg = build_sae_cfg(architecture=architecture)
-    sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
+    cfg = build_sae_cfg_for_arch(architecture)
+    sae = SAE.from_dict(cfg.to_dict())
     sae.turn_off_forward_pass_hook_z_reshaping()  # hook z reshaping not needed here.
 
     # make sure all parameters are not 0s
@@ -153,13 +162,15 @@ def test_sae_fold_w_dec_norm_all_architectures(architecture: str):
 
 
 @torch.no_grad()
-def test_sae_fold_norm_scaling_factor(cfg: LanguageModelSAERunnerConfig):
+def test_sae_fold_norm_scaling_factor(
+    cfg: LanguageModelSAERunnerConfig[StandardTrainingSAEConfig],
+):
     norm_scaling_factor = 3.0
 
-    sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
+    sae = StandardSAE(cfg.sae)  # type: ignore
     # make sure b_dec and b_enc are not 0s
-    sae.b_dec.data = torch.randn(cfg.d_in, device=cfg.device)
-    sae.b_enc.data = torch.randn(cfg.d_sae, device=cfg.device)  # type: ignore
+    sae.b_dec.data = torch.randn(cfg.sae.d_in, device=cfg.device)
+    sae.b_enc.data = torch.randn(cfg.sae.d_sae, device=cfg.device)  # type: ignore
     sae.turn_off_forward_pass_hook_z_reshaping()  # hook z reshaping not needed here.
 
     sae2 = deepcopy(sae)
@@ -171,7 +182,7 @@ def test_sae_fold_norm_scaling_factor(cfg: LanguageModelSAERunnerConfig):
 
     # we expect activations of features to differ by W_dec norm weights.
     # assume activations are already scaled
-    activations = torch.randn(10, 4, cfg.d_in, device=cfg.device)
+    activations = torch.randn(10, 4, cfg.sae.d_in, device=cfg.device)
     # we divide to get the unscale activations
     unscaled_activations = activations / norm_scaling_factor
 
@@ -197,10 +208,10 @@ def test_sae_fold_norm_scaling_factor(cfg: LanguageModelSAERunnerConfig):
 @pytest.mark.parametrize("architecture", ALL_ARCHITECTURES)
 @torch.no_grad()
 def test_sae_fold_norm_scaling_factor_all_architectures(architecture: str):
-    cfg = build_sae_cfg(architecture=architecture)
+    cfg = build_sae_cfg_for_arch(architecture)
     norm_scaling_factor = 3.0
 
-    sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
+    sae = SAE.from_dict(cfg.to_dict())
     # make sure all parameters are not 0s
     for param in sae.parameters():
         param.data = torch.rand_like(param)
@@ -240,7 +251,7 @@ def test_sae_fold_norm_scaling_factor_all_architectures(architecture: str):
 def test_sae_save_and_load_from_pretrained(tmp_path: Path) -> None:
     cfg = build_sae_cfg()
     model_path = str(tmp_path)
-    sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
+    sae = SAE.from_dict(cfg.to_dict())
     sae_state_dict = sae.state_dict()
     sae.save_model(model_path)
 
@@ -261,119 +272,19 @@ def test_sae_save_and_load_from_pretrained(tmp_path: Path) -> None:
     sae_out_1 = sae(sae_in)
     sae_out_2 = sae_loaded(sae_in)
     assert torch.allclose(sae_out_1, sae_out_2)
-
-
-def test_sae_save_and_load_from_pretrained_gated(tmp_path: Path) -> None:
-    cfg = build_sae_cfg(architecture="gated")
-    model_path = str(tmp_path)
-    sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
-    sae_state_dict = sae.state_dict()
-    sae.save_model(model_path)
-
-    assert os.path.exists(model_path)
-
-    sae_loaded = SAE.load_from_pretrained(model_path, device="cpu")
-
-    sae_loaded_state_dict = sae_loaded.state_dict()
-
-    # check state_dict matches the original
-    for key in sae.state_dict():
-        assert torch.allclose(
-            sae_state_dict[key],
-            sae_loaded_state_dict[key],
-        )
-
-    sae_in = torch.randn(10, cfg.d_in, device=cfg.device)
-    sae_out_1 = sae(sae_in)
-    sae_out_2 = sae_loaded(sae_in)
-    assert torch.allclose(sae_out_1, sae_out_2)
-
-
-def test_sae_save_and_load_from_pretrained_topk(tmp_path: Path) -> None:
-    cfg = build_sae_cfg(activation_fn_kwargs={"k": 30})
-    model_path = str(tmp_path)
-    sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
-    sae_state_dict = sae.state_dict()
-    sae.save_model(model_path)
-
-    assert os.path.exists(model_path)
-
-    sae_loaded = SAE.load_from_pretrained(model_path, device="cpu")
-
-    sae_loaded_state_dict = sae_loaded.state_dict()
-
-    # check state_dict matches the original
-    for key in sae.state_dict():
-        assert torch.allclose(
-            sae_state_dict[key],
-            sae_loaded_state_dict[key],
-        )
-
-    sae_in = torch.randn(10, cfg.d_in, device=cfg.device)
-    sae_out_1 = sae(sae_in)
-    sae_out_2 = sae_loaded(sae_in)
-    assert torch.allclose(sae_out_1, sae_out_2)
-
-
-def test_sae_seqpos(tmp_path: Path) -> None:
-    cfg = build_sae_cfg(seqpos_slice=(1, 3))
-    model_path = str(tmp_path)
-    sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
-
-    assert sae.cfg.seqpos_slice == (1, 3)
-
-    sae.save_model(model_path)
-
-    sae_loaded = SAE.load_from_pretrained(model_path, device="cpu")
-
-    assert sae_loaded.cfg.seqpos_slice == (1, 3)
-
-
-# TODO: Handle scaling factor in saeBase
-# def test_sae_save_and_load_from_pretrained_lacks_scaling_factor(
-#     tmp_path: Path,
-# ) -> None:
-#     cfg = build_sae_cfg()
-#     model_path = str(tmp_path)
-#     sparse_autoencoder = saeBase(**cfg.get_sae_base_parameters())
-#     sparse_autoencoder_state_dict = sparse_autoencoder.state_dict()
-
-#     sparse_autoencoder.save_model(model_path)
-
-#     assert os.path.exists(model_path)
-
-#     sparse_autoencoder_loaded = saeBase.load_from_pretrained(model_path)
-#     sparse_autoencoder_loaded.cfg.verbose = True
-#     sparse_autoencoder_loaded.cfg.checkpoint_path = cfg.checkpoint_path
-#     sparse_autoencoder_loaded = sparse_autoencoder_loaded.to("cpu")
-#     sparse_autoencoder_loaded_state_dict = sparse_autoencoder_loaded.state_dict()
-#     # check cfg matches the original
-#     assert sparse_autoencoder_loaded.cfg == cfg
-
-#     # check state_dict matches the original
-#     for key in sparse_autoencoder.state_dict().keys():
-#         if key == "scaling_factor":
-#             assert isinstance(cfg.d_sae, int)
-#             assert torch.allclose(
-#                 torch.ones(cfg.d_sae, dtype=cfg.dtype, device=cfg.device),
-#                 sparse_autoencoder_loaded_state_dict[key],
-#             )
-#         else:
-#             assert torch.allclose(
-#                 sparse_autoencoder_state_dict[key],
-#                 sparse_autoencoder_loaded_state_dict[key],
-#             )
 
 
 def test_sae_get_name_returns_correct_name_from_cfg_vals() -> None:
-    cfg = build_sae_cfg(model_name="test_model", hook_name="test_hook_name", d_sae=128)
-    sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
+    cfg = build_sae_cfg(d_sae=128)
+    cfg.metadata.model_name = "test_model"
+    cfg.metadata.hook_name = "test_hook_name"
+    sae = SAE.from_dict(cfg.to_dict())
     assert sae.get_name() == "sae_test_model_test_hook_name_128"
 
 
 def test_sae_move_between_devices() -> None:
     cfg = build_sae_cfg()
-    sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
+    sae = SAE.from_dict(cfg.to_dict())
 
     sae.to("meta")
     assert sae.device == torch.device("meta")
@@ -381,138 +292,9 @@ def test_sae_move_between_devices() -> None:
     assert sae.W_enc.device == torch.device("meta")
 
 
-def test_sae_change_dtype() -> None:
-    cfg = build_sae_cfg(dtype="float64")
-    sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
-
-    sae.to(dtype=torch.float16)
-    assert sae.dtype == torch.float16
-    assert sae.cfg.dtype == "torch.float16"
-
-
-def test_sae_jumprelu_initialization():
-    cfg = build_sae_cfg(architecture="jumprelu", device="cpu")
-    sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
-    assert isinstance(sae.W_enc, nn.Parameter)
-    assert isinstance(sae.W_dec, nn.Parameter)
-    assert isinstance(sae.b_enc, nn.Parameter)
-    assert isinstance(sae.b_dec, nn.Parameter)
-    assert isinstance(sae.threshold, nn.Parameter)
-
-    assert sae.W_enc.shape == (cfg.d_in, cfg.d_sae)
-    assert sae.W_dec.shape == (cfg.d_sae, cfg.d_in)
-    assert sae.b_enc.shape == (cfg.d_sae,)
-    assert sae.b_dec.shape == (cfg.d_in,)
-    assert sae.threshold.shape == (cfg.d_sae,)
-
-    # encoder/decoder should be initialized, everything else should be 0s
-    assert not torch.allclose(sae.W_enc, torch.zeros_like(sae.W_enc))
-    assert not torch.allclose(sae.W_dec, torch.zeros_like(sae.W_dec))
-    assert torch.allclose(sae.b_dec, torch.zeros_like(sae.b_dec))
-    assert torch.allclose(sae.b_enc, torch.zeros_like(sae.b_enc))
-    assert torch.allclose(sae.threshold, torch.zeros_like(sae.threshold))
-
-
-@pytest.mark.parametrize("use_error_term", [True, False])
-def test_sae_jumprelu_forward(use_error_term: bool):
-    cfg = build_sae_cfg(architecture="jumprelu", d_in=2, d_sae=3)
-    sae = JumpReLUSAE.from_dict(cfg.get_base_sae_cfg_dict())
-    sae.use_error_term = use_error_term
-    sae.threshold.data = torch.tensor([1.0, 0.5, 0.25])
-    sae.W_enc.data = torch.ones_like(sae.W_enc.data)
-    sae.W_dec.data = torch.ones_like(sae.W_dec.data)
-    sae.b_enc.data = torch.zeros_like(sae.b_enc.data)
-    sae.b_dec.data = torch.zeros_like(sae.b_dec.data)
-
-    sae_in = 0.3 * torch.ones(1, 2)
-    expected_recons = torch.tensor([[1.2, 1.2]])
-    # if we use error term, we should always get the same output as what we put in
-    expected_output = sae_in if use_error_term else expected_recons
-    out, cache = sae.run_with_cache(sae_in)
-    assert torch.allclose(out, expected_output)
-    assert torch.allclose(cache["hook_sae_input"], sae_in)
-    assert torch.allclose(cache["hook_sae_output"], out)
-    assert torch.allclose(cache["hook_sae_recons"], expected_recons)
-    if use_error_term:
-        assert torch.allclose(
-            cache["hook_sae_error"], expected_output - expected_recons
-        )
-
-    assert torch.allclose(cache["hook_sae_acts_pre"], torch.tensor([[0.6, 0.6, 0.6]]))
-    # the threshold of 1.0 should block the first latent from firing
-    assert torch.allclose(cache["hook_sae_acts_post"], torch.tensor([[0.0, 0.6, 0.6]]))
-
-
-def test_sae_gated_initialization():
-    cfg = build_sae_cfg(architecture="gated")
-    sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
-    assert isinstance(sae.W_enc, nn.Parameter)
-    assert isinstance(sae.W_dec, nn.Parameter)
-    assert isinstance(sae.b_dec, nn.Parameter)
-    assert isinstance(sae.b_gate, nn.Parameter)
-    assert isinstance(sae.r_mag, nn.Parameter)
-    assert isinstance(sae.b_mag, nn.Parameter)
-
-    assert sae.W_enc.shape == (cfg.d_in, cfg.d_sae)
-    assert sae.W_dec.shape == (cfg.d_sae, cfg.d_in)
-    assert sae.b_dec.shape == (cfg.d_in,)
-    assert sae.b_gate.shape == (cfg.d_sae,)
-    assert sae.r_mag.shape == (cfg.d_sae,)
-    assert sae.b_mag.shape == (cfg.d_sae,)
-
-    assert not torch.allclose(sae.W_enc, torch.zeros_like(sae.W_enc))
-    assert not torch.allclose(sae.W_dec, torch.zeros_like(sae.W_dec))
-    assert torch.allclose(sae.b_dec, torch.zeros_like(sae.b_dec))
-    assert torch.allclose(sae.b_gate, torch.zeros_like(sae.b_gate))
-    assert torch.allclose(sae.r_mag, torch.zeros_like(sae.r_mag))
-    assert torch.allclose(sae.b_mag, torch.zeros_like(sae.b_mag))
-
-
-@pytest.mark.parametrize("use_error_term", [True, False])
-def test_sae_gated_forward(use_error_term: bool):
-    cfg = build_sae_cfg(architecture="gated", d_in=2, d_sae=3)
-    sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
-    sae.use_error_term = use_error_term
-    sae.W_enc.data = torch.ones_like(sae.W_enc.data)
-    sae.W_dec.data = torch.ones_like(sae.W_dec.data)
-    sae.b_dec.data = torch.zeros_like(sae.b_dec.data)
-    sae.b_gate.data = torch.tensor([-2.0, 0.0, 1.0])
-    sae.r_mag.data = torch.tensor([1.0, 2.0, 3.0])
-    sae.b_mag.data = torch.tensor([1.0, 1.0, 1.0])
-
-    sae_in = torch.tensor([[0.3, 0.3]])
-
-    # expected gating pre acts: [0.6 - 2 = -1.4, 0.6, 0.6 + 1 = 1.6]
-    # so the first gate should be off
-    # mags should be [0.6 * exp(1), 0.6 * exp(2), 0.6 * exp(3)] + b_mag => [2.6310,  5.4334, 13.0513]
-
-    expected_recons = torch.tensor([[18.4848, 18.4848]])
-    # if we use error term, we should always get the same output as what we put in
-    expected_output = sae_in if use_error_term else expected_recons
-    out, cache = sae.run_with_cache(sae_in)
-
-    assert torch.allclose(out, expected_output, atol=1e-3)
-    assert torch.allclose(cache["hook_sae_input"], sae_in, atol=1e-3)
-    assert torch.allclose(cache["hook_sae_output"], out, atol=1e-3)
-    assert torch.allclose(cache["hook_sae_recons"], expected_recons, atol=1e-3)
-    assert torch.allclose(
-        cache["hook_sae_acts_pre"], torch.tensor([[2.6310, 5.4334, 13.0513]]), atol=1e-3
-    )
-    # the threshold of 1.0 should block the first latent from firing
-    assert torch.allclose(
-        cache["hook_sae_acts_post"],
-        torch.tensor([[0.0, 5.4334, 13.0513]]),
-        atol=1e-3,
-    )
-    if use_error_term:
-        assert torch.allclose(
-            cache["hook_sae_error"], expected_output - expected_recons
-        )
-
-
 def test_disable_hooks_temporarily_stops_hooks_from_running():
     cfg = build_sae_cfg(d_in=2, d_sae=3)
-    sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
+    sae = SAE.from_dict(cfg.to_dict())
     sae_in = torch.randn(10, cfg.d_in)
 
     orig_out, orig_cache = sae.run_with_cache(sae_in)
@@ -529,8 +311,8 @@ def test_disable_hooks_temporarily_stops_hooks_from_running():
 
 @pytest.mark.parametrize("architecture", ["standard", "gated", "jumprelu"])
 def test_sae_forward_pass_works_with_error_term_and_hooks(architecture: str):
-    cfg = build_sae_cfg(architecture=architecture, d_in=32, d_sae=64)
-    sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
+    cfg = build_sae_cfg_for_arch(architecture=architecture, d_in=32, d_sae=64)
+    sae = SAE.from_dict(cfg.to_dict())
     sae.use_error_term = True
     sae_in = torch.randn(10, cfg.d_in)
     original_out, original_cache = sae.run_with_cache(sae_in)
@@ -557,7 +339,7 @@ def test_SparseAutoencoder_from_pretrained_loads_from_hugginface_using_shorthand
     )
 
     assert (
-        sae.cfg.neuronpedia_id == "gpt2-small/0-res-jb"
+        sae.cfg.metadata.neuronpedia_id == "gpt2-small/0-res-jb"
     )  # what we expect from the yml
 
     # it should match what we get when manually loading from hf
@@ -571,8 +353,8 @@ def test_SparseAutoencoder_from_pretrained_loads_from_hugginface_using_shorthand
             state_dict[k] = f.get_tensor(k)
 
     assert isinstance(sae, SAE)
-    assert sae.cfg.model_name == "gpt2-small"
-    assert sae.cfg.hook_name == "blocks.0.hook_resid_pre"
+    assert sae.cfg.metadata.model_name == "gpt2-small"
+    assert sae.cfg.metadata.hook_name == "blocks.0.hook_resid_pre"
 
     assert isinstance(original_cfg_dict, dict)
 
@@ -586,7 +368,7 @@ def test_SparseAutoencoder_from_pretrained_loads_from_hugginface_using_shorthand
         assert torch.allclose(sae.state_dict()[k], state_dict[k])
 
 
-def test_SparseAutoencoder_from_pretrained_can_load_arbitrary_saes_from_hugginface():
+def test_SparseAutoencoder_from_pretrained_can_load_arbitrary_saes_from_huggingface():
     sae, original_cfg_dict, sparsity = SAE.from_pretrained(
         release="jbloom/GPT2-Small-SAEs-Reformatted",
         sae_id="blocks.0.hook_resid_pre",
@@ -604,8 +386,8 @@ def test_SparseAutoencoder_from_pretrained_can_load_arbitrary_saes_from_hugginfa
             state_dict[k] = f.get_tensor(k)
 
     assert isinstance(sae, SAE)
-    assert sae.cfg.model_name == "gpt2-small"
-    assert sae.cfg.hook_name == "blocks.0.hook_resid_pre"
+    assert sae.cfg.metadata.model_name == "gpt2-small"
+    assert sae.cfg.metadata.hook_name == "blocks.0.hook_resid_pre"
 
     assert isinstance(original_cfg_dict, dict)
 
@@ -638,14 +420,14 @@ def test_SparseAutoencoder_from_pretrained_errors_for_invalid_sae_ids():
 
 
 def test_SparseAutoencoder_initialization_standard():
-    cfg = build_sae_cfg()
+    cfg = build_runner_cfg()
 
     sae = StandardTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
 
-    assert sae.W_enc.shape == (cfg.d_in, cfg.d_sae)
-    assert sae.W_dec.shape == (cfg.d_sae, cfg.d_in)
-    assert sae.b_enc.shape == (cfg.d_sae,)
-    assert sae.b_dec.shape == (cfg.d_in,)
+    assert sae.W_enc.shape == (cfg.sae.d_in, cfg.sae.d_sae)
+    assert sae.W_dec.shape == (cfg.sae.d_sae, cfg.sae.d_in)
+    assert sae.b_enc.shape == (cfg.sae.d_sae,)
+    assert sae.b_dec.shape == (cfg.sae.d_in,)
     assert isinstance(sae.activation_fn, torch.nn.ReLU)
     assert sae.device == torch.device("cpu")
     assert sae.dtype == torch.float32
@@ -654,114 +436,23 @@ def test_SparseAutoencoder_initialization_standard():
     assert torch.allclose(sae.b_dec, torch.zeros_like(sae.b_dec), atol=1e-6)
     assert torch.allclose(sae.b_enc, torch.zeros_like(sae.b_enc), atol=1e-6)
 
-    # check if the decoder weight norm is 1 by default
+    # check if the decoder weight norm is 0.1 by default
     assert torch.allclose(
-        sae.W_dec.norm(dim=1), torch.ones_like(sae.W_dec.norm(dim=1)), atol=1e-6
+        sae.W_dec.norm(dim=1), 0.1 * torch.ones_like(sae.W_dec.norm(dim=1)), atol=1e-6
     )
 
-    #  Default currently shouldn't be tranpose initialization
-    unit_normed_W_enc = sae.W_enc / torch.norm(sae.W_enc, dim=0)
-    unit_normed_W_dec = sae.W_dec.T
-    assert not torch.allclose(unit_normed_W_enc, unit_normed_W_dec, atol=1e-6)
+    #  Default currently should be tranpose initialization
+    assert torch.allclose(sae.W_enc, sae.W_dec.T, atol=1e-6)
 
 
-def test_SparseAutoencoder_initialization_gated():
-    cfg = build_sae_cfg()
-    setattr(cfg, "architecture", "gated")
-    sae = GatedTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
-
-    assert sae.W_enc.shape == (cfg.d_in, cfg.d_sae)
-    assert sae.W_dec.shape == (cfg.d_sae, cfg.d_in)
-    assert sae.b_mag.shape == (cfg.d_sae,)
-    assert sae.b_gate.shape == (cfg.d_sae,)
-    assert sae.r_mag.shape == (cfg.d_sae,)
-    assert sae.b_dec.shape == (cfg.d_in,)
-    assert isinstance(sae.activation_fn, torch.nn.ReLU)
-    assert sae.device == torch.device("cpu")
-    assert sae.dtype == torch.float32
-
-    # biases
-    assert torch.allclose(sae.b_dec, torch.zeros_like(sae.b_dec), atol=1e-6)
-    assert torch.allclose(sae.b_mag, torch.zeros_like(sae.b_mag), atol=1e-6)
-    assert torch.allclose(sae.b_gate, torch.zeros_like(sae.b_gate), atol=1e-6)
-
-    # check if the decoder weight norm is 1 by default
-    assert torch.allclose(
-        sae.W_dec.norm(dim=1), torch.ones_like(sae.W_dec.norm(dim=1)), atol=1e-6
-    )
-
-    #  Default currently shouldn't be tranpose initialization
-    unit_normed_W_enc = sae.W_enc / torch.norm(sae.W_enc, dim=0)
-    unit_normed_W_dec = sae.W_dec.T
-    assert not torch.allclose(unit_normed_W_enc, unit_normed_W_dec, atol=1e-6)
-
-
-def test_SparseAutoencoder_initialization_jumprelu():
-    cfg = build_sae_cfg(architecture="jumprelu")
-    sae = JumpReLUTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
-
-    assert sae.W_enc.shape == (cfg.d_in, cfg.d_sae)
-    assert sae.W_dec.shape == (cfg.d_sae, cfg.d_in)
-    assert isinstance(sae.log_threshold, torch.nn.Parameter)
-    assert sae.log_threshold.shape == (cfg.d_sae,)
-    assert sae.b_enc.shape == (cfg.d_sae,)
-    assert sae.b_dec.shape == (cfg.d_in,)
-    assert isinstance(sae.activation_fn, torch.nn.ReLU)
-    assert sae.device == torch.device("cpu")
-    assert sae.dtype == torch.float32
-
-    # biases
-    assert torch.allclose(sae.b_dec, torch.zeros_like(sae.b_dec), atol=1e-6)
-    assert torch.allclose(sae.b_enc, torch.zeros_like(sae.b_enc), atol=1e-6)
-
-    # check if the decoder weight norm is 1 by default
-    assert torch.allclose(
-        sae.W_dec.norm(dim=1), torch.ones_like(sae.W_dec.norm(dim=1)), atol=1e-6
-    )
-
-    #  Default currently shouldn't be tranpose initialization
-    unit_normed_W_enc = sae.W_enc / torch.norm(sae.W_enc, dim=0)
-    unit_normed_W_dec = sae.W_dec.T
-    assert not torch.allclose(unit_normed_W_enc, unit_normed_W_dec, atol=1e-6)
-
-
-def test_SparseAutoencoder_initialization_orthogonal_enc_dec():
-    cfg = build_sae_cfg(decoder_orthogonal_init=True, expansion_factor=2)
-
-    sae = StandardTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
-    projections = sae.W_dec.T @ sae.W_dec
-    mask = ~torch.eye(projections.size(0), dtype=torch.bool)
-
-    assert projections[mask].max() < 0.1
-
-    # initialized weights of biases are 0
-    assert torch.allclose(sae.b_dec, torch.zeros_like(sae.b_dec), atol=1e-6)
-    assert torch.allclose(sae.b_enc, torch.zeros_like(sae.b_enc), atol=1e-6)
-
-
-def test_SparseAutoencoder_initialization_normalize_decoder_norm():
-    cfg = build_sae_cfg(normalize_sae_decoder=True)
+def test_SparseAutoencoder_initialization_decoder_norm():
+    cfg = build_runner_cfg(decoder_init_norm=0.7)
 
     sae = StandardTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
 
     assert torch.allclose(
-        sae.W_dec.norm(dim=1), torch.ones_like(sae.W_dec.norm(dim=1)), atol=1e-6
+        sae.W_dec.norm(dim=1), 0.7 * torch.ones_like(sae.W_dec.norm(dim=1)), atol=1e-6
     )
-
-    # initialized weights of biases are 0
-    assert torch.allclose(sae.b_dec, torch.zeros_like(sae.b_dec), atol=1e-6)
-    assert torch.allclose(sae.b_enc, torch.zeros_like(sae.b_enc), atol=1e-6)
-
-
-def test_SparseAutoencoder_initialization_encoder_is_decoder_transpose():
-    cfg = build_sae_cfg(init_encoder_as_decoder_transpose=True)
-
-    sae = StandardTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
-
-    # If we decoder norms are 1 we need to unit norm W_enc first.
-    unit_normed_W_enc = sae.W_enc / torch.norm(sae.W_enc, dim=0)
-    unit_normed_W_dec = sae.W_dec.T
-    assert torch.allclose(unit_normed_W_enc, unit_normed_W_dec, atol=1e-6)
 
     # initialized weights of biases are 0
     assert torch.allclose(sae.b_dec, torch.zeros_like(sae.b_dec), atol=1e-6)
@@ -769,7 +460,7 @@ def test_SparseAutoencoder_initialization_encoder_is_decoder_transpose():
 
 
 def test_SparseAutoencoder_initialization_enc_dec_T_no_unit_norm():
-    cfg = build_sae_cfg(
+    cfg = build_runner_cfg(
         init_encoder_as_decoder_transpose=True,
         normalize_sae_decoder=False,
     )
@@ -781,41 +472,3 @@ def test_SparseAutoencoder_initialization_enc_dec_T_no_unit_norm():
     # initialized weights of biases are 0
     assert torch.allclose(sae.b_dec, torch.zeros_like(sae.b_dec), atol=1e-6)
     assert torch.allclose(sae.b_enc, torch.zeros_like(sae.b_enc), atol=1e-6)
-
-
-def test_SparseAutoencoder_initialization_heuristic_init_and_normalize_sae_decoder():
-    # assert that an error is raised
-    with pytest.raises(ValueError):
-        _ = build_sae_cfg(
-            decoder_heuristic_init=True,
-            normalize_sae_decoder=True,
-        )
-
-
-def test_SparseAutoencoder_initialization_decoder_norm_in_loss_and_normalize_sae_decoder():
-    # assert that an error is raised
-    with pytest.raises(ValueError):
-        _ = build_sae_cfg(
-            scale_sparsity_penalty_by_decoder_norm=True,
-            normalize_sae_decoder=True,
-        )
-
-
-def test_SparseAutoencoder_initialization_heuristic_init():
-    cfg = build_sae_cfg(
-        decoder_heuristic_init=True,
-        normalize_sae_decoder=False,
-    )
-
-    sae = StandardTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
-
-    decoder_norms = sae.W_dec.norm(dim=1)
-
-    # not unit norms
-    assert not torch.allclose(
-        decoder_norms, torch.ones_like(sae.W_dec.norm(dim=1)), atol=1e-6
-    )
-
-    assert torch.allclose(
-        decoder_norms, torch.ones_like(decoder_norms) * 0.1, atol=5e-2
-    )

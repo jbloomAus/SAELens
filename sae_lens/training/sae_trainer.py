@@ -1,6 +1,6 @@
 import contextlib
 from dataclasses import dataclass
-from typing import Any, Protocol, cast
+from typing import Any, Generic, Protocol, cast
 
 import torch
 import wandb
@@ -11,16 +11,16 @@ from transformer_lens.hook_points import HookedRootModule
 from sae_lens import __version__
 from sae_lens.config import LanguageModelSAERunnerConfig
 from sae_lens.evals import EvalConfig, run_evals
-from sae_lens.saes.sae import TrainingSAE, TrainStepInput, TrainStepOutput
+from sae_lens.saes.sae import (
+    T_TRAINING_SAE,
+    T_TRAINING_SAE_CONFIG,
+    TrainCoefficientConfig,
+    TrainingSAE,
+    TrainStepInput,
+    TrainStepOutput,
+)
 from sae_lens.training.activations_store import ActivationsStore
-from sae_lens.training.optim import L1Scheduler, get_lr_scheduler
-
-# used to map between parameters which are updated during finetuning and the config str.
-FINETUNING_PARAMETERS = {
-    "scale": ["scaling_factor"],
-    "decoder": ["scaling_factor", "W_dec", "b_dec"],
-    "unrotated_decoder": ["scaling_factor", "b_dec"],
-}
+from sae_lens.training.optim import CoefficientScheduler, get_lr_scheduler
 
 
 def _log_feature_sparsity(
@@ -29,7 +29,7 @@ def _log_feature_sparsity(
     return torch.log10(feature_sparsity + eps).detach().cpu()
 
 
-def _update_sae_lens_training_version(sae: TrainingSAE) -> None:
+def _update_sae_lens_training_version(sae: TrainingSAE[Any]) -> None:
     """
     Make sure we record the version of SAELens used for the training run
     """
@@ -38,7 +38,7 @@ def _update_sae_lens_training_version(sae: TrainingSAE) -> None:
 
 @dataclass
 class TrainSAEOutput:
-    sae: TrainingSAE
+    sae: TrainingSAE[Any]
     checkpoint_path: str
     log_feature_sparsities: torch.Tensor
 
@@ -46,13 +46,13 @@ class TrainSAEOutput:
 class SaveCheckpointFn(Protocol):
     def __call__(
         self,
-        trainer: "SAETrainer",
+        trainer: "SAETrainer[Any, Any]",
         checkpoint_name: str,
         wandb_aliases: list[str] | None = None,
     ) -> None: ...
 
 
-class SAETrainer:
+class SAETrainer(Generic[T_TRAINING_SAE, T_TRAINING_SAE_CONFIG]):
     """
     Core SAE class used for inference. For training, see TrainingSAE.
     """
@@ -60,10 +60,10 @@ class SAETrainer:
     def __init__(
         self,
         model: HookedRootModule,
-        sae: TrainingSAE,
+        sae: T_TRAINING_SAE,
         activation_store: ActivationsStore,
         save_checkpoint_fn: SaveCheckpointFn,
-        cfg: LanguageModelSAERunnerConfig,
+        cfg: LanguageModelSAERunnerConfig[T_TRAINING_SAE_CONFIG],
     ) -> None:
         self.model = model
         self.sae = sae
@@ -88,11 +88,11 @@ class SAETrainer:
             )[1:]
 
         self.act_freq_scores = torch.zeros(
-            cast(int, cfg.d_sae),
+            cast(int, cfg.sae.d_sae),
             device=cfg.device,
         )
         self.n_forward_passes_since_fired = torch.zeros(
-            cast(int, cfg.d_sae),
+            cast(int, cfg.sae.d_sae),
             device=cfg.device,
         )
         self.n_frac_active_tokens = 0
@@ -121,11 +121,14 @@ class SAETrainer:
             lr_end=cfg.lr_end,
             num_cycles=cfg.n_restart_cycles,
         )
-        self.l1_scheduler = L1Scheduler(
-            l1_warm_up_steps=cfg.l1_warm_up_steps,
-            total_steps=cfg.total_training_steps,
-            final_l1_coefficient=cfg.l1_coefficient,
-        )
+        self.coefficient_schedulers = {}
+        for name, coeff_cfg in self.sae.get_coefficients().items():
+            if not isinstance(coeff_cfg, TrainCoefficientConfig):
+                coeff_cfg = TrainCoefficientConfig(value=coeff_cfg, warm_up_steps=0)
+            self.coefficient_schedulers[name] = CoefficientScheduler(
+                warm_up_steps=coeff_cfg.warm_up_steps,
+                final_value=coeff_cfg.value,
+            )
 
         # Setup autocast if using
         self.scaler = torch.amp.GradScaler(
@@ -164,14 +167,10 @@ class SAETrainer:
         return _log_feature_sparsity(self.feature_sparsity)
 
     @property
-    def current_l1_coefficient(self) -> float:
-        return self.l1_scheduler.current_l1_coefficient
-
-    @property
     def dead_neurons(self) -> torch.Tensor:
         return (self.n_forward_passes_since_fired > self.cfg.dead_feature_window).bool()
 
-    def fit(self) -> TrainingSAE:
+    def fit(self) -> T_TRAINING_SAE:
         pbar = tqdm(total=self.cfg.total_training_tokens, desc="Training SAE")
 
         self.activations_store.set_norm_scaling_factor_if_needed()
@@ -194,9 +193,6 @@ class SAETrainer:
             self.n_training_steps += 1
             self._update_pbar(step_output, pbar)
 
-            ### If n_training_tokens > sae_group.cfg.training_tokens, then we should switch to fine-tuning (if we haven't already)
-            self._begin_finetuning_if_needed()
-
         # fold the estimated norm scaling factor into the sae weights
         if self.activations_store.estimated_norm_scaling_factor is not None:
             self.sae.fold_activation_norm_scaling_factor(
@@ -216,13 +212,10 @@ class SAETrainer:
 
     def _train_step(
         self,
-        sae: TrainingSAE,
+        sae: T_TRAINING_SAE,
         sae_in: torch.Tensor,
     ) -> TrainStepOutput:
         sae.train()
-        # Make sure the W_dec is still zero-norm
-        if self.cfg.normalize_sae_decoder:
-            sae.set_decoder_norm_to_unit_norm()
 
         # log and then reset the feature sparsity every feature_sampling_window steps
         if (self.n_training_steps + 1) % self.cfg.feature_sampling_window == 0:
@@ -238,7 +231,7 @@ class SAETrainer:
                 step_input=TrainStepInput(
                     sae_in=sae_in,
                     dead_neuron_mask=self.dead_neurons,
-                    current_l1_coefficient=self.current_l1_coefficient,
+                    coefficients=self.get_coefficients(),
                 ),
             )
 
@@ -261,12 +254,10 @@ class SAETrainer:
         self.scaler.step(self.optimizer)  # just ctx.optimizer.step() if not autocasting
         self.scaler.update()
 
-        if self.cfg.normalize_sae_decoder:
-            sae.remove_gradient_parallel_to_decoder_directions()
-
         self.optimizer.zero_grad()
         self.lr_scheduler.step()
-        self.l1_scheduler.step()
+        for scheduler in self.coefficient_schedulers.values():
+            scheduler.step()
 
         return train_step_output
 
@@ -280,6 +271,13 @@ class SAETrainer:
                 ),
                 step=self.n_training_steps,
             )
+
+    @torch.no_grad()
+    def get_coefficients(self) -> dict[str, float]:
+        return {
+            name: scheduler.value
+            for name, scheduler in self.coefficient_schedulers.items()
+        }
 
     @torch.no_grad()
     def _build_train_step_log_dict(
@@ -313,19 +311,15 @@ class SAETrainer:
             "sparsity/mean_passes_since_fired": self.n_forward_passes_since_fired.mean().item(),
             "sparsity/dead_features": self.dead_neurons.sum().item(),
             "details/current_learning_rate": current_learning_rate,
-            "details/current_l1_coefficient": self.current_l1_coefficient,
             "details/n_training_tokens": n_training_tokens,
+            **{
+                f"details/{name}_coefficient": scheduler.value
+                for name, scheduler in self.coefficient_schedulers.items()
+            },
         }
         for loss_name, loss_value in output.losses.items():
             loss_item = _unwrap_item(loss_value)
-            # special case for l1 loss, which we normalize by the l1 coefficient
-            if loss_name == "l1_loss":
-                log_dict[f"losses/{loss_name}"] = (
-                    loss_item / self.current_l1_coefficient
-                )
-                log_dict[f"losses/raw_{loss_name}"] = loss_item
-            else:
-                log_dict[f"losses/{loss_name}"] = loss_item
+            log_dict[f"losses/{loss_name}"] = loss_item
 
         return log_dict
 
@@ -384,7 +378,7 @@ class SAETrainer:
     @torch.no_grad()
     def _reset_running_sparsity_stats(self) -> None:
         self.act_freq_scores = torch.zeros(
-            self.cfg.d_sae,  # type: ignore
+            self.cfg.sae.d_sae,  # type: ignore
             device=self.cfg.device,
         )
         self.n_frac_active_tokens = 0
@@ -415,25 +409,6 @@ class SAETrainer:
             )
             pbar.set_description(f"{self.n_training_steps}| {loss_strs}")
             pbar.update(update_interval * self.cfg.train_batch_size_tokens)
-
-    def _begin_finetuning_if_needed(self):
-        if (not self.started_fine_tuning) and (
-            self.n_training_tokens > self.cfg.training_tokens
-        ):
-            self.started_fine_tuning = True
-
-            # finetuning method should be set in the config
-            # if not, then we don't finetune
-            if not isinstance(self.cfg.finetuning_method, str):
-                return
-
-            for name, param in self.sae.named_parameters():
-                if name in FINETUNING_PARAMETERS[self.cfg.finetuning_method]:
-                    param.requires_grad = True
-                else:
-                    param.requires_grad = False
-
-            self.finetuning = True
 
 
 def _unwrap_item(item: float | torch.Tensor) -> float:

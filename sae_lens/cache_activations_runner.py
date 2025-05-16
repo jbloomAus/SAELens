@@ -14,7 +14,8 @@ from tqdm import tqdm
 from transformer_lens.HookedTransformer import HookedRootModule
 
 from sae_lens import logger
-from sae_lens.config import DTYPE_MAP, CacheActivationsRunnerConfig
+from sae_lens.config import CacheActivationsRunnerConfig
+from sae_lens.constants import DTYPE_MAP
 from sae_lens.load_model import load_model
 from sae_lens.training.activations_store import ActivationsStore
 
