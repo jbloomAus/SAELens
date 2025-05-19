@@ -476,11 +476,14 @@ def get_llama_scope_config_from_hf(
     # Get norm scaling factor to rescale jumprelu threshold.
     # We need this because sae.fold_activation_norm_scaling_factor folds scaling norm into W_enc.
     # This requires jumprelu threshold to be scaled in the same way
-    norm_scaling_factor = d_in ** .5 / old_cfg_dict['dataset_average_activation_norm']['in']
-    
+    norm_scaling_factor = (
+        d_in**0.5 / old_cfg_dict["dataset_average_activation_norm"]["in"]
+    )
+
     cfg_dict = {
         "architecture": "jumprelu",
-        "jump_relu_threshold": old_cfg_dict["jump_relu_threshold"] * norm_scaling_factor,
+        "jump_relu_threshold": old_cfg_dict["jump_relu_threshold"]
+        * norm_scaling_factor,
         # We use a scalar jump_relu_threshold for all features
         # This is different from Gemma Scope JumpReLU SAEs.
         # Scaled with norm_scaling_factor to match sae.fold_activation_norm_scaling_factor
