@@ -80,7 +80,7 @@ def test_load_sae_config_from_huggingface_gemma_2():
         "d_sae": 4096,
         "dtype": "float32",
         "apply_b_dec_to_input": False,
-        "normalize_activations": None,
+        "normalize_activations": "none",
         "device": "cpu",
         "metadata": {
             "model_name": "gemma-2-2b",
