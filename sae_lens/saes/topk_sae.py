@@ -51,6 +51,10 @@ class TopK(nn.Module):
 
 @dataclass
 class TopKSAEConfig(SAEConfig):
+    """
+    Configuration class for a TopKSAE.
+    """
+
     k: int = 100
 
     @override
@@ -115,6 +119,10 @@ class TopKSAE(SAE[TopKSAEConfig]):
 
 @dataclass
 class TopKTrainingSAEConfig(TrainingSAEConfig):
+    """
+    Configuration class for training a TopKTrainingSAE.
+    """
+
     k: int = 100
 
     @override

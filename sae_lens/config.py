@@ -145,7 +145,7 @@ class LanguageModelSAERunnerConfig(Generic[T_TRAINING_SAE_CONFIG]):
         n_checkpoints (int): The number of checkpoints to save during training. 0 means no checkpoints.
         checkpoint_path (str): The path to save checkpoints. A unique ID will be appended to this path.
         verbose (bool): Whether to print verbose output.
-        model_kwargs (dict[str, Any]): Additional keyword arguments to pass to the model's `from_pretrained` method.
+        model_kwargs (dict[str, Any]): Keyword arguments for `model.run_with_cache`
         model_from_pretrained_kwargs (dict[str, Any], optional): Additional keyword arguments to pass to the model's `from_pretrained` method.
         sae_lens_version (str): The version of the sae_lens library.
         sae_lens_training_version (str): The version of the sae_lens training library.
@@ -544,6 +544,10 @@ def _validate_seqpos(seqpos: tuple[int | None, ...], context_size: int) -> None:
 
 @dataclass
 class PretokenizeRunnerConfig:
+    """
+    Configuration class for pretokenizing a dataset.
+    """
+
     tokenizer_name: str = "gpt2"
     dataset_path: str = ""
     dataset_name: str | None = None

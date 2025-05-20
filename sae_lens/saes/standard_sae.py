@@ -21,6 +21,10 @@ from sae_lens.util import filter_valid_dataclass_fields
 
 @dataclass
 class StandardSAEConfig(SAEConfig):
+    """
+    Configuration class for a StandardSAE.
+    """
+
     @override
     @classmethod
     def architecture(cls) -> str:
@@ -85,6 +89,10 @@ class StandardSAE(SAE[StandardSAEConfig]):
 
 @dataclass
 class StandardTrainingSAEConfig(TrainingSAEConfig):
+    """
+    Configuration class for training a StandardTrainingSAE.
+    """
+
     l1_coefficient: float = 1.0
     lp_norm: float = 1.0
     l1_warm_up_steps: int = 0

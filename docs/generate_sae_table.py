@@ -9,7 +9,6 @@ from tqdm import tqdm
 
 from sae_lens import SAEConfig
 from sae_lens.loading.pretrained_sae_loaders import (
-    handle_config_defaulting,
     load_sae_config_from_huggingface,
 )
 
@@ -60,15 +59,17 @@ def generate_sae_table():
         for info in tqdm(model_info["saes"]):
             # can remove this by explicitly overriding config in yaml. Do this later.
             sae_id = info["id"]
-            cfg = load_sae_config_from_huggingface(
+            raw_cfg = load_sae_config_from_huggingface(
                 release,
                 sae_id=sae_id,
             )
-            cfg = handle_config_defaulting(cfg)
-            cfg = SAEConfig.from_dict(cfg).to_dict()
+            cfg = SAEConfig.from_dict(raw_cfg).to_dict()
 
             if "neuronpedia" not in info:
                 info["neuronpedia"] = None
+
+            if "metadata" in cfg:
+                info.update(cfg["metadata"])
 
             info.update(cfg)
 
@@ -83,6 +84,7 @@ def generate_sae_table():
         df["id"] = df["id"].apply(style_id)
         table = df.to_markdown(index=False)
         markdown_content += table + "\n\n"
+
     markdown_content += dedent(
         """
         <div id="codeModal" class="saetable-modal">

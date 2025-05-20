@@ -1,6 +1,6 @@
 # Training Sparse Autoencoders
 
-Methods development for training SAEs is rapidly evolving, so these docs may change frequently. For all available training options, see the [LanguageModelSAERunnerConfig][sae_lens.LanguageModelSAERunnerConfig] and the architecture-specific configuration classes it uses (e.g., [StandardTrainingSAEConfig][sae_lens.saes.standard_sae.StandardTrainingSAEConfig], [GatedTrainingSAEConfig][sae_lens.saes.gated_sae.GatedTrainingSAEConfig], [JumpReLUTrainingSAEConfig][sae_lens.saes.jumprelu_sae.JumpReLUTrainingSAEConfig], and [TopKTrainingSAEConfig][sae_lens.saes.topk_sae.TopKTrainingSAEConfig]).
+Methods development for training SAEs is rapidly evolving, so these docs may change frequently. For all available training options, see the [LanguageModelSAERunnerConfig][sae_lens.LanguageModelSAERunnerConfig] and the architecture-specific configuration classes it uses (e.g., [StandardTrainingSAEConfig][sae_lens.StandardTrainingSAEConfig], [GatedTrainingSAEConfig][sae_lens.GatedTrainingSAEConfig], [JumpReLUTrainingSAEConfig][sae_lens.JumpReLUTrainingSAEConfig], and [TopKTrainingSAEConfig][sae_lens.TopKTrainingSAEConfig]).
 
 However, we are attempting to maintain this [tutorial](https://github.com/jbloomAus/SAELens/blob/main/tutorials/training_a_sparse_autoencoder.ipynb)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://githubtocolab.com/jbloomAus/SAELens/blob/main/tutorials/training_a_sparse_autoencoder.ipynb).

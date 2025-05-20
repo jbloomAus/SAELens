@@ -20,6 +20,10 @@ from sae_lens.util import filter_valid_dataclass_fields
 
 @dataclass
 class GatedSAEConfig(SAEConfig):
+    """
+    Configuration class for a GatedSAE.
+    """
+
     @override
     @classmethod
     def architecture(cls) -> str:
@@ -109,6 +113,10 @@ class GatedSAE(SAE[GatedSAEConfig]):
 
 @dataclass
 class GatedTrainingSAEConfig(TrainingSAEConfig):
+    """
+    Configuration class for training a GatedTrainingSAE.
+    """
+
     l1_coefficient: float = 1.0
     l1_warm_up_steps: int = 0
 

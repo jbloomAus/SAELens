@@ -90,6 +90,10 @@ class JumpReLU(torch.autograd.Function):
 
 @dataclass
 class JumpReLUSAEConfig(SAEConfig):
+    """
+    Configuration class for a JumpReLUSAE.
+    """
+
     @override
     @classmethod
     def architecture(cls) -> str:
@@ -183,6 +187,10 @@ class JumpReLUSAE(SAE[JumpReLUSAEConfig]):
 
 @dataclass
 class JumpReLUTrainingSAEConfig(TrainingSAEConfig):
+    """
+    Configuration class for training a JumpReLUTrainingSAE.
+    """
+
     jumprelu_init_threshold: float = 0.001
     jumprelu_bandwidth: float = 0.001
     l0_coefficient: float = 1.0

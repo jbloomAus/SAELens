@@ -219,7 +219,9 @@ def handle_pre_6_0_config(cfg_dict: dict[str, Any]) -> dict[str, Any]:
             else "expected_average_only_in"
         )
 
-    new_cfg.setdefault("normalize_activations", "none")
+    if new_cfg.get("normalize_activations") is None:
+        new_cfg["normalize_activations"] = "none"
+
     new_cfg.setdefault("device", "cpu")
 
     architecture = new_cfg.get("architecture", "standard")
