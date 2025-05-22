@@ -716,8 +716,8 @@ def get_recons_loss(
         log_probs_new = torch.nn.functional.log_softmax(new_logits, dim=-1)
         # Computes the probabilities of the original logits (true distribution).
         probs_orig = torch.nn.functional.softmax(original_logits, dim=-1)
-        # Compute the KL divergence. torch.nn.functional.kl_div expects the first argument to be the log 
-        # probabilities of the approximation (new), and the second argument to be the true distribution 
+        # Compute the KL divergence. torch.nn.functional.kl_div expects the first argument to be the log
+        # probabilities of the approximation (new), and the second argument to be the true distribution
         # (original) as probabilities. This computes KL(original || new).
         kl = torch.nn.functional.kl_div(log_probs_new, probs_orig, reduction="none")
         return kl.sum(dim=-1)
