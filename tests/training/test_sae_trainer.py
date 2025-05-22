@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from typing import Any, Callable
 
@@ -11,6 +12,7 @@ from sae_lens import __version__
 from sae_lens.config import LanguageModelSAERunnerConfig
 from sae_lens.sae_training_runner import SAETrainingRunner
 from sae_lens.saes.sae import TrainingSAE
+from sae_lens.saes.standard_sae import StandardTrainingSAE, StandardTrainingSAEConfig
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.sae_trainer import (
     SAETrainer,
@@ -18,12 +20,12 @@ from sae_lens.training.sae_trainer import (
     _log_feature_sparsity,
     _update_sae_lens_training_version,
 )
-from tests.helpers import TINYSTORIES_MODEL, build_sae_cfg, load_model_cached
+from tests.helpers import TINYSTORIES_MODEL, build_runner_cfg, load_model_cached
 
 
 @pytest.fixture
 def cfg():
-    return build_sae_cfg(d_in=64, d_sae=128, hook_layer=0)
+    return build_runner_cfg(d_in=64, d_sae=128, hook_layer=0)
 
 
 @pytest.fixture
@@ -32,21 +34,24 @@ def model():
 
 
 @pytest.fixture
-def activation_store(model: HookedTransformer, cfg: LanguageModelSAERunnerConfig):
+def activation_store(
+    model: HookedTransformer,
+    cfg: LanguageModelSAERunnerConfig[StandardTrainingSAEConfig],
+):
     return ActivationsStore.from_config(
         model, cfg, override_dataset=Dataset.from_list([{"text": "hello world"}] * 2000)
     )
 
 
 @pytest.fixture
-def training_sae(cfg: LanguageModelSAERunnerConfig):
-    return TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+def training_sae(cfg: LanguageModelSAERunnerConfig[StandardTrainingSAEConfig]):
+    return StandardTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
 
 
 @pytest.fixture
 def trainer(
-    cfg: LanguageModelSAERunnerConfig,
-    training_sae: TrainingSAE,
+    cfg: LanguageModelSAERunnerConfig[StandardTrainingSAEConfig],
+    training_sae: StandardTrainingSAE,
     model: HookedTransformer,
     activation_store: ActivationsStore,
 ):
@@ -59,7 +64,9 @@ def trainer(
     )
 
 
-def modify_sae_output(sae: TrainingSAE, modifier: Callable[[torch.Tensor], Any]):
+def modify_sae_output(
+    sae: StandardTrainingSAE, modifier: Callable[[torch.Tensor], Any]
+):
     """
     Helper to modify the output of the SAE forward pass for use in patching, for use in patch side_effect.
     We need real grads during training, so we can't just mock the whole forward pass directly.
@@ -73,7 +80,7 @@ def modify_sae_output(sae: TrainingSAE, modifier: Callable[[torch.Tensor], Any])
 
 
 def test_train_step__reduces_loss_when_called_repeatedly_on_same_acts(
-    trainer: SAETrainer,
+    trainer: SAETrainer[StandardTrainingSAE, StandardTrainingSAEConfig],
 ) -> None:
     layer_acts = trainer.activations_store.next_batch()
 
@@ -94,7 +101,7 @@ def test_train_step__reduces_loss_when_called_repeatedly_on_same_acts(
     )  # should increment each step by batch_size (5*4)
 
 
-def test_train_step__output_looks_reasonable(trainer: SAETrainer) -> None:
+def test_train_step__output_looks_reasonable(trainer: SAETrainer[Any, Any]) -> None:
     layer_acts = trainer.activations_store.next_batch()
 
     output = trainer._train_step(
@@ -117,7 +124,7 @@ def test_train_step__output_looks_reasonable(trainer: SAETrainer) -> None:
 
 
 def test_train_step__sparsity_updates_based_on_feature_act_sparsity(
-    trainer: SAETrainer,
+    trainer: SAETrainer[StandardTrainingSAE, StandardTrainingSAEConfig],
 ) -> None:
     trainer._reset_running_sparsity_stats()
     layer_acts = trainer.activations_store.next_batch()
@@ -157,7 +164,9 @@ def test_log_feature_sparsity__handles_zeroes_by_default_fp16() -> None:
     assert _log_feature_sparsity(fp16_zeroes).item() != float("-inf")
 
 
-def test_build_train_step_log_dict(trainer: SAETrainer) -> None:
+def test_build_train_step_log_dict(
+    trainer: SAETrainer[StandardTrainingSAE, StandardTrainingSAEConfig],
+) -> None:
     train_output = TrainStepOutput(
         sae_in=torch.tensor([[-1, 0], [0, 2], [1, 1]]).float(),
         sae_out=torch.tensor([[0, 0], [0, 2], [0.5, 1]]).float(),
@@ -167,7 +176,6 @@ def test_build_train_step_log_dict(trainer: SAETrainer) -> None:
         losses={
             "mse_loss": torch.tensor(0.25),
             "l1_loss": torch.tensor(0.1),
-            "ghost_grad_loss": torch.tensor(0.15),
         },
     )
 
@@ -177,26 +185,22 @@ def test_build_train_step_log_dict(trainer: SAETrainer) -> None:
     log_dict = trainer._build_train_step_log_dict(
         output=train_output, n_training_tokens=123
     )
-    assert log_dict == pytest.approx(
-        {
-            "losses/mse_loss": 0.25,
-            # l1 loss is scaled by l1_coefficient
-            "losses/l1_loss": train_output.losses["l1_loss"].item()
-            / trainer.cfg.l1_coefficient,
-            "losses/raw_l1_loss": train_output.losses["l1_loss"].item(),
-            "losses/overall_loss": 0.5,
-            "losses/ghost_grad_loss": 0.15,
-            "metrics/explained_variance": 0.6875,
-            "metrics/explained_variance_legacy": 0.75,
-            "metrics/explained_variance_legacy_std": 0.25,
-            "metrics/l0": 2.0,
-            "sparsity/mean_passes_since_fired": trainer.n_forward_passes_since_fired.mean().item(),
-            "sparsity/dead_features": trainer.dead_neurons.sum().item(),
-            "details/current_learning_rate": 2e-4,
-            "details/current_l1_coefficient": trainer.cfg.l1_coefficient,
-            "details/n_training_tokens": 123,
-        }
-    )
+    expected = {
+        "losses/mse_loss": 0.25,
+        "losses/l1_loss": train_output.losses["l1_loss"].item(),
+        "losses/overall_loss": 0.5,
+        "metrics/explained_variance": 0.6875,
+        "metrics/explained_variance_legacy": 0.75,
+        "metrics/explained_variance_legacy_std": 0.25,
+        "metrics/l0": 2.0,
+        "sparsity/mean_passes_since_fired": trainer.n_forward_passes_since_fired.mean().item(),
+        "sparsity/dead_features": trainer.dead_neurons.sum().item(),
+        "details/current_learning_rate": 2e-4,
+        "details/l1_coefficient": trainer.cfg.sae.l1_coefficient,
+        "details/n_training_tokens": 123,
+    }
+    assert log_dict.keys() == expected.keys()
+    assert log_dict == pytest.approx(expected)
 
 
 def test_train_sae_group_on_language_model__runs(
@@ -204,7 +208,7 @@ def test_train_sae_group_on_language_model__runs(
     tmp_path: Path,
 ) -> None:
     checkpoint_dir = tmp_path / "checkpoint"
-    cfg = build_sae_cfg(
+    cfg = build_runner_cfg(
         checkpoint_path=str(checkpoint_dir),
         training_tokens=20,
         context_size=8,
@@ -227,10 +231,69 @@ def test_train_sae_group_on_language_model__runs(
 
 
 def test_update_sae_lens_training_version_sets_the_current_version():
-    cfg = build_sae_cfg(sae_lens_training_version="0.1.0")
+    cfg = build_runner_cfg(sae_lens_training_version="0.1.0")
     sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
     _update_sae_lens_training_version(sae)
     assert sae.cfg.sae_lens_training_version == str(__version__)
+
+
+def test_final_checkpoint_saves_runner_cfg(
+    ts_model: HookedTransformer,
+    tmp_path: Path,
+):
+    """Test that estimated_norm_scaling_factor is correctly persisted in intermediate checkpoints
+    but not in the final checkpoint."""
+    checkpoint_dir = tmp_path / "checkpoints"
+    checkpoint_dir.mkdir(exist_ok=True)
+
+    cfg = build_runner_cfg(
+        checkpoint_path=str(checkpoint_dir),
+        training_tokens=100,  # Increased to ensure we hit checkpoints
+        context_size=8,
+        n_checkpoints=2,  # Explicitly request 2 checkpoints during training
+    )
+
+    # Create a small dataset
+    dataset = Dataset.from_list([{"text": "hello world"}] * 100)
+    activation_store = ActivationsStore.from_config(
+        ts_model, cfg, override_dataset=dataset
+    )
+    sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+
+    trainer = SAETrainer(
+        model=ts_model,
+        sae=sae,
+        activation_store=activation_store,
+        save_checkpoint_fn=SAETrainingRunner.save_checkpoint,
+        cfg=cfg,
+    )
+
+    # Train the model - this should create checkpoints
+    trainer.fit()
+    checkpoint_cfg_paths = list(checkpoint_dir.glob("**/cfg.json"))
+    checkpoint_runner_cfg_paths = list(checkpoint_dir.glob("**/runner_cfg.json"))
+    # We should have exactly 2 checkpoints:
+    assert (
+        len(checkpoint_cfg_paths) == 2
+    ), f"Expected 2 sae cfg but got {len(checkpoint_cfg_paths)}"
+    assert (
+        len(checkpoint_runner_cfg_paths) == 2
+    ), f"Expected 2 runner cfg but got {len(checkpoint_runner_cfg_paths)}"
+
+    for checkpoint_cfg_path in checkpoint_cfg_paths:
+        with open(checkpoint_cfg_path) as f:
+            checkpoint_cfg = json.load(f)
+        assert checkpoint_cfg == cfg.get_training_sae_cfg_dict()
+
+    for checkpoint_runner_cfg_path in checkpoint_runner_cfg_paths:
+        with open(checkpoint_runner_cfg_path) as f:
+            runner_cfg = json.load(f)
+
+        expected_cfg = cfg.to_dict()
+        # seqpos_slice is a tuple when saved, but list when loaded. Just ignore it.
+        del runner_cfg["seqpos_slice"]
+        del expected_cfg["seqpos_slice"]
+        assert runner_cfg == expected_cfg
 
 
 def test_estimated_norm_scaling_factor_persistence(
@@ -242,7 +305,7 @@ def test_estimated_norm_scaling_factor_persistence(
     checkpoint_dir = tmp_path / "checkpoints"
     checkpoint_dir.mkdir(exist_ok=True)
 
-    cfg = build_sae_cfg(
+    cfg = build_runner_cfg(
         checkpoint_path=str(checkpoint_dir),
         training_tokens=100,  # Increased to ensure we hit checkpoints
         context_size=8,

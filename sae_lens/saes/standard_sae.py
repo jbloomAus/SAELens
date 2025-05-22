@@ -1,13 +1,37 @@
+from dataclasses import dataclass
+from typing import Any
+
 import numpy as np
 import torch
 from jaxtyping import Float
 from numpy.typing import NDArray
 from torch import nn
+from typing_extensions import override
 
-from sae_lens.saes.sae import SAE, SAEConfig, TrainingSAE, TrainStepInput
+from sae_lens.saes.sae import (
+    SAE,
+    SAEConfig,
+    TrainCoefficientConfig,
+    TrainingSAE,
+    TrainingSAEConfig,
+    TrainStepInput,
+)
+from sae_lens.util import filter_valid_dataclass_fields
 
 
-class StandardSAE(SAE):
+@dataclass
+class StandardSAEConfig(SAEConfig):
+    """
+    Configuration class for a StandardSAE.
+    """
+
+    @override
+    @classmethod
+    def architecture(cls) -> str:
+        return "standard"
+
+
+class StandardSAE(SAE[StandardSAEConfig]):
     """
     StandardSAE is an inference-only implementation of a Sparse Autoencoder (SAE)
     using a simple linear encoder and decoder.
@@ -23,31 +47,14 @@ class StandardSAE(SAE):
 
     b_enc: nn.Parameter
 
-    def __init__(self, cfg: SAEConfig, use_error_term: bool = False):
+    def __init__(self, cfg: StandardSAEConfig, use_error_term: bool = False):
         super().__init__(cfg, use_error_term)
 
+    @override
     def initialize_weights(self) -> None:
         # Initialize encoder weights and bias.
-        self.b_enc = nn.Parameter(
-            torch.zeros(self.cfg.d_sae, dtype=self.dtype, device=self.device)
-        )
-        self.b_dec = nn.Parameter(
-            torch.zeros(self.cfg.d_in, dtype=self.dtype, device=self.device)
-        )
-
-        # Use Kaiming Uniform for W_enc
-        w_enc_data = torch.empty(
-            self.cfg.d_in, self.cfg.d_sae, dtype=self.dtype, device=self.device
-        )
-        nn.init.kaiming_uniform_(w_enc_data)
-        self.W_enc = nn.Parameter(w_enc_data)
-
-        # Use Kaiming Uniform for W_dec
-        w_dec_data = torch.empty(
-            self.cfg.d_sae, self.cfg.d_in, dtype=self.dtype, device=self.device
-        )
-        nn.init.kaiming_uniform_(w_dec_data)
-        self.W_dec = nn.Parameter(w_dec_data)
+        super().initialize_weights()
+        _init_weights_standard(self)
 
     def encode(
         self, x: Float[torch.Tensor, "... d_in"]
@@ -70,11 +77,9 @@ class StandardSAE(SAE):
         Decode the feature activations back to the input space.
         Now, if hook_z reshaping is turned on, we reverse the flattening.
         """
-        # 1) apply finetuning scaling if configured.
-        scaled_features = self.apply_finetuning_scaling_factor(feature_acts)
-        # 2) linear transform
-        sae_out_pre = scaled_features @ self.W_dec + self.b_dec
-        # 3) hook reconstruction
+        # 1) linear transform
+        sae_out_pre = feature_acts @ self.W_dec + self.b_dec
+        # 2) hook reconstruction
         sae_out_pre = self.hook_sae_recons(sae_out_pre)
         # 4) optional out-normalization (e.g. constant_norm_rescale or layer_norm)
         sae_out_pre = self.run_time_activation_norm_fn_out(sae_out_pre)
@@ -82,7 +87,23 @@ class StandardSAE(SAE):
         return self.reshape_fn_out(sae_out_pre, self.d_head)
 
 
-class StandardTrainingSAE(TrainingSAE):
+@dataclass
+class StandardTrainingSAEConfig(TrainingSAEConfig):
+    """
+    Configuration class for training a StandardTrainingSAE.
+    """
+
+    l1_coefficient: float = 1.0
+    lp_norm: float = 1.0
+    l1_warm_up_steps: int = 0
+
+    @override
+    @classmethod
+    def architecture(cls) -> str:
+        return "standard"
+
+
+class StandardTrainingSAE(TrainingSAE[StandardTrainingSAEConfig]):
     """
     StandardTrainingSAE is a concrete implementation of BaseTrainingSAE using the "standard" SAE architecture.
     It implements:
@@ -96,31 +117,17 @@ class StandardTrainingSAE(TrainingSAE):
     b_enc: nn.Parameter
 
     def initialize_weights(self) -> None:
-        # Basic init
-        # In Python MRO, this calls StandardSAE.initialize_weights()
-        StandardSAE.initialize_weights(self)  # type: ignore
+        super().initialize_weights()
+        _init_weights_standard(self)
 
-        # Complex init logic from original TrainingSAE
-        if self.cfg.decoder_orthogonal_init:
-            self.W_dec.data = nn.init.orthogonal_(self.W_dec.data.T).T
-
-        elif self.cfg.decoder_heuristic_init:
-            self.W_dec.data = torch.rand(  # Changed from Parameter to data assignment
-                self.cfg.d_sae, self.cfg.d_in, dtype=self.dtype, device=self.device
-            )
-            self.initialize_decoder_norm_constant_norm()
-
-        if self.cfg.init_encoder_as_decoder_transpose:
-            self.W_enc.data = self.W_dec.data.T.clone().contiguous()  # type: ignore
-
-        if self.cfg.normalize_sae_decoder:
-            with torch.no_grad():
-                self.set_decoder_norm_to_unit_norm()
-
-    @torch.no_grad()
-    def initialize_decoder_norm_constant_norm(self, norm: float = 0.1):
-        self.W_dec.data /= torch.norm(self.W_dec.data, dim=1, keepdim=True)  # type: ignore
-        self.W_dec.data *= norm
+    @override
+    def get_coefficients(self) -> dict[str, float | TrainCoefficientConfig]:
+        return {
+            "l1": TrainCoefficientConfig(
+                value=self.cfg.l1_coefficient,
+                warm_up_steps=self.cfg.l1_warm_up_steps,
+            ),
+        }
 
     def encode_with_hidden_pre(
         self, x: Float[torch.Tensor, "... d_in"]
@@ -148,13 +155,11 @@ class StandardTrainingSAE(TrainingSAE):
         sae_out: torch.Tensor,
     ) -> dict[str, torch.Tensor]:
         # The "standard" auxiliary loss is a sparsity penalty on the feature activations
-        weighted_feature_acts = feature_acts
-        if self.cfg.scale_sparsity_penalty_by_decoder_norm:
-            weighted_feature_acts = feature_acts * self.W_dec.norm(dim=1)
+        weighted_feature_acts = feature_acts * self.W_dec.norm(dim=1)
 
         # Compute the p-norm (set by cfg.lp_norm) over the feature dimension
         sparsity = weighted_feature_acts.norm(p=self.cfg.lp_norm, dim=-1)
-        l1_loss = (step_input.current_l1_coefficient * sparsity).mean()
+        l1_loss = (step_input.coefficients["l1"] * sparsity).mean()
 
         return {"l1_loss": l1_loss}
 
@@ -165,3 +170,16 @@ class StandardTrainingSAE(TrainingSAE):
             **super().log_histograms(),
             "weights/b_e": b_e_dist,
         }
+
+    def to_inference_config_dict(self) -> dict[str, Any]:
+        return filter_valid_dataclass_fields(
+            self.cfg.to_dict(), StandardSAEConfig, ["architecture"]
+        )
+
+
+def _init_weights_standard(
+    sae: SAE[StandardSAEConfig] | TrainingSAE[StandardTrainingSAEConfig],
+) -> None:
+    sae.b_enc = nn.Parameter(
+        torch.zeros(sae.cfg.d_sae, dtype=sae.dtype, device=sae.device)
+    )

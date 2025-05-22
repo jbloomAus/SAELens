@@ -4,9 +4,13 @@ import pytest
 import torch
 
 # New modules
-from sae_lens.loading.pretrained_sae_loaders import handle_config_defaulting
-from sae_lens.saes.sae import SAEConfig, TrainingSAEConfig, TrainStepInput
-from sae_lens.saes.topk_sae import TopKSAE, TopKTrainingSAE
+from sae_lens.saes.sae import TrainStepInput
+from sae_lens.saes.topk_sae import (
+    TopKSAE,
+    TopKSAEConfig,
+    TopKTrainingSAE,
+    TopKTrainingSAEConfig,
+)
 
 # Old modules
 from tests._comparison.sae_lens_old.sae import (
@@ -93,28 +97,14 @@ def make_new_topk_sae(
     """
     Instantiate the new TopKSAE re-implementation.
     """
-    new_cfg = SAEConfig(
-        architecture="topk",
+    new_cfg = TopKSAEConfig(
+        k=4,
         d_in=d_in,
         d_sae=d_sae,
         dtype="float32",
         device="cpu",
-        model_name="test_model",
-        hook_name="blocks.0.hook_resid_pre",
-        hook_layer=0,
-        hook_head_index=None,
-        activation_fn="topk",
-        activation_fn_kwargs={"k": 4},  # match old config
         apply_b_dec_to_input=False,
-        finetuning_scaling_factor=False,
         normalize_activations="none",
-        context_size=128,
-        dataset_path="fake/path",
-        dataset_trust_remote_code=False,
-        sae_lens_training_version="test_version",
-        model_from_pretrained_kwargs={},
-        seqpos_slice=None,
-        prepend_bos=False,
     )
     return TopKSAE(new_cfg, use_error_term=use_error_term)
 
@@ -257,9 +247,12 @@ def test_topk_sae_training_equivalence():
 
     old_training_sae = OldTrainingSAE(old_training_cfg)
     # Convert old config dict for new config, applying defaults
-    new_training_cfg_dict = old_training_cfg.to_dict()
-    new_training_cfg = TrainingSAEConfig(
-        **handle_config_defaulting(new_training_cfg_dict)
+    new_training_cfg = TopKTrainingSAEConfig(
+        k=4,
+        d_in=16,
+        d_sae=8,
+        noise_scale=0.0,
+        mse_loss_normalization=None,
     )
     new_training_sae = TopKTrainingSAE(new_training_cfg)
 
@@ -287,7 +280,7 @@ def test_topk_sae_training_equivalence():
     new_out = new_training_sae.training_forward_pass(
         step_input=TrainStepInput(
             sae_in=x,
-            current_l1_coefficient=old_training_cfg.l1_coefficient,
+            coefficients={},  # topk SAEs don't care about L1 coefficient
             dead_neuron_mask=None,
         )
     )

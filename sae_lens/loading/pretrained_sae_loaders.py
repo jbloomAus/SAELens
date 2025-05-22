@@ -7,11 +7,12 @@ import numpy as np
 import torch
 from huggingface_hub import hf_hub_download
 from huggingface_hub.utils import EntryNotFoundError
+from packaging.version import Version
 from safetensors import safe_open
 from safetensors.torch import load_file
 
 from sae_lens import logger
-from sae_lens.config import (
+from sae_lens.constants import (
     DTYPE_MAP,
     SAE_CFG_FILENAME,
     SAE_WEIGHTS_FILENAME,
@@ -22,6 +23,8 @@ from sae_lens.loading.pretrained_saes_directory import (
     get_pretrained_saes_directory,
     get_repo_id_and_folder_name,
 )
+from sae_lens.registry import get_sae_class
+from sae_lens.util import filter_valid_dataclass_fields
 
 
 # loaders take in a release, sae_id, device, and whether to force download, and returns a tuple of config, state_dict, and log sparsity
@@ -174,6 +177,20 @@ def get_sae_lens_config_from_disk(
 
 
 def handle_config_defaulting(cfg_dict: dict[str, Any]) -> dict[str, Any]:
+    sae_lens_version = cfg_dict.get("sae_lens_version")
+    if not sae_lens_version and "metadata" in cfg_dict:
+        sae_lens_version = cfg_dict["metadata"].get("sae_lens_version")
+
+    if not sae_lens_version or Version(sae_lens_version) < Version("6.0.0-rc.0"):
+        cfg_dict = handle_pre_6_0_config(cfg_dict)
+    return cfg_dict
+
+
+def handle_pre_6_0_config(cfg_dict: dict[str, Any]) -> dict[str, Any]:
+    """
+    Format a config dictionary for a Sparse Autoencoder (SAE) to be compatible with the new 6.0 format.
+    """
+
     rename_keys_map = {
         "hook_point": "hook_name",
         "hook_point_layer": "hook_layer",
@@ -202,10 +219,26 @@ def handle_config_defaulting(cfg_dict: dict[str, Any]) -> dict[str, Any]:
             else "expected_average_only_in"
         )
 
-    new_cfg.setdefault("normalize_activations", "none")
+    if new_cfg.get("normalize_activations") is None:
+        new_cfg["normalize_activations"] = "none"
+
     new_cfg.setdefault("device", "cpu")
 
-    return new_cfg
+    architecture = new_cfg.get("architecture", "standard")
+
+    config_class = get_sae_class(architecture)[1]
+
+    sae_cfg_dict = filter_valid_dataclass_fields(new_cfg, config_class)
+    if architecture == "topk":
+        sae_cfg_dict["k"] = new_cfg["activation_fn_kwargs"]["k"]
+
+    # import here to avoid circular import
+    from sae_lens.saes.sae import SAEMetadata
+
+    meta_dict = filter_valid_dataclass_fields(new_cfg, SAEMetadata)
+    sae_cfg_dict["metadata"] = meta_dict
+    sae_cfg_dict["architecture"] = architecture
+    return sae_cfg_dict
 
 
 def get_connor_rob_hook_z_config_from_hf(

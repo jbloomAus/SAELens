@@ -1,10 +1,13 @@
 import pytest
 import torch
 
-from sae_lens.saes.jumprelu_sae import JumpReLUSAE, JumpReLUTrainingSAE
+from sae_lens.saes.jumprelu_sae import (
+    JumpReLUSAE,
+    JumpReLUSAEConfig,
+    JumpReLUTrainingSAE,
+    JumpReLUTrainingSAEConfig,
+)
 from sae_lens.saes.sae import (
-    SAEConfig,
-    TrainingSAEConfig,
     TrainStepInput,
 )
 from tests._comparison.sae_lens_old.sae import (
@@ -74,28 +77,13 @@ def make_new_jumprelu_sae(
     """
     Helper to instantiate a new JumpReLUSAE instance for testing (inference only).
     """
-    new_cfg = SAEConfig(  # Use SAEConfig (removed New prefix)
-        architecture="jumprelu",
+    new_cfg = JumpReLUSAEConfig(
         d_in=d_in,
         d_sae=d_sae,
         dtype="float32",
         device="cpu",
-        model_name="test_model",
-        hook_name="blocks.0.hook_resid_pre",
-        hook_layer=0,
-        hook_head_index=None,
-        activation_fn="relu",
-        activation_fn_kwargs={},
         apply_b_dec_to_input=False,
-        finetuning_scaling_factor=False,
         normalize_activations="none",
-        context_size=128,  # Added default value
-        dataset_path="fake/path",  # Added default value
-        dataset_trust_remote_code=False,
-        sae_lens_training_version="test_version",
-        model_from_pretrained_kwargs={},
-        seqpos_slice=None,  # Use None as per gated test (will adjust if linter still complains)
-        prepend_bos=False,
     )
     return JumpReLUSAE(new_cfg, use_error_term=use_error_term)
 
@@ -303,8 +291,8 @@ def make_old_jumprelu_training_sae(
         jumprelu_init_threshold=0.0,
         jumprelu_bandwidth=1.0,
         decoder_heuristic_init=False,
-        init_encoder_as_decoder_transpose=False,
-        scale_sparsity_penalty_by_decoder_norm=False,
+        init_encoder_as_decoder_transpose=True,
+        scale_sparsity_penalty_by_decoder_norm=True,
     )
     return OldTrainingSAE(old_training_cfg)  # Use OldTrainingSAE
 
@@ -315,40 +303,19 @@ def make_new_jumprelu_training_sae(
     """
     Helper to instantiate a new JumpReLUTrainingSAE instance.
     """
-    new_training_cfg = TrainingSAEConfig(  # Use TrainingSAEConfig (removed New prefix)
-        architecture="jumprelu",
+    new_training_cfg = JumpReLUTrainingSAEConfig(
         d_in=d_in,
         d_sae=d_sae,
         dtype="float32",
         device="cpu",
-        model_name="test_model",
-        hook_name="blocks.0.hook_resid_pre",
-        hook_layer=0,
-        hook_head_index=None,
-        activation_fn="relu",
-        activation_fn_kwargs={},
         apply_b_dec_to_input=False,
-        finetuning_scaling_factor=False,
         normalize_activations="none",
-        context_size=128,  # Added default value
-        dataset_path="fake/path",  # Added default value
-        dataset_trust_remote_code=False,
-        sae_lens_training_version="test_version",
-        model_from_pretrained_kwargs={},
-        seqpos_slice=None,  # Use None as per gated test (will adjust if linter still complains)
-        prepend_bos=False,
-        l1_coefficient=0.01,
-        lp_norm=1.0,
-        use_ghost_grads=False,
-        normalize_sae_decoder=False,
         noise_scale=0.0,
-        decoder_orthogonal_init=False,
         mse_loss_normalization=None,
         jumprelu_init_threshold=0.0,
         jumprelu_bandwidth=1.0,
-        decoder_heuristic_init=False,
-        init_encoder_as_decoder_transpose=False,
-        scale_sparsity_penalty_by_decoder_norm=False,
+        l0_coefficient=0.01,
+        l0_warm_up_steps=0,
     )
     return JumpReLUTrainingSAE(new_training_cfg)
 
@@ -386,7 +353,7 @@ def test_jumprelu_training_equivalence():  # type: ignore # Kept ignore as retur
     new_out = new_sae.training_forward_pass(
         step_input=TrainStepInput(
             sae_in=x,
-            current_l1_coefficient=new_sae.cfg.l1_coefficient,
+            coefficients={"l0": new_sae.cfg.l0_coefficient},
             dead_neuron_mask=None,
         )
     )

@@ -1,18 +1,22 @@
 """Inference-only TopKSAE variant, similar in spirit to StandardSAE but using a TopK-based activation."""
 
-from typing import Callable
+from dataclasses import dataclass
+from typing import Any, Callable
 
 import torch
 from jaxtyping import Float
 from torch import nn
+from typing_extensions import override
 
 from sae_lens.saes.sae import (
     SAE,
     SAEConfig,
+    TrainCoefficientConfig,
     TrainingSAE,
     TrainingSAEConfig,
     TrainStepInput,
 )
+from sae_lens.util import filter_valid_dataclass_fields
 
 
 class TopK(nn.Module):
@@ -45,14 +49,30 @@ class TopK(nn.Module):
         return result
 
 
-class TopKSAE(SAE):
+@dataclass
+class TopKSAEConfig(SAEConfig):
+    """
+    Configuration class for a TopKSAE.
+    """
+
+    k: int = 100
+
+    @override
+    @classmethod
+    def architecture(cls) -> str:
+        return "topk"
+
+
+class TopKSAE(SAE[TopKSAEConfig]):
     """
     An inference-only sparse autoencoder using a "topk" activation function.
     It uses linear encoder and decoder layers, applying the TopK activation
     to the hidden pre-activation in its encode step.
     """
 
-    def __init__(self, cfg: SAEConfig, use_error_term: bool = False):
+    b_enc: nn.Parameter
+
+    def __init__(self, cfg: TopKSAEConfig, use_error_term: bool = False):
         """
         Args:
             cfg: SAEConfig defining model size and behavior.
@@ -60,38 +80,11 @@ class TopKSAE(SAE):
         """
         super().__init__(cfg, use_error_term)
 
-        if self.cfg.activation_fn != "topk":
-            raise ValueError("TopKSAE must use a TopK activation function.")
-
+    @override
     def initialize_weights(self) -> None:
-        """
-        Initializes weights and biases for encoder/decoder similarly to the standard SAE,
-        that is:
-          - b_enc, b_dec are zero-initialized
-          - W_enc, W_dec are Kaiming Uniform
-        """
-        # encoder bias
-        self.b_enc = nn.Parameter(
-            torch.zeros(self.cfg.d_sae, dtype=self.dtype, device=self.device)
-        )
-        # decoder bias
-        self.b_dec = nn.Parameter(
-            torch.zeros(self.cfg.d_in, dtype=self.dtype, device=self.device)
-        )
-
-        # encoder weight
-        w_enc_data = torch.empty(
-            self.cfg.d_in, self.cfg.d_sae, dtype=self.dtype, device=self.device
-        )
-        nn.init.kaiming_uniform_(w_enc_data)
-        self.W_enc = nn.Parameter(w_enc_data)
-
-        # decoder weight
-        w_dec_data = torch.empty(
-            self.cfg.d_sae, self.cfg.d_in, dtype=self.dtype, device=self.device
-        )
-        nn.init.kaiming_uniform_(w_dec_data)
-        self.W_dec = nn.Parameter(w_dec_data)
+        # Initialize encoder weights and bias.
+        super().initialize_weights()
+        _init_weights_topk(self)
 
     def encode(
         self, x: Float[torch.Tensor, "... d_in"]
@@ -114,28 +107,31 @@ class TopKSAE(SAE):
         Applies optional finetuning scaling, hooking to recons, out normalization,
         and optional head reshaping.
         """
-        scaled_features = self.apply_finetuning_scaling_factor(feature_acts)
-        sae_out_pre = scaled_features @ self.W_dec + self.b_dec
+        sae_out_pre = feature_acts @ self.W_dec + self.b_dec
         sae_out_pre = self.hook_sae_recons(sae_out_pre)
         sae_out_pre = self.run_time_activation_norm_fn_out(sae_out_pre)
         return self.reshape_fn_out(sae_out_pre, self.d_head)
 
-    def _get_activation_fn(self) -> Callable[[torch.Tensor], torch.Tensor]:
-        if self.cfg.activation_fn == "topk":
-            if "k" not in self.cfg.activation_fn_kwargs:
-                raise ValueError("TopK activation function requires a k value.")
-            k = self.cfg.activation_fn_kwargs.get(
-                "k", 1
-            )  # Default k to 1 if not provided
-            postact_fn = self.cfg.activation_fn_kwargs.get(
-                "postact_fn", nn.ReLU()
-            )  # Default post-activation to ReLU if not provided
-            return TopK(k, postact_fn)
-        # Otherwise, return the "standard" handling from BaseSAE
-        return super()._get_activation_fn()
+    @override
+    def get_activation_fn(self) -> Callable[[torch.Tensor], torch.Tensor]:
+        return TopK(self.cfg.k)
 
 
-class TopKTrainingSAE(TrainingSAE):
+@dataclass
+class TopKTrainingSAEConfig(TrainingSAEConfig):
+    """
+    Configuration class for training a TopKTrainingSAE.
+    """
+
+    k: int = 100
+
+    @override
+    @classmethod
+    def architecture(cls) -> str:
+        return "topk"
+
+
+class TopKTrainingSAE(TrainingSAE[TopKTrainingSAEConfig]):
     """
     TopK variant with training functionality. Injects noise during training, optionally
     calculates a topk-related auxiliary loss, etc.
@@ -143,32 +139,13 @@ class TopKTrainingSAE(TrainingSAE):
 
     b_enc: nn.Parameter
 
-    def __init__(self, cfg: TrainingSAEConfig, use_error_term: bool = False):
+    def __init__(self, cfg: TopKTrainingSAEConfig, use_error_term: bool = False):
         super().__init__(cfg, use_error_term)
 
-        if self.cfg.activation_fn != "topk":
-            raise ValueError("TopKSAE must use a TopK activation function.")
-
+    @override
     def initialize_weights(self) -> None:
-        """Very similar to TopKSAE, using zero biases + Kaiming Uniform weights."""
-        self.b_enc = nn.Parameter(
-            torch.zeros(self.cfg.d_sae, dtype=self.dtype, device=self.device)
-        )
-        self.b_dec = nn.Parameter(
-            torch.zeros(self.cfg.d_in, dtype=self.dtype, device=self.device)
-        )
-
-        w_enc_data = torch.empty(
-            self.cfg.d_in, self.cfg.d_sae, dtype=self.dtype, device=self.device
-        )
-        nn.init.kaiming_uniform_(w_enc_data)
-        self.W_enc = nn.Parameter(w_enc_data)
-
-        w_dec_data = torch.empty(
-            self.cfg.d_sae, self.cfg.d_in, dtype=self.dtype, device=self.device
-        )
-        nn.init.kaiming_uniform_(w_dec_data)
-        self.W_dec = nn.Parameter(w_dec_data)
+        super().initialize_weights()
+        _init_weights_topk(self)
 
     def encode_with_hidden_pre(
         self, x: Float[torch.Tensor, "... d_in"]
@@ -207,14 +184,13 @@ class TopKTrainingSAE(TrainingSAE):
         )
         return {"auxiliary_reconstruction_loss": topk_loss}
 
-    def _get_activation_fn(self):
-        if self.cfg.activation_fn == "topk":
-            if "k" not in self.cfg.activation_fn_kwargs:
-                raise ValueError("TopK activation function requires a k value.")
-            k = self.cfg.activation_fn_kwargs.get("k", 1)
-            postact_fn = self.cfg.activation_fn_kwargs.get("postact_fn", nn.ReLU())
-            return TopK(k, postact_fn)
-        return super()._get_activation_fn()
+    @override
+    def get_activation_fn(self) -> Callable[[torch.Tensor], torch.Tensor]:
+        return TopK(self.cfg.k)
+
+    @override
+    def get_coefficients(self) -> dict[str, TrainCoefficientConfig | float]:
+        return {}
 
     def calculate_topk_aux_loss(
         self,
@@ -288,6 +264,11 @@ class TopKTrainingSAE(TrainingSAE):
 
         return auxk_acts
 
+    def to_inference_config_dict(self) -> dict[str, Any]:
+        return filter_valid_dataclass_fields(
+            self.cfg.to_dict(), TopKSAEConfig, ["architecture"]
+        )
+
 
 def _calculate_topk_aux_acts(
     k_aux: int,
@@ -303,3 +284,11 @@ def _calculate_topk_aux_acts(
     auxk_acts.scatter_(-1, auxk_topk.indices, auxk_topk.values)
     # Set activations to zero for all but top k_aux dead latents
     return auxk_acts
+
+
+def _init_weights_topk(
+    sae: SAE[TopKSAEConfig] | TrainingSAE[TopKTrainingSAEConfig],
+) -> None:
+    sae.b_enc = nn.Parameter(
+        torch.zeros(sae.cfg.d_sae, dtype=sae.dtype, device=sae.device)
+    )

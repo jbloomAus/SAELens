@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
@@ -9,11 +10,13 @@ from typing_extensions import override
 from sae_lens.saes.sae import (
     SAE,
     SAEConfig,
+    TrainCoefficientConfig,
     TrainingSAE,
     TrainingSAEConfig,
     TrainStepInput,
     TrainStepOutput,
 )
+from sae_lens.util import filter_valid_dataclass_fields
 
 
 def rectangle(x: torch.Tensor) -> torch.Tensor:
@@ -85,7 +88,19 @@ class JumpReLU(torch.autograd.Function):
         return x_grad, threshold_grad, None
 
 
-class JumpReLUSAE(SAE):
+@dataclass
+class JumpReLUSAEConfig(SAEConfig):
+    """
+    Configuration class for a JumpReLUSAE.
+    """
+
+    @override
+    @classmethod
+    def architecture(cls) -> str:
+        return "jumprelu"
+
+
+class JumpReLUSAE(SAE[JumpReLUSAEConfig]):
     """
     JumpReLUSAE is an inference-only implementation of a Sparse Autoencoder (SAE)
     using a JumpReLU activation. For each unit, if its pre-activation is
@@ -104,42 +119,18 @@ class JumpReLUSAE(SAE):
     b_enc: nn.Parameter
     threshold: nn.Parameter
 
-    def __init__(self, cfg: SAEConfig, use_error_term: bool = False):
+    def __init__(self, cfg: JumpReLUSAEConfig, use_error_term: bool = False):
         super().__init__(cfg, use_error_term)
 
+    @override
     def initialize_weights(self) -> None:
-        """
-        Initialize encoder and decoder weights, as well as biases.
-        Additionally, include a learnable `threshold` parameter that
-        determines when units "turn on" for the JumpReLU.
-        """
-        # Biases
-        self.b_enc = nn.Parameter(
-            torch.zeros(self.cfg.d_sae, dtype=self.dtype, device=self.device)
-        )
-        self.b_dec = nn.Parameter(
-            torch.zeros(self.cfg.d_in, dtype=self.dtype, device=self.device)
-        )
-
-        # Threshold for JumpReLU
-        # You can pick a default initialization (e.g., zeros means unit is off unless hidden_pre > 0)
-        # or see the training version for more advanced init with log_threshold, etc.
+        super().initialize_weights()
         self.threshold = nn.Parameter(
             torch.zeros(self.cfg.d_sae, dtype=self.dtype, device=self.device)
         )
-
-        # Encoder and Decoder weights
-        w_enc_data = torch.empty(
-            self.cfg.d_in, self.cfg.d_sae, dtype=self.dtype, device=self.device
+        self.b_enc = nn.Parameter(
+            torch.zeros(self.cfg.d_sae, dtype=self.dtype, device=self.device)
         )
-        nn.init.kaiming_uniform_(w_enc_data)
-        self.W_enc = nn.Parameter(w_enc_data)
-
-        w_dec_data = torch.empty(
-            self.cfg.d_sae, self.cfg.d_in, dtype=self.dtype, device=self.device
-        )
-        nn.init.kaiming_uniform_(w_dec_data)
-        self.W_dec = nn.Parameter(w_dec_data)
 
     def encode(
         self, x: Float[torch.Tensor, "... d_in"]
@@ -168,8 +159,7 @@ class JumpReLUSAE(SAE):
         Decode the feature activations back to the input space.
         Follows the same steps as StandardSAE: apply scaling, transform, hook, and optionally reshape.
         """
-        scaled_features = self.apply_finetuning_scaling_factor(feature_acts)
-        sae_out_pre = scaled_features @ self.W_dec + self.b_dec
+        sae_out_pre = feature_acts @ self.W_dec + self.b_dec
         sae_out_pre = self.hook_sae_recons(sae_out_pre)
         sae_out_pre = self.run_time_activation_norm_fn_out(sae_out_pre)
         return self.reshape_fn_out(sae_out_pre, self.d_head)
@@ -195,7 +185,24 @@ class JumpReLUSAE(SAE):
         self.threshold.data = current_thresh * W_dec_norms
 
 
-class JumpReLUTrainingSAE(TrainingSAE):
+@dataclass
+class JumpReLUTrainingSAEConfig(TrainingSAEConfig):
+    """
+    Configuration class for training a JumpReLUTrainingSAE.
+    """
+
+    jumprelu_init_threshold: float = 0.001
+    jumprelu_bandwidth: float = 0.001
+    l0_coefficient: float = 1.0
+    l0_warm_up_steps: int = 0
+
+    @override
+    @classmethod
+    def architecture(cls) -> str:
+        return "jumprelu"
+
+
+class JumpReLUTrainingSAE(TrainingSAE[JumpReLUTrainingSAEConfig]):
     """
     JumpReLUTrainingSAE is a training-focused implementation of a SAE using a JumpReLU activation.
 
@@ -213,7 +220,7 @@ class JumpReLUTrainingSAE(TrainingSAE):
     b_enc: nn.Parameter
     log_threshold: nn.Parameter
 
-    def __init__(self, cfg: TrainingSAEConfig, use_error_term: bool = False):
+    def __init__(self, cfg: JumpReLUTrainingSAEConfig, use_error_term: bool = False):
         super().__init__(cfg, use_error_term)
 
         # We'll store a bandwidth for the training approach, if needed
@@ -225,51 +232,16 @@ class JumpReLUTrainingSAE(TrainingSAE):
             * np.log(cfg.jumprelu_init_threshold)
         )
 
+    @override
     def initialize_weights(self) -> None:
         """
         Initialize parameters like the base SAE, but also add log_threshold.
         """
+        super().initialize_weights()
         # Encoder Bias
         self.b_enc = nn.Parameter(
             torch.zeros(self.cfg.d_sae, dtype=self.dtype, device=self.device)
         )
-        # Decoder Bias
-        self.b_dec = nn.Parameter(
-            torch.zeros(self.cfg.d_in, dtype=self.dtype, device=self.device)
-        )
-        # W_enc
-        w_enc_data = torch.nn.init.kaiming_uniform_(
-            torch.empty(
-                self.cfg.d_in, self.cfg.d_sae, dtype=self.dtype, device=self.device
-            )
-        )
-        self.W_enc = nn.Parameter(w_enc_data)
-
-        # W_dec
-        w_dec_data = torch.nn.init.kaiming_uniform_(
-            torch.empty(
-                self.cfg.d_sae, self.cfg.d_in, dtype=self.dtype, device=self.device
-            )
-        )
-        self.W_dec = nn.Parameter(w_dec_data)
-
-        # Optionally apply orthogonal or heuristic init
-        if self.cfg.decoder_orthogonal_init:
-            self.W_dec.data = nn.init.orthogonal_(self.W_dec.data.T).T
-        elif self.cfg.decoder_heuristic_init:
-            self.W_dec.data = torch.rand(
-                self.cfg.d_sae, self.cfg.d_in, dtype=self.dtype, device=self.device
-            )
-            self.initialize_decoder_norm_constant_norm()
-
-        # Optionally transpose
-        if self.cfg.init_encoder_as_decoder_transpose:
-            self.W_enc.data = self.W_dec.data.T.clone().contiguous()
-
-        # Optionally normalize columns of W_dec
-        if self.cfg.normalize_sae_decoder:
-            with torch.no_grad():
-                self.set_decoder_norm_to_unit_norm()
 
     @property
     def threshold(self) -> torch.Tensor:
@@ -305,8 +277,17 @@ class JumpReLUTrainingSAE(TrainingSAE):
     ) -> dict[str, torch.Tensor]:
         """Calculate architecture-specific auxiliary loss terms."""
         l0 = torch.sum(Step.apply(hidden_pre, self.threshold, self.bandwidth), dim=-1)  # type: ignore
-        l0_loss = (step_input.current_l1_coefficient * l0).mean()
+        l0_loss = (step_input.coefficients["l0"] * l0).mean()
         return {"l0_loss": l0_loss}
+
+    @override
+    def get_coefficients(self) -> dict[str, float | TrainCoefficientConfig]:
+        return {
+            "l0": TrainCoefficientConfig(
+                value=self.cfg.l0_coefficient,
+                warm_up_steps=self.cfg.l0_warm_up_steps,
+            ),
+        }
 
     @torch.no_grad()
     def fold_W_dec_norm(self):
@@ -366,3 +347,8 @@ class JumpReLUTrainingSAE(TrainingSAE):
             threshold = state_dict["threshold"]
             del state_dict["threshold"]
             state_dict["log_threshold"] = torch.log(threshold).detach().contiguous()
+
+    def to_inference_config_dict(self) -> dict[str, Any]:
+        return filter_valid_dataclass_fields(
+            self.cfg.to_dict(), JumpReLUSAEConfig, ["architecture"]
+        )
