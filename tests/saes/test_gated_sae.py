@@ -296,12 +296,12 @@ def test_GatedTrainingSAE_save_and_load_inference_sae(tmp_path: Path) -> None:
     assert isinstance(inference_sae, GatedSAE)
 
     # Check that all parameters match
-    assert torch.allclose(inference_sae.W_enc, original_W_enc)
-    assert torch.allclose(inference_sae.W_dec, original_W_dec)
-    assert torch.allclose(inference_sae.b_dec, original_b_dec)
-    assert torch.allclose(inference_sae.b_gate, original_b_gate)
-    assert torch.allclose(inference_sae.b_mag, original_b_mag)
-    assert torch.allclose(inference_sae.r_mag, original_r_mag)
+    assert_close(inference_sae.W_enc, original_W_enc)
+    assert_close(inference_sae.W_dec, original_W_dec)
+    assert_close(inference_sae.b_dec, original_b_dec)
+    assert_close(inference_sae.b_gate, original_b_gate)
+    assert_close(inference_sae.b_mag, original_b_mag)
+    assert_close(inference_sae.r_mag, original_r_mag)
 
     # Verify forward pass gives same results
     sae_in = torch.randn(10, cfg.d_in, device="cpu")
@@ -315,10 +315,10 @@ def test_GatedTrainingSAE_save_and_load_inference_sae(tmp_path: Path) -> None:
     inference_sae_out = inference_sae.decode(inference_feature_acts)
 
     # Should produce identical outputs
-    assert torch.allclose(training_feature_acts, inference_feature_acts)
-    assert torch.allclose(training_sae_out, inference_sae_out)
+    assert_close(training_feature_acts, inference_feature_acts)
+    assert_close(training_sae_out, inference_sae_out)
 
     # Test the full forward pass
     training_full_out = training_sae(sae_in)
     inference_full_out = inference_sae(sae_in)
-    assert torch.allclose(training_full_out, inference_full_out)
+    assert_close(training_full_out, inference_full_out)

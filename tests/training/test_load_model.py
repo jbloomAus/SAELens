@@ -181,7 +181,7 @@ def test_HookedProxyLM_gives_same_hidden_states_when_stop_at_layer_and_names_fil
     assert res_with_stop is None
     assert res_no_stop is not None
     for layer in layers:
-        assert torch.allclose(cache_with_stop[layer], cache_no_stop[layer])
+        assert_close(cache_with_stop[layer], cache_no_stop[layer])
 
 
 def test_HookedProxyLM_to_tokens_raises_error_on_invalid_prepend_bos(

@@ -7,7 +7,11 @@ import torch.nn as nn
 from sae_lens.saes.batchtopk_sae import BatchTopK, BatchTopKTrainingSAE
 from sae_lens.saes.jumprelu_sae import JumpReLUSAE
 from sae_lens.saes.sae import SAE, TrainStepInput
-from tests.helpers import build_batchtopk_sae_training_cfg
+from tests.helpers import (
+    assert_close,
+    assert_not_close,
+    build_batchtopk_sae_training_cfg,
+)
 
 
 def test_BatchTopK_with_same_number_of_top_features_per_batch():
@@ -24,7 +28,7 @@ def test_BatchTopK_with_same_number_of_top_features_per_batch():
     output = batch_topk(x)
 
     assert output.shape == x.shape
-    torch.testing.assert_close(output, expected)
+    assert_close(output, expected)
 
     # Check that exactly k*batch_size values are non-zero
     assert (output != 0).sum() == batch_topk.k * x.shape[0]
@@ -52,7 +56,7 @@ def test_BatchTopK_with_imbalanced_top_features_per_batch():
     )
 
     output = batch_topk(x)
-    torch.testing.assert_close(output, expected)
+    assert_close(output, expected)
 
     # Check that exactly k*batch_size values are non-zero across all batches
     assert (output != 0).sum() == batch_topk.k * x.shape[0]
@@ -82,7 +86,7 @@ def test_BatchTopK_output_must_be_positive():
 
     output = batch_topk(x)
 
-    torch.testing.assert_close(output, expected)
+    assert_close(output, expected)
     assert (output >= 0).all()
 
     # Check that number of non-zero values equals number of positive inputs
@@ -106,10 +110,10 @@ def test_BatchTopKTrainingSAE_initialization():
     assert sae.topk_threshold.shape == ()
 
     # encoder/decoder should be initialized, everything else should be 0s
-    assert not torch.allclose(sae.W_enc, torch.zeros_like(sae.W_enc))
-    assert not torch.allclose(sae.W_dec, torch.zeros_like(sae.W_dec))
-    assert torch.allclose(sae.b_dec, torch.zeros_like(sae.b_dec))
-    assert torch.allclose(sae.b_enc, torch.zeros_like(sae.b_enc))
+    assert_not_close(sae.W_enc, torch.zeros_like(sae.W_enc))
+    assert_not_close(sae.W_dec, torch.zeros_like(sae.W_dec))
+    assert_close(sae.b_dec, torch.zeros_like(sae.b_dec))
+    assert_close(sae.b_enc, torch.zeros_like(sae.b_enc))
     assert sae.topk_threshold.item() == 0.0
 
 
@@ -155,13 +159,13 @@ def test_BatchTopKTrainingSAE_save_and_load_inference_sae(tmp_path: Path) -> Non
     assert isinstance(inference_sae, JumpReLUSAE)
 
     # Check that all parameters match
-    assert torch.allclose(inference_sae.W_enc, original_W_enc)
-    assert torch.allclose(inference_sae.W_dec, original_W_dec)
-    assert torch.allclose(inference_sae.b_enc, original_b_enc)
-    assert torch.allclose(inference_sae.b_dec, original_b_dec)
+    assert_close(inference_sae.W_enc, original_W_enc)
+    assert_close(inference_sae.W_dec, original_W_dec)
+    assert_close(inference_sae.b_enc, original_b_enc)
+    assert_close(inference_sae.b_dec, original_b_dec)
 
     # Check that topk_threshold was converted to threshold
-    assert torch.allclose(
+    assert_close(
         inference_sae.threshold,
         original_threshold * torch.ones_like(inference_sae.b_enc),
     )
@@ -175,13 +179,13 @@ def test_BatchTopKTrainingSAE_save_and_load_inference_sae(tmp_path: Path) -> Non
     inference_sae_out = inference_sae.decode(inference_feature_acts)
 
     # Should produce identical outputs
-    assert torch.allclose(training_feature_acts, inference_feature_acts)
-    assert torch.allclose(training_sae_out, inference_sae_out)
+    assert_close(training_feature_acts, inference_feature_acts)
+    assert_close(training_sae_out, inference_sae_out)
 
     # Test the full forward pass
     training_full_out = training_sae(sae_in)
     inference_full_out = inference_sae(sae_in)
-    assert torch.allclose(training_full_out, inference_full_out)
+    assert_close(training_full_out, inference_full_out)
 
 
 def test_BatchTopKTrainingSAE_training_step_updates_threshold() -> None:
@@ -251,4 +255,4 @@ def test_BatchTopKTrainingSAE_process_state_dict_for_saving_inference() -> None:
     # threshold should be added with correct shape and value
     assert "threshold" in state_dict
     expected_threshold = torch.ones_like(sae.b_enc) * threshold_value
-    torch.testing.assert_close(state_dict["threshold"], expected_threshold)
+    assert_close(state_dict["threshold"], expected_threshold)

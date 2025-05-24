@@ -2,6 +2,7 @@ import pytest
 import torch
 
 from sae_lens.training.mixing_buffer import mixing_buffer
+from tests.helpers import assert_not_close
 
 
 def test_mixing_buffer_yields_batches_of_correct_size_despite_loader_size_fluctuations():
@@ -44,7 +45,7 @@ def test_mixing_buffer_mixes_activations():
 
     batch = next(buffer)
     assert batch.shape == (50,)
-    assert not torch.allclose(batch, torch.arange(50))
+    assert_not_close(batch, torch.arange(50))
     assert len(torch.unique(batch)) == len(batch)  # All elements are unique
 
 

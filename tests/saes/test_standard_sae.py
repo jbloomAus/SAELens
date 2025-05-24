@@ -18,6 +18,7 @@ from sae_lens.saes.standard_sae import (
     StandardTrainingSAEConfig,
 )
 from tests.helpers import (
+    ALL_ARCHITECTURES,
     ALL_TRAINING_ARCHITECTURES,
     assert_close,
     assert_not_close,
@@ -349,13 +350,13 @@ def test_training_sae_fold_w_dec_norm_all_architectures(architecture: str):
     feature_activations_1 = sae.encode(activations)
     feature_activations_2 = sae2.encode(activations)
 
-    assert torch.allclose(
+    assert_close(
         feature_activations_1.nonzero(),
         feature_activations_2.nonzero(),
     )
 
     expected_feature_activations_2 = feature_activations_1 * sae.W_dec.norm(dim=-1)
-    torch.testing.assert_close(
+    assert_close(
         feature_activations_2, expected_feature_activations_2, atol=1e-4, rtol=1e-4
     )
 
@@ -363,7 +364,7 @@ def test_training_sae_fold_w_dec_norm_all_architectures(architecture: str):
     sae_out_2 = sae2.decode(feature_activations_2)
 
     # but actual outputs should be the same
-    torch.testing.assert_close(sae_out_1, sae_out_2)
+    assert_close(sae_out_1, sae_out_2)
 
 
 @torch.no_grad()
@@ -694,9 +695,9 @@ def test_StandardSAE_constant_norm_rescale():
 
     scaled_input = sae.run_time_activation_norm_fn_in(test_input)
     expected_scaler = (cfg.d_in**0.5) / test_input.norm(dim=-1, keepdim=True)
-    assert torch.allclose(scaled_input, test_input * expected_scaler, atol=1e-6)
+    assert_close(scaled_input, test_input * expected_scaler, atol=1e-6)
     scaled_output = sae.run_time_activation_norm_fn_out(scaled_input)
-    assert torch.allclose(scaled_output, test_input)
+    assert_close(scaled_output, test_input)
 
 
 def test_StandardSAE_layer_norm():
@@ -709,13 +710,13 @@ def test_StandardSAE_layer_norm():
     scaled_input = sae.run_time_activation_norm_fn_in(test_input)
     expected_mu = test_input.mean(dim=-1, keepdim=True)
     expected_std = test_input.std(dim=-1, keepdim=True)
-    assert torch.allclose(sae.ln_mu, expected_mu, atol=1e-6)  # type: ignore
-    assert torch.allclose(sae.ln_std, expected_std, atol=1e-6)  # type: ignore
-    assert torch.allclose(
+    assert_close(sae.ln_mu, expected_mu, atol=1e-6)  # type: ignore
+    assert_close(sae.ln_std, expected_std, atol=1e-6)  # type: ignore
+    assert_close(
         scaled_input, (test_input - expected_mu) / (expected_std + 1e-5), atol=1e-6
     )
     scaled_output = sae.run_time_activation_norm_fn_out(scaled_input)
-    assert torch.allclose(scaled_output, test_input, atol=1e-4)
+    assert_close(scaled_output, test_input, atol=1e-4)
 
 
 def test_StandardSAE_none():
@@ -725,9 +726,9 @@ def test_StandardSAE_none():
     test_input = torch.randn(10, 2, device=cfg.device)
 
     scaled_input = sae.run_time_activation_norm_fn_in(test_input)
-    assert torch.allclose(scaled_input, test_input)
+    assert_close(scaled_input, test_input)
     scaled_output = sae.run_time_activation_norm_fn_out(scaled_input)
-    assert torch.allclose(scaled_output, test_input)
+    assert_close(scaled_output, test_input)
 
 
 def test_StandardTrainingSAE_save_and_load_inference_sae(tmp_path: Path) -> None:
@@ -760,10 +761,10 @@ def test_StandardTrainingSAE_save_and_load_inference_sae(tmp_path: Path) -> None
     assert isinstance(inference_sae, StandardSAE)
 
     # Check that all parameters match
-    assert torch.allclose(inference_sae.W_enc, original_W_enc)
-    assert torch.allclose(inference_sae.W_dec, original_W_dec)
-    assert torch.allclose(inference_sae.b_enc, original_b_enc)
-    assert torch.allclose(inference_sae.b_dec, original_b_dec)
+    assert_close(inference_sae.W_enc, original_W_enc)
+    assert_close(inference_sae.W_dec, original_W_dec)
+    assert_close(inference_sae.b_enc, original_b_enc)
+    assert_close(inference_sae.b_dec, original_b_dec)
 
     # Verify forward pass gives same results
     sae_in = torch.randn(10, cfg.d_in, device="cpu")
@@ -777,10 +778,10 @@ def test_StandardTrainingSAE_save_and_load_inference_sae(tmp_path: Path) -> None
     inference_sae_out = inference_sae.decode(inference_feature_acts)
 
     # Should produce identical outputs
-    assert torch.allclose(training_feature_acts, inference_feature_acts)
-    assert torch.allclose(training_sae_out, inference_sae_out)
+    assert_close(training_feature_acts, inference_feature_acts)
+    assert_close(training_sae_out, inference_sae_out)
 
     # Test the full forward pass
     training_full_out = training_sae(sae_in)
     inference_full_out = inference_sae(sae_in)
-    assert torch.allclose(training_full_out, inference_full_out)
+    assert_close(training_full_out, inference_full_out)

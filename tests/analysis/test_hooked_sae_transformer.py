@@ -666,7 +666,7 @@ def test_HookedSAETransformer_works_with_hook_z_saes():
     logits, cache = model.run_with_cache_with_saes(
         prompt, saes=[sae], use_error_term=False
     )
-    assert not torch.allclose(logits, logits_sans_sae, atol=1e-4)
+    assert_not_close(logits, logits_sans_sae, atol=1e-4)
     assert cache[sae.cfg.metadata.hook_name + ".hook_sae_output"] is not None
     expected_shape = (1, 4, 12, 64)  # due to hook_z reshaping
     assert (
