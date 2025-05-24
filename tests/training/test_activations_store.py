@@ -184,7 +184,6 @@ def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
             act_buffer.norm(dim=-1),
             np.sqrt(store.d_in) * torch.ones_like(act_buffer.norm(dim=-1)),
             atol=2,
-            rtol=1e-5,
         )
 
 
@@ -235,7 +234,7 @@ def test_activations_store__get_activations__gives_same_results_with_hf_model_an
     batch_hf = store_hf.get_batch_tokens()
     activations_hf = store_hf.get_activations(batch_hf)
 
-    assert_close(activations_hf, activations_tlens, atol=1e-3, rtol=1e-5)
+    assert_close(activations_hf, activations_tlens, atol=1e-3)
 
 
 # 12 is divisible by the length of "hello world", 11 and 13 are not
