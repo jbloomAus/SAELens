@@ -46,15 +46,6 @@ from .sae_training_runner import SAETrainingRunner
 from .training.activations_store import ActivationsStore
 from .training.upload_saes_to_huggingface import upload_saes_to_huggingface
 
-register_sae_class("standard", StandardSAE, StandardSAEConfig)
-register_sae_training_class("standard", StandardTrainingSAE, StandardTrainingSAEConfig)
-register_sae_class("gated", GatedSAE, GatedSAEConfig)
-register_sae_training_class("gated", GatedTrainingSAE, GatedTrainingSAEConfig)
-register_sae_class("topk", TopKSAE, TopKSAEConfig)
-register_sae_training_class("topk", TopKTrainingSAE, TopKTrainingSAEConfig)
-register_sae_class("jumprelu", JumpReLUSAE, JumpReLUSAEConfig)
-register_sae_training_class("jumprelu", JumpReLUTrainingSAE, JumpReLUTrainingSAEConfig)
-
 __all__ = [
     "SAE",
     "SAEConfig",
