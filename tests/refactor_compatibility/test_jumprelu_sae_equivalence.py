@@ -22,6 +22,7 @@ from tests._comparison.sae_lens_old.training.training_sae import (
 from tests._comparison.sae_lens_old.training.training_sae import (
     TrainingSAEConfig as OldTrainingSAEConfig,
 )
+from tests.helpers import assert_close
 
 
 @pytest.fixture
@@ -142,12 +143,12 @@ def test_jumprelu_inference_equivalence(use_error_term: bool):  # Added type
     assert torch.isfinite(new_out).all()
 
     # Check for numerical equivalence
-    torch.testing.assert_close(
+    assert_close(
         old_out,
         new_out,
         atol=1e-5,
         rtol=1e-5,
-        msg=lambda msg: f"Outputs differ between old and new implementations.\n\n{msg}",
+        msg="Outputs differ between old and new implementations.",
     )
 
     # If error_term is True, they might diverge for non-standard architectures,
@@ -199,22 +200,22 @@ def test_jumprelu_fold_equivalence(fold_fn):  # type: ignore
     assert old_out.shape == new_out.shape
     # The numeric results might not match exactly if JumpReLU is stricter with thresholds,
     # but let's see if they match within a tolerance. If they do for your code, match them strictly.
-    torch.testing.assert_close(
+    assert_close(
         old_out,
         new_out,
         atol=1e-5,
         rtol=1e-5,
-        msg=lambda msg: f"{fold_fn} mismatch between old and new\n\n{msg}",
+        msg=f"{fold_fn} mismatch between old and new",
     )
 
     # Also check the folded parameters directly
     for k in sorted(old_params.keys()):
-        torch.testing.assert_close(
+        assert_close(
             old_params[k],
             new_params[k],
             atol=1e-5,
             rtol=1e-5,
-            msg=lambda msg: f"Parameter {k} differs after {fold_fn}\n\n{msg}",
+            msg=f"Parameter {k} differs after {fold_fn}",
         )
 
 
@@ -239,12 +240,12 @@ def test_jumprelu_run_with_cache_equivalence():  # type: ignore
         new_out, new_cache = new_sae.run_with_cache(x)
 
     assert old_out.shape == new_out.shape, "Output shape mismatch."
-    torch.testing.assert_close(
+    assert_close(
         old_out,
         new_out,
         atol=1e-5,
         rtol=1e-5,
-        msg=lambda msg: f"Output values differ.\n\n{msg}",
+        msg="Output values differ.",
     )
 
     assert len(old_cache) == len(
@@ -260,12 +261,12 @@ def test_jumprelu_run_with_cache_equivalence():  # type: ignore
     for key in old_keys:
         old_val = old_cache[key]
         new_val = new_cache[key]
-        torch.testing.assert_close(
+        assert_close(
             old_val,
             new_val,
             atol=1e-5,
             rtol=1e-5,
-            msg=lambda msg: f"Cache values for key '{key}' differ.\n\n{msg}",
+            msg=f"Cache values for key '{key}' differ.",
         )
 
 
@@ -390,7 +391,7 @@ def test_jumprelu_training_equivalence():  # type: ignore # Kept ignore as retur
     ).all(), "New JumpReLU training out is not finite."
 
     # Check if training forward pass is equivalent
-    torch.testing.assert_close(old_out.sae_out, new_out.sae_out, atol=1e-5, rtol=1e-5)
+    assert_close(old_out.sae_out, new_out.sae_out, atol=1e-5, rtol=1e-5)
 
     # Check that we do have MSE and L0 losses
     assert "mse_loss" in old_out.losses
@@ -403,11 +404,11 @@ def test_jumprelu_training_equivalence():  # type: ignore # Kept ignore as retur
     assert torch.isfinite(new_l0_loss).all()  # Check tensor and use .all()
 
     # Compare individual loss components numerically
-    torch.testing.assert_close(
+    assert_close(
         old_out.losses["mse_loss"],  # type: ignore
         new_out.losses["mse_loss"],
         atol=1e-5,
         rtol=1e-5,
     )
-    torch.testing.assert_close(old_l0_loss, new_l0_loss, atol=1e-5, rtol=1e-5)
-    torch.testing.assert_close(old_out.loss, new_out.loss, atol=1e-5, rtol=1e-5)
+    assert_close(old_l0_loss, new_l0_loss, atol=1e-5, rtol=1e-5)
+    assert_close(old_out.loss, new_out.loss, atol=1e-5, rtol=1e-5)

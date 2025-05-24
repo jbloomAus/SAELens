@@ -1,6 +1,8 @@
 import copy
 from typing import Any, Sequence, TypedDict, cast
 
+import pytest
+import torch
 from transformer_lens import HookedTransformer
 
 from sae_lens.config import LanguageModelSAERunnerConfig, LoggingConfig
@@ -485,3 +487,72 @@ def build_runner_cfg_for_arch(
     if architecture == "batchtopk":
         return build_batchtopk_runner_cfg(**kwargs)
     raise ValueError(f"Unknown architecture: {architecture}")
+
+
+def assert_close(
+    actual: torch.Tensor,
+    expected: torch.Tensor,
+    *,
+    allow_subclasses: bool = True,
+    atol: float | None = 1e-8,
+    rtol: float | None = 1e-5,
+    equal_nan: bool = False,
+    check_device: bool = True,
+    check_dtype: bool = True,
+    check_layout: bool = True,
+    check_stride: bool = False,
+    msg: str | None = None,
+) -> None:
+    """
+    torch.testing.assert_close() with torch.allclose() defaults (atol=1e-8, rtol=1e-5).
+
+    Pass a message string to customize the error header instead of writing lambda functions.
+    """
+    final_msg = msg and (lambda error_msg: f"{msg}\n\n{error_msg}")
+
+    torch.testing.assert_close(
+        actual,
+        expected=expected,
+        allow_subclasses=allow_subclasses,
+        atol=atol,
+        rtol=rtol,
+        equal_nan=equal_nan,
+        check_device=check_device,
+        check_dtype=check_dtype,
+        check_layout=check_layout,
+        check_stride=check_stride,
+        msg=final_msg,
+    )
+
+
+def assert_not_close(
+    actual: torch.Tensor,
+    expected: torch.Tensor,
+    *,
+    allow_subclasses: bool = True,
+    atol: float | None = 1e-8,
+    rtol: float | None = 1e-5,
+    equal_nan: bool = False,
+    check_device: bool = True,
+    check_dtype: bool = True,
+    check_layout: bool = True,
+    check_stride: bool = False,
+    msg: str | None = None,
+) -> None:
+    """
+    Assert that two tensors are NOT close to each other.
+    """
+    with pytest.raises(AssertionError):
+        assert_close(
+            actual,
+            expected=expected,
+            allow_subclasses=allow_subclasses,
+            atol=atol,
+            rtol=rtol,
+            equal_nan=equal_nan,
+            check_device=check_device,
+            check_dtype=check_dtype,
+            check_layout=check_layout,
+            check_stride=check_stride,
+            msg=msg,
+        )

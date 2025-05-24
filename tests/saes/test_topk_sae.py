@@ -8,6 +8,7 @@ from sparsify import SparseCoder, SparseCoderConfig
 from sae_lens.saes.sae import SAE, TrainStepInput
 from sae_lens.saes.topk_sae import TopKSAE, TopKTrainingSAE
 from tests.helpers import (
+    assert_close,
     build_topk_sae_cfg,
     build_topk_sae_training_cfg,
 )
@@ -77,7 +78,7 @@ def test_TopKSAE_save_and_load_from_pretrained(tmp_path: Path) -> None:
 
     # check state_dict matches the original
     for key in sae.state_dict():
-        torch.testing.assert_close(
+        assert_close(
             sae_state_dict[key],
             sae_loaded_state_dict[key],
         )
@@ -85,7 +86,7 @@ def test_TopKSAE_save_and_load_from_pretrained(tmp_path: Path) -> None:
     sae_in = torch.randn(10, cfg.d_in, device=cfg.device)
     sae_out_1 = sae(sae_in)
     sae_out_2 = sae_loaded(sae_in)
-    torch.testing.assert_close(sae_out_1, sae_out_2)
+    assert_close(sae_out_1, sae_out_2)
 
 
 def test_TopKTrainingSAE_save_and_load_inference_sae(tmp_path: Path) -> None:

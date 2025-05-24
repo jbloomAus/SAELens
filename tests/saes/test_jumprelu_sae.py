@@ -7,7 +7,12 @@ from torch import nn
 
 from sae_lens.saes.jumprelu_sae import JumpReLU, JumpReLUSAE, JumpReLUTrainingSAE
 from sae_lens.saes.sae import SAE, TrainStepInput
-from tests.helpers import build_jumprelu_sae_cfg, build_jumprelu_sae_training_cfg
+from tests.helpers import (
+    assert_close,
+    assert_not_close,
+    build_jumprelu_sae_cfg,
+    build_jumprelu_sae_training_cfg,
+)
 
 
 def test_JumpReLUTrainingSAE_encoding():
@@ -31,9 +36,7 @@ def test_JumpReLUTrainingSAE_encoding():
         expected_hidden_pre, threshold, sae.bandwidth
     )
 
-    torch.testing.assert_close(
-        feature_acts, expected_feature_acts, atol=1e-6, rtol=1e-5
-    )
+    assert_close(feature_acts, expected_feature_acts, atol=1e-6, rtol=1e-5)  # type: ignore
 
 
 def test_JumpReLUTrainingSAE_training_forward_pass():
@@ -89,13 +92,11 @@ def test_JumpReLUSAE_initialization():
     assert sae.threshold.shape == (cfg.d_sae,)
 
     # encoder/decoder should be initialized, everything else should be 0s
-    with pytest.raises(AssertionError):
-        torch.testing.assert_close(sae.W_enc, torch.zeros_like(sae.W_enc))
-    with pytest.raises(AssertionError):
-        torch.testing.assert_close(sae.W_dec, torch.zeros_like(sae.W_dec))
-    torch.testing.assert_close(sae.b_dec, torch.zeros_like(sae.b_dec))
-    torch.testing.assert_close(sae.b_enc, torch.zeros_like(sae.b_enc))
-    torch.testing.assert_close(sae.threshold, torch.zeros_like(sae.threshold))
+    assert_not_close(sae.W_enc, torch.zeros_like(sae.W_enc))
+    assert_not_close(sae.W_dec, torch.zeros_like(sae.W_dec))
+    assert_close(sae.b_dec, torch.zeros_like(sae.b_dec))
+    assert_close(sae.b_enc, torch.zeros_like(sae.b_enc))
+    assert_close(sae.threshold, torch.zeros_like(sae.threshold))
 
 
 @pytest.mark.parametrize("use_error_term", [True, False])
@@ -114,22 +115,16 @@ def test_JumpReLUSAE_forward(use_error_term: bool):
     # if we use error term, we should always get the same output as what we put in
     expected_output = sae_in if use_error_term else expected_recons
     out, cache = sae.run_with_cache(sae_in)
-    torch.testing.assert_close(out, expected_output)
-    torch.testing.assert_close(cache["hook_sae_input"], sae_in)
-    torch.testing.assert_close(cache["hook_sae_output"], out)
-    torch.testing.assert_close(cache["hook_sae_recons"], expected_recons)
+    assert_close(out, expected_output)
+    assert_close(cache["hook_sae_input"], sae_in)
+    assert_close(cache["hook_sae_output"], out)
+    assert_close(cache["hook_sae_recons"], expected_recons)
     if use_error_term:
-        torch.testing.assert_close(
-            cache["hook_sae_error"], expected_output - expected_recons
-        )
+        assert_close(cache["hook_sae_error"], expected_output - expected_recons)
 
-    torch.testing.assert_close(
-        cache["hook_sae_acts_pre"], torch.tensor([[0.6, 0.6, 0.6]])
-    )
+    assert_close(cache["hook_sae_acts_pre"], torch.tensor([[0.6, 0.6, 0.6]]))
     # the threshold of 1.0 should block the first latent from firing
-    torch.testing.assert_close(
-        cache["hook_sae_acts_post"], torch.tensor([[0.0, 0.6, 0.6]])
-    )
+    assert_close(cache["hook_sae_acts_post"], torch.tensor([[0.0, 0.6, 0.6]]))
 
 
 def test_JumpReLUTrainingSAE_initialization():
@@ -147,15 +142,11 @@ def test_JumpReLUTrainingSAE_initialization():
     assert sae.dtype == torch.float32
 
     # biases
-    torch.testing.assert_close(
-        sae.b_dec, torch.zeros_like(sae.b_dec), atol=1e-6, rtol=1e-5
-    )
-    torch.testing.assert_close(
-        sae.b_enc, torch.zeros_like(sae.b_enc), atol=1e-6, rtol=1e-5
-    )
+    assert_close(sae.b_dec, torch.zeros_like(sae.b_dec), atol=1e-6, rtol=1e-5)
+    assert_close(sae.b_enc, torch.zeros_like(sae.b_enc), atol=1e-6, rtol=1e-5)
 
     # check if the decoder weight norm is 0.1 by default
-    torch.testing.assert_close(
+    assert_close(
         sae.W_dec.norm(dim=1),
         0.1 * torch.ones_like(sae.W_dec.norm(dim=1)),
         atol=1e-6,
@@ -163,7 +154,7 @@ def test_JumpReLUTrainingSAE_initialization():
     )
 
     #  Default currently should be tranpose initialization
-    torch.testing.assert_close(sae.W_enc, sae.W_dec.T, atol=1e-6, rtol=1e-5)
+    assert_close(sae.W_enc, sae.W_dec.T, atol=1e-6, rtol=1e-5)
 
 
 def test_JumpReLUTrainingSAE_save_and_load_inference_sae(tmp_path: Path) -> None:
