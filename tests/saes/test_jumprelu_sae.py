@@ -36,7 +36,7 @@ def test_JumpReLUTrainingSAE_encoding():
         expected_hidden_pre, threshold, sae.bandwidth
     )
 
-    assert_close(feature_acts, expected_feature_acts, atol=1e-6, rtol=1e-5)  # type: ignore
+    assert_close(feature_acts, expected_feature_acts, atol=1e-6)  # type: ignore
 
 
 def test_JumpReLUTrainingSAE_training_forward_pass():
@@ -142,19 +142,18 @@ def test_JumpReLUTrainingSAE_initialization():
     assert sae.dtype == torch.float32
 
     # biases
-    assert_close(sae.b_dec, torch.zeros_like(sae.b_dec), atol=1e-6, rtol=1e-5)
-    assert_close(sae.b_enc, torch.zeros_like(sae.b_enc), atol=1e-6, rtol=1e-5)
+    assert_close(sae.b_dec, torch.zeros_like(sae.b_dec), atol=1e-6)
+    assert_close(sae.b_enc, torch.zeros_like(sae.b_enc), atol=1e-6)
 
     # check if the decoder weight norm is 0.1 by default
     assert_close(
         sae.W_dec.norm(dim=1),
         0.1 * torch.ones_like(sae.W_dec.norm(dim=1)),
         atol=1e-6,
-        rtol=1e-5,
     )
 
     #  Default currently should be tranpose initialization
-    assert_close(sae.W_enc, sae.W_dec.T, atol=1e-6, rtol=1e-5)
+    assert_close(sae.W_enc, sae.W_dec.T, atol=1e-6)
 
 
 def test_JumpReLUTrainingSAE_save_and_load_inference_sae(tmp_path: Path) -> None:

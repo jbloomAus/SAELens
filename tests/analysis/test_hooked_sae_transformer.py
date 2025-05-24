@@ -450,7 +450,7 @@ def test_model_with_use_error_term_saes_matches_original_model(
     assert len(model.acts_to_saes) == 1
     logits_with_saes = model(prompt)
     model.reset_saes()
-    assert_close(original_logits, logits_with_saes, atol=1e-4, rtol=1e-5)
+    assert_close(original_logits, logits_with_saes, atol=1e-4)
 
 
 def test_add_sae_with_use_error_term(model: HookedSAETransformer, hooked_sae: SAE):
@@ -542,7 +542,7 @@ def test_add_sae_with_use_error_term_true(
     output_with_sae = get_logits(model(prompt))
 
     # Compare outputs
-    assert_close(output_without_sae, output_with_sae, atol=1e-4, rtol=1e-5)
+    assert_close(output_without_sae, output_with_sae, atol=1e-4)
 
     # Clean up
     model.reset_saes()
@@ -562,7 +562,7 @@ def test_run_with_saes_use_error_term_true(
     )
 
     # Compare outputs
-    assert_close(output_without_sae, output_with_sae, atol=1e-4, rtol=1e-5)
+    assert_close(output_without_sae, output_with_sae, atol=1e-4)
 
 
 def test_run_with_cache_with_saes_use_error_term_true(
@@ -581,7 +581,7 @@ def test_run_with_cache_with_saes_use_error_term_true(
     output_with_sae = get_logits(output_with_sae)
 
     # Compare outputs
-    assert_close(output_without_sae, output_with_sae, atol=1e-4, rtol=1e-5)
+    assert_close(output_without_sae, output_with_sae, atol=1e-4)
 
     # Verify that the cache contains the SAE activations
     assert hooked_sae.cfg.metadata.hook_name + ".hook_sae_acts_post" in cache_with_sae
@@ -591,7 +591,6 @@ def test_run_with_cache_with_saes_use_error_term_true(
         cache_without_sae[hooked_sae.cfg.metadata.hook_name],
         cache_with_sae[hooked_sae.cfg.metadata.hook_name + ".hook_sae_output"],
         atol=1e-5,
-        rtol=1e-5,
     )
 
 
@@ -608,7 +607,7 @@ def test_add_sae_with_use_error_term_false(
     output_with_sae = get_logits(model(prompt))
 
     # Compare outputs - they should be different
-    assert_not_close(output_without_sae, output_with_sae, atol=1e-5, rtol=1e-5)
+    assert_not_close(output_without_sae, output_with_sae, atol=1e-5)
 
     # Clean up
     model.reset_saes()
@@ -628,7 +627,7 @@ def test_run_with_saes_use_error_term_false(
     )
 
     # Compare outputs - they should be different
-    assert_not_close(output_without_sae, output_with_sae, atol=1e-4, rtol=1e-5)
+    assert_not_close(output_without_sae, output_with_sae, atol=1e-4)
 
 
 def test_run_with_cache_with_saes_use_error_term_false(
@@ -647,7 +646,7 @@ def test_run_with_cache_with_saes_use_error_term_false(
     output_with_sae = get_logits(output_with_sae)
 
     # Compare outputs - they should be different
-    assert_not_close(output_without_sae, output_with_sae, atol=1e-4, rtol=1e-5)
+    assert_not_close(output_without_sae, output_with_sae, atol=1e-4)
 
     # Verify that the cache contains the SAE activations
     assert hooked_sae.cfg.metadata.hook_name + ".hook_sae_acts_post" in cache_with_sae
@@ -657,7 +656,6 @@ def test_run_with_cache_with_saes_use_error_term_false(
         cache_without_sae[hooked_sae.cfg.metadata.hook_name],
         cache_with_sae[hooked_sae.cfg.metadata.hook_name + ".hook_sae_output"],
         atol=1e-5,
-        rtol=1e-5,
     )
 
 

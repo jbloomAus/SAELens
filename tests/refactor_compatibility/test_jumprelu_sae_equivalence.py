@@ -147,7 +147,6 @@ def test_jumprelu_inference_equivalence(use_error_term: bool):  # Added type
         old_out,
         new_out,
         atol=1e-5,
-        rtol=1e-5,
         msg="Outputs differ between old and new implementations.",
     )
 
@@ -204,7 +203,6 @@ def test_jumprelu_fold_equivalence(fold_fn):  # type: ignore
         old_out,
         new_out,
         atol=1e-5,
-        rtol=1e-5,
         msg=f"{fold_fn} mismatch between old and new",
     )
 
@@ -214,7 +212,6 @@ def test_jumprelu_fold_equivalence(fold_fn):  # type: ignore
             old_params[k],
             new_params[k],
             atol=1e-5,
-            rtol=1e-5,
             msg=f"Parameter {k} differs after {fold_fn}",
         )
 
@@ -244,7 +241,6 @@ def test_jumprelu_run_with_cache_equivalence():  # type: ignore
         old_out,
         new_out,
         atol=1e-5,
-        rtol=1e-5,
         msg="Output values differ.",
     )
 
@@ -265,7 +261,6 @@ def test_jumprelu_run_with_cache_equivalence():  # type: ignore
             old_val,
             new_val,
             atol=1e-5,
-            rtol=1e-5,
             msg=f"Cache values for key '{key}' differ.",
         )
 
@@ -391,7 +386,7 @@ def test_jumprelu_training_equivalence():  # type: ignore # Kept ignore as retur
     ).all(), "New JumpReLU training out is not finite."
 
     # Check if training forward pass is equivalent
-    assert_close(old_out.sae_out, new_out.sae_out, atol=1e-5, rtol=1e-5)
+    assert_close(old_out.sae_out, new_out.sae_out, atol=1e-5)
 
     # Check that we do have MSE and L0 losses
     assert "mse_loss" in old_out.losses
@@ -408,7 +403,6 @@ def test_jumprelu_training_equivalence():  # type: ignore # Kept ignore as retur
         old_out.losses["mse_loss"],  # type: ignore
         new_out.losses["mse_loss"],
         atol=1e-5,
-        rtol=1e-5,
     )
-    assert_close(old_l0_loss, new_l0_loss, atol=1e-5, rtol=1e-5)
-    assert_close(old_out.loss, new_out.loss, atol=1e-5, rtol=1e-5)
+    assert_close(old_l0_loss, new_l0_loss, atol=1e-5)
+    assert_close(old_out.loss, new_out.loss, atol=1e-5)

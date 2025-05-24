@@ -529,13 +529,12 @@ def test_sae_forward_pass_works_with_error_term_and_hooks(architecture: str):
     with sae.hooks(fwd_hooks=[("hook_sae_acts_post", ablate_hooked_sae)]):
         ablated_out, ablated_cache = sae.run_with_cache(sae_in)
 
-    assert_not_close(original_out, ablated_out, rtol=1e-2, atol=1e-8)
+    assert_not_close(original_out, ablated_out, rtol=1e-2)
     assert torch.all(ablated_cache["hook_sae_acts_post"] == 20)
     assert_close(
         original_cache["hook_sae_error"],
         ablated_cache["hook_sae_error"],
         rtol=1e-4,
-        atol=1e-8,
     )
 
 
@@ -641,19 +640,18 @@ def test_StandardTrainingSAE_initialization_standard():
     assert sae.dtype == torch.float32
 
     # biases
-    assert_close(sae.b_dec, torch.zeros_like(sae.b_dec), atol=1e-6, rtol=1e-5)
-    assert_close(sae.b_enc, torch.zeros_like(sae.b_enc), atol=1e-6, rtol=1e-5)
+    assert_close(sae.b_dec, torch.zeros_like(sae.b_dec), atol=1e-6)
+    assert_close(sae.b_enc, torch.zeros_like(sae.b_enc), atol=1e-6)
 
     # check if the decoder weight norm is 0.1 by default
     assert_close(
         sae.W_dec.norm(dim=1),
         0.1 * torch.ones_like(sae.W_dec.norm(dim=1)),
         atol=1e-6,
-        rtol=1e-5,
     )
 
     #  Default currently should be tranpose initialization
-    assert_close(sae.W_enc, sae.W_dec.T, atol=1e-6, rtol=1e-5)
+    assert_close(sae.W_enc, sae.W_dec.T, atol=1e-6)
 
 
 def test_StandardTrainingSAE_initialization_decoder_norm():
@@ -668,8 +666,8 @@ def test_StandardTrainingSAE_initialization_decoder_norm():
     )
 
     # initialized weights of biases are 0
-    assert_close(sae.b_dec, torch.zeros_like(sae.b_dec), atol=1e-6, rtol=1e-5)
-    assert_close(sae.b_enc, torch.zeros_like(sae.b_enc), atol=1e-6, rtol=1e-5)
+    assert_close(sae.b_dec, torch.zeros_like(sae.b_dec), atol=1e-6)
+    assert_close(sae.b_enc, torch.zeros_like(sae.b_enc), atol=1e-6)
 
 
 def test_StandardTrainingSAE_initialization_enc_dec_T_no_unit_norm():
@@ -680,11 +678,11 @@ def test_StandardTrainingSAE_initialization_enc_dec_T_no_unit_norm():
 
     sae = StandardTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
 
-    assert_close(sae.W_dec, sae.W_enc.T, atol=1e-6, rtol=1e-5)
+    assert_close(sae.W_dec, sae.W_enc.T, atol=1e-6)
 
     # initialized weights of biases are 0
-    assert_close(sae.b_dec, torch.zeros_like(sae.b_dec), atol=1e-6, rtol=1e-5)
-    assert_close(sae.b_enc, torch.zeros_like(sae.b_enc), atol=1e-6, rtol=1e-5)
+    assert_close(sae.b_dec, torch.zeros_like(sae.b_dec), atol=1e-6)
+    assert_close(sae.b_enc, torch.zeros_like(sae.b_enc), atol=1e-6)
 
 
 def test_StandardSAE_constant_norm_rescale():

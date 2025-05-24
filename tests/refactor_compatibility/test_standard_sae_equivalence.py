@@ -164,7 +164,6 @@ def test_standard_sae_inference_equivalence():
         old_err_out,
         new_err_out,
         atol=1e-5,
-        rtol=1e-5,
         msg="Mismatch in old/new output with error term (standard arch)",
     )
 
@@ -208,7 +207,6 @@ def test_standard_sae_fold_equivalence(fold_fn: str):
             old_params[k],
             new_params[k],
             atol=1e-5,
-            rtol=1e-5,
             msg=f"Parameter {k} differs after {fold_fn}",
         )
 
@@ -221,7 +219,6 @@ def test_standard_sae_fold_equivalence(fold_fn: str):
         old_out,
         new_out,
         atol=1e-5,
-        rtol=1e-5,
         msg=f"{fold_fn} mismatch between old and new",
     )
 
@@ -252,7 +249,6 @@ def test_standard_sae_run_hooks_equivalence():
         old_out,
         new_out,
         atol=1e-5,
-        rtol=1e-5,
         msg="Output values differ.",
     )
 
@@ -264,7 +260,6 @@ def test_standard_sae_run_hooks_equivalence():
             old_cache[old_key],
             new_cache[new_key],
             atol=1e-5,
-            rtol=1e-5,
             msg="Cache values differ.",
         )
 
@@ -566,7 +561,6 @@ def test_standard_sae_forward_equivalence():
         old_out,
         new_out,
         atol=1e-5,
-        rtol=1e-5,
         msg="Standard forward outputs differ numerically.",
     )
 
@@ -624,7 +618,6 @@ def test_sae_hook_z_forward_equivalence():
             old_out,
             new_out,
             atol=1e-5,
-            rtol=1e-5,
             msg="Hook_z forward outputs differ numerically.",
         )
 
@@ -803,14 +796,12 @@ def test_standard_sae_training_equivalence():
         old_out.sae_out,
         new_out.sae_out,
         atol=1e-5,
-        rtol=1e-5,
         msg="SAE output differs",
     )
     assert_close(
         old_out.loss,
         new_out.loss,
         atol=1e-5,
-        rtol=1e-5,
         msg="Total loss differs",
     )
 
@@ -830,14 +821,12 @@ def test_standard_sae_training_equivalence():
         old_mse,
         new_mse,
         atol=1e-5,
-        rtol=1e-5,
         msg="MSE loss differs",
     )
     assert_close(
         old_sparsity,
         new_sparsity,
         atol=1e-5,
-        rtol=1e-5,
         msg="Sparsity loss differs",
     )
 
@@ -909,14 +898,12 @@ def test_sae_hook_z_training_equivalence():
         old_out.sae_out,
         new_out.sae_out,
         atol=1e-5,
-        rtol=1e-5,
         msg="Hook_z SAE output differs",
     )
     assert_close(
         old_out.loss,
         new_out.loss,
         atol=1e-5,
-        rtol=1e-5,
         msg="Hook_z total loss differs",
     )
 
@@ -936,14 +923,12 @@ def test_sae_hook_z_training_equivalence():
         old_mse,
         new_mse,
         atol=1e-5,
-        rtol=1e-5,
         msg="Hook_z Sparsity loss differs",
     )
     assert_close(
         old_sparsity,
         new_sparsity,
         atol=1e-5,
-        rtol=1e-5,
         msg="Hook_z Sparsity loss differs",
     )
 

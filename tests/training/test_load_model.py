@@ -91,7 +91,6 @@ def test_HookedProxyLM_gives_same_cached_states_as_tlens_implementation(
             hf_cache[f"transformer.h.{i}"],
             tlens_cache[f"blocks.{i}.hook_resid_post"],
             atol=1e-3,
-            rtol=1e-5,
         )
 
 
@@ -107,8 +106,8 @@ def test_HookedProxyLM_forward_gives_same_output_as_tlens(
     # Seems like tlens removes the means before softmaxing
     hf_logits_normed = hf_output[0] - hf_output[0].mean(dim=-1, keepdim=True)
 
-    assert_close(tlens_output[0], hf_logits_normed, atol=1e-3, rtol=1e-5)
-    assert_close(tlens_output[1], hf_output[1], atol=1e-3, rtol=1e-5)
+    assert_close(tlens_output[0], hf_logits_normed, atol=1e-3)
+    assert_close(tlens_output[1], hf_output[1], atol=1e-3)
 
 
 def test_extract_logits_from_output_works_with_multiple_return_types():

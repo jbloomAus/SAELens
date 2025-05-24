@@ -144,7 +144,6 @@ def test_topk_sae_inference_equivalence():
         old_out,
         new_out,
         atol=1e-5,
-        rtol=1e-5,
         msg="Outputs differ between old and new implementations.",
     )
 
@@ -171,7 +170,6 @@ def test_topk_sae_inference_equivalence():
         old_err_out,
         new_err_out,
         atol=1e-5,
-        rtol=1e-5,
         msg="Error term outputs differ between old and new implementations.",
     )
 
@@ -202,7 +200,6 @@ def test_topk_sae_run_with_cache_equivalence():  # type: ignore
         old_out,
         new_out,
         atol=1e-5,
-        rtol=1e-5,
         msg="Output values differ.",
     )
 
@@ -214,7 +211,6 @@ def test_topk_sae_run_with_cache_equivalence():  # type: ignore
             old_cache[old_key],
             new_cache[new_key],
             atol=1e-5,
-            rtol=1e-5,
             msg=f"Cache values differ for key: {old_key}",
         )
 
@@ -307,27 +303,23 @@ def test_topk_sae_training_equivalence():
         old_out.sae_out,
         new_out.sae_out,
         atol=1e-5,
-        rtol=1e-5,
         msg="Training sae_out differs between old and new implementations.",
     )
     assert_close(
         old_out.loss,
         new_out.loss,
         atol=1e-5,
-        rtol=1e-5,
         msg="Training loss differs between old and new implementations.",
     )
     assert_close(
         old_out.feature_acts,
         new_out.feature_acts,
         atol=1e-5,
-        rtol=1e-5,
         msg="Training feature_acts differ between old and new implementations.",
     )
     assert_close(
         old_out.hidden_pre,
         new_out.hidden_pre,
         atol=1e-5,
-        rtol=1e-5,
         msg="Training hidden_pre differ between old and new implementations.",
     )

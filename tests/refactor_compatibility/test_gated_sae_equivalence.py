@@ -146,7 +146,6 @@ def test_gated_inference_equivalence(use_error_term):  # type: ignore
         old_out,
         new_out,
         atol=1e-5,
-        rtol=1e-5,
         msg="Outputs differ between old and new implementations.",
     )
 
@@ -201,7 +200,6 @@ def test_gated_fold_equivalence(fold_fn):  # type: ignore
         old_out,
         new_out,
         atol=1e-5,
-        rtol=1e-5,
         msg=f"{fold_fn} produces different results between old and new implementations",
     )
 
@@ -211,7 +209,6 @@ def test_gated_fold_equivalence(fold_fn):  # type: ignore
             old_params[k],
             new_params[k],
             atol=1e-5,
-            rtol=1e-5,
             msg=f"Parameter {k} differs after {fold_fn}",
         )
 
@@ -242,7 +239,6 @@ def test_gated_run_with_cache_equivalence():  # type: ignore
         old_out,
         new_out,
         atol=1e-5,
-        rtol=1e-5,
         msg="Output values differ.",
     )
 
@@ -253,7 +249,6 @@ def test_gated_run_with_cache_equivalence():  # type: ignore
         assert_close(
             old_cache[old_key],
             new_cache[new_key],
-            rtol=1e-5,
             atol=1e-5,
             msg="Cache values differ.",
         )
@@ -396,13 +391,11 @@ def test_gated_training_equivalence():  # type: ignore
         old_out.sae_out,
         new_out.sae_out,
         atol=1e-5,
-        rtol=1e-5,
         msg="Output differs between old and new Gated implementation",
     )
     assert_close(
         old_out.loss,
         new_out.loss,
         atol=1e-5,
-        rtol=1e-5,
         msg="Loss differs between old and new Gated implementation",
     )
