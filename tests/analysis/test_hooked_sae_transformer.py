@@ -10,6 +10,7 @@ from transformer_lens.HookedTransformer import Loss
 from sae_lens.analysis.hooked_sae_transformer import HookedSAETransformer, get_deep_attr
 from sae_lens.saes.sae import SAE, SAEMetadata
 from sae_lens.saes.standard_sae import StandardSAE, StandardSAEConfig
+from tests.helpers import assert_close, assert_not_close
 
 MODEL = "solu-1l"
 prompt = "Hello World!"
@@ -117,7 +118,7 @@ def test_model_with_no_saes_matches_original_model(
     """Verifies that HookedSAETransformer behaves like a normal HookedTransformer model when no SAEs are attached."""
     assert len(model.acts_to_saes) == 0  # type: ignore
     logits = model(prompt)
-    torch.testing.assert_close(original_logits, logits)
+    assert_close(original_logits, logits)
 
 
 def test_model_with_saes_does_not_match_original_model(
@@ -130,8 +131,7 @@ def test_model_with_saes_does_not_match_original_model(
     model.add_sae(hooked_sae)  # type: ignore
     assert len(model.acts_to_saes) == 1  # type: ignore
     logits_with_saes = model(prompt)
-    with pytest.raises(AssertionError):
-        torch.testing.assert_close(original_logits, logits_with_saes)
+    assert_not_close(original_logits, logits_with_saes)
     model.reset_saes()
 
 
@@ -331,8 +331,7 @@ def test_run_with_saes(
     ]
     assert len(model.acts_to_saes) == 0
     logits_with_saes = model.run_with_saes(prompt, saes=list_of_hooked_saes)
-    with pytest.raises(AssertionError):
-        torch.testing.assert_close(logits_with_saes, original_logits)
+    assert_not_close(logits_with_saes, original_logits)
     assert len(model.acts_to_saes) == 0
     for act_name in act_names:
         assert isinstance(get_deep_attr(model, act_name), HookPoint)
@@ -352,8 +351,7 @@ def test_run_with_cache(
         model.add_sae(hooked_sae)
     assert len(model.acts_to_saes) == len(list_of_hooked_saes)
     logits_with_saes, cache = model.run_with_cache(prompt)
-    with pytest.raises(AssertionError):
-        torch.testing.assert_close(logits_with_saes, original_logits)
+    assert_not_close(logits_with_saes, original_logits)
     assert isinstance(cache, ActivationCache)
     for act_name, hooked_sae in zip(act_names, list_of_hooked_saes):
         assert act_name + ".hook_sae_acts_post" in cache
@@ -375,8 +373,7 @@ def test_run_with_cache_with_saes(
     logits_with_saes, cache = model.run_with_cache_with_saes(
         prompt, saes=list_of_hooked_saes
     )
-    with pytest.raises(AssertionError):
-        torch.testing.assert_close(logits_with_saes, original_logits)
+    assert_not_close(logits_with_saes, original_logits)
     assert isinstance(cache, ActivationCache)
 
     assert len(model.acts_to_saes) == 0
@@ -405,8 +402,7 @@ def test_run_with_hooks(
         prompt,
         fwd_hooks=[(act_name + ".hook_sae_acts_post", c.inc) for act_name in act_names],
     )
-    with pytest.raises(AssertionError):
-        torch.testing.assert_close(logits_with_saes, original_logits)
+    assert_not_close(logits_with_saes, original_logits)
 
     for act_name, hooked_sae in zip(act_names, list_of_hooked_saes):
         assert isinstance(get_deep_attr(model, act_name), SAE)
@@ -434,8 +430,7 @@ def test_run_with_hooks_with_saes(
         saes=list_of_hooked_saes,
         fwd_hooks=[(act_name + ".hook_sae_acts_post", c.inc) for act_name in act_names],
     )
-    with pytest.raises(AssertionError):
-        torch.testing.assert_close(logits_with_saes, original_logits)
+    assert_not_close(logits_with_saes, original_logits)
     assert c.count == len(act_names)
 
     assert len(model.acts_to_saes) == 0
@@ -456,7 +451,7 @@ def test_model_with_use_error_term_saes_matches_original_model(
     assert len(model.acts_to_saes) == 1
     logits_with_saes = model(prompt)
     model.reset_saes()
-    torch.testing.assert_close(original_logits, logits_with_saes, atol=1e-4, rtol=1e-5)
+    assert_close(original_logits, logits_with_saes, atol=1e-4, rtol=1e-5)
 
 
 def test_add_sae_with_use_error_term(model: HookedSAETransformer, hooked_sae: SAE):
@@ -548,9 +543,7 @@ def test_add_sae_with_use_error_term_true(
     output_with_sae = get_logits(model(prompt))
 
     # Compare outputs
-    torch.testing.assert_close(
-        output_without_sae, output_with_sae, atol=1e-4, rtol=1e-5
-    )
+    assert_close(output_without_sae, output_with_sae, atol=1e-4, rtol=1e-5)
 
     # Clean up
     model.reset_saes()
@@ -570,9 +563,7 @@ def test_run_with_saes_use_error_term_true(
     )
 
     # Compare outputs
-    torch.testing.assert_close(
-        output_without_sae, output_with_sae, atol=1e-4, rtol=1e-5
-    )
+    assert_close(output_without_sae, output_with_sae, atol=1e-4, rtol=1e-5)
 
 
 def test_run_with_cache_with_saes_use_error_term_true(
@@ -591,15 +582,13 @@ def test_run_with_cache_with_saes_use_error_term_true(
     output_with_sae = get_logits(output_with_sae)
 
     # Compare outputs
-    torch.testing.assert_close(
-        output_without_sae, output_with_sae, atol=1e-4, rtol=1e-5
-    )
+    assert_close(output_without_sae, output_with_sae, atol=1e-4, rtol=1e-5)
 
     # Verify that the cache contains the SAE activations
     assert hooked_sae.cfg.metadata.hook_name + ".hook_sae_acts_post" in cache_with_sae
 
     # Verify that the activations at the SAE hook point are the same in both caches
-    torch.testing.assert_close(
+    assert_close(
         cache_without_sae[hooked_sae.cfg.metadata.hook_name],
         cache_with_sae[hooked_sae.cfg.metadata.hook_name + ".hook_sae_output"],
         atol=1e-5,
@@ -620,10 +609,7 @@ def test_add_sae_with_use_error_term_false(
     output_with_sae = get_logits(model(prompt))
 
     # Compare outputs - they should be different
-    with pytest.raises(AssertionError):
-        torch.testing.assert_close(
-            output_without_sae, output_with_sae, atol=1e-5, rtol=1e-5
-        )
+    assert_not_close(output_without_sae, output_with_sae, atol=1e-5, rtol=1e-5)
 
     # Clean up
     model.reset_saes()
@@ -643,10 +629,7 @@ def test_run_with_saes_use_error_term_false(
     )
 
     # Compare outputs - they should be different
-    with pytest.raises(AssertionError):
-        torch.testing.assert_close(
-            output_without_sae, output_with_sae, atol=1e-4, rtol=1e-5
-        )
+    assert_not_close(output_without_sae, output_with_sae, atol=1e-4, rtol=1e-5)
 
 
 def test_run_with_cache_with_saes_use_error_term_false(
@@ -665,19 +648,15 @@ def test_run_with_cache_with_saes_use_error_term_false(
     output_with_sae = get_logits(output_with_sae)
 
     # Compare outputs - they should be different
-    with pytest.raises(AssertionError):
-        torch.testing.assert_close(
-            output_without_sae, output_with_sae, atol=1e-4, rtol=1e-5
-        )
+    assert_not_close(output_without_sae, output_with_sae, atol=1e-4, rtol=1e-5)
 
     # Verify that the cache contains the SAE activations
     assert hooked_sae.cfg.metadata.hook_name + ".hook_sae_acts_post" in cache_with_sae
 
     # Verify that the activations at the SAE hook point are different in both caches
-    with pytest.raises(AssertionError):
-        torch.testing.assert_close(
-            cache_without_sae[hooked_sae.cfg.metadata.hook_name],
-            cache_with_sae[hooked_sae.cfg.metadata.hook_name + ".hook_sae_output"],
-            atol=1e-5,
-            rtol=1e-5,
-        )
+    assert_not_close(
+        cache_without_sae[hooked_sae.cfg.metadata.hook_name],
+        cache_with_sae[hooked_sae.cfg.metadata.hook_name + ".hook_sae_output"],
+        atol=1e-5,
+        rtol=1e-5,
+    )
