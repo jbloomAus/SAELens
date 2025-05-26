@@ -3,15 +3,20 @@ on:
   push:
     branches:
       - main
+      - alpha
     paths-ignore:
       - '.vscode/**'
       - '.gitignore'
   pull_request:
     branches:
       - main
+      - alpha
     paths-ignore:
       - '.vscode/**'
       - '.gitignore'
+  release:
+    types: [published]
+
 jobs:
   publish:
     runs-on: ubuntu-latest
@@ -22,6 +27,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Important for mike to work properly
       - name: Install Python
         uses: actions/setup-python@v5
         with:
@@ -59,8 +66,37 @@ jobs:
         run: poetry install --no-interaction
       - name: Set Python Path
         run: echo "PYTHONPATH=$PYTHONPATH:$PWD" >> $GITHUB_ENV
-      - name: Deploy website
+      - name: Configure Git
+        if: github.event_name != 'pull_request'
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email github-actions[bot]@users.noreply.github.com
+      - name: Deploy release docs
+        if: github.event_name == 'release'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          poetry run mike deploy --push --update-aliases $VERSION
+          
+          # If stable release (no pre-release identifiers), also update latest
+          if [[ ! "$VERSION" =~ (alpha|beta|rc) ]]; then
+            poetry run mike deploy --push --update-aliases latest $VERSION
+            poetry run mike set-default --push latest
+          fi
+      - name: Deploy main branch docs
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: poetry run mkdocs gh-deploy --force
+        run: |
+          poetry run mike deploy --push --update-aliases dev main
+          # Only set as default if no stable release exists
+          if ! poetry run mike list | grep -q "latest"; then
+            poetry run mike set-default --push dev
+          fi
+      - name: Deploy alpha branch docs
+        if: github.event_name == 'push' && github.ref == 'refs/heads/alpha'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          poetry run mike deploy --push --update-aliases pre-release alpha
