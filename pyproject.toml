@@ -59,6 +59,7 @@ mkdocstrings-python = "^1.10.9"
 tabulate = "^0.9.0"
 ruff = "^0.7.4"
 eai-sparsify = "^1.1.1"
+mike = "^2.0.0"
 
 [tool.poetry.extras]
 mamba = ["mamba-lens"]
