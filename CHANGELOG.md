@@ -2,6 +2,31 @@
 
 
 
+## v5.10.4 (2025-05-28)
+
+### Chore
+
+* chore: improving mkdocs setup with mike (#487) ([`d4f7aea`](https://github.com/jbloomAus/SAELens/commit/d4f7aeaee2d97310807d22799eb62dcc57dd4bb1))
+
+* chore: versioned docs (#485) ([`e64e411`](https://github.com/jbloomAus/SAELens/commit/e64e41114c4aa3ebe6d3cb7c3784ed72cb9dae25))
+
+* chore: Remove unused files (#481)
+
+* removes make_hf_repo.sh
+
+* removes eval_metrics_resid_mid_oai.csv
+
+* removes check_open_ai_sae_metrics.ipynb
+
+* removes content dir
+
+* removes unused files in docs dir ([`3bc1285`](https://github.com/jbloomAus/SAELens/commit/3bc128567dc0bbb7c1305f967b31ad906f055c58))
+
+### Fix
+
+* fix: adding a link to the pre-release docs from main docs page (#488) ([`ed47131`](https://github.com/jbloomAus/SAELens/commit/ed4713153cf5f586f97c2be528f72a46c33841aa))
+
+
 ## v5.10.3 (2025-05-19)
 
 ### Fix
