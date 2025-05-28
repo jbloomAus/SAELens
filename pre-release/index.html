@@ -687,7 +687,7 @@
 <p><strong>Please note these docs are in beta. We intend to make them cleaner and more comprehensive over time.</strong></p>
 <h2 id="quick-start">Quick Start</h2>
 <h3 id="installation">Installation</h3>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip install sae-lens
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip install --pre sae-lens
 </span></code></pre></div>
 <h3 id="loading-sparse-autoencoders-from-huggingface">Loading Sparse Autoencoders from Huggingface</h3>
 <p>To load a pretrained sparse autoencoder, you can use <code>SAE.from_pretrained()</code> as below. Note that we return the <em>original cfg dict</em> from the huggingface repo so that it's easy to debug older configs that are being handled when we import an SAE. We also return a sparsity tensor if it is present in the repo. For an example repo structure, see <a href="https://huggingface.co/jbloom/Gemma-2b-Residual-Stream-SAEs">here</a>.</p>
