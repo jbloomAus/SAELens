@@ -2,6 +2,101 @@
 
 
 
+## v6.0.0-rc.2 (2025-05-28)
+
+### Chore
+
+* chore: versioned docs (#485) ([`6625828`](https://github.com/jbloomAus/SAELens/commit/6625828f594b79c972216af9fe38482d98904ac2))
+
+### Feature
+
+* feat: arch configs ([`b6b77f3`](https://github.com/jbloomAus/SAELens/commit/b6b77f342a6633c63d604ba2a370004cfc6037cf))
+
+### Unknown
+
+* Refactor arch configs (#468)
+
+* wip: refactoring architecture configs
+
+* move to separate config classes per architecture
+
+* wip: fixing tests
+
+* working on getting more tests passing
+
+* fixing more tests / typing issues
+
+* adding support for converting from old config formats
+
+* fixing more tests
+
+* fixing more tests
+
+* fixing more tests and typings
+
+* fixing more tests
+
+* fixing linting
+
+* ensuring runner config is also uploaded if available
+
+* fix init to match old heuristic init
+
+* Update sae_lens/config.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update sae_lens/config.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update sae_lens/training/sae_trainer.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update tests/refactor_compatibility/test_jumprelu_sae_equivalence.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update tests/refactor_compatibility/test_jumprelu_sae_equivalence.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update sae_lens/util.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* changes from CR
+
+* fixing formatting
+
+* Update sae_lens/config.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* changes from CR
+
+* fixing registry.py naming
+
+* Update sae_lens/saes/sae.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* rename meta -&gt; metadata
+
+* fixing tests
+
+* updating docs
+
+* fixing docs
+
+* fixing tests
+
+---------
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt; ([`5063a29`](https://github.com/jbloomAus/SAELens/commit/5063a29a4d9c712e51b414966b3fb5ce1f425278))
+
+
 ## v6.0.0-rc.1 (2025-04-26)
 
 ### Breaking
