@@ -1,3 +1,8 @@
+<!-- prettier-ignore-start -->
+!!! tip "Pre-Release Available"
+    SAELens 6.0.0 pre-release is available with exciting new features. [View documentation →](https://jbloomaus.github.io/SAELens/pre-release/)
+<!-- prettier-ignore-end -->
+
 <img width="1308" alt="Screenshot 2024-03-21 at 3 08 28 pm" src="https://github.com/jbloomAus/mats_sae_training/assets/69127271/209012ec-a779-4036-b4be-7b7739ea87f6">
 
 # SAELens
