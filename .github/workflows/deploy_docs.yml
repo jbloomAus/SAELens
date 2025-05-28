@@ -16,12 +16,19 @@ on:
       - '.gitignore'
   release:
     types: [published]
+  workflow_run:
+    workflows: ["build"]
+    types:
+      - completed
+    branches:
+      - main
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: read
     env:
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
     steps:
@@ -71,17 +78,48 @@ jobs:
         run: |
           git config user.name github-actions[bot]
           git config user.email github-actions[bot]@users.noreply.github.com
+      - name: Check if release was created
+        if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'
+        id: check_release
+        run: |
+          # Download the workflow run artifacts to get the outputs
+          echo "Checking workflow run outputs..."
+          # The workflow_run event doesn't directly expose job outputs, so we need to check via API
+          WORKFLOW_RUN_ID="${{ github.event.workflow_run.id }}"
+          
+          # Get the workflow run jobs
+          JOBS_RESPONSE=$(gh api repos/${{ github.repository }}/actions/runs/$WORKFLOW_RUN_ID/jobs)
+          
+          # Check if the release job ran and completed successfully
+          RELEASE_JOB_CONCLUSION=$(echo "$JOBS_RESPONSE" | jq -r '.jobs[] | select(.name == "release") | .conclusion')
+          
+          if [ "$RELEASE_JOB_CONCLUSION" = "success" ]; then
+            echo "release_job_succeeded=true" >> $GITHUB_OUTPUT
+            echo "Release job succeeded"
+          else
+            echo "release_job_succeeded=false" >> $GITHUB_OUTPUT
+            echo "Release job did not succeed or did not run"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Deploy release docs
-        if: github.event_name == 'release'
+        if: github.event_name == 'release' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && steps.check_release.outputs.release_job_succeeded == 'true')
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VERSION=${GITHUB_REF#refs/tags/}
-          poetry run mike deploy --push --update-aliases $VERSION
+          # Get the release tag
+          if [ "${{ github.event_name }}" = "release" ]; then
+            RELEASE_TAG=${GITHUB_REF#refs/tags/}
+          else
+            # Get the latest tag when triggered by workflow_run
+            RELEASE_TAG=$(git describe --tags --abbrev=0)
+          fi
+          
+          poetry run mike deploy --push --update-aliases $RELEASE_TAG
           
           # If stable release (no pre-release identifiers), also update latest
-          if [[ ! "$VERSION" =~ (alpha|beta|rc) ]]; then
-            poetry run mike deploy --push --update-aliases latest $VERSION
+          if [[ ! "$RELEASE_TAG" =~ (alpha|beta|rc) ]]; then
+            poetry run mike deploy --push --update-aliases latest $RELEASE_TAG
             poetry run mike set-default --push latest
           fi
       - name: Deploy main branch docs
