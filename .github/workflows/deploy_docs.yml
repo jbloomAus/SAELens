@@ -115,11 +115,12 @@ jobs:
             RELEASE_TAG=$(git describe --tags --abbrev=0)
           fi
           
-          poetry run mike deploy --push --update-aliases $RELEASE_TAG
+          # Deploy the version (this will overwrite if it exists)
+          poetry run mike deploy --push $RELEASE_TAG
           
-          # If stable release (no pre-release identifiers), also update latest
+          # If stable release (no pre-release identifiers), also update latest alias
           if [[ ! "$RELEASE_TAG" =~ (alpha|beta|rc) ]]; then
-            poetry run mike deploy --push --update-aliases latest $RELEASE_TAG
+            poetry run mike alias --push $RELEASE_TAG latest
             poetry run mike set-default --push latest
           fi
       - name: Deploy main branch docs
