@@ -2,6 +2,13 @@
 
 
 
+## v5.10.5 (2025-05-28)
+
+### Fix
+
+* fix: running doc build on release (#489) ([`13e0647`](https://github.com/jbloomAus/SAELens/commit/13e064737ee4ada0cb0b7973b71ea2ead3398595))
+
+
 ## v5.10.4 (2025-05-28)
 
 ### Chore
