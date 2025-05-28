@@ -21,7 +21,7 @@ The SAELens training codebase exists to help researchers:
 ### Installation
 
 ```
-pip install sae-lens
+pip install --pre sae-lens
 ```
 
 ### Loading Sparse Autoencoders from Huggingface
