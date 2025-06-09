@@ -2,6 +2,17 @@
 
 
 
+## v5.10.6 (2025-06-09)
+
+### Chore
+
+* chore: fix mike alias error ([`0c42989`](https://github.com/jbloomAus/SAELens/commit/0c4298907309a3277960150669c482deeac0a11e))
+
+### Fix
+
+* fix: links ([`5f04566`](https://github.com/jbloomAus/SAELens/commit/5f04566471607ccd2a361b0bb8767da62e626495))
+
+
 ## v5.10.5 (2025-05-28)
 
 ### Fix
