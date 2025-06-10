@@ -141,6 +141,8 @@ class ActivationsStore:
             dataset_trust_remote_code=cfg.dataset_trust_remote_code,
             seqpos_slice=cfg.seqpos_slice,
             exclude_special_tokens=exclude_special_tokens,
+            disable_concat_sequences=cfg.disable_concat_sequences,
+            exclude_bos_between_sequences=cfg.exclude_bos_between_sequences,
         )
 
     @classmethod
@@ -209,6 +211,8 @@ class ActivationsStore:
         dataset_trust_remote_code: bool | None = None,
         seqpos_slice: tuple[int | None, ...] = (None,),
         exclude_special_tokens: torch.Tensor | None = None,
+        disable_concat_sequences: bool = False,
+        exclude_bos_between_sequences: bool = False,
     ):
         self.model = model
         if model_kwargs is None:
@@ -252,6 +256,8 @@ class ActivationsStore:
         self.seqpos_slice = seqpos_slice
         self.training_context_size = len(range(context_size)[slice(*seqpos_slice)])
         self.exclude_special_tokens = exclude_special_tokens
+        self.disable_concat_sequences = disable_concat_sequences
+        self.exclude_bos_between_sequences = exclude_bos_between_sequences
 
         self.n_dataset_processed = 0
 
@@ -361,15 +367,23 @@ class ActivationsStore:
         else:
             tokenizer = getattr(self.model, "tokenizer", None)
             bos_token_id = None if tokenizer is None else tokenizer.bos_token_id
-            yield from concat_and_batch_sequences(
-                tokens_iterator=self._iterate_raw_dataset_tokens(),
-                context_size=self.context_size,
-                begin_batch_token_id=(bos_token_id if self.prepend_bos else None),
-                begin_sequence_token_id=None,
-                sequence_separator_token_id=(
-                    bos_token_id if self.prepend_bos else None
-                ),
-            )
+
+            if self.disable_concat_sequences:
+                for tokens in self._iterate_raw_dataset_tokens():
+                    if len(tokens) >= self.context_size:
+                        yield tokens[: self.context_size]
+            else:
+                sequence_separator_token_id = None
+                if self.prepend_bos and not self.exclude_bos_between_sequences:
+                    sequence_separator_token_id = bos_token_id
+
+                yield from concat_and_batch_sequences(
+                    tokens_iterator=self._iterate_raw_dataset_tokens(),
+                    context_size=self.context_size,
+                    begin_batch_token_id=(bos_token_id if self.prepend_bos else None),
+                    begin_sequence_token_id=None,
+                    sequence_separator_token_id=sequence_separator_token_id,
+                )
 
     def load_cached_activation_dataset(self) -> Dataset | None:
         """

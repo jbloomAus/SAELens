@@ -233,6 +233,8 @@ class LanguageModelSAERunnerConfig(Generic[T_TRAINING_SAE_CONFIG]):
     sae_lens_version: str = field(default_factory=lambda: __version__)
     sae_lens_training_version: str = field(default_factory=lambda: __version__)
     exclude_special_tokens: bool | list[int] = False
+    disable_concat_sequences: bool = False
+    exclude_bos_between_sequences: bool = False
 
     def __post_init__(self):
         if self.use_cached_activations and self.cached_activations_path is None:

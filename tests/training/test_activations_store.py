@@ -809,3 +809,69 @@ def test_filter_buffer_acts_all_filtered():
 
     assert filtered.shape[0] == 0  # Empty tensor returned
     assert filtered.shape[1] == activations.shape[1]  # Feature dimension preserved
+
+
+def test_activations_store_get_batch_tokens_disable_concat_sequences(
+    ts_model: HookedTransformer,
+):
+    cfg = build_runner_cfg(
+        context_size=5,
+        disable_concat_sequences=True,
+        store_batch_size_prompts=2,
+        n_batches_in_buffer=2,
+    )
+
+    dataset = Dataset.from_list(
+        [
+            {"text": "short"},  # this gets ignored
+            {"text": "hello world this is long enough"},
+            {"text": "another longer sequence for testing"},
+        ]
+    )
+
+    activation_store = ActivationsStore.from_config(
+        ts_model, cfg=cfg, override_dataset=dataset
+    )
+
+    batch_tokens = activation_store.get_batch_tokens()
+    assert batch_tokens.shape == (2, cfg.context_size)
+
+    tokenizer = ts_model.tokenizer
+    # get pyright checks to pass
+    assert tokenizer is not None
+
+    expected_tokens_1 = tokenizer.encode("hello world this is long enough")[
+        : cfg.context_size
+    ]
+    expected_tokens_2 = tokenizer.encode("another longer sequence for testing")[
+        : cfg.context_size
+    ]
+
+    assert batch_tokens[0].tolist() == expected_tokens_1
+    assert batch_tokens[1].tolist() == expected_tokens_2
+
+
+def test_activations_store_get_batch_tokens_exclude_bos_between_sequences(
+    ts_model: HookedTransformer,
+):
+    cfg = build_runner_cfg(
+        exclude_bos_between_sequences=True,
+        context_size=8,
+        store_batch_size_prompts=1,
+    )
+
+    dataset = Dataset.from_list([{"text": "hi"}, {"text": "bye"}] * 10)
+
+    activations_store = ActivationsStore.from_config(
+        ts_model, cfg=cfg, override_dataset=dataset
+    )
+    batch_tokens = activations_store.get_batch_tokens()
+
+    tokenizer = ts_model.tokenizer
+    # get pyright checks to pass
+    assert tokenizer is not None
+
+    encoded_text = tokenizer.encode("hi")
+
+    # there's no BOS between sequences, where it would usually be
+    assert batch_tokens[0, 1 + len(encoded_text)] != tokenizer.bos_token_id
