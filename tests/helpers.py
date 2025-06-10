@@ -42,6 +42,8 @@ class LanguageModelSAERunnerConfigDict(TypedDict, total=False):
     store_batch_size_prompts: int
     normalize_activations: str
     seqpos_slice: tuple[int | None, ...] | Sequence[int | None]
+    disable_concat_sequences: bool
+    exclude_bos_between_sequences: bool
     device: str
     act_store_device: str
     seed: int
@@ -76,8 +78,6 @@ class LanguageModelSAERunnerConfigDict(TypedDict, total=False):
     sae_lens_version: str
     sae_lens_training_version: str
     exclude_special_tokens: bool | list[int]
-    disable_concat_sequences: bool
-    exclude_bos_between_sequences: bool
 
 
 # Base TrainingSAEConfig fields + all architecture specific fields
@@ -132,6 +132,8 @@ def _get_default_runner_config() -> LanguageModelSAERunnerConfigDict:
         "training_tokens": 1_000_000,
         "store_batch_size_prompts": 4,
         "seqpos_slice": (None,),
+        "disable_concat_sequences": False,
+        "exclude_bos_between_sequences": False,
         "device": "cpu",
         "act_store_device": "cpu",
         "seed": 24,
@@ -171,8 +173,6 @@ def _get_default_runner_config() -> LanguageModelSAERunnerConfigDict:
         "sae_lens_version": "test_version",
         "sae_lens_training_version": "test_version",
         "exclude_special_tokens": False,
-        "disable_concat_sequences": False,
-        "exclude_bos_between_sequences": False,
     }
 
 
