@@ -2,6 +2,13 @@
 
 
 
+## v5.10.7 (2025-06-10)
+
+### Fix
+
+* fix: permanent invite links ([`3928618`](https://github.com/jbloomAus/SAELens/commit/3928618eccb37f862492a03bd8314a960994fd68))
+
+
 ## v5.10.6 (2025-06-09)
 
 ### Chore
