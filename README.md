@@ -40,7 +40,7 @@ Pre-trained SAEs for various models can be imported via SAE Lens. See this [page
 
 ## Join the Slack!
 
-Feel free to join the [Open Source Mechanistic Interpretability Slack](https://join.slack.com/t/opensourcemechanistic/shared_invite/zt-35oqtxb2t-yKBlqTL570ycNJisIFX2gw) for support!
+Feel free to join the [Open Source Mechanistic Interpretability Slack](https://join.slack.com/t/opensourcemechanistic/shared_invite/zt-375zalm04-GFd5tdBU1yLKlu_T_JSqZQ) for support!
 
 ## Citation
 

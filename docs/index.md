@@ -59,7 +59,7 @@ sae = SAE.load_from_disk("/path/to/your/sae", device="cuda")
 
 ### Importing SAEs from other libraries
 
-You can import an SAE created with another library by writing a custom `PretrainedSaeHuggingfaceLoader` or `PretrainedSaeDiskLoader` for use with `SAE.from_pretrained()` or `SAE.load_from_disk()`, respectively. See the [pretrained_sae_loaders.py](https://github.com/jbloomAus/SAELens/blob/main/sae_lens/toolkit/pretrained_sae_loaders.py) file for more details, or ask on the [Open Source Mechanistic Interpretability Slack](https://join.slack.com/t/opensourcemechanistic/shared_invite/zt-35oqtxb2t-yKBlqTL570ycNJisIFX2gw). If you write a good custom loader for another library, please consider contributing it back to SAELens!
+You can import an SAE created with another library by writing a custom `PretrainedSaeHuggingfaceLoader` or `PretrainedSaeDiskLoader` for use with `SAE.from_pretrained()` or `SAE.load_from_disk()`, respectively. See the [pretrained_sae_loaders.py](https://github.com/jbloomAus/SAELens/blob/main/sae_lens/toolkit/pretrained_sae_loaders.py) file for more details, or ask on the [Open Source Mechanistic Interpretability Slack](https://join.slack.com/t/opensourcemechanistic/shared_invite/zt-375zalm04-GFd5tdBU1yLKlu_T_JSqZQ). If you write a good custom loader for another library, please consider contributing it back to SAELens!
 
 ### Background and further Readings
 
