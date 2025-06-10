@@ -150,6 +150,8 @@ class LanguageModelSAERunnerConfig(Generic[T_TRAINING_SAE_CONFIG]):
         sae_lens_version (str): The version of the sae_lens library.
         sae_lens_training_version (str): The version of the sae_lens training library.
         exclude_special_tokens (bool | list[int]): Whether to exclude special tokens from the activations. If True, excludes all special tokens. If a list of ints, excludes those token IDs.
+        disable_concat_sequences (bool): Whether to disable concatenating sequences and ignore sequences shorter than the context size. If True, disables concatenating and ignores short sequences.
+        exclude_bos_between_sequences (bool): Whether to exclude the BOS token between concatenated sequences. If True, excludes the BOS token.
     """
 
     sae: T_TRAINING_SAE_CONFIG
