@@ -39,6 +39,8 @@ class LanguageModelSAERunnerConfigDict(TypedDict, total=False):
     store_batch_size_prompts: int
     normalize_activations: str
     seqpos_slice: tuple[int | None, ...] | Sequence[int | None]
+    disable_concat_sequences: bool
+    exclude_bos_between_sequences: bool
     device: str
     act_store_device: str
     seed: int
@@ -130,6 +132,8 @@ def _get_default_runner_config() -> LanguageModelSAERunnerConfigDict:
         "training_tokens": 1_000_000,
         "store_batch_size_prompts": 4,
         "seqpos_slice": (None,),
+        "disable_concat_sequences": False,
+        "exclude_bos_between_sequences": False,
         "device": "cpu",
         "act_store_device": "cpu",
         "seed": 24,
