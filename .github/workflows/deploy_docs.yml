@@ -120,7 +120,7 @@ jobs:
           
           # If stable release (no pre-release identifiers), also update latest alias
           if [[ ! "$RELEASE_TAG" =~ (alpha|beta|rc) ]]; then
-            poetry run mike alias --push $RELEASE_TAG latest
+            poetry run mike alias -u --push $RELEASE_TAG latest
             poetry run mike set-default --push latest
           fi
       - name: Deploy main branch docs
