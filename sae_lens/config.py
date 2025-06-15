@@ -1,6 +1,7 @@
 import json
 import math
 import os
+from abc import ABC
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar, cast
@@ -43,6 +44,16 @@ def dict_field(default: dict[str, Any] | None, **kwargs: Any) -> Any:  # type: i
     if default is None:
         return simple_parsing.helpers.field(default=None, type=json_dict, **kwargs)
     return simple_parsing.helpers.dict_field(default, type=json_dict, **kwargs)
+
+
+@dataclass
+class DataConfig(ABC):
+    """
+    Base class for all data providers. Extend this class with any options needed to configure a data provider.
+    """
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
 
 
 @dataclass

@@ -4,6 +4,7 @@ import json
 import os
 import warnings
 from collections.abc import Generator, Iterator, Sequence
+from dataclasses import dataclass
 from typing import Any, Literal, cast
 
 import datasets
@@ -22,6 +23,7 @@ from transformers import AutoTokenizer, PreTrainedTokenizerBase
 from sae_lens import logger
 from sae_lens.config import (
     CacheActivationsRunnerConfig,
+    DataConfig,
     HfDataset,
     LanguageModelSAERunnerConfig,
 )
@@ -29,6 +31,34 @@ from sae_lens.constants import DTYPE_MAP
 from sae_lens.saes.sae import SAE, T_SAE_CONFIG, T_TRAINING_SAE_CONFIG
 from sae_lens.tokenization_and_batching import concat_and_batch_sequences
 from sae_lens.training.mixing_buffer import mixing_buffer
+
+
+@dataclass
+class LLMDatasetConfig(DataConfig):
+    """
+    Config for generating training activations by passing a Huggingface dataset through an LLM.
+    """
+
+    n_batches_in_buffer: int = 20
+    training_tokens: int = 2_000_000
+    store_batch_size_prompts: int = 32
+    seqpos_slice: tuple[int | None, ...] = (None,)
+
+    model_name: str = "gelu-2l"
+    model_class_name: str = "HookedTransformer"
+    hook_name: str = "blocks.0.hook_mlp_out"
+    hook_eval: str = "NOT_IN_USE"
+    hook_layer: int = 0
+    hook_head_index: int | None = None
+    dataset_path: str = ""
+    dataset_trust_remote_code: bool = True
+    streaming: bool = True
+    is_dataset_tokenized: bool = True
+    context_size: int = 128
+    use_cached_activations: bool = False
+    cached_activations_path: str | None = (
+        None  # Defaults to "activations/{dataset}/{model}/{full_hook_name}_{hook_head_index}"
+    )
 
 
 # TODO: Make an activation store config class to be consistent with the rest of the code.
@@ -260,6 +290,7 @@ class ActivationsStore:
         self.cached_activations_path = cached_activations_path
         self.autocast_lm = autocast_lm
         self.seqpos_slice = seqpos_slice
+        self.training_context_size = len(range(context_size)[slice(*seqpos_slice)])
         self.exclude_special_tokens = exclude_special_tokens
 
         self.n_dataset_processed = 0
@@ -648,7 +679,6 @@ class ActivationsStore:
         If raise_on_epoch_end is True, when the dataset it exhausted it will automatically refill the dataset and then raise a StopIteration so that the caller has a chance to react.
         """
         context_size = self.context_size
-        training_context_size = len(range(context_size)[slice(*self.seqpos_slice)])
         batch_size = self.store_batch_size_prompts
         d_in = self.d_in
         total_size = batch_size * n_batches_in_buffer
@@ -662,12 +692,12 @@ class ActivationsStore:
         refill_iterator = range(0, total_size, batch_size)
         # Initialize empty tensor buffer of the maximum required size with an additional dimension for layers
         new_buffer_activations = torch.zeros(
-            (total_size, training_context_size, num_layers, d_in),
+            (total_size, self.training_context_size, num_layers, d_in),
             dtype=self.dtype,  # type: ignore
             device=self.device,
         )
         new_buffer_token_ids = torch.zeros(
-            (total_size, training_context_size),
+            (total_size, self.training_context_size),
             dtype=torch.long,
             device=self.device,
         )
@@ -724,7 +754,6 @@ class ActivationsStore:
                 warnings.warn(
                     "All samples in the training dataset have been exhausted, beginning new epoch."
                 )
-                self._mixing_buffer = None  # Reset mixing buffer for new epoch
                 try:
                     new_acts = self.get_buffer(self.half_buffer_size)
                     yield _filter_buffer_acts(new_acts, self.exclude_special_tokens)
@@ -740,7 +769,7 @@ class ActivationsStore:
         Return an auto-refilling stream of filtered and mixed activations.
         """
         return mixing_buffer(
-            buffer_size=self.n_batches_in_buffer,
+            buffer_size=self.n_batches_in_buffer * self.training_context_size,
             batch_size=self.train_batch_size_tokens,
             activations_loader=self._iterate_filtered_activations(),
         )
@@ -762,8 +791,6 @@ class ActivationsStore:
         result = {
             "n_dataset_processed": torch.tensor(self.n_dataset_processed),
         }
-        if self._mixing_buffer is not None:
-            result.update(self._mixing_buffer.state_dict())
         if self.estimated_norm_scaling_factor is not None:
             result["estimated_norm_scaling_factor"] = torch.tensor(
                 self.estimated_norm_scaling_factor

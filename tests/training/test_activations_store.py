@@ -124,14 +124,6 @@ def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
 
     assert isinstance(store.iterable_sequences, Iterable)
 
-    # the rest is in the dataloader.
-    expected_size = (
-        cfg.store_batch_size_prompts * cfg.context_size * cfg.n_batches_in_buffer // 2
-    )
-    assert store.storage_buffer.shape[1:] == (1, cfg.sae.d_in)
-    # if exluding special tokens, the buffer will be smaller
-    assert store.storage_buffer.shape[0] <= expected_size
-
     # --- Next, get batch tokens and assert they look correct ---
 
     batch = store.get_batch_tokens()
@@ -352,8 +344,10 @@ def test_activations_store_estimate_norm_scaling_factor(
     factor = store.estimate_norm_scaling_factor(n_batches_for_norm_estimate=10)
     assert isinstance(factor, float)
 
-    assert store._storage_buffer is not None
-    scaled_norm = store._storage_buffer[0].norm(dim=-1).mean() * factor
+    # just to make sure this runs correctly...
+    store.estimated_norm_scaling_factor = 1.0
+
+    scaled_norm = store.get_buffer(10)[0].norm(dim=-1).mean() * factor
     assert scaled_norm == pytest.approx(np.sqrt(store.d_in), abs=5)
 
 
@@ -739,14 +733,19 @@ def test_activations_store_storage_buffer_excludes_special_tokens(
     store_exclude_special_tokens = ActivationsStore.from_config(
         ts_model, cfg, override_dataset=dataset
     )
-    assert store_base.storage_buffer.shape[0] == 10
-    assert store_exclude_special_tokens.storage_buffer.shape[0] < 10
+    store_base_it = store_base._iterate_filtered_activations()
+    store_exclude_special_tokens_it = (
+        store_exclude_special_tokens._iterate_filtered_activations()
+    )
+
+    assert next(store_base_it).shape[0] == 10
+    assert next(store_exclude_special_tokens_it).shape[0] < 10
 
     # bos act should be in the base buffer, but not in the exclude special tokens buffer
-    assert (store_base.storage_buffer.squeeze() - bos_act).abs().sum(
+    assert (next(store_base_it).squeeze() - bos_act).abs().sum(
         dim=-1
     ).min().item() == pytest.approx(0.0, abs=1e-5)
-    assert (store_exclude_special_tokens.storage_buffer.squeeze() - bos_act).abs().sum(
+    assert (next(store_exclude_special_tokens_it).squeeze() - bos_act).abs().sum(
         dim=-1
     ).min().item() != pytest.approx(0.0, abs=1e-5)
 
