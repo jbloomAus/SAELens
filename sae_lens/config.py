@@ -33,6 +33,7 @@ HfDataset = DatasetDict | Dataset | IterableDatasetDict | IterableDataset
 
 SPARSITY_FILENAME = "sparsity.safetensors"
 SAE_WEIGHTS_FILENAME = "sae_weights.safetensors"
+SPARSIFY_WEIGHTS_FILENAME = "sae.safetensors"
 SAE_CFG_FILENAME = "cfg.json"
 
 
