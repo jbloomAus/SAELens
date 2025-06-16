@@ -24,7 +24,6 @@ def test_load_sae_config_from_huggingface():
         "metadata": {
             "model_name": "gpt2-small",
             "hook_name": "blocks.0.hook_resid_pre",
-            "hook_layer": 0,
             "hook_head_index": None,
             "context_size": 128,
             "model_from_pretrained_kwargs": {"center_writing_weights": True},
@@ -55,7 +54,6 @@ def test_load_sae_config_from_huggingface_connor_rob_hook_z():
         "metadata": {
             "model_name": "gpt2-small",
             "hook_name": "blocks.0.attn.hook_z",
-            "hook_layer": 0,
             "hook_head_index": None,
             "prepend_bos": True,
             "dataset_path": "Skylion007/openwebtext",
@@ -85,7 +83,6 @@ def test_load_sae_config_from_huggingface_gemma_2():
         "metadata": {
             "model_name": "gemma-2-2b",
             "hook_name": "hook_embed",
-            "hook_layer": 0,
             "hook_head_index": None,
             "prepend_bos": True,
             "dataset_path": "monology/pile-uncopyrighted",
@@ -115,7 +112,6 @@ def test_load_sae_config_from_huggingface_dictionary_learning_1():
         "metadata": {
             "model_name": "gemma-2-2b",
             "hook_name": "blocks.12.hook_resid_post",
-            "hook_layer": 12,
             "hook_head_index": None,
             "prepend_bos": True,
             "dataset_path": "monology/pile-uncopyrighted",
@@ -159,7 +155,6 @@ def test_get_deepseek_r1_config_from_hf():
         "context_size": 1024,
         "model_name": "deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
         "hook_name": "blocks.19.hook_resid_post",
-        "hook_layer": 19,
         "hook_head_index": None,
         "prepend_bos": True,
         "dataset_path": "lmsys/lmsys-chat-1m",
@@ -203,7 +198,6 @@ def test_get_llama_scope_r1_distill_config_from_hf():
         "device": "cpu",
         "model_name": "meta-llama/Llama-3.1-8B",
         "hook_name": "blocks.5.hook_resid_post",
-        "hook_layer": 5,
         "hook_head_index": None,
         "activation_fn": "relu",
         "finetuning_scaling_factor": False,
@@ -237,4 +231,3 @@ def test_get_llama_scope_r1_distill_config_with_overrides():
     assert cfg["device"] == "cuda"
     assert cfg["dtype"] == "float16"
     assert cfg["d_sae"] == 8192
-    assert cfg["hook_layer"] == 10

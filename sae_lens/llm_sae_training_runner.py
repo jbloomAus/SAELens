@@ -10,6 +10,7 @@ import wandb
 from safetensors.torch import save_file
 from simple_parsing import ArgumentParser
 from transformer_lens.hook_points import HookedRootModule
+from typing_extensions import deprecated
 
 from sae_lens import logger
 from sae_lens.config import HfDataset, LanguageModelSAERunnerConfig
@@ -29,7 +30,7 @@ def interrupt_callback(sig_num: Any, stack_frame: Any):  # noqa: ARG001
     raise InterruptedException()
 
 
-class SAETrainingRunner:
+class LanguageModelSAETrainingRunner:
     """
     Class to run the training of a Sparse Autoencoder (SAE) on a TransformerLens model.
     """
@@ -173,7 +174,9 @@ class SAETrainingRunner:
 
         if self.cfg.sae.b_dec_init_method == "geometric_median":
             self.activations_store.set_norm_scaling_factor_if_needed()
-            layer_acts = self.activations_store.storage_buffer.detach()[:, 0, :]
+            layer_acts = self.activations_store.get_filtered_buffer(10).detach()[
+                :, 0, :
+            ]
             # get geometric median of the activations if we're using those.
             median = compute_geometric_median(
                 layer_acts,
@@ -182,7 +185,9 @@ class SAETrainingRunner:
             self.sae.initialize_b_dec_with_precalculated(median)
         elif self.cfg.sae.b_dec_init_method == "mean":
             self.activations_store.set_norm_scaling_factor_if_needed()
-            layer_acts = self.activations_store.storage_buffer.detach().cpu()[:, 0, :]
+            layer_acts = (
+                self.activations_store.get_filtered_buffer(10).detach().cpu()[:, 0, :]
+            )
             self.sae.initialize_b_dec_with_mean(layer_acts)  # type: ignore
 
     @staticmethod
@@ -230,8 +235,13 @@ def _parse_cfg_args(
 # moved into its own function to make it easier to test
 def _run_cli(args: Sequence[str]):
     cfg = _parse_cfg_args(args)
-    SAETrainingRunner(cfg=cfg).run()
+    LanguageModelSAETrainingRunner(cfg=cfg).run()
 
 
 if __name__ == "__main__":
     _run_cli(args=sys.argv[1:])
+
+
+@deprecated("Use LanguageModelSAETrainingRunner instead")
+class SAETrainingRunner(LanguageModelSAETrainingRunner):
+    pass

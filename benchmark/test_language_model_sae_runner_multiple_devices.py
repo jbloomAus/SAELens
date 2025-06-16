@@ -1,7 +1,7 @@
 import torch
 
 from sae_lens.config import LanguageModelSAERunnerConfig
-from sae_lens.sae_training_runner import SAETrainingRunner
+from sae_lens.llm_sae_training_runner import LanguageModelSAETrainingRunner
 
 # os.environ["WANDB_MODE"] = "offline"  # turn this off if you want to see the output
 
@@ -30,7 +30,6 @@ BASE_CFG = dict(
     model_name="gelu-1l",
     ## MLP Layer 0 ##
     hook_name="blocks.0.hook_mlp_out",
-    hook_layer=0,
     d_in=512,
     dataset_path="NeelNanda/c4-tokenized-2b",
     context_size=256,
@@ -113,7 +112,7 @@ def test_sae_runner_multiple_devices():
     cfg = LanguageModelSAERunnerConfig(**cfg_dict)  # type: ignore
 
     # look at the next cell to see some instruction for what to do while this is running.
-    sae = SAETrainingRunner(cfg).run()
+    sae = LanguageModelSAETrainingRunner(cfg).run()
 
     assert sae is not None
     # know whether or not this works by looking at the dashboard!
@@ -134,7 +133,7 @@ def test_sae_runner_multiple_devices_sae_act_store_on_gpus():
     cfg = LanguageModelSAERunnerConfig(**cfg_dict)  # type: ignore
 
     # look at the next cell to see some instruction for what to do while this is running.
-    sae = SAETrainingRunner(cfg).run()
+    sae = LanguageModelSAETrainingRunner(cfg).run()
 
     assert sae is not None
     # know whether or not this works by looking at the dashboard!

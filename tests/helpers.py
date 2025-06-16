@@ -24,7 +24,6 @@ class LanguageModelSAERunnerConfigDict(TypedDict, total=False):
     model_class_name: str
     hook_name: str
     hook_eval: str
-    hook_layer: int
     hook_head_index: int | None
     dataset_path: str
     dataset_trust_remote_code: bool
@@ -116,7 +115,6 @@ def _get_default_runner_config() -> LanguageModelSAERunnerConfigDict:
         "model_class_name": "HookedTransformer",
         "hook_name": "blocks.0.hook_mlp_out",
         "hook_eval": "NOT_IN_USE",
-        "hook_layer": 0,
         "hook_head_index": None,
         "dataset_path": NEEL_NANDA_C4_10K_DATASET,
         "streaming": False,
@@ -250,7 +248,6 @@ def build_runner_cfg(
         **kwargs,
     )
     runner_cfg.sae.metadata.hook_name = runner_cfg.hook_name
-    runner_cfg.sae.metadata.hook_layer = runner_cfg.hook_layer
     runner_cfg.sae.metadata.hook_head_index = runner_cfg.hook_head_index
     runner_cfg.sae.metadata.model_name = runner_cfg.model_name
     runner_cfg.sae.metadata.model_class_name = runner_cfg.model_class_name

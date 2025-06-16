@@ -4,7 +4,6 @@ import json
 import os
 import warnings
 from collections.abc import Generator, Iterator, Sequence
-from dataclasses import dataclass
 from typing import Any, Literal, cast
 
 import datasets
@@ -23,7 +22,6 @@ from transformers import AutoTokenizer, PreTrainedTokenizerBase
 from sae_lens import logger
 from sae_lens.config import (
     CacheActivationsRunnerConfig,
-    DataConfig,
     HfDataset,
     LanguageModelSAERunnerConfig,
 )
@@ -31,34 +29,7 @@ from sae_lens.constants import DTYPE_MAP
 from sae_lens.saes.sae import SAE, T_SAE_CONFIG, T_TRAINING_SAE_CONFIG
 from sae_lens.tokenization_and_batching import concat_and_batch_sequences
 from sae_lens.training.mixing_buffer import mixing_buffer
-
-
-@dataclass
-class LLMDatasetConfig(DataConfig):
-    """
-    Config for generating training activations by passing a Huggingface dataset through an LLM.
-    """
-
-    n_batches_in_buffer: int = 20
-    training_tokens: int = 2_000_000
-    store_batch_size_prompts: int = 32
-    seqpos_slice: tuple[int | None, ...] = (None,)
-
-    model_name: str = "gelu-2l"
-    model_class_name: str = "HookedTransformer"
-    hook_name: str = "blocks.0.hook_mlp_out"
-    hook_eval: str = "NOT_IN_USE"
-    hook_layer: int = 0
-    hook_head_index: int | None = None
-    dataset_path: str = ""
-    dataset_trust_remote_code: bool = True
-    streaming: bool = True
-    is_dataset_tokenized: bool = True
-    context_size: int = 128
-    use_cached_activations: bool = False
-    cached_activations_path: str | None = (
-        None  # Defaults to "activations/{dataset}/{model}/{full_hook_name}_{hook_head_index}"
-    )
+from sae_lens.util import extract_stop_at_layer_from_tlens_hook_name
 
 
 # TODO: Make an activation store config class to be consistent with the rest of the code.
@@ -74,7 +45,6 @@ class ActivationsStore:
     cached_activation_dataset: Dataset | None = None
     tokens_column: Literal["tokens", "input_ids", "text", "problem"]
     hook_name: str
-    hook_layer: int
     hook_head_index: int | None
     _dataloader: Iterator[Any] | None = None
     exclude_special_tokens: torch.Tensor | None = None
@@ -93,7 +63,6 @@ class ActivationsStore:
             cached_activations_path=cfg.new_cached_activations_path,
             dtype=cfg.dtype,
             hook_name=cfg.hook_name,
-            hook_layer=cfg.hook_layer,
             context_size=cfg.context_size,
             d_in=cfg.d_in,
             n_batches_in_buffer=cfg.n_batches_in_buffer,
@@ -154,7 +123,6 @@ class ActivationsStore:
             dataset=override_dataset or cfg.dataset_path,
             streaming=cfg.streaming,
             hook_name=cfg.hook_name,
-            hook_layer=cfg.hook_layer,
             hook_head_index=cfg.hook_head_index,
             context_size=cfg.context_size,
             d_in=cfg.d_in
@@ -193,8 +161,6 @@ class ActivationsStore:
     ) -> ActivationsStore:
         if sae.cfg.metadata.hook_name is None:
             raise ValueError("hook_name is required")
-        if sae.cfg.metadata.hook_layer is None:
-            raise ValueError("hook_layer is required")
         if sae.cfg.metadata.hook_head_index is None:
             raise ValueError("hook_head_index is required")
         if sae.cfg.metadata.context_size is None:
@@ -206,7 +172,6 @@ class ActivationsStore:
             dataset=dataset,
             d_in=sae.cfg.d_in,
             hook_name=sae.cfg.metadata.hook_name,
-            hook_layer=sae.cfg.metadata.hook_layer,
             hook_head_index=sae.cfg.metadata.hook_head_index,
             context_size=sae.cfg.metadata.context_size
             if context_size is None
@@ -230,7 +195,6 @@ class ActivationsStore:
         dataset: HfDataset | str,
         streaming: bool,
         hook_name: str,
-        hook_layer: int,
         hook_head_index: int | None,
         context_size: int,
         d_in: int,
@@ -274,7 +238,6 @@ class ActivationsStore:
                 )
 
         self.hook_name = hook_name
-        self.hook_layer = hook_layer
         self.hook_head_index = hook_head_index
         self.context_size = context_size
         self.d_in = d_in
@@ -559,7 +522,9 @@ class ActivationsStore:
             layerwise_activations_cache = self.model.run_with_cache(
                 batch_tokens,
                 names_filter=[self.hook_name],
-                stop_at_layer=self.hook_layer + 1,
+                stop_at_layer=extract_stop_at_layer_from_tlens_hook_name(
+                    self.hook_name
+                ),
                 prepend_bos=False,
                 **self.model_kwargs,
             )[1]
@@ -665,7 +630,7 @@ class ActivationsStore:
         return acts_buffer, token_ids_buffer
 
     @torch.no_grad()
-    def get_buffer(
+    def get_raw_buffer(
         self,
         n_batches_in_buffer: int,
         raise_on_epoch_end: bool = False,
@@ -740,23 +705,36 @@ class ActivationsStore:
             new_buffer_token_ids,
         )
 
+    def get_filtered_buffer(
+        self,
+        n_batches_in_buffer: int,
+        raise_on_epoch_end: bool = False,
+        shuffle: bool = True,
+    ) -> torch.Tensor:
+        return _filter_buffer_acts(
+            self.get_raw_buffer(
+                n_batches_in_buffer=n_batches_in_buffer,
+                raise_on_epoch_end=raise_on_epoch_end,
+                shuffle=shuffle,
+            ),
+            self.exclude_special_tokens,
+        )
+
     def _iterate_filtered_activations(self) -> Generator[torch.Tensor, None, None]:
         """
         Iterate over the filtered tokens in the buffer.
         """
         while True:
             try:
-                yield _filter_buffer_acts(
-                    self.get_buffer(self.half_buffer_size, raise_on_epoch_end=True),
-                    self.exclude_special_tokens,
+                yield self.get_filtered_buffer(
+                    self.half_buffer_size, raise_on_epoch_end=True
                 )
             except StopIteration:
                 warnings.warn(
                     "All samples in the training dataset have been exhausted, beginning new epoch."
                 )
                 try:
-                    new_acts = self.get_buffer(self.half_buffer_size)
-                    yield _filter_buffer_acts(new_acts, self.exclude_special_tokens)
+                    yield self.get_filtered_buffer(self.half_buffer_size)
                 except StopIteration:
                     raise ValueError(
                         "Unable to fill buffer after starting new epoch. Dataset may be too small."

@@ -34,7 +34,6 @@ def _mk_activations_store(
         dataset=override_dataset or cfg.dataset_path,
         streaming=cfg.streaming,
         hook_name=cfg.hook_name,
-        hook_layer=cfg.hook_layer,
         hook_head_index=None,
         context_size=cfg.context_size,
         d_in=cfg.d_in,
@@ -265,7 +264,7 @@ class CacheActivationsRunner:
 
         for i in tqdm(range(self.cfg.n_buffers), desc="Caching activations"):
             try:
-                buffer = self.activations_store.get_buffer(
+                buffer = self.activations_store.get_raw_buffer(
                     self.cfg.n_batches_in_buffer, shuffle=False
                 )
                 shard = self._create_shard(buffer)

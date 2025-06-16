@@ -38,7 +38,6 @@ def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
             "model_name": "tiny-stories-1M",
             "dataset_path": NEEL_NANDA_C4_10K_DATASET,
             "hook_name": "blocks.1.hook_resid_pre",
-            "hook_layer": 1,
             "d_in": 64,
             "normalize_activations": "expected_average_only_in",
             "streaming": False,
@@ -47,7 +46,6 @@ def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
             "model_name": "tiny-stories-1M",
             "dataset_path": NEEL_NANDA_C4_10K_DATASET,
             "hook_name": "blocks.1.attn.hook_z",
-            "hook_layer": 1,
             "d_in": 64,
             "streaming": False,
         },
@@ -55,7 +53,6 @@ def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
             "model_name": "gelu-2l",
             "dataset_path": "NeelNanda/c4-tokenized-2b",
             "hook_name": "blocks.1.hook_resid_pre",
-            "hook_layer": 1,
             "d_in": 512,
             "context_size": 1024,
             "streaming": True,
@@ -64,7 +61,6 @@ def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
             "model_name": "gpt2",
             "dataset_path": "apollo-research/Skylion007-openwebtext-tokenizer-gpt2",
             "hook_name": "blocks.1.hook_resid_pre",
-            "hook_layer": 1,
             "d_in": 768,
             "context_size": 1024,
             "streaming": True,
@@ -73,7 +69,6 @@ def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
             "model_name": "gpt2",
             "dataset_path": NEEL_NANDA_C4_10K_DATASET,
             "hook_name": "blocks.1.hook_resid_pre",
-            "hook_layer": 1,
             "d_in": 768,
             "exclude_special_tokens": True,
             "streaming": False,
@@ -151,7 +146,7 @@ def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
     # --- Next, get buffer and assert it looks correct ---
 
     n_batches_in_buffer = 3
-    act_buffer, tok_buffer = store.get_buffer(n_batches_in_buffer)
+    act_buffer, tok_buffer = store.get_raw_buffer(n_batches_in_buffer)
 
     assert isinstance(act_buffer, torch.Tensor)
     assert isinstance(tok_buffer, torch.Tensor)
@@ -177,7 +172,6 @@ def test_activations_store__get_activations_head_hook(ts_model: HookedTransforme
     cfg = build_runner_cfg(
         hook_name="blocks.0.attn.hook_q",
         hook_head_index=2,
-        hook_layer=1,
         d_in=4,
     )
     activation_store_head_hook = ActivationsStore.from_config(ts_model, cfg)
@@ -208,14 +202,14 @@ def test_activations_store__get_activations__gives_same_results_with_hf_model_an
         * 100
     )
 
-    cfg = build_runner_cfg(hook_name="blocks.4.hook_resid_post", hook_layer=4, d_in=768)
+    cfg = build_runner_cfg(hook_name="blocks.4.hook_resid_post", d_in=768)
     store_tlens = ActivationsStore.from_config(
         tlens_model, cfg, override_dataset=dataset
     )
     batch_tlens = store_tlens.get_batch_tokens()
     activations_tlens = store_tlens.get_activations(batch_tlens)
 
-    cfg = build_runner_cfg(hook_name="transformer.h.4", hook_layer=4, d_in=768)
+    cfg = build_runner_cfg(hook_name="transformer.h.4", d_in=768)
     store_hf = ActivationsStore.from_config(hf_model, cfg, override_dataset=dataset)
     batch_hf = store_hf.get_batch_tokens()
     activations_hf = store_hf.get_activations(batch_hf)
@@ -347,7 +341,7 @@ def test_activations_store_estimate_norm_scaling_factor(
     # just to make sure this runs correctly...
     store.estimated_norm_scaling_factor = 1.0
 
-    scaled_norm = store.get_buffer(10)[0].norm(dim=-1).mean() * factor
+    scaled_norm = store.get_filtered_buffer(10).norm(dim=-1).mean() * factor
     assert scaled_norm == pytest.approx(np.sqrt(store.d_in), abs=5)
 
 
@@ -663,7 +657,7 @@ def test_activations_store_buffer_contains_token_ids(ts_model: HookedTransformer
     dataset = Dataset.from_list([{"text": "hello world"}] * 100)
 
     store = ActivationsStore.from_config(ts_model, cfg, override_dataset=dataset)
-    acts, token_ids = store.get_buffer(n_batches_in_buffer=2)
+    acts, token_ids = store.get_raw_buffer(n_batches_in_buffer=2)
 
     assert acts.shape == (30, 1, 64)  # (batch_size x context_size x n_batches, 1, d_in)
     assert token_ids is not None
@@ -680,18 +674,18 @@ def test_activations_store_buffer_shuffling(ts_model: HookedTransformer):
 
     # Get unshuffled buffer
     store = ActivationsStore.from_config(ts_model, cfg, override_dataset=dataset)
-    acts_unshuffled_1, token_ids_unshuffled_1 = store.get_buffer(
+    acts_unshuffled_1, token_ids_unshuffled_1 = store.get_raw_buffer(
         n_batches_in_buffer=2, shuffle=False
     )
 
     store = ActivationsStore.from_config(ts_model, cfg, override_dataset=dataset)
-    acts_unshuffled_2, token_ids_unshuffled_2 = store.get_buffer(
+    acts_unshuffled_2, token_ids_unshuffled_2 = store.get_raw_buffer(
         n_batches_in_buffer=2, shuffle=False
     )
 
     # Get shuffled buffer
     store = ActivationsStore.from_config(ts_model, cfg, override_dataset=dataset)
-    acts_shuffled, token_ids_shuffled = store.get_buffer(
+    acts_shuffled, token_ids_shuffled = store.get_raw_buffer(
         n_batches_in_buffer=2, shuffle=True
     )
 

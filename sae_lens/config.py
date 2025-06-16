@@ -1,7 +1,6 @@
 import json
 import math
 import os
-from abc import ABC
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar, cast
@@ -24,7 +23,9 @@ from sae_lens.saes.sae import TrainingSAEConfig
 if TYPE_CHECKING:
     pass
 
-T_TRAINING_SAE_CONFIG = TypeVar("T_TRAINING_SAE_CONFIG", bound=TrainingSAEConfig)
+T_TRAINING_SAE_CONFIG = TypeVar(
+    "T_TRAINING_SAE_CONFIG", bound=TrainingSAEConfig, covariant=True
+)
 
 HfDataset = DatasetDict | Dataset | IterableDatasetDict | IterableDataset
 
@@ -44,16 +45,6 @@ def dict_field(default: dict[str, Any] | None, **kwargs: Any) -> Any:  # type: i
     if default is None:
         return simple_parsing.helpers.field(default=None, type=json_dict, **kwargs)
     return simple_parsing.helpers.dict_field(default, type=json_dict, **kwargs)
-
-
-@dataclass
-class DataConfig(ABC):
-    """
-    Base class for all data providers. Extend this class with any options needed to configure a data provider.
-    """
-
-    def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
 
 
 @dataclass
@@ -113,7 +104,6 @@ class LanguageModelSAERunnerConfig(Generic[T_TRAINING_SAE_CONFIG]):
         model_class_name (str): The name of the class of the model to use. This should be either `HookedTransformer` or `HookedMamba`.
         hook_name (str): The name of the hook to use. This should be a valid TransformerLens hook.
         hook_eval (str): NOT CURRENTLY IN USE. The name of the hook to use for evaluation.
-        hook_layer (int): The index of the layer to hook. Used to stop forward passes early and speed up processing.
         hook_head_index (int, optional): When the hook is for an activation with a head index, we can specify a specific head to use here.
         dataset_path (str): A Hugging Face dataset path.
         dataset_trust_remote_code (bool): Whether to trust remote code when loading datasets from Huggingface.
@@ -170,7 +160,6 @@ class LanguageModelSAERunnerConfig(Generic[T_TRAINING_SAE_CONFIG]):
     model_class_name: str = "HookedTransformer"
     hook_name: str = "blocks.0.hook_mlp_out"
     hook_eval: str = "NOT_IN_USE"
-    hook_layer: int = 0
     hook_head_index: int | None = None
     dataset_path: str = ""
     dataset_trust_remote_code: bool = True
@@ -397,7 +386,6 @@ class CacheActivationsRunnerConfig:
         model_name (str): The name of the model to use.
         model_batch_size (int): How many prompts are in the batch of the language model when generating activations.
         hook_name (str): The name of the hook to use.
-        hook_layer (int): The layer of the final hook. Currently only support a single hook, so this should be the same as hook_name.
         d_in (int): Dimension of the model.
         total_training_tokens (int): Total number of tokens to process.
         context_size (int): Context size to process. Can be left as -1 if the dataset is tokenized.
@@ -427,7 +415,6 @@ class CacheActivationsRunnerConfig:
     model_name: str
     model_batch_size: int
     hook_name: str
-    hook_layer: int
     d_in: int
     training_tokens: int
 

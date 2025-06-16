@@ -36,13 +36,13 @@ from .config import (
     PretokenizeRunnerConfig,
 )
 from .evals import run_evals
+from .llm_sae_training_runner import LanguageModelSAETrainingRunner, SAETrainingRunner
 from .loading.pretrained_sae_loaders import (
     PretrainedSaeDiskLoader,
     PretrainedSaeHuggingfaceLoader,
 )
 from .pretokenize_runner import PretokenizeRunner, pretokenize_runner
 from .registry import register_sae_class, register_sae_training_class
-from .sae_training_runner import SAETrainingRunner
 from .training.activations_store import ActivationsStore
 from .training.upload_saes_to_huggingface import upload_saes_to_huggingface
 
@@ -54,7 +54,7 @@ __all__ = [
     "HookedSAETransformer",
     "ActivationsStore",
     "LanguageModelSAERunnerConfig",
-    "SAETrainingRunner",
+    "LanguageModelSAETrainingRunner",
     "CacheActivationsRunnerConfig",
     "CacheActivationsRunner",
     "PretokenizeRunnerConfig",
@@ -82,6 +82,7 @@ __all__ = [
     "JumpReLUSAEConfig",
     "JumpReLUTrainingSAE",
     "JumpReLUTrainingSAEConfig",
+    "SAETrainingRunner",
 ]
 
 

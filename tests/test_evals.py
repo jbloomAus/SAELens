@@ -60,35 +60,30 @@ def _replace_nan(list: list[float]) -> list[float]:
             "model_name": "tiny-stories-1M",
             "dataset_path": "roneneldan/TinyStories",
             "hook_name": "blocks.1.hook_resid_pre",
-            "hook_layer": 1,
             "d_in": 64,
         },
         {
             "model_name": "tiny-stories-1M",
             "dataset_path": "apollo-research/roneneldan-TinyStories-tokenizer-gpt2",
             "hook_name": "blocks.1.hook_resid_pre",
-            "hook_layer": 1,
             "d_in": 64,
         },
         {
             "model_name": "tiny-stories-1M",
             "dataset_path": "roneneldan/TinyStories",
             "hook_name": "blocks.1.attn.hook_z",
-            "hook_layer": 1,
             "d_in": 16 * 4,
         },
         {
             "model_name": "tiny-stories-1M",
             "dataset_path": "roneneldan/TinyStories",
             "hook_name": "blocks.1.attn.hook_q",
-            "hook_layer": 1,
             "d_in": 16 * 4,
         },
         {
             "model_name": "tiny-stories-1M",
             "dataset_path": "roneneldan/TinyStories",
             "hook_name": "blocks.1.attn.hook_q",
-            "hook_layer": 1,
             "d_in": 4,
             "hook_head_index": 2,
         },
@@ -542,7 +537,6 @@ def test_get_sparsity_and_variance_metrics_identity_sae_perfect_reconstruction(
         d_in=d_in,
         d_sae=2 * d_in,  # 2 x d_in, to do both pos and neg identity matrix
         hook_name="blocks.1.hook_resid_pre",
-        hook_layer=1,
     )
 
     # Create an SAE and manually set weights to identity matrices

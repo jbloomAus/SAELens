@@ -22,6 +22,7 @@ from transformer_lens.hook_points import HookedRootModule
 from sae_lens.loading.pretrained_saes_directory import get_pretrained_saes_directory
 from sae_lens.saes.sae import SAE, SAEConfig
 from sae_lens.training.activations_store import ActivationsStore
+from sae_lens.util import extract_stop_at_layer_from_tlens_hook_name
 
 
 def get_library_version() -> str:
@@ -436,7 +437,7 @@ def get_sparsity_and_variance_metrics(
             batch_tokens,
             prepend_bos=False,
             names_filter=[hook_name],
-            stop_at_layer=sae.cfg.metadata.hook_layer + 1,
+            stop_at_layer=extract_stop_at_layer_from_tlens_hook_name(hook_name),
             **model_kwargs,
         )
 

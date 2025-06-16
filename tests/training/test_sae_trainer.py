@@ -10,7 +10,7 @@ from transformer_lens import HookedTransformer
 
 from sae_lens import __version__
 from sae_lens.config import LanguageModelSAERunnerConfig
-from sae_lens.sae_training_runner import SAETrainingRunner
+from sae_lens.llm_sae_training_runner import LanguageModelSAETrainingRunner
 from sae_lens.saes.sae import TrainingSAE
 from sae_lens.saes.standard_sae import StandardTrainingSAE, StandardTrainingSAEConfig
 from sae_lens.training.activations_store import ActivationsStore
@@ -25,7 +25,7 @@ from tests.helpers import TINYSTORIES_MODEL, build_runner_cfg, load_model_cached
 
 @pytest.fixture
 def cfg():
-    return build_runner_cfg(d_in=64, d_sae=128, hook_layer=0)
+    return build_runner_cfg(d_in=64, d_sae=128)
 
 
 @pytest.fixture
@@ -264,7 +264,7 @@ def test_final_checkpoint_saves_runner_cfg(
         model=ts_model,
         sae=sae,
         activation_store=activation_store,
-        save_checkpoint_fn=SAETrainingRunner.save_checkpoint,
+        save_checkpoint_fn=LanguageModelSAETrainingRunner.save_checkpoint,
         cfg=cfg,
     )
 
@@ -324,7 +324,7 @@ def test_estimated_norm_scaling_factor_persistence(
         model=ts_model,
         sae=sae,
         activation_store=activation_store,
-        save_checkpoint_fn=SAETrainingRunner.save_checkpoint,
+        save_checkpoint_fn=LanguageModelSAETrainingRunner.save_checkpoint,
         cfg=cfg,
     )
 

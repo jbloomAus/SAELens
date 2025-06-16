@@ -9,7 +9,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 # run this as python3 tutorials/mamba_train_example.py
 # i.e. from the root directory
 from sae_lens.config import LanguageModelSAERunnerConfig, LoggingConfig
-from sae_lens.sae_training_runner import SAETrainingRunner
+from sae_lens.llm_sae_training_runner import LanguageModelSAETrainingRunner
 
 cfg = LanguageModelSAERunnerConfig(
     sae=StandardTrainingSAEConfig(
@@ -24,7 +24,6 @@ cfg = LanguageModelSAERunnerConfig(
     model_name="state-spaces/mamba-370m",
     model_class_name="HookedMamba",
     hook_name="blocks.39.hook_ssm_input",
-    hook_layer=39,
     hook_eval="blocks.39.hook_ssm_output",  # we compare this when replace hook_point activations with autoencode.decode(autoencoder.encode( hook_point activations))
     dataset_path="NeelNanda/openwebtext-tokenized-9b",
     is_dataset_tokenized=True,
@@ -59,4 +58,4 @@ cfg = LanguageModelSAERunnerConfig(
     },
 )
 
-SAETrainingRunner(cfg).run()
+LanguageModelSAETrainingRunner(cfg).run()
