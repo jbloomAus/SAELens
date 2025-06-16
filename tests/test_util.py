@@ -6,10 +6,10 @@ from sae_lens.util import extract_stop_at_layer_from_tlens_hook_name
 @pytest.mark.parametrize(
     "hook_name,expected_layer",
     [
-        ("blocks.0.attn.hook_q", 0),
-        ("blocks.12.attn.hook_k", 12),
-        ("blocks.999.attn.hook_v", 999),
-        ("blocks.42.mlp.hook_pre", 42),
+        ("blocks.0.attn.hook_q", 1),
+        ("blocks.12.attn.hook_k", 13),
+        ("blocks.999.attn.hook_v", 1000),
+        ("blocks.42.mlp.hook_pre", 43),
     ],
 )
 def test_extract_stop_at_layer_from_tlens_hook_name_valid(
