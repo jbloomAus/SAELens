@@ -9,6 +9,7 @@ from transformer_lens.hook_points import HookPoint  # Hooking utilities
 from transformer_lens.HookedTransformer import HookedTransformer
 
 from sae_lens.sae import SAE
+from sae_lens.transcoder import Transcoder  # New import
 
 SingleLoss = Float[torch.Tensor, ""]  # Type alias for a single element tensor
 LossPerToken = Float[torch.Tensor, "batch pos-1"]
@@ -67,6 +68,12 @@ class HookedSAETransformer(HookedTransformer):
         """
         super().__init__(*model_args, **model_kwargs)
         self.acts_to_saes: dict[str, SAE] = {}  # type: ignore
+        # Keep track of attached Transcoders keyed by *input* hook name. Each
+        # value is a tuple: (Transcoder, prev_input_module, prev_output_module)
+        self.acts_to_transcoders: dict[
+            str,
+            tuple[Transcoder, torch.nn.Module, torch.nn.Module],
+        ] = {}
 
     def add_sae(self, sae: SAE, use_error_term: bool | None = None):
         """Attaches an SAE to the model
@@ -303,3 +310,213 @@ class HookedSAETransformer(HookedTransformer):
         finally:
             if reset_saes_end:
                 self.reset_saes(act_names_to_reset, prev_saes)
+
+# ---------------------------------------------------------------------
+#                          TRANSCODER MANAGEMENT
+# ---------------------------------------------------------------------
+
+    def add_transcoder(self, transcoder: Transcoder):
+        """Attach a Transcoder to the model.
+
+        The transcoder *reads* from ``cfg.hook_name`` and *writes* its output
+        at ``cfg.hook_name_out``.
+        """
+
+        in_name = transcoder.cfg.hook_name
+        out_name = transcoder.cfg.hook_name_out
+
+        # Sanity-check both hooks exist in the model.
+        missing = [name for name in (in_name, out_name) if name not in self.hook_dict]
+        if missing:
+            logging.warning(
+                f"Hook(s) {missing} not found on model. Skipping transcoder attach."
+            )
+            return
+
+        # Create wrapper modules
+        in_wrap = _TranscoderInputWrapper(transcoder)
+        out_wrap = _TranscoderOutputWrapper(transcoder)
+
+        # Record previous modules so we can restore later
+        prev_in = get_deep_attr(self, in_name)
+        prev_out = get_deep_attr(self, out_name)
+
+        self.acts_to_transcoders[in_name] = (transcoder, prev_in, prev_out)
+
+        # Swap in wrappers
+        set_deep_attr(self, in_name, in_wrap)
+        set_deep_attr(self, out_name, out_wrap)
+
+        # Re-run hook discovery
+        self.setup()
+
+    def _reset_transcoder(self, in_name: str, restore_tuple: tuple[torch.nn.Module, torch.nn.Module] | None = None):
+        """Internal helper to detach a single transcoder.
+
+        If *restore_tuple* is provided, we restore those two modules instead of
+        the originals saved when the transcoder was added.  This supports the
+        context-manager logic nicely.
+        """
+
+        if in_name not in self.acts_to_transcoders:
+            logging.warning(f"No Transcoder attached at {in_name}. Nothing to reset.")
+            return
+
+        transcoder, prev_in, prev_out = self.acts_to_transcoders[in_name]
+
+        if restore_tuple is not None:
+            prev_in, prev_out = restore_tuple
+
+        out_name = transcoder.cfg.hook_name_out
+
+        set_deep_attr(self, in_name, prev_in)
+        set_deep_attr(self, out_name, prev_out)
+
+        del self.acts_to_transcoders[in_name]
+
+    def reset_transcoders(
+        self,
+        in_names: str | list[str] | None = None,
+        prev_modules: list[tuple[torch.nn.Module, torch.nn.Module] | None] | None = None,
+    ) -> None:
+        """Detach some or all transcoders.
+
+        Mirrors *reset_saes* API.  If *prev_modules* supplied, each element is
+        a (prev_in, prev_out) tuple to swap back in instead of the originally
+        stored ones.
+        """
+
+        if isinstance(in_names, str):
+            in_names = [in_names]
+        elif in_names is None:
+            in_names = list(self.acts_to_transcoders.keys())
+
+        if prev_modules is not None and len(in_names) != len(prev_modules):
+            raise ValueError("in_names and prev_modules must match length")
+        elif prev_modules is None:
+            prev_modules = [None] * len(in_names)
+
+        for name, restore in zip(in_names, prev_modules):
+            self._reset_transcoder(name, restore)  # type: ignore[arg-type]
+
+        self.setup()
+
+    # ------------------ Convenience wrappers (analogous to SAEs) -----------
+
+    def run_with_transcoders(
+        self,
+        *model_args: Any,
+        transcoders: Transcoder | list[Transcoder] = [],
+        reset_transcoders_end: bool = True,
+        **model_kwargs: Any,
+    ):
+        with self.transcoders(transcoders, reset_transcoders_end):
+            return self(*model_args, **model_kwargs)
+
+    def run_with_cache_with_transcoders(
+        self,
+        *model_args: Any,
+        transcoders: Transcoder | list[Transcoder] = [],
+        reset_transcoders_end: bool = True,
+        return_cache_object: bool = True,
+        remove_batch_dim: bool = False,
+        **kwargs: Any,
+    ):
+        with self.transcoders(transcoders, reset_transcoders_end):
+            return self.run_with_cache(  # type: ignore
+                *model_args,
+                return_cache_object=return_cache_object,  # type: ignore
+                remove_batch_dim=remove_batch_dim,
+                **kwargs,
+            )
+
+    def run_with_hooks_with_transcoders(
+        self,
+        *model_args: Any,
+        transcoders: Transcoder | list[Transcoder] = [],
+        reset_transcoders_end: bool = True,
+        fwd_hooks: list[tuple[str | Callable, Callable]] = [],  # type: ignore
+        bwd_hooks: list[tuple[str | Callable, Callable]] = [],  # type: ignore
+        reset_hooks_end: bool = True,
+        clear_contexts: bool = False,
+        **model_kwargs: Any,
+    ):
+        with self.transcoders(transcoders, reset_transcoders_end):
+            return self.run_with_hooks(
+                *model_args,
+                fwd_hooks=fwd_hooks,
+                bwd_hooks=bwd_hooks,
+                reset_hooks_end=reset_hooks_end,
+                clear_contexts=clear_contexts,
+                **model_kwargs,
+            )
+
+    # -------------------------- context manager ---------------------------
+
+    @contextmanager
+    def transcoders(
+        self,
+        transcoders: Transcoder | list[Transcoder] = [],
+        reset_transcoders_end: bool = True,
+    ):
+        """Temporarily attach transcoders during the context."""
+
+        if isinstance(transcoders, Transcoder):
+            transcoders = [transcoders]
+
+        in_names_to_reset: list[str] = []
+        prev_modules: list[tuple[torch.nn.Module, torch.nn.Module]] = []
+
+        try:
+            for tc in transcoders:
+                in_name = tc.cfg.hook_name
+                # Save current modules so we can restore even if there was a different transcoder attached.
+                prev_in = get_deep_attr(self, in_name)
+                prev_out = get_deep_attr(self, tc.cfg.hook_name_out)
+                prev_modules.append((prev_in, prev_out))
+                in_names_to_reset.append(in_name)
+                self.add_transcoder(tc)
+            yield self
+        finally:
+            if reset_transcoders_end:
+                self.reset_transcoders(in_names_to_reset, prev_modules)
+
+# ---------------------------------------------------------------------------
+#                           TRANSCODER HELPERS
+# ---------------------------------------------------------------------------
+
+
+class _TranscoderInputWrapper(torch.nn.Module):
+    """Helper module placed at *input* hook.
+
+    It forwards the untouched activation while also running the Transcoder
+    and caching its output for the paired *_TranscoderOutputWrapper*.
+    """
+
+    def __init__(self, transcoder: Transcoder):
+        super().__init__()
+        self.transcoder = transcoder
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:  # noqa: D401 – simple fn
+        # Run the transcoder and stash the result on the object so that the
+        # output wrapper can retrieve it later in the forward pass.
+        self.transcoder._latest_out = self.transcoder(x)  # type: ignore[attr-defined]
+        return x
+
+
+class _TranscoderOutputWrapper(torch.nn.Module):
+    """Helper module placed at *output* hook to overwrite the MLP output."""
+
+    def __init__(self, transcoder: Transcoder):
+        super().__init__()
+        self.transcoder = transcoder
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:  # noqa: D401 – simple fn
+        # We expect the input wrapper to have executed earlier in the forward
+        # pass and populated `transcoder._latest_out`.
+        if not hasattr(self.transcoder, "_latest_out"):
+            raise RuntimeError(
+                "Transcoder output requested before it was computed. "
+                "Check that input hook executes before output hook."
+            )
+        return self.transcoder._latest_out  # type: ignore[attr-defined]

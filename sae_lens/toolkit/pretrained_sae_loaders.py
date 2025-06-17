@@ -1,7 +1,7 @@
 import json
 import re
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Protocol, TypeVar
 
 import numpy as np
 import torch
@@ -22,6 +22,12 @@ from sae_lens.toolkit.pretrained_saes_directory import (
     get_pretrained_saes_directory,
     get_repo_id_and_folder_name,
 )
+
+# Note: We avoid importing SAE, Transcoder, etc. at module import time to
+# prevent circular import issues. These classes are imported lazily inside
+# `load_artifact_from_pretrained` where needed.
+
+ArtifactType = TypeVar("ArtifactType")
 
 
 # loaders take in a release, sae_id, device, and whether to force download, and returns a tuple of config, state_dict, and log sparsity
@@ -898,6 +904,305 @@ def llama_scope_r1_distill_sae_huggingface_loader(
     return cfg_dict, state_dict, log_sparsity
 
 
+# -----------------------------------------------------------------------------
+#                              TRANSCODER LOADERS
+# -----------------------------------------------------------------------------
+
+
+def _detect_gemma_2_width_from_folder(folder_name: str) -> int | None:
+    """Return the dictionary size encoded in a folder name.
+
+    Gemma-scope naming convention encodes width (d_sae) like
+    ``width_4k`` or ``width_32k`` in the folder name.  We re-use the
+    same mapping that is present in :func:`get_gemma_2_config_from_hf`.
+    """
+    width_map = {
+        "width_4k": 4096,
+        "width_16k": 16384,
+        "width_32k": 32768,
+        "width_65k": 65536,
+        "width_131k": 131072,
+        "width_262k": 262144,
+        "width_524k": 524288,
+        "width_1m": 1048576,
+    }
+    return next((val for key, val in width_map.items() if key in folder_name), None)
+
+
+def _detect_layer_from_folder(folder_name: str) -> int | None:
+    """Extract the integer layer index encoded as ``layer_{n}``."""
+    import re  # local import to avoid polluting module top-level
+
+    match = re.search(r"layer_(\d+)", folder_name)
+    return int(match.group(1)) if match else None
+
+
+# --------------------------- CONFIG GETTER -----------------------------------
+
+
+def get_gemma_2_transcoder_config_from_hf(
+    repo_id: str,
+    folder_name: str,
+    device: str | None = None,
+    force_download: bool = False,  # noqa: ARG001 – kept for API symmetry
+    cfg_overrides: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Return a TranscoderConfig-like dict for Gemma-2 transcoders.
+
+    Conventions replicate those used for Gemma-2 SAEs.  We assume the
+    transcoder maps from the residual stream *after* the RMSNorm at the start
+    of the MLP block to the MLP output (``hook_mlp_out``).
+    """
+
+    d_sae = _detect_gemma_2_width_from_folder(folder_name)
+
+    layer = _detect_layer_from_folder(folder_name)
+    if layer is None:
+        if "embedding" in folder_name:
+            layer = 0
+        else:
+            raise ValueError(
+                "Could not determine layer index from folder_name "
+                f"'{folder_name}'."
+            )
+
+    # Map repo-id fragments to (model name, d_in)
+    model_params = {
+        "2b-it": ("gemma-2-2b-it", 2304),
+        "9b-it": ("gemma-2-9b-it", 3584),
+        "27b-it": ("gemma-2-27b-it", 4608),
+        "2b": ("gemma-2-2b", 2304),
+        "9b": ("gemma-2-9b", 3584),
+        "27b": ("gemma-2-27b", 4608),
+    }
+    model_info = next((v for k, v in model_params.items() if k in repo_id), None)
+    if model_info is None:
+        raise ValueError(f"Could not infer model parameters from repo_id '{repo_id}'.")
+
+    model_name, d_in = model_info
+
+    # Hooks: input after pre-MLP RMSNorm, output after MLP
+    hook_name_in = f"blocks.{layer}.hook_mlp_in"
+    hook_name_out = f"blocks.{layer}.hook_mlp_out"
+
+    cfg_dict: dict[str, Any] = {
+        "architecture": "jumprelu",
+        "d_in": d_in,
+        "d_sae": d_sae,
+        "d_out": d_in,  # MLP output dim equals model dim in Gemma-2
+        "dtype": "float32",
+        "model_name": model_name,
+        # input hook details (inherited SAE fields)
+        "hook_name": hook_name_in,
+        "hook_layer": layer,
+        "hook_head_index": None,
+        # output hook details (Transcoder fields)
+        "hook_name_out": hook_name_out,
+        "hook_layer_out": layer,
+        "hook_head_index_out": None,
+        "activation_fn_str": "relu",  # JumpReLU uses ReLU nonlinearity pre-gate
+        "finetuning_scaling_factor": False,
+        "sae_lens_training_version": None,
+        "prepend_bos": True,
+        "dataset_path": "monology/pile-uncopyrighted",
+        "context_size": 1024,
+        "dataset_trust_remote_code": True,
+        "apply_b_dec_to_input": False,
+        "normalize_activations": None,
+    }
+
+    if device is not None:
+        cfg_dict["device"] = device
+
+    if cfg_overrides is not None:
+        cfg_dict.update(cfg_overrides)
+
+    return cfg_dict
+
+
+# ----------------------------- LOADER ----------------------------------------
+
+
+def gemma_2_transcoder_huggingface_loader(
+    repo_id: str,
+    folder_name: str,
+    device: str = "cpu",
+    force_download: bool = False,
+    cfg_overrides: dict[str, Any] | None = None,
+) -> tuple[dict[str, Any], dict[str, torch.Tensor], None]:
+    """Load a Gemma-2 Transcoder from Hugging Face.
+
+    The weight file is stored as ``params.npz`` inside *folder_name*.
+    """
+
+    import numpy as np  # local import to avoid top-level dependency cost
+
+    cfg_dict = get_gemma_2_transcoder_config_from_hf(
+        repo_id,
+        folder_name,
+        device,
+        force_download,
+        cfg_overrides,
+    )
+
+    # --- Get revision from overrides ---
+    revision = cfg_overrides.get("revision") if cfg_overrides else None
+    # ---------------------------------
+
+    # Download weights
+    sae_path = hf_hub_download(
+        repo_id=repo_id,
+        filename="params.npz",
+        subfolder=folder_name,
+        revision=revision,    # Pass the revision
+        force_download=force_download,
+    )
+
+    # Load npz and convert to torch tensors
+    state_dict: dict[str, torch.Tensor] = {}
+    with np.load(sae_path) as data:
+        for key in data:
+            tensor = (
+                torch.tensor(data[key]).to(dtype=torch.float32).to(device)
+            )
+            # Ensure correct key names in state_dict (match Transcoder param names)
+            if key.lower() in {"w_enc", "wenc", "w_enc"}:
+                state_dict["W_enc"] = tensor  # Weights are stored correctly
+            elif key.lower() in {"w_dec", "wdec", "w_dec"}:
+                state_dict["W_dec"] = tensor  # Weights are stored correctly
+            elif key.lower() in {"b_enc", "benc", "b_enc"}:
+                state_dict["b_enc"] = tensor
+            elif key.lower() in {"b_dec", "bdec", "b_dec"}:
+                state_dict["b_dec"] = tensor
+            elif key.lower() in {"threshold", "thresholds"}:
+                state_dict["threshold"] = tensor
+            else:
+                state_dict[key] = tensor  # keep any extra fields for debugging
+
+    # No sparsity tensor for transcoders at the moment
+    log_sparsity = None
+
+    return cfg_dict, state_dict, log_sparsity
+
+
+# ---------------------------------------------------------------------------
+#                 LLAMA 1B  SkipTranscoder Loader
+# ---------------------------------------------------------------------------
+
+
+def llama_relu_skip_transcoder_huggingface_loader(
+    repo_id: str,
+    folder_name: str,
+    device: str = "cpu",
+    force_download: bool = False,
+    cfg_overrides: dict[str, Any] | None = None,
+) -> tuple[dict[str, Any], dict[str, torch.Tensor], None]:
+    """Load a *skip* transcoder trained on Llama-3-1B.
+
+    Parameters
+    ----------
+    repo_id
+        HF repo id, e.g. ``mntss/skip-transcoder-Llama-3.2-1B-131k-nobos``.
+    folder_name
+        Path to the ``layer_{n}.safetensors`` file inside *repo_id*.
+    device
+        Target device for tensors (``cpu`` or ``cuda``).
+    force_download
+        Whether to bypass local cache.
+    cfg_overrides
+        Optional overrides for the returned config dict.
+    """
+
+    # --- Get revision from overrides ---
+    revision = cfg_overrides.get("revision") if cfg_overrides else None
+    # ---------------------------------
+
+    # Download the safetensors weight file
+    sae_path = hf_hub_download(
+        repo_id=repo_id,
+        filename=folder_name,
+        revision=revision,    # Pass the revision
+        force_download=force_download,
+    )
+
+    # Load weights
+    state_dict_loaded = load_file(sae_path, device=device)
+
+    # Deduce dimensions from W_enc (stored as d_sae × d_in)
+    d_sae, d_in = state_dict_loaded["W_enc"].shape
+
+    # Build config (Transcoder + skip)
+    layer_match = re.search(r"layer_(\d+)", folder_name)
+    layer_idx = int(layer_match.group(1)) if layer_match else 0
+
+    cfg_dict: dict[str, Any] = {
+        "architecture": "standard", #ReLU
+        "d_in": d_in,
+        "d_sae": d_sae,
+        "d_out": d_in,
+        "dtype": "float32",
+        "model_name": "meta-llama/Llama-3.2-1B",
+        # input hook
+        "hook_name": f"blocks.{layer_idx}.hook_resid_mid",
+        "hook_layer": layer_idx,
+        "hook_head_index": None,
+        # output hook after MLP
+        "hook_name_out": f"blocks.{layer_idx}.hook_mlp_out",
+        "hook_layer_out": layer_idx,
+        "hook_head_index_out": None,
+        "activation_fn_str": "relu",
+        "finetuning_scaling_factor": False,
+        "sae_lens_training_version": None,
+        "prepend_bos": True,
+        "dataset_path": "EleutherAI/rpj-v2-sample",
+        "context_size": 1024,
+        "dataset_trust_remote_code": True,
+        "apply_b_dec_to_input": False,
+        "normalize_activations": None,
+        "device": device,
+    }
+
+    if cfg_overrides is not None:
+        cfg_dict.update(cfg_overrides)
+
+    # Convert state dict tensors to float32 on target device and fix shapes
+    state_dict: dict[str, torch.Tensor] = {
+        "W_enc": state_dict_loaded["W_enc"].T.to(dtype=torch.float32),
+        "W_dec": state_dict_loaded["W_dec"].T.to(dtype=torch.float32),
+        "W_skip": state_dict_loaded["W_skip"].to(dtype=torch.float32),
+        "b_enc": state_dict_loaded["b_enc"].to(dtype=torch.float32),
+        "b_dec": state_dict_loaded["b_dec"].to(dtype=torch.float32),
+    }
+
+    # No sparsity tensor for skip transcoders
+    return cfg_dict, state_dict, None
+
+
+
+
+# Config getter uses the loader internally (loads weights briefly). This keeps
+# interface consistent without maintaining a separate function.
+
+
+def get_llama_relu_skip_transcoder_config_from_hf(
+    repo_id: str,
+    folder_name: str,
+    device: str = "cpu",
+    force_download: bool = False,
+    cfg_overrides: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    cfg, _, _ = llama_relu_skip_transcoder_huggingface_loader(
+        repo_id,
+        folder_name,
+        device=device,
+        force_download=force_download,
+        cfg_overrides=cfg_overrides,
+    )
+    return cfg
+
+
+
+
 NAMED_PRETRAINED_SAE_LOADERS: dict[str, PretrainedSaeHuggingfaceLoader] = {
     "sae_lens": sae_lens_huggingface_loader,
     "connor_rob_hook_z": connor_rob_hook_z_huggingface_loader,
@@ -906,6 +1211,8 @@ NAMED_PRETRAINED_SAE_LOADERS: dict[str, PretrainedSaeHuggingfaceLoader] = {
     "llama_scope_r1_distill": llama_scope_r1_distill_sae_huggingface_loader,
     "dictionary_learning_1": dictionary_learning_sae_huggingface_loader_1,
     "deepseek_r1": deepseek_r1_sae_huggingface_loader,
+    "gemma_2_transcoder": gemma_2_transcoder_huggingface_loader,
+    "llama_relu_skip_transcoder": llama_relu_skip_transcoder_huggingface_loader,
 }
 
 
@@ -917,4 +1224,144 @@ NAMED_PRETRAINED_SAE_CONFIG_GETTERS: dict[str, PretrainedSaeConfigHuggingfaceLoa
     "llama_scope_r1_distill": get_llama_scope_r1_distill_config_from_hf,
     "dictionary_learning_1": get_dictionary_learning_config_1_from_hf,
     "deepseek_r1": get_deepseek_r1_config_from_hf,
+    "gemma_2_transcoder": get_gemma_2_transcoder_config_from_hf,
+    "llama_relu_skip_transcoder": get_llama_relu_skip_transcoder_config_from_hf,
 }
+
+
+# Helper function to get combined info including type
+def get_sae_info(release: str, sae_id: str) -> dict[str, Any]:
+    """
+    Retrieves combined configuration information for a specific SAE/Transcoder
+    from the predefined directory, including its type.
+
+    Args:
+        release: The release name.
+        sae_id: The ID of the SAE/Transcoder within the release.
+
+    Returns:
+        A dictionary containing the combined information.
+
+    Raises:
+        ValueError: If the release or ID is not found.
+    """
+    directory = get_pretrained_saes_directory()
+    if release not in directory:
+        # Attempt to find case-insensitive match
+        release_lower = release.lower()
+        matched_release = next(
+            (k for k in directory if k.lower() == release_lower), None
+        )
+        if matched_release:
+            release = matched_release
+        else:
+            raise ValueError(
+                f"Release '{release}' not found. Available releases: {list(directory.keys())}"
+            )
+
+    release_info = directory[release]
+
+    # Attempt case-insensitive match for sae_id as well
+    sae_id_lower = sae_id.lower()
+    sae_data = release_info.saes_map.get(sae_id)
+    if sae_data is None:
+        matched_sae_id = next(
+            (k for k in release_info.saes_map if k.lower() == sae_id_lower), None
+        )
+        if matched_sae_id:
+            sae_id = matched_sae_id
+            sae_data = release_info.saes_map[sae_id]
+        else:
+            # Provide helpful error message with valid IDs
+            valid_ids = list(release_info.saes_map.keys())
+            if len(valid_ids) > 5:
+                str_valid_ids = str(valid_ids[:5])[:-1] + ", ...]"
+            else:
+                str_valid_ids = str(valid_ids)
+            raise ValueError(
+                f"ID '{sae_id}' not found in release '{release}'. Valid IDs: {str_valid_ids}"
+            )
+
+    # Combine base release info with SAE-specific info
+    # Use standard attribute access as these are not Pydantic models
+    combined_info = release_info.__dict__.copy()
+    # Avoid copying the large map of all SAEs for the release
+    if 'saes_map' in combined_info: del combined_info['saes_map']
+    # Update with sae_data attributes, handling potential non-dict types
+    if hasattr(sae_data, '__dict__'):
+        combined_info.update(sae_data.__dict__)
+    elif isinstance(sae_data, str): # Handle cases where sae_data might just be a path string
+        combined_info['path'] = sae_data # Add path explicitly if it's just a string
+    # Add other potential types for sae_data if necessary
+
+    # Handle config_overrides merging
+    base_overrides = getattr(release_info, 'config_overrides', {}) or {}
+    sae_overrides = getattr(sae_data, 'config_overrides', {}) or {}
+    combined_info['config_overrides'] = {**base_overrides, **sae_overrides}
+
+    # Ensure 'type' is present, defaulting to 'sae'
+    combined_info.setdefault("type", "sae")
+
+    return combined_info
+
+
+# Unified loading function
+def load_artifact_from_pretrained(
+    release: str,
+    sae_id: str,
+    device: str = "cpu",
+    force_download: bool = False,
+    # Add other potential args like 'converter' if needed by specific classes
+    **kwargs: Any,
+) -> tuple[Any, dict[str, Any], torch.Tensor | None]:
+    """
+    Loads a pretrained artifact (SAE, Transcoder, SkipTranscoder) from the
+    Hugging Face model hub or local cache, automatically determining the
+    correct class based on the YAML configuration.
+
+    Args:
+        release: The release name.
+        sae_id: The id of the artifact to load.
+        device: The device to load the artifact on.
+        force_download: Whether to force download.
+        **kwargs: Additional keyword arguments passed down to the specific
+                  class's from_pretrained method (e.g., `converter`).
+
+    Returns:
+        A tuple containing the loaded artifact (typed generically),
+        its config dictionary, and the log sparsity tensor (or None).
+    """
+    # === Import Classes Inside Function to Avoid Circular Import ===
+    from sae_lens.sae import SAE
+    from sae_lens.transcoder import SkipTranscoder, Transcoder
+    # ==============================================================
+
+    # 1. Get YAML info including the type
+    artifact_info = get_sae_info(release, sae_id)
+    artifact_type = artifact_info.get("type", "sae")  # Default to 'sae'
+
+    # 2. Select the appropriate class
+    if artifact_type == "transcoder":
+        cls = Transcoder
+    elif artifact_type == "skip_transcoder":
+        cls = SkipTranscoder
+    elif artifact_type == "sae":
+        cls = SAE
+    else:
+        raise ValueError(
+            f"Unknown artifact type '{artifact_type}' specified in YAML "
+            f"for {release}/{sae_id}"
+        )
+
+    # 3. Call the class's from_pretrained method
+    # Pass kwargs directly, assuming from_pretrained handles them appropriately
+    artifact, cfg_dict, log_sparsity = cls.from_pretrained(
+        release=release,
+        sae_id=sae_id,
+        device=device,
+        force_download=force_download,
+        **kwargs,
+    )
+
+    # Cast the return type hint for clarity, though it's already generic
+    return artifact, cfg_dict, log_sparsity
