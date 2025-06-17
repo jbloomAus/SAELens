@@ -568,6 +568,9 @@ class PretokenizeRunnerConfig:
     begin_sequence_token: int | Literal["bos", "eos", "sep"] | None = None
     sequence_separator_token: int | Literal["bos", "eos", "sep"] | None = "bos"
 
+    # sequence processing
+    disable_concat_sequences: bool = False
+
     # if saving locally, set save_path
     save_path: str | None = None
 

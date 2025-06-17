@@ -368,22 +368,18 @@ class ActivationsStore:
             tokenizer = getattr(self.model, "tokenizer", None)
             bos_token_id = None if tokenizer is None else tokenizer.bos_token_id
 
-            if self.disable_concat_sequences:
-                for tokens in self._iterate_raw_dataset_tokens():
-                    if len(tokens) >= self.context_size:
-                        yield tokens[: self.context_size]
-            else:
-                sequence_separator_token_id = None
-                if self.prepend_bos and not self.exclude_bos_between_sequences:
-                    sequence_separator_token_id = bos_token_id
+            sequence_separator_token_id = None
+            if self.prepend_bos and not self.exclude_bos_between_sequences:
+                sequence_separator_token_id = bos_token_id
 
-                yield from concat_and_batch_sequences(
-                    tokens_iterator=self._iterate_raw_dataset_tokens(),
-                    context_size=self.context_size,
-                    begin_batch_token_id=(bos_token_id if self.prepend_bos else None),
-                    begin_sequence_token_id=None,
-                    sequence_separator_token_id=sequence_separator_token_id,
-                )
+            yield from concat_and_batch_sequences(
+                tokens_iterator=self._iterate_raw_dataset_tokens(),
+                context_size=self.context_size,
+                begin_batch_token_id=(bos_token_id if self.prepend_bos else None),
+                begin_sequence_token_id=None,
+                sequence_separator_token_id=sequence_separator_token_id,
+                disable_concat_sequences=self.disable_concat_sequences,
+            )
 
     def load_cached_activation_dataset(self) -> Dataset | None:
         """
