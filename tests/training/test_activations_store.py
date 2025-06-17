@@ -855,7 +855,7 @@ def test_activations_store_get_batch_tokens_exclude_bos_between_sequences(
     ts_model: HookedTransformer,
 ):
     cfg = build_runner_cfg(
-        exclude_bos_between_sequences=True,
+        sequence_separator_token=None,
         context_size=8,
         store_batch_size_prompts=1,
     )

@@ -117,7 +117,7 @@ class LanguageModelSAERunnerConfig(Generic[T_TRAINING_SAE_CONFIG]):
         store_batch_size_prompts (int): The batch size for storing activations. This controls how many prompts are in the batch of the language model when generating activations.
         seqpos_slice (tuple[int | None, ...]): Determines slicing of activations when constructing batches during training. The slice should be (start_pos, end_pos, optional[step_size]), e.g. for Othello we sometimes use (5, -5). Note, step_size > 0.
         disable_concat_sequences (bool): Whether to disable concatenating sequences and ignore sequences shorter than the context size. If True, disables concatenating and ignores short sequences.
-        exclude_bos_between_sequences (bool): Whether to exclude the BOS token between concatenated sequences. If True, excludes the BOS token.
+        sequence_separator_token (int | Literal["bos", "eos", "sep"] | None): If not `None`, this token will be placed between sentences in a batch to act as a separator. By default, this is the `<bos>` token.
         device (str): The device to use. Usually "cuda".
         act_store_device (str): The device to use for the activation store. "cpu" is advised in order to save VRAM. Defaults to "with_model" which uses the same device as the main model.
         seed (int): The seed to use.
@@ -181,7 +181,7 @@ class LanguageModelSAERunnerConfig(Generic[T_TRAINING_SAE_CONFIG]):
     store_batch_size_prompts: int = 32
     seqpos_slice: tuple[int | None, ...] = (None,)
     disable_concat_sequences: bool = False
-    exclude_bos_between_sequences: bool = False
+    sequence_separator_token: int | Literal["bos", "eos", "sep"] | None = "bos"
 
     # Misc
     device: str = "cpu"
