@@ -99,6 +99,7 @@ def pretokenize_dataset(
                     sequence_separator_token_id=get_special_token_from_cfg(
                         cfg.sequence_separator_token, tokenizer
                     ),
+                    disable_concat_sequences=cfg.disable_concat_sequences,
                 )
             )
         }
