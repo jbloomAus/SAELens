@@ -851,7 +851,7 @@ def test_activations_store_get_batch_tokens_disable_concat_sequences(
     assert batch_tokens[1].tolist() == expected_tokens_2
 
 
-def test_activations_store_get_batch_tokens_exclude_bos_between_sequences(
+def test_activations_store_get_batch_tokens_no_sequence_separator_token(
     ts_model: HookedTransformer,
 ):
     cfg = build_runner_cfg(
