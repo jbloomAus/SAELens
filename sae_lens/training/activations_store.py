@@ -28,6 +28,7 @@ from sae_lens.config import (
     LanguageModelSAERunnerConfig,
 )
 from sae_lens.constants import DTYPE_MAP
+from sae_lens.pretokenize_runner import get_special_token_from_cfg
 from sae_lens.saes.sae import SAE, T_SAE_CONFIG, T_TRAINING_SAE_CONFIG
 from sae_lens.tokenization_and_batching import concat_and_batch_sequences
 
@@ -146,6 +147,8 @@ class ActivationsStore:
             dataset_trust_remote_code=cfg.dataset_trust_remote_code,
             seqpos_slice=cfg.seqpos_slice,
             exclude_special_tokens=exclude_special_tokens,
+            disable_concat_sequences=cfg.disable_concat_sequences,
+            sequence_separator_token=cfg.sequence_separator_token,
         )
 
     @classmethod
@@ -220,6 +223,8 @@ class ActivationsStore:
         dataset_trust_remote_code: bool | None = None,
         seqpos_slice: tuple[int | None, ...] = (None,),
         exclude_special_tokens: torch.Tensor | None = None,
+        disable_concat_sequences: bool = False,
+        sequence_separator_token: int | Literal["bos", "eos", "sep"] | None = "bos",
     ):
         self.model = model
         if model_kwargs is None:
@@ -263,6 +268,10 @@ class ActivationsStore:
         self.autocast_lm = autocast_lm
         self.seqpos_slice = seqpos_slice
         self.exclude_special_tokens = exclude_special_tokens
+        self.disable_concat_sequences = disable_concat_sequences
+        self.sequence_separator_token: int | Literal["bos", "eos", "sep"] | None = (
+            sequence_separator_token
+        )
 
         self.n_dataset_processed = 0
 
@@ -374,14 +383,18 @@ class ActivationsStore:
         else:
             tokenizer = getattr(self.model, "tokenizer", None)
             bos_token_id = None if tokenizer is None else tokenizer.bos_token_id
+
             yield from concat_and_batch_sequences(
                 tokens_iterator=self._iterate_raw_dataset_tokens(),
                 context_size=self.context_size,
                 begin_batch_token_id=(bos_token_id if self.prepend_bos else None),
                 begin_sequence_token_id=None,
-                sequence_separator_token_id=(
-                    bos_token_id if self.prepend_bos else None
-                ),
+                sequence_separator_token_id=get_special_token_from_cfg(
+                    self.sequence_separator_token, tokenizer
+                )
+                if tokenizer is not None
+                else None,
+                disable_concat_sequences=self.disable_concat_sequences,
             )
 
     def load_cached_activation_dataset(self) -> Dataset | None:
