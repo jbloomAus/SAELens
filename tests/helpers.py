@@ -83,7 +83,6 @@ class TrainingSAEConfigDict(TypedDict, total=False):
     l1_coefficient: float
     lp_norm: float
     normalize_activations: str
-    b_dec_init_method: str
     apply_b_dec_to_input: bool
     noise_scale: float
     mse_loss_normalization: str | None
@@ -236,7 +235,6 @@ def build_runner_cfg(
         "l1_coefficient": 2e-3,
         "lp_norm": 1.0,
         "normalize_activations": "none",
-        "b_dec_init_method": "zeros",
         "apply_b_dec_to_input": False,
         "noise_scale": 0.0,
         "mse_loss_normalization": None,
@@ -282,7 +280,6 @@ def build_jumprelu_runner_cfg(
         "dtype": "float32",
         "device": "cpu",
         "normalize_activations": "none",
-        "b_dec_init_method": "zeros",
         "apply_b_dec_to_input": False,
         "noise_scale": 0.0,
         "decoder_init_norm": 0.1,
@@ -327,7 +324,6 @@ def build_gated_runner_cfg(
         "decoder_init_norm": 0.1,
         "l1_coefficient": 1.0,
         "normalize_activations": "none",
-        "b_dec_init_method": "zeros",
         "apply_b_dec_to_input": False,
         "noise_scale": 0.0,
         "mse_loss_normalization": None,
@@ -366,7 +362,6 @@ def build_topk_runner_cfg(
         "dtype": "float32",
         "device": "cpu",
         "normalize_activations": "none",
-        "b_dec_init_method": "zeros",
         "decoder_init_norm": 0.1,
         "apply_b_dec_to_input": False,
         "noise_scale": 0.0,

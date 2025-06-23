@@ -318,7 +318,7 @@ class CacheActivationsRunner:
     def _create_shard(
         self,
         buffer: tuple[
-            Float[torch.Tensor, "(bs context_size) num_layers d_in"],
+            Float[torch.Tensor, "(bs context_size) d_in"],
             Int[torch.Tensor, "(bs context_size)"] | None,
         ],
     ) -> Dataset:
@@ -326,13 +326,15 @@ class CacheActivationsRunner:
         acts, token_ids = buffer
         acts = einops.rearrange(
             acts,
-            "(bs context_size) num_layers d_in -> num_layers bs context_size d_in",
+            "(bs context_size) d_in -> bs context_size d_in",
             bs=self.cfg.n_seq_in_buffer,
             context_size=self.context_size,
             d_in=self.cfg.d_in,
-            num_layers=len(hook_names),
         )
-        shard_dict = {hook_name: act for hook_name, act in zip(hook_names, acts)}
+        shard_dict: dict[str, object] = {
+            hook_name: act_batch
+            for hook_name, act_batch in zip(hook_names, [acts], strict=True)
+        }
 
         if token_ids is not None:
             token_ids = einops.rearrange(

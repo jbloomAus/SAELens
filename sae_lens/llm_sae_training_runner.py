@@ -8,14 +8,13 @@ from typing import Any, Generic, cast
 
 import torch
 import wandb
-from safetensors.torch import save_file
 from simple_parsing import ArgumentParser
 from transformer_lens.hook_points import HookedRootModule
 from typing_extensions import deprecated
 
 from sae_lens import logger
 from sae_lens.config import HfDataset, LanguageModelSAERunnerConfig
-from sae_lens.constants import RUNNER_CFG_FILENAME, SPARSITY_FILENAME
+from sae_lens.constants import ACTIVATIONS_STORE_STATE_FILENAME, RUNNER_CFG_FILENAME
 from sae_lens.evals import EvalConfig, run_evals
 from sae_lens.load_model import load_model
 from sae_lens.saes.sae import (
@@ -24,10 +23,9 @@ from sae_lens.saes.sae import (
     TrainingSAE,
     TrainingSAEConfig,
 )
+from sae_lens.training.activation_scaler import ActivationScaler
 from sae_lens.training.activations_store import ActivationsStore
-from sae_lens.training.geometric_median import compute_geometric_median
 from sae_lens.training.sae_trainer import SAETrainer
-from sae_lens.training.scaler import ActivationScaler
 from sae_lens.training.types import DataProvider
 
 
@@ -148,7 +146,6 @@ class LanguageModelSAETrainingRunner:
                         self.cfg.get_training_sae_cfg_dict(),
                     ).to_dict()
                 )
-                self._init_sae_group_b_decs()
         else:
             self.sae = override_sae
 
@@ -175,12 +172,11 @@ class LanguageModelSAETrainingRunner:
         )
 
         trainer = SAETrainer(
-            model=self.model,
             sae=self.sae,
             data_provider=self.activations_store,
             evaluator=evaluator,
             save_checkpoint_fn=self.save_checkpoint,
-            cfg=self.cfg,
+            cfg=self.cfg.to_sae_trainer_config(),
         )
 
         self._compile_if_needed()
@@ -236,62 +232,17 @@ class LanguageModelSAETrainingRunner:
 
         return sae
 
-    # TODO: move this into the SAE trainer or Training SAE class
-    def _init_sae_group_b_decs(
-        self,
-    ) -> None:
-        """
-        extract all activations at a certain layer and use for sae b_dec initialization
-        """
-
-        if self.cfg.sae.b_dec_init_method == "geometric_median":
-            self.activations_store.set_norm_scaling_factor_if_needed()
-            layer_acts = self.activations_store.get_filtered_buffer(10).detach()[
-                :, 0, :
-            ]
-            # get geometric median of the activations if we're using those.
-            median = compute_geometric_median(
-                layer_acts,
-                maxiter=100,
-            ).median
-            self.sae.initialize_b_dec_with_precalculated(median)
-        elif self.cfg.sae.b_dec_init_method == "mean":
-            self.activations_store.set_norm_scaling_factor_if_needed()
-            layer_acts = (
-                self.activations_store.get_filtered_buffer(10).detach().cpu()[:, 0, :]
-            )
-            self.sae.initialize_b_dec_with_mean(layer_acts)  # type: ignore
-
-    @staticmethod
     def save_checkpoint(
-        trainer: SAETrainer[TrainingSAE[Any], Any],
-        checkpoint_name: str,
-        wandb_aliases: list[str] | None = None,
+        self,
+        checkpoint_path: Path,
     ) -> None:
-        base_path = Path(trainer.cfg.checkpoint_path) / checkpoint_name
-        base_path.mkdir(exist_ok=True, parents=True)
-
-        trainer.activations_store.save(
-            str(base_path / "activations_store_state.safetensors")
+        self.activations_store.save(
+            str(checkpoint_path / ACTIVATIONS_STORE_STATE_FILENAME)
         )
 
-        weights_path, cfg_path = trainer.sae.save_model(str(base_path))
-
-        sparsity_path = base_path / SPARSITY_FILENAME
-        save_file({"sparsity": trainer.log_feature_sparsity}, sparsity_path)
-
-        runner_config = trainer.cfg.to_dict()
-        with open(base_path / RUNNER_CFG_FILENAME, "w") as f:
+        runner_config = self.cfg.to_dict()
+        with open(checkpoint_path / RUNNER_CFG_FILENAME, "w") as f:
             json.dump(runner_config, f)
-
-        if trainer.cfg.logger.log_to_wandb:
-            trainer.cfg.logger.log(
-                trainer,
-                weights_path,
-                cfg_path,
-                sparsity_path=sparsity_path,
-                wandb_aliases=wandb_aliases,
-            )
 
 
 def _parse_cfg_args(

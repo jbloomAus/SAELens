@@ -1,14 +1,17 @@
 import contextlib
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Callable, Generic, Protocol
 
 import torch
 import wandb
+from safetensors.torch import save_file
 from torch.optim import Adam
 from tqdm import tqdm
 
 from sae_lens import __version__
 from sae_lens.config import SAETrainerConfig
+from sae_lens.constants import ACTIVATION_SCALER_CFG_FILENAME, SPARSITY_FILENAME
 from sae_lens.saes.sae import (
     T_TRAINING_SAE,
     T_TRAINING_SAE_CONFIG,
@@ -17,8 +20,8 @@ from sae_lens.saes.sae import (
     TrainStepInput,
     TrainStepOutput,
 )
+from sae_lens.training.activation_scaler import ActivationScaler
 from sae_lens.training.optim import CoefficientScheduler, get_lr_scheduler
-from sae_lens.training.scaler import ActivationScaler
 from sae_lens.training.types import DataProvider
 
 
@@ -45,9 +48,7 @@ class TrainSAEOutput:
 class SaveCheckpointFn(Protocol):
     def __call__(
         self,
-        trainer: "SAETrainer[Any, Any]",
-        checkpoint_name: str,
-        wandb_aliases: list[str] | None = None,
+        checkpoint_path: Path,
     ) -> None: ...
 
 
@@ -207,12 +208,28 @@ class SAETrainer(Generic[T_TRAINING_SAE, T_TRAINING_SAE_CONFIG]):
         checkpoint_name: str,
         wandb_aliases: list[str] | None = None,
     ) -> None:
-        if self.save_checkpoint_fn is not None:
-            self.save_checkpoint_fn(
-                trainer=self,
-                checkpoint_name=checkpoint_name,
+        checkpoint_path = Path(self.cfg.checkpoint_path) / checkpoint_name
+        checkpoint_path.mkdir(exist_ok=True, parents=True)
+
+        weights_path, cfg_path = self.sae.save_model(str(checkpoint_path))
+
+        sparsity_path = checkpoint_path / SPARSITY_FILENAME
+        save_file({"sparsity": self.log_feature_sparsity}, sparsity_path)
+
+        activation_scaler_path = checkpoint_path / ACTIVATION_SCALER_CFG_FILENAME
+        self.activation_scaler.save(str(activation_scaler_path))
+
+        if self.cfg.logger.log_to_wandb:
+            self.cfg.logger.log(
+                self,
+                weights_path,
+                cfg_path,
+                sparsity_path=sparsity_path,
                 wandb_aliases=wandb_aliases,
             )
+
+        if self.save_checkpoint_fn is not None:
+            self.save_checkpoint_fn(checkpoint_path=checkpoint_path)
 
     def _train_step(
         self,

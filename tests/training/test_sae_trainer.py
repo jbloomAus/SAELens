@@ -266,12 +266,16 @@ def test_final_checkpoint_saves_runner_cfg(
         ts_model, cfg, override_dataset=dataset
     )
     sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+    runner = LanguageModelSAETrainingRunner(
+        cfg, override_model=ts_model, override_sae=sae
+    )
+    runner.activations_store = activation_store
 
     trainer = SAETrainer(
         cfg=cfg.to_sae_trainer_config(),
         sae=sae,
         data_provider=activation_store,
-        save_checkpoint_fn=LanguageModelSAETrainingRunner.save_checkpoint,
+        save_checkpoint_fn=runner.save_checkpoint,
     )
 
     # Train the model - this should create checkpoints
@@ -325,12 +329,16 @@ def test_estimated_norm_scaling_factor_persistence(
         ts_model, cfg, override_dataset=dataset
     )
     sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+    runner = LanguageModelSAETrainingRunner(
+        cfg, override_model=ts_model, override_sae=sae
+    )
+    runner.activations_store = activation_store
 
     trainer = SAETrainer(
         sae=sae,
         data_provider=activation_store,
         cfg=cfg.to_sae_trainer_config(),
-        save_checkpoint_fn=LanguageModelSAETrainingRunner.save_checkpoint,
+        save_checkpoint_fn=runner.save_checkpoint,
     )
 
     # Train the model - this should create checkpoints

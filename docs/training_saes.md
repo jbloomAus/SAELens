@@ -71,7 +71,6 @@ cfg = LanguageModelSAERunnerConfig(
     sae=StandardTrainingSAEConfig(
         d_in=1024, # Matches hook_mlp_out for tiny-stories-1L-21M
         expansion_factor=16,
-        b_dec_init_method="zeros",
         apply_b_dec_to_input=False,
         normalize_sae_decoder=False,
         scale_sparsity_penalty_by_decoder_norm=True,

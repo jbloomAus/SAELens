@@ -2,9 +2,7 @@ import os
 import tempfile
 from collections.abc import Iterable
 from math import ceil
-from typing import Any
 
-import numpy as np
 import pytest
 import torch
 from datasets import Dataset
@@ -112,9 +110,6 @@ def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
 
     store = ActivationsStore.from_config(model, cfg)
 
-    if cfg.sae.normalize_activations == "expected_average_only_in":
-        store.estimated_norm_scaling_factor = 10.399
-
     assert store.model == model
 
     assert isinstance(store.iterable_sequences, Iterable)
@@ -138,7 +133,6 @@ def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
     assert activations.shape == (
         store.store_batch_size_prompts,
         store.context_size,
-        1,
         store.d_in,
     )
     assert activations.device == store.device
@@ -154,18 +148,10 @@ def test_activations_store__shapes_look_correct_with_real_models_and_datasets(
         store.store_batch_size_prompts * store.context_size * n_batches_in_buffer
     )
 
-    assert act_buffer.shape == (buffer_size_expected, 1, store.d_in)
+    assert act_buffer.shape == (buffer_size_expected, store.d_in)
     assert tok_buffer.shape == (buffer_size_expected,)
     assert act_buffer.device == store.device
     assert tok_buffer.device == store.device
-
-    # check the buffer norm
-    if cfg.sae.normalize_activations == "expected_average_only_in":
-        assert torch.allclose(
-            act_buffer.norm(dim=-1),
-            np.sqrt(store.d_in) * torch.ones_like(act_buffer.norm(dim=-1)),
-            atol=2,
-        )
 
 
 def test_activations_store__get_activations_head_hook(ts_model: HookedTransformer):
@@ -182,7 +168,6 @@ def test_activations_store__get_activations_head_hook(ts_model: HookedTransforme
     assert activations.shape == (
         activation_store_head_hook.store_batch_size_prompts,
         activation_store_head_hook.context_size,
-        1,
         activation_store_head_hook.d_in,
     )
     assert activations.device == activation_store_head_hook.device
@@ -319,30 +304,6 @@ def test_activations_store_moves_with_model(ts_model: HookedTransformer):
     assert activations[0].device == torch.device("cpu")
     assert activations[1] is not None
     assert activations[1].device == torch.device("cpu")
-
-
-def test_activations_store_estimate_norm_scaling_factor(
-    cfg: LanguageModelSAERunnerConfig[StandardTrainingSAEConfig],
-    model: HookedTransformer,
-):
-    # --- first, test initialisation ---
-
-    # config if you want to benchmark this:
-    #
-    # cfg.context_size = 1024
-    # cfg.n_batches_in_buffer = 64
-    # cfg.store_batch_size_prompts = 16
-
-    store = ActivationsStore.from_config(model, cfg)
-
-    factor = store.estimate_norm_scaling_factor(n_batches_for_norm_estimate=10)
-    assert isinstance(factor, float)
-
-    # just to make sure this runs correctly...
-    store.estimated_norm_scaling_factor = 1.0
-
-    scaled_norm = store.get_filtered_buffer(10).norm(dim=-1).mean() * factor
-    assert scaled_norm == pytest.approx(np.sqrt(store.d_in), abs=5)
 
 
 def test_activations_store___iterate_tokenized_sequences__yields_concat_and_batched_sequences(
@@ -574,49 +535,18 @@ def test_activations_store_respects_position_offsets(ts_model: HookedTransformer
     activations = activation_store.get_activations(batch)
 
     assert batch.shape == (1, 10)  # Full context size
-    assert activations.shape == (1, 6, 1, cfg.sae.d_in)  # Only 6 positions (2 to 7)
+    assert activations.shape == (1, 6, cfg.sae.d_in)  # Only 6 positions (2 to 7)
 
 
-@pytest.mark.parametrize(
-    "params",
-    [
-        {
-            "sae_kwargs": {
-                "normalize_activations": "none",
-            },
-            "should_save": False,
-        },
-        {
-            "sae_kwargs": {
-                "normalize_activations": "expected_average_only_in",
-            },
-            "should_save": True,
-        },
-    ],
-)
-def test_activations_store_save_with_norm_scaling_factor(
-    ts_model: HookedTransformer, params: dict[str, Any]
-):
-    cfg = build_runner_cfg(**params["sae_kwargs"])
+def test_activations_store_save(ts_model: HookedTransformer):
+    cfg = build_runner_cfg()
     activation_store = ActivationsStore.from_config(ts_model, cfg)
-    activation_store.set_norm_scaling_factor_if_needed()
-    if params["sae_kwargs"]["normalize_activations"] == "expected_average_only_in":
-        assert activation_store.estimated_norm_scaling_factor is not None
     with tempfile.NamedTemporaryFile() as temp_file:
         activation_store.save(temp_file.name)
         assert os.path.exists(temp_file.name)
         state_dict = load_file(temp_file.name)
         assert isinstance(state_dict, dict)
-        if params["should_save"]:
-            assert "estimated_norm_scaling_factor" in state_dict
-            estimated_norm_scaling_factor = state_dict["estimated_norm_scaling_factor"]
-            assert estimated_norm_scaling_factor.shape == ()
-            assert (
-                estimated_norm_scaling_factor.item()
-                == activation_store.estimated_norm_scaling_factor
-            )
-        else:
-            assert "estimated_norm_scaling_factor" not in state_dict
+        assert "n_dataset_processed" in state_dict
 
 
 def test_get_special_token_ids():
@@ -659,7 +589,7 @@ def test_activations_store_buffer_contains_token_ids(ts_model: HookedTransformer
     store = ActivationsStore.from_config(ts_model, cfg, override_dataset=dataset)
     acts, token_ids = store.get_raw_buffer(n_batches_in_buffer=2)
 
-    assert acts.shape == (30, 1, 64)  # (batch_size x context_size x n_batches, 1, d_in)
+    assert acts.shape == (30, 64)  # (batch_size x context_size x n_batches, 1, d_in)
     assert token_ids is not None
     assert token_ids.shape == (30,)  # (batch_size x context_size x n_batches,)
 

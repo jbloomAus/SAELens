@@ -26,8 +26,8 @@ from sae_lens.load_model import load_model
 from sae_lens.loading.pretrained_saes_directory import PretrainedSAELookup
 from sae_lens.saes.sae import SAE, TrainingSAE
 from sae_lens.saes.standard_sae import StandardSAE, StandardTrainingSAE
+from sae_lens.training.activation_scaler import ActivationScaler
 from sae_lens.training.activations_store import ActivationsStore
-from sae_lens.training.scaler import ActivationScaler
 from tests.helpers import TINYSTORIES_MODEL, build_runner_cfg, load_model_cached
 
 TRAINER_EVAL_CONFIG = EvalConfig(

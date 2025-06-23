@@ -114,7 +114,6 @@ def test_load_cached_activations(tmp_path: Path):
         )  # Adjusted to use n_batches_in_buffer
         assert buffer[0].shape == (
             cfg.n_seq_in_buffer * cfg.context_size,
-            1,
             cfg.d_in,
         )
         assert buffer[1] is not None

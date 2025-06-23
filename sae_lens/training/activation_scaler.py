@@ -1,3 +1,4 @@
+import json
 from dataclasses import dataclass
 from statistics import mean
 
@@ -46,3 +47,11 @@ class ActivationScaler:
             data_provider, n_batches_for_norm_estimate
         )
         self.scaling_factor = (d_in**0.5) / mean_norm
+
+    def save(self, file_path: str):
+        """save the state dict to a file in json format"""
+        if not file_path.endswith(".json"):
+            raise ValueError("file_path must end with .json")
+
+        with open(file_path, "w") as f:
+            json.dump({"scaling_factor": self.scaling_factor}, f)

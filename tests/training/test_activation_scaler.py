@@ -1,17 +1,21 @@
+import numpy as np
 import pytest
 import torch
+from transformer_lens import HookedTransformer
 
-from sae_lens.training.scaler import ActivationScaler
+from sae_lens.training.activation_scaler import ActivationScaler
+from sae_lens.training.activations_store import ActivationsStore
+from tests.helpers import build_runner_cfg
 
 
-def test_scale_without_scaling_factor():
+def test_ActivationScaler_scale_without_scaling_factor():
     scaler = ActivationScaler()
     acts = torch.tensor([[1.0, 2.0], [3.0, 4.0]])
     result = scaler.scale(acts)
     assert torch.equal(result, acts)
 
 
-def test_scale_with_scaling_factor():
+def test_ActivationScaler_scale_with_scaling_factor():
     scaler = ActivationScaler(scaling_factor=2.0)
     acts = torch.tensor([[1.0, 2.0], [3.0, 4.0]])
     expected = torch.tensor([[2.0, 4.0], [6.0, 8.0]])
@@ -19,14 +23,14 @@ def test_scale_with_scaling_factor():
     assert torch.allclose(result, expected)
 
 
-def test_unscale_without_scaling_factor():
+def test_ActivationScaler_unscale_without_scaling_factor():
     scaler = ActivationScaler()
     acts = torch.tensor([[1.0, 2.0], [3.0, 4.0]])
     result = scaler.unscale(acts)
     assert torch.equal(result, acts)
 
 
-def test_unscale_with_scaling_factor():
+def test_ActivationScaler_unscale_with_scaling_factor():
     scaler = ActivationScaler(scaling_factor=2.0)
     acts = torch.tensor([[2.0, 4.0], [6.0, 8.0]])
     expected = torch.tensor([[1.0, 2.0], [3.0, 4.0]])
@@ -34,7 +38,7 @@ def test_unscale_with_scaling_factor():
     assert torch.allclose(result, expected)
 
 
-def test_call_method():
+def test_ActivationScaler_call_method():
     scaler = ActivationScaler(scaling_factor=3.0)
     acts = torch.tensor([[1.0, 2.0]])
     expected = torch.tensor([[3.0, 6.0]])
@@ -42,7 +46,7 @@ def test_call_method():
     assert torch.allclose(result, expected)
 
 
-def test_scale_unscale_roundtrip():
+def test_ActivationScaler_scale_unscale_roundtrip():
     scaler = ActivationScaler(scaling_factor=1.5)
     original = torch.tensor([[1.0, 2.0], [3.0, 4.0]])
     scaled = scaler.scale(original)
@@ -50,7 +54,7 @@ def test_scale_unscale_roundtrip():
     assert torch.allclose(unscaled, original)
 
 
-def test_calculate_mean_norm():
+def test_ActivationScaler_calculate_mean_norm():
     scaler = ActivationScaler()
 
     def data_provider():
@@ -72,7 +76,7 @@ def test_calculate_mean_norm():
     assert abs(mean_norm - expected_mean) < 1e-6
 
 
-def test_estimate_scaling_factor():
+def test_ActivationScaler_estimate_scaling_factor():
     scaler = ActivationScaler()
     d_in = 64
 
@@ -91,7 +95,7 @@ def test_estimate_scaling_factor():
     assert abs(scaler.scaling_factor - expected_scaling_factor) < 1e-6
 
 
-def test_estimate_scaling_factor_updates_scaler():
+def test_ActivationScaler_estimate_scaling_factor_updates_scaler():
     scaler = ActivationScaler()
     assert scaler.scaling_factor is None
 
@@ -108,7 +112,7 @@ def test_estimate_scaling_factor_updates_scaler():
 
 
 @pytest.mark.parametrize("scaling_factor", [0.5, 1.0, 2.0, 10.0])
-def test_scale_unscale_with_different_factors(scaling_factor: float):
+def test_ActivationScaler_scale_unscale_with_different_factors(scaling_factor: float):
     scaler = ActivationScaler(scaling_factor=scaling_factor)
     acts = torch.randn(32, 64)
 
@@ -118,7 +122,7 @@ def test_scale_unscale_with_different_factors(scaling_factor: float):
     assert torch.allclose(unscaled, acts, rtol=1e-6)
 
 
-def test_scaler_with_zero_tensor():
+def test_ActivationScaler_scale_with_zero_tensor():
     scaler = ActivationScaler(scaling_factor=5.0)
     zero_tensor = torch.zeros(10, 20)
 
@@ -129,7 +133,7 @@ def test_scaler_with_zero_tensor():
     assert torch.equal(unscaled, zero_tensor)
 
 
-def test_scaler_preserves_tensor_shape():
+def test_ActivationScaler_scale_preserves_tensor_shape():
     scaler = ActivationScaler(scaling_factor=2.0)
 
     for shape in [(1, 1), (10, 64), (32, 128, 256)]:
@@ -141,7 +145,7 @@ def test_scaler_preserves_tensor_shape():
         assert unscaled.shape == acts.shape
 
 
-def test_scaler_with_negative_values():
+def test_ActivationScaler_scale_with_negative_values():
     scaler = ActivationScaler(scaling_factor=3.0)
     acts = torch.tensor([[-1.0, 2.0], [-3.0, 4.0]])
     expected_scaled = torch.tensor([[-3.0, 6.0], [-9.0, 12.0]])
@@ -151,3 +155,35 @@ def test_scaler_with_negative_values():
 
     unscaled = scaler.unscale(scaled)
     assert torch.allclose(unscaled, acts)
+
+
+def test_ActivationScaler_estimates_norm_scaling_factor_from_activations_store(
+    ts_model: HookedTransformer,
+):
+    # --- first, test initialisation ---
+
+    # config if you want to benchmark this:
+    #
+    # cfg.context_size = 1024
+    # cfg.n_batches_in_buffer = 64
+    # cfg.store_batch_size_prompts = 16
+
+    cfg = build_runner_cfg(
+        d_in=64,
+        streaming=False,
+        context_size=1024,
+        n_batches_in_buffer=64,
+        store_batch_size_prompts=16,
+    )
+
+    store = ActivationsStore.from_config(ts_model, cfg)
+
+    scaler = ActivationScaler()
+    assert scaler.scaling_factor is None
+    scaler.estimate_scaling_factor(cfg.sae.d_in, store, n_batches_for_norm_estimate=10)
+    assert isinstance(scaler.scaling_factor, float)
+
+    scaled_norm = (
+        store.get_filtered_buffer(10).norm(dim=-1).mean() * scaler.scaling_factor
+    )
+    assert scaled_norm == pytest.approx(np.sqrt(store.d_in), abs=5)

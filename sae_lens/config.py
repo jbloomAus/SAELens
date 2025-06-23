@@ -378,6 +378,7 @@ class LanguageModelSAERunnerConfig(Generic[T_TRAINING_SAE_CONFIG]):
     def to_sae_trainer_config(self) -> "SAETrainerConfig":
         return SAETrainerConfig(
             n_checkpoints=self.n_checkpoints,
+            checkpoint_path=self.checkpoint_path,
             total_training_samples=self.total_training_tokens,
             device=self.device,
             autocast=self.autocast,
@@ -600,6 +601,7 @@ class PretokenizeRunnerConfig:
 @dataclass
 class SAETrainerConfig:
     n_checkpoints: int
+    checkpoint_path: str
     total_training_samples: int
     device: str
     autocast: bool

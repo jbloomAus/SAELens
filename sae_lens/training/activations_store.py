@@ -258,8 +258,6 @@ class ActivationsStore:
 
         self.n_dataset_processed = 0
 
-        self.estimated_norm_scaling_factor = None
-
         # Check if dataset is tokenized
         dataset_sample = next(iter(self.dataset))
 
@@ -424,30 +422,6 @@ class ActivationsStore:
 
         return activations_dataset
 
-    def set_norm_scaling_factor_if_needed(self):
-        if (
-            self.normalize_activations == "expected_average_only_in"
-            and self.estimated_norm_scaling_factor is None
-        ):
-            self.estimated_norm_scaling_factor = self.estimate_norm_scaling_factor()
-
-    def apply_norm_scaling_factor(self, activations: torch.Tensor) -> torch.Tensor:
-        if self.estimated_norm_scaling_factor is None:
-            raise ValueError(
-                "estimated_norm_scaling_factor is not set, call set_norm_scaling_factor_if_needed() first"
-            )
-        return activations * self.estimated_norm_scaling_factor
-
-    def unscale(self, activations: torch.Tensor) -> torch.Tensor:
-        if self.estimated_norm_scaling_factor is None:
-            raise ValueError(
-                "estimated_norm_scaling_factor is not set, call set_norm_scaling_factor_if_needed() first"
-            )
-        return activations / self.estimated_norm_scaling_factor
-
-    def get_norm_scaling_factor(self, activations: torch.Tensor) -> torch.Tensor:
-        return (self.d_in**0.5) / activations.norm(dim=-1).mean()
-
     @torch.no_grad()
     def estimate_norm_scaling_factor(self, n_batches_for_norm_estimate: int = int(1e3)):
         norms_per_batch = []
@@ -577,10 +551,9 @@ class ActivationsStore:
         """
         assert self.cached_activation_dataset is not None
         # In future, could be a list of multiple hook names
-        hook_names = [self.hook_name]
-        if not set(hook_names).issubset(self.cached_activation_dataset.column_names):
+        if self.hook_name not in self.cached_activation_dataset.column_names:
             raise ValueError(
-                f"Missing columns in dataset. Expected {hook_names}, "
+                f"Missing columns in dataset. Expected {self.hook_name}, "
                 f"got {self.cached_activation_dataset.column_names}."
             )
 
@@ -593,20 +566,9 @@ class ActivationsStore:
         ds_slice = self.cached_activation_dataset[
             self.current_row_idx : self.current_row_idx + total_size
         ]
-        for hook_name in hook_names:
-            # Load activations for each hook.
-            # Usually faster to first slice dataset then pick column
-            _hook_buffer = ds_slice[hook_name]
-            if _hook_buffer.shape != (total_size, context_size, d_in):
-                raise ValueError(
-                    f"_hook_buffer has shape {_hook_buffer.shape}, "
-                    f"but expected ({total_size}, {context_size}, {d_in})."
-                )
-            new_buffer.append(_hook_buffer)
-
-        # Stack across num_layers dimension
-        # list of num_layers; shape: (total_size, context_size, d_in) -> (total_size, context_size, d_in)
-        new_buffer = torch.stack(new_buffer, dim=2)
+        # Load activations for each hook.
+        # Usually faster to first slice dataset then pick column
+        new_buffer = ds_slice[self.hook_name]
         if new_buffer.shape != (total_size, context_size, d_in):
             raise ValueError(
                 f"new_buffer has shape {new_buffer.shape}, "
@@ -692,12 +654,6 @@ class ActivationsStore:
                 [new_buffer_activations, new_buffer_token_ids]
             )
 
-        # every buffer should be normalized:
-        if self.normalize_activations == "expected_average_only_in":
-            new_buffer_activations = self.apply_norm_scaling_factor(
-                new_buffer_activations
-            )
-
         return (
             new_buffer_activations,
             new_buffer_token_ids,
@@ -764,14 +720,7 @@ class ActivationsStore:
         return self
 
     def state_dict(self) -> dict[str, torch.Tensor]:
-        result = {
-            "n_dataset_processed": torch.tensor(self.n_dataset_processed),
-        }
-        if self.estimated_norm_scaling_factor is not None:
-            result["estimated_norm_scaling_factor"] = torch.tensor(
-                self.estimated_norm_scaling_factor
-            )
-        return result
+        return {"n_dataset_processed": torch.tensor(self.n_dataset_processed)}
 
     def save(self, file_path: str):
         """save the state dict to a file in safetensors format"""

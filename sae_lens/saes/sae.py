@@ -648,7 +648,6 @@ class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
 class TrainingSAEConfig(SAEConfig, ABC):
     noise_scale: float = 0.0
     mse_loss_normalization: str | None = None
-    b_dec_init_method: Literal["zeros", "geometric_median", "mean"] = "zeros"
     # https://transformer-circuits.pub/2024/april-update/index.html#training-saes
     # 0.1 corresponds to the "heuristic" initialization, use None to disable
     decoder_init_norm: float | None = 0.1
