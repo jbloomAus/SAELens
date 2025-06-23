@@ -10,7 +10,10 @@ from transformer_lens import HookedTransformer
 
 from sae_lens import __version__
 from sae_lens.config import LanguageModelSAERunnerConfig
-from sae_lens.llm_sae_training_runner import LanguageModelSAETrainingRunner
+from sae_lens.llm_sae_training_runner import (
+    LanguageModelSAETrainingRunner,
+    LLMSaeEvaluator,
+)
 from sae_lens.saes.sae import TrainingSAE
 from sae_lens.saes.standard_sae import StandardTrainingSAE, StandardTrainingSAEConfig
 from sae_lens.training.activations_store import ActivationsStore
@@ -49,18 +52,24 @@ def training_sae(cfg: LanguageModelSAERunnerConfig[StandardTrainingSAEConfig]):
 
 
 @pytest.fixture
-def trainer(
+def trainer(  # type: ignore
     cfg: LanguageModelSAERunnerConfig[StandardTrainingSAEConfig],
-    training_sae: StandardTrainingSAE,
     model: HookedTransformer,
+    training_sae: StandardTrainingSAE,
     activation_store: ActivationsStore,
 ):
+    evaluator = LLMSaeEvaluator(
+        model,
+        activation_store,
+        eval_batch_size_prompts=cfg.eval_batch_size_prompts,
+        n_eval_batches=cfg.n_eval_batches,
+        model_kwargs=cfg.model_kwargs,
+    )
     return SAETrainer(
-        model=model,
+        cfg=cfg.to_sae_trainer_config(),
         sae=training_sae,
-        activation_store=activation_store,
-        save_checkpoint_fn=lambda *args, **kwargs: None,  # noqa: ARG005
-        cfg=cfg,
+        data_provider=activation_store,
+        evaluator=evaluator,
     )
 
 
@@ -82,13 +91,13 @@ def modify_sae_output(
 def test_train_step__reduces_loss_when_called_repeatedly_on_same_acts(
     trainer: SAETrainer[StandardTrainingSAE, StandardTrainingSAEConfig],
 ) -> None:
-    layer_acts = trainer.activations_store.next_batch()
+    layer_acts = next(trainer.data_provider)
 
     # intentionally train on the same activations 5 times to ensure loss decreases
     train_outputs = [
         trainer._train_step(
             sae=trainer.sae,
-            sae_in=layer_acts[:, 0, :],
+            sae_in=layer_acts[:, :],
         )
         for _ in range(5)
     ]
@@ -97,26 +106,26 @@ def test_train_step__reduces_loss_when_called_repeatedly_on_same_acts(
     for output, next_output in zip(train_outputs[:-1], train_outputs[1:]):
         assert output.loss > next_output.loss
     assert (
-        trainer.n_frac_active_tokens == 20
+        trainer.n_frac_active_samples == 20
     )  # should increment each step by batch_size (5*4)
 
 
 def test_train_step__output_looks_reasonable(trainer: SAETrainer[Any, Any]) -> None:
-    layer_acts = trainer.activations_store.next_batch()
+    layer_acts = next(trainer.data_provider)
 
     output = trainer._train_step(
         sae=trainer.sae,
-        sae_in=layer_acts[:, 0, :],
+        sae_in=layer_acts[:, :],
     )
 
     assert output.loss > 0
     # only hook_point_layer=0 acts should be passed to the SAE
-    assert torch.allclose(output.sae_in, layer_acts[:, 0, :])
+    assert torch.allclose(output.sae_in, layer_acts[:, :])
     assert output.sae_out.shape == output.sae_in.shape
     assert output.feature_acts.shape == (4, 128)  # batch_size, d_sae
     # ghots grads shouldn't trigger until dead_feature_window, which hasn't been reached yet
     assert output.losses.get("ghost_grad_loss", 0) == 0
-    assert trainer.n_frac_active_tokens == 4
+    assert trainer.n_frac_active_samples == 4
     assert trainer.act_freq_scores.sum() > 0  # at least SOME acts should have fired
     assert torch.allclose(
         trainer.act_freq_scores, (output.feature_acts.abs() > 0).float().sum(0)
@@ -127,16 +136,16 @@ def test_train_step__sparsity_updates_based_on_feature_act_sparsity(
     trainer: SAETrainer[StandardTrainingSAE, StandardTrainingSAEConfig],
 ) -> None:
     trainer._reset_running_sparsity_stats()
-    layer_acts = trainer.activations_store.next_batch()
+    layer_acts = next(trainer.data_provider)
 
     train_output = trainer._train_step(
         sae=trainer.sae,
-        sae_in=layer_acts[:, 0, :],
+        sae_in=layer_acts[:, :],
     )
     feature_acts = train_output.feature_acts
 
     # should increase by batch_size
-    assert trainer.n_frac_active_tokens == 4
+    assert trainer.n_frac_active_samples == 4
     # add freq scores for all non-zero feature acts
     assert torch.allclose(
         trainer.act_freq_scores, (feature_acts > 0).float().sum(dim=0)
@@ -183,7 +192,7 @@ def test_build_train_step_log_dict(
     # we should more / less try to break this and push
     # everything through the train step output if we can.
     log_dict = trainer._build_train_step_log_dict(
-        output=train_output, n_training_tokens=123
+        output=train_output, n_training_samples=123
     )
     expected = {
         "losses/mse_loss": 0.25,
@@ -196,8 +205,8 @@ def test_build_train_step_log_dict(
         "sparsity/mean_passes_since_fired": trainer.n_forward_passes_since_fired.mean().item(),
         "sparsity/dead_features": trainer.dead_neurons.sum().item(),
         "details/current_learning_rate": 2e-4,
-        "details/l1_coefficient": trainer.cfg.sae.l1_coefficient,
-        "details/n_training_tokens": 123,
+        "details/l1_coefficient": trainer.sae.cfg.l1_coefficient,
+        "details/n_training_samples": 123,
     }
     assert log_dict.keys() == expected.keys()
     assert log_dict == pytest.approx(expected)
@@ -220,11 +229,9 @@ def test_train_sae_group_on_language_model__runs(
     )
     sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
     sae = SAETrainer(
-        model=ts_model,
+        cfg=cfg.to_sae_trainer_config(),
         sae=sae,
-        activation_store=activation_store,
-        save_checkpoint_fn=lambda *args, **kwargs: None,  # noqa: ARG005
-        cfg=cfg,
+        data_provider=activation_store,
     ).fit()
 
     assert isinstance(sae, TrainingSAE)
@@ -261,11 +268,10 @@ def test_final_checkpoint_saves_runner_cfg(
     sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
 
     trainer = SAETrainer(
-        model=ts_model,
+        cfg=cfg.to_sae_trainer_config(),
         sae=sae,
-        activation_store=activation_store,
+        data_provider=activation_store,
         save_checkpoint_fn=LanguageModelSAETrainingRunner.save_checkpoint,
-        cfg=cfg,
     )
 
     # Train the model - this should create checkpoints
@@ -321,11 +327,10 @@ def test_estimated_norm_scaling_factor_persistence(
     sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
 
     trainer = SAETrainer(
-        model=ts_model,
         sae=sae,
-        activation_store=activation_store,
+        data_provider=activation_store,
+        cfg=cfg.to_sae_trainer_config(),
         save_checkpoint_fn=LanguageModelSAETrainingRunner.save_checkpoint,
-        cfg=cfg,
     )
 
     # Train the model - this should create checkpoints

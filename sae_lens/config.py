@@ -375,6 +375,27 @@ class LanguageModelSAERunnerConfig(Generic[T_TRAINING_SAE_CONFIG]):
 
         return cls(**cfg)
 
+    def to_sae_trainer_config(self) -> "SAETrainerConfig":
+        return SAETrainerConfig(
+            n_checkpoints=self.n_checkpoints,
+            total_training_samples=self.total_training_tokens,
+            device=self.device,
+            autocast=self.autocast,
+            lr=self.lr,
+            lr_end=self.lr_end,
+            lr_scheduler_name=self.lr_scheduler_name,
+            lr_warm_up_steps=self.lr_warm_up_steps,
+            adam_beta1=self.adam_beta1,
+            adam_beta2=self.adam_beta2,
+            lr_decay_steps=self.lr_decay_steps,
+            n_restart_cycles=self.n_restart_cycles,
+            total_training_steps=self.total_training_steps,
+            train_batch_size_samples=self.train_batch_size_tokens,
+            dead_feature_window=self.dead_feature_window,
+            feature_sampling_window=self.feature_sampling_window,
+            logger=self.logger,
+        )
+
 
 @dataclass
 class CacheActivationsRunnerConfig:
@@ -574,3 +595,24 @@ class PretokenizeRunnerConfig:
     hf_num_shards: int = 64
     hf_revision: str = "main"
     hf_is_private_repo: bool = False
+
+
+@dataclass
+class SAETrainerConfig:
+    n_checkpoints: int
+    total_training_samples: int
+    device: str
+    autocast: bool
+    lr: float
+    lr_end: float | None
+    lr_scheduler_name: str
+    lr_warm_up_steps: int
+    adam_beta1: float
+    adam_beta2: float
+    lr_decay_steps: int
+    n_restart_cycles: int
+    total_training_steps: int
+    train_batch_size_samples: int
+    dead_feature_window: int
+    feature_sampling_window: int
+    logger: LoggingConfig

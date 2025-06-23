@@ -535,25 +535,25 @@ class ActivationsStore:
 
         n_batches, n_context = layerwise_activations.shape[:2]
 
-        stacked_activations = torch.zeros((n_batches, n_context, 1, self.d_in))
+        stacked_activations = torch.zeros((n_batches, n_context, self.d_in))
 
         if self.hook_head_index is not None:
-            stacked_activations[:, :, 0] = layerwise_activations[
+            stacked_activations[:, :] = layerwise_activations[
                 :, :, self.hook_head_index
             ]
         elif layerwise_activations.ndim > 3:  # if we have a head dimension
             try:
-                stacked_activations[:, :, 0] = layerwise_activations.view(
+                stacked_activations[:, :] = layerwise_activations.view(
                     n_batches, n_context, -1
                 )
             except RuntimeError as e:
                 logger.error(f"Error during view operation: {e}")
                 logger.info("Attempting to use reshape instead...")
-                stacked_activations[:, :, 0] = layerwise_activations.reshape(
+                stacked_activations[:, :] = layerwise_activations.reshape(
                     n_batches, n_context, -1
                 )
         else:
-            stacked_activations[:, :, 0] = layerwise_activations
+            stacked_activations[:, :] = layerwise_activations
 
         return stacked_activations
 
@@ -561,7 +561,6 @@ class ActivationsStore:
         self,
         total_size: int,
         context_size: int,
-        num_layers: int,
         d_in: int,
         raise_on_epoch_end: bool,
     ) -> tuple[
@@ -606,16 +605,16 @@ class ActivationsStore:
             new_buffer.append(_hook_buffer)
 
         # Stack across num_layers dimension
-        # list of num_layers; shape: (total_size, context_size, d_in) -> (total_size, context_size, num_layers, d_in)
+        # list of num_layers; shape: (total_size, context_size, d_in) -> (total_size, context_size, d_in)
         new_buffer = torch.stack(new_buffer, dim=2)
-        if new_buffer.shape != (total_size, context_size, num_layers, d_in):
+        if new_buffer.shape != (total_size, context_size, d_in):
             raise ValueError(
                 f"new_buffer has shape {new_buffer.shape}, "
-                f"but expected ({total_size}, {context_size}, {num_layers}, {d_in})."
+                f"but expected ({total_size}, {context_size}, {d_in})."
             )
 
         self.current_row_idx += total_size
-        acts_buffer = new_buffer.reshape(total_size * context_size, num_layers, d_in)
+        acts_buffer = new_buffer.reshape(total_size * context_size, d_in)
 
         if "token_ids" not in self.cached_activation_dataset.column_names:
             return acts_buffer, None
@@ -647,17 +646,16 @@ class ActivationsStore:
         batch_size = self.store_batch_size_prompts
         d_in = self.d_in
         total_size = batch_size * n_batches_in_buffer
-        num_layers = 1
 
         if self.cached_activation_dataset is not None:
             return self._load_buffer_from_cached(
-                total_size, context_size, num_layers, d_in, raise_on_epoch_end
+                total_size, context_size, d_in, raise_on_epoch_end
             )
 
         refill_iterator = range(0, total_size, batch_size)
         # Initialize empty tensor buffer of the maximum required size with an additional dimension for layers
         new_buffer_activations = torch.zeros(
-            (total_size, self.training_context_size, num_layers, d_in),
+            (total_size, self.training_context_size, d_in),
             dtype=self.dtype,  # type: ignore
             device=self.device,
         )
@@ -687,7 +685,7 @@ class ActivationsStore:
                 refill_batch_idx_start : refill_batch_idx_start + batch_size, ...
             ] = refill_batch_tokens
 
-        new_buffer_activations = new_buffer_activations.reshape(-1, num_layers, d_in)
+        new_buffer_activations = new_buffer_activations.reshape(-1, d_in)
         new_buffer_token_ids = new_buffer_token_ids.reshape(-1)
         if shuffle:
             new_buffer_activations, new_buffer_token_ids = permute_together(

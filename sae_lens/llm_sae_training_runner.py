@@ -2,8 +2,9 @@ import json
 import signal
 import sys
 from collections.abc import Sequence
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Generic, cast
 
 import torch
 import wandb
@@ -15,11 +16,19 @@ from typing_extensions import deprecated
 from sae_lens import logger
 from sae_lens.config import HfDataset, LanguageModelSAERunnerConfig
 from sae_lens.constants import RUNNER_CFG_FILENAME, SPARSITY_FILENAME
+from sae_lens.evals import EvalConfig, run_evals
 from sae_lens.load_model import load_model
-from sae_lens.saes.sae import T_TRAINING_SAE_CONFIG, TrainingSAE, TrainingSAEConfig
+from sae_lens.saes.sae import (
+    T_TRAINING_SAE,
+    T_TRAINING_SAE_CONFIG,
+    TrainingSAE,
+    TrainingSAEConfig,
+)
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.geometric_median import compute_geometric_median
 from sae_lens.training.sae_trainer import SAETrainer
+from sae_lens.training.scaler import ActivationScaler
+from sae_lens.training.types import DataProvider
 
 
 class InterruptedException(Exception):
@@ -28,6 +37,60 @@ class InterruptedException(Exception):
 
 def interrupt_callback(sig_num: Any, stack_frame: Any):  # noqa: ARG001
     raise InterruptedException()
+
+
+@dataclass
+class LLMSaeEvaluator(Generic[T_TRAINING_SAE]):
+    model: HookedRootModule
+    activations_store: ActivationsStore
+    eval_batch_size_prompts: int | None
+    n_eval_batches: int
+    n_eval_batches: int
+    model_kwargs: dict[str, Any]
+
+    def __call__(
+        self,
+        sae: T_TRAINING_SAE,
+        data_provider: DataProvider,
+        activation_scaler: ActivationScaler,
+    ) -> dict[str, Any]:
+        ignore_tokens = set()
+        if self.activations_store.exclude_special_tokens is not None:
+            ignore_tokens = set(self.activations_store.exclude_special_tokens.tolist())
+
+        eval_config = EvalConfig(
+            batch_size_prompts=self.eval_batch_size_prompts,
+            n_eval_reconstruction_batches=self.n_eval_batches,
+            n_eval_sparsity_variance_batches=self.n_eval_batches,
+            compute_ce_loss=True,
+            compute_l2_norms=True,
+            compute_sparsity_metrics=True,
+            compute_variance_metrics=True,
+            compute_kl=False,
+            compute_featurewise_weight_based_metrics=False,
+        )
+
+        eval_metrics, _ = run_evals(
+            sae=sae,
+            activation_store=self.activations_store,
+            model=self.model,
+            activation_scaler=activation_scaler,
+            eval_config=eval_config,
+            ignore_tokens=ignore_tokens,
+            model_kwargs=self.model_kwargs,
+        )  # not calculating featurwise metrics here.
+
+        # Remove eval metrics that are already logged during training
+        eval_metrics.pop("metrics/explained_variance", None)
+        eval_metrics.pop("metrics/explained_variance_std", None)
+        eval_metrics.pop("metrics/l0", None)
+        eval_metrics.pop("metrics/l1", None)
+        eval_metrics.pop("metrics/mse", None)
+
+        # Remove metrics that are not useful for wandb logging
+        eval_metrics.pop("metrics/total_tokens_evaluated", None)
+
+        return eval_metrics
 
 
 class LanguageModelSAETrainingRunner:
@@ -103,10 +166,19 @@ class LanguageModelSAETrainingRunner:
                 id=self.cfg.logger.wandb_id,
             )
 
+        evaluator = LLMSaeEvaluator(
+            model=self.model,
+            activations_store=self.activations_store,
+            eval_batch_size_prompts=self.cfg.eval_batch_size_prompts,
+            n_eval_batches=self.cfg.n_eval_batches,
+            model_kwargs=self.cfg.model_kwargs,
+        )
+
         trainer = SAETrainer(
             model=self.model,
             sae=self.sae,
-            activation_store=self.activations_store,
+            data_provider=self.activations_store,
+            evaluator=evaluator,
             save_checkpoint_fn=self.save_checkpoint,
             cfg=self.cfg,
         )
@@ -157,7 +229,7 @@ class LanguageModelSAETrainingRunner:
 
         except (KeyboardInterrupt, InterruptedException):
             logger.warning("interrupted, saving progress")
-            checkpoint_name = str(trainer.n_training_tokens)
+            checkpoint_name = str(trainer.n_training_samples)
             self.save_checkpoint(trainer, checkpoint_name=checkpoint_name)
             logger.info("done saving")
             raise
