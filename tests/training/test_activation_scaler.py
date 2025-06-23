@@ -1,3 +1,5 @@
+from typing import Generator
+
 import numpy as np
 import pytest
 import torch
@@ -57,7 +59,7 @@ def test_ActivationScaler_scale_unscale_roundtrip():
 def test_ActivationScaler_calculate_mean_norm():
     scaler = ActivationScaler()
 
-    def data_provider():
+    def data_provider() -> Generator[torch.Tensor, None, None]:
         # Generate 5 batches of data with known norms
         batches = [
             torch.tensor([[3.0, 4.0]]),  # norm = 5.0
@@ -66,8 +68,7 @@ def test_ActivationScaler_calculate_mean_norm():
             torch.tensor([[1.0, 0.0]]),  # norm = 1.0
             torch.tensor([[0.0, 2.0]]),  # norm = 2.0
         ]
-        for batch in batches:
-            yield batch
+        yield from batches
 
     mean_norm = scaler._calculate_mean_norm(
         data_provider(), n_batches_for_norm_estimate=5

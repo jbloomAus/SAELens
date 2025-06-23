@@ -17,7 +17,6 @@ cfg = LanguageModelSAERunnerConfig(
         d_in=2048,
         dtype="float32",
         device="cuda",
-        b_dec_init_method="geometric_median",
         l1_coefficient=0.00006 * 0.2,
     ),
     # Data Generating Function (Model + Training Distibuion)

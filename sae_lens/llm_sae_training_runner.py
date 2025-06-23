@@ -225,8 +225,10 @@ class LanguageModelSAETrainingRunner:
 
         except (KeyboardInterrupt, InterruptedException):
             logger.warning("interrupted, saving progress")
-            checkpoint_name = str(trainer.n_training_samples)
-            self.save_checkpoint(trainer, checkpoint_name=checkpoint_name)
+            checkpoint_path = Path(self.cfg.checkpoint_path) / str(
+                trainer.n_training_samples
+            )
+            self.save_checkpoint(checkpoint_path)
             logger.info("done saving")
             raise
 
