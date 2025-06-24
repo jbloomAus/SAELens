@@ -6,7 +6,7 @@ import torch
 import yaml
 
 from sae_lens.config import DTYPE_MAP, LanguageModelSAERunnerConfig
-from sae_lens.sae_training_runner import SAETrainingRunner
+from sae_lens.llm_sae_training_runner import LanguageModelSAETrainingRunner
 
 # sys.path.append("..")
 
@@ -55,4 +55,4 @@ cached_activations_path = config.cached_activations_path
 if cached_activations_path is None:
     raise ValueError("Error: The cached_activations_path is not set.")
 
-sparse_autoencoder_dictionary = SAETrainingRunner(config).run()
+sparse_autoencoder_dictionary = LanguageModelSAETrainingRunner(config).run()

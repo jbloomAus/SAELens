@@ -66,7 +66,6 @@ class SAEMetadata:
     model_name: str | None = None
     hook_name: str | None = None
     model_class_name: str | None = None
-    hook_layer: int | None = None
     hook_head_index: int | None = None
     model_from_pretrained_kwargs: dict[str, Any] | None = None
     prepend_bos: bool | None = None
@@ -649,7 +648,6 @@ class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
 class TrainingSAEConfig(SAEConfig, ABC):
     noise_scale: float = 0.0
     mse_loss_normalization: str | None = None
-    b_dec_init_method: Literal["zeros", "geometric_median", "mean"] = "zeros"
     # https://transformer-circuits.pub/2024/april-update/index.html#training-saes
     # 0.1 corresponds to the "heuristic" initialization, use None to disable
     decoder_init_norm: float | None = 0.1
@@ -666,7 +664,6 @@ class TrainingSAEConfig(SAEConfig, ABC):
         metadata = SAEMetadata(
             model_name=cfg.model_name,
             hook_name=cfg.hook_name,
-            hook_layer=cfg.hook_layer,
             hook_head_index=cfg.hook_head_index,
             context_size=cfg.context_size,
             prepend_bos=cfg.prepend_bos,

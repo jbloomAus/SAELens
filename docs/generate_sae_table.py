@@ -17,7 +17,6 @@ INCLUDED_CFG = [
     "architecture",
     "neuronpedia",
     "hook_name",
-    "hook_layer",
     "d_sae",
     "context_size",
     "dataset_path",

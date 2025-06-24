@@ -34,7 +34,6 @@ cfg = CacheActivationsRunnerConfig(
     dataset_path=dataset_path,
     ## MLP Layer 0 ##
     hook_name="blocks.0.hook_mlp_out",
-    hook_layer=0,
     d_in=512,
     prepend_bos=True,
     training_tokens=total_training_tokens,

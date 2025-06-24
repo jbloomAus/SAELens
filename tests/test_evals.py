@@ -26,6 +26,7 @@ from sae_lens.load_model import load_model
 from sae_lens.loading.pretrained_saes_directory import PretrainedSAELookup
 from sae_lens.saes.sae import SAE, TrainingSAE
 from sae_lens.saes.standard_sae import StandardSAE, StandardTrainingSAE
+from sae_lens.training.activation_scaler import ActivationScaler
 from sae_lens.training.activations_store import ActivationsStore
 from tests.helpers import TINYSTORIES_MODEL, build_runner_cfg, load_model_cached
 
@@ -60,35 +61,30 @@ def _replace_nan(list: list[float]) -> list[float]:
             "model_name": "tiny-stories-1M",
             "dataset_path": "roneneldan/TinyStories",
             "hook_name": "blocks.1.hook_resid_pre",
-            "hook_layer": 1,
             "d_in": 64,
         },
         {
             "model_name": "tiny-stories-1M",
             "dataset_path": "apollo-research/roneneldan-TinyStories-tokenizer-gpt2",
             "hook_name": "blocks.1.hook_resid_pre",
-            "hook_layer": 1,
             "d_in": 64,
         },
         {
             "model_name": "tiny-stories-1M",
             "dataset_path": "roneneldan/TinyStories",
             "hook_name": "blocks.1.attn.hook_z",
-            "hook_layer": 1,
             "d_in": 16 * 4,
         },
         {
             "model_name": "tiny-stories-1M",
             "dataset_path": "roneneldan/TinyStories",
             "hook_name": "blocks.1.attn.hook_q",
-            "hook_layer": 1,
             "d_in": 16 * 4,
         },
         {
             "model_name": "tiny-stories-1M",
             "dataset_path": "roneneldan/TinyStories",
             "hook_name": "blocks.1.attn.hook_q",
-            "hook_layer": 1,
             "d_in": 4,
             "hook_head_index": 2,
         },
@@ -157,6 +153,7 @@ def test_run_evals_base_sae(
     eval_metrics, _ = run_evals(
         sae=base_sae,
         activation_store=activation_store,
+        activation_scaler=ActivationScaler(),
         model=model,
         eval_config=get_eval_everything_config(),
     )
@@ -173,6 +170,7 @@ def test_run_evals_training_sae(
     eval_metrics, feature_metrics = run_evals(
         sae=training_sae,
         activation_store=activation_store,
+        activation_scaler=ActivationScaler(),
         model=model,
         eval_config=get_eval_everything_config(),
     )
@@ -190,6 +188,7 @@ def test_run_evals_training_sae_ignore_bos(
     eval_metrics, _ = run_evals(
         sae=training_sae,
         activation_store=activation_store,
+        activation_scaler=ActivationScaler(),
         model=model,
         eval_config=get_eval_everything_config(),
         ignore_tokens={
@@ -217,6 +216,7 @@ def test_training_eval_config(
     eval_metrics, _ = run_evals(
         sae=base_sae,
         activation_store=activation_store,
+        activation_scaler=ActivationScaler(),
         model=model,
         eval_config=eval_config,
     )
@@ -237,6 +237,7 @@ def test_training_eval_config_ignore_control_tokens(
     eval_metrics, _ = run_evals(
         sae=base_sae,
         activation_store=activation_store,
+        activation_scaler=ActivationScaler(),
         model=model,
         eval_config=eval_config,
         ignore_tokens={
@@ -266,6 +267,7 @@ def test_run_empty_evals(
     eval_metrics, feature_metrics = run_evals(
         sae=base_sae,
         activation_store=activation_store,
+        activation_scaler=ActivationScaler(),
         model=model,
         eval_config=empty_config,
     )
@@ -373,6 +375,7 @@ def test_get_downstream_reconstruction_metrics_with_hf_model_gives_same_results_
         sae=gpt2_res_jb_l4_sae,
         model=hf_model,
         activation_store=hf_store,
+        activation_scaler=ActivationScaler(),
         compute_kl=True,
         compute_ce_loss=True,
         n_batches=1,
@@ -388,6 +391,7 @@ def test_get_downstream_reconstruction_metrics_with_hf_model_gives_same_results_
         sae=gpt2_res_jb_l4_sae,
         model=tlens_model,
         activation_store=tlens_store,
+        activation_scaler=ActivationScaler(),
         compute_kl=True,
         compute_ce_loss=True,
         n_batches=1,
@@ -418,6 +422,7 @@ def test_get_sparsity_and_variance_metrics_with_hf_model_gives_same_results_as_t
         sae=gpt2_res_jb_l4_sae,
         model=hf_model,
         activation_store=hf_store,
+        activation_scaler=ActivationScaler(),
         n_batches=1,
         compute_l2_norms=True,
         compute_sparsity_metrics=True,
@@ -436,6 +441,7 @@ def test_get_sparsity_and_variance_metrics_with_hf_model_gives_same_results_as_t
         sae=gpt2_res_jb_l4_sae,
         model=tlens_model,
         activation_store=tlens_store,
+        activation_scaler=ActivationScaler(),
         n_batches=1,
         compute_l2_norms=True,
         compute_sparsity_metrics=True,
@@ -542,7 +548,6 @@ def test_get_sparsity_and_variance_metrics_identity_sae_perfect_reconstruction(
         d_in=d_in,
         d_sae=2 * d_in,  # 2 x d_in, to do both pos and neg identity matrix
         hook_name="blocks.1.hook_resid_pre",
-        hook_layer=1,
     )
 
     # Create an SAE and manually set weights to identity matrices
@@ -568,6 +573,7 @@ def test_get_sparsity_and_variance_metrics_identity_sae_perfect_reconstruction(
         sae=identity_sae,
         model=model,
         activation_store=activation_store,
+        activation_scaler=ActivationScaler(),
         n_batches=3,
         compute_l2_norms=True,
         compute_sparsity_metrics=True,

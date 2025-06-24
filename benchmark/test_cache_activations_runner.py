@@ -47,7 +47,6 @@ def test_cache_activations_runner():
         model_batch_size=16,
         ## MLP Layer 0 ##
         hook_name="blocks.0.hook_mlp_out",
-        hook_layer=0,
         d_in=512,
         ## Dataset ##
         dataset_path="NeelNanda/c4-tokenized-2b",
@@ -94,7 +93,6 @@ def test_hf_dataset_save_vs_safetensors(tmp_path: Path):
         dataset_path="NeelNanda/c4-tokenized-2b",
         model_name="gelu-1l",
         hook_name="blocks.0.hook_mlp_out",
-        hook_layer=0,
         d_in=d_in,
         context_size=context_size,
         training_tokens=total_training_tokens,
@@ -118,18 +116,18 @@ def test_hf_dataset_save_vs_safetensors(tmp_path: Path):
     print("Warmup")
 
     for i in trange(niters // 2, leave=False):
-        buffer = store.get_buffer(cfg.n_batches_in_buffer)
+        buffer = store.get_raw_buffer(cfg.n_batches_in_buffer)
 
     start_time = time.perf_counter()
     for i in trange(niters, leave=False):
-        buffer = store.get_buffer(cfg.n_batches_in_buffer)
+        buffer = store.get_raw_buffer(cfg.n_batches_in_buffer)
     end_time = time.perf_counter()
 
     print(f"No saving took: {end_time - start_time:.4f}")
 
     start_time = time.perf_counter()
     for i in trange(niters, leave=False):
-        buffer = store.get_buffer(cfg.n_batches_in_buffer)
+        buffer = store.get_raw_buffer(cfg.n_batches_in_buffer)
         shard = runner._create_shard(buffer)
         shard.save_to_disk(hf_path / str(i), num_shards=1)
     end_time = time.perf_counter()
@@ -141,7 +139,7 @@ def test_hf_dataset_save_vs_safetensors(tmp_path: Path):
 
     start_time = time.perf_counter()
     for i in trange(niters, leave=False):
-        buffer = store.get_buffer(cfg.n_batches_in_buffer)[0]
+        buffer = store.get_raw_buffer(cfg.n_batches_in_buffer)[0]
         save_file({"activations": buffer}, safetensors_path / f"{i}.safetensors")
     end_time = time.perf_counter()
 

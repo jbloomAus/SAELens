@@ -8,7 +8,7 @@ from sae_lens.saes.standard_sae import StandardTrainingSAEConfig
 sys.path.append("..")
 
 from sae_lens.config import LanguageModelSAERunnerConfig, LoggingConfig
-from sae_lens.sae_training_runner import SAETrainingRunner
+from sae_lens.llm_sae_training_runner import LanguageModelSAETrainingRunner
 
 if torch.cuda.is_available():
     device = "cuda"
@@ -52,7 +52,6 @@ for l1_coefficient in [2, 5, 10]:
         model_name="gelu-1l",
         ## MLP Layer 0 ##
         hook_name="blocks.0.hook_mlp_out",
-        hook_layer=0,
         dataset_path="NeelNanda/c4-tokenized-2b",
         streaming=False,
         context_size=1024,
@@ -102,6 +101,6 @@ for l1_coefficient in [2, 5, 10]:
     )
 
     # look at the next cell to see some instruction for what to do while this is running.
-    sae = SAETrainingRunner(cfg).run()
+    sae = LanguageModelSAETrainingRunner(cfg).run()
 
     print("=" * 50)
