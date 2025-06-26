@@ -127,6 +127,7 @@ class TopKTrainingSAEConfig(TrainingSAEConfig):
     """
 
     k: int = 100
+    aux_loss_coefficient: float | None = None
 
     @override
     @classmethod
@@ -217,8 +218,11 @@ class TopKTrainingSAE(TrainingSAE[TopKTrainingSAEConfig]):
         # Heuristic from Appendix B.1 in the paper
         k_aux = sae_in.shape[-1] // 2
 
-        # Reduce the scale of the loss if there are a small number of dead latents
-        scale = min(num_dead / k_aux, 1.0)
+        if self.cfg.aux_loss_coefficient is not None:
+            scale = self.cfg.aux_loss_coefficient
+        else:
+            # Reduce the scale of the loss if there are a small number of dead latents
+            scale = min(num_dead / k_aux, 1.0)
         k_aux = min(k_aux, num_dead)
 
         auxk_acts = _calculate_topk_aux_acts(
