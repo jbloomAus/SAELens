@@ -63,8 +63,6 @@ class LLMSaeEvaluator(Generic[T_TRAINING_SAE]):
             compute_l2_norms=True,
             compute_sparsity_metrics=True,
             compute_variance_metrics=True,
-            compute_kl=False,
-            compute_featurewise_weight_based_metrics=False,
         )
 
         eval_metrics, _ = run_evals(
