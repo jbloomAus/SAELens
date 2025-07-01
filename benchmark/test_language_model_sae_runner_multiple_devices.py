@@ -130,7 +130,6 @@ def test_sae_runner_multiple_devices_sae_act_store_on_gpus():
     cfg_dict["eval_every_n_wandb_logs"] = 3
     cfg = LanguageModelSAERunnerConfig(**cfg_dict)  # type: ignore
 
-    # look at the next cell to see some instruction for what to do while this is running.
     sae = LanguageModelSAETrainingRunner(cfg).run()
 
     assert sae is not None
