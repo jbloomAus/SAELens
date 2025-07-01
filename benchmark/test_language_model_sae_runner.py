@@ -174,7 +174,6 @@ def test_language_model_sae_runner_gated():
         dtype="float32",
     )
 
-    # look at the next cell to see some instruction for what to do while this is running.
     sae = LanguageModelSAETrainingRunner(cfg).run()
 
     assert sae is not None
