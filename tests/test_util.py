@@ -29,4 +29,4 @@ def test_extract_stop_at_layer_from_tlens_hook_name_valid(
     ],
 )
 def test_extract_stop_at_layer_from_tlens_hook_name_invalid(hook_name: str):
-    assert extract_stop_at_layer_from_tlens_hook_name(hook_name) == -1
+    assert extract_stop_at_layer_from_tlens_hook_name(hook_name) is None

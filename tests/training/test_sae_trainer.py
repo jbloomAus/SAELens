@@ -5,7 +5,6 @@ from typing import Any, Callable
 import pytest
 import torch
 from datasets import Dataset
-from safetensors.torch import load_file
 from transformer_lens import HookedTransformer
 
 from sae_lens import __version__
@@ -343,19 +342,21 @@ def test_estimated_norm_scaling_factor_persistence(
 
     # Train the model - this should create checkpoints
     trainer.fit()
-    checkpoint_paths = list(
-        checkpoint_dir.glob("**/activations_store_state.safetensors")
-    )
+    checkpoint_paths = list(checkpoint_dir.glob("**/activation_scaler.json"))
     # We should have exactly 2 checkpoints:
     assert (
         len(checkpoint_paths) == 2
     ), f"Expected 2 checkpoints but got {len(checkpoint_paths)}"
-    during_checkpoints = [
-        load_file(path) for path in checkpoint_paths if "final" not in path.parent.name
-    ]
-    final_checkpoints = [
-        load_file(path) for path in checkpoint_paths if "final" in path.parent.name
-    ]
+    during_checkpoints = []
+    final_checkpoints = []
+    for path in checkpoint_paths:
+        if "final" not in path.parent.name:
+            with open(path) as f:
+                during_checkpoints.append(json.load(f))
+        else:
+            with open(path) as f:
+                final_checkpoints.append(json.load(f))
+
     assert (
         len(during_checkpoints) == 1
     ), f"Expected 1 other checkpoint but got {len(during_checkpoints)}"
@@ -366,8 +367,8 @@ def test_estimated_norm_scaling_factor_persistence(
     final_checkpoint = final_checkpoints[0]
 
     # Check intermediate checkpoints have the scaling factor
-    assert "estimated_norm_scaling_factor" in during_checkpoint
-    assert during_checkpoint["estimated_norm_scaling_factor"] is not None
+    assert "scaling_factor" in during_checkpoint
+    assert during_checkpoint["scaling_factor"] is not None
 
     # Final checkpoint should NOT have the scaling factor as it's been folded into the weights
-    assert "estimated_norm_scaling_factor" not in final_checkpoint
+    assert final_checkpoint.get("scaling_factor") is None

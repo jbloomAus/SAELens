@@ -23,7 +23,7 @@ def mixing_buffer(
     """
 
     if buffer_size < batch_size:
-        raise ValueError("Buffer size must be greater than batch size")
+        raise ValueError("Buffer size must be greater than or equal to batch size")
 
     storage_buffer: torch.Tensor | None = None
 

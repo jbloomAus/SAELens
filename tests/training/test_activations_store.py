@@ -589,7 +589,7 @@ def test_activations_store_buffer_contains_token_ids(ts_model: HookedTransformer
     store = ActivationsStore.from_config(ts_model, cfg, override_dataset=dataset)
     acts, token_ids = store.get_raw_buffer(n_batches_in_buffer=2)
 
-    assert acts.shape == (30, 64)  # (batch_size x context_size x n_batches, 1, d_in)
+    assert acts.shape == (30, 64)  # (batch_size x context_size x n_batches, d_in)
     assert token_ids is not None
     assert token_ids.shape == (30,)  # (batch_size x context_size x n_batches,)
 

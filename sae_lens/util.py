@@ -29,12 +29,23 @@ def filter_valid_dataclass_fields(
     return {key: val for key, val in source_dict.items() if key in valid_field_names}
 
 
-def extract_stop_at_layer_from_tlens_hook_name(hook_name: str) -> int:
+def extract_stop_at_layer_from_tlens_hook_name(hook_name: str) -> int | None:
     """Extract the stop_at layer from a HookedTransformer hook name.
 
-    Returns -1 if the hook name is not a valid HookedTransformer hook name.
+    Returns None if the hook name is not a valid HookedTransformer hook name.
+    """
+    layer = extract_layer_from_tlens_hook_name(hook_name)
+    if layer is None:
+        return None
+    return layer + 1
+
+
+def extract_layer_from_tlens_hook_name(hook_name: str) -> int | None:
+    """Extract the layer from a HookedTransformer hook name.
+
+    Returns None if the hook name is not a valid HookedTransformer hook name.
     """
     hook_match = re.search(r"\.(\d+)\.", hook_name)
     if hook_match is None:
-        return -1
-    return int(hook_match.group(1)) + 1
+        return None
+    return int(hook_match.group(1))
