@@ -115,7 +115,7 @@ def test_train_step__output_looks_reasonable(trainer: SAETrainer[Any, Any]) -> N
 
     output = trainer._train_step(
         sae=trainer.sae,
-        sae_in=layer_acts[:, :],
+        sae_in=layer_acts,
     )
 
     assert output.loss > 0
