@@ -97,7 +97,7 @@ def test_train_step__reduces_loss_when_called_repeatedly_on_same_acts(
     train_outputs = [
         trainer._train_step(
             sae=trainer.sae,
-            sae_in=layer_acts[:, :],
+            sae_in=layer_acts,
         )
         for _ in range(5)
     ]
