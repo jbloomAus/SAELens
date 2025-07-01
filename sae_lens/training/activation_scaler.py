@@ -13,9 +13,7 @@ class ActivationScaler:
     scaling_factor: float | None = None
 
     def scale(self, acts: torch.Tensor) -> torch.Tensor:
-        if self.scaling_factor is None:
-            return acts
-        return acts * self.scaling_factor
+        return acts if self.scaling_factor is None else acts * self.scaling_factor
 
     def unscale(self, acts: torch.Tensor) -> torch.Tensor:
         if self.scaling_factor is None:
