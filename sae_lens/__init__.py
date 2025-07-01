@@ -33,6 +33,7 @@ from .cache_activations_runner import CacheActivationsRunner
 from .config import (
     CacheActivationsRunnerConfig,
     LanguageModelSAERunnerConfig,
+    LoggingConfig,
     PretokenizeRunnerConfig,
 )
 from .evals import run_evals
@@ -83,6 +84,7 @@ __all__ = [
     "JumpReLUTrainingSAE",
     "JumpReLUTrainingSAEConfig",
     "SAETrainingRunner",
+    "LoggingConfig",
 ]
 
 
