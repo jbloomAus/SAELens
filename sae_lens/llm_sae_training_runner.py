@@ -43,7 +43,6 @@ class LLMSaeEvaluator(Generic[T_TRAINING_SAE]):
     activations_store: ActivationsStore
     eval_batch_size_prompts: int | None
     n_eval_batches: int
-    n_eval_batches: int
     model_kwargs: dict[str, Any]
 
     def __call__(
