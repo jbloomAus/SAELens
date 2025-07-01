@@ -103,7 +103,6 @@ class HookedProxyLM(HookedRootModule):
         tokens: torch.Tensor,
         return_type: Literal["both", "logits"] = "logits",
         loss_per_token: bool = False,
-        # TODO: implement real support for stop_at_layer
         stop_at_layer: int | None = None,
         _names_filter: list[str] | None = None,
         **kwargs: Any,
