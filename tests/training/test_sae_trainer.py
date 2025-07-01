@@ -120,7 +120,7 @@ def test_train_step__output_looks_reasonable(trainer: SAETrainer[Any, Any]) -> N
 
     assert output.loss > 0
     # only hook_point_layer=0 acts should be passed to the SAE
-    assert torch.allclose(output.sae_in, layer_acts[:, :])
+    assert torch.allclose(output.sae_in, layer_acts)
     assert output.sae_out.shape == output.sae_in.shape
     assert output.feature_acts.shape == (4, 128)  # batch_size, d_sae
     # ghots grads shouldn't trigger until dead_feature_window, which hasn't been reached yet
