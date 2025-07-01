@@ -93,7 +93,7 @@ def test_ActivationScaler_estimate_scaling_factor():
     # Expected scaling factor: sqrt(64) / 16 = 8 / 16 = 0.5
     expected_scaling_factor = 0.5
     assert scaler.scaling_factor is not None
-    assert abs(scaler.scaling_factor - expected_scaling_factor) < 1e-6
+    assert scaler.scaling_factor == pytest.approx(expected_scaling_factor, abs=1e-6)
 
 
 def test_ActivationScaler_estimate_scaling_factor_updates_scaler():
