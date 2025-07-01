@@ -187,7 +187,7 @@ class HookedProxyLM(HookedRootModule):
 
         # We don't want to prepend bos but the tokenizer does it automatically, so we remove it manually
         if hasattr(self.tokenizer, "add_bos_token") and self.tokenizer.add_bos_token:  # type: ignore
-            tokens = get_tokens_with_bos_removed(self.tokenizer, tokens)
+            tokens = get_tokens_with_bos_removed(self.tokenizer, tokens)  # type: ignore
         return tokens  # type: ignore
 
 
