@@ -17,7 +17,6 @@ Some of the core config options available in `LanguageModelSAERunnerConfig` are:
 
 - `model_name`: The base model name to train a SAE on (e.g., `"gpt2-small"`, `"tiny-stories-1L-21M"`). This must correspond to a [model from TransformerLens](https://neelnanda-io.github.io/TransformerLens/generated/model_properties_table.html) or a Hugging Face `AutoModelForCausalLM` if `model_class_name` is set accordingly.
 - `hook_name`: This is a TransformerLens hook in the model where our SAE will be trained from (e.g., `"blocks.0.hook_mlp_out"`). More info on hooks can be found [here](https://neelnanda-io.github.io/TransformerLens/generated/demos/Main_Demo.html#Hook-Points).
-- `hook_layer`: This is an int which corresponds to the layer specified in `hook_name`. This must match! e.g. if `hook_name` is `"blocks.3.hook_mlp_out"`, then `hook_layer` must be `3`.
 - `dataset_path`: The path to a dataset on Huggingface for training (e.g., `"apollo-research/roneneldan-TinyStories-tokenizer-gpt2"`).
 - `training_tokens`: The total number of tokens from the dataset to use for training the SAE.
 - `train_batch_size_tokens`: The batch size used for training the SAE, measured in tokens. Adjust this to keep the GPU saturated.
@@ -64,7 +63,6 @@ cfg = LanguageModelSAERunnerConfig(
     # Data Generating Function (Model + Training Distribution)
     model_name="tiny-stories-1L-21M",
     hook_name="blocks.0.hook_mlp_out",
-    hook_layer=0,
     dataset_path="apollo-research/roneneldan-TinyStories-tokenizer-gpt2",
     is_dataset_tokenized=True,
     streaming=True,
@@ -73,7 +71,6 @@ cfg = LanguageModelSAERunnerConfig(
     sae=StandardTrainingSAEConfig(
         d_in=1024, # Matches hook_mlp_out for tiny-stories-1L-21M
         expansion_factor=16,
-        b_dec_init_method="zeros",
         apply_b_dec_to_input=False,
         normalize_sae_decoder=False,
         scale_sparsity_penalty_by_decoder_norm=True,

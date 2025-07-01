@@ -6,7 +6,7 @@ from sae_lens import (
     SAE,
     HookedSAETransformer,
     LanguageModelSAERunnerConfig,
-    SAETrainingRunner,
+    LanguageModelSAETrainingRunner,
     upload_saes_to_huggingface,
 )
 from sae_lens.config import LoggingConfig
@@ -46,7 +46,6 @@ runner_cfg = LanguageModelSAERunnerConfig(
     # Data generation
     model_name=model_name,
     hook_name=f"blocks.{layer}.mlp.hook_post",
-    hook_layer=layer,
     dataset_path=dataset_path,
     is_dataset_tokenized=True,
     prepend_bos=False,
@@ -88,7 +87,7 @@ runner_cfg = LanguageModelSAERunnerConfig(
 )
 
 # t.set_grad_enabled(True)
-runner = SAETrainingRunner(runner_cfg)
+runner = LanguageModelSAETrainingRunner(runner_cfg)
 sae = runner.run()
 
 hf_repo_id = "callummcdougall/arena-demos-othellogpt"

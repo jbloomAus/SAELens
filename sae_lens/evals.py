@@ -21,7 +21,9 @@ from transformer_lens.hook_points import HookedRootModule
 
 from sae_lens.loading.pretrained_saes_directory import get_pretrained_saes_directory
 from sae_lens.saes.sae import SAE, SAEConfig
+from sae_lens.training.activation_scaler import ActivationScaler
 from sae_lens.training.activations_store import ActivationsStore
+from sae_lens.util import extract_stop_at_layer_from_tlens_hook_name
 
 
 def get_library_version() -> str:
@@ -103,6 +105,7 @@ def run_evals(
     sae: SAE[Any],
     activation_store: ActivationsStore,
     model: HookedRootModule,
+    activation_scaler: ActivationScaler,
     eval_config: EvalConfig = EvalConfig(),
     model_kwargs: Mapping[str, Any] = {},
     ignore_tokens: set[int | None] = set(),
@@ -140,6 +143,7 @@ def run_evals(
             sae,
             model,
             activation_store,
+            activation_scaler,
             compute_kl=eval_config.compute_kl,
             compute_ce_loss=eval_config.compute_ce_loss,
             n_batches=eval_config.n_eval_reconstruction_batches,
@@ -189,6 +193,7 @@ def run_evals(
             sae,
             model,
             activation_store,
+            activation_scaler,
             compute_l2_norms=eval_config.compute_l2_norms,
             compute_sparsity_metrics=eval_config.compute_sparsity_metrics,
             compute_variance_metrics=eval_config.compute_variance_metrics,
@@ -301,6 +306,7 @@ def get_downstream_reconstruction_metrics(
     sae: SAE[Any],
     model: HookedRootModule,
     activation_store: ActivationsStore,
+    activation_scaler: ActivationScaler,
     compute_kl: bool,
     compute_ce_loss: bool,
     n_batches: int,
@@ -326,8 +332,8 @@ def get_downstream_reconstruction_metrics(
         for metric_name, metric_value in get_recons_loss(
             sae,
             model,
+            activation_scaler,
             batch_tokens,
-            activation_store,
             compute_kl=compute_kl,
             compute_ce_loss=compute_ce_loss,
             ignore_tokens=ignore_tokens,
@@ -369,6 +375,7 @@ def get_sparsity_and_variance_metrics(
     sae: SAE[Any],
     model: HookedRootModule,
     activation_store: ActivationsStore,
+    activation_scaler: ActivationScaler,
     n_batches: int,
     compute_l2_norms: bool,
     compute_sparsity_metrics: bool,
@@ -436,7 +443,7 @@ def get_sparsity_and_variance_metrics(
             batch_tokens,
             prepend_bos=False,
             names_filter=[hook_name],
-            stop_at_layer=sae.cfg.metadata.hook_layer + 1,
+            stop_at_layer=extract_stop_at_layer_from_tlens_hook_name(hook_name),
             **model_kwargs,
         )
 
@@ -451,16 +458,14 @@ def get_sparsity_and_variance_metrics(
             original_act = cache[hook_name]
 
         # normalise if necessary (necessary in training only, otherwise we should fold the scaling in)
-        if activation_store.normalize_activations == "expected_average_only_in":
-            original_act = activation_store.apply_norm_scaling_factor(original_act)
+        original_act = activation_scaler.scale(original_act)
 
         # send the (maybe normalised) activations into the SAE
         sae_feature_activations = sae.encode(original_act.to(sae.device))
         sae_out = sae.decode(sae_feature_activations).to(original_act.device)
         del cache
 
-        if activation_store.normalize_activations == "expected_average_only_in":
-            sae_out = activation_store.unscale(sae_out)
+        sae_out = activation_scaler.unscale(sae_out)
 
         flattened_sae_input = einops.rearrange(original_act, "b ctx d -> (b ctx) d")
         flattened_sae_feature_acts = einops.rearrange(
@@ -582,8 +587,8 @@ def get_sparsity_and_variance_metrics(
 def get_recons_loss(
     sae: SAE[SAEConfig],
     model: HookedRootModule,
+    activation_scaler: ActivationScaler,
     batch_tokens: torch.Tensor,
-    activation_store: ActivationsStore,
     compute_kl: bool,
     compute_ce_loss: bool,
     ignore_tokens: set[int | None] = set(),
@@ -618,15 +623,13 @@ def get_recons_loss(
         activations = activations.to(sae.device)
 
         # Handle rescaling if SAE expects it
-        if activation_store.normalize_activations == "expected_average_only_in":
-            activations = activation_store.apply_norm_scaling_factor(activations)
+        activations = activation_scaler.scale(activations)
 
         # SAE class agnost forward forward pass.
         new_activations = sae.decode(sae.encode(activations)).to(activations.dtype)
 
         # Unscale if activations were scaled prior to going into the SAE
-        if activation_store.normalize_activations == "expected_average_only_in":
-            new_activations = activation_store.unscale(new_activations)
+        new_activations = activation_scaler.unscale(new_activations)
 
         new_activations = torch.where(mask[..., None], new_activations, activations)
 
@@ -637,8 +640,7 @@ def get_recons_loss(
         activations = activations.to(sae.device)
 
         # Handle rescaling if SAE expects it
-        if activation_store.normalize_activations == "expected_average_only_in":
-            activations = activation_store.apply_norm_scaling_factor(activations)
+        activations = activation_scaler.scale(activations)
 
         # SAE class agnost forward forward pass.
         new_activations = sae.decode(sae.encode(activations.flatten(-2, -1))).to(
@@ -650,8 +652,7 @@ def get_recons_loss(
         )  # reshape to match original shape
 
         # Unscale if activations were scaled prior to going into the SAE
-        if activation_store.normalize_activations == "expected_average_only_in":
-            new_activations = activation_store.unscale(new_activations)
+        new_activations = activation_scaler.unscale(new_activations)
 
         return new_activations.to(original_device)
 
@@ -660,8 +661,7 @@ def get_recons_loss(
         activations = activations.to(sae.device)
 
         # Handle rescaling if SAE expects it
-        if activation_store.normalize_activations == "expected_average_only_in":
-            activations = activation_store.apply_norm_scaling_factor(activations)
+        activations = activation_scaler.scale(activations)
 
         new_activations = sae.decode(sae.encode(activations[:, :, head_index])).to(
             activations.dtype
@@ -669,8 +669,7 @@ def get_recons_loss(
         activations[:, :, head_index] = new_activations
 
         # Unscale if activations were scaled prior to going into the SAE
-        if activation_store.normalize_activations == "expected_average_only_in":
-            activations = activation_store.unscale(activations)
+        activations = activation_scaler.unscale(activations)
 
         return activations.to(original_device)
 
@@ -849,6 +848,7 @@ def multiple_evals(
                 scalar_metrics, feature_metrics = run_evals(
                     sae=sae,
                     activation_store=activation_store,
+                    activation_scaler=ActivationScaler(),
                     model=current_model,
                     eval_config=eval_config,
                     ignore_tokens={

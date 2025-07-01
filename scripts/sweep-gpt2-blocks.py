@@ -8,7 +8,7 @@ from sae_lens.saes.standard_sae import StandardTrainingSAEConfig
 sys.path.append("..")
 
 from sae_lens.config import LanguageModelSAERunnerConfig, LoggingConfig
-from sae_lens.sae_training_runner import SAETrainingRunner
+from sae_lens.llm_sae_training_runner import LanguageModelSAETrainingRunner
 
 if torch.cuda.is_available():
     device = "cuda"
@@ -46,7 +46,6 @@ for l1_coefficient in [3, 4, 5, 6, 7]:
             model_name="gpt2",
             ## MLP ##
             hook_name=f"blocks.{block}.hook_mlp_out",
-            hook_layer=block,
             dataset_path="apollo-research/Skylion007-openwebtext-tokenizer-gpt2",
             streaming=True,
             context_size=512,
@@ -93,6 +92,6 @@ for l1_coefficient in [3, 4, 5, 6, 7]:
             compile_sae=True,
         )
 
-        SAETrainingRunner(cfg).run()
+        LanguageModelSAETrainingRunner(cfg).run()
 
         print("=" * 50)

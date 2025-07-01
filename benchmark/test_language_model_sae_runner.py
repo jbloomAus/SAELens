@@ -1,7 +1,7 @@
 import torch
 
 from sae_lens.config import LanguageModelSAERunnerConfig, LoggingConfig
-from sae_lens.sae_training_runner import SAETrainingRunner
+from sae_lens.llm_sae_training_runner import LanguageModelSAETrainingRunner
 from sae_lens.saes.gated_sae import GatedTrainingSAEConfig
 from sae_lens.saes.standard_sae import StandardTrainingSAEConfig
 from sae_lens.saes.topk_sae import TopKTrainingSAEConfig
@@ -38,7 +38,6 @@ def test_language_model_sae_runner():
             dtype="float32",
             device=device,
             apply_b_dec_to_input=False,
-            b_dec_init_method="zeros",
             l1_coefficient=5,
             lp_norm=1.0,
             l1_warm_up_steps=l1_warmup_steps,
@@ -47,7 +46,6 @@ def test_language_model_sae_runner():
         model_name="gelu-1l",
         ## MLP Layer 0 ##
         hook_name="blocks.0.hook_mlp_out",
-        hook_layer=0,
         dataset_path="NeelNanda/c4-tokenized-2b",
         context_size=256,
         is_dataset_tokenized=True,
@@ -93,8 +91,7 @@ def test_language_model_sae_runner():
         dtype="float32",
     )
 
-    # look at the next cell to see some instruction for what to do while this is running.
-    sae = SAETrainingRunner(cfg).run()
+    sae = LanguageModelSAETrainingRunner(cfg).run()
 
     assert sae is not None
     # know whether or not this works by looking at the dashboard!
@@ -127,7 +124,6 @@ def test_language_model_sae_runner_gated():
             dtype="float32",
             device=device,
             apply_b_dec_to_input=False,
-            b_dec_init_method="zeros",
             l1_coefficient=5,
             l1_warm_up_steps=l1_warmup_steps,
         ),
@@ -135,7 +131,6 @@ def test_language_model_sae_runner_gated():
         model_name="gelu-1l",
         ## MLP Layer 0 ##
         hook_name="blocks.0.hook_mlp_out",
-        hook_layer=0,
         dataset_path="NeelNanda/c4-tokenized-2b",
         context_size=256,
         is_dataset_tokenized=True,
@@ -179,8 +174,7 @@ def test_language_model_sae_runner_gated():
         dtype="float32",
     )
 
-    # look at the next cell to see some instruction for what to do while this is running.
-    sae = SAETrainingRunner(cfg).run()
+    sae = LanguageModelSAETrainingRunner(cfg).run()
 
     assert sae is not None
     # know whether or not this works by looking at the dashboard!
@@ -215,13 +209,11 @@ def test_language_model_sae_runner_top_k():
             dtype="float32",
             device=device,
             apply_b_dec_to_input=True,
-            b_dec_init_method="geometric_median",
         ),
         # Pick a tiny model to make this easier.
         model_name="gelu-1l",
         ## MLP Layer 0 ##
         hook_name="blocks.0.hook_mlp_out",
-        hook_layer=0,
         dataset_path="NeelNanda/c4-tokenized-2b",
         context_size=256,
         is_dataset_tokenized=True,
@@ -259,8 +251,7 @@ def test_language_model_sae_runner_top_k():
         dtype="float32",
     )
 
-    # look at the next cell to see some instruction for what to do while this is running.
-    sae = SAETrainingRunner(cfg).run()
+    sae = LanguageModelSAETrainingRunner(cfg).run()
 
     assert sae is not None
     # know whether or not this works by looking at the dashboard!
@@ -290,7 +281,6 @@ def test_language_model_sae_runner_othellogpt():
             dtype="float32",
             device=device,
             apply_b_dec_to_input=True,
-            b_dec_init_method="geometric_median",
             l1_coefficient=0.001,
             lp_norm=1.0,
             l1_warm_up_steps=l1_warmup_steps,
@@ -299,7 +289,6 @@ def test_language_model_sae_runner_othellogpt():
         # Data Generating Function (Model + Training Distibuion)
         model_name="othello-gpt",  # othello-gpt model
         hook_name="blocks.6.hook_resid_pre",  # A valid hook point (see more details here: https://neelnanda-io.github.io/TransformerLens/generated/demos/Main_Demo.html#Hook-Points)
-        hook_layer=6,  # Only one layer in the model.
         dataset_path="taufeeque/othellogpt",  # this is a tokenized language dataset on Huggingface for OthelloGPT games.
         is_dataset_tokenized=True,
         streaming=True,  # we could pre-download the token dataset if it was small.
@@ -335,8 +324,7 @@ def test_language_model_sae_runner_othellogpt():
         dtype="torch.float32",
     )
 
-    # look at the next cell to see some instruction for what to do while this is running.
-    sae = SAETrainingRunner(cfg).run()
+    sae = LanguageModelSAETrainingRunner(cfg).run()
 
     assert sae is not None
     # know whether or not this works by looking at the dashboard!
