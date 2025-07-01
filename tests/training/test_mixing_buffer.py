@@ -52,7 +52,7 @@ def test_mixing_buffer_empty_loader():
     buffer = mixing_buffer(buffer_size=16, batch_size=4, activations_loader=iter([]))
 
     # Should not yield any batches
-    assert list(buffer) == []
+    assert not list(buffer)
 
 
 def test_mixing_buffer_error_on_small_buffer():
