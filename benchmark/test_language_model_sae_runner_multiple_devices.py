@@ -62,7 +62,6 @@ BASE_CFG = dict(
     # Initialization / Architecture
     apply_b_dec_to_input=False,
     # encoder bias zero's. (I'm not sure what it is by default now)
-    # decoder bias zero's.
     normalize_sae_decoder=False,
     decoder_heuristic_init=True,
     init_encoder_as_decoder_transpose=True,
