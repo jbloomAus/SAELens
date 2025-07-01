@@ -74,7 +74,7 @@ def test_ActivationScaler_calculate_mean_norm():
         data_provider(), n_batches_for_norm_estimate=5
     )
     expected_mean = (5.0 + 10.0 + 0.0 + 1.0 + 2.0) / 5
-    assert abs(mean_norm - expected_mean) < 1e-6
+    assert mean_norm == pytest.approx(expected_mean, abs=1e-6)
 
 
 def test_ActivationScaler_estimate_scaling_factor():
