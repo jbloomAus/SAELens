@@ -354,11 +354,11 @@ class SAETrainer(Generic[T_TRAINING_SAE, T_TRAINING_SAE_CONFIG]):
             * self.cfg.logger.eval_every_n_wandb_logs
         ) == 0:
             self.sae.eval()
-            eval_metrics = {}
-            if self.evaluator is not None:
-                eval_metrics = self.evaluator(
-                    self.sae, self.data_provider, self.activation_scaler
-                )
+            eval_metrics = (
+                self.evaluator(self.sae, self.data_provider, self.activation_scaler)
+                if self.evaluator is not None
+                else {}
+            )
             for key, value in self.sae.log_histograms().items():
                 eval_metrics[key] = wandb.Histogram(value)  # type: ignore
 
