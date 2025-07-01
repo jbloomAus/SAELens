@@ -140,7 +140,7 @@ def test_train_step__sparsity_updates_based_on_feature_act_sparsity(
 
     train_output = trainer._train_step(
         sae=trainer.sae,
-        sae_in=layer_acts[:, :],
+        sae_in=layer_acts,
     )
     feature_acts = train_output.feature_acts
 
