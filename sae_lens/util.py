@@ -35,9 +35,7 @@ def extract_stop_at_layer_from_tlens_hook_name(hook_name: str) -> int | None:
     Returns None if the hook name is not a valid HookedTransformer hook name.
     """
     layer = extract_layer_from_tlens_hook_name(hook_name)
-    if layer is None:
-        return None
-    return layer + 1
+    return None if layer is None else layer + 1
 
 
 def extract_layer_from_tlens_hook_name(hook_name: str) -> int | None:
