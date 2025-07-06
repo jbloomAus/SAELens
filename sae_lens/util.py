@@ -46,6 +46,4 @@ def extract_layer_from_tlens_hook_name(hook_name: str) -> int | None:
     Returns None if the hook name is not a valid HookedTransformer hook name.
     """
     hook_match = re.search(r"\.(\d+)\.", hook_name)
-    if hook_match is None:
-        return None
-    return int(hook_match.group(1))
+    return None if hook_match is None else int(hook_match.group(1))
