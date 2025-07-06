@@ -350,12 +350,12 @@ def test_estimated_norm_scaling_factor_persistence(
     during_checkpoints = []
     final_checkpoints = []
     for path in checkpoint_paths:
-        if "final" not in path.parent.name:
-            with open(path) as f:
-                during_checkpoints.append(json.load(f))
+        with open(path) as f:
+            data = json.load(f)
+        if "final" in path.parent.name:
+            final_checkpoints.append(data)
         else:
-            with open(path) as f:
-                final_checkpoints.append(json.load(f))
+            during_checkpoints.append(data)
 
     assert (
         len(during_checkpoints) == 1
