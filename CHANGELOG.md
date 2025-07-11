@@ -2,6 +2,135 @@
 
 
 
+## v6.0.0-rc.3 (2025-07-11)
+
+### Chore
+
+* chore: improving mkdocs setup with mike (#487) ([`c17cad0`](https://github.com/jbloomAus/SAELens/commit/c17cad00c15cca1f8be59c4a2db9219ae9d356f2))
+
+### Feature
+
+* feat: Decouple training from LLM activation store / LLM evals (#496)
+
+* Refactor activations store to be an iterator
+
+* fixing some activations store tests
+
+* wip: removing hook_layer param
+
+* adding early stopping support to the HF model proxy wrapper
+
+* WIP removing dependency of act store and model from trainer
+
+* fixing tests
+
+* fixing activations cache runner
+
+* fixing linting and types
+
+* Update benchmark/test_language_model_sae_runner.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update benchmark/test_language_model_sae_runner.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update benchmark/test_language_model_sae_runner.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update benchmark/test_language_model_sae_runner.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update benchmark/test_language_model_sae_runner_multiple_devices.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update benchmark/test_language_model_sae_runner_multiple_devices.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update tests/training/test_mixing_buffer.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update tests/training/test_sae_trainer.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update tests/training/test_sae_trainer.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update tests/training/test_sae_trainer.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update tests/training/test_sae_trainer.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update sae_lens/llm_sae_training_runner.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update sae_lens/llm_sae_training_runner.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update sae_lens/load_model.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update sae_lens/training/activation_scaler.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update sae_lens/training/sae_trainer.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update tests/training/test_activation_scaler.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update tests/training/test_activation_scaler.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* fixes from CR
+
+* fixing type checking - thanks Anthony!
+
+* fixing formatting
+
+* fixing notebook
+
+* Update sae_lens/util.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update tests/training/test_sae_trainer.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update sae_lens/util.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* changes from CR
+
+---------
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt; ([`d9921e2`](https://github.com/jbloomAus/SAELens/commit/d9921e2240b340d50142655a48f4c4df47e3887f))
+
+### Unknown
+
+* updating docs to install pre-release version of saelens ([`f1c0586`](https://github.com/jbloomAus/SAELens/commit/f1c0586cd98efb3c8c7904ef1dc14de5f3343195))
+
+
 ## v6.0.0-rc.2 (2025-05-28)
 
 ### Chore

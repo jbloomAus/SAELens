@@ -1,5 +1,5 @@
 # ruff: noqa: E402
-__version__ = "6.0.0-rc.2"
+__version__ = "6.0.0-rc.3"
 
 import logging
 
