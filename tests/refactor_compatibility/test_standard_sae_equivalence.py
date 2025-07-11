@@ -12,6 +12,7 @@ from sae_lens.saes.standard_sae import (
 )
 
 # Old modules
+from sae_lens.util import extract_stop_at_layer_from_tlens_hook_name
 from tests._comparison.sae_lens_old.sae import (
     SAE as OldSAE,
 )
@@ -379,7 +380,7 @@ def test_standard_sae_training_hook_z_equivalence(hook_name: str):
         device="cpu",
         model_name="test_model",
         hook_name=hook_name,
-        hook_layer=0,
+        hook_layer=extract_stop_at_layer_from_tlens_hook_name(hook_name) or 0,
         hook_head_index=None,
         activation_fn_str="relu",
         activation_fn_kwargs={},
@@ -650,7 +651,7 @@ def make_old_training_sae(
         device="cpu",
         model_name="test_model",
         hook_name=hook_name,
-        hook_layer=0,
+        hook_layer=extract_stop_at_layer_from_tlens_hook_name(hook_name) or 0,
         hook_head_index=None,
         activation_fn_str="relu",
         activation_fn_kwargs={},
@@ -699,7 +700,6 @@ def make_new_training_sae(
         metadata=SAEMetadata(
             model_name="test_model",
             hook_name=hook_name,
-            hook_layer=0,
             hook_head_index=None,
         ),
     )

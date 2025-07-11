@@ -58,7 +58,6 @@ def _default_cfg(
         dataset_path="chanind/c4-10k-mini-tokenized-16-ctx-gelu-1l-tests",
         model_name="gelu-1l",
         hook_name="blocks.0.hook_mlp_out",
-        hook_layer=0,
         ### Parameters
         training_tokens=total_training_tokens,
         model_batch_size=batch_size,
@@ -110,12 +109,11 @@ def test_load_cached_activations(tmp_path: Path):
     activations_store = ActivationsStore.from_config(model, cfg)
 
     for _ in range(cfg.n_buffers):
-        buffer = activations_store.get_buffer(
+        buffer = activations_store.get_raw_buffer(
             cfg.n_batches_in_buffer
         )  # Adjusted to use n_batches_in_buffer
         assert buffer[0].shape == (
             cfg.n_seq_in_buffer * cfg.context_size,
-            1,
             cfg.d_in,
         )
         assert buffer[1] is not None
@@ -140,7 +138,6 @@ def test_activations_store_refreshes_dataset_when_it_runs_out(tmp_path: Path):
         use_cached_activations=True,
         model_name="gelu-1l",
         hook_name="blocks.0.hook_mlp_out",
-        hook_layer=0,
         dataset_path="",
         context_size=context_size,
         is_dataset_tokenized=True,
@@ -218,7 +215,6 @@ def test_compare_cached_activations_end_to_end_with_ground_truth(tmp_path: Path)
         _, layerwise_activations = model.run_with_cache(
             tokens,
             names_filter=[cfg.hook_name],
-            stop_at_layer=cfg.hook_layer + 1,
         )
         acts = layerwise_activations[cfg.hook_name]
         ground_truth_acts.append(acts)

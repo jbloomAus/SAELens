@@ -53,7 +53,6 @@ def get_hooked_sae(model: HookedTransformer, act_name: str) -> SAE:
         metadata=SAEMetadata(
             hook_name=act_name,
             model_name=MODEL,
-            hook_layer=0,
             hook_head_index=None,
             prepend_bos=True,
         ),

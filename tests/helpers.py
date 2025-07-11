@@ -24,7 +24,6 @@ class LanguageModelSAERunnerConfigDict(TypedDict, total=False):
     model_class_name: str
     hook_name: str
     hook_eval: str
-    hook_layer: int
     hook_head_index: int | None
     dataset_path: str
     dataset_trust_remote_code: bool
@@ -84,7 +83,6 @@ class TrainingSAEConfigDict(TypedDict, total=False):
     l1_coefficient: float
     lp_norm: float
     normalize_activations: str
-    b_dec_init_method: str
     apply_b_dec_to_input: bool
     noise_scale: float
     mse_loss_normalization: str | None
@@ -116,7 +114,6 @@ def _get_default_runner_config() -> LanguageModelSAERunnerConfigDict:
         "model_class_name": "HookedTransformer",
         "hook_name": "blocks.0.hook_mlp_out",
         "hook_eval": "NOT_IN_USE",
-        "hook_layer": 0,
         "hook_head_index": None,
         "dataset_path": NEEL_NANDA_C4_10K_DATASET,
         "streaming": False,
@@ -238,7 +235,6 @@ def build_runner_cfg(
         "l1_coefficient": 2e-3,
         "lp_norm": 1.0,
         "normalize_activations": "none",
-        "b_dec_init_method": "zeros",
         "apply_b_dec_to_input": False,
         "noise_scale": 0.0,
         "mse_loss_normalization": None,
@@ -250,7 +246,6 @@ def build_runner_cfg(
         **kwargs,
     )
     runner_cfg.sae.metadata.hook_name = runner_cfg.hook_name
-    runner_cfg.sae.metadata.hook_layer = runner_cfg.hook_layer
     runner_cfg.sae.metadata.hook_head_index = runner_cfg.hook_head_index
     runner_cfg.sae.metadata.model_name = runner_cfg.model_name
     runner_cfg.sae.metadata.model_class_name = runner_cfg.model_class_name
@@ -285,7 +280,6 @@ def build_jumprelu_runner_cfg(
         "dtype": "float32",
         "device": "cpu",
         "normalize_activations": "none",
-        "b_dec_init_method": "zeros",
         "apply_b_dec_to_input": False,
         "noise_scale": 0.0,
         "decoder_init_norm": 0.1,
@@ -330,7 +324,6 @@ def build_gated_runner_cfg(
         "decoder_init_norm": 0.1,
         "l1_coefficient": 1.0,
         "normalize_activations": "none",
-        "b_dec_init_method": "zeros",
         "apply_b_dec_to_input": False,
         "noise_scale": 0.0,
         "mse_loss_normalization": None,
@@ -369,7 +362,6 @@ def build_topk_runner_cfg(
         "dtype": "float32",
         "device": "cpu",
         "normalize_activations": "none",
-        "b_dec_init_method": "zeros",
         "decoder_init_norm": 0.1,
         "apply_b_dec_to_input": False,
         "noise_scale": 0.0,

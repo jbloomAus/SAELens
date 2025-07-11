@@ -41,7 +41,6 @@ def test_cache_activations_runner_config_seqpos(
             model_name="",
             model_batch_size=1,
             hook_name="",
-            hook_layer=0,
             d_in=1,
             training_tokens=100,
             context_size=10,
