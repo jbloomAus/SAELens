@@ -351,3 +351,19 @@ def test_concat_and_batch_sequences_works_with_extremely_long_samples():
     for batch in batches_list:
         assert batch.shape == (5,)
         assert batch[0] == 999
+
+
+def test_concat_and_batch_sequences_disable_concat_sequences():
+    all_toks = torch.arange(20)
+    seqs = [all_toks[:3], all_toks[3:10], all_toks[10:17], all_toks[17:]]
+    batches_list = list(
+        concat_and_batch_sequences(
+            tokens_iterator=iter(seqs), context_size=5, disable_concat_sequences=True
+        )
+    )
+    batches = torch.stack(batches_list)
+    expected = [
+        [3, 4, 5, 6, 7],
+        [10, 11, 12, 13, 14],
+    ]
+    assert batches.tolist() == expected
