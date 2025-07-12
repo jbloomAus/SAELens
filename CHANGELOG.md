@@ -2,6 +2,27 @@
 
 
 
+## v5.11.0 (2025-07-12)
+
+### Feature
+
+* feat: adds sparsify_huggingface_loader() (#476)
+
+* adds sparsify_huggingface_loader()
+
+* adds sparsify_disk_loader()
+
+* adds test
+
+* adds test for sparsify_huggingface_loader()
+
+* adds type: ignore for weird error ([`976aa4b`](https://github.com/jbloomAus/SAELens/commit/976aa4b5f3232e5bad8c5abb4610dce3d6f56711))
+
+### Unknown
+
+* fixes alias already exists error (#493) ([`abcf9a6`](https://github.com/jbloomAus/SAELens/commit/abcf9a603acf9344d249f0a595e89be45b77b7cf))
+
+
 ## v5.10.7 (2025-06-10)
 
 ### Fix
