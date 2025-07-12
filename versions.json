@@ -16,14 +16,14 @@
   {
     "version": "v5.11.0",
     "title": "v5.11.0",
-    "aliases": []
+    "aliases": [
+      "latest"
+    ]
   },
   {
     "version": "v5.10.7",
     "title": "v5.10.7",
-    "aliases": [
-      "latest"
-    ]
+    "aliases": []
   },
   {
     "version": "v5.10.6",
