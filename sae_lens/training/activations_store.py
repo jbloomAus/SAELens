@@ -161,8 +161,6 @@ class ActivationsStore:
     ) -> ActivationsStore:
         if sae.cfg.metadata.hook_name is None:
             raise ValueError("hook_name is required")
-        if sae.cfg.metadata.hook_head_index is None:
-            raise ValueError("hook_head_index is required")
         if sae.cfg.metadata.context_size is None:
             raise ValueError("context_size is required")
         if sae.cfg.metadata.prepend_bos is None:

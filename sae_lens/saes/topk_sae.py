@@ -116,6 +116,13 @@ class TopKSAE(SAE[TopKSAEConfig]):
     def get_activation_fn(self) -> Callable[[torch.Tensor], torch.Tensor]:
         return TopK(self.cfg.k)
 
+    @override
+    @torch.no_grad()
+    def fold_W_dec_norm(self) -> None:
+        raise NotImplementedError(
+            "Folding W_dec_norm is not safe for TopKSAEs, as this may change the topk activations"
+        )
+
 
 @dataclass
 class TopKTrainingSAEConfig(TrainingSAEConfig):
@@ -168,6 +175,7 @@ class TopKTrainingSAE(TrainingSAE[TopKTrainingSAEConfig]):
         feature_acts = self.hook_sae_acts_post(self.activation_fn(hidden_pre_noised))
         return feature_acts, hidden_pre_noised
 
+    @override
     def calculate_aux_loss(
         self,
         step_input: TrainStepInput,
@@ -183,6 +191,13 @@ class TopKTrainingSAE(TrainingSAE[TopKTrainingSAEConfig]):
             dead_neuron_mask=step_input.dead_neuron_mask,
         )
         return {"auxiliary_reconstruction_loss": topk_loss}
+
+    @override
+    @torch.no_grad()
+    def fold_W_dec_norm(self) -> None:
+        raise NotImplementedError(
+            "Folding W_dec_norm is not safe for TopKSAEs, as this may change the topk activations"
+        )
 
     @override
     def get_activation_fn(self) -> Callable[[torch.Tensor], torch.Tensor]:

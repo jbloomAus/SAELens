@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from statistics import mean
 
 import torch
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from sae_lens.training.types import DataProvider
 

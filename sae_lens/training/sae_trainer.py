@@ -7,7 +7,7 @@ import torch
 import wandb
 from safetensors.torch import save_file
 from torch.optim import Adam
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from sae_lens import __version__
 from sae_lens.config import SAETrainerConfig

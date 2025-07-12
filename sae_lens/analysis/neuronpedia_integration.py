@@ -59,7 +59,7 @@ def NanAndInfReplacer(value: str):
 
 
 def open_neuronpedia_feature_dashboard(sae: SAE[Any], index: int):
-    sae_id = sae.cfg.neuronpedia_id
+    sae_id = sae.cfg.metadata.neuronpedia_id
     if sae_id is None:
         logger.warning(
             "SAE does not have a Neuronpedia ID. Either dashboards for this SAE do not exist (yet) on Neuronpedia, or the SAE was not loaded via the from_pretrained method"
@@ -74,7 +74,7 @@ def get_neuronpedia_quick_list(
     features: list[int],
     name: str = "temporary_list",
 ):
-    sae_id = sae.cfg.neuronpedia_id
+    sae_id = sae.cfg.metadata.neuronpedia_id
     if sae_id is None:
         logger.warning(
             "SAE does not have a Neuronpedia ID. Either dashboards for this SAE do not exist (yet) on Neuronpedia, or the SAE was not loaded via the from_pretrained method"
@@ -86,7 +86,7 @@ def get_neuronpedia_quick_list(
     url = url + "?name=" + name
     list_feature = [
         {
-            "modelId": sae.cfg.model_name,
+            "modelId": sae.cfg.metadata.model_name,
             "layer": sae_id.split("/")[1],
             "index": str(feature),
         }
