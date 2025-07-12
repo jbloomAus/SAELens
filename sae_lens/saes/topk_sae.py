@@ -124,6 +124,7 @@ class TopKTrainingSAEConfig(TrainingSAEConfig):
     """
 
     k: int = 100
+    aux_loss_coefficient: float = 1.0
 
     @override
     @classmethod
@@ -229,7 +230,7 @@ class TopKTrainingSAE(TrainingSAE[TopKTrainingSAEConfig]):
         # top k living latents
         recons = self.decode(auxk_acts)
         auxk_loss = (recons - residual).pow(2).sum(dim=-1).mean()
-        return scale * auxk_loss
+        return self.cfg.aux_loss_coefficient * scale * auxk_loss
 
     def _calculate_topk_aux_acts(
         self,
