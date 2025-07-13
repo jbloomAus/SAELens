@@ -701,9 +701,6 @@ class TrainingSAEConfig(SAEConfig, ABC):
     def from_dict(
         cls: type[T_TRAINING_SAE_CONFIG], config_dict: dict[str, Any]
     ) -> T_TRAINING_SAE_CONFIG:
-        # remove any keys that are not in the dataclass
-        # since we sometimes enhance the config with the whole LM runner config
-        valid_config_dict = filter_valid_dataclass_fields(config_dict, cls)
         cfg_class = cls
         if "architecture" in config_dict:
             cfg_class = get_sae_training_class(config_dict["architecture"])[1]
@@ -711,6 +708,9 @@ class TrainingSAEConfig(SAEConfig, ABC):
             raise ValueError(
                 f"SAE config class {cls} does not match dict config class {type(cfg_class)}"
             )
+        # remove any keys that are not in the dataclass
+        # since we sometimes enhance the config with the whole LM runner config
+        valid_config_dict = filter_valid_dataclass_fields(config_dict, cfg_class)
         if "metadata" in config_dict:
             valid_config_dict["metadata"] = SAEMetadata(**config_dict["metadata"])
         return cfg_class(**valid_config_dict)
@@ -729,12 +729,14 @@ class TrainingSAEConfig(SAEConfig, ABC):
         Creates a dictionary containing attributes corresponding to the fields
         defined in the base SAEConfig class.
         """
-        base_config_field_names = {f.name for f in fields(SAEConfig)}
+        base_sae_cfg_class = get_sae_class(self.architecture())[1]
+        base_config_field_names = {f.name for f in fields(base_sae_cfg_class)}
         result_dict = {
             field_name: getattr(self, field_name)
             for field_name in base_config_field_names
         }
         result_dict["architecture"] = self.architecture()
+        result_dict["metadata"] = asdict(self.metadata)
         return result_dict
 
 

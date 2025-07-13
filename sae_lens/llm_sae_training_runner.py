@@ -150,7 +150,7 @@ class LanguageModelSAETrainingRunner:
         """
         Run the training of the SAE.
         """
-
+        self._set_sae_metadata()
         if self.cfg.logger.log_to_wandb:
             wandb.init(
                 project=self.cfg.logger.wandb_project,
@@ -183,6 +183,20 @@ class LanguageModelSAETrainingRunner:
             wandb.finish()
 
         return sae
+
+    def _set_sae_metadata(self):
+        self.sae.cfg.metadata.dataset_path = self.cfg.dataset_path
+        self.sae.cfg.metadata.hook_name = self.cfg.hook_name
+        self.sae.cfg.metadata.model_name = self.cfg.model_name
+        self.sae.cfg.metadata.model_class_name = self.cfg.model_class_name
+        self.sae.cfg.metadata.hook_head_index = self.cfg.hook_head_index
+        self.sae.cfg.metadata.context_size = self.cfg.context_size
+        self.sae.cfg.metadata.seqpos_slice = self.cfg.seqpos_slice
+        self.sae.cfg.metadata.model_from_pretrained_kwargs = (
+            self.cfg.model_from_pretrained_kwargs
+        )
+        self.sae.cfg.metadata.prepend_bos = self.cfg.prepend_bos
+        self.sae.cfg.metadata.exclude_special_tokens = self.cfg.exclude_special_tokens
 
     def _compile_if_needed(self):
         # Compile model and SAE

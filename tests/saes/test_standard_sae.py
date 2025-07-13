@@ -134,7 +134,7 @@ def test_sae_fold_w_dec_norm_all_architectures(architecture: str):
     sae2 = deepcopy(sae)
 
     # If this is a topk SAE, assert this throws a NotImplementedError
-    if cfg.architecture() == "topk":
+    if architecture == "topk":
         with pytest.raises(NotImplementedError):
             sae2.fold_W_dec_norm()
         return
