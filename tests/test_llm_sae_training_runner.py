@@ -5,8 +5,16 @@ import pytest
 from transformer_lens import HookedTransformer
 
 from sae_lens import __version__
-from sae_lens.llm_sae_training_runner import LanguageModelSAETrainingRunner
+from sae_lens.config import LanguageModelSAERunnerConfig
+from sae_lens.llm_sae_training_runner import (
+    LanguageModelSAETrainingRunner,
+    _parse_cfg_args,
+)
+from sae_lens.saes.gated_sae import GatedTrainingSAEConfig
+from sae_lens.saes.jumprelu_sae import JumpReLUTrainingSAEConfig
 from sae_lens.saes.sae import SAE
+from sae_lens.saes.standard_sae import StandardTrainingSAEConfig
+from sae_lens.saes.topk_sae import TopKTrainingSAEConfig
 from tests.helpers import (
     ALL_ARCHITECTURES,
     NEEL_NANDA_C4_10K_DATASET,
@@ -71,3 +79,180 @@ def test_LanguageModelSAETrainingRunner_runs_and_saves_all_architectures(
     assert loaded_sae.cfg.device == sae.cfg.device
     assert loaded_sae.cfg.apply_b_dec_to_input == sae.cfg.apply_b_dec_to_input
     assert loaded_sae.cfg.metadata.__dict__ == original_metadat_dict
+
+
+def test_parse_cfg_args_raises_system_exit_on_empty_args():
+    with pytest.raises(SystemExit):
+        _parse_cfg_args([])
+
+
+def test_parse_cfg_args_raises_exception_on_invalid_args():
+    with pytest.raises((SystemExit, Exception)):
+        _parse_cfg_args(["--invalid-argument", "value"])
+
+
+def test_parse_cfg_args_works_with_basic_arguments():
+    args = [
+        "--model_name",
+        "gpt2",
+        "--dataset_path",
+        "test_dataset",
+        "--d_in",
+        "768",
+        "--d_sae",
+        "1536",
+        "--hook_name",
+        "blocks.0.hook_resid_post",
+        "--context_size",
+        "128",
+        "--training_tokens",
+        "1000000",
+    ]
+    cfg = _parse_cfg_args(args)
+    assert isinstance(cfg, LanguageModelSAERunnerConfig)
+    assert cfg.model_name == "gpt2"
+    assert cfg.dataset_path == "test_dataset"
+    assert cfg.hook_name == "blocks.0.hook_resid_post"
+    assert cfg.context_size == 128
+    assert cfg.training_tokens == 1000000
+    assert cfg.sae.d_in == 768
+    assert cfg.sae.d_sae == 1536
+    assert cfg.sae.architecture() == "standard"
+    assert isinstance(cfg.sae, StandardTrainingSAEConfig)
+    assert cfg.sae.l1_coefficient == 1.0  # default value
+    assert cfg.sae.lp_norm == 1.0  # default value
+    assert cfg.sae.l1_warm_up_steps == 0  # default value
+
+
+def test_parse_cfg_args_selects_gated_architecture():
+    args = [
+        "--architecture",
+        "gated",
+        "--model_name",
+        "gpt2",
+        "--dataset_path",
+        "test_dataset",
+        "--d_in",
+        "768",
+        "--d_sae",
+        "1536",
+        "--hook_name",
+        "blocks.0.hook_resid_post",
+        "--l1_coefficient",
+        "0.5",
+        "--l1_warm_up_steps",
+        "1000",
+    ]
+    cfg = _parse_cfg_args(args)
+    assert isinstance(cfg, LanguageModelSAERunnerConfig)
+    assert cfg.model_name == "gpt2"
+    assert cfg.dataset_path == "test_dataset"
+    assert cfg.hook_name == "blocks.0.hook_resid_post"
+    assert cfg.sae.d_in == 768
+    assert cfg.sae.d_sae == 1536
+    assert cfg.sae.architecture() == "gated"
+    assert isinstance(cfg.sae, GatedTrainingSAEConfig)
+    assert cfg.sae.l1_coefficient == 0.5
+    assert cfg.sae.l1_warm_up_steps == 1000
+
+
+def test_parse_cfg_args_selects_topk_architecture():
+    args = [
+        "--architecture",
+        "topk",
+        "--model_name",
+        "gpt2",
+        "--dataset_path",
+        "test_dataset",
+        "--d_in",
+        "768",
+        "--d_sae",
+        "1536",
+        "--hook_name",
+        "blocks.0.hook_resid_post",
+        "--k",
+        "50",
+    ]
+    cfg = _parse_cfg_args(args)
+    assert isinstance(cfg, LanguageModelSAERunnerConfig)
+    assert cfg.model_name == "gpt2"
+    assert cfg.dataset_path == "test_dataset"
+    assert cfg.hook_name == "blocks.0.hook_resid_post"
+    assert cfg.sae.d_in == 768
+    assert cfg.sae.d_sae == 1536
+    assert cfg.sae.architecture() == "topk"
+    assert isinstance(cfg.sae, TopKTrainingSAEConfig)
+    assert cfg.sae.k == 50
+
+
+def test_parse_cfg_args_selects_standard_architecture_with_specific_options():
+    args = [
+        "--architecture",
+        "standard",
+        "--model_name",
+        "gpt2",
+        "--dataset_path",
+        "test_dataset",
+        "--d_in",
+        "768",
+        "--d_sae",
+        "1536",
+        "--hook_name",
+        "blocks.0.hook_resid_post",
+        "--l1_coefficient",
+        "0.8",
+        "--lp_norm",
+        "1.5",
+        "--l1_warm_up_steps",
+        "2000",
+    ]
+    cfg = _parse_cfg_args(args)
+    assert isinstance(cfg, LanguageModelSAERunnerConfig)
+    assert cfg.model_name == "gpt2"
+    assert cfg.dataset_path == "test_dataset"
+    assert cfg.hook_name == "blocks.0.hook_resid_post"
+    assert cfg.sae.d_in == 768
+    assert cfg.sae.d_sae == 1536
+    assert cfg.sae.architecture() == "standard"
+    assert isinstance(cfg.sae, StandardTrainingSAEConfig)
+    assert cfg.sae.l1_coefficient == 0.8
+    assert cfg.sae.lp_norm == 1.5
+    assert cfg.sae.l1_warm_up_steps == 2000
+
+
+def test_parse_cfg_args_selects_jumprelu_architecture():
+    args = [
+        "--architecture",
+        "jumprelu",
+        "--model_name",
+        "gpt2",
+        "--dataset_path",
+        "test_dataset",
+        "--d_in",
+        "768",
+        "--d_sae",
+        "1536",
+        "--hook_name",
+        "blocks.0.hook_resid_post",
+        "--jumprelu_init_threshold",
+        "0.002",
+        "--jumprelu_bandwidth",
+        "0.0005",
+        "--l0_coefficient",
+        "0.3",
+        "--l0_warm_up_steps",
+        "500",
+    ]
+    cfg = _parse_cfg_args(args)
+    assert isinstance(cfg, LanguageModelSAERunnerConfig)
+    assert cfg.model_name == "gpt2"
+    assert cfg.dataset_path == "test_dataset"
+    assert cfg.hook_name == "blocks.0.hook_resid_post"
+    assert cfg.sae.d_in == 768
+    assert cfg.sae.d_sae == 1536
+    assert cfg.sae.architecture() == "jumprelu"
+    assert isinstance(cfg.sae, JumpReLUTrainingSAEConfig)
+    assert cfg.sae.jumprelu_init_threshold == 0.002
+    assert cfg.sae.jumprelu_bandwidth == 0.0005
+    assert cfg.sae.l0_coefficient == 0.3
+    assert cfg.sae.l0_warm_up_steps == 500
