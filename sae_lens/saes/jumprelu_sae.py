@@ -191,8 +191,8 @@ class JumpReLUTrainingSAEConfig(TrainingSAEConfig):
     Configuration class for training a JumpReLUTrainingSAE.
     """
 
-    jumprelu_init_threshold: float = 0.001
-    jumprelu_bandwidth: float = 0.001
+    jumprelu_init_threshold: float = 0.01
+    jumprelu_bandwidth: float = 0.05
     l0_coefficient: float = 1.0
     l0_warm_up_steps: int = 0
 
