@@ -6,6 +6,7 @@ import pytest
 
 from sae_lens.analysis.neuronpedia_integration import (
     NEURONPEDIA_DOMAIN,
+    NanAndInfReplacer,
     NeuronpediaFeature,
     autointerp_neuronpedia_features,
     get_neuronpedia_feature,
@@ -490,31 +491,241 @@ async def test_autointerp_neuronpedia_features_missing_neuronpedia_key_for_uploa
     assert "You need to provide a Neuronpedia API key" in str(exc_info.value)
 
 
-@pytest.mark.skip(
-    reason="Need a way to test with an API key - maybe test to dev environment?"
-)
-def test_make_neuronpedia_list_with_features():
+@patch("sae_lens.analysis.neuronpedia_integration.requests.post")
+@patch("sae_lens.analysis.neuronpedia_integration.webbrowser.open")
+def test_make_neuronpedia_list_with_features_success(
+    mock_webbrowser_open: MagicMock,
+    mock_requests_post: MagicMock,
+):
+    # Mock successful response
+    mock_response = MagicMock()
+    mock_response.json.return_value = {
+        "url": "https://neuronpedia.org/list/test-list-id",
+        "listId": "test-list-id",
+    }
+    mock_requests_post.return_value = mock_response
+
+    # Create test features
+    features = [
+        NeuronpediaFeature(
+            modelId="gpt2-small",
+            layer=0,
+            dataset="res-jb",
+            feature=10,
+            description="Test feature description",
+        ),
+        NeuronpediaFeature(
+            modelId="gpt2-small",
+            layer=1,
+            dataset="att-kk",
+            feature=20,
+            description="Another test feature",
+        ),
+    ]
+
+    # Call the function
+    result_url = make_neuronpedia_list_with_features(
+        api_key="test_api_key",
+        list_name="Test List",
+        features=features,
+        list_description="Test list description",
+        open_browser=True,
+    )
+
+    # Verify the POST request was made with correct parameters
+    expected_url = f"{NEURONPEDIA_DOMAIN}/api/list/new-with-features"
+    expected_body = {
+        "name": "Test List",
+        "description": "Test list description",
+        "features": [
+            {
+                "modelId": "gpt2-small",
+                "layer": "0-res-jb",
+                "index": 10,
+                "description": "Test feature description",
+            },
+            {
+                "modelId": "gpt2-small",
+                "layer": "1-att-kk",
+                "index": 20,
+                "description": "Another test feature",
+            },
+        ],
+    }
+    expected_headers = {"x-api-key": "test_api_key"}
+
+    mock_requests_post.assert_called_once_with(
+        expected_url, json=expected_body, headers=expected_headers
+    )
+
+    # Verify webbrowser.open was called with the returned URL
+    mock_webbrowser_open.assert_called_once_with(
+        "https://neuronpedia.org/list/test-list-id"
+    )
+
+    # Verify the function returned the correct URL
+    assert result_url == "https://neuronpedia.org/list/test-list-id"
+
+
+@patch("sae_lens.analysis.neuronpedia_integration.requests.post")
+@patch("sae_lens.analysis.neuronpedia_integration.webbrowser.open")
+def test_make_neuronpedia_list_with_features_without_browser(
+    mock_webbrowser_open: MagicMock,
+    mock_requests_post: MagicMock,
+):
+    # Mock successful response
+    mock_response = MagicMock()
+    mock_response.json.return_value = {
+        "url": "https://neuronpedia.org/list/test-list-id",
+        "message": "Success but browser not opened",
+    }
+    mock_requests_post.return_value = mock_response
+
+    features = [
+        NeuronpediaFeature(
+            modelId="gpt2-small",
+            layer=0,
+            dataset="res-jb",
+            feature=10,
+        )
+    ]
+
+    # Call the function with open_browser=False
+    # Based on the function logic, this will raise an exception because
+    # the condition is "url" in result AND open_browser, so when open_browser=False
+    # it will always raise an exception
+    with pytest.raises(Exception) as exc_info:
+        make_neuronpedia_list_with_features(
+            api_key="test_api_key",
+            list_name="Test List",
+            features=features,
+            open_browser=False,
+        )
+
+    # Verify webbrowser.open was not called
+    mock_webbrowser_open.assert_not_called()
+
+    # Verify the function raised the expected exception
+    assert "Error in creating list: Success but browser not opened" in str(
+        exc_info.value
+    )
+
+
+@patch("sae_lens.analysis.neuronpedia_integration.requests.post")
+@patch("sae_lens.analysis.neuronpedia_integration.webbrowser.open")
+def test_make_neuronpedia_list_with_features_minimal_features(
+    mock_webbrowser_open: MagicMock,
+    mock_requests_post: MagicMock,
+):
+    # Mock successful response
+    mock_response = MagicMock()
+    mock_response.json.return_value = {
+        "url": "https://neuronpedia.org/list/test-list-id",
+    }
+    mock_requests_post.return_value = mock_response
+
+    # Create feature without description
+    features = [
+        NeuronpediaFeature(
+            modelId="gpt2-small",
+            layer=0,
+            dataset="res-jb",
+            feature=10,
+        )
+    ]
+
+    # Call the function with minimal parameters
     make_neuronpedia_list_with_features(
         api_key="test_api_key",
-        list_name="test_api",
-        list_description="List descriptions are optional",
-        features=[
-            NeuronpediaFeature(
-                modelId="gpt2-small",
-                layer=0,
-                dataset="att-kk",
-                feature=11,
-                description="List feature descriptions are optional as well.",
-            ),
-            NeuronpediaFeature(
-                modelId="gpt2-small",
-                layer=6,
-                dataset="res_scefr-ajt",
-                feature=7,
-                description="You can add features from any model or SAE in one list.",
-            ),
-        ],
+        list_name="Test List",
+        features=features,
     )
+
+    # Verify the POST request was made with correct parameters
+    expected_body = {
+        "name": "Test List",
+        "description": None,
+        "features": [
+            {
+                "modelId": "gpt2-small",
+                "layer": "0-res-jb",
+                "index": 10,
+                "description": "",  # Default empty description
+            }
+        ],
+    }
+
+    mock_requests_post.assert_called_once_with(
+        f"{NEURONPEDIA_DOMAIN}/api/list/new-with-features",
+        json=expected_body,
+        headers={"x-api-key": "test_api_key"},
+    )
+
+
+@patch("sae_lens.analysis.neuronpedia_integration.requests.post")
+@patch("sae_lens.analysis.neuronpedia_integration.webbrowser.open")
+def test_make_neuronpedia_list_with_features_error_response(
+    mock_webbrowser_open: MagicMock,
+    mock_requests_post: MagicMock,
+):
+    # Mock error response (missing 'url' field)
+    mock_response = MagicMock()
+    mock_response.json.return_value = {
+        "success": False,
+        "message": "API key is invalid",
+    }
+    mock_requests_post.return_value = mock_response
+
+    features = [
+        NeuronpediaFeature(
+            modelId="gpt2-small",
+            layer=0,
+            dataset="res-jb",
+            feature=10,
+        )
+    ]
+
+    # Call the function and expect an exception
+    with pytest.raises(Exception) as exc_info:
+        make_neuronpedia_list_with_features(
+            api_key="invalid_api_key",
+            list_name="Test List",
+            features=features,
+        )
+
+    assert "Error in creating list: API key is invalid" in str(exc_info.value)
+
+
+@patch("sae_lens.analysis.neuronpedia_integration.requests.post")
+@patch("sae_lens.analysis.neuronpedia_integration.webbrowser.open")
+def test_make_neuronpedia_list_with_features_error_response_no_message(
+    mock_webbrowser_open: MagicMock,
+    mock_requests_post: MagicMock,
+):
+    # Mock error response (missing 'url' field and no 'message' field)
+    mock_response = MagicMock()
+    mock_response.json.return_value = {
+        "success": False,
+        # No 'message' field - this will cause a KeyError
+    }
+    mock_requests_post.return_value = mock_response
+
+    features = [
+        NeuronpediaFeature(
+            modelId="gpt2-small",
+            layer=0,
+            dataset="res-jb",
+            feature=10,
+        )
+    ]
+
+    # Call the function and expect a KeyError (due to missing 'message' field)
+    with pytest.raises(KeyError):
+        make_neuronpedia_list_with_features(
+            api_key="invalid_api_key",
+            list_name="Test List",
+            features=features,
+        )
 
 
 @pytest.mark.skip(
@@ -542,3 +753,11 @@ async def test_neuronpedia_autointerp():
         save_to_disk=False,
         upload_to_neuronpedia=True,
     )
+
+
+def test_NanAndInfReplacer():
+    assert NanAndInfReplacer("NaN") == 0
+    assert NanAndInfReplacer("Infinity") == 9999
+    assert NanAndInfReplacer("-Infinity") == -9999
+    assert NanAndInfReplacer("123") == 0
+    assert NanAndInfReplacer("test") == 0
