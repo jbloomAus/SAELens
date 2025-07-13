@@ -91,8 +91,7 @@ class TopKSAE(SAE[TopKSAEConfig]):
     ) -> Float[torch.Tensor, "... d_sae"]:
         """
         Converts input x into feature activations.
-        Uses topk activation from the config (cfg.activation_fn == "topk")
-        under the hood.
+        Uses topk activation under the hood.
         """
         sae_in = self.process_sae_in(x)
         hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
@@ -163,17 +162,9 @@ class TopKTrainingSAE(TrainingSAE[TopKTrainingSAEConfig]):
         sae_in = self.process_sae_in(x)
         hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
 
-        # Inject noise if training
-        if self.training and self.cfg.noise_scale > 0:
-            hidden_pre_noised = (
-                hidden_pre + torch.randn_like(hidden_pre) * self.cfg.noise_scale
-            )
-        else:
-            hidden_pre_noised = hidden_pre
-
         # Apply the TopK activation function (already set in self.activation_fn if config is "topk")
-        feature_acts = self.hook_sae_acts_post(self.activation_fn(hidden_pre_noised))
-        return feature_acts, hidden_pre_noised
+        feature_acts = self.hook_sae_acts_post(self.activation_fn(hidden_pre))
+        return feature_acts, hidden_pre
 
     @override
     def calculate_aux_loss(

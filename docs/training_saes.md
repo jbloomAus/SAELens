@@ -77,7 +77,6 @@ cfg = LanguageModelSAERunnerConfig(
         decoder_heuristic_init=True,
         init_encoder_as_decoder_transpose=True,
         normalize_activations="expected_average_only_in",
-        mse_loss_normalization=None,
         l1_coefficient=5,
         lp_norm=1.0,
         l1_warm_up_steps=l1_warm_up_steps,

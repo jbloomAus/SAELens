@@ -292,8 +292,6 @@ def make_new_gated_training_sae(d_in: int = 16, d_sae: int = 8) -> GatedTraining
         apply_b_dec_to_input=False,
         normalize_activations="none",
         l1_coefficient=0.01,
-        noise_scale=0.0,
-        mse_loss_normalization=None,
     )
     return GatedTrainingSAE(new_training_cfg)
 

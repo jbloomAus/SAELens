@@ -105,7 +105,7 @@ class JumpReLUSAE(SAE[JumpReLUSAEConfig]):
     JumpReLUSAE is an inference-only implementation of a Sparse Autoencoder (SAE)
     using a JumpReLU activation. For each unit, if its pre-activation is
     <= threshold, that unit is zeroed out; otherwise, it follows a user-specified
-    activation function (e.g., ReLU, tanh-relu, etc.).
+    activation function (e.g., ReLU etc.).
 
     It implements:
       - initialize_weights: sets up parameters, including a threshold.
@@ -142,7 +142,7 @@ class JumpReLUSAE(SAE[JumpReLUSAEConfig]):
         sae_in = self.process_sae_in(x)
         hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
 
-        # 1) Apply the base "activation_fn" from config (e.g., ReLU, tanh-relu).
+        # 1) Apply the base "activation_fn" from config (e.g., ReLU).
         base_acts = self.activation_fn(hidden_pre)
 
         # 2) Zero out any unit whose (hidden_pre <= threshold).
@@ -257,12 +257,6 @@ class JumpReLUTrainingSAE(TrainingSAE[JumpReLUTrainingSAEConfig]):
         sae_in = self.process_sae_in(x)
 
         hidden_pre = sae_in @ self.W_enc + self.b_enc
-
-        if self.training and self.cfg.noise_scale > 0:
-            hidden_pre = (
-                hidden_pre + torch.randn_like(hidden_pre) * self.cfg.noise_scale
-            )
-
         feature_acts = JumpReLU.apply(hidden_pre, self.threshold, self.bandwidth)
 
         return feature_acts, hidden_pre  # type: ignore

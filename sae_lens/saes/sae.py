@@ -644,8 +644,6 @@ class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
 
 @dataclass(kw_only=True)
 class TrainingSAEConfig(SAEConfig, ABC):
-    noise_scale: float = 0.0
-    mse_loss_normalization: str | None = None
     # https://transformer-circuits.pub/2024/april-update/index.html#training-saes
     # 0.1 corresponds to the "heuristic" initialization, use None to disable
     decoder_init_norm: float | None = 0.1
@@ -726,7 +724,7 @@ class TrainingSAE(SAE[T_TRAINING_SAE_CONFIG], ABC):
         # Turn off hook_z reshaping for training mode - the activation store
         # is expected to handle reshaping before passing data to the SAE
         self.turn_off_forward_pass_hook_z_reshaping()
-        self.mse_loss_fn = self._get_mse_loss_fn()
+        self.mse_loss_fn = mse_loss
 
     @abstractmethod
     def get_coefficients(self) -> dict[str, float | TrainCoefficientConfig]: ...
@@ -861,27 +859,6 @@ class TrainingSAE(SAE[T_TRAINING_SAE_CONFIG], ABC):
         """
         return self.process_state_dict_for_saving(state_dict)
 
-    def _get_mse_loss_fn(self) -> Callable[[torch.Tensor, torch.Tensor], torch.Tensor]:
-        """Get the MSE loss function based on config."""
-
-        def standard_mse_loss_fn(
-            preds: torch.Tensor, target: torch.Tensor
-        ) -> torch.Tensor:
-            return torch.nn.functional.mse_loss(preds, target, reduction="none")
-
-        def batch_norm_mse_loss_fn(
-            preds: torch.Tensor, target: torch.Tensor
-        ) -> torch.Tensor:
-            target_centered = target - target.mean(dim=0, keepdim=True)
-            normalization = target_centered.norm(dim=-1, keepdim=True)
-            return torch.nn.functional.mse_loss(preds, target, reduction="none") / (
-                normalization + 1e-6
-            )
-
-        if self.cfg.mse_loss_normalization == "dense_batch":
-            return batch_norm_mse_loss_fn
-        return standard_mse_loss_fn
-
     @torch.no_grad()
     def remove_gradient_parallel_to_decoder_directions(self) -> None:
         """Remove gradient components parallel to decoder directions."""
@@ -943,3 +920,7 @@ def _disable_hooks(sae: SAE[Any]):
     finally:
         for hook_name, hook in sae.hook_dict.items():
             setattr(sae, hook_name, hook)
+
+
+def mse_loss(preds: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+    return torch.nn.functional.mse_loss(preds, target, reduction="none")

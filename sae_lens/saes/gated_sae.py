@@ -168,10 +168,6 @@ class GatedTrainingSAE(TrainingSAE[GatedTrainingSAEConfig]):
 
         # Magnitude path
         magnitude_pre_activation = sae_in @ (self.W_enc * self.r_mag.exp()) + self.b_mag
-        if self.training and self.cfg.noise_scale > 0:
-            magnitude_pre_activation += (
-                torch.randn_like(magnitude_pre_activation) * self.cfg.noise_scale
-            )
         magnitude_pre_activation = self.hook_sae_acts_pre(magnitude_pre_activation)
 
         feature_magnitudes = self.activation_fn(magnitude_pre_activation)

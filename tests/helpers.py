@@ -84,8 +84,6 @@ class TrainingSAEConfigDict(TypedDict, total=False):
     lp_norm: float
     normalize_activations: str
     apply_b_dec_to_input: bool
-    noise_scale: float
-    mse_loss_normalization: str | None
     l1_warm_up_steps: int
     decoder_init_norm: float | None
     # Fields specific to some architectures
@@ -236,8 +234,6 @@ def build_runner_cfg(
         "lp_norm": 1.0,
         "normalize_activations": "none",
         "apply_b_dec_to_input": False,
-        "noise_scale": 0.0,
-        "mse_loss_normalization": None,
         "l1_warm_up_steps": 0,
     }
     runner_cfg = _build_runner_config(
@@ -281,9 +277,7 @@ def build_jumprelu_runner_cfg(
         "device": "cpu",
         "normalize_activations": "none",
         "apply_b_dec_to_input": False,
-        "noise_scale": 0.0,
         "decoder_init_norm": 0.1,
-        "mse_loss_normalization": None,
         "jumprelu_init_threshold": 0.001,
         "jumprelu_bandwidth": 0.001,
         "l0_coefficient": 0.3,
@@ -325,8 +319,6 @@ def build_gated_runner_cfg(
         "l1_coefficient": 1.0,
         "normalize_activations": "none",
         "apply_b_dec_to_input": False,
-        "noise_scale": 0.0,
-        "mse_loss_normalization": None,
         "l1_warm_up_steps": 0,
     }
     return _build_runner_config(
@@ -364,8 +356,6 @@ def build_topk_runner_cfg(
         "normalize_activations": "none",
         "decoder_init_norm": 0.1,
         "apply_b_dec_to_input": False,
-        "noise_scale": 0.0,
-        "mse_loss_normalization": None,
         "k": 10,
     }
     # Ensure activation_fn_kwargs has k if k is overridden
