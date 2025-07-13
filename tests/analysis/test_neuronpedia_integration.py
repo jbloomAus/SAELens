@@ -614,7 +614,7 @@ def test_make_neuronpedia_list_with_features_without_browser(
 @patch("sae_lens.analysis.neuronpedia_integration.requests.post")
 @patch("sae_lens.analysis.neuronpedia_integration.webbrowser.open")
 def test_make_neuronpedia_list_with_features_minimal_features(
-    mock_webbrowser_open: MagicMock,
+    _mock_webbrowser_open: MagicMock,
     mock_requests_post: MagicMock,
 ):
     # Mock successful response
@@ -665,7 +665,7 @@ def test_make_neuronpedia_list_with_features_minimal_features(
 @patch("sae_lens.analysis.neuronpedia_integration.requests.post")
 @patch("sae_lens.analysis.neuronpedia_integration.webbrowser.open")
 def test_make_neuronpedia_list_with_features_error_response(
-    mock_webbrowser_open: MagicMock,
+    _mock_webbrowser_open: MagicMock,
     mock_requests_post: MagicMock,
 ):
     # Mock error response (missing 'url' field)
@@ -699,7 +699,7 @@ def test_make_neuronpedia_list_with_features_error_response(
 @patch("sae_lens.analysis.neuronpedia_integration.requests.post")
 @patch("sae_lens.analysis.neuronpedia_integration.webbrowser.open")
 def test_make_neuronpedia_list_with_features_error_response_no_message(
-    mock_webbrowser_open: MagicMock,
+    _mock_webbrowser_open: MagicMock,
     mock_requests_post: MagicMock,
 ):
     # Mock error response (missing 'url' field and no 'message' field)
