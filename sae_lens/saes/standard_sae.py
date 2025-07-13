@@ -81,7 +81,7 @@ class StandardSAE(SAE[StandardSAEConfig]):
         sae_out_pre = feature_acts @ self.W_dec + self.b_dec
         # 2) hook reconstruction
         sae_out_pre = self.hook_sae_recons(sae_out_pre)
-        # 4) optional out-normalization (e.g. constant_norm_rescale or layer_norm)
+        # 4) optional out-normalization (e.g. constant_norm_rescale)
         sae_out_pre = self.run_time_activation_norm_fn_out(sae_out_pre)
         # 5) if hook_z is enabled, rearrange back to (..., n_heads, d_head).
         return self.reshape_fn_out(sae_out_pre, self.d_head)

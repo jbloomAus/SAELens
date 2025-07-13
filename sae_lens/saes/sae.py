@@ -88,7 +88,7 @@ class SAEConfig(ABC):
     device: str = "cpu"
     apply_b_dec_to_input: bool = True
     normalize_activations: Literal[
-        "none", "expected_average_only_in", "constant_norm_rescale", "layer_norm"
+        "none", "expected_average_only_in", "constant_norm_rescale"
     ] = "none"  # none, expected_average_only_in (Anthropic April Update), constant_norm_rescale (Anthropic Feb Update)
     reshape_activations: Literal["none", "hook_z"] = "none"
     metadata: SAEMetadata = field(default_factory=SAEMetadata)
@@ -121,10 +121,9 @@ class SAEConfig(ABC):
             "none",
             "expected_average_only_in",
             "constant_norm_rescale",
-            "layer_norm",
         ]:
             raise ValueError(
-                f"normalize_activations must be none, expected_average_only_in, constant_norm_rescale, or layer_norm. Got {self.normalize_activations}"
+                f"normalize_activations must be none, expected_average_only_in, constant_norm_rescale. Got {self.normalize_activations}"
             )
 
 
@@ -238,28 +237,6 @@ class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
 
             self.run_time_activation_norm_fn_in = run_time_activation_norm_fn_in
             self.run_time_activation_norm_fn_out = run_time_activation_norm_fn_out
-
-        elif self.cfg.normalize_activations == "layer_norm":
-
-            def run_time_activation_ln_in(
-                x: torch.Tensor, eps: float = 1e-5
-            ) -> torch.Tensor:
-                mu = x.mean(dim=-1, keepdim=True)
-                x = x - mu
-                std = x.std(dim=-1, keepdim=True)
-                x = x / (std + eps)
-                self.ln_mu = mu
-                self.ln_std = std
-                return x
-
-            def run_time_activation_ln_out(
-                x: torch.Tensor,
-                eps: float = 1e-5,  # noqa: ARG001
-            ) -> torch.Tensor:
-                return x * self.ln_std + self.ln_mu  # type: ignore
-
-            self.run_time_activation_norm_fn_in = run_time_activation_ln_in
-            self.run_time_activation_norm_fn_out = run_time_activation_ln_out
         else:
             self.run_time_activation_norm_fn_in = lambda x: x
             self.run_time_activation_norm_fn_out = lambda x: x
