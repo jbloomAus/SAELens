@@ -132,6 +132,13 @@ def test_sae_fold_w_dec_norm_all_architectures(architecture: str):
 
     assert sae.W_dec.norm(dim=-1).mean().item() != pytest.approx(1.0, abs=1e-6)
     sae2 = deepcopy(sae)
+
+    # If this is a topk SAE, assert this throws a NotImplementedError
+    if cfg.architecture() == "topk":
+        with pytest.raises(NotImplementedError):
+            sae2.fold_W_dec_norm()
+        return
+
     sae2.fold_W_dec_norm()
 
     # fold_W_dec_norm should normalize W_dec to have unit norm.
