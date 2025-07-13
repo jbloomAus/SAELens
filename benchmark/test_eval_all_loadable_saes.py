@@ -60,7 +60,7 @@ def test_loading_pretrained_saes(
     else:
         device = "cpu"
 
-    sae, _, _ = SAE.from_pretrained(release, sae_name, device=device)
+    sae = SAE.from_pretrained(release, sae_name, device=device)
     assert isinstance(sae, SAE)
 
 
@@ -80,7 +80,7 @@ def test_loading_pretrained_saes_open_neuronpedia(
     else:
         device = "cpu"
 
-    sae, _, _ = SAE.from_pretrained(release, sae_name, device=device)
+    sae = SAE.from_pretrained(release, sae_name, device=device)
     assert isinstance(sae, SAE)
 
     open_neuronpedia_feature_dashboard(sae, 0)
@@ -102,7 +102,7 @@ def test_loading_pretrained_saes_do_forward_pass(
     else:
         device = "cpu"
 
-    sae, _, _ = SAE.from_pretrained(release, sae_name, device=device)
+    sae = SAE.from_pretrained(release, sae_name, device=device)
     assert isinstance(sae, SAE)
 
     # from transformer_lens import HookedTransformer
@@ -143,7 +143,7 @@ def test_eval_all_loadable_saes(
     else:
         device = "cpu"
 
-    sae, _, _ = SAE.from_pretrained(release, sae_name, device=device)
+    sae = SAE.from_pretrained(release, sae_name, device=device)
     sae.fold_W_dec_norm()
 
     model = load_model_cached(sae.cfg.model_name)

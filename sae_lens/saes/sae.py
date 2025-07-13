@@ -522,7 +522,7 @@ class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
         device: str = "cpu",
         force_download: bool = False,
         converter: PretrainedSaeHuggingfaceLoader | None = None,
-    ) -> tuple[T_SAE, dict[str, Any], torch.Tensor | None]:
+    ) -> T_SAE:
         """
         Load a pretrained SAE from the Hugging Face model hub.
 
@@ -530,7 +530,28 @@ class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
             release: The release name. This will be mapped to a huggingface repo id based on the pretrained_saes.yaml file.
             id: The id of the SAE to load. This will be mapped to a path in the huggingface repo.
             device: The device to load the SAE on.
-            return_sparsity_if_present: If True, will return the log sparsity tensor if it is present in the model directory in the Hugging Face model hub.
+        """
+        return cls.from_pretrained_with_cfg_and_sparsity(
+            release, sae_id, device, force_download, converter=converter
+        )[0]
+
+    @classmethod
+    def from_pretrained_with_cfg_and_sparsity(
+        cls: Type[T_SAE],
+        release: str,
+        sae_id: str,
+        device: str = "cpu",
+        force_download: bool = False,
+        converter: PretrainedSaeHuggingfaceLoader | None = None,
+    ) -> tuple[T_SAE, dict[str, Any], torch.Tensor | None]:
+        """
+        Load a pretrained SAE from the Hugging Face model hub, along with its config dict and sparsity, if present.
+        In SAELens <= 5.x.x, this was called SAE.from_pretrained().
+
+        Args:
+            release: The release name. This will be mapped to a huggingface repo id based on the pretrained_saes.yaml file.
+            id: The id of the SAE to load. This will be mapped to a path in the huggingface repo.
+            device: The device to load the SAE on.
         """
 
         # get sae directory

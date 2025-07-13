@@ -815,7 +815,7 @@ def multiple_evals(
             release=sae_release_name,  # see other options in sae_lens/pretrained_saes.yaml
             sae_id=sae_id,  # won't always be a hook point
             device=device,
-        )[0]
+        )
 
         # move SAE to device if not there already
         sae.to(device)

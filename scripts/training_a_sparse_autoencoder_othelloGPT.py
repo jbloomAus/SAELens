@@ -97,4 +97,4 @@ upload_saes_to_huggingface({sae_id: sae}, hf_repo_id=hf_repo_id)
 
 othellogpt_sae = SAE.from_pretrained(
     release=hf_repo_id, sae_id=sae_id, device=str(device)
-)[0]
+)

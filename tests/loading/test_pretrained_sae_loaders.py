@@ -126,7 +126,7 @@ def test_load_sae_config_from_huggingface_dictionary_learning_1():
 
 
 def test_load_sae_config_from_huggingface_matches_from_pretrained():
-    from_pretrained_cfg_dict = SAE.from_pretrained(
+    from_pretrained_cfg_dict = SAE.from_pretrained_with_cfg_and_sparsity(
         "gpt2-small-res-jb",
         sae_id="blocks.0.hook_resid_pre",
         device="cpu",

@@ -328,7 +328,7 @@ def test_sae_forward_pass_works_with_error_term_and_hooks(architecture: str):
 
 
 def test_SparseAutoencoder_from_pretrained_loads_from_hugginface_using_shorthand():
-    sae, original_cfg_dict, sparsity = SAE.from_pretrained(
+    sae, original_cfg_dict, sparsity = SAE.from_pretrained_with_cfg_and_sparsity(
         release="gpt2-small-res-jb",
         sae_id="blocks.0.hook_resid_pre",
         device="cpu",
@@ -365,7 +365,7 @@ def test_SparseAutoencoder_from_pretrained_loads_from_hugginface_using_shorthand
 
 
 def test_SparseAutoencoder_from_pretrained_can_load_arbitrary_saes_from_huggingface():
-    sae, original_cfg_dict, sparsity = SAE.from_pretrained(
+    sae, original_cfg_dict, sparsity = SAE.from_pretrained_with_cfg_and_sparsity(
         release="jbloom/GPT2-Small-SAEs-Reformatted",
         sae_id="blocks.0.hook_resid_pre",
         device="cpu",
