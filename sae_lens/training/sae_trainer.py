@@ -161,6 +161,7 @@ class SAETrainer(Generic[T_TRAINING_SAE, T_TRAINING_SAE_CONFIG]):
         return (self.n_forward_passes_since_fired > self.cfg.dead_feature_window).bool()
 
     def fit(self) -> T_TRAINING_SAE:
+        self.sae.to(self.cfg.device)
         pbar = tqdm(total=self.cfg.total_training_samples, desc="Training SAE")
 
         if self.sae.cfg.normalize_activations == "expected_average_only_in":

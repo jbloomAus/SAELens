@@ -33,7 +33,7 @@ def test_create_default_readme():
         ```python
         from sae_lens import SAE
 
-        sae, cfg_dict, sparsity = SAE.from_pretrained("jimi/hendrix", "<sae_id>")
+        sae = SAE.from_pretrained("jimi/hendrix", "<sae_id>")
         ```
         """
     ).strip()

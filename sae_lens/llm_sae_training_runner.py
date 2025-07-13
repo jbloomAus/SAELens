@@ -4,7 +4,7 @@ import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Generic, cast
+from typing import Any, Generic
 
 import torch
 import wandb
@@ -149,6 +149,7 @@ class LanguageModelSAETrainingRunner:
                 )
         else:
             self.sae = override_sae
+        self.sae.to(self.cfg.device)
 
     def run(self):
         """
@@ -159,7 +160,7 @@ class LanguageModelSAETrainingRunner:
             wandb.init(
                 project=self.cfg.logger.wandb_project,
                 entity=self.cfg.logger.wandb_entity,
-                config=cast(Any, self.cfg),
+                config=self.cfg.to_dict(),
                 name=self.cfg.logger.run_name,
                 id=self.cfg.logger.wandb_id,
             )
