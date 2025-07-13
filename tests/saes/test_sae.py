@@ -1,7 +1,11 @@
+import copy
+import pickle
+
 import pytest
 
+from sae_lens import __version__
 from sae_lens.registry import get_sae_class, get_sae_training_class
-from sae_lens.saes.sae import SAEConfig, TrainingSAEConfig
+from sae_lens.saes.sae import SAEConfig, SAEMetadata, TrainingSAEConfig
 from tests.helpers import (
     ALL_ARCHITECTURES,
     build_sae_training_cfg_for_arch,
@@ -24,3 +28,156 @@ def test_SAEConfig_to_and_from_dict_all_architectures(architecture: str):
     assert reloaded_cfg.architecture() == architecture
     assert reloaded_cfg.to_dict() == cfg_dict
     assert reloaded_cfg.__class__ == get_sae_class(architecture)[1]
+
+
+def test_SAEMetadata_initialization_empty():
+    metadata = SAEMetadata()
+    expected_dict = {
+        "sae_lens_version": __version__,
+        "sae_lens_training_version": __version__,
+    }
+    assert metadata.to_dict() == expected_dict
+
+
+def test_SAEMetadata_initialization_with_kwargs():
+    metadata = SAEMetadata(
+        model_name="test_model", hook_name="test_hook", custom_field="value"
+    )
+    assert metadata.model_name == "test_model"
+    assert metadata.hook_name == "test_hook"
+    assert metadata.custom_field == "value"
+
+
+def test_SAEMetadata_missing_attributes_return_none():
+    metadata = SAEMetadata()
+    assert metadata.nonexistent_field is None
+    assert metadata.another_missing_field is None
+
+
+def test_SAEMetadata_dictionary_style_access():
+    metadata = SAEMetadata()
+    metadata["key1"] = "value1"
+    metadata["key2"] = 42
+
+    assert metadata["key1"] == "value1"
+    assert metadata["key2"] == 42
+    assert metadata["nonexistent"] is None
+
+
+def test_SAEMetadata_contains_operator():
+    metadata = SAEMetadata(existing_field="value")
+
+    assert "existing_field" in metadata
+    assert "nonexistent_field" not in metadata
+
+    metadata["new_field"] = "new_value"
+    assert "new_field" in metadata
+
+
+def test_SAEMetadata_get_method():
+    metadata = SAEMetadata(existing_field="value")
+
+    assert metadata.get("existing_field") == "value"
+    assert metadata.get("nonexistent_field") is None
+    assert metadata.get("nonexistent_field", "default") == "default"
+
+
+def test_SAEMetadata_keys_values_items():
+    metadata = SAEMetadata(field1="value1", field2="value2")
+
+    expected_keys = {
+        "field1",
+        "field2",
+        "sae_lens_version",
+        "sae_lens_training_version",
+    }
+    expected_values = {"value1", "value2", __version__, __version__}
+    expected_items = {
+        ("field1", "value1"),
+        ("field2", "value2"),
+        ("sae_lens_version", __version__),
+        ("sae_lens_training_version", __version__),
+    }
+
+    assert set(metadata.keys()) == expected_keys
+    assert set(metadata.values()) == expected_values
+    assert set(metadata.items()) == expected_items
+
+
+def test_SAEMetadata_to_dict_from_dict_round_trip():
+    original_data = {"model_name": "test", "hook_name": "hook", "custom": 123}
+    metadata = SAEMetadata(**original_data)
+
+    dict_repr = metadata.to_dict()
+    restored_metadata = SAEMetadata.from_dict(dict_repr)
+
+    # The restored metadata should have version fields added
+    expected_data = {
+        **original_data,
+        "sae_lens_version": __version__,
+        "sae_lens_training_version": __version__,
+    }
+
+    assert restored_metadata.to_dict() == expected_data
+    assert restored_metadata.model_name == "test"
+    assert restored_metadata.hook_name == "hook"
+    assert restored_metadata.custom == 123
+
+
+def test_SAEMetadata_equality():
+    metadata1 = SAEMetadata(field1="value1", field2="value2")
+    metadata2 = SAEMetadata(field1="value1", field2="value2")
+    metadata3 = SAEMetadata(field1="value1", field2="different")
+
+    assert metadata1 == metadata2
+    assert metadata1 != metadata3
+    assert metadata1 != "not_metadata"
+
+
+def test_SAEMetadata_deep_copy():
+    metadata = SAEMetadata(field1="value1", nested={"key": "value"})
+    copied_metadata = copy.deepcopy(metadata)
+
+    assert copied_metadata == metadata
+    assert copied_metadata is not metadata
+    assert copied_metadata.nested is not metadata.nested
+
+
+def test_SAEMetadata_pickling():
+    metadata = SAEMetadata(field1="value1", field2=42)
+    pickled = pickle.dumps(metadata)
+    unpickled = pickle.loads(pickled)
+
+    assert unpickled == metadata
+    assert unpickled.field1 == "value1"
+    assert unpickled.field2 == 42
+
+
+def test_SAEMetadata_version_defaults():
+    metadata = SAEMetadata()
+    assert metadata.sae_lens_version == __version__
+    assert metadata.sae_lens_training_version == __version__
+
+
+def test_SAEMetadata_version_override():
+    metadata = SAEMetadata(sae_lens_version="custom_version")
+    assert metadata.sae_lens_version == "custom_version"
+
+
+def test_SAEMetadata_repr():
+    metadata = SAEMetadata(field1="value1")
+    repr_str = repr(metadata)
+    assert "SAEMetadata" in repr_str
+    assert "field1" in repr_str
+    assert "value1" in repr_str
+
+
+def test_SAEMetadata_dynamic_attribute_setting():
+    metadata = SAEMetadata()
+    metadata.new_field = "new_value"
+    metadata.another_field = 123
+
+    assert metadata.new_field == "new_value"
+    assert metadata.another_field == 123
+    assert "new_field" in metadata
+    assert "another_field" in metadata

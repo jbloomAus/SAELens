@@ -1,5 +1,6 @@
 """Base classes for Sparse Autoencoders (SAEs)."""
 
+import copy
 import json
 import warnings
 from abc import ABC, abstractmethod
@@ -59,23 +60,91 @@ T_SAE = TypeVar("T_SAE", bound="SAE")  # type: ignore
 T_TRAINING_SAE = TypeVar("T_TRAINING_SAE", bound="TrainingSAE")  # type: ignore
 
 
-@dataclass
 class SAEMetadata:
     """Core metadata about how this SAE should be used, if known."""
 
-    model_name: str | None = None
-    hook_name: str | None = None
-    model_class_name: str | None = None
-    hook_head_index: int | None = None
-    model_from_pretrained_kwargs: dict[str, Any] | None = None
-    prepend_bos: bool | None = None
-    exclude_special_tokens: bool | list[int] | None = None
-    neuronpedia_id: str | None = None
-    context_size: int | None = None
-    seqpos_slice: tuple[int | None, ...] | None = None
-    dataset_path: str | None = None
-    sae_lens_version: str = field(default_factory=lambda: __version__)
-    sae_lens_training_version: str = field(default_factory=lambda: __version__)
+    def __init__(self, **kwargs: Any):
+        # Set default version fields with their current behavior
+        self.sae_lens_version = kwargs.pop("sae_lens_version", __version__)
+        self.sae_lens_training_version = kwargs.pop(
+            "sae_lens_training_version", __version__
+        )
+
+        # Set all other attributes dynamically
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+    def __getattr__(self, name: str) -> None:
+        """Return None for any missing attribute (like defaultdict)"""
+        return
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        """Allow setting any attribute"""
+        super().__setattr__(name, value)
+
+    def __getitem__(self, key: str) -> Any:
+        """Allow dictionary-style access: metadata['key'] - returns None for missing keys"""
+        return getattr(self, key)
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        """Allow dictionary-style assignment: metadata['key'] = value"""
+        setattr(self, key, value)
+
+    def __contains__(self, key: str) -> bool:
+        """Allow 'in' operator: 'key' in metadata"""
+        # Only return True if the attribute was explicitly set (not just defaulting to None)
+        return key in self.__dict__
+
+    def get(self, key: str, default: Any = None) -> Any:
+        """Dictionary-style get with default"""
+        value = getattr(self, key)
+        # If the attribute wasn't explicitly set and we got None from __getattr__,
+        # use the provided default instead
+        if key not in self.__dict__ and value is None:
+            return default
+        return value
+
+    def keys(self):
+        """Return all explicitly set attribute names"""
+        return self.__dict__.keys()
+
+    def values(self):
+        """Return all explicitly set attribute values"""
+        return self.__dict__.values()
+
+    def items(self):
+        """Return all explicitly set attribute name-value pairs"""
+        return self.__dict__.items()
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary for serialization"""
+        return self.__dict__.copy()
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "SAEMetadata":
+        """Create from dictionary"""
+        return cls(**data)
+
+    def __repr__(self) -> str:
+        return f"SAEMetadata({self.__dict__})"
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, SAEMetadata):
+            return False
+        return self.__dict__ == other.__dict__
+
+    def __deepcopy__(self, memo: dict[int, Any]) -> "SAEMetadata":
+        """Support for deep copying"""
+
+        return SAEMetadata(**copy.deepcopy(self.__dict__, memo))
+
+    def __getstate__(self) -> dict[str, Any]:
+        """Support for pickling"""
+        return self.__dict__
+
+    def __setstate__(self, state: dict[str, Any]) -> None:
+        """Support for unpickling"""
+        self.__dict__.update(state)
 
 
 @dataclass
@@ -99,7 +168,7 @@ class SAEConfig(ABC):
 
     def to_dict(self) -> dict[str, Any]:
         res = {field.name: getattr(self, field.name) for field in fields(self)}
-        res["metadata"] = asdict(self.metadata)
+        res["metadata"] = self.metadata.to_dict()
         res["architecture"] = self.architecture()
         return res
 
@@ -694,6 +763,7 @@ class TrainingSAEConfig(SAEConfig, ABC):
         return {
             **super().to_dict(),
             **asdict(self),
+            "metadata": self.metadata.to_dict(),
             "architecture": self.architecture(),
         }
 
@@ -711,7 +781,7 @@ class TrainingSAEConfig(SAEConfig, ABC):
             for field_name in base_config_field_names
         }
         result_dict["architecture"] = self.architecture()
-        result_dict["metadata"] = asdict(self.metadata)
+        result_dict["metadata"] = self.metadata.to_dict()
         return result_dict
 
 
