@@ -67,17 +67,23 @@ We removed a number of legacy config options from the training config, as we fou
 
 The removed options include:
 
+- expansion_factor (this was redundant given the `d_sae` option to set SAE width)
+- hook_layer (this was redundant - we already know the layer from `hook_name`)
 - ghost grads
 - b_dec init options (b_dec is always init to zero now)
 - decoder init options (we always use the heuristic init from [Anthropic's April 2024 udate](https://transformer-circuits.pub/2024/april-update/index.html#training-saes))
 - MSE loss normalization
 - layer-norm input normalization
 - decoder normalization (we always scale L1 loss by decoder norm now, this is always the right thing to do)
+- finetuning_tokens / finetuning_method
+- noise_scale
+- activation_fn / activation_fn_kwargs
 
 ## Config option renaming / changed defaults
 
 - The JumpReLU L0 coefficient is now called `l0_coefficient`
-- Default JumpReLU bandwidth has been increased to 0.05 from 0.001
+- `k` is now set explicitly for TopK SAEs rather than being in `activation_fn_kwargs`
+- Default JumpReLU bandwidth has been increased to 0.05 from 0.001 to make JumpReLU SAEs more responsive during training
 - Default JumpReLU starting threshold has been increase to 0.01 from 0.001
 
 ## Other breaking changes
