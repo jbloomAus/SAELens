@@ -1,6 +1,6 @@
 import json
 import urllib.parse
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, mock_open, patch
 
 import pytest
 
@@ -100,6 +100,394 @@ def test_open_neuronpedia_feature_dashboard_with_none_id(
     finally:
         # Restore original neuronpedia_id
         gpt2_res_jb_l4_sae.cfg.metadata.neuronpedia_id = original_neuronpedia_id
+
+
+@pytest.mark.anyio
+@patch("sae_lens.analysis.neuronpedia_integration.requests.get")
+@patch("sae_lens.analysis.neuronpedia_integration.requests.post")
+@patch("sae_lens.analysis.neuronpedia_integration.TokenActivationPairExplainer")
+@patch("sae_lens.analysis.neuronpedia_integration.simulate_and_score")
+@patch("sae_lens.analysis.neuronpedia_integration.os.makedirs")
+@patch("sae_lens.analysis.neuronpedia_integration.os.getenv")
+@patch("builtins.open", new_callable=mock_open)
+async def test_autointerp_neuronpedia_features_success(
+    mock_file_open: MagicMock,
+    mock_getenv: MagicMock,
+    mock_makedirs: MagicMock,
+    mock_simulate_and_score: MagicMock,
+    mock_explainer_class: MagicMock,
+    mock_requests_post: MagicMock,
+    mock_requests_get: MagicMock,
+):
+    # Mock environment variable for OpenAI API key
+    mock_getenv.return_value = "test_openai_key"
+
+    # Mock the feature data from Neuronpedia API
+    mock_feature_response = MagicMock()
+    mock_feature_response.json.return_value = {
+        "modelId": "gpt2-small",
+        "layer": "0-res-jb",
+        "index": 0,
+        "activations": [
+            {
+                "id": "test_activation_1",
+                "tokens": ["hello", "world"],
+                "values": [0.5, 0.8],
+            },
+            {
+                "id": "test_activation_2",
+                "tokens": ["test", "tokens"],
+                "values": [0.3, 0.6],
+            },
+        ],
+    }
+    mock_requests_get.return_value = mock_feature_response
+
+    # Mock the API key test
+    mock_api_test_response = MagicMock()
+    mock_api_test_response.status_code = 200
+    mock_requests_post.return_value = mock_api_test_response
+
+    # Mock the explainer
+    mock_explainer = MagicMock()
+    mock_explanation = MagicMock()
+    mock_explanation.rstrip.return_value = "This feature detects greetings"
+
+    # Use AsyncMock for the async method
+    mock_explainer.generate_explanations = AsyncMock(return_value=[mock_explanation])
+    mock_explainer_class.return_value = mock_explainer
+
+    # Mock the scorer
+    mock_scored_simulation = MagicMock()
+    mock_scored_simulation.get_preferred_score.return_value = 0.85
+    mock_scored_simulation.scored_sequence_simulations = ["sim1", "sim2"]
+    mock_simulate_and_score.return_value = mock_scored_simulation
+
+    # Create test features
+    features = [
+        NeuronpediaFeature(
+            modelId="gpt2-small",
+            layer=0,
+            dataset="res-jb",
+            feature=0,
+        )
+    ]
+
+    # Call the function
+    await autointerp_neuronpedia_features(
+        features=features,
+        openai_api_key="test_openai_key",
+        neuronpedia_api_key="test_neuronpedia_key",
+        autointerp_explainer_model_name="gpt-4-1106-preview",
+        autointerp_scorer_model_name="gpt-3.5-turbo",
+        num_activations_to_use=2,
+        do_score=True,
+        save_to_disk=True,
+        upload_to_neuronpedia=True,
+    )
+
+    # Verify API calls were made
+    mock_requests_get.assert_called_once()
+    assert mock_requests_post.call_count == 2  # API key test + upload
+
+    # Verify explainer was called
+    mock_explainer.generate_explanations.assert_called_once()
+
+    # Verify scorer was called
+    mock_simulate_and_score.assert_called_once()
+
+    # Verify file operations
+    mock_makedirs.assert_called_once()
+    mock_file_open.assert_called_once()
+
+    # Verify the feature was populated
+    assert features[0].autointerp_explanation == "This feature detects greetings"
+    assert features[0].autointerp_explanation_score == 0.85
+    assert features[0].activations is not None
+    assert len(features[0].activations) == 2
+
+
+@pytest.mark.anyio
+@patch("sae_lens.analysis.neuronpedia_integration.os.getenv")
+async def test_autointerp_neuronpedia_features_missing_openai_key(
+    mock_getenv: MagicMock,
+):
+    mock_getenv.return_value = None
+
+    features = [
+        NeuronpediaFeature(
+            modelId="gpt2-small",
+            layer=0,
+            dataset="res-jb",
+            feature=0,
+        )
+    ]
+
+    with pytest.raises(Exception) as exc_info:
+        await autointerp_neuronpedia_features(
+            features=features,
+            openai_api_key=None,
+            neuronpedia_api_key="test_neuronpedia_key",
+        )
+
+    assert "You need to provide an OpenAI API key" in str(exc_info.value)
+
+
+@pytest.mark.anyio
+@patch("sae_lens.analysis.neuronpedia_integration.os.getenv")
+async def test_autointerp_neuronpedia_features_invalid_explainer_model(
+    mock_getenv: MagicMock,
+):
+    mock_getenv.return_value = "test_openai_key"
+
+    features = [
+        NeuronpediaFeature(
+            modelId="gpt2-small",
+            layer=0,
+            dataset="res-jb",
+            feature=0,
+        )
+    ]
+
+    with pytest.raises(Exception) as exc_info:
+        await autointerp_neuronpedia_features(
+            features=features,
+            openai_api_key="test_openai_key",
+            neuronpedia_api_key="test_neuronpedia_key",
+            autointerp_explainer_model_name="invalid-model",
+        )
+
+    assert "Invalid explainer model name" in str(exc_info.value)
+
+
+@pytest.mark.anyio
+@patch("sae_lens.analysis.neuronpedia_integration.os.getenv")
+async def test_autointerp_neuronpedia_features_invalid_scorer_model(
+    mock_getenv: MagicMock,
+):
+    mock_getenv.return_value = "test_openai_key"
+
+    features = [
+        NeuronpediaFeature(
+            modelId="gpt2-small",
+            layer=0,
+            dataset="res-jb",
+            feature=0,
+        )
+    ]
+
+    with pytest.raises(Exception) as exc_info:
+        await autointerp_neuronpedia_features(
+            features=features,
+            openai_api_key="test_openai_key",
+            neuronpedia_api_key="test_neuronpedia_key",
+            autointerp_explainer_model_name="gpt-4-1106-preview",
+            autointerp_scorer_model_name="invalid-model",
+            do_score=True,
+        )
+
+    assert "Invalid scorer model name" in str(exc_info.value)
+
+
+@pytest.mark.anyio
+@patch("sae_lens.analysis.neuronpedia_integration.requests.get")
+@patch("sae_lens.analysis.neuronpedia_integration.os.getenv")
+async def test_autointerp_neuronpedia_features_missing_feature(
+    mock_getenv: MagicMock, mock_requests_get: MagicMock
+):
+    mock_getenv.return_value = "test_openai_key"
+
+    # Mock feature response that would cause the function to fail
+    # The function checks for "modelId" key existence
+    mock_feature_response = MagicMock()
+    mock_feature_response.json.return_value = {
+        "index": 999,  # Include index to avoid KeyError
+        # Missing "modelId" key to simulate feature not found
+    }
+    mock_requests_get.return_value = mock_feature_response
+
+    features = [
+        NeuronpediaFeature(
+            modelId="gpt2-small",
+            layer=0,
+            dataset="res-jb",
+            feature=999,
+        )
+    ]
+
+    with pytest.raises(Exception) as exc_info:
+        await autointerp_neuronpedia_features(
+            features=features,
+            openai_api_key="test_openai_key",
+            neuronpedia_api_key="test_neuronpedia_key",
+            upload_to_neuronpedia=False,
+        )
+
+    assert "does not exist" in str(exc_info.value)
+
+
+@pytest.mark.anyio
+@patch("sae_lens.analysis.neuronpedia_integration.requests.get")
+@patch("sae_lens.analysis.neuronpedia_integration.os.getenv")
+async def test_autointerp_neuronpedia_features_no_activations(
+    mock_getenv: MagicMock, mock_requests_get: MagicMock
+):
+    mock_getenv.return_value = "test_openai_key"
+
+    # Mock feature with no activations
+    mock_feature_response = MagicMock()
+    mock_feature_response.json.return_value = {
+        "modelId": "gpt2-small",
+        "layer": "0-res-jb",
+        "index": 0,
+        "activations": [],
+    }
+    mock_requests_get.return_value = mock_feature_response
+
+    features = [
+        NeuronpediaFeature(
+            modelId="gpt2-small",
+            layer=0,
+            dataset="res-jb",
+            feature=0,
+        )
+    ]
+
+    with pytest.raises(Exception) as exc_info:
+        await autointerp_neuronpedia_features(
+            features=features,
+            openai_api_key="test_openai_key",
+            neuronpedia_api_key="test_neuronpedia_key",
+            upload_to_neuronpedia=False,
+        )
+
+    assert "does not have activations" in str(exc_info.value)
+
+
+@pytest.mark.anyio
+@patch("sae_lens.analysis.neuronpedia_integration.requests.get")
+@patch("sae_lens.analysis.neuronpedia_integration.os.getenv")
+async def test_autointerp_neuronpedia_features_dead_feature(
+    mock_getenv: MagicMock, mock_requests_get: MagicMock
+):
+    mock_getenv.return_value = "test_openai_key"
+
+    # Mock feature with zero activations (dead feature)
+    mock_feature_response = MagicMock()
+    mock_feature_response.json.return_value = {
+        "modelId": "gpt2-small",
+        "layer": "0-res-jb",
+        "index": 0,
+        "activations": [
+            {
+                "id": "test_activation_1",
+                "tokens": ["hello", "world"],
+                "values": [0.0, 0.0],  # All zeros - dead feature
+            }
+        ],
+    }
+    mock_requests_get.return_value = mock_feature_response
+
+    features = [
+        NeuronpediaFeature(
+            modelId="gpt2-small",
+            layer=0,
+            dataset="res-jb",
+            feature=0,
+        )
+    ]
+
+    with pytest.raises(Exception) as exc_info:
+        await autointerp_neuronpedia_features(
+            features=features,
+            openai_api_key="test_openai_key",
+            neuronpedia_api_key="test_neuronpedia_key",
+            upload_to_neuronpedia=False,
+        )
+
+    assert "appears dead" in str(exc_info.value)
+
+
+@pytest.mark.anyio
+@patch("sae_lens.analysis.neuronpedia_integration.requests.get")
+@patch("sae_lens.analysis.neuronpedia_integration.TokenActivationPairExplainer")
+@patch("sae_lens.analysis.neuronpedia_integration.os.getenv")
+async def test_autointerp_neuronpedia_features_without_scoring(
+    mock_getenv: MagicMock,
+    mock_explainer_class: MagicMock,
+    mock_requests_get: MagicMock,
+):
+    mock_getenv.return_value = "test_openai_key"
+
+    # Mock the feature data
+    mock_feature_response = MagicMock()
+    mock_feature_response.json.return_value = {
+        "modelId": "gpt2-small",
+        "layer": "0-res-jb",
+        "index": 0,
+        "activations": [
+            {
+                "id": "test_activation_1",
+                "tokens": ["hello", "world"],
+                "values": [0.5, 0.8],
+            }
+        ],
+    }
+    mock_requests_get.return_value = mock_feature_response
+
+    # Mock the explainer
+    mock_explainer = MagicMock()
+    mock_explanation = MagicMock()
+    mock_explanation.rstrip.return_value = "This feature detects greetings"
+
+    # Use AsyncMock for the async method
+    mock_explainer.generate_explanations = AsyncMock(return_value=[mock_explanation])
+    mock_explainer_class.return_value = mock_explainer
+
+    features = [
+        NeuronpediaFeature(
+            modelId="gpt2-small",
+            layer=0,
+            dataset="res-jb",
+            feature=0,
+        )
+    ]
+
+    await autointerp_neuronpedia_features(
+        features=features,
+        openai_api_key="test_openai_key",
+        neuronpedia_api_key="test_neuronpedia_key",
+        autointerp_explainer_model_name="gpt-4-1106-preview",
+        do_score=False,
+        save_to_disk=False,
+        upload_to_neuronpedia=False,
+    )
+
+    # Verify the feature was populated with explanation but no score
+    assert features[0].autointerp_explanation == "This feature detects greetings"
+    assert features[0].autointerp_explanation_score == 0.0  # Default value
+
+
+@pytest.mark.anyio
+async def test_autointerp_neuronpedia_features_missing_neuronpedia_key_for_upload():
+    features = [
+        NeuronpediaFeature(
+            modelId="gpt2-small",
+            layer=0,
+            dataset="res-jb",
+            feature=0,
+        )
+    ]
+
+    with pytest.raises(Exception) as exc_info:
+        await autointerp_neuronpedia_features(
+            features=features,
+            openai_api_key="test_openai_key",
+            neuronpedia_api_key=None,
+            upload_to_neuronpedia=True,
+        )
+
+    assert "You need to provide a Neuronpedia API key" in str(exc_info.value)
 
 
 @pytest.mark.skip(
