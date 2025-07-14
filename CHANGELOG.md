@@ -2,6 +2,83 @@
 
 
 
+## v6.0.0-rc.4 (2025-07-14)
+
+### Feature
+
+* feat: Final 6.0.0 changes (#499)
+
+* fixing metadata issues in SAELens
+
+* changing from_pretrained() to directly return the SAE instead of a tuple of objects
+
+* fixing call error
+
+* fixing test_sae_fold_w_dec_norm_all_architectures
+
+* removing unused file
+
+* fixing bugs around serializing and unserializing configs
+
+* deleting layer_norm normalization - this is never used
+
+* removing mse_normalization, tanh-relu, and noise_scale, as these are basically never used
+
+* fixing test
+
+* fixing eval_all_loadable_saes benchmark
+
+* letting claude write some tests for neuronpedia integration
+
+* claude continuing to go ham on neuronpedia tests
+
+* fixing LLM CLI runner
+
+* fixing linting
+
+* turning SAEMetadata into more of a dict-like class to decouple it from LLM-trained SAEs
+
+* cleaning up tutorials
+
+* adding migration docs
+
+* further doc updates
+
+* Update docs/migrating.md
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update sae_lens/saes/sae.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update docs/training_saes.md
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update tests/test_llm_sae_training_runner.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update sae_lens/training/sae_trainer.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* changes from CR
+
+* fixing formatting
+
+* fixing typing in test
+
+* fixing connor_rob_hook_z SAE loading
+
+* fixing hook_z reshaping for pretrained saes more robustly
+
+---------
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt; ([`62dca28`](https://github.com/jbloomAus/SAELens/commit/62dca289e660beae58db01c9ee6edd0d4c58b2e2))
+
+
 ## v6.0.0-rc.3 (2025-07-11)
 
 ### Chore
