@@ -693,6 +693,13 @@
 
 
 
+<!-- prettier-ignore-start -->
+<div class="admonition tip">
+<p class="admonition-title">Pre-Release Available</p>
+<p>SAELens 6.0.0 pre-release is available with exciting new features. <a href="https://jbloomaus.github.io/SAELens/pre-release/">View documentation →</a></p>
+</div>
+<!-- prettier-ignore-end -->
+
 <p><img width="1308" alt="Screenshot 2024-03-21 at 3 08 28 pm" src="https://github.com/jbloomAus/mats_sae_training/assets/69127271/209012ec-a779-4036-b4be-7b7739ea87f6"></p>
 <h1 id="saelens">SAELens</h1>
 <p><a href="https://pypi.org/project/sae-lens/"><img alt="PyPI" src="https://img.shields.io/pypi/v/sae-lens?color=blue" /></a>
@@ -730,7 +737,7 @@
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">sae</span> <span class="o">=</span> <span class="n">SAE</span><span class="o">.</span><span class="n">load_from_disk</span><span class="p">(</span><span class="s2">&quot;/path/to/your/sae&quot;</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 <h3 id="importing-saes-from-other-libraries">Importing SAEs from other libraries</h3>
-<p>You can import an SAE created with another library by writing a custom <code>PretrainedSaeHuggingfaceLoader</code> or <code>PretrainedSaeDiskLoader</code> for use with <code>SAE.from_pretrained()</code> or <code>SAE.load_from_disk()</code>, respectively. See the <a href="https://github.com/jbloomAus/SAELens/blob/main/sae_lens/loading/pretrained_sae_loaders.py">pretrained_sae_loaders.py</a> file for more details, or ask on the <a href="https://join.slack.com/t/opensourcemechanistic/shared_invite/zt-2k0id7mv8-CsIgPLmmHd03RPJmLUcapw">Open Source Mechanistic Interpretability Slack</a>. If you write a good custom loader for another library, please consider contributing it back to SAELens!</p>
+<p>You can import an SAE created with another library by writing a custom <code>PretrainedSaeHuggingfaceLoader</code> or <code>PretrainedSaeDiskLoader</code> for use with <code>SAE.from_pretrained()</code> or <code>SAE.load_from_disk()</code>, respectively. See the <a href="https://github.com/jbloomAus/SAELens/blob/main/sae_lens/toolkit/pretrained_sae_loaders.py">pretrained_sae_loaders.py</a> file for more details, or ask on the <a href="https://join.slack.com/t/opensourcemechanistic/shared_invite/zt-375zalm04-GFd5tdBU1yLKlu_T_JSqZQ">Open Source Mechanistic Interpretability Slack</a>. If you write a good custom loader for another library, please consider contributing it back to SAELens!</p>
 <h3 id="background-and-further-readings">Background and further Readings</h3>
 <p>We highly recommend this <a href="https://www.lesswrong.com/posts/LnHowHgmrMbWtpkxx/intro-to-superposition-and-sparse-autoencoders-colab">tutorial</a>.</p>
 <p>For recent progress in SAEs, we recommend the LessWrong forum's <a href="https://www.lesswrong.com/tag/sparse-autoencoders-saes">Sparse Autoencoder tag</a></p>
