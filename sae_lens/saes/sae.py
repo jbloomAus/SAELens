@@ -192,7 +192,7 @@ class SAEConfig(ABC):
             "constant_norm_rescale",
         ]:
             raise ValueError(
-                f"normalize_activations must be none, expected_average_only_in, constant_norm_rescale. Got {self.normalize_activations}"
+                f"normalize_activations must be none, expected_average_only_in, or constant_norm_rescale. Got {self.normalize_activations}"
             )
 
 
