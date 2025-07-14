@@ -7,7 +7,7 @@ from transformer_lens import HookedTransformer
 from sae_lens.config import PretokenizeRunnerConfig
 from sae_lens.pretokenize_runner import pretokenize_dataset
 from sae_lens.training.activations_store import ActivationsStore
-from tests.helpers import build_sae_cfg
+from tests.helpers import build_runner_cfg
 
 
 # The way to run this with this command:
@@ -17,7 +17,7 @@ def test_benchmark_activations_store_get_batch_tokens_pretokenized_vs_raw():
     tokenizer = model.tokenizer
     assert tokenizer is not None
 
-    cfg = build_sae_cfg(
+    cfg = build_runner_cfg(
         model_name="gpt2",
         dataset_path="NeelNanda/c4-10k",
         context_size=512,

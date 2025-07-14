@@ -50,6 +50,7 @@ nav:
   - Training SAEs: training_saes.md
   - Citation: citation.md
   - Contributing: contributing.md
+  - Migrating to v6: migrating.md
   - API: api.md
   - Supported SAEs: sae_table.md
 

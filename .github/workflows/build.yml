@@ -4,9 +4,13 @@ on:
   push:
     branches:
       - main
+      - alpha
+      - beta
   pull_request:
     branches:
       - main
+      - alpha
+      - beta
   # Allow this workflow to be called from other workflows
   workflow_call:
     inputs:
@@ -32,16 +36,16 @@ jobs:
       - name: Cache Huggingface assets
         uses: actions/cache@v4
         with:
-          key: huggingface-0-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml') }}
+          key: huggingface-1-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml') }}
           path: ~/.cache/huggingface
           restore-keys: |
-            huggingface-0-${{ runner.os }}-${{ matrix.python-version }}-
+            huggingface-1-${{ runner.os }}-${{ matrix.python-version }}-
       - name: Load cached Poetry installation
         id: cached-poetry
         uses: actions/cache@v4
         with:
           path: ~/.local # the path depends on the OS
-          key: poetry-${{ runner.os }}-${{ matrix.python-version }}-1 # increment to reset cache
+          key: poetry-${{ runner.os }}-${{ matrix.python-version }}-2 # increment to reset cache
       - name: Install Poetry
         if: steps.cached-poetry.outputs.cache-hit != 'true'
         uses: snok/install-poetry@v1
@@ -54,9 +58,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .venv
-          key: venv-0-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml') }}
+          key: venv-1-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml') }}
           restore-keys: |
-            venv-0-${{ runner.os }}-${{ matrix.python-version }}-
+            venv-1-${{ runner.os }}-${{ matrix.python-version }}-
       - name: Install dependencies
         if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
         run: poetry install --no-interaction
@@ -83,7 +87,7 @@ jobs:
       contents: write
       id-token: write
     # https://github.community/t/how-do-i-specify-job-dependency-running-in-another-workflow/16482
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, 'chore(release):')
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/beta' || github.ref == 'refs/heads/alpha') && !contains(github.event.head_commit.message, 'chore(release):')
     runs-on: ubuntu-latest
     concurrency: release
     environment:

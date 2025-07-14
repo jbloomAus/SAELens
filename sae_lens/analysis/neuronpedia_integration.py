@@ -58,8 +58,8 @@ def NanAndInfReplacer(value: str):
     return NAN_REPLACEMENT
 
 
-def open_neuronpedia_feature_dashboard(sae: SAE, index: int):
-    sae_id = sae.cfg.neuronpedia_id
+def open_neuronpedia_feature_dashboard(sae: SAE[Any], index: int):
+    sae_id = sae.cfg.metadata.neuronpedia_id
     if sae_id is None:
         logger.warning(
             "SAE does not have a Neuronpedia ID. Either dashboards for this SAE do not exist (yet) on Neuronpedia, or the SAE was not loaded via the from_pretrained method"
@@ -70,11 +70,11 @@ def open_neuronpedia_feature_dashboard(sae: SAE, index: int):
 
 
 def get_neuronpedia_quick_list(
-    sae: SAE,
+    sae: SAE[Any],
     features: list[int],
     name: str = "temporary_list",
 ):
-    sae_id = sae.cfg.neuronpedia_id
+    sae_id = sae.cfg.metadata.neuronpedia_id
     if sae_id is None:
         logger.warning(
             "SAE does not have a Neuronpedia ID. Either dashboards for this SAE do not exist (yet) on Neuronpedia, or the SAE was not loaded via the from_pretrained method"
@@ -86,7 +86,7 @@ def get_neuronpedia_quick_list(
     url = url + "?name=" + name
     list_feature = [
         {
-            "modelId": sae.cfg.model_name,
+            "modelId": sae.cfg.metadata.model_name,
             "layer": sae_id.split("/")[1],
             "index": str(feature),
         }
@@ -157,9 +157,10 @@ def sleep_identity(x: T) -> T:
 
 
 @retry(wait=wait_random_exponential(min=1, max=500), stop=stop_after_attempt(10))
-async def simulate_and_score(
-    simulator: NeuronSimulator, activation_records: list[ActivationRecord]
-) -> ScoredSimulation:
+async def simulate_and_score(  # type: ignore
+    simulator: NeuronSimulator,
+    activation_records: list[ActivationRecord],  # type: ignore
+) -> ScoredSimulation:  # type: ignore
     """Score an explanation of a neuron by how well it predicts activations on the given text sequences."""
     scored_sequence_simulations = await asyncio.gather(
         *[
@@ -330,8 +331,9 @@ async def autointerp_neuronpedia_features(  # noqa: C901
             feature.activations = []
         activation_records = [
             ActivationRecord(
-                tokens=activation.tokens, activations=activation.act_values
-            )
+                tokens=activation.tokens,  # type: ignore
+                activations=activation.act_values,  # type: ignore
+            )  # type: ignore
             for activation in feature.activations
         ]
 
@@ -384,15 +386,15 @@ async def autointerp_neuronpedia_features(  # noqa: C901
 
             temp_activation_records = [
                 ActivationRecord(
-                    tokens=[
+                    tokens=[  # type: ignore
                         token.replace("<|endoftext|>", "<|not_endoftext|>")
                         .replace(" 55", "_55")
                         .encode("ascii", errors="backslashreplace")
                         .decode("ascii")
-                        for token in activation_record.tokens
+                        for token in activation_record.tokens  # type: ignore
                     ],
-                    activations=activation_record.activations,
-                )
+                    activations=activation_record.activations,  # type: ignore
+                )  # type: ignore
                 for activation_record in activation_records
             ]
 

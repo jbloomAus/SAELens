@@ -1,4 +1,4 @@
-from typing import Any, Literal, cast
+from typing import Any, Callable, Literal, cast
 
 import torch
 from transformer_lens import HookedTransformer
@@ -77,6 +77,7 @@ class HookedProxyLM(HookedRootModule):
     # copied and modified from base HookedRootModule
     def setup(self):
         self.mod_dict = {}
+        self.named_modules_dict = {}
         self.hook_dict: dict[str, HookPoint] = {}
         for name, module in self.model.named_modules():
             if name == "":
@@ -89,14 +90,21 @@ class HookedProxyLM(HookedRootModule):
 
             self.hook_dict[name] = hook_point
             self.mod_dict[name] = hook_point
+            self.named_modules_dict[name] = module
+
+    def run_with_cache(self, *args: Any, **kwargs: Any):  # type: ignore
+        if "names_filter" in kwargs:
+            # hacky way to make sure that the names_filter is passed to our forward method
+            kwargs["_names_filter"] = kwargs["names_filter"]
+        return super().run_with_cache(*args, **kwargs)
 
     def forward(
         self,
         tokens: torch.Tensor,
         return_type: Literal["both", "logits"] = "logits",
         loss_per_token: bool = False,
-        # TODO: implement real support for stop_at_layer
         stop_at_layer: int | None = None,
+        _names_filter: list[str] | None = None,
         **kwargs: Any,
     ) -> Output | Loss:
         # This is just what's needed for evals, not everything that HookedTransformer has
@@ -107,8 +115,28 @@ class HookedProxyLM(HookedRootModule):
             raise NotImplementedError(
                 "Only return_type supported is 'both' or 'logits' to match what's in evals.py and ActivationsStore"
             )
-        output = self.model(tokens)
-        logits = _extract_logits_from_output(output)
+
+        stop_hooks = []
+        if stop_at_layer is not None and _names_filter is not None:
+            if return_type != "logits":
+                raise NotImplementedError(
+                    "stop_at_layer is not supported for return_type='both'"
+                )
+            stop_manager = StopManager(_names_filter)
+
+            for hook_name in _names_filter:
+                module = self.named_modules_dict[hook_name]
+                stop_fn = stop_manager.get_stop_hook_fn(hook_name)
+                stop_hooks.append(module.register_forward_hook(stop_fn))
+        try:
+            output = self.model(tokens)
+            logits = _extract_logits_from_output(output)
+        except StopForward:
+            # If we stop early, we don't care about the return output
+            return None  # type: ignore
+        finally:
+            for stop_hook in stop_hooks:
+                stop_hook.remove()
 
         if return_type == "logits":
             return logits
@@ -183,3 +211,23 @@ def get_hook_fn(hook_point: HookPoint):
         return output
 
     return hook_fn
+
+
+class StopForward(Exception):
+    pass
+
+
+class StopManager:
+    def __init__(self, hook_names: list[str]):
+        self.hook_names = hook_names
+        self.total_hook_names = len(set(hook_names))
+        self.called_hook_names = set()
+
+    def get_stop_hook_fn(self, hook_name: str) -> Callable[[Any, Any, Any], Any]:
+        def stop_hook_fn(module: Any, input: Any, output: Any) -> Any:  # noqa: ARG001
+            self.called_hook_names.add(hook_name)
+            if len(self.called_hook_names) == self.total_hook_names:
+                raise StopForward()
+            return output
+
+        return stop_hook_fn

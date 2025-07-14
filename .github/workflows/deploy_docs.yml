@@ -5,15 +5,15 @@ on:
       - main
       - alpha
     paths-ignore:
-      - '.vscode/**'
-      - '.gitignore'
+      - ".vscode/**"
+      - ".gitignore"
   pull_request:
     branches:
       - main
       - alpha
     paths-ignore:
-      - '.vscode/**'
-      - '.gitignore'
+      - ".vscode/**"
+      - ".gitignore"
   release:
     types: [published]
   workflow_run:
@@ -35,7 +35,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Important for mike to work properly
+          fetch-depth: 0 # Important for mike to work properly
       - name: Install Python
         uses: actions/setup-python@v5
         with:
@@ -86,13 +86,13 @@ jobs:
           echo "Checking workflow run outputs..."
           # The workflow_run event doesn't directly expose job outputs, so we need to check via API
           WORKFLOW_RUN_ID="${{ github.event.workflow_run.id }}"
-          
+
           # Get the workflow run jobs
           JOBS_RESPONSE=$(gh api repos/${{ github.repository }}/actions/runs/$WORKFLOW_RUN_ID/jobs)
-          
+
           # Check if the release job ran and completed successfully
           RELEASE_JOB_CONCLUSION=$(echo "$JOBS_RESPONSE" | jq -r '.jobs[] | select(.name == "release") | .conclusion')
-          
+
           if [ "$RELEASE_JOB_CONCLUSION" = "success" ]; then
             echo "release_job_succeeded=true" >> $GITHUB_OUTPUT
             echo "Release job succeeded"
@@ -114,10 +114,10 @@ jobs:
             # Get the latest tag when triggered by workflow_run
             RELEASE_TAG=$(git describe --tags --abbrev=0)
           fi
-          
+
           # Deploy the version (this will overwrite if it exists)
           poetry run mike deploy --push $RELEASE_TAG
-          
+
           # If stable release (no pre-release identifiers), also update latest alias
           if [[ ! "$RELEASE_TAG" =~ (alpha|beta|rc) ]]; then
             poetry run mike alias -u --push $RELEASE_TAG latest

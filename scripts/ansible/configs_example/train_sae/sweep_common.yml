@@ -50,7 +50,6 @@ use_cached_activations: True
 train_batch_size: 4096
 # Loss Function
 ## Reconstruction Coefficient.
-mse_loss_normalization: None  # MSE Loss Normalization is not mentioned (so we use stanrd MSE Loss). But not we take an average over the batch.
 ## Anthropic does not mention using an Lp norm other than L1.
 lp_norm: 1.0
 # Instead, they multiply the L1 loss contribution
@@ -62,9 +61,6 @@ lr_scheduler_name: "constant"  # we set this independently of warmup and decay s
 use_ghost_grads: False
 # Initialization / Architecture
 apply_b_dec_to_input: False
-# encoder bias zero's. (I'm not sure what it is by default now)
-# decoder bias zero's.
-b_dec_init_method: zeros
 normalize_sae_decoder: False
 decoder_heuristic_init: True
 init_encoder_as_decoder_transpose: True

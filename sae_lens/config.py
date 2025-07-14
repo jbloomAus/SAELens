@@ -1,8 +1,9 @@
 import json
 import math
 import os
-from dataclasses import dataclass, field
-from typing import Any, Literal, cast
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar, cast
 
 import simple_parsing
 import torch
@@ -16,25 +17,17 @@ from datasets import (
 )
 
 from sae_lens import __version__, logger
+from sae_lens.constants import DTYPE_MAP
+from sae_lens.saes.sae import TrainingSAEConfig
 
-DTYPE_MAP = {
-    "float32": torch.float32,
-    "float64": torch.float64,
-    "float16": torch.float16,
-    "bfloat16": torch.bfloat16,
-    "torch.float32": torch.float32,
-    "torch.float64": torch.float64,
-    "torch.float16": torch.float16,
-    "torch.bfloat16": torch.bfloat16,
-}
+if TYPE_CHECKING:
+    pass
+
+T_TRAINING_SAE_CONFIG = TypeVar(
+    "T_TRAINING_SAE_CONFIG", bound=TrainingSAEConfig, covariant=True
+)
 
 HfDataset = DatasetDict | Dataset | IterableDatasetDict | IterableDataset
-
-
-SPARSITY_FILENAME = "sparsity.safetensors"
-SAE_WEIGHTS_FILENAME = "sae_weights.safetensors"
-SPARSIFY_WEIGHTS_FILENAME = "sae.safetensors"
-SAE_CFG_FILENAME = "cfg.json"
 
 
 # calling this "json_dict" so error messages will reference "json_dict" being invalid
@@ -55,101 +48,118 @@ def dict_field(default: dict[str, Any] | None, **kwargs: Any) -> Any:  # type: i
 
 
 @dataclass
-class LanguageModelSAERunnerConfig:
+class LoggingConfig:
+    # WANDB
+    log_to_wandb: bool = True
+    log_activations_store_to_wandb: bool = False
+    log_optimizer_state_to_wandb: bool = False
+    wandb_project: str = "sae_lens_training"
+    wandb_id: str | None = None
+    run_name: str | None = None
+    wandb_entity: str | None = None
+    wandb_log_frequency: int = 10
+    eval_every_n_wandb_logs: int = 100  # logs every 100 steps.
+
+    def log(
+        self,
+        trainer: Any,  # avoid import cycle from importing SAETrainer
+        weights_path: Path | str,
+        cfg_path: Path | str,
+        sparsity_path: Path | str | None,
+        wandb_aliases: list[str] | None = None,
+    ) -> None:
+        # Avoid wandb saving errors such as:
+        #   ValueError: Artifact name may only contain alphanumeric characters, dashes, underscores, and dots. Invalid name: sae_google/gemma-2b_etc
+        sae_name = trainer.sae.get_name().replace("/", "__")
+
+        # save model weights and cfg
+        model_artifact = wandb.Artifact(
+            sae_name,
+            type="model",
+            metadata=dict(trainer.cfg.__dict__),
+        )
+        model_artifact.add_file(str(weights_path))
+        model_artifact.add_file(str(cfg_path))
+        wandb.log_artifact(model_artifact, aliases=wandb_aliases)
+
+        # save log feature sparsity
+        sparsity_artifact = wandb.Artifact(
+            f"{sae_name}_log_feature_sparsity",
+            type="log_feature_sparsity",
+            metadata=dict(trainer.cfg.__dict__),
+        )
+        if sparsity_path is not None:
+            sparsity_artifact.add_file(str(sparsity_path))
+        wandb.log_artifact(sparsity_artifact)
+
+
+@dataclass
+class LanguageModelSAERunnerConfig(Generic[T_TRAINING_SAE_CONFIG]):
     """
     Configuration for training a sparse autoencoder on a language model.
 
     Args:
-        architecture (str): The architecture to use, either "standard", "gated", "topk", or "jumprelu".
+        sae (T_TRAINING_SAE_CONFIG): The configuration for the SAE itself (e.g. StandardSAEConfig, GatedSAEConfig).
         model_name (str): The name of the model to use. This should be the name of the model in the Hugging Face model hub.
         model_class_name (str): The name of the class of the model to use. This should be either `HookedTransformer` or `HookedMamba`.
         hook_name (str): The name of the hook to use. This should be a valid TransformerLens hook.
         hook_eval (str): NOT CURRENTLY IN USE. The name of the hook to use for evaluation.
-        hook_layer (int): The index of the layer to hook. Used to stop forward passes early and speed up processing.
-        hook_head_index (int, optional): When the hook if for an activatio with a head index, we can specify a specific head to use here.
+        hook_head_index (int, optional): When the hook is for an activation with a head index, we can specify a specific head to use here.
         dataset_path (str): A Hugging Face dataset path.
         dataset_trust_remote_code (bool): Whether to trust remote code when loading datasets from Huggingface.
         streaming (bool): Whether to stream the dataset. Streaming large datasets is usually practical.
-        is_dataset_tokenized (bool): NOT IN USE. We used to use this but now automatically detect if the dataset is tokenized.
+        is_dataset_tokenized (bool): Whether the dataset is already tokenized.
         context_size (int): The context size to use when generating activations on which to train the SAE.
         use_cached_activations (bool): Whether to use cached activations. This is useful when doing sweeps over the same activations.
-        cached_activations_path (str, optional): The path to the cached activations.
-        d_in (int): The input dimension of the SAE.
-        d_sae (int, optional): The output dimension of the SAE. If None, defaults to `d_in * expansion_factor`.
-        b_dec_init_method (str): The method to use to initialize the decoder bias. Zeros is likely fine.
-        expansion_factor (int): The expansion factor. Larger is better but more computationally expensive. Default is 4.
-        activation_fn (str): The activation function to use. Relu is standard.
-        normalize_sae_decoder (bool): Whether to normalize the SAE decoder. Unit normed decoder weights used to be preferred.
-        noise_scale (float): Using noise to induce sparsity is supported but not recommended.
+        cached_activations_path (str, optional): The path to the cached activations. Defaults to "activations/{dataset_path}/{model_name}/{hook_name}_{hook_head_index}".
         from_pretrained_path (str, optional): The path to a pretrained SAE. We can finetune an existing SAE if needed.
-        apply_b_dec_to_input (bool): Whether to apply the decoder bias to the input. Not currently advised.
-        decoder_orthogonal_init (bool): Whether to use orthogonal initialization for the decoder. Not currently advised.
-        decoder_heuristic_init (bool): Whether to use heuristic initialization for the decoder. See Anthropic April Update.
-        init_encoder_as_decoder_transpose (bool): Whether to initialize the encoder as the transpose of the decoder. See Anthropic April Update.
-        n_batches_in_buffer (int): The number of batches in the buffer. When not using cached activations, a buffer in ram is used. The larger it is, the better shuffled the activations will be.
+        n_batches_in_buffer (int): The number of batches in the buffer. When not using cached activations, a buffer in RAM is used. The larger it is, the better shuffled the activations will be.
         training_tokens (int): The number of training tokens.
-        finetuning_tokens (int): The number of finetuning tokens. See [here](https://www.lesswrong.com/posts/3JuSjTZyMzaSeTxKk/addressing-feature-suppression-in-saes)
-        store_batch_size_prompts (int): The batch size for storing activations. This controls how many prompts are in the batch of the language model when generating actiations.
-        train_batch_size_tokens (int): The batch size for training. This controls the batch size of the SAE Training loop.
-        normalize_activations (str): Activation Normalization Strategy. Either none, expected_average_only_in (estimate the average activation norm and divide activations by it following Antrhopic April update -> this can be folded post training and set to None), or constant_norm_rescale (at runtime set activation norm to sqrt(d_in) and then scale up the SAE output).
-        seqpos_slice (tuple): Determines slicing of activations when constructing batches during training. The slice should be (start_pos, end_pos, optional[step_size]), e.g. for Othello we sometimes use (5, -5). Note, step_size > 0.
-        device (str): The device to use. Usually cuda.
-        act_store_device (str): The device to use for the activation store. CPU is advised in order to save vram.
+        store_batch_size_prompts (int): The batch size for storing activations. This controls how many prompts are in the batch of the language model when generating activations.
+        seqpos_slice (tuple[int | None, ...]): Determines slicing of activations when constructing batches during training. The slice should be (start_pos, end_pos, optional[step_size]), e.g. for Othello we sometimes use (5, -5). Note, step_size > 0.
+        device (str): The device to use. Usually "cuda".
+        act_store_device (str): The device to use for the activation store. "cpu" is advised in order to save VRAM. Defaults to "with_model" which uses the same device as the main model.
         seed (int): The seed to use.
-        dtype (str): The data type to use.
+        dtype (str): The data type to use for the SAE and activations.
         prepend_bos (bool): Whether to prepend the beginning of sequence token. You should use whatever the model was trained with.
-        jumprelu_init_threshold (float): The threshold to initialize for training JumpReLU SAEs.
-        jumprelu_bandwidth (float): Bandwidth for training JumpReLU SAEs.
-        autocast (bool): Whether to use autocast during training. Saves vram.
-        autocast_lm (bool): Whether to use autocast during activation fetching.
-        compile_llm (bool): Whether to compile the LLM.
-        llm_compilation_mode (str): The compilation mode to use for the LLM.
-        compile_sae (bool): Whether to compile the SAE.
-        sae_compilation_mode (str): The compilation mode to use for the SAE.
-        adam_beta1 (float): The beta1 parameter for Adam.
-        adam_beta2 (float): The beta2 parameter for Adam.
-        mse_loss_normalization (str): The normalization to use for the MSE loss.
-        l1_coefficient (float): The L1 coefficient.
-        lp_norm (float): The Lp norm.
-        scale_sparsity_penalty_by_decoder_norm (bool): Whether to scale the sparsity penalty by the decoder norm.
-        l1_warm_up_steps (int): The number of warm-up steps for the L1 loss.
+        autocast (bool): Whether to use autocast (mixed-precision) during SAE training. Saves VRAM.
+        autocast_lm (bool): Whether to use autocast (mixed-precision) during activation fetching. Saves VRAM.
+        compile_llm (bool): Whether to compile the LLM using `torch.compile`.
+        llm_compilation_mode (str, optional): The compilation mode to use for the LLM if `compile_llm` is True.
+        compile_sae (bool): Whether to compile the SAE using `torch.compile`.
+        sae_compilation_mode (str, optional): The compilation mode to use for the SAE if `compile_sae` is True.
+        train_batch_size_tokens (int): The batch size for training, in tokens. This controls the batch size of the SAE training loop.
+        adam_beta1 (float): The beta1 parameter for the Adam optimizer.
+        adam_beta2 (float): The beta2 parameter for the Adam optimizer.
         lr (float): The learning rate.
-        lr_scheduler_name (str): The name of the learning rate scheduler to use.
+        lr_scheduler_name (str): The name of the learning rate scheduler to use (e.g., "constant", "cosineannealing", "cosineannealingwarmrestarts").
         lr_warm_up_steps (int): The number of warm-up steps for the learning rate.
-        lr_end (float): The end learning rate if lr_decay_steps is set. Default is lr / 10.
-        lr_decay_steps (int): The number of decay steps for the learning rate.
-        n_restart_cycles (int): The number of restart cycles for the cosine annealing warm restarts scheduler.
-        finetuning_method (str): The method to use for finetuning.
-        use_ghost_grads (bool): Whether to use ghost gradients.
-        feature_sampling_window (int): The feature sampling window.
-        dead_feature_window (int): The dead feature window.
-        dead_feature_threshold (float): The dead feature threshold.
-        n_eval_batches (int): The number of evaluation batches.
-        eval_batch_size_prompts (int): The batch size for evaluation.
-        log_to_wandb (bool): Whether to log to Weights & Biases.
-        log_activations_store_to_wandb (bool): NOT CURRENTLY USED. Whether to log the activations store to Weights & Biases.
-        log_optimizer_state_to_wandb (bool): NOT CURRENTLY USED. Whether to log the optimizer state to Weights & Biases.
-        wandb_project (str): The Weights & Biases project to log to.
-        wandb_id (str): The Weights & Biases ID.
-        run_name (str): The name of the run.
-        wandb_entity (str): The Weights & Biases entity.
-        wandb_log_frequency (int): The frequency to log to Weights & Biases.
-        eval_every_n_wandb_logs (int): The frequency to evaluate.
-        resume (bool): Whether to resume training.
-        n_checkpoints (int): The number of checkpoints.
-        checkpoint_path (str): The path to save checkpoints.
+        lr_end (float, optional): The end learning rate if using a scheduler like cosine annealing. Defaults to `lr / 10`.
+        lr_decay_steps (int): The number of decay steps for the learning rate if using a scheduler with decay.
+        n_restart_cycles (int): The number of restart cycles for the cosine annealing with warm restarts scheduler.
+        dead_feature_window (int): The window size (in training steps) for detecting dead features.
+        feature_sampling_window (int): The window size (in training steps) for resampling features (e.g. dead features).
+        dead_feature_threshold (float): The threshold below which a feature's activation frequency is considered dead.
+        n_eval_batches (int): The number of batches to use for evaluation.
+        eval_batch_size_prompts (int, optional): The batch size for evaluation, in prompts. Useful if evals cause OOM.
+        logger (LoggingConfig): Configuration for logging (e.g. W&B).
+        n_checkpoints (int): The number of checkpoints to save during training. 0 means no checkpoints.
+        checkpoint_path (str): The path to save checkpoints. A unique ID will be appended to this path.
         verbose (bool): Whether to print verbose output.
-        model_kwargs (dict[str, Any]): Additional keyword arguments for the model.
-        model_from_pretrained_kwargs (dict[str, Any]): Additional keyword arguments for the model from pretrained.
-        exclude_special_tokens (bool | list[int]): Whether to exclude special tokens from the activations.
+        model_kwargs (dict[str, Any]): Keyword arguments for `model.run_with_cache`
+        model_from_pretrained_kwargs (dict[str, Any], optional): Additional keyword arguments to pass to the model's `from_pretrained` method.
+        sae_lens_version (str): The version of the sae_lens library.
+        sae_lens_training_version (str): The version of the sae_lens training library.
+        exclude_special_tokens (bool | list[int]): Whether to exclude special tokens from the activations. If True, excludes all special tokens. If a list of ints, excludes those token IDs.
     """
+
+    sae: T_TRAINING_SAE_CONFIG
 
     # Data Generating Function (Model + Training Distibuion)
     model_name: str = "gelu-2l"
     model_class_name: str = "HookedTransformer"
     hook_name: str = "blocks.0.hook_mlp_out"
     hook_eval: str = "NOT_IN_USE"
-    hook_layer: int = 0
     hook_head_index: int | None = None
     dataset_path: str = ""
     dataset_trust_remote_code: bool = True
@@ -162,30 +172,12 @@ class LanguageModelSAERunnerConfig:
     )
 
     # SAE Parameters
-    architecture: Literal["standard", "gated", "jumprelu", "topk"] = "standard"
-    d_in: int = 512
-    d_sae: int | None = None
-    b_dec_init_method: str = "geometric_median"
-    expansion_factor: int | None = (
-        None  # defaults to 4 if d_sae and expansion_factor is None
-    )
-    activation_fn: str = None  # relu, tanh-relu, topk. Default is relu. # type: ignore
-    activation_fn_kwargs: dict[str, int] = dict_field(default=None)  # for topk
-    normalize_sae_decoder: bool = True
-    noise_scale: float = 0.0
     from_pretrained_path: str | None = None
-    apply_b_dec_to_input: bool = True
-    decoder_orthogonal_init: bool = False
-    decoder_heuristic_init: bool = False
-    decoder_heuristic_init_norm: float = 0.1
-    init_encoder_as_decoder_transpose: bool = False
 
     # Activation Store Parameters
     n_batches_in_buffer: int = 20
     training_tokens: int = 2_000_000
-    finetuning_tokens: int = 0
     store_batch_size_prompts: int = 32
-    normalize_activations: str = "none"  # none, expected_average_only_in (Anthropic April Update), constant_norm_rescale (Anthropic Feb Update)
     seqpos_slice: tuple[int | None, ...] = (None,)
 
     # Misc
@@ -194,10 +186,6 @@ class LanguageModelSAERunnerConfig:
     seed: int = 42
     dtype: str = "float32"  # type: ignore #
     prepend_bos: bool = True
-
-    # JumpReLU Parameters
-    jumprelu_init_threshold: float = 0.001
-    jumprelu_bandwidth: float = 0.001
 
     # Performance - see compilation section of lm_runner.py for info
     autocast: bool = False  # autocast to autocast_dtype during training
@@ -213,15 +201,8 @@ class LanguageModelSAERunnerConfig:
     train_batch_size_tokens: int = 4096
 
     ## Adam
-    adam_beta1: float = 0.0
+    adam_beta1: float = 0.9
     adam_beta2: float = 0.999
-
-    ## Loss Function
-    mse_loss_normalization: str | None = None
-    l1_coefficient: float = 1e-3
-    lp_norm: float = 1
-    scale_sparsity_penalty_by_decoder_norm: bool = False
-    l1_warm_up_steps: int = 0
 
     ## Learning Rate Schedule
     lr: float = 3e-4
@@ -233,33 +214,18 @@ class LanguageModelSAERunnerConfig:
     lr_decay_steps: int = 0
     n_restart_cycles: int = 1  # used only for cosineannealingwarmrestarts
 
-    ## FineTuning
-    finetuning_method: str | None = None  # scale, decoder or unrotated_decoder
-
     # Resampling protocol args
-    use_ghost_grads: bool = False  # want to change this to true on some timeline.
-    feature_sampling_window: int = 2000
     dead_feature_window: int = 1000  # unless this window is larger feature sampling,
-
+    feature_sampling_window: int = 2000
     dead_feature_threshold: float = 1e-8
 
     # Evals
     n_eval_batches: int = 10
     eval_batch_size_prompts: int | None = None  # useful if evals cause OOM
 
-    # WANDB
-    log_to_wandb: bool = True
-    log_activations_store_to_wandb: bool = False
-    log_optimizer_state_to_wandb: bool = False
-    wandb_project: str = "mats_sae_training_language_model"
-    wandb_id: str | None = None
-    run_name: str | None = None
-    wandb_entity: str | None = None
-    wandb_log_frequency: int = 10
-    eval_every_n_wandb_logs: int = 100  # logs every 1000 steps.
+    logger: LoggingConfig = field(default_factory=LoggingConfig)
 
     # Misc
-    resume: bool = False
     n_checkpoints: int = 0
     checkpoint_path: str = "checkpoints"
     verbose: bool = True
@@ -270,12 +236,6 @@ class LanguageModelSAERunnerConfig:
     exclude_special_tokens: bool | list[int] = False
 
     def __post_init__(self):
-        if self.resume:
-            raise ValueError(
-                "Resuming is no longer supported. You can finetune a trained SAE using cfg.from_pretrained path."
-                + "If you want to load an SAE with resume=True in the config, please manually set resume=False in that config."
-            )
-
         if self.use_cached_activations and self.cached_activations_path is None:
             self.cached_activations_path = _default_cached_activations_path(
                 self.dataset_path,
@@ -283,37 +243,12 @@ class LanguageModelSAERunnerConfig:
                 self.hook_name,
                 self.hook_head_index,
             )
-
-        if self.activation_fn is None:
-            self.activation_fn = "topk" if self.architecture == "topk" else "relu"
-
-        if self.architecture == "topk" and self.activation_fn != "topk":
-            raise ValueError("If using topk architecture, activation_fn must be topk.")
-
-        if self.activation_fn_kwargs is None:
-            self.activation_fn_kwargs = (
-                {"k": 100} if self.activation_fn == "topk" else {}
-            )
-
-        if self.architecture == "topk" and self.activation_fn_kwargs.get("k") is None:
-            raise ValueError(
-                "activation_fn_kwargs.k must be provided for topk architecture."
-            )
-
-        if self.d_sae is not None and self.expansion_factor is not None:
-            raise ValueError("You can't set both d_sae and expansion_factor.")
-
-        if self.d_sae is None and self.expansion_factor is None:
-            self.expansion_factor = 4
-
-        if self.d_sae is None and self.expansion_factor is not None:
-            self.d_sae = self.d_in * self.expansion_factor
         self.tokens_per_buffer = (
             self.train_batch_size_tokens * self.context_size * self.n_batches_in_buffer
         )
 
-        if self.run_name is None:
-            self.run_name = f"{self.d_sae}-L1-{self.l1_coefficient}-LR-{self.lr}-Tokens-{self.training_tokens:3.3e}"
+        if self.logger.run_name is None:
+            self.logger.run_name = f"{self.sae.architecture()}-{self.sae.d_sae}-LR-{self.lr}-Tokens-{self.training_tokens:3.3e}"
 
         if self.model_from_pretrained_kwargs is None:
             if self.model_class_name == "HookedTransformer":
@@ -321,44 +256,13 @@ class LanguageModelSAERunnerConfig:
             else:
                 self.model_from_pretrained_kwargs = {}
 
-        if self.b_dec_init_method not in ["geometric_median", "mean", "zeros"]:
-            raise ValueError(
-                f"b_dec_init_method must be geometric_median, mean, or zeros. Got {self.b_dec_init_method}"
-            )
-
-        if self.normalize_sae_decoder and self.decoder_heuristic_init:
-            raise ValueError(
-                "You can't normalize the decoder and use heuristic initialization."
-            )
-
-        if self.normalize_sae_decoder and self.scale_sparsity_penalty_by_decoder_norm:
-            raise ValueError(
-                "Weighting loss by decoder norm makes no sense if you are normalizing the decoder weight norms to 1"
-            )
-
-        # if we use decoder fine tuning, we can't be applying b_dec to the input
-        if (self.finetuning_method == "decoder") and (self.apply_b_dec_to_input):
-            raise ValueError(
-                "If we are fine tuning the decoder, we can't be applying b_dec to the input.\nSet apply_b_dec_to_input to False."
-            )
-
-        if self.normalize_activations not in [
-            "none",
-            "expected_average_only_in",
-            "constant_norm_rescale",
-            "layer_norm",
-        ]:
-            raise ValueError(
-                f"normalize_activations must be none, layer_norm, expected_average_only_in, or constant_norm_rescale. Got {self.normalize_activations}"
-            )
-
         if self.act_store_device == "with_model":
             self.act_store_device = self.device
 
         if self.lr_end is None:
             self.lr_end = self.lr / 10
 
-        unique_id = self.wandb_id
+        unique_id = self.logger.wandb_id
         if unique_id is None:
             unique_id = cast(
                 Any, wandb
@@ -367,7 +271,7 @@ class LanguageModelSAERunnerConfig:
 
         if self.verbose:
             logger.info(
-                f"Run name: {self.d_sae}-L1-{self.l1_coefficient}-LR-{self.lr}-Tokens-{self.training_tokens:3.3e}"
+                f"Run name: {self.sae.architecture()}-{self.sae.d_sae}-LR-{self.lr}-Tokens-{self.training_tokens:3.3e}"
             )
             # Print out some useful info:
             n_tokens_per_buffer = (
@@ -386,11 +290,13 @@ class LanguageModelSAERunnerConfig:
             )
 
             total_training_steps = (
-                self.training_tokens + self.finetuning_tokens
+                self.training_tokens
             ) // self.train_batch_size_tokens
             logger.info(f"Total training steps: {total_training_steps}")
 
-            total_wandb_updates = total_training_steps // self.wandb_log_frequency
+            total_wandb_updates = (
+                total_training_steps // self.logger.wandb_log_frequency
+            )
             logger.info(f"Total wandb updates: {total_wandb_updates}")
 
             # how many times will we sample dead neurons?
@@ -412,9 +318,6 @@ class LanguageModelSAERunnerConfig:
                 f"Number tokens in sparsity calculation window: {self.feature_sampling_window * self.train_batch_size_tokens:.2e}"
             )
 
-        if self.use_ghost_grads:
-            logger.info("Using Ghost Grads.")
-
         if self.context_size < 0:
             raise ValueError(
                 f"The provided context_size is {self.context_size} is negative. Expecting positive context_size."
@@ -429,65 +332,26 @@ class LanguageModelSAERunnerConfig:
 
     @property
     def total_training_tokens(self) -> int:
-        return self.training_tokens + self.finetuning_tokens
+        return self.training_tokens
 
     @property
     def total_training_steps(self) -> int:
         return self.total_training_tokens // self.train_batch_size_tokens
 
-    def get_base_sae_cfg_dict(self) -> dict[str, Any]:
-        return {
-            # TEMP
-            "architecture": self.architecture,
-            "d_in": self.d_in,
-            "d_sae": self.d_sae,
-            "dtype": self.dtype,
-            "device": self.device,
-            "model_name": self.model_name,
-            "hook_name": self.hook_name,
-            "hook_layer": self.hook_layer,
-            "hook_head_index": self.hook_head_index,
-            "activation_fn_str": self.activation_fn,
-            "apply_b_dec_to_input": self.apply_b_dec_to_input,
-            "context_size": self.context_size,
-            "prepend_bos": self.prepend_bos,
-            "dataset_path": self.dataset_path,
-            "dataset_trust_remote_code": self.dataset_trust_remote_code,
-            "finetuning_scaling_factor": self.finetuning_method is not None,
-            "sae_lens_training_version": self.sae_lens_training_version,
-            "normalize_activations": self.normalize_activations,
-            "activation_fn_kwargs": self.activation_fn_kwargs,
-            "model_from_pretrained_kwargs": self.model_from_pretrained_kwargs,
-            "seqpos_slice": self.seqpos_slice,
-        }
-
     def get_training_sae_cfg_dict(self) -> dict[str, Any]:
-        return {
-            **self.get_base_sae_cfg_dict(),
-            "l1_coefficient": self.l1_coefficient,
-            "lp_norm": self.lp_norm,
-            "use_ghost_grads": self.use_ghost_grads,
-            "normalize_sae_decoder": self.normalize_sae_decoder,
-            "noise_scale": self.noise_scale,
-            "decoder_orthogonal_init": self.decoder_orthogonal_init,
-            "mse_loss_normalization": self.mse_loss_normalization,
-            "decoder_heuristic_init": self.decoder_heuristic_init,
-            "decoder_heuristic_init_norm": self.decoder_heuristic_init_norm,
-            "init_encoder_as_decoder_transpose": self.init_encoder_as_decoder_transpose,
-            "normalize_activations": self.normalize_activations,
-            "jumprelu_init_threshold": self.jumprelu_init_threshold,
-            "jumprelu_bandwidth": self.jumprelu_bandwidth,
-            "scale_sparsity_penalty_by_decoder_norm": self.scale_sparsity_penalty_by_decoder_norm,
-        }
+        return self.sae.to_dict()
 
     def to_dict(self) -> dict[str, Any]:
-        return {
-            **self.__dict__,
-            # some args may not be serializable by default
-            "dtype": str(self.dtype),
-            "device": str(self.device),
-            "act_store_device": str(self.act_store_device),
-        }
+        # Make a shallow copy of config's dictionary
+        d = dict(self.__dict__)
+
+        d["logger"] = asdict(self.logger)
+        d["sae"] = self.sae.to_dict()
+        # Overwrite fields that might not be JSON-serializable
+        d["dtype"] = str(self.dtype)
+        d["device"] = str(self.device)
+        d["act_store_device"] = str(self.act_store_device)
+        return d
 
     def to_json(self, path: str) -> None:
         if not os.path.exists(os.path.dirname(path)):
@@ -497,7 +361,7 @@ class LanguageModelSAERunnerConfig:
             json.dump(self.to_dict(), f, indent=2)
 
     @classmethod
-    def from_json(cls, path: str) -> "LanguageModelSAERunnerConfig":
+    def from_json(cls, path: str) -> "LanguageModelSAERunnerConfig[Any]":
         with open(path + "cfg.json") as f:
             cfg = json.load(f)
 
@@ -511,6 +375,27 @@ class LanguageModelSAERunnerConfig:
 
         return cls(**cfg)
 
+    def to_sae_trainer_config(self) -> "SAETrainerConfig":
+        return SAETrainerConfig(
+            n_checkpoints=self.n_checkpoints,
+            checkpoint_path=self.checkpoint_path,
+            total_training_samples=self.total_training_tokens,
+            device=self.device,
+            autocast=self.autocast,
+            lr=self.lr,
+            lr_end=self.lr_end,
+            lr_scheduler_name=self.lr_scheduler_name,
+            lr_warm_up_steps=self.lr_warm_up_steps,
+            adam_beta1=self.adam_beta1,
+            adam_beta2=self.adam_beta2,
+            lr_decay_steps=self.lr_decay_steps,
+            n_restart_cycles=self.n_restart_cycles,
+            train_batch_size_samples=self.train_batch_size_tokens,
+            dead_feature_window=self.dead_feature_window,
+            feature_sampling_window=self.feature_sampling_window,
+            logger=self.logger,
+        )
+
 
 @dataclass
 class CacheActivationsRunnerConfig:
@@ -522,7 +407,6 @@ class CacheActivationsRunnerConfig:
         model_name (str): The name of the model to use.
         model_batch_size (int): How many prompts are in the batch of the language model when generating activations.
         hook_name (str): The name of the hook to use.
-        hook_layer (int): The layer of the final hook. Currently only support a single hook, so this should be the same as hook_name.
         d_in (int): Dimension of the model.
         total_training_tokens (int): Total number of tokens to process.
         context_size (int): Context size to process. Can be left as -1 if the dataset is tokenized.
@@ -552,7 +436,6 @@ class CacheActivationsRunnerConfig:
     model_name: str
     model_batch_size: int
     hook_name: str
-    hook_layer: int
     d_in: int
     training_tokens: int
 
@@ -680,6 +563,10 @@ def _validate_seqpos(seqpos: tuple[int | None, ...], context_size: int) -> None:
 
 @dataclass
 class PretokenizeRunnerConfig:
+    """
+    Configuration class for pretokenizing a dataset.
+    """
+
     tokenizer_name: str = "gpt2"
     dataset_path: str = ""
     dataset_name: str | None = None
@@ -708,3 +595,28 @@ class PretokenizeRunnerConfig:
     hf_num_shards: int = 64
     hf_revision: str = "main"
     hf_is_private_repo: bool = False
+
+
+@dataclass
+class SAETrainerConfig:
+    n_checkpoints: int
+    checkpoint_path: str
+    total_training_samples: int
+    device: str
+    autocast: bool
+    lr: float
+    lr_end: float | None
+    lr_scheduler_name: str
+    lr_warm_up_steps: int
+    adam_beta1: float
+    adam_beta2: float
+    lr_decay_steps: int
+    n_restart_cycles: int
+    train_batch_size_samples: int
+    dead_feature_window: int
+    feature_sampling_window: int
+    logger: LoggingConfig
+
+    @property
+    def total_training_steps(self) -> int:
+        return self.total_training_samples // self.train_batch_size_samples

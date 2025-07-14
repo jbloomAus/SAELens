@@ -7,13 +7,20 @@ import numpy as np
 import pytest
 import torch
 
-from sae_lens.sae import SAE
+from sae_lens.saes.sae import SAE
+from sae_lens.saes.standard_sae import StandardSAEConfig
 from tests.helpers import TINYSTORIES_MODEL, load_model_cached
 
 torch.set_grad_enabled(True)
 
 # sparsify's triton implementation breaks in CI, so just disable it
 os.environ["SPARSIFY_DISABLE_TRITON"] = "1"
+
+
+@pytest.fixture(autouse=True)
+def set_grad_enabled():
+    # somehow grad is getting disabled before some tests
+    torch.set_grad_enabled(True)
 
 
 @pytest.fixture(autouse=True)
@@ -52,9 +59,9 @@ def cleanup_tmp_path(tmp_path: Path):
 
 
 @pytest.fixture
-def gpt2_res_jb_l4_sae() -> SAE:
+def gpt2_res_jb_l4_sae() -> SAE[StandardSAEConfig]:
     return SAE.from_pretrained(
         release="gpt2-small-res-jb",
         sae_id="blocks.4.hook_resid_pre",
         device="cpu",
-    )[0]
+    )

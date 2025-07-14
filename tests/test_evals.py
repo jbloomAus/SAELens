@@ -2,6 +2,7 @@ import argparse
 import json
 import math
 from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -17,16 +18,24 @@ from sae_lens.evals import (
     get_eval_everything_config,
     get_saes_from_regex,
     get_sparsity_and_variance_metrics,
+    process_args,
     process_results,
     run_evals,
+    run_evals_cli,
     run_evaluations,
 )
 from sae_lens.load_model import load_model
-from sae_lens.sae import SAE
-from sae_lens.toolkit.pretrained_saes_directory import PretrainedSAELookup
+from sae_lens.loading.pretrained_saes_directory import PretrainedSAELookup
+from sae_lens.saes.sae import SAE, TrainingSAE
+from sae_lens.saes.standard_sae import StandardSAE, StandardTrainingSAE
+from sae_lens.training.activation_scaler import ActivationScaler
 from sae_lens.training.activations_store import ActivationsStore
-from sae_lens.training.training_sae import TrainingSAE
-from tests.helpers import TINYSTORIES_MODEL, build_sae_cfg, load_model_cached
+from tests.helpers import (
+    NEEL_NANDA_C4_10K_DATASET,
+    TINYSTORIES_MODEL,
+    build_runner_cfg,
+    load_model_cached,
+)
 
 TRAINER_EVAL_CONFIG = EvalConfig(
     n_eval_reconstruction_batches=10,
@@ -59,51 +68,36 @@ def _replace_nan(list: list[float]) -> list[float]:
             "model_name": "tiny-stories-1M",
             "dataset_path": "roneneldan/TinyStories",
             "hook_name": "blocks.1.hook_resid_pre",
-            "hook_layer": 1,
             "d_in": 64,
-        },
-        {
-            "model_name": "tiny-stories-1M",
-            "dataset_path": "roneneldan/TinyStories",
-            "hook_name": "blocks.1.hook_resid_pre",
-            "hook_layer": 1,
-            "d_in": 64,
-            "normalize_sae_decoder": False,
-            "scale_sparsity_penalty_by_decoder_norm": True,
         },
         {
             "model_name": "tiny-stories-1M",
             "dataset_path": "apollo-research/roneneldan-TinyStories-tokenizer-gpt2",
             "hook_name": "blocks.1.hook_resid_pre",
-            "hook_layer": 1,
             "d_in": 64,
         },
         {
             "model_name": "tiny-stories-1M",
             "dataset_path": "roneneldan/TinyStories",
             "hook_name": "blocks.1.attn.hook_z",
-            "hook_layer": 1,
             "d_in": 16 * 4,
         },
         {
             "model_name": "tiny-stories-1M",
             "dataset_path": "roneneldan/TinyStories",
             "hook_name": "blocks.1.attn.hook_q",
-            "hook_layer": 1,
             "d_in": 16 * 4,
         },
         {
             "model_name": "tiny-stories-1M",
             "dataset_path": "roneneldan/TinyStories",
             "hook_name": "blocks.1.attn.hook_q",
-            "hook_layer": 1,
             "d_in": 4,
             "hook_head_index": 2,
         },
     ],
     ids=[
         "tiny-stories-1M-resid-pre",
-        "tiny-stories-1M-resid-pre-L1-W-dec-Norm",
         "tiny-stories-1M-resid-pre-pretokenized",
         "tiny-stories-1M-hook-z",
         "tiny-stories-1M-hook-q",
@@ -115,7 +109,7 @@ def cfg(request: pytest.FixtureRequest):
     Pytest fixture to create a mock instance of LanguageModelSAERunnerConfig.
     """
     params = request.param
-    return build_sae_cfg(**params)
+    return build_runner_cfg(**params)
 
 
 @pytest.fixture
@@ -124,19 +118,19 @@ def model():
 
 
 @pytest.fixture
-def activation_store(model: HookedTransformer, cfg: LanguageModelSAERunnerConfig):
+def activation_store(model: HookedTransformer, cfg: LanguageModelSAERunnerConfig[Any]):
     return ActivationsStore.from_config(
         model, cfg, override_dataset=Dataset.from_list([{"text": "hello world"}] * 2000)
     )
 
 
 @pytest.fixture
-def base_sae(cfg: LanguageModelSAERunnerConfig):
-    return SAE.from_dict(cfg.get_base_sae_cfg_dict())
+def base_sae(training_sae: TrainingSAE[Any]):  # type: ignore
+    return SAE.from_dict(training_sae.to_inference_config_dict())
 
 
 @pytest.fixture
-def training_sae(cfg: LanguageModelSAERunnerConfig):
+def training_sae(cfg: LanguageModelSAERunnerConfig[Any]):  # type: ignore
     return TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
 
 
@@ -159,13 +153,14 @@ all_featurewise_keys_expected = [
 
 
 def test_run_evals_base_sae(
-    base_sae: SAE,
+    base_sae: SAE[Any],
     activation_store: ActivationsStore,
     model: HookedTransformer,
 ):
     eval_metrics, _ = run_evals(
         sae=base_sae,
         activation_store=activation_store,
+        activation_scaler=ActivationScaler(),
         model=model,
         eval_config=get_eval_everything_config(),
     )
@@ -175,13 +170,14 @@ def test_run_evals_base_sae(
 
 
 def test_run_evals_training_sae(
-    training_sae: TrainingSAE,
+    training_sae: TrainingSAE[Any],
     activation_store: ActivationsStore,
     model: HookedTransformer,
 ):
     eval_metrics, feature_metrics = run_evals(
         sae=training_sae,
         activation_store=activation_store,
+        activation_scaler=ActivationScaler(),
         model=model,
         eval_config=get_eval_everything_config(),
     )
@@ -192,13 +188,14 @@ def test_run_evals_training_sae(
 
 
 def test_run_evals_training_sae_ignore_bos(
-    training_sae: TrainingSAE,
+    training_sae: TrainingSAE[Any],
     activation_store: ActivationsStore,
     model: HookedTransformer,
 ):
     eval_metrics, _ = run_evals(
         sae=training_sae,
         activation_store=activation_store,
+        activation_scaler=ActivationScaler(),
         model=model,
         eval_config=get_eval_everything_config(),
         ignore_tokens={
@@ -213,7 +210,7 @@ def test_run_evals_training_sae_ignore_bos(
 
 
 def test_training_eval_config(
-    base_sae: SAE,
+    base_sae: SAE[Any],
     activation_store: ActivationsStore,
     model: HookedTransformer,
 ):
@@ -226,6 +223,7 @@ def test_training_eval_config(
     eval_metrics, _ = run_evals(
         sae=base_sae,
         activation_store=activation_store,
+        activation_scaler=ActivationScaler(),
         model=model,
         eval_config=eval_config,
     )
@@ -233,7 +231,7 @@ def test_training_eval_config(
 
 
 def test_training_eval_config_ignore_control_tokens(
-    base_sae: SAE,
+    base_sae: SAE[Any],
     activation_store: ActivationsStore,
     model: HookedTransformer,
 ):
@@ -246,6 +244,7 @@ def test_training_eval_config_ignore_control_tokens(
     eval_metrics, _ = run_evals(
         sae=base_sae,
         activation_store=activation_store,
+        activation_scaler=ActivationScaler(),
         model=model,
         eval_config=eval_config,
         ignore_tokens={
@@ -258,7 +257,7 @@ def test_training_eval_config_ignore_control_tokens(
 
 
 def test_run_empty_evals(
-    base_sae: SAE,
+    base_sae: SAE[Any],
     activation_store: ActivationsStore,
     model: HookedTransformer,
 ):
@@ -275,6 +274,7 @@ def test_run_empty_evals(
     eval_metrics, feature_metrics = run_evals(
         sae=base_sae,
         activation_store=activation_store,
+        activation_scaler=ActivationScaler(),
         model=model,
         eval_config=empty_config,
     )
@@ -364,7 +364,7 @@ def test_process_results(tmp_path: Path):
 
 
 def test_get_downstream_reconstruction_metrics_with_hf_model_gives_same_results_as_tlens_model(
-    gpt2_res_jb_l4_sae: SAE, example_dataset: Dataset
+    gpt2_res_jb_l4_sae: SAE[Any], example_dataset: Dataset
 ):
     hf_model = load_model(
         model_class_name="AutoModelForCausalLM",
@@ -373,8 +373,8 @@ def test_get_downstream_reconstruction_metrics_with_hf_model_gives_same_results_
     )
     tlens_model = HookedTransformer.from_pretrained_no_processing("gpt2", device="cpu")
 
-    cfg = build_sae_cfg(hook_name="transformer.h.3")
-    gpt2_res_jb_l4_sae.cfg.hook_name = "transformer.h.3"
+    cfg = build_runner_cfg(hook_name="transformer.h.3")
+    gpt2_res_jb_l4_sae.cfg.metadata.hook_name = "transformer.h.3"
     hf_store = ActivationsStore.from_config(
         hf_model, cfg, override_dataset=example_dataset
     )
@@ -382,14 +382,15 @@ def test_get_downstream_reconstruction_metrics_with_hf_model_gives_same_results_
         sae=gpt2_res_jb_l4_sae,
         model=hf_model,
         activation_store=hf_store,
+        activation_scaler=ActivationScaler(),
         compute_kl=True,
         compute_ce_loss=True,
         n_batches=1,
         eval_batch_size_prompts=4,
     )
 
-    cfg = build_sae_cfg(hook_name="blocks.4.hook_resid_pre")
-    gpt2_res_jb_l4_sae.cfg.hook_name = "blocks.4.hook_resid_pre"
+    cfg = build_runner_cfg(hook_name="blocks.4.hook_resid_pre")
+    gpt2_res_jb_l4_sae.cfg.metadata.hook_name = "blocks.4.hook_resid_pre"
     tlens_store = ActivationsStore.from_config(
         tlens_model, cfg, override_dataset=example_dataset
     )
@@ -397,6 +398,7 @@ def test_get_downstream_reconstruction_metrics_with_hf_model_gives_same_results_
         sae=gpt2_res_jb_l4_sae,
         model=tlens_model,
         activation_store=tlens_store,
+        activation_scaler=ActivationScaler(),
         compute_kl=True,
         compute_ce_loss=True,
         n_batches=1,
@@ -408,7 +410,7 @@ def test_get_downstream_reconstruction_metrics_with_hf_model_gives_same_results_
 
 
 def test_get_sparsity_and_variance_metrics_with_hf_model_gives_same_results_as_tlens_model(
-    gpt2_res_jb_l4_sae: SAE,
+    gpt2_res_jb_l4_sae: StandardSAE,
     example_dataset: Dataset,
 ):
     hf_model = load_model(
@@ -418,8 +420,8 @@ def test_get_sparsity_and_variance_metrics_with_hf_model_gives_same_results_as_t
     )
     tlens_model = HookedTransformer.from_pretrained_no_processing("gpt2", device="cpu")
 
-    cfg = build_sae_cfg(hook_name="transformer.h.3")
-    gpt2_res_jb_l4_sae.cfg.hook_name = "transformer.h.3"
+    cfg = build_runner_cfg(hook_name="transformer.h.3")
+    gpt2_res_jb_l4_sae.cfg.metadata.hook_name = "transformer.h.3"
     hf_store = ActivationsStore.from_config(
         hf_model, cfg, override_dataset=example_dataset
     )
@@ -427,6 +429,7 @@ def test_get_sparsity_and_variance_metrics_with_hf_model_gives_same_results_as_t
         sae=gpt2_res_jb_l4_sae,
         model=hf_model,
         activation_store=hf_store,
+        activation_scaler=ActivationScaler(),
         n_batches=1,
         compute_l2_norms=True,
         compute_sparsity_metrics=True,
@@ -436,8 +439,8 @@ def test_get_sparsity_and_variance_metrics_with_hf_model_gives_same_results_as_t
         model_kwargs={},
     )
 
-    cfg = build_sae_cfg(hook_name="blocks.4.hook_resid_pre")
-    gpt2_res_jb_l4_sae.cfg.hook_name = "blocks.4.hook_resid_pre"
+    cfg = build_runner_cfg(hook_name="blocks.4.hook_resid_pre")
+    gpt2_res_jb_l4_sae.cfg.metadata.hook_name = "blocks.4.hook_resid_pre"
     tlens_store = ActivationsStore.from_config(
         tlens_model, cfg, override_dataset=example_dataset
     )
@@ -445,6 +448,7 @@ def test_get_sparsity_and_variance_metrics_with_hf_model_gives_same_results_as_t
         sae=gpt2_res_jb_l4_sae,
         model=tlens_model,
         activation_store=tlens_store,
+        activation_scaler=ActivationScaler(),
         n_batches=1,
         compute_l2_norms=True,
         compute_sparsity_metrics=True,
@@ -547,15 +551,17 @@ def test_get_sparsity_and_variance_metrics_identity_sae_perfect_reconstruction(
     """Test that an identity SAE (d_in = d_sae, W_enc = W_dec = Identity, zero biases) gets perfect variance explained."""
     # Create a special configuration for an identity SAE
     d_in = 64  # Choose a small dimension for test efficiency
-    identity_cfg = build_sae_cfg(
+    identity_cfg = build_runner_cfg(
         d_in=d_in,
         d_sae=2 * d_in,  # 2 x d_in, to do both pos and neg identity matrix
         hook_name="blocks.1.hook_resid_pre",
-        hook_layer=1,
     )
 
     # Create an SAE and manually set weights to identity matrices
-    identity_sae = SAE.from_dict(identity_cfg.get_base_sae_cfg_dict())
+    training_sae = StandardTrainingSAE.from_dict(
+        identity_cfg.get_training_sae_cfg_dict()
+    )
+    identity_sae = StandardSAE.from_dict(training_sae.to_inference_config_dict())
     with torch.no_grad():
         # Set encoder and decoder weights to identity matrices
         identity_sae.W_dec.data = torch.cat([torch.eye(d_in), -1 * torch.eye(d_in)])
@@ -574,6 +580,7 @@ def test_get_sparsity_and_variance_metrics_identity_sae_perfect_reconstruction(
         sae=identity_sae,
         model=model,
         activation_store=activation_store,
+        activation_scaler=ActivationScaler(),
         n_batches=3,
         compute_l2_norms=True,
         compute_sparsity_metrics=True,
@@ -593,3 +600,66 @@ def test_get_sparsity_and_variance_metrics_identity_sae_perfect_reconstruction(
 
     # MSE loss should be very close to 0
     assert metrics["mse"] == pytest.approx(0.0, abs=1e-5)
+
+
+def test_process_args():
+    args = [
+        "gpt2-small-res_scefr-ajt",
+        "blocks.10.*",
+        "--batch_size_prompts",
+        "16",
+        "--n_eval_sparsity_variance_batches",
+        "200",
+        "--n_eval_reconstruction_batches",
+        "20",
+        "--output_dir",
+        "demo_eval_results",
+        "--verbose",
+    ]
+    opts = process_args(args)
+    assert opts.sae_regex_pattern == "gpt2-small-res_scefr-ajt"
+    assert opts.sae_block_pattern == "blocks.10.*"
+    assert opts.batch_size_prompts == 16
+    assert opts.n_eval_sparsity_variance_batches == 200
+    assert opts.n_eval_reconstruction_batches == 20
+    assert opts.output_dir == "demo_eval_results"
+    assert opts.verbose is True
+
+
+def test_run_evals_cli(tmp_path: Path):
+    args = [
+        "gpt2-small-res-jb",
+        "blocks.10.*",
+        "--batch_size_prompts",
+        "1",
+        "--n_eval_sparsity_variance_batches",
+        "2",
+        "--output_dir",
+        str(tmp_path),
+        "--datasets",
+        NEEL_NANDA_C4_10K_DATASET,
+    ]
+    run_evals_cli(args)
+
+    assert (tmp_path / "all_eval_results.json").exists()
+    assert (tmp_path / "all_eval_results.csv").exists()
+    assert (
+        tmp_path
+        / "gpt2-small-res-jb-blocks.10.hook_resid_pre_128_NeelNanda_c4-10k.json"
+    ).exists()
+
+    with open(tmp_path / "all_eval_results.json") as f:
+        eval_results = json.load(f)
+    assert len(eval_results) == 1
+    assert eval_results[0]["unique_id"] == "gpt2-small-res-jb-blocks.10.hook_resid_pre"
+    assert eval_results[0]["eval_cfg"]["context_size"] == 128
+    assert eval_results[0]["eval_cfg"]["dataset"] == NEEL_NANDA_C4_10K_DATASET
+    for metric in [
+        "ce_loss_score",
+        "ce_loss_with_ablation",
+        "ce_loss_with_sae",
+        "ce_loss_without_sae",
+    ]:
+        assert (
+            eval_results[0]["metrics"]["model_performance_preservation"][metric] > 0.1
+        )

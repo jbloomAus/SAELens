@@ -133,3 +133,46 @@ def test_HookedProxyLM_to_tokens_gives_same_output_as_tlens(
     )
 
     assert torch.allclose(tl_tokens, hf_tokens)
+
+
+def test_HookedProxyLM_gives_same_hidden_states_when_stop_at_layer_and_names_filter_are_set(
+    gpt2_proxy_model: HookedProxyLM,
+):
+    tokenizer = AutoTokenizer.from_pretrained("gpt2")
+    input_ids = tokenizer.encode("hi", return_tensors="pt")
+    layers = ["transformer.h.0", "transformer.h.1"]
+
+    # Get initial hook counts for the modules we're interested in
+    initial_hook_counts = {}
+    for layer in layers:
+        module = gpt2_proxy_model.named_modules_dict[layer]
+        initial_hook_counts[layer] = len(module._forward_hooks)
+
+    res_with_stop, cache_with_stop = gpt2_proxy_model.run_with_cache(
+        input_ids,
+        stop_at_layer=3,
+        names_filter=layers,
+    )
+
+    # Verify hooks are removed after first run
+    for layer in layers:
+        module = gpt2_proxy_model.named_modules_dict[layer]
+        assert (
+            len(module._forward_hooks) == initial_hook_counts[layer]
+        ), f"Stop hooks not removed from {layer}"
+
+    res_no_stop, cache_no_stop = gpt2_proxy_model.run_with_cache(
+        input_ids, names_filter=layers
+    )
+
+    # Verify hooks are still clean after second run
+    for layer in layers:
+        module = gpt2_proxy_model.named_modules_dict[layer]
+        assert (
+            len(module._forward_hooks) == initial_hook_counts[layer]
+        ), f"Stop hooks not removed from {layer}"
+
+    assert res_with_stop is None
+    assert res_no_stop is not None
+    for layer in layers:
+        assert torch.allclose(cache_with_stop[layer], cache_no_stop[layer])
