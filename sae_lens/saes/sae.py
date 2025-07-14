@@ -732,6 +732,64 @@ class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
     ) -> type[SAEConfig]:
         return SAEConfig
 
+    ### Methods to support deprecated usage of SAE.from_pretrained() ###
+
+    def __getitem__(self, index: int) -> Any:
+        """
+        Support indexing for backward compatibility with tuple unpacking.
+        DEPRECATED: SAE.from_pretrained() no longer returns a tuple.
+        Use SAE.from_pretrained_with_cfg_and_sparsity() instead.
+        """
+        warnings.warn(
+            "Indexing SAE objects is deprecated. SAE.from_pretrained() now returns "
+            "only the SAE object. Use SAE.from_pretrained_with_cfg_and_sparsity() "
+            "to get the config dict and sparsity as well.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
+        if index == 0:
+            return self
+        if index == 1:
+            return self.cfg.to_dict()
+        if index == 2:
+            return None
+        raise IndexError(f"SAE tuple index {index} out of range")
+
+    def __iter__(self):
+        """
+        Support unpacking for backward compatibility with tuple unpacking.
+        DEPRECATED: SAE.from_pretrained() no longer returns a tuple.
+        Use SAE.from_pretrained_with_cfg_and_sparsity() instead.
+        """
+        warnings.warn(
+            "Unpacking SAE objects is deprecated. SAE.from_pretrained() now returns "
+            "only the SAE object. Use SAE.from_pretrained_with_cfg_and_sparsity() "
+            "to get the config dict and sparsity as well.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
+        yield self
+        yield self.cfg.to_dict()
+        yield None
+
+    def __len__(self) -> int:
+        """
+        Support len() for backward compatibility with tuple unpacking.
+        DEPRECATED: SAE.from_pretrained() no longer returns a tuple.
+        Use SAE.from_pretrained_with_cfg_and_sparsity() instead.
+        """
+        warnings.warn(
+            "Getting length of SAE objects is deprecated. SAE.from_pretrained() now returns "
+            "only the SAE object. Use SAE.from_pretrained_with_cfg_and_sparsity() "
+            "to get the config dict and sparsity as well.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
+        return 3
+
 
 @dataclass(kw_only=True)
 class TrainingSAEConfig(SAEConfig, ABC):
