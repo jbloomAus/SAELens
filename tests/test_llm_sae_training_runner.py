@@ -80,6 +80,7 @@ def test_LanguageModelSAETrainingRunner_runs_and_saves_all_architectures(
     assert loaded_sae.cfg.apply_b_dec_to_input == sae.cfg.apply_b_dec_to_input
     assert loaded_sae.cfg.metadata.__dict__ == original_metadata_dict
 
+
 def test_parse_cfg_args_raises_system_exit_on_empty_args():
     with pytest.raises(SystemExit):
         _parse_cfg_args([])
