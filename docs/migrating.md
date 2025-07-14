@@ -14,7 +14,9 @@ We apologize for any inconvenience this causes! These changes should put SAELens
 
 We expect that most users will use SAELens to load SAEs rather than training SAEs, so we expect this section to be the most important for most users. Previously, `SAE.from_pretrained()` returned a tuple of SAE, a cfg dict, and a feature sparsity tensor. Now, `SAE.from_pretrained()` returns just the SAE to be consistent with how `from_pretrained()` functions in [Huggingface Transformers](https://huggingface.co/docs/transformers/en/index) and [TransformerLens](https://transformerlensorg.github.io/TransformerLens/).
 
-The old functionality still exists via `SAE.load_from_pretrained_with_cfg_and_sparsity()` - although we expect this will not be needed by most users.
+Old code of the form `sae, cfg_dict, sparsity = SAE.from_pretrained(...)` should still continue to work, but will give a deprecation warning.
+
+The old functionality also exists via `SAE.load_from_pretrained_with_cfg_and_sparsity()` - although we expect this will not be needed by most users.
 
 ## SAE Training config changes
 
