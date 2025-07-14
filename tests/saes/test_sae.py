@@ -5,7 +5,7 @@ import pytest
 
 from sae_lens import __version__
 from sae_lens.registry import get_sae_class, get_sae_training_class
-from sae_lens.saes.sae import SAEConfig, SAEMetadata, TrainingSAEConfig
+from sae_lens.saes.sae import SAE, SAEConfig, SAEMetadata, TrainingSAEConfig
 from tests.helpers import (
     ALL_ARCHITECTURES,
     build_sae_training_cfg_for_arch,
@@ -181,3 +181,28 @@ def test_SAEMetadata_dynamic_attribute_setting():
     assert metadata.another_field == 123
     assert "new_field" in metadata
     assert "another_field" in metadata
+
+
+def test_SAE_from_pretrained_deprecated_usage_as_tuple():
+    sae = SAE.from_pretrained("gpt2-small-hook-z-kk", "blocks.2.hook_z", device="cpu")
+
+    # Test tuple unpacking with deprecation warning
+    with pytest.warns(DeprecationWarning, match="Unpacking SAE objects is deprecated"):
+        tup_sae, tup_cfg_dict, tup_sparsity = sae
+    assert tup_sae is sae
+    assert tup_cfg_dict == sae.cfg.to_dict()
+    assert tup_sparsity is None
+
+    # Test indexing with deprecation warnings
+    with pytest.warns(DeprecationWarning, match="Indexing SAE objects is deprecated"):
+        assert sae[0] is sae
+    with pytest.warns(DeprecationWarning, match="Indexing SAE objects is deprecated"):
+        assert sae[1] == sae.cfg.to_dict()
+    with pytest.warns(DeprecationWarning, match="Indexing SAE objects is deprecated"):
+        assert sae[2] is None
+
+    # Test len with deprecation warning
+    with pytest.warns(
+        DeprecationWarning, match="Getting length of SAE objects is deprecated"
+    ):
+        assert len(sae) == 3
