@@ -92,6 +92,9 @@ jobs:
     concurrency: release
     environment:
       name: pypi
+    outputs:
+      released: ${{ steps.release.outputs.released }}
+      tag: ${{ steps.release.outputs.tag }}
 
     steps:
       - uses: actions/checkout@v4

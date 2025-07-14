@@ -177,6 +177,7 @@ class LanguageModelSAERunnerConfig:
     decoder_orthogonal_init: bool = False
     decoder_heuristic_init: bool = False
     init_encoder_as_decoder_transpose: bool = False
+    decoder_heuristic_init_norm: float = 0.1
 
     # Activation Store Parameters
     n_batches_in_buffer: int = 20

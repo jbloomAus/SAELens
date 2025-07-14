@@ -243,6 +243,7 @@ def test_topk_sae_training_equivalence():
         decoder_heuristic_init=False,
         init_encoder_as_decoder_transpose=False,
         scale_sparsity_penalty_by_decoder_norm=False,
+        decoder_heuristic_init_norm=0.1,
     )
 
     old_training_sae = OldTrainingSAE(old_training_cfg)

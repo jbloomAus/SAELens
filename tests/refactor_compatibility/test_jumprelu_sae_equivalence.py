@@ -293,6 +293,7 @@ def make_old_jumprelu_training_sae(
         decoder_heuristic_init=False,
         init_encoder_as_decoder_transpose=True,
         scale_sparsity_penalty_by_decoder_norm=True,
+        decoder_heuristic_init_norm=0.1,
     )
     return OldTrainingSAE(old_training_cfg)  # Use OldTrainingSAE
 

@@ -1,3 +1,8 @@
+<!-- prettier-ignore-start -->
+!!! tip "Pre-Release Available"
+    SAELens 6.0.0 pre-release is available with exciting new features. [View documentation →](https://jbloomaus.github.io/SAELens/pre-release/)
+<!-- prettier-ignore-end -->
+
 <img width="1308" alt="Screenshot 2024-03-21 at 3 08 28 pm" src="https://github.com/jbloomAus/mats_sae_training/assets/69127271/209012ec-a779-4036-b4be-7b7739ea87f6">
 
 # SAELens
@@ -54,7 +59,7 @@ sae = SAE.load_from_disk("/path/to/your/sae", device="cuda")
 
 ### Importing SAEs from other libraries
 
-You can import an SAE created with another library by writing a custom `PretrainedSaeHuggingfaceLoader` or `PretrainedSaeDiskLoader` for use with `SAE.from_pretrained()` or `SAE.load_from_disk()`, respectively. See the [pretrained_sae_loaders.py](https://github.com/jbloomAus/SAELens/blob/main/sae_lens/loading/pretrained_sae_loaders.py) file for more details, or ask on the [Open Source Mechanistic Interpretability Slack](https://join.slack.com/t/opensourcemechanistic/shared_invite/zt-2k0id7mv8-CsIgPLmmHd03RPJmLUcapw). If you write a good custom loader for another library, please consider contributing it back to SAELens!
+You can import an SAE created with another library by writing a custom `PretrainedSaeHuggingfaceLoader` or `PretrainedSaeDiskLoader` for use with `SAE.from_pretrained()` or `SAE.load_from_disk()`, respectively. See the [pretrained_sae_loaders.py](https://github.com/jbloomAus/SAELens/blob/main/sae_lens/toolkit/pretrained_sae_loaders.py) file for more details, or ask on the [Open Source Mechanistic Interpretability Slack](https://join.slack.com/t/opensourcemechanistic/shared_invite/zt-375zalm04-GFd5tdBU1yLKlu_T_JSqZQ). If you write a good custom loader for another library, please consider contributing it back to SAELens!
 
 ### Background and further Readings
 

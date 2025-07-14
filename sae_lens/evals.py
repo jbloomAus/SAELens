@@ -769,17 +769,6 @@ def nested_dict() -> defaultdict[Any, Any]:
     return defaultdict(nested_dict)
 
 
-def dict_to_nested(flat_dict: dict[str, Any]) -> defaultdict[Any, Any]:
-    nested = nested_dict()
-    for key, value in flat_dict.items():
-        parts = key.split("/")
-        d = nested
-        for part in parts[:-1]:
-            d = d[part]
-        d[parts[-1]] = value
-    return nested
-
-
 def multiple_evals(
     sae_regex_pattern: str,
     sae_block_pattern: str,

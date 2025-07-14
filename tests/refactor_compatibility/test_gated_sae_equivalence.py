@@ -274,6 +274,7 @@ def make_old_gated_training_sae(d_in: int = 16, d_sae: int = 8) -> OldTrainingSA
         jumprelu_init_threshold=0.0,
         jumprelu_bandwidth=1.0,
         decoder_heuristic_init=False,
+        decoder_heuristic_init_norm=0.1,
         init_encoder_as_decoder_transpose=False,
         scale_sparsity_penalty_by_decoder_norm=False,
     )

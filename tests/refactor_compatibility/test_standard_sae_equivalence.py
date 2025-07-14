@@ -407,6 +407,7 @@ def test_standard_sae_training_hook_z_equivalence(hook_name: str):
         decoder_heuristic_init=False,
         init_encoder_as_decoder_transpose=True,
         scale_sparsity_penalty_by_decoder_norm=True,
+        decoder_heuristic_init_norm=0.1,
     )
 
     old_training_sae = OldTrainingSAE(old_training_cfg)
@@ -675,6 +676,7 @@ def make_old_training_sae(
         decoder_heuristic_init=False,
         init_encoder_as_decoder_transpose=False,
         scale_sparsity_penalty_by_decoder_norm=True,
+        decoder_heuristic_init_norm=0.1,
     )
     return OldTrainingSAE(old_training_cfg)
 
