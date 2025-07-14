@@ -214,10 +214,12 @@ class SAETrainer(Generic[T_TRAINING_SAE, T_TRAINING_SAE_CONFIG]):
         checkpoint_path = Path(self.cfg.checkpoint_path) / checkpoint_name
         checkpoint_path.mkdir(exist_ok=True, parents=True)
 
-        if save_inference_model:
-            weights_path, cfg_path = self.sae.save_inference_model(str(checkpoint_path))
-        else:
-            weights_path, cfg_path = self.sae.save_model(str(checkpoint_path))
+        save_fn = (
+            self.sae.save_inference_model
+            if save_inference_model
+            else self.sae.save_model
+        )
+        weights_path, cfg_path = save_fn(str(checkpoint_path))
 
         sparsity_path = checkpoint_path / SPARSITY_FILENAME
         save_file({"sparsity": self.log_feature_sparsity}, sparsity_path)
