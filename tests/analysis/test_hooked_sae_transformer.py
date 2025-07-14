@@ -656,3 +656,18 @@ def test_run_with_cache_with_saes_use_error_term_false(
         cache_with_sae[hooked_sae.cfg.metadata.hook_name + ".hook_sae_output"],
         atol=1e-5,
     )
+
+
+def test_HookedSAETransformer_works_with_hook_z_saes():
+    sae = SAE.from_pretrained("gpt2-small-hook-z-kk", "blocks.2.hook_z", device="cpu")
+    model = HookedSAETransformer.from_pretrained("gpt2", device="cpu")
+    logits_sans_sae = model(prompt)
+    logits, cache = model.run_with_cache_with_saes(
+        prompt, saes=[sae], use_error_term=False
+    )
+    assert not torch.allclose(logits, logits_sans_sae, atol=1e-4)
+    assert cache[sae.cfg.metadata.hook_name + ".hook_sae_output"] is not None
+    expected_shape = (1, 4, 12, 64)  # due to hook_z reshaping
+    assert (
+        cache[sae.cfg.metadata.hook_name + ".hook_sae_output"].shape == expected_shape
+    )

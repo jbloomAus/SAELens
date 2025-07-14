@@ -51,6 +51,7 @@ def test_load_sae_config_from_huggingface_connor_rob_hook_z():
         "device": "cpu",
         "apply_b_dec_to_input": True,
         "normalize_activations": "none",
+        "reshape_activations": "hook_z",
         "metadata": {
             "model_name": "gpt2-small",
             "hook_name": "blocks.0.attn.hook_z",

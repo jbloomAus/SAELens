@@ -285,6 +285,7 @@ def get_connor_rob_hook_z_config_from_hf(
         "context_size": 128,
         "normalize_activations": "none",
         "dataset_trust_remote_code": True,
+        "reshape_activations": "hook_z",
         **(cfg_overrides or {}),
     }
 
