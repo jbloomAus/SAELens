@@ -223,6 +223,10 @@ def handle_pre_6_0_config(cfg_dict: dict[str, Any]) -> dict[str, Any]:
     new_cfg.setdefault("activation_fn", new_cfg.get("activation_fn", "relu"))
     new_cfg.setdefault("architecture", "standard")
     new_cfg.setdefault("neuronpedia_id", None)
+    new_cfg.setdefault(
+        "reshape_activations",
+        "hook_z" if "hook_z" in new_cfg.get("hook_name", "") else "none",
+    )
 
     if "normalize_activations" in new_cfg and isinstance(
         new_cfg["normalize_activations"], bool
