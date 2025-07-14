@@ -26,12 +26,12 @@ pip install --pre sae-lens
 
 ### Loading Sparse Autoencoders from Huggingface
 
-To load a pretrained sparse autoencoder, you can use `SAE.from_pretrained()` as below. Note that we return the _original cfg dict_ from the huggingface repo so that it's easy to debug older configs that are being handled when we import an SAE. We also return a sparsity tensor if it is present in the repo. For an example repo structure, see [here](https://huggingface.co/jbloom/Gemma-2b-Residual-Stream-SAEs).
+To load a pretrained sparse autoencoder, you can use `SAE.from_pretrained()` as below:
 
 ```python
 from sae_lens import SAE
 
-sae, cfg_dict, sparsity = SAE.from_pretrained(
+sae = SAE.from_pretrained(
     release = "gpt2-small-res-jb", # see other options in sae_lens/pretrained_saes.yaml
     sae_id = "blocks.8.hook_resid_pre", # won't always be a hook point
     device = "cuda"

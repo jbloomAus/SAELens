@@ -26,6 +26,22 @@ from sae_lens.loading.pretrained_saes_directory import (
 from sae_lens.registry import get_sae_class
 from sae_lens.util import filter_valid_dataclass_fields
 
+LLM_METADATA_KEYS = {
+    "model_name",
+    "hook_name",
+    "model_class_name",
+    "hook_head_index",
+    "model_from_pretrained_kwargs",
+    "prepend_bos",
+    "exclude_special_tokens",
+    "neuronpedia_id",
+    "context_size",
+    "seqpos_slice",
+    "dataset_path",
+    "sae_lens_version",
+    "sae_lens_training_version",
+}
+
 
 # loaders take in a release, sae_id, device, and whether to force download, and returns a tuple of config, state_dict, and log sparsity
 class PretrainedSaeHuggingfaceLoader(Protocol):
@@ -207,6 +223,10 @@ def handle_pre_6_0_config(cfg_dict: dict[str, Any]) -> dict[str, Any]:
     new_cfg.setdefault("activation_fn", new_cfg.get("activation_fn", "relu"))
     new_cfg.setdefault("architecture", "standard")
     new_cfg.setdefault("neuronpedia_id", None)
+    new_cfg.setdefault(
+        "reshape_activations",
+        "hook_z" if "hook_z" in new_cfg.get("hook_name", "") else "none",
+    )
 
     if "normalize_activations" in new_cfg and isinstance(
         new_cfg["normalize_activations"], bool
@@ -231,11 +251,9 @@ def handle_pre_6_0_config(cfg_dict: dict[str, Any]) -> dict[str, Any]:
     if architecture == "topk":
         sae_cfg_dict["k"] = new_cfg["activation_fn_kwargs"]["k"]
 
-    # import here to avoid circular import
-    from sae_lens.saes.sae import SAEMetadata
-
-    meta_dict = filter_valid_dataclass_fields(new_cfg, SAEMetadata)
-    sae_cfg_dict["metadata"] = meta_dict
+    sae_cfg_dict["metadata"] = {
+        k: v for k, v in new_cfg.items() if k in LLM_METADATA_KEYS
+    }
     sae_cfg_dict["architecture"] = architecture
     return sae_cfg_dict
 
@@ -271,6 +289,7 @@ def get_connor_rob_hook_z_config_from_hf(
         "context_size": 128,
         "normalize_activations": "none",
         "dataset_trust_remote_code": True,
+        "reshape_activations": "hook_z",
         **(cfg_overrides or {}),
     }
 

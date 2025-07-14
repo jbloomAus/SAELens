@@ -64,4 +64,4 @@ def gpt2_res_jb_l4_sae() -> SAE[StandardSAEConfig]:
         release="gpt2-small-res-jb",
         sae_id="blocks.4.hook_resid_pre",
         device="cpu",
-    )[0]
+    )

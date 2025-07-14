@@ -60,7 +60,7 @@ def test_loading_pretrained_saes(
     else:
         device = "cpu"
 
-    sae, _, _ = SAE.from_pretrained(release, sae_name, device=device)
+    sae = SAE.from_pretrained(release, sae_name, device=device)
     assert isinstance(sae, SAE)
 
 
@@ -80,7 +80,7 @@ def test_loading_pretrained_saes_open_neuronpedia(
     else:
         device = "cpu"
 
-    sae, _, _ = SAE.from_pretrained(release, sae_name, device=device)
+    sae = SAE.from_pretrained(release, sae_name, device=device)
     assert isinstance(sae, SAE)
 
     open_neuronpedia_feature_dashboard(sae, 0)
@@ -102,18 +102,18 @@ def test_loading_pretrained_saes_do_forward_pass(
     else:
         device = "cpu"
 
-    sae, _, _ = SAE.from_pretrained(release, sae_name, device=device)
+    sae = SAE.from_pretrained(release, sae_name, device=device)
     assert isinstance(sae, SAE)
 
     # from transformer_lens import HookedTransformer
     # model = HookedTransformer.from_pretrained("gemma-2-9b")
-    # sae_in = model.run_with_cache("test test test")[1][sae.cfg.hook_name]
+    # sae_in = model.run_with_cache("test test test")[1][sae.cfg.metadata.hook_name]
 
-    if "hook_z" in sae.cfg.hook_name:
+    if "hook_z" in sae.cfg.metadata.hook_name:
         # check that reshaping works as intended
         from transformer_lens.loading_from_pretrained import get_pretrained_model_config
 
-        model_cfg = get_pretrained_model_config(sae.cfg.model_name)
+        model_cfg = get_pretrained_model_config(sae.cfg.metadata.model_name)
         sae_in = torch.randn(1, 4, model_cfg.n_heads, model_cfg.d_head).to(device)
         sae_out = sae(sae_in)
         assert sae_out.shape == sae_in.shape
@@ -143,10 +143,10 @@ def test_eval_all_loadable_saes(
     else:
         device = "cpu"
 
-    sae, _, _ = SAE.from_pretrained(release, sae_name, device=device)
+    sae = SAE.from_pretrained(release, sae_name, device=device)
     sae.fold_W_dec_norm()
 
-    model = load_model_cached(sae.cfg.model_name)
+    model = load_model_cached(sae.cfg.metadata.model_name)
     model.to(device)
 
     activation_store = ActivationsStore.from_sae(

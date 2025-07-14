@@ -292,7 +292,10 @@ def test_final_checkpoint_saves_runner_cfg(
     for checkpoint_cfg_path in checkpoint_cfg_paths:
         with open(checkpoint_cfg_path) as f:
             checkpoint_cfg = json.load(f)
-        assert checkpoint_cfg == cfg.get_training_sae_cfg_dict()
+        if "final" in checkpoint_cfg_path.parent.name:
+            assert checkpoint_cfg == cfg.sae.get_base_sae_cfg_dict()
+        else:
+            assert checkpoint_cfg == cfg.sae.to_dict()
 
     for checkpoint_runner_cfg_path in checkpoint_runner_cfg_paths:
         with open(checkpoint_runner_cfg_path) as f:

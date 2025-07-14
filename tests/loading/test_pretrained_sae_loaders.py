@@ -21,6 +21,7 @@ def test_load_sae_config_from_huggingface():
         "d_sae": 24576,
         "apply_b_dec_to_input": True,
         "normalize_activations": "none",
+        "reshape_activations": "none",
         "metadata": {
             "model_name": "gpt2-small",
             "hook_name": "blocks.0.hook_resid_pre",
@@ -51,6 +52,7 @@ def test_load_sae_config_from_huggingface_connor_rob_hook_z():
         "device": "cpu",
         "apply_b_dec_to_input": True,
         "normalize_activations": "none",
+        "reshape_activations": "hook_z",
         "metadata": {
             "model_name": "gpt2-small",
             "hook_name": "blocks.0.attn.hook_z",
@@ -79,10 +81,41 @@ def test_load_sae_config_from_huggingface_gemma_2():
         "dtype": "float32",
         "apply_b_dec_to_input": False,
         "normalize_activations": "none",
+        "reshape_activations": "none",
         "device": "cpu",
         "metadata": {
             "model_name": "gemma-2-2b",
             "hook_name": "hook_embed",
+            "hook_head_index": None,
+            "prepend_bos": True,
+            "dataset_path": "monology/pile-uncopyrighted",
+            "context_size": 1024,
+            "neuronpedia_id": None,
+            "sae_lens_training_version": None,
+        },
+        "architecture": "jumprelu",
+    }
+
+    assert cfg_dict == expected_cfg_dict
+
+
+def test_load_sae_config_from_huggingface_gemma_2_hook_z_saes():
+    cfg_dict = load_sae_config_from_huggingface(
+        "gemma-scope-2b-pt-att",
+        sae_id="layer_0/width_16k/average_l0_104",
+    )
+
+    expected_cfg_dict = {
+        "d_in": 2048,
+        "d_sae": 16384,
+        "dtype": "float32",
+        "apply_b_dec_to_input": False,
+        "normalize_activations": "none",
+        "reshape_activations": "hook_z",
+        "device": "cpu",
+        "metadata": {
+            "model_name": "gemma-2-2b",
+            "hook_name": "blocks.0.attn.hook_z",
             "hook_head_index": None,
             "prepend_bos": True,
             "dataset_path": "monology/pile-uncopyrighted",
@@ -109,6 +142,7 @@ def test_load_sae_config_from_huggingface_dictionary_learning_1():
         "device": "cpu",
         "apply_b_dec_to_input": True,
         "normalize_activations": "none",
+        "reshape_activations": "none",
         "metadata": {
             "model_name": "gemma-2-2b",
             "hook_name": "blocks.12.hook_resid_post",
@@ -126,7 +160,7 @@ def test_load_sae_config_from_huggingface_dictionary_learning_1():
 
 
 def test_load_sae_config_from_huggingface_matches_from_pretrained():
-    from_pretrained_cfg_dict = SAE.from_pretrained(
+    from_pretrained_cfg_dict = SAE.from_pretrained_with_cfg_and_sparsity(
         "gpt2-small-res-jb",
         sae_id="blocks.0.hook_resid_pre",
         device="cpu",

@@ -1,5 +1,6 @@
 """Base classes for Sparse Autoencoders (SAEs)."""
 
+import copy
 import json
 import warnings
 from abc import ABC, abstractmethod
@@ -59,23 +60,91 @@ T_SAE = TypeVar("T_SAE", bound="SAE")  # type: ignore
 T_TRAINING_SAE = TypeVar("T_TRAINING_SAE", bound="TrainingSAE")  # type: ignore
 
 
-@dataclass
 class SAEMetadata:
     """Core metadata about how this SAE should be used, if known."""
 
-    model_name: str | None = None
-    hook_name: str | None = None
-    model_class_name: str | None = None
-    hook_head_index: int | None = None
-    model_from_pretrained_kwargs: dict[str, Any] | None = None
-    prepend_bos: bool | None = None
-    exclude_special_tokens: bool | list[int] | None = None
-    neuronpedia_id: str | None = None
-    context_size: int | None = None
-    seqpos_slice: tuple[int | None, ...] | None = None
-    dataset_path: str | None = None
-    sae_lens_version: str = field(default_factory=lambda: __version__)
-    sae_lens_training_version: str = field(default_factory=lambda: __version__)
+    def __init__(self, **kwargs: Any):
+        # Set default version fields with their current behavior
+        self.sae_lens_version = kwargs.pop("sae_lens_version", __version__)
+        self.sae_lens_training_version = kwargs.pop(
+            "sae_lens_training_version", __version__
+        )
+
+        # Set all other attributes dynamically
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+    def __getattr__(self, name: str) -> None:
+        """Return None for any missing attribute (like defaultdict)"""
+        return
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        """Allow setting any attribute"""
+        super().__setattr__(name, value)
+
+    def __getitem__(self, key: str) -> Any:
+        """Allow dictionary-style access: metadata['key'] - returns None for missing keys"""
+        return getattr(self, key)
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        """Allow dictionary-style assignment: metadata['key'] = value"""
+        setattr(self, key, value)
+
+    def __contains__(self, key: str) -> bool:
+        """Allow 'in' operator: 'key' in metadata"""
+        # Only return True if the attribute was explicitly set (not just defaulting to None)
+        return key in self.__dict__
+
+    def get(self, key: str, default: Any = None) -> Any:
+        """Dictionary-style get with default"""
+        value = getattr(self, key)
+        # If the attribute wasn't explicitly set and we got None from __getattr__,
+        # use the provided default instead
+        if key not in self.__dict__ and value is None:
+            return default
+        return value
+
+    def keys(self):
+        """Return all explicitly set attribute names"""
+        return self.__dict__.keys()
+
+    def values(self):
+        """Return all explicitly set attribute values"""
+        return self.__dict__.values()
+
+    def items(self):
+        """Return all explicitly set attribute name-value pairs"""
+        return self.__dict__.items()
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary for serialization"""
+        return self.__dict__.copy()
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "SAEMetadata":
+        """Create from dictionary"""
+        return cls(**data)
+
+    def __repr__(self) -> str:
+        return f"SAEMetadata({self.__dict__})"
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, SAEMetadata):
+            return False
+        return self.__dict__ == other.__dict__
+
+    def __deepcopy__(self, memo: dict[int, Any]) -> "SAEMetadata":
+        """Support for deep copying"""
+
+        return SAEMetadata(**copy.deepcopy(self.__dict__, memo))
+
+    def __getstate__(self) -> dict[str, Any]:
+        """Support for pickling"""
+        return self.__dict__
+
+    def __setstate__(self, state: dict[str, Any]) -> None:
+        """Support for unpickling"""
+        self.__dict__.update(state)
 
 
 @dataclass
@@ -99,7 +168,7 @@ class SAEConfig(ABC):
 
     def to_dict(self) -> dict[str, Any]:
         res = {field.name: getattr(self, field.name) for field in fields(self)}
-        res["metadata"] = asdict(self.metadata)
+        res["metadata"] = self.metadata.to_dict()
         res["architecture"] = self.architecture()
         return res
 
@@ -124,7 +193,7 @@ class SAEConfig(ABC):
             "layer_norm",
         ]:
             raise ValueError(
-                f"normalize_activations must be none, expected_average_only_in, constant_norm_rescale, or layer_norm. Got {self.normalize_activations}"
+                f"normalize_activations must be none, expected_average_only_in, layer_norm, or constant_norm_rescale. Got {self.normalize_activations}"
             )
 
 
@@ -238,9 +307,8 @@ class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
 
             self.run_time_activation_norm_fn_in = run_time_activation_norm_fn_in
             self.run_time_activation_norm_fn_out = run_time_activation_norm_fn_out
-
         elif self.cfg.normalize_activations == "layer_norm":
-
+            #  we need to scale the norm of the input and store the scaling factor
             def run_time_activation_ln_in(
                 x: torch.Tensor, eps: float = 1e-5
             ) -> torch.Tensor:
@@ -522,7 +590,7 @@ class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
         device: str = "cpu",
         force_download: bool = False,
         converter: PretrainedSaeHuggingfaceLoader | None = None,
-    ) -> tuple[T_SAE, dict[str, Any], torch.Tensor | None]:
+    ) -> T_SAE:
         """
         Load a pretrained SAE from the Hugging Face model hub.
 
@@ -530,7 +598,28 @@ class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
             release: The release name. This will be mapped to a huggingface repo id based on the pretrained_saes.yaml file.
             id: The id of the SAE to load. This will be mapped to a path in the huggingface repo.
             device: The device to load the SAE on.
-            return_sparsity_if_present: If True, will return the log sparsity tensor if it is present in the model directory in the Hugging Face model hub.
+        """
+        return cls.from_pretrained_with_cfg_and_sparsity(
+            release, sae_id, device, force_download, converter=converter
+        )[0]
+
+    @classmethod
+    def from_pretrained_with_cfg_and_sparsity(
+        cls: Type[T_SAE],
+        release: str,
+        sae_id: str,
+        device: str = "cpu",
+        force_download: bool = False,
+        converter: PretrainedSaeHuggingfaceLoader | None = None,
+    ) -> tuple[T_SAE, dict[str, Any], torch.Tensor | None]:
+        """
+        Load a pretrained SAE from the Hugging Face model hub, along with its config dict and sparsity, if present.
+        In SAELens <= 5.x.x, this was called SAE.from_pretrained().
+
+        Args:
+            release: The release name. This will be mapped to a huggingface repo id based on the pretrained_saes.yaml file.
+            id: The id of the SAE to load. This will be mapped to a path in the huggingface repo.
+            device: The device to load the SAE on.
         """
 
         # get sae directory
@@ -646,8 +735,6 @@ class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
 
 @dataclass(kw_only=True)
 class TrainingSAEConfig(SAEConfig, ABC):
-    noise_scale: float = 0.0
-    mse_loss_normalization: str | None = None
     # https://transformer-circuits.pub/2024/april-update/index.html#training-saes
     # 0.1 corresponds to the "heuristic" initialization, use None to disable
     decoder_init_norm: float | None = 0.1
@@ -680,9 +767,6 @@ class TrainingSAEConfig(SAEConfig, ABC):
     def from_dict(
         cls: type[T_TRAINING_SAE_CONFIG], config_dict: dict[str, Any]
     ) -> T_TRAINING_SAE_CONFIG:
-        # remove any keys that are not in the dataclass
-        # since we sometimes enhance the config with the whole LM runner config
-        valid_config_dict = filter_valid_dataclass_fields(config_dict, cls)
         cfg_class = cls
         if "architecture" in config_dict:
             cfg_class = get_sae_training_class(config_dict["architecture"])[1]
@@ -690,6 +774,9 @@ class TrainingSAEConfig(SAEConfig, ABC):
             raise ValueError(
                 f"SAE config class {cls} does not match dict config class {type(cfg_class)}"
             )
+        # remove any keys that are not in the dataclass
+        # since we sometimes enhance the config with the whole LM runner config
+        valid_config_dict = filter_valid_dataclass_fields(config_dict, cfg_class)
         if "metadata" in config_dict:
             valid_config_dict["metadata"] = SAEMetadata(**config_dict["metadata"])
         return cfg_class(**valid_config_dict)
@@ -698,6 +785,7 @@ class TrainingSAEConfig(SAEConfig, ABC):
         return {
             **super().to_dict(),
             **asdict(self),
+            "metadata": self.metadata.to_dict(),
             "architecture": self.architecture(),
         }
 
@@ -708,12 +796,14 @@ class TrainingSAEConfig(SAEConfig, ABC):
         Creates a dictionary containing attributes corresponding to the fields
         defined in the base SAEConfig class.
         """
-        base_config_field_names = {f.name for f in fields(SAEConfig)}
+        base_sae_cfg_class = get_sae_class(self.architecture())[1]
+        base_config_field_names = {f.name for f in fields(base_sae_cfg_class)}
         result_dict = {
             field_name: getattr(self, field_name)
             for field_name in base_config_field_names
         }
         result_dict["architecture"] = self.architecture()
+        result_dict["metadata"] = self.metadata.to_dict()
         return result_dict
 
 
@@ -726,7 +816,7 @@ class TrainingSAE(SAE[T_TRAINING_SAE_CONFIG], ABC):
         # Turn off hook_z reshaping for training mode - the activation store
         # is expected to handle reshaping before passing data to the SAE
         self.turn_off_forward_pass_hook_z_reshaping()
-        self.mse_loss_fn = self._get_mse_loss_fn()
+        self.mse_loss_fn = mse_loss
 
     @abstractmethod
     def get_coefficients(self) -> dict[str, float | TrainCoefficientConfig]: ...
@@ -861,27 +951,6 @@ class TrainingSAE(SAE[T_TRAINING_SAE_CONFIG], ABC):
         """
         return self.process_state_dict_for_saving(state_dict)
 
-    def _get_mse_loss_fn(self) -> Callable[[torch.Tensor, torch.Tensor], torch.Tensor]:
-        """Get the MSE loss function based on config."""
-
-        def standard_mse_loss_fn(
-            preds: torch.Tensor, target: torch.Tensor
-        ) -> torch.Tensor:
-            return torch.nn.functional.mse_loss(preds, target, reduction="none")
-
-        def batch_norm_mse_loss_fn(
-            preds: torch.Tensor, target: torch.Tensor
-        ) -> torch.Tensor:
-            target_centered = target - target.mean(dim=0, keepdim=True)
-            normalization = target_centered.norm(dim=-1, keepdim=True)
-            return torch.nn.functional.mse_loss(preds, target, reduction="none") / (
-                normalization + 1e-6
-            )
-
-        if self.cfg.mse_loss_normalization == "dense_batch":
-            return batch_norm_mse_loss_fn
-        return standard_mse_loss_fn
-
     @torch.no_grad()
     def remove_gradient_parallel_to_decoder_directions(self) -> None:
         """Remove gradient components parallel to decoder directions."""
@@ -943,3 +1012,7 @@ def _disable_hooks(sae: SAE[Any]):
     finally:
         for hook_name, hook in sae.hook_dict.items():
             setattr(sae, hook_name, hook)
+
+
+def mse_loss(preds: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+    return torch.nn.functional.mse_loss(preds, target, reduction="none")

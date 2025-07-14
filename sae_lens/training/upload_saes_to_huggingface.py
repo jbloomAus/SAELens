@@ -88,7 +88,7 @@ def _create_default_readme(repo_id: str, sae_ids: Iterable[str]) -> str:
         ```python
         from sae_lens import SAE
 
-        sae, cfg_dict, sparsity = SAE.from_pretrained("{repo_id}", "<sae_id>")
+        sae = SAE.from_pretrained("{repo_id}", "<sae_id>")
         ```
         """
     )

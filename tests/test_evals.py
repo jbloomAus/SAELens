@@ -18,8 +18,10 @@ from sae_lens.evals import (
     get_eval_everything_config,
     get_saes_from_regex,
     get_sparsity_and_variance_metrics,
+    process_args,
     process_results,
     run_evals,
+    run_evals_cli,
     run_evaluations,
 )
 from sae_lens.load_model import load_model
@@ -28,7 +30,12 @@ from sae_lens.saes.sae import SAE, TrainingSAE
 from sae_lens.saes.standard_sae import StandardSAE, StandardTrainingSAE
 from sae_lens.training.activation_scaler import ActivationScaler
 from sae_lens.training.activations_store import ActivationsStore
-from tests.helpers import TINYSTORIES_MODEL, build_runner_cfg, load_model_cached
+from tests.helpers import (
+    NEEL_NANDA_C4_10K_DATASET,
+    TINYSTORIES_MODEL,
+    build_runner_cfg,
+    load_model_cached,
+)
 
 TRAINER_EVAL_CONFIG = EvalConfig(
     n_eval_reconstruction_batches=10,
@@ -593,3 +600,66 @@ def test_get_sparsity_and_variance_metrics_identity_sae_perfect_reconstruction(
 
     # MSE loss should be very close to 0
     assert metrics["mse"] == pytest.approx(0.0, abs=1e-5)
+
+
+def test_process_args():
+    args = [
+        "gpt2-small-res_scefr-ajt",
+        "blocks.10.*",
+        "--batch_size_prompts",
+        "16",
+        "--n_eval_sparsity_variance_batches",
+        "200",
+        "--n_eval_reconstruction_batches",
+        "20",
+        "--output_dir",
+        "demo_eval_results",
+        "--verbose",
+    ]
+    opts = process_args(args)
+    assert opts.sae_regex_pattern == "gpt2-small-res_scefr-ajt"
+    assert opts.sae_block_pattern == "blocks.10.*"
+    assert opts.batch_size_prompts == 16
+    assert opts.n_eval_sparsity_variance_batches == 200
+    assert opts.n_eval_reconstruction_batches == 20
+    assert opts.output_dir == "demo_eval_results"
+    assert opts.verbose is True
+
+
+def test_run_evals_cli(tmp_path: Path):
+    args = [
+        "gpt2-small-res-jb",
+        "blocks.10.*",
+        "--batch_size_prompts",
+        "1",
+        "--n_eval_sparsity_variance_batches",
+        "2",
+        "--output_dir",
+        str(tmp_path),
+        "--datasets",
+        NEEL_NANDA_C4_10K_DATASET,
+    ]
+    run_evals_cli(args)
+
+    assert (tmp_path / "all_eval_results.json").exists()
+    assert (tmp_path / "all_eval_results.csv").exists()
+    assert (
+        tmp_path
+        / "gpt2-small-res-jb-blocks.10.hook_resid_pre_128_NeelNanda_c4-10k.json"
+    ).exists()
+
+    with open(tmp_path / "all_eval_results.json") as f:
+        eval_results = json.load(f)
+    assert len(eval_results) == 1
+    assert eval_results[0]["unique_id"] == "gpt2-small-res-jb-blocks.10.hook_resid_pre"
+    assert eval_results[0]["eval_cfg"]["context_size"] == 128
+    assert eval_results[0]["eval_cfg"]["dataset"] == NEEL_NANDA_C4_10K_DATASET
+    for metric in [
+        "ce_loss_score",
+        "ce_loss_with_ablation",
+        "ce_loss_with_sae",
+        "ce_loss_without_sae",
+    ]:
+        assert (
+            eval_results[0]["metrics"]["model_performance_preservation"][metric] > 0.1
+        )

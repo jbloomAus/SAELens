@@ -203,7 +203,6 @@ def test_language_model_sae_runner_top_k():
     cfg = LanguageModelSAERunnerConfig(
         sae=TopKTrainingSAEConfig(
             k=32,
-            noise_scale=0.0,
             d_sae=512,
             d_in=512,
             dtype="float32",

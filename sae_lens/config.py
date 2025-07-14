@@ -201,7 +201,7 @@ class LanguageModelSAERunnerConfig(Generic[T_TRAINING_SAE_CONFIG]):
     train_batch_size_tokens: int = 4096
 
     ## Adam
-    adam_beta1: float = 0.0
+    adam_beta1: float = 0.9
     adam_beta2: float = 0.999
 
     ## Learning Rate Schedule
@@ -390,7 +390,6 @@ class LanguageModelSAERunnerConfig(Generic[T_TRAINING_SAE_CONFIG]):
             adam_beta2=self.adam_beta2,
             lr_decay_steps=self.lr_decay_steps,
             n_restart_cycles=self.n_restart_cycles,
-            total_training_steps=self.total_training_steps,
             train_batch_size_samples=self.train_batch_size_tokens,
             dead_feature_window=self.dead_feature_window,
             feature_sampling_window=self.feature_sampling_window,
@@ -613,8 +612,11 @@ class SAETrainerConfig:
     adam_beta2: float
     lr_decay_steps: int
     n_restart_cycles: int
-    total_training_steps: int
     train_batch_size_samples: int
     dead_feature_window: int
     feature_sampling_window: int
     logger: LoggingConfig
+
+    @property
+    def total_training_steps(self) -> int:
+        return self.total_training_samples // self.train_batch_size_samples

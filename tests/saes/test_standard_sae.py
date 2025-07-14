@@ -132,6 +132,13 @@ def test_sae_fold_w_dec_norm_all_architectures(architecture: str):
 
     assert sae.W_dec.norm(dim=-1).mean().item() != pytest.approx(1.0, abs=1e-6)
     sae2 = deepcopy(sae)
+
+    # If this is a topk SAE, assert this throws a NotImplementedError
+    if architecture == "topk":
+        with pytest.raises(NotImplementedError):
+            sae2.fold_W_dec_norm()
+        return
+
     sae2.fold_W_dec_norm()
 
     # fold_W_dec_norm should normalize W_dec to have unit norm.
@@ -327,8 +334,8 @@ def test_sae_forward_pass_works_with_error_term_and_hooks(architecture: str):
     )
 
 
-def test_SparseAutoencoder_from_pretrained_loads_from_hugginface_using_shorthand():
-    sae, original_cfg_dict, sparsity = SAE.from_pretrained(
+def test_SAE_from_pretrained_loads_from_hugginface_using_shorthand():
+    sae, original_cfg_dict, sparsity = SAE.from_pretrained_with_cfg_and_sparsity(
         release="gpt2-small-res-jb",
         sae_id="blocks.0.hook_resid_pre",
         device="cpu",
@@ -364,8 +371,8 @@ def test_SparseAutoencoder_from_pretrained_loads_from_hugginface_using_shorthand
         assert torch.allclose(sae.state_dict()[k], state_dict[k])
 
 
-def test_SparseAutoencoder_from_pretrained_can_load_arbitrary_saes_from_huggingface():
-    sae, original_cfg_dict, sparsity = SAE.from_pretrained(
+def test_SAE_from_pretrained_can_load_arbitrary_saes_from_huggingface():
+    sae, original_cfg_dict, sparsity = SAE.from_pretrained_with_cfg_and_sparsity(
         release="jbloom/GPT2-Small-SAEs-Reformatted",
         sae_id="blocks.0.hook_resid_pre",
         device="cpu",
@@ -397,7 +404,7 @@ def test_SparseAutoencoder_from_pretrained_can_load_arbitrary_saes_from_huggingf
         assert torch.allclose(sae.state_dict()[k], state_dict[k])
 
 
-def test_SparseAutoencoder_from_pretrained_errors_for_invalid_releases():
+def test_SAE_from_pretrained_errors_for_invalid_releases():
     with pytest.raises(ValueError):
         SAE.from_pretrained(
             release="wrong",
@@ -406,7 +413,7 @@ def test_SparseAutoencoder_from_pretrained_errors_for_invalid_releases():
         )
 
 
-def test_SparseAutoencoder_from_pretrained_errors_for_invalid_sae_ids():
+def test_SAE_from_pretrained_errors_for_invalid_sae_ids():
     with pytest.raises(ValueError):
         SAE.from_pretrained(
             release="gpt2-small-res-jb",
@@ -415,7 +422,7 @@ def test_SparseAutoencoder_from_pretrained_errors_for_invalid_sae_ids():
         )
 
 
-def test_SparseAutoencoder_initialization_standard():
+def test_StandardTrainingSAE_initialization_standard():
     cfg = build_runner_cfg()
 
     sae = StandardTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
@@ -441,7 +448,7 @@ def test_SparseAutoencoder_initialization_standard():
     assert torch.allclose(sae.W_enc, sae.W_dec.T, atol=1e-6)
 
 
-def test_SparseAutoencoder_initialization_decoder_norm():
+def test_StandardTrainingSAE_initialization_decoder_norm():
     cfg = build_runner_cfg(decoder_init_norm=0.7)
 
     sae = StandardTrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
@@ -455,7 +462,7 @@ def test_SparseAutoencoder_initialization_decoder_norm():
     assert torch.allclose(sae.b_enc, torch.zeros_like(sae.b_enc), atol=1e-6)
 
 
-def test_SparseAutoencoder_initialization_enc_dec_T_no_unit_norm():
+def test_StandardTrainingSAE_initialization_enc_dec_T_no_unit_norm():
     cfg = build_runner_cfg(
         init_encoder_as_decoder_transpose=True,
         normalize_sae_decoder=False,
@@ -468,3 +475,48 @@ def test_SparseAutoencoder_initialization_enc_dec_T_no_unit_norm():
     # initialized weights of biases are 0
     assert torch.allclose(sae.b_dec, torch.zeros_like(sae.b_dec), atol=1e-6)
     assert torch.allclose(sae.b_enc, torch.zeros_like(sae.b_enc), atol=1e-6)
+
+
+def test_StandardSAE_constant_norm_rescale():
+    cfg = build_sae_cfg(d_in=2, d_sae=3, normalize_activations="constant_norm_rescale")
+
+    sae = StandardSAE(cfg)
+
+    test_input = torch.randn(10, 2, device=cfg.device)
+
+    scaled_input = sae.run_time_activation_norm_fn_in(test_input)
+    expected_scaler = (cfg.d_in**0.5) / test_input.norm(dim=-1, keepdim=True)
+    assert torch.allclose(scaled_input, test_input * expected_scaler, atol=1e-6)
+    scaled_output = sae.run_time_activation_norm_fn_out(scaled_input)
+    assert torch.allclose(scaled_output, test_input)
+
+
+def test_StandardSAE_layer_norm():
+    cfg = build_sae_cfg(d_in=2, d_sae=3, normalize_activations="layer_norm")
+
+    sae = StandardSAE(cfg)
+
+    test_input = torch.randn(10, 2, device=cfg.device)
+
+    scaled_input = sae.run_time_activation_norm_fn_in(test_input)
+    expected_mu = test_input.mean(dim=-1, keepdim=True)
+    expected_std = test_input.std(dim=-1, keepdim=True)
+    assert torch.allclose(sae.ln_mu, expected_mu, atol=1e-6)  # type: ignore
+    assert torch.allclose(sae.ln_std, expected_std, atol=1e-6)  # type: ignore
+    assert torch.allclose(
+        scaled_input, (test_input - expected_mu) / (expected_std + 1e-5), atol=1e-6
+    )
+    scaled_output = sae.run_time_activation_norm_fn_out(scaled_input)
+    assert torch.allclose(scaled_output, test_input, atol=1e-4)
+
+
+def test_StandardSAE_none():
+    cfg = build_sae_cfg(d_in=2, d_sae=3, normalize_activations="none")
+    sae = StandardSAE(cfg)
+
+    test_input = torch.randn(10, 2, device=cfg.device)
+
+    scaled_input = sae.run_time_activation_norm_fn_in(test_input)
+    assert torch.allclose(scaled_input, test_input)
+    scaled_output = sae.run_time_activation_norm_fn_out(scaled_input)
+    assert torch.allclose(scaled_output, test_input)

@@ -7,7 +7,7 @@ import torch
 import wandb
 from safetensors.torch import save_file
 from torch.optim import Adam
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from sae_lens import __version__
 from sae_lens.config import SAETrainerConfig
@@ -161,6 +161,7 @@ class SAETrainer(Generic[T_TRAINING_SAE, T_TRAINING_SAE_CONFIG]):
         return (self.n_forward_passes_since_fired > self.cfg.dead_feature_window).bool()
 
     def fit(self) -> T_TRAINING_SAE:
+        self.sae.to(self.cfg.device)
         pbar = tqdm(total=self.cfg.total_training_samples, desc="Training SAE")
 
         if self.sae.cfg.normalize_activations == "expected_average_only_in":
@@ -194,10 +195,11 @@ class SAETrainer(Generic[T_TRAINING_SAE, T_TRAINING_SAE_CONFIG]):
             )
             self.activation_scaler.scaling_factor = None
 
-        # save final sae group to checkpoints folder
+        # save final inference sae group to checkpoints folder
         self.save_checkpoint(
             checkpoint_name=f"final_{self.n_training_samples}",
             wandb_aliases=["final_model"],
+            save_inference_model=True,
         )
 
         pbar.close()
@@ -207,11 +209,17 @@ class SAETrainer(Generic[T_TRAINING_SAE, T_TRAINING_SAE_CONFIG]):
         self,
         checkpoint_name: str,
         wandb_aliases: list[str] | None = None,
+        save_inference_model: bool = False,
     ) -> None:
         checkpoint_path = Path(self.cfg.checkpoint_path) / checkpoint_name
         checkpoint_path.mkdir(exist_ok=True, parents=True)
 
-        weights_path, cfg_path = self.sae.save_model(str(checkpoint_path))
+        save_fn = (
+            self.sae.save_inference_model
+            if save_inference_model
+            else self.sae.save_model
+        )
+        weights_path, cfg_path = save_fn(str(checkpoint_path))
 
         sparsity_path = checkpoint_path / SPARSITY_FILENAME
         save_file({"sparsity": self.log_feature_sparsity}, sparsity_path)

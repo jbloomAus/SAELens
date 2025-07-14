@@ -414,8 +414,6 @@ def test_standard_sae_training_hook_z_equivalence(hook_name: str):
     new_training_cfg = StandardTrainingSAEConfig(
         d_in=d_in,
         d_sae=32,
-        noise_scale=0.0,
-        mse_loss_normalization=None,
         l1_coefficient=0.01,
     )
     new_training_sae = StandardTrainingSAE(new_training_cfg)
@@ -692,8 +690,6 @@ def make_new_training_sae(
     new_training_cfg = StandardTrainingSAEConfig(
         d_in=d_in,
         d_sae=d_sae,
-        noise_scale=0.0,
-        mse_loss_normalization=None,
         l1_coefficient=l1_coefficient,
         apply_b_dec_to_input=apply_b_dec_to_input,
         reshape_activations="hook_z" if "hook_z" in hook_name else "none",

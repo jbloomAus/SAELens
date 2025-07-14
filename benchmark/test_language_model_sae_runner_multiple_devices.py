@@ -45,7 +45,6 @@ BASE_CFG = dict(
     train_batch_size_tokens=4096,
     # Loss Function
     ## Reconstruction Coefficient.
-    mse_loss_normalization=None,  # MSE Loss Normalization is not mentioned (so we use stanrd MSE Loss). But not we take an average over the batch.
     ## Anthropic does not mention using an Lp norm other than L1.
     l1_coefficient=5,
     lp_norm=1.0,

@@ -4,6 +4,7 @@ import json
 import math
 import re
 import subprocess
+import sys
 from collections import defaultdict
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -15,7 +16,7 @@ from typing import Any
 import einops
 import pandas as pd
 import torch
-from tqdm import tqdm
+from tqdm.auto import tqdm
 from transformer_lens import HookedTransformer
 from transformer_lens.hook_points import HookedRootModule
 
@@ -814,16 +815,18 @@ def multiple_evals(
             release=sae_release_name,  # see other options in sae_lens/pretrained_saes.yaml
             sae_id=sae_id,  # won't always be a hook point
             device=device,
-        )[0]
+        )
 
         # move SAE to device if not there already
         sae.to(device)
 
-        if current_model_str != sae.cfg.model_name:
+        if current_model_str != sae.cfg.metadata.model_name:
             del current_model  # potentially saves GPU memory
-            current_model_str = sae.cfg.model_name
+            current_model_str = sae.cfg.metadata.model_name
             current_model = HookedTransformer.from_pretrained_no_processing(
-                current_model_str, device=device, **sae.cfg.model_from_pretrained_kwargs
+                current_model_str,
+                device=device,
+                **sae.cfg.metadata.model_from_pretrained_kwargs,
             )
         assert current_model is not None
 
@@ -941,7 +944,7 @@ def process_results(
     }
 
 
-if __name__ == "__main__":
+def process_args(args: list[str]) -> argparse.Namespace:
     arg_parser = argparse.ArgumentParser(description="Run evaluations on SAEs")
     arg_parser.add_argument(
         "sae_regex_pattern",
@@ -1031,11 +1034,19 @@ if __name__ == "__main__":
         help="Enable verbose output with tqdm loaders.",
     )
 
-    args = arg_parser.parse_args()
-    eval_results = run_evaluations(args)
-    output_files = process_results(eval_results, args.output_dir)
+    return arg_parser.parse_args(args)
+
+
+def run_evals_cli(args: list[str]) -> None:
+    opts = process_args(args)
+    eval_results = run_evaluations(opts)
+    output_files = process_results(eval_results, opts.output_dir)
 
     print("Evaluation complete. Output files:")
     print(f"Individual JSONs: {len(output_files['individual_jsons'])}")  # type: ignore
     print(f"Combined JSON: {output_files['combined_json']}")
     print(f"CSV: {output_files['csv']}")
+
+
+if __name__ == "__main__":
+    run_evals_cli(sys.argv[1:])

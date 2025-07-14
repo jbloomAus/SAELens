@@ -67,7 +67,7 @@ class StandardSAE(SAE[StandardSAEConfig]):
         sae_in = self.process_sae_in(x)
         # Compute the pre-activation values
         hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
-        # Apply the activation function (e.g., ReLU, tanh-relu, depending on config)
+        # Apply the activation function (e.g., ReLU, depending on config)
         return self.hook_sae_acts_post(self.activation_fn(hidden_pre))
 
     def decode(
@@ -81,7 +81,7 @@ class StandardSAE(SAE[StandardSAEConfig]):
         sae_out_pre = feature_acts @ self.W_dec + self.b_dec
         # 2) hook reconstruction
         sae_out_pre = self.hook_sae_recons(sae_out_pre)
-        # 4) optional out-normalization (e.g. constant_norm_rescale or layer_norm)
+        # 4) optional out-normalization (e.g. constant_norm_rescale)
         sae_out_pre = self.run_time_activation_norm_fn_out(sae_out_pre)
         # 5) if hook_z is enabled, rearrange back to (..., n_heads, d_head).
         return self.reshape_fn_out(sae_out_pre, self.d_head)
@@ -136,16 +136,9 @@ class StandardTrainingSAE(TrainingSAE[StandardTrainingSAEConfig]):
         sae_in = self.process_sae_in(x)
         # Compute the pre-activation (and allow for a hook if desired)
         hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)  # type: ignore
-        # Add noise during training for robustness (scaled by noise_scale from the configuration)
-        if self.training and self.cfg.noise_scale > 0:
-            hidden_pre_noised = (
-                hidden_pre + torch.randn_like(hidden_pre) * self.cfg.noise_scale
-            )
-        else:
-            hidden_pre_noised = hidden_pre
         # Apply the activation function (and any post-activation hook)
-        feature_acts = self.hook_sae_acts_post(self.activation_fn(hidden_pre_noised))
-        return feature_acts, hidden_pre_noised
+        feature_acts = self.hook_sae_acts_post(self.activation_fn(hidden_pre))
+        return feature_acts, hidden_pre
 
     def calculate_aux_loss(
         self,

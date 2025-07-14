@@ -11,7 +11,7 @@ We encourage readers to join the [Open Source Mechanistic Interpretability Slack
 
 Training a SAE is done using the [SAETrainingRunner][sae_lens.SAETrainingRunner] class. This class is configured using a [LanguageModelSAERunnerConfig][sae_lens.LanguageModelSAERunnerConfig]. The `LanguageModelSAERunnerConfig` holds parameters for the overall training run (like model, dataset, and learning rate), and it contains an `sae` field. This `sae` field should be an instance of an architecture-specific SAE configuration dataclass (e.g., `StandardTrainingSAEConfig` for standard SAEs, `TopKTrainingSAEConfig` for TopK SAEs, etc.), which holds parameters specific to the SAE's structure and sparsity mechanisms.
 
-When using the command-line interface (CLI), you typically specify an `--architecture` argument (e.g., `"standard"`, `"gated"`, `"jumprelu"`, `"topk"`), and the runner constructs the appropriate nested SAE configuration. When instantiating `LanguageModelSAERunnerConfig` programmatically, you should directly provide the configured SAE object to the `sae` field.
+When using the command-line interface (CLI), you typically specify an `--architecture` argument (e.g., `"standard"`, `"gated"`, `"jumprelu"`, `"topk"`), and the runner constructs the appropriate nested SAE configuration. When instantiating `LanguageModelSAERunnerConfig` programmatically, you should directly provide the configured SAE object to the `sae` field. The CLI can be run using `python -m sae_lens.llm_sae_training_runner`.
 
 Some of the core config options available in `LanguageModelSAERunnerConfig` are:
 
@@ -27,16 +27,12 @@ Some of the core config options available in `LanguageModelSAERunnerConfig` are:
 Core options typically configured within the architecture-specific `sae` object (e.g., `cfg.sae = StandardTrainingSAEConfig(...)`):
 
 - `d_in`: The input dimensionality of the SAE. This must match the size of the activations at `hook_name`.
-- `expansion_factor`: The SAE's hidden layer will have dimensionality `expansion_factor * d_in`.
-- `activation_fn`: The activation function for the SAE's hidden layer (e.g., `"relu"`, `"gelu"`). For TopK SAEs, this is effectively fixed by the TopK mechanism.
+- `d_sae`: The SAE's hidden layer dimensionality .
 - Sparsity control parameters: These vary by architecture:
   - For Standard SAEs: `l1_coefficient` (controls L1 penalty), `lp_norm` (e.g., 1.0 for L1, 0.7 for L0.7), `l1_warm_up_steps`.
   - For Gated SAEs: `l1_coefficient` (controls L1-like penalty on gate activations), `l1_warm_up_steps`.
   - For JumpReLU SAEs: `l0_coefficient` (controls L0-like penalty), `l0_warm_up_steps`, `jumprelu_init_threshold`, `jumprelu_bandwidth`.
   - For TopK SAEs: `k` (the number of features to keep active). Sparsity is enforced structurally.
-- `normalize_sae_decoder`: Whether to normalize the SAE decoder weights.
-- `decoder_heuristic_init`: Whether to use heuristic initialization for the decoder.
-- `init_encoder_as_decoder_transpose`: Whether to initialize the encoder as the transpose of the decoder.
 - `normalize_activations`: Strategy for normalizing activations before they enter the SAE (e.g., `"expected_average_only_in"`).
 
 A sample training run from the [tutorial](https://github.com/jbloomAus/SAELens/blob/main/tutorials/training_a_sparse_autoencoder.ipynb) is shown below. Note how SAE-specific parameters are nested within the `sae` field:
@@ -70,18 +66,12 @@ cfg = LanguageModelSAERunnerConfig(
     # SAE Parameters are in the nested 'sae' config
     sae=StandardTrainingSAEConfig(
         d_in=1024, # Matches hook_mlp_out for tiny-stories-1L-21M
-        expansion_factor=16,
-        apply_b_dec_to_input=False,
-        normalize_sae_decoder=False,
-        scale_sparsity_penalty_by_decoder_norm=True,
-        decoder_heuristic_init=True,
-        init_encoder_as_decoder_transpose=True,
+        d_sae=16 * 1024,
+        apply_b_dec_to_input=True,
         normalize_activations="expected_average_only_in",
-        mse_loss_normalization=None,
         l1_coefficient=5,
         lp_norm=1.0,
         l1_warm_up_steps=l1_warm_up_steps,
-        # activation_fn: "relu" by default in StandardTrainingSAEConfig
     ),
 
     # Training Parameters
@@ -100,7 +90,6 @@ cfg = LanguageModelSAERunnerConfig(
     store_batch_size_prompts=16,
 
     # Resampling protocol args
-    use_ghost_grads=False, # Ghost grads are part of TrainingSAEConfig, default False
     feature_sampling_window=1000,
     dead_feature_window=1000,
     dead_feature_threshold=1e-4,
@@ -138,7 +127,7 @@ from sae_lens.saes import TopKTrainingSAEConfig # Import TopK config
 #     sae=TopKTrainingSAEConfig(
 #         k=100, # Set the number of active features
 #         d_in=1024, # Example, must match your hook point
-#         expansion_factor=16, # Example
+#         d_sae=16 * 1024, # Example
 #         # ... other common SAE parameters from SAEConfig if needed ...
 #     ),
 #     # ...
@@ -158,10 +147,10 @@ from sae_lens.saes import JumpReLUTrainingSAEConfig # Import JumpReLU config
 #     # ... other LanguageModelSAERunnerConfig parameters ...
 #     sae=JumpReLUTrainingSAEConfig(
 #         l0_coefficient=5.0, # Sparsity penalty coefficient
-#         jumprelu_bandwidth=0.001,
-#         jumprelu_init_threshold=0.001,
+#         jumprelu_bandwidth=0.05,
+#         jumprelu_init_threshold=0.01,
 #         d_in=1024, # Example, must match your hook point
-#         expansion_factor=16, # Example
+#         d_sae=16 * 1024, # Example
 #         # ... other common SAE parameters from SAEConfig ...
 #     ),
 #     # ...
@@ -182,7 +171,7 @@ from sae_lens.saes import GatedTrainingSAEConfig # Import Gated config
 #     sae=GatedTrainingSAEConfig(
 #         l1_coefficient=5.0, # Sparsity penalty coefficient
 #         d_in=1024, # Example, must match your hook point
-#         expansion_factor=16, # Example
+#         d_sae=16 * 1024, # Example
 #         # ... other common SAE parameters from SAEConfig ...
 #     ),
 #     # ...
@@ -210,7 +199,7 @@ A number of helpful metrics are logged to WandB, including the sparsity of the S
 
 It may sound daunting to train a real SAE but nothing could be further from the truth! You can typically train a decent SAE for a real LLM on a single A100 GPU in a matter of hours.
 
-SAE Training best practices are still rapidly evolving, so the default settings in SAELens may not be optimal for real SAEs. Fortunately, it's easy to see what any SAE trained using SAELens used for its training configuration and just copy its values as a starting point! If there's a SAE on Huggingface trained using SAELens, you can see all the training settings used by looking at the `cfg.json` file in the SAE's repo. For instance, here's the [cfg.json](https://huggingface.co/jbloom/Gemma-2b-Residual-Stream-SAEs/blob/main/gemma_2b_blocks.12.hook_resid_post_16384/cfg.json) for a Gemma 2B standard SAE trained by Joseph Bloom. You can also get the config in SAELens as the second return value from `SAE.from_pretrained()`. For instance, the same config mentioned above can be accessed as `cfg_dict = SAE.from_pretrained("jbloom/Gemma-2b-Residual-Stream-SAEs", "gemma_2b_blocks.12.hook_resid_post_16384")[1]`. You can browse all SAEs uploaded to Huggingface via SAELens to get some inspiration with the [SAELens library tag](https://huggingface.co/models?library=saelens).
+SAE Training best practices are still rapidly evolving, so the default settings in SAELens may not be optimal for real SAEs. Fortunately, it's easy to see what any SAE trained using SAELens used for its training configuration and just copy its values as a starting point! If there's a SAE on Huggingface trained using SAELens, you can see all the training settings used by looking at the `cfg.json` file in the SAE's repo. For instance, here's the [cfg.json](https://huggingface.co/jbloom/Gemma-2b-Residual-Stream-SAEs/blob/main/gemma_2b_blocks.12.hook_resid_post_16384/cfg.json) for a Gemma 2B standard SAE trained by Joseph Bloom. You can also get the config in SAELens as the second return value from `SAE.from_pretrained_with_cfg_and_sparsity()`. For instance, the same config mentioned above can be accessed as `cfg_dict = SAE.from_pretrained_with_cfg_and_sparsity("jbloom/Gemma-2b-Residual-Stream-SAEs", "gemma_2b_blocks.12.hook_resid_post_16384")[1]`. You can browse all SAEs uploaded to Huggingface via SAELens to get some inspiration with the [SAELens library tag](https://huggingface.co/models?library=saelens).
 
 Some general performance tips:
 
