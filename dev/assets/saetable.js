@@ -6,7 +6,7 @@ window.SaeTable = {
 
 release = "${release}"
 sae_id = "${saeId}"
-sae = SAE.from_pretrained(release, sae_id)[0]`;
+sae = SAE.from_pretrained(release, sae_id)`;
     modal.style.display = "block";
     return false; // Prevent default link behavior
   },
