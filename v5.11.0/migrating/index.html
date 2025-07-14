@@ -12,13 +12,13 @@
         <meta name="author" content="Joseph Bloom">
       
       
-        <link rel="canonical" href="https://jbloomAus.github.io/SAELens/v5.11.0/citation/">
+        <link rel="canonical" href="https://jbloomAus.github.io/SAELens/v5.11.0/migrating/">
       
       
-        <link rel="prev" href="../training_saes/">
+        <link rel="prev" href="../contributing/">
       
       
-        <link rel="next" href="../contributing/">
+        <link rel="next" href="../api/">
       
       
       <link rel="icon" href="../assets/images/favicon.png">
@@ -26,7 +26,7 @@
     
     
       
-        <title>Citation - SAE Lens</title>
+        <title>Migrating to v6 - SAE Lens</title>
       
     
     
@@ -82,7 +82,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#citation" class="md-skip">
+        <a href="#migrating-to-saelens-v6" class="md-skip">
           Skip to content
         </a>
       
@@ -122,7 +122,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Citation
+              Migrating to v6
             
           </span>
         </div>
@@ -331,19 +331,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../citation/" class="md-nav__link">
         
   
   
@@ -354,7 +345,6 @@
   
 
       </a>
-      
     </li>
   
 
@@ -385,10 +375,32 @@
       
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../migrating/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Migrating to v6
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -399,6 +411,71 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#changes-to-saefrom_pretrained" class="md-nav__link">
+    <span class="md-ellipsis">
+      Changes to SAE.from_pretrained()
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sae-training-config-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      SAE Training config changes
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#removed-legacy-training-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      Removed legacy training options
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#config-option-renaming-changed-defaults" class="md-nav__link">
+    <span class="md-ellipsis">
+      Config option renaming / changed defaults
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#other-breaking-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Other breaking changes
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -467,6 +544,59 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#changes-to-saefrom_pretrained" class="md-nav__link">
+    <span class="md-ellipsis">
+      Changes to SAE.from_pretrained()
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sae-training-config-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      SAE Training config changes
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#removed-legacy-training-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      Removed legacy training options
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#config-option-renaming-changed-defaults" class="md-nav__link">
+    <span class="md-ellipsis">
+      Config option renaming / changed defaults
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#other-breaking-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Other breaking changes
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -481,14 +611,84 @@
 
 
 
-<h1 id="citation">Citation</h1>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>@misc{bloom2024saetrainingcodebase,
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>   title = {SAELens},
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>   author = {Bloom, Joseph and Tigges, Curt and Duong, Anthony and Chanin, David},
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>   year = {2024},
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>   howpublished = {\url{https://github.com/jbloomAus/SAELens}},
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>}}
+<h1 id="migrating-to-saelens-v6">Migrating to SAELens v6</h1>
+<p>SAELens v6 is a major update with a number of breaking changes that will require updating your code. The goal of this update was the following:</p>
+<ul>
+<li>Simplify SAE configs, removing legacy cruft and making it easy to train SAEs</li>
+<li>Separate SAE architectures into their own classes with separate options (e.g. TopK doesn't have the same options as JumpReLU)</li>
+<li>Make it easy to extend SAELens with your own custom SAEs</li>
+<li>Simplify loading and using SAEs</li>
+<li>Decouple the LLM-specific training code from SAE training, so it's possible to train an SAE on any type of model (e.g. vision models).</li>
+</ul>
+<p>We apologize for any inconvenience this causes! These changes should put SAELens in a good place going forward though, making it possible to easily extend the library as new SAE architectures get released, and make it easier than ever to train and share customized SAEs. Expect lots of exciting updates building on this to come soon!</p>
+<h2 id="changes-to-saefrom_pretrained">Changes to SAE.from_pretrained()</h2>
+<p>We expect that most users will use SAELens to load SAEs rather than training SAEs, so we expect this section to be the most important for most users. Previously, <code>SAE.from_pretrained()</code> returned a tuple of SAE, a cfg dict, and a feature sparsity tensor. Now, <code>SAE.from_pretrained()</code> returns just the SAE to be consistent with how <code>from_pretrained()</code> functions in <a href="https://huggingface.co/docs/transformers/en/index">Huggingface Transformers</a> and <a href="https://transformerlensorg.github.io/TransformerLens/">TransformerLens</a>.</p>
+<p>The old functionality still exists via <code>SAE.load_from_pretrained_with_cfg_and_sparsity()</code> - although we expect this will not be needed by most users.</p>
+<h2 id="sae-training-config-changes">SAE Training config changes</h2>
+<p>The LLM SAE training runner config now follows a new nested structure, with SAE-specific options specified in a nested <code>sae</code> section, and logging options specified in a nested <code>logger</code> section. This looks like the following:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">sae_lens</span><span class="w"> </span><span class="kn">import</span> <span class="n">LanguageModelSAERunnerConfig</span><span class="p">,</span> <span class="n">StandardTrainingSAEConfig</span><span class="p">,</span> <span class="n">LoggingConfig</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">cfg</span> <span class="o">=</span> <span class="n">LanguageModelSAERunnerConfig</span><span class="p">(</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="c1"># SAE Parameters</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">sae</span><span class="o">=</span><span class="n">StandardTrainingSAEConfig</span><span class="p">(</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>        <span class="n">d_in</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>        <span class="n">d_sae</span><span class="o">=</span><span class="mi">16384</span><span class="p">,</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>        <span class="n">apply_b_dec_to_input</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>        <span class="n">normalize_activations</span><span class="o">=</span><span class="s2">&quot;expected_average_only_in&quot;</span><span class="p">,</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>        <span class="n">l1_coefficient</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    <span class="p">),</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    <span class="c1"># Data Generating Function (Model + Training Distibuion)</span>
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    <span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;tiny-stories-1L-21M&quot;</span><span class="p">,</span>
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    <span class="n">hook_name</span><span class="o">=</span><span class="s2">&quot;blocks.0.hook_mlp_out&quot;</span><span class="p">,</span>
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    <span class="n">dataset_path</span><span class="o">=</span><span class="s2">&quot;apollo-research/roneneldan-TinyStories-tokenizer-gpt2&quot;</span><span class="p">,</span>
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    <span class="n">is_dataset_tokenized</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    <span class="n">streaming</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>    <span class="c1"># Training Parameters</span>
+</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    <span class="n">lr</span><span class="o">=</span><span class="mf">5e-5</span><span class="p">,</span>
+</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>    <span class="n">train_batch_size_tokens</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span>
+</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>    <span class="n">context_size</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span>
+</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>    <span class="n">n_batches_in_buffer</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span>
+</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>    <span class="n">training_tokens</span><span class="o">=</span><span class="mi">100_000_000</span><span class="p">,</span>
+</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>    <span class="n">store_batch_size_prompts</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
+</span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>    <span class="c1"># WANDB</span>
+</span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>    <span class="n">logger</span><span class="o">=</span><span class="n">LoggingConfig</span><span class="p">(</span>
+</span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>        <span class="n">log_to_wandb</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>        <span class="n">wandb_project</span><span class="o">=</span><span class="s2">&quot;sae_lens_tutorial&quot;</span><span class="p">,</span>
+</span><span id="__span-0-29"><a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>    <span class="p">),</span>
+</span><span id="__span-0-30"><a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>    <span class="c1"># Misc</span>
+</span><span id="__span-0-31"><a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>    <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
+</span><span id="__span-0-32"><a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>    <span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span>
+</span><span id="__span-0-33"><a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>    <span class="n">n_checkpoints</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+</span><span id="__span-0-34"><a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>    <span class="n">checkpoint_path</span><span class="o">=</span><span class="s2">&quot;checkpoints&quot;</span><span class="p">,</span>
+</span><span id="__span-0-35"><a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>    <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;float32&quot;</span><span class="p">,</span>
+</span><span id="__span-0-36"><a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a><span class="p">)</span>
 </span></code></pre></div>
+<p>There are corresponding config classes for <code>GatedTrainingSAEConfig</code>, <code>JumpReLUTrainingSAEConfig</code>, and <code>TopKTrainingSAEConfig</code> depending on the type of SAE you'd like to train.</p>
+<h2 id="removed-legacy-training-options">Removed legacy training options</h2>
+<p>We removed a number of legacy config options from the training config, as we found that having so many options was both confusing and daunting to new users of the library. SAE training best practices have changed rapidly, so we took this opportunity to remove rarely used and legacy options from the config.</p>
+<p>The removed options include:</p>
+<ul>
+<li>expansion_factor (this was redundant given the <code>d_sae</code> option to set SAE width)</li>
+<li>hook_layer (this was redundant - we already know the layer from <code>hook_name</code>)</li>
+<li>ghost grads</li>
+<li>b_dec init options (b_dec is always init to zero now)</li>
+<li>decoder init options (we always use the heuristic init from <a href="https://transformer-circuits.pub/2024/april-update/index.html#training-saes">Anthropic's April 2024 update</a>)</li>
+<li>MSE loss normalization</li>
+<li>decoder normalization (we always scale L1 loss by decoder norm now, this is always the right thing to do)</li>
+<li>finetuning_tokens / finetuning_method</li>
+<li>noise_scale</li>
+<li>activation_fn / activation_fn_kwargs</li>
+</ul>
+<h2 id="config-option-renaming-changed-defaults">Config option renaming / changed defaults</h2>
+<ul>
+<li>The JumpReLU L0 coefficient is now called <code>l0_coefficient</code></li>
+<li><code>k</code> is now set explicitly for TopK SAEs rather than being in <code>activation_fn_kwargs</code></li>
+<li>Default JumpReLU bandwidth has been increased to 0.05 from 0.001 to make JumpReLU SAEs more responsive during training</li>
+<li>Default JumpReLU starting threshold has been increase to 0.01 from 0.001</li>
+</ul>
+<h2 id="other-breaking-changes">Other breaking changes</h2>
+<p><code>SAETrainingRunner</code> has been renamed to <code>LanguageModelSAETrainingRunner</code>, although the <code>SAETrainingRunner</code> name will still keep working for now. This change was made to allow other types of SAETrainingRunners to be added in the future (e.g. for vision models).</p>
+<p>Running SAE training from the CLI now requires running the script: <code>python -m sae_lens.llm_sae_training_runner</code> to reflect this change.</p>
 
 
 
