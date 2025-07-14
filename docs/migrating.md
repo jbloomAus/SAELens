@@ -73,7 +73,6 @@ The removed options include:
 - b_dec init options (b_dec is always init to zero now)
 - decoder init options (we always use the heuristic init from [Anthropic's April 2024 update](https://transformer-circuits.pub/2024/april-update/index.html#training-saes))
 - MSE loss normalization
-- layer-norm input normalization
 - decoder normalization (we always scale L1 loss by decoder norm now, this is always the right thing to do)
 - finetuning_tokens / finetuning_method
 - noise_scale
