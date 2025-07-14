@@ -501,8 +501,8 @@ def test_StandardSAE_layer_norm():
     scaled_input = sae.run_time_activation_norm_fn_in(test_input)
     expected_mu = test_input.mean(dim=-1, keepdim=True)
     expected_std = test_input.std(dim=-1, keepdim=True)
-    assert torch.allclose(sae.ln_mu, expected_mu, atol=1e-6)
-    assert torch.allclose(sae.ln_std, expected_std, atol=1e-6)
+    assert torch.allclose(sae.ln_mu, expected_mu, atol=1e-6)  # type: ignore
+    assert torch.allclose(sae.ln_std, expected_std, atol=1e-6)  # type: ignore
     assert torch.allclose(
         scaled_input, (test_input - expected_mu) / (expected_std + 1e-5), atol=1e-6
     )
