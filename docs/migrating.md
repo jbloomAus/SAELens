@@ -71,7 +71,7 @@ The removed options include:
 - hook_layer (this was redundant - we already know the layer from `hook_name`)
 - ghost grads
 - b_dec init options (b_dec is always init to zero now)
-- decoder init options (we always use the heuristic init from [Anthropic's April 2024 udate](https://transformer-circuits.pub/2024/april-update/index.html#training-saes))
+- decoder init options (we always use the heuristic init from [Anthropic's April 2024 update](https://transformer-circuits.pub/2024/april-update/index.html#training-saes))
 - MSE loss normalization
 - layer-norm input normalization
 - decoder normalization (we always scale L1 loss by decoder norm now, this is always the right thing to do)
