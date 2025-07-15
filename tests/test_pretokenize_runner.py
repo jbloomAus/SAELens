@@ -24,6 +24,9 @@ def test_get_special_token_from_cfg(ts_tokenizer: PreTrainedTokenizerBase):
     assert get_special_token_from_cfg("bos", ts_tokenizer) == ts_tokenizer.bos_token_id
     assert get_special_token_from_cfg("eos", ts_tokenizer) == ts_tokenizer.eos_token_id
     assert get_special_token_from_cfg("sep", ts_tokenizer) == ts_tokenizer.sep_token_id
+    assert get_special_token_from_cfg(123, ts_tokenizer) == 123
+    with pytest.raises(ValueError, match="Invalid token type: invalid"):
+        get_special_token_from_cfg("invalid", ts_tokenizer)  # type: ignore
 
 
 def test_pretokenize_dataset_concatenates_text_until_context_size(
