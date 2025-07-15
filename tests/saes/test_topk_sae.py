@@ -61,7 +61,7 @@ def test_TopKTrainingSAE_topk_aux_loss_matches_unnormalized_sparsify_implementat
     assert norm_aux_loss == pytest.approx(comparison_aux_loss, abs=1e-2)
 
 
-def test_sae_save_and_load_from_pretrained_topk(tmp_path: Path) -> None:
+def test_TopKSAE_save_and_load_from_pretrained(tmp_path: Path) -> None:
     cfg = build_topk_sae_cfg(k=30)
     model_path = str(tmp_path)
     sae = TopKSAE(cfg)
@@ -86,3 +86,62 @@ def test_sae_save_and_load_from_pretrained_topk(tmp_path: Path) -> None:
     sae_out_1 = sae(sae_in)
     sae_out_2 = sae_loaded(sae_in)
     assert torch.allclose(sae_out_1, sae_out_2)
+
+
+def test_TopKTrainingSAE_save_and_load_inference_sae(tmp_path: Path) -> None:
+    # Create a training SAE with specific parameter values
+    cfg = build_topk_sae_training_cfg(device="cpu", k=30)
+    training_sae = TopKTrainingSAE(cfg)
+
+    # Set some known values for testing
+    training_sae.W_enc.data = torch.randn_like(training_sae.W_enc.data)
+    training_sae.W_dec.data = torch.randn_like(training_sae.W_dec.data)
+    training_sae.b_enc.data = torch.randn_like(training_sae.b_enc.data)
+    training_sae.b_dec.data = torch.randn_like(training_sae.b_dec.data)
+
+    # Save original state for comparison
+    original_W_enc = training_sae.W_enc.data.clone()
+    original_W_dec = training_sae.W_dec.data.clone()
+    original_b_enc = training_sae.b_enc.data.clone()
+    original_b_dec = training_sae.b_dec.data.clone()
+
+    # Save as inference model
+    model_path = str(tmp_path)
+    training_sae.save_inference_model(model_path)
+
+    assert os.path.exists(model_path)
+
+    # Load as inference SAE
+    inference_sae = SAE.load_from_disk(model_path, device="cpu")
+
+    # Should be loaded as TopKSAE
+    assert isinstance(inference_sae, TopKSAE)
+
+    # Check that all parameters match
+    assert torch.allclose(inference_sae.W_enc, original_W_enc)
+    assert torch.allclose(inference_sae.W_dec, original_W_dec)
+    assert torch.allclose(inference_sae.b_enc, original_b_enc)
+    assert torch.allclose(inference_sae.b_dec, original_b_dec)
+
+    # Check that the k parameter is correctly preserved in the config
+    assert inference_sae.cfg.k == cfg.k
+
+    # Verify forward pass gives same results
+    sae_in = torch.randn(10, cfg.d_in, device="cpu")
+
+    # Get output from training SAE
+    training_feature_acts, _ = training_sae.encode_with_hidden_pre(sae_in)
+    training_sae_out = training_sae.decode(training_feature_acts)
+
+    # Get output from inference SAE
+    inference_feature_acts = inference_sae.encode(sae_in)
+    inference_sae_out = inference_sae.decode(inference_feature_acts)
+
+    # Should produce identical outputs
+    assert torch.allclose(training_feature_acts, inference_feature_acts)
+    assert torch.allclose(training_sae_out, inference_sae_out)
+
+    # Test the full forward pass
+    training_full_out = training_sae(sae_in)
+    inference_full_out = inference_sae(sae_in)
+    assert torch.allclose(training_full_out, inference_full_out)

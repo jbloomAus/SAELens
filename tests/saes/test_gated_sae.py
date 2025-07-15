@@ -10,33 +10,8 @@ from sae_lens.saes.sae import SAE, TrainStepInput
 from tests.helpers import build_gated_sae_cfg, build_gated_sae_training_cfg
 
 
-def test_gated_sae_initialization():
-    cfg = build_gated_sae_training_cfg()
-    sae = GatedTrainingSAE(cfg)
-
-    assert sae.W_enc.shape == (cfg.d_in, cfg.d_sae)
-    assert sae.W_dec.shape == (cfg.d_sae, cfg.d_in)
-    assert sae.b_mag.shape == (cfg.d_sae,)
-    assert sae.b_gate.shape == (cfg.d_sae,)
-    assert sae.r_mag.shape == (cfg.d_sae,)
-    assert sae.b_dec.shape == (cfg.d_in,)
-    assert isinstance(sae.activation_fn, torch.nn.ReLU)
-    assert sae.device == torch.device("cpu")
-    assert sae.dtype == torch.float32
-
-    # biases
-    assert torch.allclose(sae.b_dec, torch.zeros_like(sae.b_dec), atol=1e-6)
-    assert torch.allclose(sae.b_mag, torch.zeros_like(sae.b_mag), atol=1e-6)
-    assert torch.allclose(sae.b_gate, torch.zeros_like(sae.b_gate), atol=1e-6)
-
-    # check if the decoder weight norm is 0.1 by default
-    assert torch.allclose(
-        sae.W_dec.norm(dim=1), 0.1 * torch.ones_like(sae.W_dec.norm(dim=1)), atol=1e-6
-    )
-
-
 @pytest.mark.parametrize("use_error_term", [True, False])
-def test_sae_gated_forward(use_error_term: bool):
+def test_GatedSAE_forward(use_error_term: bool):
     sae = GatedSAE(build_gated_sae_cfg(d_in=2, d_sae=3))
     sae.use_error_term = use_error_term
     sae.W_enc.data = torch.ones_like(sae.W_enc.data)
@@ -76,7 +51,7 @@ def test_sae_gated_forward(use_error_term: bool):
         )
 
 
-def test_gated_sae_encoding():
+def test_GatedTrainingSAE_encoding():
     cfg = build_gated_sae_training_cfg()
     sae = GatedTrainingSAE(cfg)
 
@@ -100,7 +75,7 @@ def test_gated_sae_encoding():
     assert torch.allclose(feature_acts, expected_feature_acts, atol=1e-6)
 
 
-def test_gated_sae_loss():
+def test_GatedTrainingSAE_loss():
     cfg = build_gated_sae_training_cfg(
         decoder_init_norm=1.0,  # TODO: why is this needed??
     )
@@ -144,20 +119,7 @@ def test_gated_sae_loss():
     )
 
 
-def test_gated_sae_forward_pass():
-    cfg = build_gated_sae_training_cfg()
-    sae = GatedTrainingSAE(cfg)
-
-    batch_size = 32
-    d_in = sae.cfg.d_in
-
-    x = torch.randn(batch_size, d_in)
-    sae_out = sae(x)
-
-    assert sae_out.shape == (batch_size, d_in)
-
-
-def test_sae_save_and_load_from_pretrained_gated(tmp_path: Path) -> None:
+def test_GatedSAE_save_and_load_from_pretrained(tmp_path: Path) -> None:
     cfg = build_gated_sae_cfg()
     model_path = str(tmp_path)
     sae = GatedSAE(cfg)
@@ -184,7 +146,7 @@ def test_sae_save_and_load_from_pretrained_gated(tmp_path: Path) -> None:
     assert torch.allclose(sae_out_1, sae_out_2)
 
 
-def test_gated_sae_training_forward_pass():
+def test_GatedTrainingSAE_forward_pass():
     cfg = build_gated_sae_training_cfg()
     sae = GatedTrainingSAE(cfg)
 
@@ -219,7 +181,7 @@ def test_gated_sae_training_forward_pass():
     assert pytest.approx(detached_loss, rel=1e-3) == expected_loss
 
 
-def test_sae_gated_initialization():
+def test_GatedSAE_initialization():
     cfg = build_gated_sae_cfg()
     sae = GatedSAE.from_dict(cfg.to_dict())
     assert isinstance(sae.W_enc, nn.Parameter)
@@ -244,7 +206,7 @@ def test_sae_gated_initialization():
     assert torch.allclose(sae.b_mag, torch.zeros_like(sae.b_mag))
 
 
-def test_SparseAutoencoder_initialization_gated():
+def test_GatedTrainingSAE_initialization():
     cfg = build_gated_sae_training_cfg()
     sae = GatedTrainingSAE.from_dict(cfg.to_dict())
 
@@ -270,3 +232,65 @@ def test_SparseAutoencoder_initialization_gated():
 
     #  Default currently should be tranpose initialization
     assert torch.allclose(sae.W_enc, sae.W_dec.T, atol=1e-6)
+
+
+def test_GatedTrainingSAE_save_and_load_inference_sae(tmp_path: Path) -> None:
+    # Create a training SAE with specific parameter values
+    cfg = build_gated_sae_training_cfg(device="cpu")
+    training_sae = GatedTrainingSAE(cfg)
+
+    # Set some known values for testing
+    training_sae.W_enc.data = torch.randn_like(training_sae.W_enc.data)
+    training_sae.W_dec.data = torch.randn_like(training_sae.W_dec.data)
+    training_sae.b_dec.data = torch.randn_like(training_sae.b_dec.data)
+    training_sae.b_gate.data = torch.randn_like(training_sae.b_gate.data)
+    training_sae.b_mag.data = torch.randn_like(training_sae.b_mag.data)
+    training_sae.r_mag.data = torch.randn_like(training_sae.r_mag.data)
+
+    # Save original state for comparison
+    original_W_enc = training_sae.W_enc.data.clone()
+    original_W_dec = training_sae.W_dec.data.clone()
+    original_b_dec = training_sae.b_dec.data.clone()
+    original_b_gate = training_sae.b_gate.data.clone()
+    original_b_mag = training_sae.b_mag.data.clone()
+    original_r_mag = training_sae.r_mag.data.clone()
+
+    # Save as inference model
+    model_path = str(tmp_path)
+    training_sae.save_inference_model(model_path)
+
+    assert os.path.exists(model_path)
+
+    # Load as inference SAE
+    inference_sae = SAE.load_from_disk(model_path, device="cpu")
+
+    # Should be loaded as GatedSAE
+    assert isinstance(inference_sae, GatedSAE)
+
+    # Check that all parameters match
+    assert torch.allclose(inference_sae.W_enc, original_W_enc)
+    assert torch.allclose(inference_sae.W_dec, original_W_dec)
+    assert torch.allclose(inference_sae.b_dec, original_b_dec)
+    assert torch.allclose(inference_sae.b_gate, original_b_gate)
+    assert torch.allclose(inference_sae.b_mag, original_b_mag)
+    assert torch.allclose(inference_sae.r_mag, original_r_mag)
+
+    # Verify forward pass gives same results
+    sae_in = torch.randn(10, cfg.d_in, device="cpu")
+
+    # Get output from training SAE
+    training_feature_acts, _ = training_sae.encode_with_hidden_pre(sae_in)
+    training_sae_out = training_sae.decode(training_feature_acts)
+
+    # Get output from inference SAE
+    inference_feature_acts = inference_sae.encode(sae_in)
+    inference_sae_out = inference_sae.decode(inference_feature_acts)
+
+    # Should produce identical outputs
+    assert torch.allclose(training_feature_acts, inference_feature_acts)
+    assert torch.allclose(training_sae_out, inference_sae_out)
+
+    # Test the full forward pass
+    training_full_out = training_sae(sae_in)
+    inference_full_out = inference_sae(sae_in)
+    assert torch.allclose(training_full_out, inference_full_out)

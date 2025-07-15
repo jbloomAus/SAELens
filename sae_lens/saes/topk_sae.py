@@ -237,39 +237,6 @@ class TopKTrainingSAE(TrainingSAE[TopKTrainingSAEConfig]):
         auxk_loss = (recons - residual).pow(2).sum(dim=-1).mean()
         return scale * auxk_loss
 
-    def _calculate_topk_aux_acts(
-        self,
-        k_aux: int,
-        hidden_pre: torch.Tensor,
-        dead_neuron_mask: torch.Tensor,
-    ) -> torch.Tensor:
-        """
-        Helper method to calculate activations for the auxiliary loss.
-
-        Args:
-            k_aux: Number of top dead neurons to select
-            hidden_pre: Pre-activation values from encoder
-            dead_neuron_mask: Boolean mask indicating which neurons are dead
-
-        Returns:
-            Tensor with activations for only the top-k dead neurons, zeros elsewhere
-        """
-        # Don't include living latents in this loss (set them to -inf so they won't be selected)
-        auxk_latents = torch.where(
-            dead_neuron_mask[None],
-            hidden_pre,
-            torch.tensor(-float("inf"), device=hidden_pre.device),
-        )
-
-        # Find topk values among dead neurons
-        auxk_topk = auxk_latents.topk(k_aux, dim=-1, sorted=False)
-
-        # Create a tensor of zeros, then place the topk values at their proper indices
-        auxk_acts = torch.zeros_like(hidden_pre)
-        auxk_acts.scatter_(-1, auxk_topk.indices, auxk_topk.values)
-
-        return auxk_acts
-
     def to_inference_config_dict(self) -> dict[str, Any]:
         return filter_valid_dataclass_fields(
             self.cfg.to_dict(), TopKSAEConfig, ["architecture"]
@@ -281,6 +248,18 @@ def _calculate_topk_aux_acts(
     hidden_pre: torch.Tensor,
     dead_neuron_mask: torch.Tensor,
 ) -> torch.Tensor:
+    """
+    Helper method to calculate activations for the auxiliary loss.
+
+    Args:
+        k_aux: Number of top dead neurons to select
+        hidden_pre: Pre-activation values from encoder
+        dead_neuron_mask: Boolean mask indicating which neurons are dead
+
+    Returns:
+        Tensor with activations for only the top-k dead neurons, zeros elsewhere
+    """
+
     # Don't include living latents in this loss
     auxk_latents = torch.where(dead_neuron_mask[None], hidden_pre, -torch.inf)
     # Top-k dead latents

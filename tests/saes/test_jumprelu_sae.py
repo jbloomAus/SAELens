@@ -1,13 +1,16 @@
+import os
+from pathlib import Path
+
 import pytest
 import torch
 from torch import nn
 
 from sae_lens.saes.jumprelu_sae import JumpReLU, JumpReLUSAE, JumpReLUTrainingSAE
-from sae_lens.saes.sae import TrainStepInput
+from sae_lens.saes.sae import SAE, TrainStepInput
 from tests.helpers import build_jumprelu_sae_cfg, build_jumprelu_sae_training_cfg
 
 
-def test_jumprelu_sae_encoding():
+def test_JumpReLUTrainingSAE_encoding():
     sae = JumpReLUTrainingSAE(build_jumprelu_sae_training_cfg())
 
     batch_size = 32
@@ -31,7 +34,7 @@ def test_jumprelu_sae_encoding():
     assert torch.allclose(feature_acts, expected_feature_acts, atol=1e-6)  # type: ignore
 
 
-def test_jumprelu_sae_training_forward_pass():
+def test_JumpReLUTrainingSAE_training_forward_pass():
     sae = JumpReLUTrainingSAE(build_jumprelu_sae_training_cfg())
 
     batch_size = 32
@@ -68,7 +71,7 @@ def test_jumprelu_sae_training_forward_pass():
     )
 
 
-def test_sae_jumprelu_initialization():
+def test_JumpReLUSAE_initialization():
     cfg = build_jumprelu_sae_cfg(device="cpu")
     sae = JumpReLUSAE.from_dict(cfg.to_dict())
     assert isinstance(sae.W_enc, nn.Parameter)
@@ -92,7 +95,7 @@ def test_sae_jumprelu_initialization():
 
 
 @pytest.mark.parametrize("use_error_term", [True, False])
-def test_sae_jumprelu_forward(use_error_term: bool):
+def test_JumpReLUSAE_forward(use_error_term: bool):
     cfg = build_jumprelu_sae_cfg(d_in=2, d_sae=3)
     sae = JumpReLUSAE.from_dict(cfg.to_dict())
     sae.use_error_term = use_error_term
@@ -121,7 +124,7 @@ def test_sae_jumprelu_forward(use_error_term: bool):
     assert torch.allclose(cache["hook_sae_acts_post"], torch.tensor([[0.0, 0.6, 0.6]]))
 
 
-def test_SparseAutoencoder_initialization_jumprelu():
+def test_JumpReLUTrainingSAE_initialization():
     cfg = build_jumprelu_sae_training_cfg()
     sae = JumpReLUTrainingSAE.from_dict(cfg.to_dict())
 
@@ -146,3 +149,64 @@ def test_SparseAutoencoder_initialization_jumprelu():
 
     #  Default currently should be tranpose initialization
     assert torch.allclose(sae.W_enc, sae.W_dec.T, atol=1e-6)
+
+
+def test_JumpReLUTrainingSAE_save_and_load_inference_sae(tmp_path: Path) -> None:
+    # Create a training SAE with specific parameter values
+    cfg = build_jumprelu_sae_training_cfg(device="cpu")
+    training_sae = JumpReLUTrainingSAE(cfg)
+
+    # Set some known values for testing
+    training_sae.W_enc.data = torch.randn_like(training_sae.W_enc.data)
+    training_sae.W_dec.data = torch.randn_like(training_sae.W_dec.data)
+    training_sae.b_enc.data = torch.randn_like(training_sae.b_enc.data)
+    training_sae.b_dec.data = torch.randn_like(training_sae.b_dec.data)
+    training_sae.log_threshold.data = torch.randn_like(training_sae.log_threshold.data)
+
+    # Save original state for comparison
+    original_W_enc = training_sae.W_enc.data.clone()
+    original_W_dec = training_sae.W_dec.data.clone()
+    original_b_enc = training_sae.b_enc.data.clone()
+    original_b_dec = training_sae.b_dec.data.clone()
+    original_threshold = training_sae.threshold.data.clone()  # exp(log_threshold)
+
+    # Save as inference model
+    model_path = str(tmp_path)
+    training_sae.save_inference_model(model_path)
+
+    assert os.path.exists(model_path)
+
+    # Load as inference SAE
+    inference_sae = SAE.load_from_disk(model_path, device="cpu")
+
+    # Should be loaded as JumpReLUSAE
+    assert isinstance(inference_sae, JumpReLUSAE)
+
+    # Check that all parameters match
+    assert torch.allclose(inference_sae.W_enc, original_W_enc)
+    assert torch.allclose(inference_sae.W_dec, original_W_dec)
+    assert torch.allclose(inference_sae.b_enc, original_b_enc)
+    assert torch.allclose(inference_sae.b_dec, original_b_dec)
+
+    # Most importantly, check that log_threshold was converted to threshold
+    assert torch.allclose(inference_sae.threshold, original_threshold)
+
+    # Verify forward pass gives same results
+    sae_in = torch.randn(10, cfg.d_in, device="cpu")
+
+    # Get output from training SAE
+    training_feature_acts, _ = training_sae.encode_with_hidden_pre(sae_in)
+    training_sae_out = training_sae.decode(training_feature_acts)
+
+    # Get output from inference SAE
+    inference_feature_acts = inference_sae.encode(sae_in)
+    inference_sae_out = inference_sae.decode(inference_feature_acts)
+
+    # Should produce identical outputs
+    assert torch.allclose(training_feature_acts, inference_feature_acts)
+    assert torch.allclose(training_sae_out, inference_sae_out)
+
+    # Test the full forward pass
+    training_full_out = training_sae(sae_in)
+    inference_full_out = inference_sae(sae_in)
+    assert torch.allclose(training_full_out, inference_full_out)

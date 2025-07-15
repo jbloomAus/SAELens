@@ -14,7 +14,6 @@ from sae_lens.saes.sae import (
     TrainingSAE,
     TrainingSAEConfig,
     TrainStepInput,
-    TrainStepOutput,
 )
 from sae_lens.util import filter_valid_dataclass_fields
 
@@ -299,34 +298,6 @@ class JumpReLUTrainingSAE(TrainingSAE[JumpReLUTrainingSAEConfig]):
 
         # Fix: Use squeeze() instead of squeeze(-1) to match old behavior
         self.log_threshold.data = torch.log(current_thresh * W_dec_norms.squeeze())
-
-    def _create_train_step_output(
-        self,
-        sae_in: torch.Tensor,
-        sae_out: torch.Tensor,
-        feature_acts: torch.Tensor,
-        hidden_pre: torch.Tensor,
-        loss: torch.Tensor,
-        losses: dict[str, torch.Tensor],
-    ) -> TrainStepOutput:
-        """
-        Helper to produce a TrainStepOutput from the trainer.
-        The old code expects a method named _create_train_step_output().
-        """
-        return TrainStepOutput(
-            sae_in=sae_in,
-            sae_out=sae_out,
-            feature_acts=feature_acts,
-            hidden_pre=hidden_pre,
-            loss=loss,
-            losses=losses,
-        )
-
-    @torch.no_grad()
-    def initialize_decoder_norm_constant_norm(self, norm: float = 0.1):
-        """Initialize decoder with constant norm"""
-        self.W_dec.data /= torch.norm(self.W_dec.data, dim=1, keepdim=True)
-        self.W_dec.data *= norm
 
     def process_state_dict_for_saving(self, state_dict: dict[str, Any]) -> None:
         """Convert log_threshold to threshold for saving"""
