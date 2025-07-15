@@ -3,14 +3,12 @@ on:
   push:
     branches:
       - main
-      - alpha
     paths-ignore:
       - ".vscode/**"
       - ".gitignore"
   pull_request:
     branches:
       - main
-      - alpha
     paths-ignore:
       - ".vscode/**"
       - ".gitignore"
@@ -133,9 +131,3 @@ jobs:
           if ! poetry run mike list | grep -q "latest"; then
             poetry run mike set-default --push dev
           fi
-      - name: Deploy alpha branch docs
-        if: github.event_name == 'push' && github.ref == 'refs/heads/alpha'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          poetry run mike deploy --push --update-aliases pre-release alpha
