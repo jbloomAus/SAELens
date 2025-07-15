@@ -1,3 +1,5 @@
+import sys
+
 import pytest
 import torch
 from mamba_lens import HookedMamba
@@ -59,6 +61,9 @@ def test_load_model_with_generic_huggingface_lm():
     assert isinstance(model, HookedProxyLM)
 
 
+@pytest.mark.skipif(
+    sys.platform == "darwin", reason="Test crashes Python interpreter on macOS"
+)
 def test_HookedProxyLM_gives_same_cached_states_as_original_implementation():
     hf_model = AutoModelForCausalLM.from_pretrained("gpt2")
     tokenizer = AutoTokenizer.from_pretrained("gpt2")
@@ -135,6 +140,9 @@ def test_HookedProxyLM_to_tokens_gives_same_output_as_tlens(
     assert torch.allclose(tl_tokens, hf_tokens)
 
 
+@pytest.mark.skipif(
+    sys.platform == "darwin", reason="Test crashes Python interpreter on macOS"
+)
 def test_HookedProxyLM_gives_same_hidden_states_when_stop_at_layer_and_names_filter_are_set(
     gpt2_proxy_model: HookedProxyLM,
 ):
@@ -176,3 +184,72 @@ def test_HookedProxyLM_gives_same_hidden_states_when_stop_at_layer_and_names_fil
     assert res_no_stop is not None
     for layer in layers:
         assert torch.allclose(cache_with_stop[layer], cache_no_stop[layer])
+
+
+def test_HookedProxyLM_to_tokens_raises_error_on_invalid_prepend_bos(
+    gpt2_proxy_model: HookedProxyLM,
+):
+    with pytest.raises(ValueError, match="Only works with prepend_bos=False"):
+        gpt2_proxy_model.to_tokens("hi", prepend_bos=True)
+
+    with pytest.raises(ValueError, match="Only works with prepend_bos=False"):
+        gpt2_proxy_model.to_tokens("hi", prepend_bos=None)
+
+
+def test_HookedProxyLM_to_tokens_raises_error_on_invalid_padding_side(
+    gpt2_proxy_model: HookedProxyLM,
+):
+    with pytest.raises(ValueError, match="Only works with padding_side=None"):
+        gpt2_proxy_model.to_tokens("hi", prepend_bos=False, padding_side="left")
+
+    with pytest.raises(ValueError, match="Only works with padding_side=None"):
+        gpt2_proxy_model.to_tokens("hi", prepend_bos=False, padding_side="right")
+
+
+def test_HookedProxyLM_to_tokens_raises_error_on_invalid_truncate(
+    gpt2_proxy_model: HookedProxyLM,
+):
+    with pytest.raises(ValueError, match="Only works with truncate=False"):
+        gpt2_proxy_model.to_tokens("hi", prepend_bos=False, truncate=True)
+
+
+def test_HookedProxyLM_to_tokens_raises_error_on_invalid_move_to_device(
+    gpt2_proxy_model: HookedProxyLM,
+):
+    with pytest.raises(ValueError, match="Only works with move_to_device=False"):
+        gpt2_proxy_model.to_tokens(
+            "hi", prepend_bos=False, truncate=False, move_to_device=True
+        )
+
+
+def test_HookedProxyLM_forward_raises_error_on_invalid_return_type(
+    gpt2_proxy_model: HookedProxyLM,
+):
+    tokens = gpt2_proxy_model.to_tokens(
+        "hi", prepend_bos=False, move_to_device=False, truncate=False
+    )
+
+    with pytest.raises(NotImplementedError, match="Only return_type supported is"):
+        gpt2_proxy_model.forward(tokens, return_type="loss")  # type: ignore
+
+    with pytest.raises(NotImplementedError, match="Only return_type supported is"):
+        gpt2_proxy_model.forward(tokens, return_type="activations")  # type: ignore
+
+
+def test_HookedProxyLM_forward_raises_error_on_stop_at_layer_with_return_both(
+    gpt2_proxy_model: HookedProxyLM,
+):
+    tokens = gpt2_proxy_model.to_tokens(
+        "hi", prepend_bos=False, move_to_device=False, truncate=False
+    )
+
+    with pytest.raises(
+        NotImplementedError,
+        match="stop_at_layer is not supported for return_type='both'",
+    ):
+        gpt2_proxy_model.forward(
+            tokens,
+            return_type="both",
+            stop_at_layer=3,
+            _names_filter=["transformer.h.0"],
+        )
