@@ -24,7 +24,7 @@ class BatchTopK(nn.Module):
         self.postact_fn = postact_fn
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        acts = x.relu()
+        acts = self.postact_fn(x)
         flat_acts = acts.flatten()
         acts_topk_flat = torch.topk(flat_acts, self.k * acts.shape[0], dim=-1)
         return (
