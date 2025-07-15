@@ -2,8 +2,6 @@
 Took the LR scheduler from my previous work: https://github.com/jbloomAus/DecisionTransformerInterpretability/blob/ee55df35cdb92e81d689c72fb9dd5a7252893363/src/decision_transformer/utils.py#L425
 """
 
-from typing import Any
-
 import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
 
@@ -152,34 +150,3 @@ class CoefficientScheduler:
     def value(self) -> float:
         """Returns the current scalar value."""
         return self.current_value
-
-    def state_dict(self) -> dict[str, Any]:
-        """State dict for serialization."""
-        return {
-            "warm_up_steps": self.warm_up_steps,
-            "final_value": self.final_value,
-            "current_step": self.current_step,
-            "current_value": self.current_value,
-        }
-
-    def load_state_dict(self, state_dict: dict[str, Any]):
-        """Loads the scheduler state."""
-        self.warm_up_steps = state_dict["warm_up_steps"]
-        self.final_value = state_dict["final_value"]
-        self.current_step = state_dict["current_step"]
-        # Maintain consistency: re-calculate current_value based on loaded step
-        # This handles resuming correctly if stopped mid-warmup.
-        if self.current_step <= self.warm_up_steps and self.warm_up_steps > 0:
-            # Use max(0, ...) to handle case where current_step might be loaded as -1 or similar before first step
-            step_for_calc = max(0, self.current_step)
-            # Recalculate based on the step *before* the one about to be taken
-            # Or simply use the saved current_value if available and consistent
-            if "current_value" in state_dict:
-                self.current_value = state_dict["current_value"]
-            else:  # Legacy state dicts might not have current_value
-                self.current_value = self.final_value * (
-                    step_for_calc / self.warm_up_steps
-                )
-
-        else:
-            self.current_value = self.final_value
