@@ -2,7 +2,11 @@ from typing import Type
 
 import pytest
 
-from sae_lens.config import CacheActivationsRunnerConfig, LanguageModelSAERunnerConfig
+from sae_lens.config import (
+    CacheActivationsRunnerConfig,
+    LanguageModelSAERunnerConfig,
+    _default_cached_activations_path,
+)
 from sae_lens.saes.standard_sae import StandardTrainingSAEConfig
 
 TINYSTORIES_MODEL = "tiny-stories-1M"
@@ -46,3 +50,15 @@ def test_cache_activations_runner_config_seqpos(
             context_size=10,
             seqpos_slice=seqpos_slice,
         )
+
+
+def test_default_cached_activations_path():
+    assert (
+        _default_cached_activations_path(
+            dataset_path="ds_path",
+            model_name="model_name",
+            hook_name="hook_name",
+            hook_head_index=None,
+        )
+        == "activations/ds_path/model_name/hook_name"
+    )

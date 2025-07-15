@@ -81,6 +81,157 @@ def test_sae_init(cfg: LanguageModelSAERunnerConfig[StandardTrainingSAEConfig]):
     assert sae.b_dec.shape == (cfg.sae.d_in,)
 
 
+def test_sae_to_device_string():
+    cfg = build_sae_cfg(device="cpu")
+    sae = StandardSAE(cfg)
+
+    # Test moving to device as string
+    sae_moved = sae.to("meta")
+    assert sae_moved.device == torch.device("meta")
+    assert sae_moved.cfg.device == "meta"
+    assert sae_moved.W_enc.device == torch.device("meta")
+    assert sae_moved.W_dec.device == torch.device("meta")
+    assert sae_moved.b_enc.device == torch.device("meta")
+    assert sae_moved.b_dec.device == torch.device("meta")
+
+
+def test_sae_to_device_torch_device():
+    cfg = build_sae_cfg(device="cpu")
+    sae = StandardSAE(cfg)
+
+    # Test moving to device as torch.device
+    target_device = torch.device("meta")
+    sae_moved = sae.to(target_device)
+    assert sae_moved.device == target_device
+    assert sae_moved.cfg.device == str(target_device)
+    assert sae_moved.W_enc.device == target_device
+    assert sae_moved.W_dec.device == target_device
+    assert sae_moved.b_enc.device == target_device
+    assert sae_moved.b_dec.device == target_device
+
+
+def test_sae_to_dtype():
+    cfg = build_sae_cfg(dtype="float32")
+    sae = StandardSAE(cfg)
+
+    # Test changing dtype
+    sae_moved = sae.to(torch.float16)
+    assert sae_moved.dtype == torch.float16
+    assert sae_moved.cfg.dtype == "torch.float16"
+    assert sae_moved.W_enc.dtype == torch.float16
+    assert sae_moved.W_dec.dtype == torch.float16
+    assert sae_moved.b_enc.dtype == torch.float16
+    assert sae_moved.b_dec.dtype == torch.float16
+
+
+def test_sae_to_device_and_dtype():
+    cfg = build_sae_cfg(device="cpu", dtype="float32")
+    sae = StandardSAE(cfg)
+
+    # Test changing both device and dtype
+    sae_moved = sae.to(device="meta", dtype=torch.float16)
+    assert sae_moved.device == torch.device("meta")
+    assert sae_moved.dtype == torch.float16
+    assert sae_moved.cfg.device == "meta"
+    assert sae_moved.cfg.dtype == "torch.float16"
+    assert sae_moved.W_enc.device == torch.device("meta")
+    assert sae_moved.W_enc.dtype == torch.float16
+    assert sae_moved.W_dec.device == torch.device("meta")
+    assert sae_moved.W_dec.dtype == torch.float16
+    assert sae_moved.b_enc.device == torch.device("meta")
+    assert sae_moved.b_enc.dtype == torch.float16
+    assert sae_moved.b_dec.device == torch.device("meta")
+    assert sae_moved.b_dec.dtype == torch.float16
+
+
+def test_sae_to_tensor():
+    cfg = build_sae_cfg(device="cpu", dtype="float32")
+    sae = StandardSAE(cfg)
+
+    # Test using tensor to specify device and dtype
+    reference_tensor = torch.randn(10, 10, device="meta", dtype=torch.float16)
+    sae_moved = sae.to(reference_tensor)
+    assert sae_moved.device == reference_tensor.device
+    assert sae_moved.dtype == reference_tensor.dtype
+    assert sae_moved.cfg.device == str(reference_tensor.device)
+    assert sae_moved.cfg.dtype == str(reference_tensor.dtype)
+    assert sae_moved.W_enc.device == reference_tensor.device
+    assert sae_moved.W_enc.dtype == reference_tensor.dtype
+    assert sae_moved.W_dec.device == reference_tensor.device
+    assert sae_moved.W_dec.dtype == reference_tensor.dtype
+
+
+def test_sae_to_kwargs_only():
+    cfg = build_sae_cfg(device="cpu", dtype="float32")
+    sae = StandardSAE(cfg)
+
+    # Test using only kwargs
+    sae_moved = sae.to(device="meta", dtype=torch.float16, non_blocking=False)
+    assert sae_moved.device == torch.device("meta")
+    assert sae_moved.dtype == torch.float16
+    assert sae_moved.cfg.device == "meta"
+    assert sae_moved.cfg.dtype == "torch.float16"
+
+
+def test_sae_to_positional_args():
+    cfg = build_sae_cfg(device="cpu", dtype="float32")
+    sae = StandardSAE(cfg)
+
+    # Test using positional args (device, dtype)
+    sae_moved = sae.to(torch.device("meta"), torch.float16)
+    assert sae_moved.device == torch.device("meta")
+    assert sae_moved.dtype == torch.float16
+    assert sae_moved.cfg.device == "meta"
+    assert sae_moved.cfg.dtype == "torch.float16"
+
+
+def test_sae_to_device_only_positional():
+    cfg = build_sae_cfg(device="cpu", dtype="float32")
+    sae = StandardSAE(cfg)
+
+    # Test using only device as positional arg
+    sae_moved = sae.to("meta")
+    assert sae_moved.device == torch.device("meta")
+    assert sae_moved.cfg.device == "meta"
+    # dtype should remain unchanged
+    assert sae_moved.dtype == torch.float32
+    assert sae_moved.cfg.dtype == "float32"
+
+
+def test_sae_to_dtype_only_positional():
+    cfg = build_sae_cfg(device="cpu", dtype="float32")
+    sae = StandardSAE(cfg)
+
+    # Test using only dtype as positional arg
+    sae_moved = sae.to(torch.float16)
+    assert sae_moved.dtype == torch.float16
+    assert sae_moved.cfg.dtype == "torch.float16"
+    # device should remain unchanged
+    assert sae_moved.device == torch.device("cpu")
+    assert sae_moved.cfg.device == "cpu"
+
+
+def test_sae_to_no_args():
+    cfg = build_sae_cfg(device="cpu", dtype="float32")
+    sae = StandardSAE(cfg)
+
+    # Test calling to() with no args should not change anything
+    sae_moved = sae.to()
+    assert sae_moved.device == torch.device("cpu")
+    assert sae_moved.dtype == torch.float32
+    assert sae_moved.cfg.device == "cpu"
+    assert sae_moved.cfg.dtype == "float32"
+
+
+def test_sae_to_returns_same_instance():
+    cfg = build_sae_cfg(device="cpu", dtype="float32")
+    sae = StandardSAE(cfg)
+
+    # Test that to() returns the same instance (not a copy)
+    sae_moved = sae.to("meta")
+    assert sae_moved is sae
+
+
 def test_sae_fold_w_dec_norm(
     cfg: LanguageModelSAERunnerConfig[StandardTrainingSAEConfig],
 ):
