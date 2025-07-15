@@ -4,6 +4,7 @@ from typing import Any, Sequence, TypedDict, cast
 from transformer_lens import HookedTransformer
 
 from sae_lens.config import LanguageModelSAERunnerConfig, LoggingConfig
+from sae_lens.saes.batchtopk_sae import BatchTopKTrainingSAEConfig
 from sae_lens.saes.gated_sae import GatedSAEConfig, GatedTrainingSAEConfig
 from sae_lens.saes.jumprelu_sae import JumpReLUSAEConfig, JumpReLUTrainingSAEConfig
 from sae_lens.saes.sae import T_TRAINING_SAE_CONFIG, SAEConfig, TrainingSAEConfig
@@ -387,6 +388,40 @@ def build_topk_sae_cfg(**kwargs: Any) -> TopKSAEConfig:
 
 def build_topk_sae_training_cfg(**kwargs: Any) -> TopKTrainingSAEConfig:
     return build_topk_runner_cfg(**kwargs).sae  # type: ignore
+
+
+# --- BatchTopK SAE Builder ---
+def build_batchtopk_runner_cfg(
+    **kwargs: Any,
+) -> LanguageModelSAERunnerConfig[BatchTopKTrainingSAEConfig]:
+    """Helper to create a mock instance for BatchTopK SAE."""
+    default_sae_config: TrainingSAEConfigDict = {
+        "d_in": 64,
+        "d_sae": 256,
+        "dtype": "float32",
+        "device": "cpu",
+        "normalize_activations": "none",
+        "decoder_init_norm": 0.1,
+        "apply_b_dec_to_input": False,
+        "k": 10,
+    }
+    # Ensure activation_fn_kwargs has k if k is overridden
+    temp_sae_overrides = {
+        k: v for k, v in kwargs.items() if k in TrainingSAEConfigDict.__annotations__
+    }
+    temp_sae_config = {**default_sae_config, **temp_sae_overrides}
+    # Update the default config *before* passing it to _build_runner_config
+    final_default_sae_config = cast(dict[str, Any], temp_sae_config)
+
+    return _build_runner_config(
+        BatchTopKTrainingSAEConfig,
+        final_default_sae_config,
+        **kwargs,
+    )
+
+
+def build_batchtopk_sae_training_cfg(**kwargs: Any) -> BatchTopKTrainingSAEConfig:
+    return build_batchtopk_runner_cfg(**kwargs).sae  # type: ignore
 
 
 MODEL_CACHE: dict[str, HookedTransformer] = {}

@@ -132,7 +132,30 @@ from sae_lens.saes import TopKTrainingSAEConfig # Import TopK config
 #     ),
 #     # ...
 # )
-# sparse_autoencoder = SAETrainingRunner(cfg).run() # Commented out
+# sparse_autoencoder = SAETrainingRunner(cfg).run()
+```
+
+### Training BatchTopk SAEs
+
+A more modern version of the TopK SAE is the [BatchTopK](https://arxiv.org/abs/2412.06410) architecture, which fixes the mean L0 across a training batch rather than fixing the L0 for every sample in the batch. To train a BatchTopK SAE, provide a `BatchTopKTrainingSAEConfig` instance to the `sae` field. The primary parameter for TopK SAEs is `k`, the number of features to keep active. If not set, `k` defaults to 100 in `BatchTopKTrainingSAEConfig`. Like the TopK architecture, the BatchTopK architecture does not use an `l1_coefficient` or `lp_norm` for sparsity, as sparsity is structurally enforced.
+
+Also worth noting is that `BatchTopK` SAEs will save as `JumpReLU` SAEs for use at inference. This is to avoid needing to provide a batch of inputs at inference time, allowing the SAE to work consistently on any batch size after training is complete.
+
+```python
+from sae_lens import LanguageModelSAERunnerConfig, SAETrainingRunner
+from sae_lens.saes import BatchTopKTrainingSAEConfig # Import BatchTopK config
+
+# cfg = LanguageModelSAERunnerConfig( # Full config would be defined here
+#     # ... other LanguageModelSAERunnerConfig parameters ...
+#     sae=BatchTopKTrainingSAEConfig(
+#         k=100, # Set the number of active features
+#         d_in=1024, # Example, must match your hook point
+#         d_sae=16 * 1024, # Example
+#         # ... other common SAE parameters from SAEConfig if needed ...
+#     ),
+#     # ...
+# )
+# sparse_autoencoder = SAETrainingRunner(cfg).run()
 ```
 
 ### Training JumpReLU SAEs
@@ -155,7 +178,7 @@ from sae_lens.saes import JumpReLUTrainingSAEConfig # Import JumpReLU config
 #     ),
 #     # ...
 # )
-# sparse_autoencoder = SAETrainingRunner(cfg).run() # Commented out
+# sparse_autoencoder = SAETrainingRunner(cfg).run()
 ```
 
 ### Training Gated SAEs
@@ -176,7 +199,7 @@ from sae_lens.saes import GatedTrainingSAEConfig # Import Gated config
 #     ),
 #     # ...
 # )
-# sparse_autoencoder = SAETrainingRunner(cfg).run() # Commented out
+# sparse_autoencoder = SAETrainingRunner(cfg).run()
 ```
 
 ## CLI Runner

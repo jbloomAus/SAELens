@@ -207,6 +207,8 @@ class TrainStepOutput:
     hidden_pre: torch.Tensor
     loss: torch.Tensor  # we need to call backwards on this
     losses: dict[str, torch.Tensor]
+    # any extra metrics to log can be added here
+    metrics: dict[str, torch.Tensor | float | int] = field(default_factory=dict)
 
 
 @dataclass
