@@ -30,20 +30,18 @@ class TopK(nn.Module):
     def __init__(
         self,
         k: int,
-        postact_fn: Callable[[torch.Tensor], torch.Tensor] = nn.ReLU(),
     ):
         super().__init__()
         self.k = k
-        self.postact_fn = postact_fn
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         1) Select top K elements along the last dimension.
-        2) Apply post-activation (often ReLU).
+        2) Apply ReLU.
         3) Zero out all other entries.
         """
         topk = torch.topk(x, k=self.k, dim=-1)
-        values = self.postact_fn(topk.values)
+        values = topk.values.relu()
         result = torch.zeros_like(x)
         result.scatter_(-1, topk.indices, values)
         return result

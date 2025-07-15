@@ -17,14 +17,12 @@ class BatchTopK(nn.Module):
     def __init__(
         self,
         k: int,
-        postact_fn: Callable[[torch.Tensor], torch.Tensor] = nn.ReLU(),
     ):
         super().__init__()
         self.k = k
-        self.postact_fn = postact_fn
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        acts = self.postact_fn(x)
+        acts = x.relu()
         flat_acts = acts.flatten()
         acts_topk_flat = torch.topk(flat_acts, self.k * acts.shape[0], dim=-1)
         return (
