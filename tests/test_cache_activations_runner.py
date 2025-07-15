@@ -120,6 +120,28 @@ def test_load_cached_activations(tmp_path: Path):
         assert buffer[1].shape == (cfg.n_seq_in_buffer * cfg.context_size,)
 
 
+def test_cache_activations_runner_to_string():
+    cfg = _default_cfg(Path("tmp_path"))
+    runner = CacheActivationsRunner(cfg)
+    result = str(runner)
+
+    # Check that the string contains the expected summary format
+    assert "Activation Cache Runner:" in result
+    assert "Total training tokens: 1024" in result
+    assert "Number of buffers: 4" in result
+    assert "Tokens per buffer: 256" in result
+    assert "Disk space required: 0.00 GB" in result
+    assert "Configuration:" in result
+
+    # Check that the config contains expected fields
+    assert "dataset_path='chanind/c4-10k-mini-tokenized-16-ctx-gelu-1l-tests'" in result
+    assert "model_name='gelu-1l'" in result
+    assert "hook_name='blocks.0.hook_mlp_out'" in result
+    assert "training_tokens=1024" in result
+    assert "context_size=8" in result
+    assert "d_in=512" in result
+
+
 def test_activations_store_refreshes_dataset_when_it_runs_out(tmp_path: Path):
     context_size = 8
     n_batches_in_buffer = 4

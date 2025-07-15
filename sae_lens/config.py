@@ -1,6 +1,5 @@
 import json
 import math
-import os
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar, cast
@@ -352,28 +351,6 @@ class LanguageModelSAERunnerConfig(Generic[T_TRAINING_SAE_CONFIG]):
         d["device"] = str(self.device)
         d["act_store_device"] = str(self.act_store_device)
         return d
-
-    def to_json(self, path: str) -> None:
-        if not os.path.exists(os.path.dirname(path)):
-            os.makedirs(os.path.dirname(path))
-
-        with open(path + "cfg.json", "w") as f:
-            json.dump(self.to_dict(), f, indent=2)
-
-    @classmethod
-    def from_json(cls, path: str) -> "LanguageModelSAERunnerConfig[Any]":
-        with open(path + "cfg.json") as f:
-            cfg = json.load(f)
-
-        # ensure that seqpos slices is a tuple
-        # Ensure seqpos_slice is a tuple
-        if "seqpos_slice" in cfg:
-            if isinstance(cfg["seqpos_slice"], list):
-                cfg["seqpos_slice"] = tuple(cfg["seqpos_slice"])
-            elif not isinstance(cfg["seqpos_slice"], tuple):
-                cfg["seqpos_slice"] = (cfg["seqpos_slice"],)
-
-        return cls(**cfg)
 
     def to_sae_trainer_config(self) -> "SAETrainerConfig":
         return SAETrainerConfig(

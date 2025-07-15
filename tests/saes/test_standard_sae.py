@@ -11,7 +11,7 @@ from safetensors import safe_open
 from transformer_lens.hook_points import HookPoint
 
 from sae_lens.config import LanguageModelSAERunnerConfig
-from sae_lens.saes.sae import SAE, _disable_hooks
+from sae_lens.saes.sae import SAE, TrainingSAE, _disable_hooks
 from sae_lens.saes.standard_sae import (
     StandardSAE,
     StandardTrainingSAE,
@@ -22,6 +22,8 @@ from tests.helpers import (
     build_runner_cfg,
     build_sae_cfg,
     build_sae_cfg_for_arch,
+    build_sae_training_cfg,
+    build_sae_training_cfg_for_arch,
 )
 
 
@@ -81,7 +83,158 @@ def test_sae_init(cfg: LanguageModelSAERunnerConfig[StandardTrainingSAEConfig]):
     assert sae.b_dec.shape == (cfg.sae.d_in,)
 
 
-def test_sae_fold_w_dec_norm(
+def test_StandardSAE_to_device_string():
+    cfg = build_sae_cfg(device="cpu")
+    sae = StandardSAE(cfg)
+
+    # Test moving to device as string
+    sae_moved = sae.to("meta")
+    assert sae_moved.device == torch.device("meta")
+    assert sae_moved.cfg.device == "meta"
+    assert sae_moved.W_enc.device == torch.device("meta")
+    assert sae_moved.W_dec.device == torch.device("meta")
+    assert sae_moved.b_enc.device == torch.device("meta")
+    assert sae_moved.b_dec.device == torch.device("meta")
+
+
+def test_StandardSAE_to_device_torch_device():
+    cfg = build_sae_cfg(device="cpu")
+    sae = StandardSAE(cfg)
+
+    # Test moving to device as torch.device
+    target_device = torch.device("meta")
+    sae_moved = sae.to(target_device)
+    assert sae_moved.device == target_device
+    assert sae_moved.cfg.device == str(target_device)
+    assert sae_moved.W_enc.device == target_device
+    assert sae_moved.W_dec.device == target_device
+    assert sae_moved.b_enc.device == target_device
+    assert sae_moved.b_dec.device == target_device
+
+
+def test_StandardSAE_to_dtype():
+    cfg = build_sae_cfg(dtype="float32")
+    sae = StandardSAE(cfg)
+
+    # Test changing dtype
+    sae_moved = sae.to(torch.float16)
+    assert sae_moved.dtype == torch.float16
+    assert sae_moved.cfg.dtype == "torch.float16"
+    assert sae_moved.W_enc.dtype == torch.float16
+    assert sae_moved.W_dec.dtype == torch.float16
+    assert sae_moved.b_enc.dtype == torch.float16
+    assert sae_moved.b_dec.dtype == torch.float16
+
+
+def test_sae_to_device_and_dtype():
+    cfg = build_sae_cfg(device="cpu", dtype="float32")
+    sae = StandardSAE(cfg)
+
+    # Test changing both device and dtype
+    sae_moved = sae.to(device="meta", dtype=torch.float16)
+    assert sae_moved.device == torch.device("meta")
+    assert sae_moved.dtype == torch.float16
+    assert sae_moved.cfg.device == "meta"
+    assert sae_moved.cfg.dtype == "torch.float16"
+    assert sae_moved.W_enc.device == torch.device("meta")
+    assert sae_moved.W_enc.dtype == torch.float16
+    assert sae_moved.W_dec.device == torch.device("meta")
+    assert sae_moved.W_dec.dtype == torch.float16
+    assert sae_moved.b_enc.device == torch.device("meta")
+    assert sae_moved.b_enc.dtype == torch.float16
+    assert sae_moved.b_dec.device == torch.device("meta")
+    assert sae_moved.b_dec.dtype == torch.float16
+
+
+def test_StandardSAE_to_tensor():
+    cfg = build_sae_cfg(device="cpu", dtype="float32")
+    sae = StandardSAE(cfg)
+
+    # Test using tensor to specify device and dtype
+    reference_tensor = torch.randn(10, 10, device="meta", dtype=torch.float16)
+    sae_moved = sae.to(reference_tensor)
+    assert sae_moved.device == reference_tensor.device
+    assert sae_moved.dtype == reference_tensor.dtype
+    assert sae_moved.cfg.device == str(reference_tensor.device)
+    assert sae_moved.cfg.dtype == str(reference_tensor.dtype)
+    assert sae_moved.W_enc.device == reference_tensor.device
+    assert sae_moved.W_enc.dtype == reference_tensor.dtype
+    assert sae_moved.W_dec.device == reference_tensor.device
+    assert sae_moved.W_dec.dtype == reference_tensor.dtype
+
+
+def test_StandardSAE_to_kwargs_only():
+    cfg = build_sae_cfg(device="cpu", dtype="float32")
+    sae = StandardSAE(cfg)
+
+    # Test using only kwargs
+    sae_moved = sae.to(device="meta", dtype=torch.float16, non_blocking=False)
+    assert sae_moved.device == torch.device("meta")
+    assert sae_moved.dtype == torch.float16
+    assert sae_moved.cfg.device == "meta"
+    assert sae_moved.cfg.dtype == "torch.float16"
+
+
+def test_StandardSAE_to_positional_args():
+    cfg = build_sae_cfg(device="cpu", dtype="float32")
+    sae = StandardSAE(cfg)
+
+    # Test using positional args (device, dtype)
+    sae_moved = sae.to(torch.device("meta"), torch.float16)
+    assert sae_moved.device == torch.device("meta")
+    assert sae_moved.dtype == torch.float16
+    assert sae_moved.cfg.device == "meta"
+    assert sae_moved.cfg.dtype == "torch.float16"
+
+
+def test_StandardSAE_to_device_only_positional():
+    cfg = build_sae_cfg(device="cpu", dtype="float32")
+    sae = StandardSAE(cfg)
+
+    # Test using only device as positional arg
+    sae_moved = sae.to("meta")
+    assert sae_moved.device == torch.device("meta")
+    assert sae_moved.cfg.device == "meta"
+    # dtype should remain unchanged
+    assert sae_moved.dtype == torch.float32
+    assert sae_moved.cfg.dtype == "float32"
+
+
+def test_StandardSAE_to_dtype_only_positional():
+    cfg = build_sae_cfg(device="cpu", dtype="float32")
+    sae = StandardSAE(cfg)
+
+    # Test using only dtype as positional arg
+    sae_moved = sae.to(torch.float16)
+    assert sae_moved.dtype == torch.float16
+    assert sae_moved.cfg.dtype == "torch.float16"
+    # device should remain unchanged
+    assert sae_moved.device == torch.device("cpu")
+    assert sae_moved.cfg.device == "cpu"
+
+
+def test_StandardSAE_to_no_args():
+    cfg = build_sae_cfg(device="cpu", dtype="float32")
+    sae = StandardSAE(cfg)
+
+    # Test calling to() with no args should not change anything
+    sae_moved = sae.to()
+    assert sae_moved.device == torch.device("cpu")
+    assert sae_moved.dtype == torch.float32
+    assert sae_moved.cfg.device == "cpu"
+    assert sae_moved.cfg.dtype == "float32"
+
+
+def test_StandardSAE_to_returns_same_instance():
+    cfg = build_sae_cfg(device="cpu", dtype="float32")
+    sae = StandardSAE(cfg)
+
+    # Test that to() returns the same instance (not a copy)
+    sae_moved = sae.to("meta")
+    assert sae_moved is sae
+
+
+def test_StandardSAE_fold_w_dec_norm(
     cfg: LanguageModelSAERunnerConfig[StandardTrainingSAEConfig],
 ):
     sae = StandardSAE(cfg.sae)  # type: ignore
@@ -164,8 +317,55 @@ def test_sae_fold_w_dec_norm_all_architectures(architecture: str):
     torch.testing.assert_close(sae_out_1, sae_out_2)
 
 
+@pytest.mark.parametrize("architecture", ALL_ARCHITECTURES)
 @torch.no_grad()
-def test_sae_fold_norm_scaling_factor(
+def test_training_sae_fold_w_dec_norm_all_architectures(architecture: str):
+    cfg = build_sae_training_cfg_for_arch(architecture)
+    sae = TrainingSAE.from_dict(cfg.to_dict())
+    sae.turn_off_forward_pass_hook_z_reshaping()  # hook z reshaping not needed here.
+
+    # make sure all parameters are not 0s
+    for param in sae.parameters():
+        param.data = torch.rand_like(param)
+
+    assert sae.W_dec.norm(dim=-1).mean().item() != pytest.approx(1.0, abs=1e-6)
+    sae2 = deepcopy(sae)
+
+    # If this is a topk SAE, assert this throws a NotImplementedError
+    if architecture == "topk":
+        with pytest.raises(NotImplementedError):
+            sae2.fold_W_dec_norm()
+        return
+
+    sae2.fold_W_dec_norm()
+
+    # fold_W_dec_norm should normalize W_dec to have unit norm.
+    assert sae2.W_dec.norm(dim=-1).mean().item() == pytest.approx(1.0, abs=1e-6)
+
+    # we expect activations of features to differ by W_dec norm weights.
+    activations = torch.randn(10, 4, cfg.d_in, device=cfg.device)
+    feature_activations_1 = sae.encode(activations)
+    feature_activations_2 = sae2.encode(activations)
+
+    assert torch.allclose(
+        feature_activations_1.nonzero(),
+        feature_activations_2.nonzero(),
+    )
+
+    expected_feature_activations_2 = feature_activations_1 * sae.W_dec.norm(dim=-1)
+    torch.testing.assert_close(
+        feature_activations_2, expected_feature_activations_2, atol=1e-4, rtol=1e-4
+    )
+
+    sae_out_1 = sae.decode(feature_activations_1)
+    sae_out_2 = sae2.decode(feature_activations_2)
+
+    # but actual outputs should be the same
+    torch.testing.assert_close(sae_out_1, sae_out_2)
+
+
+@torch.no_grad()
+def test_StandardSAE_fold_norm_scaling_factor(
     cfg: LanguageModelSAERunnerConfig[StandardTrainingSAEConfig],
 ):
     norm_scaling_factor = 3.0
@@ -251,7 +451,7 @@ def test_sae_fold_norm_scaling_factor_all_architectures(architecture: str):
     torch.testing.assert_close(sae_out_1, sae_out_2)
 
 
-def test_sae_save_and_load_from_pretrained(tmp_path: Path) -> None:
+def test_StandardSAE_save_and_load_from_pretrained(tmp_path: Path) -> None:
     cfg = build_sae_cfg()
     model_path = str(tmp_path)
     sae = SAE.from_dict(cfg.to_dict())
@@ -277,7 +477,7 @@ def test_sae_save_and_load_from_pretrained(tmp_path: Path) -> None:
     assert torch.allclose(sae_out_1, sae_out_2)
 
 
-def test_sae_get_name_returns_correct_name_from_cfg_vals() -> None:
+def test_StandardSAE_get_name_returns_correct_name_from_cfg_vals() -> None:
     cfg = build_sae_cfg(d_sae=128)
     cfg.metadata.model_name = "test_model"
     cfg.metadata.hook_name = "test_hook_name"
@@ -285,7 +485,7 @@ def test_sae_get_name_returns_correct_name_from_cfg_vals() -> None:
     assert sae.get_name() == "sae_test_model_test_hook_name_128"
 
 
-def test_sae_move_between_devices() -> None:
+def test_StandardSAE_move_between_devices() -> None:
     cfg = build_sae_cfg()
     sae = SAE.from_dict(cfg.to_dict())
 
@@ -295,7 +495,7 @@ def test_sae_move_between_devices() -> None:
     assert sae.W_enc.device == torch.device("meta")
 
 
-def test_disable_hooks_temporarily_stops_hooks_from_running():
+def test_StandardSAE_disable_hooks_temporarily_stops_hooks_from_running():
     cfg = build_sae_cfg(d_in=2, d_sae=3)
     sae = SAE.from_dict(cfg.to_dict())
     sae_in = torch.randn(10, cfg.d_in)
@@ -520,3 +720,59 @@ def test_StandardSAE_none():
     assert torch.allclose(scaled_input, test_input)
     scaled_output = sae.run_time_activation_norm_fn_out(scaled_input)
     assert torch.allclose(scaled_output, test_input)
+
+
+def test_StandardTrainingSAE_save_and_load_inference_sae(tmp_path: Path) -> None:
+    # Create a training SAE with specific parameter values
+    cfg = build_sae_training_cfg(device="cpu")
+    training_sae = StandardTrainingSAE(cfg)
+
+    # Set some known values for testing
+    training_sae.W_enc.data = torch.randn_like(training_sae.W_enc.data)
+    training_sae.W_dec.data = torch.randn_like(training_sae.W_dec.data)
+    training_sae.b_enc.data = torch.randn_like(training_sae.b_enc.data)
+    training_sae.b_dec.data = torch.randn_like(training_sae.b_dec.data)
+
+    # Save original state for comparison
+    original_W_enc = training_sae.W_enc.data.clone()
+    original_W_dec = training_sae.W_dec.data.clone()
+    original_b_enc = training_sae.b_enc.data.clone()
+    original_b_dec = training_sae.b_dec.data.clone()
+
+    # Save as inference model
+    model_path = str(tmp_path)
+    training_sae.save_inference_model(model_path)
+
+    assert os.path.exists(model_path)
+
+    # Load as inference SAE
+    inference_sae = SAE.load_from_disk(model_path, device="cpu")
+
+    # Should be loaded as StandardSAE
+    assert isinstance(inference_sae, StandardSAE)
+
+    # Check that all parameters match
+    assert torch.allclose(inference_sae.W_enc, original_W_enc)
+    assert torch.allclose(inference_sae.W_dec, original_W_dec)
+    assert torch.allclose(inference_sae.b_enc, original_b_enc)
+    assert torch.allclose(inference_sae.b_dec, original_b_dec)
+
+    # Verify forward pass gives same results
+    sae_in = torch.randn(10, cfg.d_in, device="cpu")
+
+    # Get output from training SAE
+    training_feature_acts, _ = training_sae.encode_with_hidden_pre(sae_in)
+    training_sae_out = training_sae.decode(training_feature_acts)
+
+    # Get output from inference SAE
+    inference_feature_acts = inference_sae.encode(sae_in)
+    inference_sae_out = inference_sae.decode(inference_feature_acts)
+
+    # Should produce identical outputs
+    assert torch.allclose(training_feature_acts, inference_feature_acts)
+    assert torch.allclose(training_sae_out, inference_sae_out)
+
+    # Test the full forward pass
+    training_full_out = training_sae(sae_in)
+    inference_full_out = inference_sae(sae_in)
+    assert torch.allclose(training_full_out, inference_full_out)

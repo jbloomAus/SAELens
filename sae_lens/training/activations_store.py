@@ -7,7 +7,6 @@ from collections.abc import Generator, Iterator, Sequence
 from typing import Any, Literal, cast
 
 import datasets
-import numpy as np
 import torch
 from datasets import Dataset, DatasetDict, IterableDataset, load_dataset
 from huggingface_hub import hf_hub_download
@@ -419,20 +418,6 @@ class ActivationsStore:
             )
 
         return activations_dataset
-
-    @torch.no_grad()
-    def estimate_norm_scaling_factor(self, n_batches_for_norm_estimate: int = int(1e3)):
-        norms_per_batch = []
-        for _ in tqdm(
-            range(n_batches_for_norm_estimate), desc="Estimating norm scaling factor"
-        ):
-            # temporalily set estimated_norm_scaling_factor to 1.0 so the dataloader works
-            self.estimated_norm_scaling_factor = 1.0
-            acts = self.next_batch()[:, 0]
-            self.estimated_norm_scaling_factor = None
-            norms_per_batch.append(acts.norm(dim=-1).mean().item())
-        mean_norm = np.mean(norms_per_batch)
-        return np.sqrt(self.d_in) / mean_norm
 
     def shuffle_input_dataset(self, seed: int, buffer_size: int = 1):
         """

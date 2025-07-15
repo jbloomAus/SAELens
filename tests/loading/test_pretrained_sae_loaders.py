@@ -2,12 +2,16 @@ from pathlib import Path
 
 import pytest
 import torch
+from safetensors.torch import save_file
 from sparsify import SparseCoder, SparseCoderConfig
 
 from sae_lens.loading.pretrained_sae_loaders import (
+    dictionary_learning_sae_huggingface_loader_1,
     get_deepseek_r1_config_from_hf,
+    get_llama_scope_config_from_hf,
     get_llama_scope_r1_distill_config_from_hf,
     load_sae_config_from_huggingface,
+    read_sae_components_from_disk,
     sparsify_disk_loader,
     sparsify_huggingface_loader,
 )
@@ -220,6 +224,39 @@ def test_get_deepseek_r1_config_with_invalid_layer():
         )
 
 
+def test_get_llama_scope_config_from_hf():
+    cfg = get_llama_scope_config_from_hf(
+        repo_id="fnlp/Llama3_1-8B-Base-LXA-32x",
+        folder_name="Llama3_1-8B-Base-L0A-32x",
+        device="cpu",
+        force_download=False,
+        cfg_overrides=None,
+    )
+
+    expected_cfg = {
+        "architecture": "jumprelu",
+        "d_in": 4096,
+        "d_sae": 4096 * 32,
+        "dtype": "bfloat16",
+        "device": "cpu",
+        "model_name": "meta-llama/Llama-3.1-8B",
+        "hook_name": "blocks.0.hook_attn_out",
+        "jump_relu_threshold": 1.0616438356164384,
+        "hook_head_index": None,
+        "activation_fn": "relu",
+        "finetuning_scaling_factor": False,
+        "sae_lens_training_version": None,
+        "prepend_bos": True,
+        "dataset_path": "cerebras/SlimPajama-627B",
+        "context_size": 1024,
+        "dataset_trust_remote_code": True,
+        "apply_b_dec_to_input": False,
+        "normalize_activations": "expected_average_only_in",
+    }
+
+    assert cfg == expected_cfg
+
+
 def test_get_llama_scope_r1_distill_config_from_hf():
     """Test that the Llama Scope R1 Distill config is generated correctly."""
     cfg = get_llama_scope_r1_distill_config_from_hf(
@@ -328,3 +365,240 @@ def test_sparsify_disk_loader(tmp_path: Path):
     assert sparsify_sae.W_dec is not None
     torch.testing.assert_close(state_dict["W_dec"], sparsify_sae.W_dec.detach().T)
     torch.testing.assert_close(state_dict["b_dec"], sparsify_sae.b_dec.data)
+
+
+def test_dictionary_learning_sae_huggingface_loader_1():
+    cfg_dict, state_dict, sparsity = dictionary_learning_sae_huggingface_loader_1(
+        "canrager/lm_sae",
+        "pythia70m_sweep_gated_ctx128_0730/resid_post_layer_3/trainer_0",
+        device="cpu",
+        force_download=False,
+        cfg_overrides=None,
+    )
+    assert sparsity is None
+    assert state_dict.keys() == {"W_enc", "W_dec", "b_dec", "b_mag", "b_gate", "r_mag"}
+    assert cfg_dict == {
+        "architecture": "gated",
+        "d_in": 512,
+        "d_sae": 4096,
+        "dtype": "float32",
+        "device": "cpu",
+        "model_name": "pythia-70m-deduped",
+        "hook_name": "blocks.3.hook_resid_post",
+        "hook_head_index": None,
+        "activation_fn": "relu",
+        "activation_fn_kwargs": {},
+        "apply_b_dec_to_input": True,
+        "finetuning_scaling_factor": False,
+        "sae_lens_training_version": None,
+        "prepend_bos": True,
+        "dataset_path": "monology/pile-uncopyrighted",
+        "context_size": 128,
+        "normalize_activations": "none",
+        "neuronpedia_id": None,
+        "dataset_trust_remote_code": True,
+    }
+    assert state_dict["W_enc"].shape == (512, 4096)
+    assert state_dict["W_dec"].shape == (4096, 512)
+    assert state_dict["b_dec"].shape == (512,)
+    assert state_dict["b_mag"].shape == (4096,)
+    assert state_dict["b_gate"].shape == (4096,)
+    assert state_dict["r_mag"].shape == (4096,)
+
+
+def test_read_sae_components_from_disk(tmp_path: Path):
+    d_in = 256
+    d_sae = 512
+    device = "cpu"
+    dtype = torch.float32
+
+    # Create dummy SAE components
+    W_enc = torch.randn(d_in, d_sae, dtype=dtype)
+    W_dec = torch.randn(d_sae, d_in, dtype=dtype)
+    b_enc = torch.randn(d_sae, dtype=dtype)
+    b_dec = torch.randn(d_in, dtype=dtype)
+
+    # Create state dict
+    state_dict = {
+        "W_enc": W_enc,
+        "W_dec": W_dec,
+        "b_enc": b_enc,
+        "b_dec": b_dec,
+    }
+
+    # Save to disk
+    weights_path = tmp_path / "sae_weights.safetensors"
+    save_file(state_dict, weights_path)
+
+    # Create config dict
+    cfg_dict = {
+        "d_in": d_in,
+        "d_sae": d_sae,
+        "dtype": "float32",
+        "device": device,
+        "finetuning_scaling_factor": False,
+    }
+
+    # Read back from disk
+    loaded_cfg_dict, loaded_state_dict = read_sae_components_from_disk(
+        cfg_dict=cfg_dict,
+        weight_path=weights_path,
+        device=device,
+    )
+
+    # Check that config dict is returned unchanged (except for finetuning_scaling_factor)
+    assert loaded_cfg_dict["d_in"] == d_in
+    assert loaded_cfg_dict["d_sae"] == d_sae
+    assert loaded_cfg_dict["dtype"] == "float32"
+    assert loaded_cfg_dict["device"] == device
+    assert loaded_cfg_dict["finetuning_scaling_factor"] is False
+
+    # Check that all tensors are loaded correctly
+    assert loaded_state_dict.keys() == {"W_enc", "W_dec", "b_enc", "b_dec"}
+    torch.testing.assert_close(loaded_state_dict["W_enc"], W_enc)
+    torch.testing.assert_close(loaded_state_dict["W_dec"], W_dec)
+    torch.testing.assert_close(loaded_state_dict["b_enc"], b_enc)
+    torch.testing.assert_close(loaded_state_dict["b_dec"], b_dec)
+
+    # Check tensor shapes
+    assert loaded_state_dict["W_enc"].shape == (d_in, d_sae)
+    assert loaded_state_dict["W_dec"].shape == (d_sae, d_in)
+    assert loaded_state_dict["b_enc"].shape == (d_sae,)
+    assert loaded_state_dict["b_dec"].shape == (d_in,)
+
+    # Check tensor dtypes
+    assert loaded_state_dict["W_enc"].dtype == dtype
+    assert loaded_state_dict["W_dec"].dtype == dtype
+    assert loaded_state_dict["b_enc"].dtype == dtype
+    assert loaded_state_dict["b_dec"].dtype == dtype
+
+
+def test_read_sae_components_from_disk_with_scaling_factor(tmp_path: Path):
+    d_in = 128
+    d_sae = 256
+    device = "cpu"
+    dtype = torch.float32
+
+    # Create dummy SAE components with scaling factor
+    W_enc = torch.randn(d_in, d_sae, dtype=dtype)
+    W_dec = torch.randn(d_sae, d_in, dtype=dtype)
+    b_enc = torch.randn(d_sae, dtype=dtype)
+    b_dec = torch.randn(d_in, dtype=dtype)
+    scaling_factor = torch.tensor([1.5, 2.0, 0.8], dtype=dtype)
+
+    # Create state dict with scaling factor
+    state_dict = {
+        "W_enc": W_enc,
+        "W_dec": W_dec,
+        "b_enc": b_enc,
+        "b_dec": b_dec,
+        "scaling_factor": scaling_factor,
+    }
+
+    # Save to disk
+    weights_path = tmp_path / "sae_weights.safetensors"
+    save_file(state_dict, weights_path)
+
+    # Create config dict with finetuning_scaling_factor enabled
+    cfg_dict = {
+        "d_in": d_in,
+        "d_sae": d_sae,
+        "dtype": "float32",
+        "device": device,
+        "finetuning_scaling_factor": True,
+    }
+
+    # Read back from disk
+    loaded_cfg_dict, loaded_state_dict = read_sae_components_from_disk(
+        cfg_dict=cfg_dict,
+        weight_path=weights_path,
+        device=device,
+    )
+
+    # Check that scaling factor is renamed to finetuning_scaling_factor
+    assert "scaling_factor" not in loaded_state_dict
+    assert "finetuning_scaling_factor" in loaded_state_dict
+    torch.testing.assert_close(
+        loaded_state_dict["finetuning_scaling_factor"], scaling_factor
+    )
+
+    # Check that config dict is returned correctly
+    assert loaded_cfg_dict["d_in"] == d_in
+    assert loaded_cfg_dict["d_sae"] == d_sae
+    assert loaded_cfg_dict["dtype"] == "float32"
+    assert loaded_cfg_dict["device"] == device
+    assert loaded_cfg_dict["finetuning_scaling_factor"] is True
+
+    # Check that other tensors are still there
+    assert loaded_state_dict.keys() == {
+        "W_enc",
+        "W_dec",
+        "b_enc",
+        "b_dec",
+        "finetuning_scaling_factor",
+    }
+    torch.testing.assert_close(loaded_state_dict["W_enc"], W_enc)
+    torch.testing.assert_close(loaded_state_dict["W_dec"], W_dec)
+    torch.testing.assert_close(loaded_state_dict["b_enc"], b_enc)
+    torch.testing.assert_close(loaded_state_dict["b_dec"], b_dec)
+
+
+def test_read_sae_components_from_disk_with_ones_scaling_factor(tmp_path: Path):
+    d_in = 64
+    d_sae = 128
+    device = "cpu"
+    dtype = torch.float32
+
+    # Create dummy SAE components with scaling factor of all ones
+    W_enc = torch.randn(d_in, d_sae, dtype=dtype)
+    W_dec = torch.randn(d_sae, d_in, dtype=dtype)
+    b_enc = torch.randn(d_sae, dtype=dtype)
+    b_dec = torch.randn(d_in, dtype=dtype)
+    scaling_factor = torch.ones(3, dtype=dtype)
+
+    # Create state dict with scaling factor
+    state_dict = {
+        "W_enc": W_enc,
+        "W_dec": W_dec,
+        "b_enc": b_enc,
+        "b_dec": b_dec,
+        "scaling_factor": scaling_factor,
+    }
+
+    # Save to disk
+    weights_path = tmp_path / "sae_weights.safetensors"
+    save_file(state_dict, weights_path)
+
+    # Create config dict
+    cfg_dict = {
+        "d_in": d_in,
+        "d_sae": d_sae,
+        "dtype": "float32",
+        "device": device,
+        "finetuning_scaling_factor": False,
+    }
+
+    # Read back from disk
+    loaded_cfg_dict, loaded_state_dict = read_sae_components_from_disk(
+        cfg_dict=cfg_dict,
+        weight_path=weights_path,
+        device=device,
+    )
+
+    # Check that scaling factor of all ones is removed
+    assert "scaling_factor" not in loaded_state_dict
+    assert "finetuning_scaling_factor" not in loaded_state_dict
+    assert loaded_cfg_dict["finetuning_scaling_factor"] is False
+
+    # Check that config dict is returned correctly
+    assert loaded_cfg_dict["d_in"] == d_in
+    assert loaded_cfg_dict["d_sae"] == d_sae
+    assert loaded_cfg_dict["dtype"] == "float32"
+    assert loaded_cfg_dict["device"] == device
+
+    # Check that other tensors are still there
+    assert loaded_state_dict.keys() == {"W_enc", "W_dec", "b_enc", "b_dec"}
+    torch.testing.assert_close(loaded_state_dict["W_enc"], W_enc)
+    torch.testing.assert_close(loaded_state_dict["W_dec"], W_dec)
+    torch.testing.assert_close(loaded_state_dict["b_enc"], b_enc)
+    torch.testing.assert_close(loaded_state_dict["b_dec"], b_dec)

@@ -27,7 +27,7 @@ from torch import nn
 from transformer_lens.hook_points import HookedRootModule, HookPoint
 from typing_extensions import deprecated, overload, override
 
-from sae_lens import __version__, logger
+from sae_lens import __version__
 from sae_lens.constants import (
     DTYPE_MAP,
     SAE_CFG_FILENAME,
@@ -528,28 +528,6 @@ class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
 
         return model_weights_path, cfg_path
 
-    ## Initialization Methods
-    @torch.no_grad()
-    def initialize_b_dec_with_precalculated(self, origin: torch.Tensor):
-        out = torch.tensor(origin, dtype=self.dtype, device=self.device)
-        self.b_dec.data = out
-
-    @torch.no_grad()
-    def initialize_b_dec_with_mean(self, all_activations: torch.Tensor):
-        previous_b_dec = self.b_dec.clone().cpu()
-        out = all_activations.mean(dim=0)
-
-        previous_distances = torch.norm(all_activations - previous_b_dec, dim=-1)
-        distances = torch.norm(all_activations - out, dim=-1)
-
-        logger.info("Reinitializing b_dec with mean of activations")
-        logger.debug(
-            f"Previous distances: {previous_distances.median(0).values.mean().item()}"
-        )
-        logger.debug(f"New distances: {distances.median(0).values.mean().item()}")
-
-        self.b_dec.data = out.to(self.dtype).to(self.device)
-
     # Class methods for loading models
     @classmethod
     @deprecated("Use load_from_disk instead")
@@ -1008,23 +986,6 @@ class TrainingSAE(SAE[T_TRAINING_SAE_CONFIG], ABC):
         This is a hook that can be overridden to change how the state dict is processed for the inference model.
         """
         return self.process_state_dict_for_saving(state_dict)
-
-    @torch.no_grad()
-    def remove_gradient_parallel_to_decoder_directions(self) -> None:
-        """Remove gradient components parallel to decoder directions."""
-        # Implement the original logic since this may not be in the base class
-        assert self.W_dec.grad is not None
-
-        parallel_component = einops.einsum(
-            self.W_dec.grad,
-            self.W_dec.data,
-            "d_sae d_in, d_sae d_in -> d_sae",
-        )
-        self.W_dec.grad -= einops.einsum(
-            parallel_component,
-            self.W_dec.data,
-            "d_sae, d_sae d_in -> d_sae d_in",
-        )
 
     @torch.no_grad()
     def log_histograms(self) -> dict[str, NDArray[Any]]:

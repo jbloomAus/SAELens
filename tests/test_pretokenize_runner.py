@@ -8,12 +8,25 @@ from transformers import AutoTokenizer, PreTrainedTokenizerBase
 
 from sae_lens import __version__
 from sae_lens.config import PretokenizeRunnerConfig
-from sae_lens.pretokenize_runner import PretokenizeRunner, pretokenize_dataset
+from sae_lens.pretokenize_runner import (
+    PretokenizeRunner,
+    get_special_token_from_cfg,
+    pretokenize_dataset,
+)
 
 
 @pytest.fixture
 def ts_tokenizer() -> PreTrainedTokenizerBase:
     return AutoTokenizer.from_pretrained("roneneldan/TinyStories-1M")
+
+
+def test_get_special_token_from_cfg(ts_tokenizer: PreTrainedTokenizerBase):
+    assert get_special_token_from_cfg("bos", ts_tokenizer) == ts_tokenizer.bos_token_id
+    assert get_special_token_from_cfg("eos", ts_tokenizer) == ts_tokenizer.eos_token_id
+    assert get_special_token_from_cfg("sep", ts_tokenizer) == ts_tokenizer.sep_token_id
+    assert get_special_token_from_cfg(123, ts_tokenizer) == 123
+    with pytest.raises(ValueError, match="Invalid token type: invalid"):
+        get_special_token_from_cfg("invalid", ts_tokenizer)  # type: ignore
 
 
 def test_pretokenize_dataset_concatenates_text_until_context_size(

@@ -100,15 +100,9 @@ class GatedSAE(SAE[GatedSAEConfig]):
         self.W_enc.data = self.W_enc.data * W_dec_norms.T
 
         # Gated-specific parameters need special handling
-        self.r_mag.data = self.r_mag.data * W_dec_norms.squeeze()
+        # r_mag doesn't need scaling since W_enc scaling is sufficient for magnitude path
         self.b_gate.data = self.b_gate.data * W_dec_norms.squeeze()
         self.b_mag.data = self.b_mag.data * W_dec_norms.squeeze()
-
-    @torch.no_grad()
-    def initialize_decoder_norm_constant_norm(self, norm: float = 0.1):
-        """Initialize decoder with constant norm."""
-        self.W_dec.data /= torch.norm(self.W_dec.data, dim=1, keepdim=True)
-        self.W_dec.data *= norm
 
 
 @dataclass
@@ -219,12 +213,6 @@ class GatedTrainingSAE(TrainingSAE[GatedTrainingSAEConfig]):
             "weights/b_mag": b_mag_dist,
         }
 
-    @torch.no_grad()
-    def initialize_decoder_norm_constant_norm(self, norm: float = 0.1):
-        """Initialize decoder with constant norm"""
-        self.W_dec.data /= torch.norm(self.W_dec.data, dim=1, keepdim=True)
-        self.W_dec.data *= norm
-
     def get_coefficients(self) -> dict[str, float | TrainCoefficientConfig]:
         return {
             "l1": TrainCoefficientConfig(
@@ -237,6 +225,18 @@ class GatedTrainingSAE(TrainingSAE[GatedTrainingSAEConfig]):
         return filter_valid_dataclass_fields(
             self.cfg.to_dict(), GatedSAEConfig, ["architecture"]
         )
+
+    @torch.no_grad()
+    def fold_W_dec_norm(self):
+        """Override to handle gated-specific parameters."""
+        W_dec_norms = self.W_dec.norm(dim=-1).unsqueeze(1)
+        self.W_dec.data = self.W_dec.data / W_dec_norms
+        self.W_enc.data = self.W_enc.data * W_dec_norms.T
+
+        # Gated-specific parameters need special handling
+        # r_mag doesn't need scaling since W_enc scaling is sufficient for magnitude path
+        self.b_gate.data = self.b_gate.data * W_dec_norms.squeeze()
+        self.b_mag.data = self.b_mag.data * W_dec_norms.squeeze()
 
 
 def _init_weights_gated(
