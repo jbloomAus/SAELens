@@ -126,7 +126,7 @@ def activation_store(model: HookedTransformer, cfg: LanguageModelSAERunnerConfig
 
 @pytest.fixture
 def base_sae(training_sae: TrainingSAE[Any]):  # type: ignore
-    return SAE.from_dict(training_sae.to_inference_config_dict())
+    return SAE.from_dict(training_sae.cfg.get_inference_sae_cfg_dict())
 
 
 @pytest.fixture
@@ -561,7 +561,7 @@ def test_get_sparsity_and_variance_metrics_identity_sae_perfect_reconstruction(
     training_sae = StandardTrainingSAE.from_dict(
         identity_cfg.get_training_sae_cfg_dict()
     )
-    identity_sae = StandardSAE.from_dict(training_sae.to_inference_config_dict())
+    identity_sae = StandardSAE.from_dict(training_sae.cfg.get_inference_sae_cfg_dict())
     with torch.no_grad():
         # Set encoder and decoder weights to identity matrices
         identity_sae.W_dec.data = torch.cat([torch.eye(d_in), -1 * torch.eye(d_in)])

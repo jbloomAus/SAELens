@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Any
 
 import numpy as np
 import torch
@@ -16,7 +15,6 @@ from sae_lens.saes.sae import (
     TrainingSAEConfig,
     TrainStepInput,
 )
-from sae_lens.util import filter_valid_dataclass_fields
 
 
 @dataclass
@@ -61,7 +59,6 @@ class StandardSAE(SAE[StandardSAEConfig]):
     ) -> Float[torch.Tensor, "... d_sae"]:
         """
         Encode the input tensor into the feature space.
-        For inference, no noise is added.
         """
         # Preprocess the SAE input (casting type, applying hooks, normalization)
         sae_in = self.process_sae_in(x)
@@ -110,7 +107,7 @@ class StandardTrainingSAE(TrainingSAE[StandardTrainingSAEConfig]):
       - initialize_weights: basic weight initialization for encoder/decoder.
       - encode: inference encoding (invokes encode_with_hidden_pre).
       - decode: a simple linear decoder.
-      - encode_with_hidden_pre: computes pre-activations, adds noise when training, and then activates.
+      - encode_with_hidden_pre: computes activations and pre-activations.
       - calculate_aux_loss: computes a sparsity penalty based on the (optionally scaled) p-norm of feature activations.
     """
 
@@ -163,11 +160,6 @@ class StandardTrainingSAE(TrainingSAE[StandardTrainingSAEConfig]):
             **super().log_histograms(),
             "weights/b_e": b_e_dist,
         }
-
-    def to_inference_config_dict(self) -> dict[str, Any]:
-        return filter_valid_dataclass_fields(
-            self.cfg.to_dict(), StandardSAEConfig, ["architecture"]
-        )
 
 
 def _init_weights_standard(

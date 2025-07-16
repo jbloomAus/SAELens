@@ -1,3 +1,7 @@
+from .batchtopk_sae import (
+    BatchTopKTrainingSAE,
+    BatchTopKTrainingSAEConfig,
+)
 from .gated_sae import (
     GatedSAE,
     GatedSAEConfig,
@@ -45,4 +49,6 @@ __all__ = [
     "TopKSAEConfig",
     "TopKTrainingSAE",
     "TopKTrainingSAEConfig",
+    "BatchTopKTrainingSAE",
+    "BatchTopKTrainingSAEConfig",
 ]

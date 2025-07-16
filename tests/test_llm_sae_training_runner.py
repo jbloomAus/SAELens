@@ -21,14 +21,14 @@ from sae_lens.saes.topk_sae import TopKTrainingSAEConfig
 from sae_lens.training.activation_scaler import ActivationScaler
 from sae_lens.training.activations_store import ActivationsStore
 from tests.helpers import (
-    ALL_ARCHITECTURES,
+    ALL_TRAINING_ARCHITECTURES,
     NEEL_NANDA_C4_10K_DATASET,
     TINYSTORIES_MODEL,
     build_runner_cfg_for_arch,
 )
 
 
-@pytest.mark.parametrize("architecture", ALL_ARCHITECTURES)
+@pytest.mark.parametrize("architecture", ALL_TRAINING_ARCHITECTURES)
 def test_LanguageModelSAETrainingRunner_runs_and_saves_all_architectures(
     architecture: str, tmp_path: Path, ts_model: HookedTransformer
 ):
@@ -77,7 +77,10 @@ def test_LanguageModelSAETrainingRunner_runs_and_saves_all_architectures(
 
     # json turns tuples into lists, so just dump and load the metadata to make things consistent
     original_metadata_dict = json.loads(json.dumps(sae.cfg.metadata.__dict__))
-    assert loaded_sae.cfg.architecture() == architecture
+    if architecture == "batchtopk":
+        assert loaded_sae.cfg.architecture() == "jumprelu"
+    else:
+        assert loaded_sae.cfg.architecture() == architecture
     assert loaded_sae.cfg.d_in == sae.cfg.d_in
     assert loaded_sae.cfg.d_sae == sae.cfg.d_sae
     assert loaded_sae.cfg.dtype == sae.cfg.dtype

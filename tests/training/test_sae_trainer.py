@@ -185,6 +185,9 @@ def test_build_train_step_log_dict(
             "mse_loss": torch.tensor(0.25),
             "l1_loss": torch.tensor(0.1),
         },
+        metrics={
+            "topk_threshold": torch.tensor(0.5),
+        },
     )
 
     # we're relying on the trainer only for some of the metrics here
@@ -206,6 +209,7 @@ def test_build_train_step_log_dict(
         "details/current_learning_rate": 2e-4,
         "details/l1_coefficient": trainer.sae.cfg.l1_coefficient,
         "details/n_training_samples": 123,
+        "metrics/topk_threshold": 0.5,
     }
     assert log_dict.keys() == expected.keys()
     assert log_dict == pytest.approx(expected)
@@ -293,7 +297,7 @@ def test_final_checkpoint_saves_runner_cfg(
         with open(checkpoint_cfg_path) as f:
             checkpoint_cfg = json.load(f)
         if "final" in checkpoint_cfg_path.parent.name:
-            assert checkpoint_cfg == cfg.sae.get_base_sae_cfg_dict()
+            assert checkpoint_cfg == cfg.sae.get_inference_sae_cfg_dict()
         else:
             assert checkpoint_cfg == cfg.sae.to_dict()
 

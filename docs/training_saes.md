@@ -9,7 +9,7 @@ We encourage readers to join the [Open Source Mechanistic Interpretability Slack
 
 ## Basic training setup
 
-Training a SAE is done using the [SAETrainingRunner][sae_lens.SAETrainingRunner] class. This class is configured using a [LanguageModelSAERunnerConfig][sae_lens.LanguageModelSAERunnerConfig]. The `LanguageModelSAERunnerConfig` holds parameters for the overall training run (like model, dataset, and learning rate), and it contains an `sae` field. This `sae` field should be an instance of an architecture-specific SAE configuration dataclass (e.g., `StandardTrainingSAEConfig` for standard SAEs, `TopKTrainingSAEConfig` for TopK SAEs, etc.), which holds parameters specific to the SAE's structure and sparsity mechanisms.
+Training a SAE is done using the [LanguageModelSAETrainingRunner][sae_lens.LanguageModelSAETrainingRunner] class. This class is configured using a [LanguageModelSAERunnerConfig][sae_lens.LanguageModelSAERunnerConfig]. The `LanguageModelSAERunnerConfig` holds parameters for the overall training run (like model, dataset, and learning rate), and it contains an `sae` field. This `sae` field should be an instance of an architecture-specific SAE configuration dataclass (e.g., `StandardTrainingSAEConfig` for standard SAEs, `TopKTrainingSAEConfig` for TopK SAEs, etc.), which holds parameters specific to the SAE's structure and sparsity mechanisms.
 
 When using the command-line interface (CLI), you typically specify an `--architecture` argument (e.g., `"standard"`, `"gated"`, `"jumprelu"`, `"topk"`), and the runner constructs the appropriate nested SAE configuration. When instantiating `LanguageModelSAERunnerConfig` programmatically, you should directly provide the configured SAE object to the `sae` field. The CLI can be run using `python -m sae_lens.llm_sae_training_runner`.
 
@@ -32,14 +32,19 @@ Core options typically configured within the architecture-specific `sae` object 
   - For Standard SAEs: `l1_coefficient` (controls L1 penalty), `lp_norm` (e.g., 1.0 for L1, 0.7 for L0.7), `l1_warm_up_steps`.
   - For Gated SAEs: `l1_coefficient` (controls L1-like penalty on gate activations), `l1_warm_up_steps`.
   - For JumpReLU SAEs: `l0_coefficient` (controls L0-like penalty), `l0_warm_up_steps`, `jumprelu_init_threshold`, `jumprelu_bandwidth`.
-  - For TopK SAEs: `k` (the number of features to keep active). Sparsity is enforced structurally.
+  - For TopK and BatchTopK SAEs: `k` (the number of features to keep active). Sparsity is enforced structurally.
 - `normalize_activations`: Strategy for normalizing activations before they enter the SAE (e.g., `"expected_average_only_in"`).
 
 A sample training run from the [tutorial](https://github.com/jbloomAus/SAELens/blob/main/tutorials/training_a_sparse_autoencoder.ipynb) is shown below. Note how SAE-specific parameters are nested within the `sae` field:
 
 ```python
-from sae_lens import LanguageModelSAERunnerConfig, SAETrainingRunner
-from sae_lens.saes import StandardTrainingSAEConfig # Import the specific SAE config
+import torch
+from sae_lens import (
+    LanguageModelSAERunnerConfig,
+    LanguageModelSAETrainingRunner,
+    StandardTrainingSAEConfig,
+    LoggingConfig,
+)
 
 # Define total training steps and batch size
 total_training_steps = 30_000
@@ -51,9 +56,7 @@ lr_warm_up_steps = 0
 lr_decay_steps = total_training_steps // 5  # 20% of training
 l1_warm_up_steps = total_training_steps // 20  # 5% of training
 
-# Assume 'device' is defined (e.g., "cuda" or "cpu")
-device = "cuda" if torch.cuda.is_available() else "cpu" # Example device definition
-import torch # Required for the device check
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
 cfg = LanguageModelSAERunnerConfig(
     # Data Generating Function (Model + Training Distribution)
@@ -70,32 +73,23 @@ cfg = LanguageModelSAERunnerConfig(
         apply_b_dec_to_input=True,
         normalize_activations="expected_average_only_in",
         l1_coefficient=5,
-        lp_norm=1.0,
         l1_warm_up_steps=l1_warm_up_steps,
     ),
 
     # Training Parameters
     lr=5e-5,
-    adam_beta1=0.9,
-    adam_beta2=0.999,
-    lr_scheduler_name="constant",
     lr_warm_up_steps=lr_warm_up_steps,
     lr_decay_steps=lr_decay_steps,
     train_batch_size_tokens=batch_size,
-    context_size=256,
 
     # Activation Store Parameters
+    context_size=256,
     n_batches_in_buffer=64,
     training_tokens=total_training_tokens,
     store_batch_size_prompts=16,
 
-    # Resampling protocol args
-    feature_sampling_window=1000,
-    dead_feature_window=1000,
-    dead_feature_threshold=1e-4,
-
     # WANDB
-    logger_cfg=dict( # Assuming LoggingConfig is handled via a dict or a LoggingConfig instance
+    logger=LoggingConfig(
         log_to_wandb=True,
         wandb_project="sae_lens_tutorial",
         wandb_log_frequency=30,
@@ -109,7 +103,7 @@ cfg = LanguageModelSAERunnerConfig(
     checkpoint_path="checkpoints",
     dtype="float32"
 )
-# sparse_autoencoder = SAETrainingRunner(cfg).run() # Commented out to prevent execution in docs
+sparse_autoencoder = LanguageModelSAETrainingRunner(cfg).run()
 ```
 
 As you can see, the training setup provides a large number of options to explore. The full list of options can be found by inspecting the `LanguageModelSAERunnerConfig` class and the specific SAE configuration class you intend to use (e.g., `StandardTrainingSAEConfig`, `TopKTrainingSAEConfig`, etc.).
@@ -119,20 +113,41 @@ As you can see, the training setup provides a large number of options to explore
 By default, SAELens will train SAEs using a L1 loss term with ReLU activation. A popular alternative architecture is the [TopK](https://arxiv.org/abs/2406.04093) architecture, which fixes the L0 of the SAE using a TopK activation function. To train a TopK SAE programmatically, you provide a `TopKTrainingSAEConfig` instance to the `sae` field. The primary parameter for TopK SAEs is `k`, the number of features to keep active. If not set, `k` defaults to 100 in `TopKTrainingSAEConfig`. The TopK architecture does not use an `l1_coefficient` or `lp_norm` for sparsity, as sparsity is structurally enforced.
 
 ```python
-from sae_lens import LanguageModelSAERunnerConfig, SAETrainingRunner
-from sae_lens.saes import TopKTrainingSAEConfig # Import TopK config
+from sae_lens import LanguageModelSAERunnerConfig, LanguageModelSAETrainingRunner, TopKTrainingSAEConfig
 
-# cfg = LanguageModelSAERunnerConfig( # Full config would be defined here
-#     # ... other LanguageModelSAERunnerConfig parameters ...
-#     sae=TopKTrainingSAEConfig(
-#         k=100, # Set the number of active features
-#         d_in=1024, # Example, must match your hook point
-#         d_sae=16 * 1024, # Example
-#         # ... other common SAE parameters from SAEConfig if needed ...
-#     ),
-#     # ...
-# )
-# sparse_autoencoder = SAETrainingRunner(cfg).run() # Commented out
+cfg = LanguageModelSAERunnerConfig( # Full config would be defined here
+    # ... other LanguageModelSAERunnerConfig parameters ...
+    sae=TopKTrainingSAEConfig(
+        k=100, # Set the number of active features
+        d_in=1024, # Must match your hook point
+        d_sae=16 * 1024,
+        # ... other common SAE parameters from SAEConfig if needed ...
+    ),
+    # ...
+)
+sparse_autoencoder = LanguageModelSAETrainingRunner(cfg).run()
+```
+
+### Training BatchTopk SAEs
+
+A more modern version of the TopK SAE is the [BatchTopK](https://arxiv.org/abs/2412.06410) architecture, which fixes the mean L0 across a training batch rather than fixing the L0 for every sample in the batch. To train a BatchTopK SAE, provide a `BatchTopKTrainingSAEConfig` instance to the `sae` field. The primary parameter for TopK SAEs is `k`, the number of features to keep active. If not set, `k` defaults to 100 in `BatchTopKTrainingSAEConfig`. Like the TopK architecture, the BatchTopK architecture does not use an `l1_coefficient` or `lp_norm` for sparsity, as sparsity is structurally enforced.
+
+Also worth noting is that `BatchTopK` SAEs will save as `JumpReLU` SAEs for use at inference. This is to avoid needing to provide a batch of inputs at inference time, allowing the SAE to work consistently on any batch size after training is complete.
+
+```python
+from sae_lens import LanguageModelSAERunnerConfig, LanguageModelSAETrainingRunner, BatchTopKTrainingSAEConfig
+
+cfg = LanguageModelSAERunnerConfig( # Full config would be defined here
+    # ... other LanguageModelSAERunnerConfig parameters ...
+    sae=BatchTopKTrainingSAEConfig(
+        k=100, # Set the number of active features
+        d_in=1024, # Must match your hook point
+        d_sae=16 * 1024,
+        # ... other common SAE parameters from SAEConfig if needed ...
+    ),
+    # ...
+)
+sparse_autoencoder = LanguageModelSAETrainingRunner(cfg).run()
 ```
 
 ### Training JumpReLU SAEs
@@ -140,22 +155,21 @@ from sae_lens.saes import TopKTrainingSAEConfig # Import TopK config
 [JumpReLU SAEs](https://arxiv.org/abs/2407.14435) are a state-of-the-art SAE architecture. To train one, provide a `JumpReLUTrainingSAEConfig` to the `sae` field. JumpReLU SAEs use a sparsity penalty controlled by the `l0_coefficient` parameter. The `JumpReLUTrainingSAEConfig` also has parameters `jumprelu_bandwidth` and `jumprelu_init_threshold` which affect the learning of the thresholds.
 
 ```python
-from sae_lens import LanguageModelSAERunnerConfig, SAETrainingRunner
-from sae_lens.saes import JumpReLUTrainingSAEConfig # Import JumpReLU config
+from sae_lens import LanguageModelSAERunnerConfig, LanguageModelSAETrainingRunner, JumpReLUTrainingSAEConfig
 
-# cfg = LanguageModelSAERunnerConfig( # Full config would be defined here
-#     # ... other LanguageModelSAERunnerConfig parameters ...
-#     sae=JumpReLUTrainingSAEConfig(
-#         l0_coefficient=5.0, # Sparsity penalty coefficient
-#         jumprelu_bandwidth=0.05,
-#         jumprelu_init_threshold=0.01,
-#         d_in=1024, # Example, must match your hook point
-#         d_sae=16 * 1024, # Example
-#         # ... other common SAE parameters from SAEConfig ...
-#     ),
-#     # ...
-# )
-# sparse_autoencoder = SAETrainingRunner(cfg).run() # Commented out
+cfg = LanguageModelSAERunnerConfig( # Full config would be defined here
+    # ... other LanguageModelSAERunnerConfig parameters ...
+    sae=JumpReLUTrainingSAEConfig(
+        l0_coefficient=5.0, # Sparsity penalty coefficient
+        jumprelu_bandwidth=0.05,
+        jumprelu_init_threshold=0.01,
+        d_in=1024, # must match your hook point
+        d_sae=16 * 1024,
+        # ... other common SAE parameters from SAEConfig ...
+    ),
+    # ...
+)
+sparse_autoencoder = LanguageModelSAETrainingRunner(cfg).run()
 ```
 
 ### Training Gated SAEs
@@ -163,20 +177,19 @@ from sae_lens.saes import JumpReLUTrainingSAEConfig # Import JumpReLU config
 [Gated SAEs](https://arxiv.org/abs/2404.16014) are another architecture option. To train a Gated SAE, provide a `GatedTrainingSAEConfig` to the `sae` field. Gated SAEs use the `l1_coefficient` parameter to control the sparsity of the SAE, similar to standard SAEs.
 
 ```python
-from sae_lens import LanguageModelSAERunnerConfig, SAETrainingRunner
-from sae_lens.saes import GatedTrainingSAEConfig # Import Gated config
+from sae_lens import LanguageModelSAERunnerConfig, LanguageModelSAETrainingRunner, GatedTrainingSAEConfig
 
-# cfg = LanguageModelSAERunnerConfig( # Full config would be defined here
-#     # ... other LanguageModelSAERunnerConfig parameters ...
-#     sae=GatedTrainingSAEConfig(
-#         l1_coefficient=5.0, # Sparsity penalty coefficient
-#         d_in=1024, # Example, must match your hook point
-#         d_sae=16 * 1024, # Example
-#         # ... other common SAE parameters from SAEConfig ...
-#     ),
-#     # ...
-# )
-# sparse_autoencoder = SAETrainingRunner(cfg).run() # Commented out
+cfg = LanguageModelSAERunnerConfig( # Full config would be defined here
+    # ... other LanguageModelSAERunnerConfig parameters ...
+    sae=GatedTrainingSAEConfig(
+        l1_coefficient=5.0, # Sparsity penalty coefficient
+        d_in=1024, # Must match your hook point
+        d_sae=16 * 1024,
+        # ... other common SAE parameters from SAEConfig ...
+    ),
+    # ...
+)
+sparse_autoencoder = LanguageModelSAETrainingRunner(cfg).run()
 ```
 
 ## CLI Runner

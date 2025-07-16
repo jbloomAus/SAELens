@@ -19,6 +19,7 @@ from sae_lens.saes.standard_sae import (
 )
 from tests.helpers import (
     ALL_ARCHITECTURES,
+    ALL_TRAINING_ARCHITECTURES,
     build_runner_cfg,
     build_sae_cfg,
     build_sae_cfg_for_arch,
@@ -317,7 +318,7 @@ def test_sae_fold_w_dec_norm_all_architectures(architecture: str):
     torch.testing.assert_close(sae_out_1, sae_out_2)
 
 
-@pytest.mark.parametrize("architecture", ALL_ARCHITECTURES)
+@pytest.mark.parametrize("architecture", ALL_TRAINING_ARCHITECTURES)
 @torch.no_grad()
 def test_training_sae_fold_w_dec_norm_all_architectures(architecture: str):
     cfg = build_sae_training_cfg_for_arch(architecture)
@@ -332,7 +333,7 @@ def test_training_sae_fold_w_dec_norm_all_architectures(architecture: str):
     sae2 = deepcopy(sae)
 
     # If this is a topk SAE, assert this throws a NotImplementedError
-    if architecture == "topk":
+    if architecture == "topk" or architecture == "batchtopk":
         with pytest.raises(NotImplementedError):
             sae2.fold_W_dec_norm()
         return

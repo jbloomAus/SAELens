@@ -4,6 +4,7 @@ from typing import Any, Sequence, TypedDict, cast
 from transformer_lens import HookedTransformer
 
 from sae_lens.config import LanguageModelSAERunnerConfig, LoggingConfig
+from sae_lens.saes.batchtopk_sae import BatchTopKTrainingSAEConfig
 from sae_lens.saes.gated_sae import GatedSAEConfig, GatedTrainingSAEConfig
 from sae_lens.saes.jumprelu_sae import JumpReLUSAEConfig, JumpReLUTrainingSAEConfig
 from sae_lens.saes.sae import T_TRAINING_SAE_CONFIG, SAEConfig, TrainingSAEConfig
@@ -15,6 +16,7 @@ TINYSTORIES_DATASET = "roneneldan/TinyStories"
 NEEL_NANDA_C4_10K_DATASET = "NeelNanda/c4-10k"
 
 ALL_ARCHITECTURES = ["standard", "gated", "jumprelu", "topk"]
+ALL_TRAINING_ARCHITECTURES = ["standard", "gated", "jumprelu", "topk", "batchtopk"]
 
 
 # This TypedDict should match the fields directly in LanguageModelSAERunnerConfig
@@ -92,6 +94,7 @@ class TrainingSAEConfigDict(TypedDict, total=False):
     k: int  # For TopK
     l0_coefficient: float  # For JumpReLU
     l0_warm_up_steps: int
+    topk_threshold_lr: float  # For BatchTopK
 
 
 class SAEConfigDict(TypedDict, total=False):
@@ -389,6 +392,41 @@ def build_topk_sae_training_cfg(**kwargs: Any) -> TopKTrainingSAEConfig:
     return build_topk_runner_cfg(**kwargs).sae  # type: ignore
 
 
+# --- BatchTopK SAE Builder ---
+def build_batchtopk_runner_cfg(
+    **kwargs: Any,
+) -> LanguageModelSAERunnerConfig[BatchTopKTrainingSAEConfig]:
+    """Helper to create a mock instance for BatchTopK SAE."""
+    default_sae_config: TrainingSAEConfigDict = {
+        "d_in": 64,
+        "d_sae": 256,
+        "dtype": "float32",
+        "device": "cpu",
+        "normalize_activations": "none",
+        "decoder_init_norm": 0.1,
+        "apply_b_dec_to_input": False,
+        "k": 10,
+        "topk_threshold_lr": 0.02,
+    }
+    # Ensure activation_fn_kwargs has k if k is overridden
+    temp_sae_overrides = {
+        k: v for k, v in kwargs.items() if k in TrainingSAEConfigDict.__annotations__
+    }
+    temp_sae_config = {**default_sae_config, **temp_sae_overrides}
+    # Update the default config *before* passing it to _build_runner_config
+    final_default_sae_config = cast(dict[str, Any], temp_sae_config)
+
+    return _build_runner_config(
+        BatchTopKTrainingSAEConfig,
+        final_default_sae_config,
+        **kwargs,
+    )
+
+
+def build_batchtopk_sae_training_cfg(**kwargs: Any) -> BatchTopKTrainingSAEConfig:
+    return build_batchtopk_runner_cfg(**kwargs).sae  # type: ignore
+
+
 MODEL_CACHE: dict[str, HookedTransformer] = {}
 
 
@@ -428,6 +466,8 @@ def build_sae_training_cfg_for_arch(
         return build_jumprelu_sae_training_cfg(**kwargs)
     if architecture == "topk":
         return build_topk_sae_training_cfg(**kwargs)
+    if architecture == "batchtopk":
+        return build_batchtopk_sae_training_cfg(**kwargs)
     raise ValueError(f"Unknown architecture: {architecture}")
 
 
@@ -442,4 +482,6 @@ def build_runner_cfg_for_arch(
         return build_jumprelu_runner_cfg(**kwargs)
     if architecture == "topk":
         return build_topk_runner_cfg(**kwargs)
+    if architecture == "batchtopk":
+        return build_batchtopk_runner_cfg(**kwargs)
     raise ValueError(f"Unknown architecture: {architecture}")

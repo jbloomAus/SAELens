@@ -1,7 +1,7 @@
 """Inference-only TopKSAE variant, similar in spirit to StandardSAE but using a TopK-based activation."""
 
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Callable
 
 import torch
 from jaxtyping import Float
@@ -16,13 +16,12 @@ from sae_lens.saes.sae import (
     TrainingSAEConfig,
     TrainStepInput,
 )
-from sae_lens.util import filter_valid_dataclass_fields
 
 
 class TopK(nn.Module):
     """
     A simple TopK activation that zeroes out all but the top K elements along the last dimension,
-    then optionally applies a post-activation function (e.g., ReLU).
+    and applies ReLU to the top K elements.
     """
 
     b_enc: nn.Parameter
@@ -30,20 +29,18 @@ class TopK(nn.Module):
     def __init__(
         self,
         k: int,
-        postact_fn: Callable[[torch.Tensor], torch.Tensor] = nn.ReLU(),
     ):
         super().__init__()
         self.k = k
-        self.postact_fn = postact_fn
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         1) Select top K elements along the last dimension.
-        2) Apply post-activation (often ReLU).
+        2) Apply ReLU.
         3) Zero out all other entries.
         """
         topk = torch.topk(x, k=self.k, dim=-1)
-        values = self.postact_fn(topk.values)
+        values = topk.values.relu()
         result = torch.zeros_like(x)
         result.scatter_(-1, topk.indices, values)
         return result
@@ -139,8 +136,7 @@ class TopKTrainingSAEConfig(TrainingSAEConfig):
 
 class TopKTrainingSAE(TrainingSAE[TopKTrainingSAEConfig]):
     """
-    TopK variant with training functionality. Injects noise during training, optionally
-    calculates a topk-related auxiliary loss, etc.
+    TopK variant with training functionality. Calculates a topk-related auxiliary loss, etc.
     """
 
     b_enc: nn.Parameter
@@ -157,7 +153,7 @@ class TopKTrainingSAE(TrainingSAE[TopKTrainingSAEConfig]):
         self, x: Float[torch.Tensor, "... d_in"]
     ) -> tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
         """
-        Similar to the base training method: cast input, optionally add noise, then apply TopK.
+        Similar to the base training method: calculate pre-activations, then apply TopK.
         """
         sae_in = self.process_sae_in(x)
         hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
@@ -236,11 +232,6 @@ class TopKTrainingSAE(TrainingSAE[TopKTrainingSAEConfig]):
         recons = self.decode(auxk_acts)
         auxk_loss = (recons - residual).pow(2).sum(dim=-1).mean()
         return scale * auxk_loss
-
-    def to_inference_config_dict(self) -> dict[str, Any]:
-        return filter_valid_dataclass_fields(
-            self.cfg.to_dict(), TopKSAEConfig, ["architecture"]
-        )
 
 
 def _calculate_topk_aux_acts(

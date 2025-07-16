@@ -15,7 +15,6 @@ from sae_lens.saes.sae import (
     TrainingSAEConfig,
     TrainStepInput,
 )
-from sae_lens.util import filter_valid_dataclass_fields
 
 
 def rectangle(x: torch.Tensor) -> torch.Tensor:
@@ -207,12 +206,11 @@ class JumpReLUTrainingSAE(TrainingSAE[JumpReLUTrainingSAEConfig]):
 
     Similar to the inference-only JumpReLUSAE, but with:
       - A learnable log-threshold parameter (instead of a raw threshold).
-      - Forward passes that add noise during training, if configured.
       - A specialized auxiliary loss term for sparsity (L0 or similar).
 
     Methods of interest include:
     - initialize_weights: sets up W_enc, b_enc, W_dec, b_dec, and log_threshold.
-    - encode_with_hidden_pre_jumprelu: runs a forward pass for training, optionally adding noise.
+    - encode_with_hidden_pre_jumprelu: runs a forward pass for training.
     - training_forward_pass: calculates MSE and auxiliary losses, returning a TrainStepOutput.
     """
 
@@ -312,8 +310,3 @@ class JumpReLUTrainingSAE(TrainingSAE[JumpReLUTrainingSAEConfig]):
             threshold = state_dict["threshold"]
             del state_dict["threshold"]
             state_dict["log_threshold"] = torch.log(threshold).detach().contiguous()
-
-    def to_inference_config_dict(self) -> dict[str, Any]:
-        return filter_valid_dataclass_fields(
-            self.cfg.to_dict(), JumpReLUSAEConfig, ["architecture"]
-        )

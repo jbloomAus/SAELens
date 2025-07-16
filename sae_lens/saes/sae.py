@@ -207,6 +207,8 @@ class TrainStepOutput:
     hidden_pre: torch.Tensor
     loss: torch.Tensor  # we need to call backwards on this
     losses: dict[str, torch.Tensor]
+    # any extra metrics to log can be added here
+    metrics: dict[str, torch.Tensor | float | int] = field(default_factory=dict)
 
 
 @dataclass
@@ -825,20 +827,26 @@ class TrainingSAEConfig(SAEConfig, ABC):
             "architecture": self.architecture(),
         }
 
+    def get_inference_config_class(self) -> type[SAEConfig]:
+        """
+        Get the architecture for inference.
+        """
+        return get_sae_class(self.architecture())[1]
+
     # this needs to exist so we can initialize the parent sae cfg without the training specific
     # parameters. Maybe there's a cleaner way to do this
-    def get_base_sae_cfg_dict(self) -> dict[str, Any]:
+    def get_inference_sae_cfg_dict(self) -> dict[str, Any]:
         """
         Creates a dictionary containing attributes corresponding to the fields
         defined in the base SAEConfig class.
         """
-        base_sae_cfg_class = get_sae_class(self.architecture())[1]
+        base_sae_cfg_class = self.get_inference_config_class()
         base_config_field_names = {f.name for f in fields(base_sae_cfg_class)}
         result_dict = {
             field_name: getattr(self, field_name)
             for field_name in base_config_field_names
         }
-        result_dict["architecture"] = self.architecture()
+        result_dict["architecture"] = base_sae_cfg_class.architecture()
         result_dict["metadata"] = self.metadata.to_dict()
         return result_dict
 
@@ -966,17 +974,12 @@ class TrainingSAE(SAE[T_TRAINING_SAE_CONFIG], ABC):
         save_file(state_dict, model_weights_path)
 
         # Save the config
-        config = self.to_inference_config_dict()
+        config = self.cfg.get_inference_sae_cfg_dict()
         cfg_path = path / SAE_CFG_FILENAME
         with open(cfg_path, "w") as f:
             json.dump(config, f)
 
         return model_weights_path, cfg_path
-
-    @abstractmethod
-    def to_inference_config_dict(self) -> dict[str, Any]:
-        """Convert the config into an inference SAE config dict."""
-        ...
 
     def process_state_dict_for_saving_inference(
         self, state_dict: dict[str, Any]

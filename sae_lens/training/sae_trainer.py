@@ -349,8 +349,10 @@ class SAETrainer(Generic[T_TRAINING_SAE, T_TRAINING_SAE_CONFIG]):
             },
         }
         for loss_name, loss_value in output.losses.items():
-            loss_item = _unwrap_item(loss_value)
-            log_dict[f"losses/{loss_name}"] = loss_item
+            log_dict[f"losses/{loss_name}"] = _unwrap_item(loss_value)
+
+        for metric_name, metric_value in output.metrics.items():
+            log_dict[f"metrics/{metric_name}"] = _unwrap_item(metric_value)
 
         return log_dict
 
