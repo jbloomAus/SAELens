@@ -77,7 +77,10 @@ def test_LanguageModelSAETrainingRunner_runs_and_saves_all_architectures(
 
     # json turns tuples into lists, so just dump and load the metadata to make things consistent
     original_metadata_dict = json.loads(json.dumps(sae.cfg.metadata.__dict__))
-    assert loaded_sae.cfg.architecture() == architecture
+    if architecture == "batchtopk":
+        assert loaded_sae.cfg.architecture() == "jumprelu"
+    else:
+        assert loaded_sae.cfg.architecture() == architecture
     assert loaded_sae.cfg.d_in == sae.cfg.d_in
     assert loaded_sae.cfg.d_sae == sae.cfg.d_sae
     assert loaded_sae.cfg.dtype == sae.cfg.dtype

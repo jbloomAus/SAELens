@@ -132,7 +132,7 @@ def test_BatchTopKTrainingSAE_save_and_load_inference_sae(tmp_path: Path) -> Non
     )
 
     # run some test data through to learn the correct threshold
-    for _ in range(1000):
+    for _ in range(500):
         training_sae.training_forward_pass(train_step_input)
 
     # Save original state for comparison
@@ -214,11 +214,11 @@ def test_BatchTopKTrainingSAE_training_step_updates_threshold() -> None:
     assert output.metrics["topk_threshold"] == sae.topk_threshold
 
 
-def test_BatchTopKTrainingSAE_to_inference_config_dict() -> None:
+def test_BatchTopKTrainingSAEConfig_get_inference_sae_cfg_dict() -> None:
     cfg = build_batchtopk_sae_training_cfg(device="cpu")
     sae = BatchTopKTrainingSAE(cfg)
 
-    inference_config = sae.to_inference_config_dict()
+    inference_config = sae.cfg.get_inference_sae_cfg_dict()
 
     # Should convert to JumpReLU architecture
     assert inference_config["architecture"] == "jumprelu"

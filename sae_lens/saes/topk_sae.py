@@ -1,7 +1,7 @@
 """Inference-only TopKSAE variant, similar in spirit to StandardSAE but using a TopK-based activation."""
 
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Callable
 
 import torch
 from jaxtyping import Float
@@ -16,7 +16,6 @@ from sae_lens.saes.sae import (
     TrainingSAEConfig,
     TrainStepInput,
 )
-from sae_lens.util import filter_valid_dataclass_fields
 
 
 class TopK(nn.Module):
@@ -233,11 +232,6 @@ class TopKTrainingSAE(TrainingSAE[TopKTrainingSAEConfig]):
         recons = self.decode(auxk_acts)
         auxk_loss = (recons - residual).pow(2).sum(dim=-1).mean()
         return scale * auxk_loss
-
-    def to_inference_config_dict(self) -> dict[str, Any]:
-        return filter_valid_dataclass_fields(
-            self.cfg.to_dict(), TopKSAEConfig, ["architecture"]
-        )
 
 
 def _calculate_topk_aux_acts(

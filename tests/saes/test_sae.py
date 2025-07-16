@@ -23,11 +23,16 @@ def test_TrainingSAEConfig_to_and_from_dict_all_architectures(architecture: str)
 
 @pytest.mark.parametrize("architecture", ALL_TRAINING_ARCHITECTURES)
 def test_SAEConfig_to_and_from_dict_all_architectures(architecture: str):
-    cfg_dict = build_sae_training_cfg_for_arch(architecture).get_base_sae_cfg_dict()
+    cfg_dict = build_sae_training_cfg_for_arch(
+        architecture
+    ).get_inference_sae_cfg_dict()
     reloaded_cfg = SAEConfig.from_dict(cfg_dict)
-    assert reloaded_cfg.architecture() == architecture
+    if architecture == "batchtopk":
+        assert reloaded_cfg.architecture() == "jumprelu"
+    else:
+        assert reloaded_cfg.architecture() == architecture
     assert reloaded_cfg.to_dict() == cfg_dict
-    assert reloaded_cfg.__class__ == get_sae_class(architecture)[1]
+    assert reloaded_cfg.__class__ == get_sae_class(reloaded_cfg.architecture())[1]
 
 
 def test_SAEMetadata_initialization_empty():

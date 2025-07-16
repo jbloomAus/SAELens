@@ -6,9 +6,8 @@ import torch.nn as nn
 from typing_extensions import override
 
 from sae_lens.saes.jumprelu_sae import JumpReLUSAEConfig
-from sae_lens.saes.sae import TrainStepInput, TrainStepOutput
+from sae_lens.saes.sae import SAEConfig, TrainStepInput, TrainStepOutput
 from sae_lens.saes.topk_sae import TopKTrainingSAE, TopKTrainingSAEConfig
-from sae_lens.util import filter_valid_dataclass_fields
 
 
 class BatchTopK(nn.Module):
@@ -45,6 +44,10 @@ class BatchTopKTrainingSAEConfig(TopKTrainingSAEConfig):
     def architecture(cls) -> str:
         return "batchtopk"
 
+    @override
+    def get_inference_config_class(self) -> type[SAEConfig]:
+        return JumpReLUSAEConfig
+
 
 class BatchTopKTrainingSAE(TopKTrainingSAE):
     """
@@ -69,14 +72,6 @@ class BatchTopKTrainingSAE(TopKTrainingSAE):
 
     def get_activation_fn(self) -> Callable[[torch.Tensor], torch.Tensor]:
         return BatchTopK(self.cfg.k)
-
-    def to_inference_config_dict(self) -> dict[str, Any]:
-        """
-        BatchTopK SAEs are saved as JumpReLU SAEs after training.
-        """
-        cfg = filter_valid_dataclass_fields(self.cfg.to_dict(), JumpReLUSAEConfig)
-        cfg["architecture"] = "jumprelu"
-        return cfg
 
     @override
     def training_forward_pass(self, step_input: TrainStepInput) -> TrainStepOutput:
