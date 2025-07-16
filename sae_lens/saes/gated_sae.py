@@ -127,7 +127,7 @@ class GatedTrainingSAE(TrainingSAE[GatedTrainingSAEConfig]):
       - initialize_weights: sets up gating parameters (as in GatedSAE) plus optional training-specific init.
       - encode: calls encode_with_hidden_pre (standard training approach).
       - decode: linear transformation + hooking, same as GatedSAE or StandardTrainingSAE.
-      - encode_with_hidden_pre: gating logic + optional noise injection for training.
+      - encode_with_hidden_pre: gating logic.
       - calculate_aux_loss: includes an auxiliary reconstruction path and gating-based sparsity penalty.
       - training_forward_pass: calls encode_with_hidden_pre, decode, and sums up MSE + gating losses.
     """
@@ -152,7 +152,6 @@ class GatedTrainingSAE(TrainingSAE[GatedTrainingSAEConfig]):
     ) -> tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
         """
         Gated forward pass with pre-activation (for training).
-        We also inject noise if self.training is True.
         """
         sae_in = self.process_sae_in(x)
 

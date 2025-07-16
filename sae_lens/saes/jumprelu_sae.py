@@ -207,12 +207,11 @@ class JumpReLUTrainingSAE(TrainingSAE[JumpReLUTrainingSAEConfig]):
 
     Similar to the inference-only JumpReLUSAE, but with:
       - A learnable log-threshold parameter (instead of a raw threshold).
-      - Forward passes that add noise during training, if configured.
       - A specialized auxiliary loss term for sparsity (L0 or similar).
 
     Methods of interest include:
     - initialize_weights: sets up W_enc, b_enc, W_dec, b_dec, and log_threshold.
-    - encode_with_hidden_pre_jumprelu: runs a forward pass for training, optionally adding noise.
+    - encode_with_hidden_pre_jumprelu: runs a forward pass for training.
     - training_forward_pass: calculates MSE and auxiliary losses, returning a TrainStepOutput.
     """
 

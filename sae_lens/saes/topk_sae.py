@@ -22,7 +22,7 @@ from sae_lens.util import filter_valid_dataclass_fields
 class TopK(nn.Module):
     """
     A simple TopK activation that zeroes out all but the top K elements along the last dimension,
-    then optionally applies a post-activation function (e.g., ReLU).
+    and applies ReLU to the top K elements.
     """
 
     b_enc: nn.Parameter
@@ -137,8 +137,7 @@ class TopKTrainingSAEConfig(TrainingSAEConfig):
 
 class TopKTrainingSAE(TrainingSAE[TopKTrainingSAEConfig]):
     """
-    TopK variant with training functionality. Injects noise during training, optionally
-    calculates a topk-related auxiliary loss, etc.
+    TopK variant with training functionality. Calculates a topk-related auxiliary loss, etc.
     """
 
     b_enc: nn.Parameter
@@ -155,7 +154,7 @@ class TopKTrainingSAE(TrainingSAE[TopKTrainingSAEConfig]):
         self, x: Float[torch.Tensor, "... d_in"]
     ) -> tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
         """
-        Similar to the base training method: cast input, optionally add noise, then apply TopK.
+        Similar to the base training method: calculate pre-activations, then apply TopK.
         """
         sae_in = self.process_sae_in(x)
         hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
