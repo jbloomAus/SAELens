@@ -2,6 +2,65 @@
 
 
 
+## v6.1.0 (2025-07-16)
+
+### Chore
+
+* chore: add more test coverage (#504)
+
+* chore: more tests for pretrained_sae_loaders
+
+* adding some more tests for llm_sae_training_runner evals
+
+* more load_model tests
+
+* adding more tests
+
+* adding more tests and removing unused methods
+
+* more minor tests
+
+* deleting more unused code
+
+* deleting more unused code and adding more tests
+
+* tweaking equivalence test ([`f4ba87a`](https://github.com/jbloomAus/SAELens/commit/f4ba87ad91c780a3f09e7801c2d837b3489fbca8))
+
+### Feature
+
+* feat: BatchTopK SAE training (#505)
+
+* feat: BatchTopK SAE training
+
+* Update sae_lens/saes/batchtopk_sae.py
+
+Co-authored-by: Copilot &lt;175728472+Copilot@users.noreply.github.com&gt;
+
+* removing unused post-act fn from topk/batchtopk
+
+* removing mention of &#39;noise&#39; from comments
+
+* adding batchtopk to ALL_ARCHITECTURES
+
+* fixing tests / simplifying config munging
+
+* more docs tweaks
+
+---------
+
+Co-authored-by: Copilot &lt;175728472+Copilot@users.noreply.github.com&gt; ([`7b7c283`](https://github.com/jbloomAus/SAELens/commit/7b7c283bddaa235012592bf4ca519f821b861136))
+
+### Unknown
+
+* removes Deploy alpha branch docs step (#503)
+
+* removes Deploy alpha branch docs step
+
+* reverts changes to index.md
+
+* removes alpha and beta from build.yml ([`2991a94`](https://github.com/jbloomAus/SAELens/commit/2991a9438ddba0fc991ac4f42155862d34640e76))
+
+
 ## v6.0.0 (2025-07-14)
 
 ### Breaking
