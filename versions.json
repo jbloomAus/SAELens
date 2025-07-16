@@ -1,12 +1,5 @@
 [
   {
-    "version": "pre-release",
-    "title": "pre-release",
-    "aliases": [
-      "alpha"
-    ]
-  },
-  {
     "version": "dev",
     "title": "dev",
     "aliases": [
