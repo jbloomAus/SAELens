@@ -16,6 +16,7 @@ TINYSTORIES_DATASET = "roneneldan/TinyStories"
 NEEL_NANDA_C4_10K_DATASET = "NeelNanda/c4-10k"
 
 ALL_ARCHITECTURES = ["standard", "gated", "jumprelu", "topk"]
+ALL_TRAINING_ARCHITECTURES = ["standard", "gated", "jumprelu", "topk", "batchtopk"]
 
 
 # This TypedDict should match the fields directly in LanguageModelSAERunnerConfig
@@ -93,6 +94,7 @@ class TrainingSAEConfigDict(TypedDict, total=False):
     k: int  # For TopK
     l0_coefficient: float  # For JumpReLU
     l0_warm_up_steps: int
+    topk_threshold_lr: float  # For BatchTopK
 
 
 class SAEConfigDict(TypedDict, total=False):
@@ -404,6 +406,7 @@ def build_batchtopk_runner_cfg(
         "decoder_init_norm": 0.1,
         "apply_b_dec_to_input": False,
         "k": 10,
+        "topk_threshold_lr": 0.02,
     }
     # Ensure activation_fn_kwargs has k if k is overridden
     temp_sae_overrides = {
@@ -463,6 +466,8 @@ def build_sae_training_cfg_for_arch(
         return build_jumprelu_sae_training_cfg(**kwargs)
     if architecture == "topk":
         return build_topk_sae_training_cfg(**kwargs)
+    if architecture == "batchtopk":
+        return build_batchtopk_sae_training_cfg(**kwargs)
     raise ValueError(f"Unknown architecture: {architecture}")
 
 
@@ -477,4 +482,6 @@ def build_runner_cfg_for_arch(
         return build_jumprelu_runner_cfg(**kwargs)
     if architecture == "topk":
         return build_topk_runner_cfg(**kwargs)
+    if architecture == "batchtopk":
+        return build_batchtopk_runner_cfg(**kwargs)
     raise ValueError(f"Unknown architecture: {architecture}")
