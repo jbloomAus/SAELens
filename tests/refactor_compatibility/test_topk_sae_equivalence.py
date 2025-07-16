@@ -25,6 +25,7 @@ from tests._comparison.sae_lens_old.training.training_sae import (
 from tests._comparison.sae_lens_old.training.training_sae import (
     TrainingSAEConfig as OldTrainingSAEConfig,
 )
+from tests.helpers import assert_close
 
 
 @pytest.fixture
@@ -139,9 +140,12 @@ def test_topk_sae_inference_equivalence():
     assert torch.isfinite(old_out).all(), "Old SAE produced NaNs or inf"
     assert torch.isfinite(new_out).all(), "New SAE produced NaNs or inf"
     # Check for numerical equality
-    assert torch.allclose(
-        old_out, new_out, atol=1e-5
-    ), "Outputs differ between old and new implementations."
+    assert_close(
+        old_out,
+        new_out,
+        atol=1e-5,
+        msg="Outputs differ between old and new implementations.",
+    )
 
     # Now test with error_term
     old_sae_err = make_old_topk_sae(d_in=16, d_sae=8, use_error_term=True)
@@ -162,9 +166,12 @@ def test_topk_sae_inference_equivalence():
     assert old_err_out.shape == new_err_out.shape
     assert torch.isfinite(old_err_out).all(), "Old error-term output has NaNs/inf"
     assert torch.isfinite(new_err_out).all(), "New error-term output has NaNs/inf"
-    assert torch.allclose(
-        old_err_out, new_err_out, atol=1e-5
-    ), "Error term outputs differ between old and new implementations."
+    assert_close(
+        old_err_out,
+        new_err_out,
+        atol=1e-5,
+        msg="Error term outputs differ between old and new implementations.",
+    )
 
 
 def test_topk_sae_run_with_cache_equivalence():  # type: ignore
@@ -189,15 +196,23 @@ def test_topk_sae_run_with_cache_equivalence():  # type: ignore
         new_out, new_cache = new_sae.run_with_cache(x)
 
     assert old_out.shape == new_out.shape, "Output shape mismatch."
-    assert torch.allclose(old_out, new_out, atol=1e-5), "Output values differ."
+    assert_close(
+        old_out,
+        new_out,
+        atol=1e-5,
+        msg="Output values differ.",
+    )
 
     assert len(old_cache) == len(new_cache), "Cache length mismatch."
 
     for old_key, new_key in zip(sorted(old_cache.keys()), sorted(new_cache.keys())):
         assert old_key == new_key, f"Cache keys differ: {old_key} vs {new_key}"
-        assert torch.allclose(
-            old_cache[old_key], new_cache[new_key], atol=1e-5
-        ), f"Cache values differ for key: {old_key}"
+        assert_close(
+            old_cache[old_key],
+            new_cache[new_key],
+            atol=1e-5,
+            msg=f"Cache values differ for key: {old_key}",
+        )
 
 
 def test_topk_sae_training_equivalence():
@@ -284,15 +299,27 @@ def test_topk_sae_training_equivalence():
         )
     )
 
-    assert torch.allclose(
-        old_out.sae_out, new_out.sae_out, atol=1e-5
-    ), "Training sae_out differs between old and new implementations."
-    assert torch.allclose(
-        old_out.loss, new_out.loss, atol=1e-5
-    ), "Training loss differs between old and new implementations."
-    assert torch.allclose(
-        old_out.feature_acts, new_out.feature_acts, atol=1e-5
-    ), "Training feature_acts differ between old and new implementations."
-    assert torch.allclose(
-        old_out.hidden_pre, new_out.hidden_pre, atol=1e-5
-    ), "Training hidden_pre differ between old and new implementations."
+    assert_close(
+        old_out.sae_out,
+        new_out.sae_out,
+        atol=1e-5,
+        msg="Training sae_out differs between old and new implementations.",
+    )
+    assert_close(
+        old_out.loss,
+        new_out.loss,
+        atol=1e-5,
+        msg="Training loss differs between old and new implementations.",
+    )
+    assert_close(
+        old_out.feature_acts,
+        new_out.feature_acts,
+        atol=1e-5,
+        msg="Training feature_acts differ between old and new implementations.",
+    )
+    assert_close(
+        old_out.hidden_pre,
+        new_out.hidden_pre,
+        atol=1e-5,
+        msg="Training hidden_pre differ between old and new implementations.",
+    )

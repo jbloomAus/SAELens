@@ -20,7 +20,13 @@ from sae_lens.training.activations_store import (
     permute_together,
     validate_pretokenized_dataset_tokenizer,
 )
-from tests.helpers import NEEL_NANDA_C4_10K_DATASET, build_runner_cfg, load_model_cached
+from tests.helpers import (
+    NEEL_NANDA_C4_10K_DATASET,
+    assert_close,
+    assert_not_close,
+    build_runner_cfg,
+    load_model_cached,
+)
 
 
 def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
@@ -199,7 +205,7 @@ def test_activations_store__get_activations__gives_same_results_with_hf_model_an
     batch_hf = store_hf.get_batch_tokens()
     activations_hf = store_hf.get_activations(batch_hf)
 
-    assert torch.allclose(activations_hf, activations_tlens, atol=1e-3)
+    assert_close(activations_hf, activations_tlens, atol=1e-3)
 
 
 # 12 is divisible by the length of "hello world", 11 and 13 are not
@@ -623,10 +629,10 @@ def test_activations_store_buffer_shuffling(ts_model: HookedTransformer):
     assert token_ids_unshuffled_2 is not None
     assert token_ids_shuffled is not None
 
-    assert torch.allclose(acts_unshuffled_1, acts_unshuffled_2)
-    assert torch.allclose(token_ids_unshuffled_1, token_ids_unshuffled_2)
-    assert not torch.allclose(acts_unshuffled_1, acts_shuffled)
-    assert not torch.allclose(token_ids_unshuffled_1, token_ids_shuffled)
+    assert_close(acts_unshuffled_1, acts_unshuffled_2)
+    assert_close(token_ids_unshuffled_1, token_ids_unshuffled_2)
+    assert_not_close(acts_unshuffled_1, acts_shuffled)
+    assert_not_close(token_ids_unshuffled_1, token_ids_shuffled)
 
     assert set(token_ids_shuffled.tolist()) == set(token_ids_unshuffled_1.tolist())
 
@@ -738,9 +744,9 @@ def test_permute_together():
 
     # Verify all tensors used the same permutation
     for i in range(len(t2)):
-        assert torch.allclose(p1[i], t1[perm[i]])
-        assert torch.allclose(p2[i], t2[perm[i]])
-        assert torch.allclose(p3[i], t3[perm[i]])
+        assert_close(p1[i], t1[perm[i]])
+        assert_close(p2[i], t2[perm[i]])
+        assert_close(p3[i], t3[perm[i]])
 
 
 def test_permute_together_different_sizes_raises():
@@ -760,7 +766,7 @@ def test_filter_buffer_acts_no_filtering():
 
     filtered = _filter_buffer_acts((activations, tokens), exclude_tokens)
 
-    assert torch.allclose(filtered, activations)
+    assert_close(filtered, activations)
 
 
 def test_filter_buffer_acts_with_filtering():
@@ -779,7 +785,7 @@ def test_filter_buffer_acts_with_filtering():
     filtered = _filter_buffer_acts((activations, tokens), exclude_tokens)
 
     expected = torch.tensor([[3.0, 4.0]])  # Only token 1 remains
-    assert torch.allclose(filtered, expected)
+    assert_close(filtered, expected)
 
 
 def test_filter_buffer_acts_no_matches():
@@ -790,7 +796,7 @@ def test_filter_buffer_acts_no_matches():
 
     filtered = _filter_buffer_acts((activations, tokens), exclude_tokens)
 
-    assert torch.allclose(filtered, activations)  # All tokens kept
+    assert_close(filtered, activations)  # All tokens kept
 
 
 def test_filter_buffer_acts_all_filtered():

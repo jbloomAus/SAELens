@@ -7,7 +7,7 @@ from transformer_lens import HookedTransformer
 
 from sae_lens.training.activation_scaler import ActivationScaler
 from sae_lens.training.activations_store import ActivationsStore
-from tests.helpers import build_runner_cfg
+from tests.helpers import assert_close, build_runner_cfg
 
 
 def test_ActivationScaler_scale_without_scaling_factor():
@@ -22,7 +22,7 @@ def test_ActivationScaler_scale_with_scaling_factor():
     acts = torch.tensor([[1.0, 2.0], [3.0, 4.0]])
     expected = torch.tensor([[2.0, 4.0], [6.0, 8.0]])
     result = scaler.scale(acts)
-    assert torch.allclose(result, expected)
+    assert_close(result, expected)
 
 
 def test_ActivationScaler_unscale_without_scaling_factor():
@@ -37,7 +37,7 @@ def test_ActivationScaler_unscale_with_scaling_factor():
     acts = torch.tensor([[2.0, 4.0], [6.0, 8.0]])
     expected = torch.tensor([[1.0, 2.0], [3.0, 4.0]])
     result = scaler.unscale(acts)
-    assert torch.allclose(result, expected)
+    assert_close(result, expected)
 
 
 def test_ActivationScaler_call_method():
@@ -45,7 +45,7 @@ def test_ActivationScaler_call_method():
     acts = torch.tensor([[1.0, 2.0]])
     expected = torch.tensor([[3.0, 6.0]])
     result = scaler(acts)
-    assert torch.allclose(result, expected)
+    assert_close(result, expected)
 
 
 def test_ActivationScaler_scale_unscale_roundtrip():
@@ -53,7 +53,7 @@ def test_ActivationScaler_scale_unscale_roundtrip():
     original = torch.tensor([[1.0, 2.0], [3.0, 4.0]])
     scaled = scaler.scale(original)
     unscaled = scaler.unscale(scaled)
-    assert torch.allclose(unscaled, original)
+    assert_close(unscaled, original)
 
 
 def test_ActivationScaler_calculate_mean_norm():
@@ -120,7 +120,7 @@ def test_ActivationScaler_scale_unscale_with_different_factors(scaling_factor: f
     scaled = scaler.scale(acts)
     unscaled = scaler.unscale(scaled)
 
-    assert torch.allclose(unscaled, acts, rtol=1e-6)
+    assert_close(unscaled, acts, rtol=1e-6)
 
 
 def test_ActivationScaler_scale_with_zero_tensor():
@@ -152,10 +152,10 @@ def test_ActivationScaler_scale_with_negative_values():
     expected_scaled = torch.tensor([[-3.0, 6.0], [-9.0, 12.0]])
 
     scaled = scaler.scale(acts)
-    assert torch.allclose(scaled, expected_scaled)
+    assert_close(scaled, expected_scaled)
 
     unscaled = scaler.unscale(scaled)
-    assert torch.allclose(unscaled, acts)
+    assert_close(unscaled, acts)
 
 
 def test_ActivationScaler_estimates_norm_scaling_factor_from_activations_store(
