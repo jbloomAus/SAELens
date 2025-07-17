@@ -2,6 +2,37 @@
 
 
 
+## v6.2.0 (2025-07-17)
+
+### Chore
+
+* chore: updating docs for v6 release (#502) ([`07196e1`](https://github.com/jbloomAus/SAELens/commit/07196e156b26bed746336e7cefdae8a29d0d80aa))
+
+### Feature
+
+* feat: adds aux loss coefficient to TopK training config (#497)
+
+* adds aux loss coefficient to TopK training config
+
+* fixes aux loss coefficient ([`ce310f5`](https://github.com/jbloomAus/SAELens/commit/ce310f5b04f532422a57ce585ff824a0162cd003))
+
+### Unknown
+
+* Replace allclose with testing assert close (#480)
+
+* replaces torch.allclose() with torch.testing.assert_close()
+
+* removes type: ignore comment
+
+* makes changes to augment generated messages
+
+* extracts repeated code to helpers
+
+* removes unnecessary args
+
+* updates after rebase ([`f39763f`](https://github.com/jbloomAus/SAELens/commit/f39763f5d1530b4eb1805cc45699bc72f0cc0eed))
+
+
 ## v6.1.0 (2025-07-16)
 
 ### Chore
