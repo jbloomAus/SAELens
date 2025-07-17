@@ -46,6 +46,29 @@ def dict_field(default: dict[str, Any] | None, **kwargs: Any) -> Any:  # type: i
     return simple_parsing.helpers.dict_field(default, type=json_dict, **kwargs)
 
 
+def special_token(s: str) -> Any:
+    """Parse special token value from string."""
+    if s.lower() == "none":
+        return None
+    if s in ["bos", "eos", "sep"]:
+        return s
+    try:
+        return int(s)
+    except ValueError:
+        raise ValueError(
+            f"Expected 'bos', 'eos', 'sep', an integer, or 'none', got {s}"
+        )
+
+
+def special_token_field(
+    default: int | Literal["bos", "eos", "sep"] | None, **kwargs: Any
+) -> Any:  # type: ignore
+    """
+    Helper to wrap simple_parsing.helpers.field so we can load special token fields from the command line.
+    """
+    return simple_parsing.helpers.field(default=default, type=special_token, **kwargs)
+
+
 @dataclass
 class LoggingConfig:
     # WANDB
@@ -181,7 +204,9 @@ class LanguageModelSAERunnerConfig(Generic[T_TRAINING_SAE_CONFIG]):
     store_batch_size_prompts: int = 32
     seqpos_slice: tuple[int | None, ...] = (None,)
     disable_concat_sequences: bool = False
-    sequence_separator_token: int | Literal["bos", "eos", "sep"] | None = "bos"
+    sequence_separator_token: int | Literal["bos", "eos", "sep"] | None = (
+        special_token_field(default="bos")
+    )
 
     # Misc
     device: str = "cpu"
