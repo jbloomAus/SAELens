@@ -160,6 +160,8 @@ class ActivationsStore:
         train_batch_size_tokens: int = 4096,
         total_tokens: int = 10**9,
         device: str = "cpu",
+        disable_concat_sequences: bool = False,
+        sequence_separator_token: int | Literal["bos", "eos", "sep"] | None = "bos",
     ) -> ActivationsStore:
         if sae.cfg.metadata.hook_name is None:
             raise ValueError("hook_name is required")
@@ -187,6 +189,8 @@ class ActivationsStore:
             dtype=sae.cfg.dtype,
             device=torch.device(device),
             seqpos_slice=sae.cfg.metadata.seqpos_slice or (None,),
+            disable_concat_sequences=disable_concat_sequences,
+            sequence_separator_token=sequence_separator_token,
         )
 
     def __init__(
