@@ -202,6 +202,12 @@ class LanguageModelSAETrainingRunner:
         )
         self.sae.cfg.metadata.prepend_bos = self.cfg.prepend_bos
         self.sae.cfg.metadata.exclude_special_tokens = self.cfg.exclude_special_tokens
+        self.sae.cfg.metadata.sequence_separator_token = (
+            self.cfg.sequence_separator_token
+        )
+        self.sae.cfg.metadata.disable_concat_sequences = (
+            self.cfg.disable_concat_sequences
+        )
 
     def _compile_if_needed(self):
         # Compile model and SAE
