@@ -2,6 +2,17 @@
 
 
 
+## v5.10.3 (2025-05-19)
+
+### Fix
+
+* fix: fix abnormally large llamascope L0. (#483)
+
+* make llamascope (base model) compatible with sae.fold_activation_norm_scaling_factor
+
+* make llamascope (base model) compatible with sae.fold_activation_norm_scaling_factor ([`4cafc09`](https://github.com/jbloomAus/SAELens/commit/4cafc09e2bd0c6e265fa2b1234f23fb587b2842a))
+
+
 ## v5.10.2 (2025-05-12)
 
 ### Fix

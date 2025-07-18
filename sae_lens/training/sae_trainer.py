@@ -193,7 +193,7 @@ class SAETrainer:
             self._checkpoint_if_needed()
             self.n_training_steps += 1
             self._update_pbar(step_output, pbar)
-
+            
             ### If n_training_tokens > sae_group.cfg.training_tokens, then we should switch to fine-tuning (if we haven't already)
             self._begin_finetuning_if_needed()
 

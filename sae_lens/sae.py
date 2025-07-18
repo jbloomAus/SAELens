@@ -44,7 +44,7 @@ T = TypeVar("T", bound="SAE")
 @dataclass
 class SAEConfig:
     # architecture details
-    architecture: Literal["standard", "gated", "jumprelu", "topk"]
+    architecture: Literal["standard", "gated", "jumprelu", "topk", "singular_fisher"]
 
     # forward pass details.
     d_in: int
@@ -172,6 +172,9 @@ class SAE(HookedRootModule):
         elif self.cfg.architecture == "jumprelu":
             self.initialize_weights_jumprelu()
             self.encode = self.encode_jumprelu
+        elif self.cfg.architecture == "singular_fisher":
+            self.initialize_weights_singular_fisher()
+            self.encode = self.encode_singular_fisher
         else:
             raise ValueError(f"Invalid architecture: {self.cfg.architecture}")
 
@@ -321,6 +324,14 @@ class SAE(HookedRootModule):
         )
         self.initialize_weights_basic()
 
+    def initialize_weights_singular_fisher(self):
+        # The params are identical to the standard SAE
+        # except we use a threshold parameter too
+        self.threshold = nn.Parameter(
+            torch.zeros(self.cfg.d_sae, dtype=self.dtype, device=self.device)
+        )
+        self.initialize_weights_basic()
+
     @overload
     def to(
         self: T,
@@ -441,6 +452,22 @@ class SAE(HookedRootModule):
         hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
         return self.hook_sae_acts_post(self.activation_fn(hidden_pre))
 
+
+    def encode_singular_fisher(
+        self, x: Float[torch.Tensor, "... d_in"]
+    ) -> Float[torch.Tensor, "... d_sae"]:
+        """
+        Calculate SAE features from inputs
+        """
+        sae_in = self.process_sae_in(x)
+
+        # "... d_in, d_in d_sae -> ... d_sae",
+        hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
+
+        return self.hook_sae_acts_post(
+            self.activation_fn(hidden_pre) * (hidden_pre > self.threshold)
+        )
+
     def process_sae_in(
         self, sae_in: Float[torch.Tensor, "... d_in"]
     ) -> Float[torch.Tensor, "... d_sae"]:
@@ -475,7 +502,7 @@ class SAE(HookedRootModule):
             self.r_mag.data = self.r_mag.data * W_dec_norms.squeeze()
             self.b_gate.data = self.b_gate.data * W_dec_norms.squeeze()
             self.b_mag.data = self.b_mag.data * W_dec_norms.squeeze()
-        elif self.cfg.architecture == "jumprelu":
+        elif self.cfg.architecture == "jumprelu" or self.cfg.architecture == "singular_fisher":
             self.threshold.data = self.threshold.data * W_dec_norms.squeeze()
             self.b_enc.data = self.b_enc.data * W_dec_norms.squeeze()
         else:
