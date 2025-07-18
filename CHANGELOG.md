@@ -2,6 +2,33 @@
 
 
 
+## v6.3.0 (2025-07-18)
+
+### Feature
+
+* feat: adds fields for sequence logic in ActivationsStore (#492)
+
+* adds fields for sequence logic in ActivationsStore
+
+* adds docstrings to LanguageModelSAERunnerConfig
+
+* groups params for ActivationsStore together
+
+* adds disable_concat_sequences to concat_and_batch_sequences()
+
+* adds disable_concat_sequences to PretokenizedDatasetMetadata
+
+* replaces exclude_bos_between_sequences with sequence_separator_token
+
+* updates test name
+
+* fixes tests
+
+* adds params to ActivationsStore.from_sae()
+
+* adds fields to SAEMetdata ([`25fc5c3`](https://github.com/jbloomAus/SAELens/commit/25fc5c38e78525dee2490305ff914a5f6637bd7e))
+
+
 ## v6.2.0 (2025-07-17)
 
 ### Chore
