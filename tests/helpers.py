@@ -1,5 +1,5 @@
 import copy
-from typing import Any, Sequence, TypedDict, cast
+from typing import Any, Literal, Sequence, TypedDict, cast
 
 import pytest
 import torch
@@ -42,6 +42,8 @@ class LanguageModelSAERunnerConfigDict(TypedDict, total=False):
     store_batch_size_prompts: int
     normalize_activations: str
     seqpos_slice: tuple[int | None, ...] | Sequence[int | None]
+    disable_concat_sequences: bool
+    sequence_separator_token: int | Literal["bos", "eos", "sep"] | None
     device: str
     act_store_device: str
     seed: int
@@ -130,6 +132,8 @@ def _get_default_runner_config() -> LanguageModelSAERunnerConfigDict:
         "training_tokens": 1_000_000,
         "store_batch_size_prompts": 4,
         "seqpos_slice": (None,),
+        "disable_concat_sequences": False,
+        "sequence_separator_token": "bos",
         "device": "cpu",
         "act_store_device": "cpu",
         "seed": 24,
