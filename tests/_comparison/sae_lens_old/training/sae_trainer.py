@@ -1,5 +1,4 @@
 import contextlib
-from dataclasses import dataclass
 from typing import Any, Protocol, cast
 
 import torch
@@ -37,13 +36,6 @@ def _update_sae_lens_training_version(sae: TrainingSAE) -> None:
     Make sure we record the version of SAELens used for the training run
     """
     sae.cfg.sae_lens_training_version = str(__version__)
-
-
-@dataclass
-class TrainSAEOutput:
-    sae: TrainingSAE
-    checkpoint_path: str
-    log_feature_sparsities: torch.Tensor
 
 
 class SaveCheckpointFn(Protocol):
