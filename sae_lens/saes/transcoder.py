@@ -1,4 +1,3 @@
-from abc import ABC
 from dataclasses import dataclass
 from typing import Any, Optional
 
@@ -269,7 +268,7 @@ class SkipTranscoder(Transcoder):
         
         # Add skip connection: W_skip @ x
         # x has shape [batch, d_in], W_skip has shape [d_out, d_in]
-        skip_out = x @ self.W_skip.T
+        skip_out = x @ self.W_skip.T.to(x.device)
         sae_out = sae_out + skip_out
         
         return sae_out, feature_acts
@@ -380,12 +379,15 @@ class JumpReLUTranscoder(Transcoder):
         This is important for JumpReLU as the threshold needs to be scaled
         along with the decoder weights.
         """
-        # First, fold the decoder norms as in the parent class
-        super().fold_W_dec_norm()
-        
-        # Also scale the threshold by the decoder weight norms
+        # Get the decoder weight norms before normalizing
         with torch.no_grad():
             W_dec_norms = self.W_dec.norm(dim=1)
+            
+        # Fold the decoder norms as in the parent class
+        super().fold_W_dec_norm()
+        
+        # Scale the threshold by the decoder weight norms
+        with torch.no_grad():
             self.threshold.data = self.threshold.data * W_dec_norms
     
     @classmethod
