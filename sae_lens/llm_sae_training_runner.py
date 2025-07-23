@@ -17,6 +17,7 @@ from sae_lens.config import HfDataset, LanguageModelSAERunnerConfig
 from sae_lens.constants import ACTIVATIONS_STORE_STATE_FILENAME, RUNNER_CFG_FILENAME
 from sae_lens.evals import EvalConfig, run_evals
 from sae_lens.load_model import load_model
+from sae_lens.saes.batchtopk_sae import BatchTopKTrainingSAEConfig
 from sae_lens.saes.gated_sae import GatedTrainingSAEConfig
 from sae_lens.saes.jumprelu_sae import JumpReLUTrainingSAEConfig
 from sae_lens.saes.sae import (
@@ -291,7 +292,7 @@ def _parse_cfg_args(
     architecture_parser.add_argument(
         "--architecture",
         type=str,
-        choices=["standard", "gated", "jumprelu", "topk"],
+        choices=["standard", "gated", "jumprelu", "topk", "batchtopk"],
         default="standard",
         help="SAE architecture to use",
     )
@@ -352,6 +353,7 @@ def _parse_cfg_args(
         "gated": GatedTrainingSAEConfig,
         "jumprelu": JumpReLUTrainingSAEConfig,
         "topk": TopKTrainingSAEConfig,
+        "batchtopk": BatchTopKTrainingSAEConfig,
     }
 
     sae_config_type = sae_config_map[architecture]
