@@ -17,9 +17,9 @@ from sae_lens.saes import (
     JumpReLUSAEConfig,
     JumpReLUTrainingSAE,
     JumpReLUTrainingSAEConfig,
-    SAEConfig,
     JumpReLUTranscoder,
     JumpReLUTranscoderConfig,
+    SAEConfig,
     SkipTranscoder,
     SkipTranscoderConfig,
     StandardSAE,
@@ -32,14 +32,14 @@ from sae_lens.saes import (
     TopKTrainingSAEConfig,
     TrainingJumpReLUTranscoder,
     TrainingJumpReLUTranscoderConfig,
+    TrainingSAE,
+    TrainingSAEConfig,
     TrainingSkipTranscoder,
     TrainingSkipTranscoderConfig,
     TrainingTranscoder,
     TrainingTranscoderConfig,
     Transcoder,
     TranscoderConfig,
-    TrainingSAE,
-    TrainingSAEConfig,
 )
 
 from .analysis.hooked_sae_transformer import HookedSAETransformer

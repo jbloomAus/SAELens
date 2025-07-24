@@ -1115,14 +1115,16 @@ def get_gemma_2_transcoder_config_from_hf(
         if width_key in folder_name:
             d_sae = width_value
             break
-    
+
     if d_sae is None:
         # Try to extract from pattern like "width_16k"
         match = re.search(r"width_(\d+)k", folder_name)
         if match:
             d_sae = int(match.group(1)) * 1024
         else:
-            raise ValueError(f"Could not extract dictionary size from folder name: {folder_name}")
+            raise ValueError(
+                f"Could not extract dictionary size from folder name: {folder_name}"
+            )
 
     # Extract layer
     layer_match = re.search(r"layer_(\d+)", folder_name)
@@ -1144,7 +1146,7 @@ def get_gemma_2_transcoder_config_from_hf(
         "27b-it": ("gemma-2-27b-it", 4608),
         "27b": ("gemma-2-27b", 4608),
     }
-    
+
     model_name = None
     d_model = None
     for model_key, (name, dim) in model_configs.items():
@@ -1152,7 +1154,7 @@ def get_gemma_2_transcoder_config_from_hf(
             model_name = name
             d_model = dim
             break
-    
+
     if model_name is None:
         raise ValueError(f"Could not determine model from repo_id: {repo_id}")
 
@@ -1207,7 +1209,7 @@ def gemma_2_transcoder_huggingface_loader(
 
     # Load weights from npz file
     params = np.load(file_path)
-    
+
     # Convert to state dict with proper naming
     state_dict = {}
     for key in params.files:
