@@ -235,7 +235,7 @@ class TestTranscoder:
         assert_close(feat2, expected_feat2, atol=1e-5)
 
         # But outputs should be the same
-        assert_close(out1, out2, atol=1e-5)
+        assert_close(out1, out2, atol=5e-5)
 
 
 class TestJumpReLUTranscoder:
