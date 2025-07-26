@@ -17,7 +17,11 @@ from sae_lens.saes import (
     JumpReLUSAEConfig,
     JumpReLUTrainingSAE,
     JumpReLUTrainingSAEConfig,
+    JumpReLUTranscoder,
+    JumpReLUTranscoderConfig,
     SAEConfig,
+    SkipTranscoder,
+    SkipTranscoderConfig,
     StandardSAE,
     StandardSAEConfig,
     StandardTrainingSAE,
@@ -26,8 +30,16 @@ from sae_lens.saes import (
     TopKSAEConfig,
     TopKTrainingSAE,
     TopKTrainingSAEConfig,
+    TrainingJumpReLUTranscoder,
+    TrainingJumpReLUTranscoderConfig,
     TrainingSAE,
     TrainingSAEConfig,
+    TrainingSkipTranscoder,
+    TrainingSkipTranscoderConfig,
+    TrainingTranscoder,
+    TrainingTranscoderConfig,
+    Transcoder,
+    TranscoderConfig,
 )
 
 from .analysis.hooked_sae_transformer import HookedSAETransformer
@@ -89,6 +101,18 @@ __all__ = [
     "LoggingConfig",
     "BatchTopKTrainingSAE",
     "BatchTopKTrainingSAEConfig",
+    "Transcoder",
+    "TranscoderConfig",
+    "TrainingTranscoder",
+    "TrainingTranscoderConfig",
+    "SkipTranscoder",
+    "SkipTranscoderConfig",
+    "TrainingSkipTranscoder",
+    "TrainingSkipTranscoderConfig",
+    "JumpReLUTranscoder",
+    "JumpReLUTranscoderConfig",
+    "TrainingJumpReLUTranscoder",
+    "TrainingJumpReLUTranscoderConfig",
 ]
 
 
@@ -102,4 +126,14 @@ register_sae_class("jumprelu", JumpReLUSAE, JumpReLUSAEConfig)
 register_sae_training_class("jumprelu", JumpReLUTrainingSAE, JumpReLUTrainingSAEConfig)
 register_sae_training_class(
     "batchtopk", BatchTopKTrainingSAE, BatchTopKTrainingSAEConfig
+)
+register_sae_class("transcoder", Transcoder, TranscoderConfig)
+register_sae_training_class("transcoder", TrainingTranscoder, TrainingTranscoderConfig)
+register_sae_class("skip_transcoder", SkipTranscoder, SkipTranscoderConfig)
+register_sae_training_class(
+    "skip_transcoder", TrainingSkipTranscoder, TrainingSkipTranscoderConfig
+)
+register_sae_class("jumprelu_transcoder", JumpReLUTranscoder, JumpReLUTranscoderConfig)
+register_sae_training_class(
+    "jumprelu_transcoder", TrainingJumpReLUTranscoder, TrainingJumpReLUTranscoderConfig
 )
