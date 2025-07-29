@@ -27,7 +27,6 @@ class LanguageModelSAERunnerConfigDict(TypedDict, total=False):
     model_name: str
     model_class_name: str
     hook_name: str
-    hook_eval: str
     hook_head_index: int | None
     dataset_path: str
     dataset_trust_remote_code: bool
@@ -118,7 +117,6 @@ def _get_default_runner_config() -> LanguageModelSAERunnerConfigDict:
         "model_name": TINYSTORIES_MODEL,
         "model_class_name": "HookedTransformer",
         "hook_name": "blocks.0.hook_mlp_out",
-        "hook_eval": "NOT_IN_USE",
         "hook_head_index": None,
         "dataset_path": NEEL_NANDA_C4_10K_DATASET,
         "streaming": False,

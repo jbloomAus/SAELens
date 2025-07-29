@@ -23,7 +23,6 @@ cfg = LanguageModelSAERunnerConfig(
     model_name="state-spaces/mamba-370m",
     model_class_name="HookedMamba",
     hook_name="blocks.39.hook_ssm_input",
-    hook_eval="blocks.39.hook_ssm_output",  # we compare this when replace hook_point activations with autoencode.decode(autoencoder.encode( hook_point activations))
     dataset_path="NeelNanda/openwebtext-tokenized-9b",
     is_dataset_tokenized=True,
     # SAE Parameters
