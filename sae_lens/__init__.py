@@ -30,14 +30,8 @@ from sae_lens.saes import (
     TopKSAEConfig,
     TopKTrainingSAE,
     TopKTrainingSAEConfig,
-    TrainingJumpReLUTranscoder,
-    TrainingJumpReLUTranscoderConfig,
     TrainingSAE,
     TrainingSAEConfig,
-    TrainingSkipTranscoder,
-    TrainingSkipTranscoderConfig,
-    TrainingTranscoder,
-    TrainingTranscoderConfig,
     Transcoder,
     TranscoderConfig,
 )
@@ -103,16 +97,10 @@ __all__ = [
     "BatchTopKTrainingSAEConfig",
     "Transcoder",
     "TranscoderConfig",
-    "TrainingTranscoder",
-    "TrainingTranscoderConfig",
     "SkipTranscoder",
     "SkipTranscoderConfig",
-    "TrainingSkipTranscoder",
-    "TrainingSkipTranscoderConfig",
     "JumpReLUTranscoder",
     "JumpReLUTranscoderConfig",
-    "TrainingJumpReLUTranscoder",
-    "TrainingJumpReLUTranscoderConfig",
 ]
 
 
@@ -128,12 +116,5 @@ register_sae_training_class(
     "batchtopk", BatchTopKTrainingSAE, BatchTopKTrainingSAEConfig
 )
 register_sae_class("transcoder", Transcoder, TranscoderConfig)
-register_sae_training_class("transcoder", TrainingTranscoder, TrainingTranscoderConfig)
 register_sae_class("skip_transcoder", SkipTranscoder, SkipTranscoderConfig)
-register_sae_training_class(
-    "skip_transcoder", TrainingSkipTranscoder, TrainingSkipTranscoderConfig
-)
 register_sae_class("jumprelu_transcoder", JumpReLUTranscoder, JumpReLUTranscoderConfig)
-register_sae_training_class(
-    "jumprelu_transcoder", TrainingJumpReLUTranscoder, TrainingJumpReLUTranscoderConfig
-)

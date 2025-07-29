@@ -1171,7 +1171,7 @@ def get_gemma_2_transcoder_config_from_hf(
         "hook_layer_out": layer,
         "hook_head_index": None,
         "hook_head_index_out": None,
-        "activation_fn": "jumprelu",
+        "activation_fn": "relu",
         "prepend_bos": True,
         "dataset_path": "monology/pile-uncopyrighted",
         "context_size": 1024,
@@ -1224,8 +1224,6 @@ def gemma_2_transcoder_huggingface_loader(
             state_dict["b_enc"] = tensor
         elif key_lower in ["b_dec", "bdec", "b_d"]:
             state_dict["b_dec"] = tensor
-        elif key_lower == "threshold":
-            state_dict["threshold"] = tensor
 
     return cfg_dict, state_dict, None
 
