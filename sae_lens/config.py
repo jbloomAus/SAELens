@@ -1,5 +1,6 @@
 import json
 import math
+import warnings
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar, cast
@@ -125,7 +126,7 @@ class LanguageModelSAERunnerConfig(Generic[T_TRAINING_SAE_CONFIG]):
         model_name (str): The name of the model to use. This should be the name of the model in the Hugging Face model hub.
         model_class_name (str): The name of the class of the model to use. This should be either `HookedTransformer` or `HookedMamba`.
         hook_name (str): The name of the hook to use. This should be a valid TransformerLens hook.
-        hook_eval (str): NOT CURRENTLY IN USE. The name of the hook to use for evaluation.
+        hook_eval (str): DEPRECATED: Will be removed in v7.0.0. NOT CURRENTLY IN USE. The name of the hook to use for evaluation.
         hook_head_index (int, optional): When the hook is for an activation with a head index, we can specify a specific head to use here.
         dataset_path (str): A Hugging Face dataset path.
         dataset_trust_remote_code (bool): Whether to trust remote code when loading datasets from Huggingface.
@@ -264,6 +265,14 @@ class LanguageModelSAERunnerConfig(Generic[T_TRAINING_SAE_CONFIG]):
     exclude_special_tokens: bool | list[int] = False
 
     def __post_init__(self):
+        if self.hook_eval != "NOT_IN_USE":
+            warnings.warn(
+                "The 'hook_eval' field is deprecated and will be removed in v7.0.0. "
+                "It is not currently used and can be safely removed from your config.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
         if self.use_cached_activations and self.cached_activations_path is None:
             self.cached_activations_path = _default_cached_activations_path(
                 self.dataset_path,

@@ -34,6 +34,17 @@ def test_sae_training_runner_config_seqpos(
         )
 
 
+def test_LanguageModelSAERunnerConfig_hook_eval_deprecated_usage():
+    with pytest.warns(
+        DeprecationWarning,
+        match="The 'hook_eval' field is deprecated and will be removed in v7.0.0. ",
+    ):
+        LanguageModelSAERunnerConfig(
+            sae=StandardTrainingSAEConfig(d_in=10, d_sae=10),
+            hook_eval="blocks.0.hook_output",
+        )
+
+
 @pytest.mark.parametrize("seqpos_slice, expected_error", test_cases_for_seqpos)
 def test_cache_activations_runner_config_seqpos(
     seqpos_slice: tuple[int, int],
