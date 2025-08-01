@@ -27,6 +27,14 @@ from .topk_sae import (
     TopKTrainingSAE,
     TopKTrainingSAEConfig,
 )
+from .transcoder import (
+    JumpReLUTranscoder,
+    JumpReLUTranscoderConfig,
+    SkipTranscoder,
+    SkipTranscoderConfig,
+    Transcoder,
+    TranscoderConfig,
+)
 
 __all__ = [
     "SAE",
@@ -51,4 +59,10 @@ __all__ = [
     "TopKTrainingSAEConfig",
     "BatchTopKTrainingSAE",
     "BatchTopKTrainingSAEConfig",
+    "Transcoder",
+    "TranscoderConfig",
+    "SkipTranscoder",
+    "SkipTranscoderConfig",
+    "JumpReLUTranscoder",
+    "JumpReLUTranscoderConfig",
 ]
