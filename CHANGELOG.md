@@ -1,5 +1,53 @@
 # CHANGELOG
 
+## v6.5.1 (2025-08-03)
+
+### Fix
+
+* fix: Revert &#34;upgrades python-semantic-release to latest (#510)&#34; (#512)
+
+This reverts commit c361af6893907a16b8d77ebec73b026fed1eb76d. ([`e717cb4`](https://github.com/jbloomAus/SAELens/commit/e717cb4501d40270a16396f920418df49f4125e7))
+
+## v6.5.0 (2025-08-03)
+
+### Feature
+
+* feat: load GemmaScope transcoders with SAE.from_pretrained (#509)
+
+* working addition of gemma 2 transcoders
+
+* working transcoder implementation and tests
+
+* removed skip transcoders
+
+* restored broken loading functions
+
+* updated for formatting and linting
+
+* increased test tolerance
+
+* removed transcoder training code
+
+* final changes from CR
+
+* fixing remaining tests and linting
+
+---------
+
+Co-authored-by: Curt Tigges &lt;curttigges@Curts-MacBook-Pro.local&gt;
+Co-authored-by: Curt Tigges &lt;curttigges@Curts-MBP-2.lan&gt;
+Co-authored-by: David Chanin &lt;chanindav@gmail.com&gt; ([`72f38ef`](https://github.com/jbloomAus/SAELens/commit/72f38ef5662baa193844fbeb75de0c7ce6bb87e7))
+
+## v6.4.0 (2025-07-31)
+
+### Feature
+
+* feat: deprecates eval_hook (#511) ([`0c91973`](https://github.com/jbloomAus/SAELens/commit/0c919734cf0175311da421d9841645ed54eba90f))
+
+### Unknown
+
+* upgrades python-semantic-release to latest (#510) ([`c361af6`](https://github.com/jbloomAus/SAELens/commit/c361af6893907a16b8d77ebec73b026fed1eb76d))
+
 ## v6.3.1 (2025-07-26)
 
 ### Fix
