@@ -26,8 +26,9 @@ def build_transcoder_cfg(**kwargs: Any) -> TranscoderConfig:  # type: ignore
         "device": "cpu",
         "normalize_activations": "none",
         "apply_b_dec_to_input": False,
-        "hook_name_out": "blocks.0.hook_mlp_out",
-        "hook_layer_out": 0,
+        "metadata": {
+            "hook_name_out": "blocks.0.hook_mlp_out",
+        },
     }
     merged = {**default_config, **kwargs}
     # Cast types to ensure they match expected types
@@ -49,7 +50,7 @@ def build_transcoder_cfg(**kwargs: Any) -> TranscoderConfig:  # type: ignore
         merged["normalize_activations"] = str(merged["normalize_activations"])
     if "apply_b_dec_to_input" in merged:
         merged["apply_b_dec_to_input"] = bool(merged["apply_b_dec_to_input"])
-    return TranscoderConfig(**merged)
+    return TranscoderConfig.from_dict(merged)
 
 
 def build_jumprelu_transcoder_cfg(**kwargs: Any) -> JumpReLUTranscoderConfig:
@@ -69,7 +70,7 @@ class TestTranscoderConfig:
         assert cfg.d_in == 64
         assert cfg.d_sae == 128
         assert cfg.d_out == 96
-        assert cfg.hook_name_out == "blocks.0.hook_mlp_out"
+        assert cfg.metadata.hook_name_out == "blocks.0.hook_mlp_out"
         assert cfg.architecture() == "transcoder"
 
     def test_transcoder_config_to_dict(self):
@@ -78,13 +79,11 @@ class TestTranscoderConfig:
 
         # Check transcoder-specific fields are included
         assert "d_out" in cfg_dict
-        assert "hook_name_out" in cfg_dict
-        assert "hook_layer_out" in cfg_dict
-        assert "hook_head_index_out" in cfg_dict
+        assert "hook_name_out" in cfg_dict["metadata"]
 
         # Check values
         assert cfg_dict["d_out"] == 96
-        assert cfg_dict["hook_name_out"] == "blocks.0.hook_mlp_out"
+        assert cfg_dict["metadata"]["hook_name_out"] == "blocks.0.hook_mlp_out"
 
     def test_transcoder_config_from_dict(self):
         original_dict = {
@@ -93,8 +92,9 @@ class TestTranscoderConfig:
             "d_out": 192,
             "dtype": "float16",
             "device": "cuda",
-            "hook_name_out": "test_out",
-            "hook_layer_out": 6,
+            "metadata": {
+                "hook_name_out": "test_out",
+            },
             "architecture": "transcoder",
         }
 
@@ -102,8 +102,7 @@ class TestTranscoderConfig:
         assert cfg.d_in == 128
         assert cfg.d_sae == 256
         assert cfg.d_out == 192
-        assert cfg.hook_name_out == "test_out"
-        assert cfg.hook_layer_out == 6
+        assert cfg.metadata.hook_name_out == "test_out"
 
 
 class TestTranscoder:
@@ -120,8 +119,6 @@ class TestTranscoder:
         assert transcoder.b_dec.shape == (cfg.d_out,)
 
         # Check output hook info
-        assert transcoder.hook_name_out == cfg.hook_name_out
-        assert transcoder.hook_layer_out == cfg.hook_layer_out
         assert transcoder.d_out == cfg.d_out
 
     def test_transcoder_forward_pass(self):
@@ -168,19 +165,6 @@ class TestTranscoder:
         # Should be same as input (just dtype conversion and hooks)
         assert_close(processed, x.to(transcoder.dtype))
 
-    def test_transcoder_get_output_hook_name(self):
-        # Without head index
-        cfg = build_transcoder_cfg(hook_name_out="blocks.1.hook_mlp_out")
-        transcoder = Transcoder(cfg)
-        assert transcoder.get_output_hook_name() == "blocks.1.hook_mlp_out"
-
-        # With head index
-        cfg_with_head = build_transcoder_cfg(
-            hook_name_out="blocks.1.attn.hook_z", hook_head_index_out=3
-        )
-        transcoder_with_head = Transcoder(cfg_with_head)
-        assert transcoder_with_head.get_output_hook_name() == "blocks.1.attn.hook_z.h3"
-
     def test_transcoder_from_dict(self):
         config_dict = {
             "d_in": 256,
@@ -214,7 +198,10 @@ class TestTranscoder:
         transcoder = Transcoder(cfg)
 
         # Set weights to non-unit norm
-        transcoder.W_dec.data = torch.randn_like(transcoder.W_dec) * 2.0
+        # make sure all parameters are not 0s
+
+        for param in transcoder.parameters():
+            param.data = torch.rand_like(param)
         original_dec_norms = transcoder.W_dec.norm(dim=1).clone()
 
         transcoder2 = copy.deepcopy(transcoder)
