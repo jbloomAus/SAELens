@@ -245,7 +245,7 @@ class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
 
         self.cfg = cfg
 
-        if cfg.metadata and cfg.metadata.model_from_pretrained_kwargs:
+        if cfg.metadata and cfg.metadata:
             warnings.warn(
                 "\nThis SAE has non-empty model_from_pretrained_kwargs. "
                 "\nFor optimal performance, load the model like so:\n"

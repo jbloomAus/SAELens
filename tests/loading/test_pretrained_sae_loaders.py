@@ -8,6 +8,7 @@ from sparsify import SparseCoder, SparseCoderConfig
 from sae_lens.loading.pretrained_sae_loaders import (
     dictionary_learning_sae_huggingface_loader_1,
     get_deepseek_r1_config_from_hf,
+    get_gemma_2_transcoder_config_from_hf,
     get_llama_scope_config_from_hf,
     get_llama_scope_r1_distill_config_from_hf,
     load_sae_config_from_huggingface,
@@ -181,6 +182,69 @@ def test_load_sae_config_from_huggingface_matches_from_pretrained():
         device="cpu",
     )
     assert direct_sae_cfg == from_pretrained_cfg_dict
+
+
+def test_get_gemma_2_transcoder_config_from_hf():
+    cfg = get_gemma_2_transcoder_config_from_hf(
+        repo_id="google/gemma-scope-2b-pt-transcoders",
+        folder_name="layer_3/width_16k/average_l0_54",
+        device="cpu",
+    )
+
+    expected_cfg = expected_cfg = {
+        "architecture": "jumprelu_transcoder",
+        "d_in": 2304,
+        "d_out": 2304,
+        "d_sae": 16384,
+        "dtype": "float32",
+        "device": "cpu",
+        "activation_fn": "relu",
+        "normalize_activations": "none",
+        "model_name": "gemma-2-2b",
+        "hook_name": "blocks.3.ln2.hook_normalized",
+        "hook_name_out": "blocks.3.hook_mlp_out",
+        "hook_head_index": None,
+        "hook_head_index_out": None,
+        "prepend_bos": True,
+        "dataset_path": "monology/pile-uncopyrighted",
+        "context_size": 1024,
+    }
+
+    assert cfg == expected_cfg
+
+
+def test_load_sae_config_from_huggingface_gemma_2_transcoder():
+    cfg = load_sae_config_from_huggingface(
+        release="gemma-scope-2b-pt-transcoders",
+        sae_id="layer_3/width_16k/average_l0_54",
+        device="cpu",
+    )
+
+    expected_cfg = {
+        "d_in": 2304,
+        "d_out": 2304,
+        "d_sae": 16384,
+        "dtype": "float32",
+        "device": "cpu",
+        "normalize_activations": "none",
+        "apply_b_dec_to_input": True,
+        "reshape_activations": "none",
+        "metadata": {
+            "model_name": "gemma-2-2b",
+            "hook_name": "blocks.3.ln2.hook_normalized",
+            "hook_name_out": "blocks.3.hook_mlp_out",
+            "hook_head_index": None,
+            "hook_head_index_out": None,
+            "prepend_bos": True,
+            "dataset_path": "monology/pile-uncopyrighted",
+            "context_size": 1024,
+            "neuronpedia_id": "gemma-2-2b/3-gemmascope-transcoder-16k",
+            "sae_lens_training_version": None,
+        },
+        "architecture": "jumprelu_transcoder",
+    }
+
+    assert cfg == expected_cfg
 
 
 def test_get_deepseek_r1_config_from_hf():

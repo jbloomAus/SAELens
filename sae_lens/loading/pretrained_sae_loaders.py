@@ -41,6 +41,8 @@ LLM_METADATA_KEYS = {
     "dataset_path",
     "sae_lens_version",
     "sae_lens_training_version",
+    "hook_name_out",
+    "hook_head_index_out",
 }
 
 
@@ -1092,6 +1094,143 @@ def sparsify_disk_loader(
     return cfg_dict, state_dict
 
 
+def get_gemma_2_transcoder_config_from_hf(
+    repo_id: str,
+    folder_name: str,
+    device: str | None = None,
+    force_download: bool = False,  # noqa: ARG001
+    cfg_overrides: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Get config for Gemma-2 transcoders"""
+    width_map = {
+        "width_4k": 4096,
+        "width_16k": 16384,
+        "width_65k": 65536,
+        "width_262k": 262144,
+        "width_524k": 524288,
+        "width_1m": 1048576,
+    }
+
+    # Extract width from folder name
+    d_sae = None
+    for width_key, width_value in width_map.items():
+        if width_key in folder_name:
+            d_sae = width_value
+            break
+
+    if d_sae is None:
+        # Try to extract from pattern like "width_16k"
+        match = re.search(r"width_(\d+)k", folder_name)
+        if match:
+            d_sae = int(match.group(1)) * 1024
+        else:
+            raise ValueError(
+                f"Could not extract dictionary size from folder name: {folder_name}"
+            )
+
+    # Extract layer
+    layer_match = re.search(r"layer_(\d+)", folder_name)
+    if layer_match:
+        layer = int(layer_match.group(1))
+    else:
+        layer_match = re.search(r"layer_(\d+)", repo_id)
+        if layer_match:
+            layer = int(layer_match.group(1))
+        else:
+            raise ValueError("Could not extract layer index")
+
+    # Determine model and dimensions from repo_id
+    model_configs = {
+        "2b-it": ("gemma-2-2b-it", 2304),
+        "2b": ("gemma-2-2b", 2304),
+        "9b-it": ("gemma-2-9b-it", 3584),
+        "9b": ("gemma-2-9b", 3584),
+        "27b-it": ("gemma-2-27b-it", 4608),
+        "27b": ("gemma-2-27b", 4608),
+    }
+
+    model_name = None
+    d_model = None
+    for model_key, (name, dim) in model_configs.items():
+        if model_key in repo_id:
+            model_name = name
+            d_model = dim
+            break
+
+    if model_name is None:
+        raise ValueError(f"Could not determine model from repo_id: {repo_id}")
+
+    return {
+        "architecture": "jumprelu_transcoder",
+        "d_in": d_model,
+        "d_out": d_model,
+        "d_sae": d_sae,
+        "dtype": "float32",
+        "device": device if device is not None else "cpu",
+        "activation_fn": "relu",
+        "normalize_activations": "none",
+        "model_name": model_name,
+        "hook_name": f"blocks.{layer}.ln2.hook_normalized",
+        "hook_name_out": f"blocks.{layer}.hook_mlp_out",
+        "hook_head_index": None,
+        "hook_head_index_out": None,
+        "prepend_bos": True,
+        "dataset_path": "monology/pile-uncopyrighted",
+        "context_size": 1024,
+        **(cfg_overrides or {}),
+    }
+
+
+def gemma_2_transcoder_huggingface_loader(
+    repo_id: str,
+    folder_name: str,
+    device: str = "cpu",
+    force_download: bool = False,
+    cfg_overrides: dict[str, Any] | None = None,
+) -> tuple[dict[str, Any], dict[str, torch.Tensor], torch.Tensor | None]:
+    """Load Gemma-2 transcoders from HuggingFace"""
+    cfg_dict = get_gemma_2_transcoder_config_from_hf(
+        repo_id,
+        folder_name,
+        device,
+        force_download,
+        cfg_overrides,
+    )
+
+    # Download the npz file
+    revision = cfg_overrides.get("revision", None) if cfg_overrides else None
+    params_filename = f"{folder_name}/params.npz"
+
+    file_path = hf_hub_download(
+        repo_id=repo_id,
+        filename=params_filename,
+        force_download=force_download,
+        revision=revision,
+    )
+
+    # Load weights from npz file
+    params = np.load(file_path)
+
+    # Convert to state dict with proper naming
+    state_dict = {}
+    for key in params.files:
+        tensor = torch.tensor(params[key], dtype=torch.float32, device=device)
+        # Handle various naming conventions
+        key_lower = key.lower()
+        if key_lower in ["w_enc", "wenc", "w_e"]:
+            state_dict["W_enc"] = tensor
+        elif key_lower in ["w_dec", "wdec", "w_d"]:
+            state_dict["W_dec"] = tensor
+        elif key_lower in ["b_enc", "benc", "b_e"]:
+            state_dict["b_enc"] = tensor
+        elif key_lower in ["b_dec", "bdec", "b_d"]:
+            state_dict["b_dec"] = tensor
+        if key_lower in ["threshold"]:
+            state_dict["threshold"] = tensor
+
+    return cfg_dict, state_dict, None
+
+
 NAMED_PRETRAINED_SAE_LOADERS: dict[str, PretrainedSaeHuggingfaceLoader] = {
     "sae_lens": sae_lens_huggingface_loader,
     "connor_rob_hook_z": connor_rob_hook_z_huggingface_loader,
@@ -1101,6 +1240,7 @@ NAMED_PRETRAINED_SAE_LOADERS: dict[str, PretrainedSaeHuggingfaceLoader] = {
     "dictionary_learning_1": dictionary_learning_sae_huggingface_loader_1,
     "deepseek_r1": deepseek_r1_sae_huggingface_loader,
     "sparsify": sparsify_huggingface_loader,
+    "gemma_2_transcoder": gemma_2_transcoder_huggingface_loader,
 }
 
 
@@ -1113,4 +1253,5 @@ NAMED_PRETRAINED_SAE_CONFIG_GETTERS: dict[str, PretrainedSaeConfigHuggingfaceLoa
     "dictionary_learning_1": get_dictionary_learning_config_1_from_hf,
     "deepseek_r1": get_deepseek_r1_config_from_hf,
     "sparsify": get_sparsify_config_from_hf,
+    "gemma_2_transcoder": get_gemma_2_transcoder_config_from_hf,
 }

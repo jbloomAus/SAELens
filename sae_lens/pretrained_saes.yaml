@@ -13974,3 +13974,113 @@ gemma-3-1b-res-matryoshka-dc:
   - id: blocks.24.hook_resid_post
     path: blocks.24.hook_resid_post
     l0: 40.0
+
+gemma-scope-2b-pt-transcoders:
+  conversion_func: gemma_2_transcoder
+  model: gemma-2-2b
+  repo_id: google/gemma-scope-2b-pt-transcoders
+  saes:
+  - id: layer_0/width_16k/average_l0_76
+    neuronpedia: gemma-2-2b/0-gemmascope-transcoder-16k
+    l0: 76
+    path: layer_0/width_16k/average_l0_76
+  - id: layer_1/width_16k/average_l0_65
+    neuronpedia: gemma-2-2b/1-gemmascope-transcoder-16k
+    l0: 65
+    path: layer_1/width_16k/average_l0_65
+  - id: layer_2/width_16k/average_l0_49
+    neuronpedia: gemma-2-2b/2-gemmascope-transcoder-16k
+    l0: 49
+    path: layer_2/width_16k/average_l0_49
+  - id: layer_3/width_16k/average_l0_54
+    neuronpedia: gemma-2-2b/3-gemmascope-transcoder-16k
+    l0: 54
+    path: layer_3/width_16k/average_l0_54
+  - id: layer_4/width_16k/average_l0_88
+    neuronpedia: gemma-2-2b/4-gemmascope-transcoder-16k
+    l0: 88
+    path: layer_4/width_16k/average_l0_88
+  - id: layer_5/width_16k/average_l0_87
+    neuronpedia: gemma-2-2b/5-gemmascope-transcoder-16k
+    l0: 87
+    path: layer_5/width_16k/average_l0_87
+  - id: layer_6/width_16k/average_l0_95
+    neuronpedia: gemma-2-2b/6-gemmascope-transcoder-16k
+    l0: 95
+    path: layer_6/width_16k/average_l0_95
+  - id: layer_7/width_16k/average_l0_70
+    neuronpedia: gemma-2-2b/7-gemmascope-transcoder-16k
+    l0: 70
+    path: layer_7/width_16k/average_l0_70
+  - id: layer_8/width_16k/average_l0_52
+    neuronpedia: gemma-2-2b/8-gemmascope-transcoder-16k
+    l0: 52
+    path: layer_8/width_16k/average_l0_52
+  - id: layer_9/width_16k/average_l0_72
+    neuronpedia: gemma-2-2b/9-gemmascope-transcoder-16k
+    l0: 72
+    path: layer_9/width_16k/average_l0_72
+  - id: layer_10/width_16k/average_l0_88
+    neuronpedia: gemma-2-2b/10-gemmascope-transcoder-16k
+    l0: 88
+    path: layer_10/width_16k/average_l0_88
+  - id: layer_11/width_16k/average_l0_5
+    neuronpedia: gemma-2-2b/11-gemmascope-transcoder-16k
+    l0: 5
+    path: layer_11/width_16k/average_l0_5
+  - id: layer_12/width_16k/average_l0_6
+    neuronpedia: gemma-2-2b/12-gemmascope-transcoder-16k
+    l0: 6
+    path: layer_12/width_16k/average_l0_6
+  - id: layer_13/width_16k/average_l0_8
+    neuronpedia: gemma-2-2b/13-gemmascope-transcoder-16k
+    l0: 8
+    path: layer_13/width_16k/average_l0_8
+  - id: layer_14/width_16k/average_l0_8
+    neuronpedia: gemma-2-2b/14-gemmascope-transcoder-16k
+    l0: 8
+    path: layer_14/width_16k/average_l0_8
+  - id: layer_15/width_16k/average_l0_8
+    neuronpedia: gemma-2-2b/15-gemmascope-transcoder-16k
+    l0: 8
+    path: layer_15/width_16k/average_l0_8
+  - id: layer_16/width_16k/average_l0_10
+    neuronpedia: gemma-2-2b/16-gemmascope-transcoder-16k
+    l0: 10
+    path: layer_16/width_16k/average_l0_10
+  - id: layer_17/width_16k/average_l0_12
+    neuronpedia: gemma-2-2b/17-gemmascope-transcoder-16k
+    l0: 12
+    path: layer_17/width_16k/average_l0_12
+  - id: layer_18/width_16k/average_l0_13
+    neuronpedia: gemma-2-2b/18-gemmascope-transcoder-16k
+    l0: 13
+    path: layer_18/width_16k/average_l0_13
+  - id: layer_19/width_16k/average_l0_12
+    neuronpedia: gemma-2-2b/19-gemmascope-transcoder-16k
+    l0: 12
+    path: layer_19/width_16k/average_l0_12
+  - id: layer_20/width_16k/average_l0_11
+    neuronpedia: gemma-2-2b/20-gemmascope-transcoder-16k
+    l0: 11
+    path: layer_20/width_16k/average_l0_11
+  - id: layer_21/width_16k/average_l0_13
+    neuronpedia: gemma-2-2b/21-gemmascope-transcoder-16k
+    l0: 13
+    path: layer_21/width_16k/average_l0_13
+  - id: layer_22/width_16k/average_l0_15
+    neuronpedia: gemma-2-2b/22-gemmascope-transcoder-16k
+    l0: 15
+    path: layer_22/width_16k/average_l0_15
+  - id: layer_23/width_16k/average_l0_25
+    neuronpedia: gemma-2-2b/23-gemmascope-transcoder-16k
+    l0: 25
+    path: layer_23/width_16k/average_l0_25
+  - id: layer_24/width_16k/average_l0_37
+    neuronpedia: gemma-2-2b/24-gemmascope-transcoder-16k
+    l0: 37
+    path: layer_24/width_16k/average_l0_37
+  - id: layer_25/width_16k/average_l0_41
+    neuronpedia: gemma-2-2b/25-gemmascope-transcoder-16k
+    l0: 41
+    path: layer_25/width_16k/average_l0_41
