@@ -41,6 +41,8 @@ LLM_METADATA_KEYS = {
     "dataset_path",
     "sae_lens_version",
     "sae_lens_training_version",
+    "hook_name_out",
+    "hook_head_index_out",
 }
 
 
@@ -1165,17 +1167,16 @@ def get_gemma_2_transcoder_config_from_hf(
         "d_sae": d_sae,
         "dtype": "float32",
         "device": device if device is not None else "cpu",
+        "activation_fn": "relu",
+        "normalize_activations": "none",
         "model_name": model_name,
         "hook_name": f"blocks.{layer}.ln2.hook_normalized",
         "hook_name_out": f"blocks.{layer}.hook_mlp_out",
-        "hook_layer_out": layer,
         "hook_head_index": None,
         "hook_head_index_out": None,
-        "activation_fn": "relu",
         "prepend_bos": True,
         "dataset_path": "monology/pile-uncopyrighted",
         "context_size": 1024,
-        "normalize_activations": "none",
         **(cfg_overrides or {}),
     }
 
@@ -1224,6 +1225,8 @@ def gemma_2_transcoder_huggingface_loader(
             state_dict["b_enc"] = tensor
         elif key_lower in ["b_dec", "bdec", "b_d"]:
             state_dict["b_dec"] = tensor
+        if key_lower in ["threshold"]:
+            state_dict["threshold"] = tensor
 
     return cfg_dict, state_dict, None
 

@@ -303,24 +303,31 @@ class TestJumpReLUTranscoder:
 class TestTranscoderIntegration:
     """Integration tests for transcoders."""
 
-    def test_transcoder_different_dimensions(self):
-        """Test transcoder with various input/output dimension combinations."""
-        test_cases = [
+    @pytest.mark.parametrize(
+        "d_in,d_sae,d_out",
+        [
             (32, 64, 48),  # d_in < d_sae, d_out between
             (64, 32, 96),  # d_in > d_sae, d_out > d_in
             (48, 96, 48),  # d_in == d_out
             (128, 256, 64),  # all different, d_out < d_in
-        ]
+        ],
+        ids=[
+            "d_in_lt_d_sae_d_out_between",
+            "d_in_gt_d_sae_d_out_gt_d_in",
+            "d_in_eq_d_out",
+            "all_different_d_out_lt_d_in",
+        ],
+    )
+    def test_transcoder_different_dimensions(self, d_in: int, d_sae: int, d_out: int):
+        """Test transcoder with various input/output dimension combinations."""
+        cfg = build_transcoder_cfg(d_in=d_in, d_sae=d_sae, d_out=d_out)
+        transcoder = Transcoder(cfg)
 
-        for d_in, d_sae, d_out in test_cases:
-            cfg = build_transcoder_cfg(d_in=d_in, d_sae=d_sae, d_out=d_out)
-            transcoder = Transcoder(cfg)
+        x = torch.randn(10, d_in)
+        output, features = transcoder.forward_with_activations(x)
 
-            x = torch.randn(10, d_in)
-            output, features = transcoder.forward_with_activations(x)
-
-            assert output.shape == (10, d_out)
-            assert features.shape == (10, d_sae)
+        assert output.shape == (10, d_out)
+        assert features.shape == (10, d_sae)
 
     def test_transcoder_state_dict_save_load(self):
         """Test saving and loading transcoder state."""

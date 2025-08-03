@@ -18,9 +18,9 @@ from sae_lens.util import filter_valid_dataclass_fields
 class TranscoderConfig(SAEConfig):
     # Output dimension fields
     d_out: int = 768
-    hook_name_out: str = ""
-    hook_layer_out: int = 0
-    hook_head_index_out: int | None = None
+    # hook_name_out: str = ""
+    # hook_layer_out: int = 0
+    # hook_head_index_out: int | None = None
 
     @classmethod
     def architecture(cls) -> str:
@@ -48,14 +48,7 @@ class TranscoderConfig(SAEConfig):
         res = super().to_dict()
 
         # Add transcoder-specific fields
-        res.update(
-            {
-                "d_out": self.d_out,
-                "hook_name_out": self.hook_name_out,
-                "hook_layer_out": self.hook_layer_out,
-                "hook_head_index_out": self.hook_head_index_out,
-            }
-        )
+        res.update({"d_out": self.d_out})
 
         return res
 
@@ -76,11 +69,6 @@ class Transcoder(SAE[TranscoderConfig]):
     def __init__(self, cfg: TranscoderConfig):
         super().__init__(cfg)
         self.cfg = cfg
-
-        # Set the output hook information
-        self.hook_name_out = cfg.hook_name_out
-        self.hook_layer_out = cfg.hook_layer_out
-        self.hook_head_index_out = cfg.hook_head_index_out
 
     def initialize_weights(self):
         """Initialize transcoder weights with proper dimensions."""
@@ -180,12 +168,6 @@ class Transcoder(SAE[TranscoderConfig]):
     def d_out(self) -> int:
         """Output dimension of the transcoder."""
         return self.cfg.d_out
-
-    def get_output_hook_name(self) -> str:
-        """Get the full hook name for the output."""
-        if self.hook_head_index_out is not None:
-            return f"{self.hook_name_out}.h{self.hook_head_index_out}"
-        return self.hook_name_out
 
     @classmethod
     def from_dict(cls, config_dict: dict[str, Any]) -> "Transcoder":
