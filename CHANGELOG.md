@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## v6.5.2 (2025-08-09)
+
+### Fix
+
+* fix: allow `sae_lens.evals` command to work with legacy datasets (#514)
+
+* Fix  command
+
+* fixing type issue
+
+* fixing test
+
+---------
+
+Co-authored-by: David Chanin &lt;chanindav@gmail.com&gt; ([`daeca02`](https://github.com/jbloomAus/SAELens/commit/daeca02fd5874c30de103016b4d8ec0e919d43e0))
+
 ## v6.5.1 (2025-08-03)
 
 ### Fix
