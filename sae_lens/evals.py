@@ -776,6 +776,7 @@ def multiple_evals(
     n_eval_sparsity_variance_batches: int,
     eval_batch_size_prompts: int = 8,
     datasets: list[str] = ["Skylion007/openwebtext", "lighteval/MATH"],
+    dataset_trust_remote_code: bool = False,
     ctx_lens: list[int] = [128],
     output_dir: str = "eval_results",
     verbose: bool = False,
@@ -822,7 +823,11 @@ def multiple_evals(
         for ctx_len in ctx_lens:
             for dataset in datasets:
                 activation_store = ActivationsStore.from_sae(
-                    current_model, sae, context_size=ctx_len, dataset=dataset
+                    current_model,
+                    sae,
+                    context_size=ctx_len,
+                    dataset=dataset,
+                    dataset_trust_remote_code=dataset_trust_remote_code,
                 )
                 activation_store.shuffle_input_dataset(seed=42)
 
@@ -882,6 +887,7 @@ def run_evaluations(args: argparse.Namespace) -> list[dict[str, Any]]:
         n_eval_sparsity_variance_batches=args.n_eval_sparsity_variance_batches,
         eval_batch_size_prompts=args.batch_size_prompts,
         datasets=args.datasets,
+        dataset_trust_remote_code=args.dataset_trust_remote_code,
         ctx_lens=args.ctx_lens,
         output_dir=args.output_dir,
         verbose=args.verbose,
@@ -1003,6 +1009,11 @@ def process_args(args: list[str]) -> argparse.Namespace:
         nargs="+",
         default=["Skylion007/openwebtext"],
         help="Datasets to evaluate on, such as 'Skylion007/openwebtext' or 'lighteval/MATH'.",
+    )
+    arg_parser.add_argument(
+        "--dataset_trust_remote_code",
+        action="store_true",
+        help="Allow execution of remote code when loading datasets for evaluation.",
     )
     arg_parser.add_argument(
         "--ctx_lens",

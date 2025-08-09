@@ -297,6 +297,7 @@ def mock_args():
     args.datasets = ["test_dataset"]
     args.ctx_lens = [64]
     args.output_dir = "test_output"
+    args.dataset_trust_remote_code = False
     args.verbose = False
     return args
 
@@ -329,6 +330,7 @@ def test_run_evaluations(
         ctx_lens=mock_args.ctx_lens,
         output_dir=mock_args.output_dir,
         verbose=mock_args.verbose,
+        dataset_trust_remote_code=mock_args.dataset_trust_remote_code,
     )
     assert result == [{"test": "result"}]
 
