@@ -18,9 +18,6 @@ from sae_lens.util import filter_valid_dataclass_fields
 class TranscoderConfig(SAEConfig):
     # Output dimension fields
     d_out: int = 768
-    # hook_name_out: str = ""
-    # hook_layer_out: int = 0
-    # hook_head_index_out: int | None = None
 
     @classmethod
     def architecture(cls) -> str:

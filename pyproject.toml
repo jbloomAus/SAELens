@@ -28,7 +28,7 @@ matplotlib-inline = "^0.1.6"
 datasets = "^2.17.1"
 babe = "^0.0.7"
 nltk = "^3.8.1"
-safetensors = "^0.4.2"
+safetensors = ">=0.4.2,<1.0.0"
 typer = "^0.12.3"
 mamba-lens = { version = "^0.0.4", optional = true }
 pyzmq = "26.0.0"
@@ -61,6 +61,7 @@ ruff = "^0.7.4"
 eai-sparsify = "^1.1.1"
 mike = "^2.0.0"
 trio = "^0.30.0"
+circuit-tracer = {git = "https://github.com/safety-research/circuit-tracer"}
 
 [tool.poetry.extras]
 mamba = ["mamba-lens"]
