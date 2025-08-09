@@ -5,6 +5,7 @@ from typing import Any, Protocol
 
 import numpy as np
 import torch
+import yaml
 from huggingface_hub import hf_hub_download
 from huggingface_hub.utils import EntryNotFoundError
 from packaging.version import Version
@@ -1231,6 +1232,81 @@ def gemma_2_transcoder_huggingface_loader(
     return cfg_dict, state_dict, None
 
 
+def get_mwhanna_transcoder_config_from_hf(
+    repo_id: str,
+    folder_name: str,
+    device: str | None = None,
+    force_download: bool = False,  # noqa: ARG001
+    cfg_overrides: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Get config for mwhanna transcoders"""
+
+    # Extract layer from folder name
+    layer = int(folder_name.replace(".safetensors", "").split("_")[-1])
+
+    wandb_config_path = hf_hub_download(
+        repo_id, "wanb-config.yaml", force_download=force_download
+    )
+    base_config_path = hf_hub_download(
+        repo_id, "config.yaml", force_download=force_download
+    )
+    with open(base_config_path) as f:
+        base_cfg_info: dict[str, Any] = yaml.safe_load(f)
+    with open(wandb_config_path) as f:
+        wandb_cfg_info: dict[str, Any] = yaml.safe_load(f)
+
+    return {
+        "architecture": "transcoder",
+        "d_in": wandb_cfg_info["d_model"]["value"],
+        "d_out": wandb_cfg_info["d_model"]["value"],
+        "d_sae": wandb_cfg_info["d_feature"]["value"],
+        "dtype": "float32",
+        "device": device if device is not None else "cpu",
+        "activation_fn": "relu",
+        "normalize_activations": "none",
+        "model_name": base_cfg_info["model_name"],
+        "hook_name": f"blocks.{layer}.ln2.hook_normalized",
+        "hook_name_out": f"blocks.{layer}.hook_mlp_out",
+        "dataset_path": "monology/pile-uncopyrighted",
+        "context_size": wandb_cfg_info["batch_size"]["value"],
+        "apply_b_dec_to_input": False,
+        **(cfg_overrides or {}),
+    }
+
+
+def mwhanna_transcoder_huggingface_loader(
+    repo_id: str,
+    folder_name: str,
+    device: str = "cpu",
+    force_download: bool = False,
+    cfg_overrides: dict[str, Any] | None = None,
+) -> tuple[dict[str, Any], dict[str, torch.Tensor], torch.Tensor | None]:
+    """Load mwhanna transcoders from HuggingFace"""
+    cfg_dict = get_mwhanna_transcoder_config_from_hf(
+        repo_id,
+        folder_name,
+        device,
+        force_download,
+        cfg_overrides,
+    )
+
+    # Download the safetensors file
+    revision = cfg_overrides.get("revision", None) if cfg_overrides else None
+
+    file_path = hf_hub_download(
+        repo_id=repo_id,
+        filename=folder_name,
+        force_download=force_download,
+        revision=revision,
+    )
+
+    # Load weights from safetensors
+    state_dict = load_file(file_path, device=device)
+    state_dict["W_enc"] = state_dict["W_enc"].T
+
+    return cfg_dict, state_dict, None
+
+
 NAMED_PRETRAINED_SAE_LOADERS: dict[str, PretrainedSaeHuggingfaceLoader] = {
     "sae_lens": sae_lens_huggingface_loader,
     "connor_rob_hook_z": connor_rob_hook_z_huggingface_loader,
@@ -1241,6 +1317,7 @@ NAMED_PRETRAINED_SAE_LOADERS: dict[str, PretrainedSaeHuggingfaceLoader] = {
     "deepseek_r1": deepseek_r1_sae_huggingface_loader,
     "sparsify": sparsify_huggingface_loader,
     "gemma_2_transcoder": gemma_2_transcoder_huggingface_loader,
+    "mwhanna_transcoder": mwhanna_transcoder_huggingface_loader,
 }
 
 
@@ -1254,4 +1331,5 @@ NAMED_PRETRAINED_SAE_CONFIG_GETTERS: dict[str, PretrainedSaeConfigHuggingfaceLoa
     "deepseek_r1": get_deepseek_r1_config_from_hf,
     "sparsify": get_sparsify_config_from_hf,
     "gemma_2_transcoder": get_gemma_2_transcoder_config_from_hf,
+    "mwhanna_transcoder": get_mwhanna_transcoder_config_from_hf,
 }

@@ -14084,3 +14084,458 @@ gemma-scope-2b-pt-transcoders:
     neuronpedia: gemma-2-2b/25-gemmascope-transcoder-16k
     l0: 41
     path: layer_25/width_16k/average_l0_41
+
+
+mwhanna-qwen3-4b-transcoders:
+  conversion_func: mwhanna_transcoder
+  model: qwen3-4b
+  repo_id: mwhanna/qwen3-4b-transcoders
+  saes:
+  - id: layer_0
+    path: layer_0.safetensors
+  - id: layer_1
+    path: layer_1.safetensors
+  - id: layer_2
+    path: layer_2.safetensors
+  - id: layer_3
+    path: layer_3.safetensors
+  - id: layer_4
+    path: layer_4.safetensors
+  - id: layer_5
+    path: layer_5.safetensors
+  - id: layer_6
+    path: layer_6.safetensors
+  - id: layer_7
+    path: layer_7.safetensors
+  - id: layer_8
+    path: layer_8.safetensors
+  - id: layer_9
+    path: layer_9.safetensors
+  - id: layer_10
+    path: layer_10.safetensors
+  - id: layer_11
+    path: layer_11.safetensors
+  - id: layer_12
+    path: layer_12.safetensors
+  - id: layer_13
+    path: layer_13.safetensors
+  - id: layer_14
+    path: layer_14.safetensors
+  - id: layer_15
+    path: layer_15.safetensors
+  - id: layer_16
+    path: layer_16.safetensors
+  - id: layer_17
+    path: layer_17.safetensors
+  - id: layer_18
+    path: layer_18.safetensors
+  - id: layer_19
+    path: layer_19.safetensors
+  - id: layer_20
+    path: layer_20.safetensors
+  - id: layer_21
+    path: layer_21.safetensors
+  - id: layer_22
+    path: layer_22.safetensors
+  - id: layer_23
+    path: layer_23.safetensors
+  - id: layer_24
+    path: layer_24.safetensors
+  - id: layer_25
+    path: layer_25.safetensors
+  - id: layer_26
+    path: layer_26.safetensors
+  - id: layer_27
+    path: layer_27.safetensors
+  - id: layer_28
+    path: layer_28.safetensors
+  - id: layer_29
+    path: layer_29.safetensors
+  - id: layer_30
+    path: layer_30.safetensors
+  - id: layer_31
+    path: layer_31.safetensors
+  - id: layer_32
+    path: layer_32.safetensors
+  - id: layer_33
+    path: layer_33.safetensors
+  - id: layer_34
+    path: layer_34.safetensors
+  - id: layer_35
+    path: layer_35.safetensors
+
+mwhanna-qwen3-8b-transcoders:
+  conversion_func: mwhanna_transcoder
+  model: qwen3-8b
+  repo_id: mwhanna/qwen3-8b-transcoders
+  saes:
+  - id: layer_0
+    path: layer_0.safetensors
+  - id: layer_1
+    path: layer_1.safetensors
+  - id: layer_2
+    path: layer_2.safetensors
+  - id: layer_3
+    path: layer_3.safetensors
+  - id: layer_4
+    path: layer_4.safetensors
+  - id: layer_5
+    path: layer_5.safetensors
+  - id: layer_6
+    path: layer_6.safetensors
+  - id: layer_7
+    path: layer_7.safetensors
+  - id: layer_8
+    path: layer_8.safetensors
+  - id: layer_9
+    path: layer_9.safetensors
+  - id: layer_10
+    path: layer_10.safetensors
+  - id: layer_11
+    path: layer_11.safetensors
+  - id: layer_12
+    path: layer_12.safetensors
+  - id: layer_13
+    path: layer_13.safetensors
+  - id: layer_14
+    path: layer_14.safetensors
+  - id: layer_15
+    path: layer_15.safetensors
+  - id: layer_16
+    path: layer_16.safetensors
+  - id: layer_17
+    path: layer_17.safetensors
+  - id: layer_18
+    path: layer_18.safetensors
+  - id: layer_19
+    path: layer_19.safetensors
+  - id: layer_20
+    path: layer_20.safetensors
+  - id: layer_21
+    path: layer_21.safetensors
+  - id: layer_22
+    path: layer_22.safetensors
+  - id: layer_23
+    path: layer_23.safetensors
+  - id: layer_24
+    path: layer_24.safetensors
+  - id: layer_25
+    path: layer_25.safetensors
+  - id: layer_26
+    path: layer_26.safetensors
+  - id: layer_27
+    path: layer_27.safetensors
+  - id: layer_28
+    path: layer_28.safetensors
+  - id: layer_29
+    path: layer_29.safetensors
+  - id: layer_30
+    path: layer_30.safetensors
+  - id: layer_31
+    path: layer_31.safetensors
+  - id: layer_32
+    path: layer_32.safetensors
+  - id: layer_33
+    path: layer_33.safetensors
+  - id: layer_34
+    path: layer_34.safetensors
+  - id: layer_35
+    path: layer_35.safetensors
+
+mwhanna-qwen3-14b-transcoders:
+  conversion_func: mwhanna_transcoder
+  model: qwen3-14b
+  repo_id: mwhanna/qwen3-14b-transcoders
+  saes:
+  - id: layer_0
+    path: layer_0.safetensors
+  - id: layer_1
+    path: layer_1.safetensors
+  - id: layer_2
+    path: layer_2.safetensors
+  - id: layer_3
+    path: layer_3.safetensors
+  - id: layer_4
+    path: layer_4.safetensors
+  - id: layer_5
+    path: layer_5.safetensors
+  - id: layer_6
+    path: layer_6.safetensors
+  - id: layer_7
+    path: layer_7.safetensors
+  - id: layer_8
+    path: layer_8.safetensors
+  - id: layer_9
+    path: layer_9.safetensors
+  - id: layer_10
+    path: layer_10.safetensors
+  - id: layer_11
+    path: layer_11.safetensors
+  - id: layer_12
+    path: layer_12.safetensors
+  - id: layer_13
+    path: layer_13.safetensors
+  - id: layer_14
+    path: layer_14.safetensors
+  - id: layer_15
+    path: layer_15.safetensors
+  - id: layer_16
+    path: layer_16.safetensors
+  - id: layer_17
+    path: layer_17.safetensors
+  - id: layer_18
+    path: layer_18.safetensors
+  - id: layer_19
+    path: layer_19.safetensors
+  - id: layer_20
+    path: layer_20.safetensors
+  - id: layer_21
+    path: layer_21.safetensors
+  - id: layer_22
+    path: layer_22.safetensors
+  - id: layer_23
+    path: layer_23.safetensors
+  - id: layer_24
+    path: layer_24.safetensors
+  - id: layer_25
+    path: layer_25.safetensors
+  - id: layer_26
+    path: layer_26.safetensors
+  - id: layer_27
+    path: layer_27.safetensors
+  - id: layer_28
+    path: layer_28.safetensors
+  - id: layer_29
+    path: layer_29.safetensors
+  - id: layer_30
+    path: layer_30.safetensors
+  - id: layer_31
+    path: layer_31.safetensors
+  - id: layer_32
+    path: layer_32.safetensors
+  - id: layer_33
+    path: layer_33.safetensors
+  - id: layer_34
+    path: layer_34.safetensors
+  - id: layer_35
+    path: layer_35.safetensors
+  - id: layer_36
+    path: layer_36.safetensors
+  - id: layer_37
+    path: layer_37.safetensors
+  - id: layer_38
+    path: layer_38.safetensors
+  - id: layer_39
+    path: layer_39.safetensors
+
+mwhanna-qwen3-14b-transcoders-lowl0:
+  conversion_func: mwhanna_transcoder
+  model: qwen3-14b
+  repo_id: mwhanna/qwen3-14b-transcoders
+  saes:
+  - id: layer_0
+    path: layer_0.safetensors
+  - id: layer_1
+    path: layer_1.safetensors
+  - id: layer_2
+    path: layer_2.safetensors
+  - id: layer_3
+    path: layer_3.safetensors
+  - id: layer_4
+    path: layer_4.safetensors
+  - id: layer_5
+    path: layer_5.safetensors
+  - id: layer_6
+    path: layer_6.safetensors
+  - id: layer_7
+    path: layer_7.safetensors
+  - id: layer_8
+    path: layer_8.safetensors
+  - id: layer_9
+    path: layer_9.safetensors
+  - id: layer_10
+    path: layer_10.safetensors
+  - id: layer_11
+    path: layer_11.safetensors
+  - id: layer_12
+    path: layer_12.safetensors
+  - id: layer_13
+    path: layer_13.safetensors
+  - id: layer_14
+    path: layer_14.safetensors
+  - id: layer_15
+    path: layer_15.safetensors
+  - id: layer_16
+    path: layer_16.safetensors
+  - id: layer_17
+    path: layer_17.safetensors
+  - id: layer_18
+    path: layer_18.safetensors
+  - id: layer_19
+    path: layer_19.safetensors
+  - id: layer_20
+    path: layer_20.safetensors
+  - id: layer_21
+    path: layer_21.safetensors
+  - id: layer_22
+    path: layer_22.safetensors
+  - id: layer_23
+    path: layer_23.safetensors
+  - id: layer_24
+    path: layer_24.safetensors
+  - id: layer_25
+    path: layer_25.safetensors
+  - id: layer_26
+    path: layer_26.safetensors
+  - id: layer_27
+    path: layer_27.safetensors
+  - id: layer_28
+    path: layer_28.safetensors
+  - id: layer_29
+    path: layer_29.safetensors
+  - id: layer_30
+    path: layer_30.safetensors
+  - id: layer_31
+    path: layer_31.safetensors
+  - id: layer_32
+    path: layer_32.safetensors
+  - id: layer_33
+    path: layer_33.safetensors
+  - id: layer_34
+    path: layer_34.safetensors
+  - id: layer_35
+    path: layer_35.safetensors
+  - id: layer_36
+    path: layer_36.safetensors
+  - id: layer_37
+    path: layer_37.safetensors
+  - id: layer_38
+    path: layer_38.safetensors
+  - id: layer_39
+    path: layer_39.safetensors
+
+mwhanna-qwen3-1.7b-transcoders-lowl0:
+  conversion_func: mwhanna_transcoder
+  model: qwen3-1.7b
+  repo_id: mwhanna/qwen3-1.7b-transcoders
+  saes:
+  - id: layer_0
+    path: layer_0.safetensors
+  - id: layer_1
+    path: layer_1.safetensors
+  - id: layer_2
+    path: layer_2.safetensors
+  - id: layer_3
+    path: layer_3.safetensors
+  - id: layer_4
+    path: layer_4.safetensors
+  - id: layer_5
+    path: layer_5.safetensors
+  - id: layer_6
+    path: layer_6.safetensors
+  - id: layer_7
+    path: layer_7.safetensors
+  - id: layer_8
+    path: layer_8.safetensors
+  - id: layer_9
+    path: layer_9.safetensors
+  - id: layer_10
+    path: layer_10.safetensors
+  - id: layer_11
+    path: layer_11.safetensors
+  - id: layer_12
+    path: layer_12.safetensors
+  - id: layer_13
+    path: layer_13.safetensors
+  - id: layer_14
+    path: layer_14.safetensors
+  - id: layer_15
+    path: layer_15.safetensors
+  - id: layer_16
+    path: layer_16.safetensors
+  - id: layer_17
+    path: layer_17.safetensors
+  - id: layer_18
+    path: layer_18.safetensors
+  - id: layer_19
+    path: layer_19.safetensors
+  - id: layer_20
+    path: layer_20.safetensors
+  - id: layer_21
+    path: layer_21.safetensors
+  - id: layer_22
+    path: layer_22.safetensors
+  - id: layer_23
+    path: layer_23.safetensors
+  - id: layer_24
+    path: layer_24.safetensors
+  - id: layer_25
+    path: layer_25.safetensors
+  - id: layer_26
+    path: layer_26.safetensors
+  - id: layer_27
+    path: layer_27.safetensors
+
+
+
+mwhanna-qwen3-0.6b-transcoders-lowl0:
+  conversion_func: mwhanna_transcoder
+  model: qwen3-0.6b
+  repo_id: mwhanna/qwen3-0.6b-transcoders
+  saes:
+  - id: layer_0
+    path: layer_0.safetensors
+  - id: layer_1
+    path: layer_1.safetensors
+  - id: layer_2
+    path: layer_2.safetensors
+  - id: layer_3
+    path: layer_3.safetensors
+  - id: layer_4
+    path: layer_4.safetensors
+  - id: layer_5
+    path: layer_5.safetensors
+  - id: layer_6
+    path: layer_6.safetensors
+  - id: layer_7
+    path: layer_7.safetensors
+  - id: layer_8
+    path: layer_8.safetensors
+  - id: layer_9
+    path: layer_9.safetensors
+  - id: layer_10
+    path: layer_10.safetensors
+  - id: layer_11
+    path: layer_11.safetensors
+  - id: layer_12
+    path: layer_12.safetensors
+  - id: layer_13
+    path: layer_13.safetensors
+  - id: layer_14
+    path: layer_14.safetensors
+  - id: layer_15
+    path: layer_15.safetensors
+  - id: layer_16
+    path: layer_16.safetensors
+  - id: layer_17
+    path: layer_17.safetensors
+  - id: layer_18
+    path: layer_18.safetensors
+  - id: layer_19
+    path: layer_19.safetensors
+  - id: layer_20
+    path: layer_20.safetensors
+  - id: layer_21
+    path: layer_21.safetensors
+  - id: layer_22
+    path: layer_22.safetensors
+  - id: layer_23
+    path: layer_23.safetensors
+  - id: layer_24
+    path: layer_24.safetensors
+  - id: layer_25
+    path: layer_25.safetensors
+  - id: layer_26
+    path: layer_26.safetensors
+  - id: layer_27
+    path: layer_27.safetensors
