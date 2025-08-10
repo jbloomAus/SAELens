@@ -52,6 +52,11 @@ class TranscoderConfig(SAEConfig):
 
         return res
 
+    def __post_init__(self):
+        if self.apply_b_dec_to_input:
+            raise ValueError("apply_b_dec_to_input is not supported for transcoders")
+        return super().__post_init__()
+
 
 class Transcoder(SAE[TranscoderConfig]):
     """

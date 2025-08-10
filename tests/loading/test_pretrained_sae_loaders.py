@@ -208,6 +208,7 @@ def test_get_gemma_2_transcoder_config_from_hf():
         "prepend_bos": True,
         "dataset_path": "monology/pile-uncopyrighted",
         "context_size": 1024,
+        "apply_b_dec_to_input": False,
     }
 
     assert cfg == expected_cfg
@@ -227,7 +228,7 @@ def test_load_sae_config_from_huggingface_gemma_2_transcoder():
         "dtype": "float32",
         "device": "cpu",
         "normalize_activations": "none",
-        "apply_b_dec_to_input": True,
+        "apply_b_dec_to_input": False,
         "reshape_activations": "none",
         "metadata": {
             "model_name": "gemma-2-2b",
