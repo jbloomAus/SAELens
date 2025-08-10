@@ -297,7 +297,7 @@ def test_load_sae_config_from_huggingface_mwhanna_transcoder():
             "hook_name_out": "blocks.10.hook_mlp_out",
             "dataset_path": "monology/pile-uncopyrighted",
             "context_size": 8192,
-            "neuronpedia_id": None,
+            "neuronpedia_id": "qwen3-4b/10-transcoder-hp",
             "prepend_bos": True,
             "sae_lens_training_version": None,
         },
