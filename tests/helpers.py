@@ -3,6 +3,7 @@ from typing import Any, Literal, Sequence, TypedDict, cast
 
 import pytest
 import torch
+import torch.nn as nn
 from transformer_lens import HookedTransformer
 
 from sae_lens.config import LanguageModelSAERunnerConfig, LoggingConfig
@@ -558,3 +559,9 @@ def assert_not_close(
             check_stride=check_stride,
             msg=msg,
         )
+
+
+@torch.no_grad()
+def random_init_params(model: nn.Module) -> None:
+    for param in model.parameters():
+        param.data = torch.randn_like(param.data) * 0.01
