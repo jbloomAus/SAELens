@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## v6.5.3 (2025-08-11)
+
+### Fix
+
+* fix: dont apply b_dec to Gemma Scope transcoder inputs (#516)
+
+* fix: dont apply b_dec to transcoder input
+
+* fixing tests
+
+* change from cr ([`57888fa`](https://github.com/jbloomAus/SAELens/commit/57888fa583f7916c20f4ea87379e7727ad27b72a))
+
 ## v6.5.2 (2025-08-09)
 
 ### Fix
