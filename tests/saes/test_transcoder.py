@@ -96,6 +96,7 @@ class TestTranscoderConfig:
                 "hook_name_out": "test_out",
             },
             "architecture": "transcoder",
+            "apply_b_dec_to_input": False,
         }
 
         cfg = TranscoderConfig.from_dict(original_dict)
@@ -174,6 +175,7 @@ class TestTranscoder:
             "device": "cpu",
             "hook_name_out": "test_out",
             "architecture": "transcoder",
+            "apply_b_dec_to_input": False,
         }
 
         transcoder = Transcoder.from_dict(config_dict)

@@ -1177,6 +1177,7 @@ def get_gemma_2_transcoder_config_from_hf(
         "prepend_bos": True,
         "dataset_path": "monology/pile-uncopyrighted",
         "context_size": 1024,
+        "apply_b_dec_to_input": False,
         **(cfg_overrides or {}),
     }
 
