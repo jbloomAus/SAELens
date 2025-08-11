@@ -191,7 +191,7 @@ def test_get_gemma_2_transcoder_config_from_hf():
         device="cpu",
     )
 
-    expected_cfg = expected_cfg = {
+    expected_cfg = {
         "architecture": "jumprelu_transcoder",
         "d_in": 2304,
         "d_out": 2304,
