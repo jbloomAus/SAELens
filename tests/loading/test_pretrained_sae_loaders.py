@@ -232,7 +232,7 @@ def test_get_mwhanna_transcoder_config_from_hf():
         "activation_fn": "relu",
         "normalize_activations": "none",
         "model_name": "Qwen/Qwen3-4B",
-        "hook_name": "blocks.10.ln2.hook_normalized",
+        "hook_name": "blocks.10.mlp.hook_in",
         "hook_name_out": "blocks.10.hook_mlp_out",
         "dataset_path": "monology/pile-uncopyrighted",
         "context_size": 8192,

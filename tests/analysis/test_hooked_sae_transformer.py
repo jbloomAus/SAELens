@@ -672,3 +672,11 @@ def test_HookedSAETransformer_works_with_hook_z_saes():
     assert (
         cache[sae.cfg.metadata.hook_name + ".hook_sae_output"].shape == expected_shape
     )
+
+
+def test_HookedSAETransformer_adds_hook_in_to_mlp():
+    model = HookedSAETransformer.from_pretrained("gpt2", device="cpu")
+    _, cache = model.run_with_cache(prompt)
+    for n in range(model.cfg.n_layers):
+        assert f"blocks.{n}.mlp.hook_in" in cache
+        assert cache[f"blocks.{n}.mlp.hook_in"].shape == (1, 4, 768)

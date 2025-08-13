@@ -1266,7 +1266,7 @@ def get_mwhanna_transcoder_config_from_hf(
         "activation_fn": "relu",
         "normalize_activations": "none",
         "model_name": base_cfg_info["model_name"],
-        "hook_name": f"blocks.{layer}.ln2.hook_normalized",
+        "hook_name": f"blocks.{layer}.mlp.hook_in",
         "hook_name_out": f"blocks.{layer}.hook_mlp_out",
         "dataset_path": "monology/pile-uncopyrighted",
         "context_size": wandb_cfg_info["batch_size"]["value"],
