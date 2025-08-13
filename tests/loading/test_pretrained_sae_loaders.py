@@ -236,6 +236,7 @@ def test_get_mwhanna_transcoder_config_from_hf():
         "hook_name_out": "blocks.10.hook_mlp_out",
         "dataset_path": "monology/pile-uncopyrighted",
         "context_size": 8192,
+        "model_from_pretrained_kwargs": {"fold_ln": False},
         "apply_b_dec_to_input": False,
     }
 
@@ -294,10 +295,11 @@ def test_load_sae_config_from_huggingface_mwhanna_transcoder():
         "reshape_activations": "none",
         "metadata": {
             "model_name": "Qwen/Qwen3-4B",
-            "hook_name": "blocks.10.ln2.hook_normalized",
+            "hook_name": "blocks.10.mlp.hook_in",
             "hook_name_out": "blocks.10.hook_mlp_out",
             "dataset_path": "monology/pile-uncopyrighted",
             "context_size": 8192,
+            "model_from_pretrained_kwargs": {"fold_ln": False},
             "neuronpedia_id": "qwen3-4b/10-transcoder-hp",
             "prepend_bos": True,
             "sae_lens_training_version": None,

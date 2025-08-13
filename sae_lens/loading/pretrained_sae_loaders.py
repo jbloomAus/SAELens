@@ -1271,6 +1271,7 @@ def get_mwhanna_transcoder_config_from_hf(
         "dataset_path": "monology/pile-uncopyrighted",
         "context_size": wandb_cfg_info["batch_size"]["value"],
         "apply_b_dec_to_input": False,
+        "model_from_pretrained_kwargs": {"fold_ln": False},
         **(cfg_overrides or {}),
     }
 
