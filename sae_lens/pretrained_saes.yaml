@@ -14084,3 +14084,664 @@ gemma-scope-2b-pt-transcoders:
     neuronpedia: gemma-2-2b/25-gemmascope-transcoder-16k
     l0: 41
     path: layer_25/width_16k/average_l0_41
+
+
+mwhanna-qwen3-4b-transcoders:
+  conversion_func: mwhanna_transcoder
+  model: qwen3-4b
+  repo_id: mwhanna/qwen3-4b-transcoders
+  saes:
+  - id: layer_0
+    path: layer_0.safetensors
+    neuronpedia: qwen3-4b/0-transcoder-hp
+  - id: layer_1
+    path: layer_1.safetensors
+    neuronpedia: qwen3-4b/1-transcoder-hp
+  - id: layer_2
+    path: layer_2.safetensors
+    neuronpedia: qwen3-4b/2-transcoder-hp
+  - id: layer_3
+    path: layer_3.safetensors
+    neuronpedia: qwen3-4b/3-transcoder-hp
+  - id: layer_4
+    path: layer_4.safetensors
+    neuronpedia: qwen3-4b/4-transcoder-hp
+  - id: layer_5
+    path: layer_5.safetensors
+    neuronpedia: qwen3-4b/5-transcoder-hp
+  - id: layer_6
+    path: layer_6.safetensors
+    neuronpedia: qwen3-4b/6-transcoder-hp
+  - id: layer_7
+    path: layer_7.safetensors
+    neuronpedia: qwen3-4b/7-transcoder-hp
+  - id: layer_8
+    path: layer_8.safetensors
+    neuronpedia: qwen3-4b/8-transcoder-hp
+  - id: layer_9
+    path: layer_9.safetensors
+    neuronpedia: qwen3-4b/9-transcoder-hp
+  - id: layer_10
+    path: layer_10.safetensors
+    neuronpedia: qwen3-4b/10-transcoder-hp
+  - id: layer_11
+    path: layer_11.safetensors
+    neuronpedia: qwen3-4b/11-transcoder-hp
+  - id: layer_12
+    path: layer_12.safetensors
+    neuronpedia: qwen3-4b/12-transcoder-hp
+  - id: layer_13
+    path: layer_13.safetensors
+    neuronpedia: qwen3-4b/13-transcoder-hp
+  - id: layer_14
+    path: layer_14.safetensors
+    neuronpedia: qwen3-4b/14-transcoder-hp
+  - id: layer_15
+    path: layer_15.safetensors
+    neuronpedia: qwen3-4b/15-transcoder-hp
+  - id: layer_16
+    path: layer_16.safetensors
+    neuronpedia: qwen3-4b/16-transcoder-hp
+  - id: layer_17
+    path: layer_17.safetensors
+    neuronpedia: qwen3-4b/17-transcoder-hp
+  - id: layer_18
+    path: layer_18.safetensors
+    neuronpedia: qwen3-4b/18-transcoder-hp
+  - id: layer_19
+    path: layer_19.safetensors
+    neuronpedia: qwen3-4b/19-transcoder-hp
+  - id: layer_20
+    path: layer_20.safetensors
+    neuronpedia: qwen3-4b/20-transcoder-hp
+  - id: layer_21
+    path: layer_21.safetensors
+    neuronpedia: qwen3-4b/21-transcoder-hp
+  - id: layer_22
+    path: layer_22.safetensors
+    neuronpedia: qwen3-4b/22-transcoder-hp
+  - id: layer_23
+    path: layer_23.safetensors
+    neuronpedia: qwen3-4b/23-transcoder-hp
+  - id: layer_24
+    path: layer_24.safetensors
+    neuronpedia: qwen3-4b/24-transcoder-hp
+  - id: layer_25
+    path: layer_25.safetensors
+    neuronpedia: qwen3-4b/25-transcoder-hp
+  - id: layer_26
+    path: layer_26.safetensors
+    neuronpedia: qwen3-4b/26-transcoder-hp
+  - id: layer_27
+    path: layer_27.safetensors
+    neuronpedia: qwen3-4b/27-transcoder-hp
+  - id: layer_28
+    path: layer_28.safetensors
+    neuronpedia: qwen3-4b/28-transcoder-hp
+  - id: layer_29
+    path: layer_29.safetensors
+    neuronpedia: qwen3-4b/29-transcoder-hp
+  - id: layer_30
+    path: layer_30.safetensors
+    neuronpedia: qwen3-4b/30-transcoder-hp
+  - id: layer_31
+    path: layer_31.safetensors
+    neuronpedia: qwen3-4b/31-transcoder-hp
+  - id: layer_32
+    path: layer_32.safetensors
+    neuronpedia: qwen3-4b/32-transcoder-hp
+  - id: layer_33
+    path: layer_33.safetensors
+    neuronpedia: qwen3-4b/33-transcoder-hp
+  - id: layer_34
+    path: layer_34.safetensors
+    neuronpedia: qwen3-4b/34-transcoder-hp
+  - id: layer_35
+    path: layer_35.safetensors
+    neuronpedia: qwen3-4b/35-transcoder-hp
+
+mwhanna-qwen3-8b-transcoders:
+  conversion_func: mwhanna_transcoder
+  model: qwen3-8b
+  repo_id: mwhanna/qwen3-8b-transcoders
+  saes:
+  - id: layer_0
+    path: layer_0.safetensors
+    neuronpedia: qwen3-8b/0-transcoder-hp
+  - id: layer_1
+    path: layer_1.safetensors
+    neuronpedia: qwen3-8b/1-transcoder-hp
+  - id: layer_2
+    path: layer_2.safetensors
+    neuronpedia: qwen3-8b/2-transcoder-hp
+  - id: layer_3
+    path: layer_3.safetensors
+    neuronpedia: qwen3-8b/3-transcoder-hp
+  - id: layer_4
+    path: layer_4.safetensors
+    neuronpedia: qwen3-8b/4-transcoder-hp
+  - id: layer_5
+    path: layer_5.safetensors
+    neuronpedia: qwen3-8b/5-transcoder-hp
+  - id: layer_6
+    path: layer_6.safetensors
+    neuronpedia: qwen3-8b/6-transcoder-hp
+  - id: layer_7
+    path: layer_7.safetensors
+    neuronpedia: qwen3-8b/7-transcoder-hp
+  - id: layer_8
+    path: layer_8.safetensors
+    neuronpedia: qwen3-8b/8-transcoder-hp
+  - id: layer_9
+    path: layer_9.safetensors
+    neuronpedia: qwen3-8b/9-transcoder-hp
+  - id: layer_10
+    path: layer_10.safetensors
+    neuronpedia: qwen3-8b/10-transcoder-hp
+  - id: layer_11
+    path: layer_11.safetensors
+    neuronpedia: qwen3-8b/11-transcoder-hp
+  - id: layer_12
+    path: layer_12.safetensors
+    neuronpedia: qwen3-8b/12-transcoder-hp
+  - id: layer_13
+    path: layer_13.safetensors
+    neuronpedia: qwen3-8b/13-transcoder-hp
+  - id: layer_14
+    path: layer_14.safetensors
+    neuronpedia: qwen3-8b/14-transcoder-hp
+  - id: layer_15
+    path: layer_15.safetensors
+    neuronpedia: qwen3-8b/15-transcoder-hp
+  - id: layer_16
+    path: layer_16.safetensors
+    neuronpedia: qwen3-8b/16-transcoder-hp
+  - id: layer_17
+    path: layer_17.safetensors
+    neuronpedia: qwen3-8b/17-transcoder-hp
+  - id: layer_18
+    path: layer_18.safetensors
+    neuronpedia: qwen3-8b/18-transcoder-hp
+  - id: layer_19
+    path: layer_19.safetensors
+    neuronpedia: qwen3-8b/19-transcoder-hp
+  - id: layer_20
+    path: layer_20.safetensors
+    neuronpedia: qwen3-8b/20-transcoder-hp
+  - id: layer_21
+    path: layer_21.safetensors
+    neuronpedia: qwen3-8b/21-transcoder-hp
+  - id: layer_22
+    path: layer_22.safetensors
+    neuronpedia: qwen3-8b/22-transcoder-hp
+  - id: layer_23
+    path: layer_23.safetensors
+    neuronpedia: qwen3-8b/23-transcoder-hp
+  - id: layer_24
+    path: layer_24.safetensors
+    neuronpedia: qwen3-8b/24-transcoder-hp
+  - id: layer_25
+    path: layer_25.safetensors
+    neuronpedia: qwen3-8b/25-transcoder-hp
+  - id: layer_26
+    path: layer_26.safetensors
+    neuronpedia: qwen3-8b/26-transcoder-hp
+  - id: layer_27
+    path: layer_27.safetensors
+    neuronpedia: qwen3-8b/27-transcoder-hp
+  - id: layer_28
+    path: layer_28.safetensors
+    neuronpedia: qwen3-8b/28-transcoder-hp
+  - id: layer_29
+    path: layer_29.safetensors
+    neuronpedia: qwen3-8b/29-transcoder-hp
+  - id: layer_30
+    path: layer_30.safetensors
+    neuronpedia: qwen3-8b/30-transcoder-hp
+  - id: layer_31
+    path: layer_31.safetensors
+    neuronpedia: qwen3-8b/31-transcoder-hp
+  - id: layer_32
+    path: layer_32.safetensors
+    neuronpedia: qwen3-8b/32-transcoder-hp
+  - id: layer_33
+    path: layer_33.safetensors
+    neuronpedia: qwen3-8b/33-transcoder-hp
+  - id: layer_34
+    path: layer_34.safetensors
+    neuronpedia: qwen3-8b/34-transcoder-hp
+  - id: layer_35
+    path: layer_35.safetensors
+    neuronpedia: qwen3-8b/35-transcoder-hp
+
+mwhanna-qwen3-14b-transcoders:
+  conversion_func: mwhanna_transcoder
+  model: qwen3-14b
+  repo_id: mwhanna/qwen3-14b-transcoders
+  saes:
+  - id: layer_0
+    path: layer_0.safetensors
+    neuronpedia: qwen3-14b/0-transcoder-hp
+  - id: layer_1
+    path: layer_1.safetensors
+    neuronpedia: qwen3-14b/1-transcoder-hp
+  - id: layer_2
+    path: layer_2.safetensors
+    neuronpedia: qwen3-14b/2-transcoder-hp
+  - id: layer_3
+    path: layer_3.safetensors
+    neuronpedia: qwen3-14b/3-transcoder-hp
+  - id: layer_4
+    path: layer_4.safetensors
+    neuronpedia: qwen3-14b/4-transcoder-hp
+  - id: layer_5
+    path: layer_5.safetensors
+    neuronpedia: qwen3-14b/5-transcoder-hp
+  - id: layer_6
+    path: layer_6.safetensors
+    neuronpedia: qwen3-14b/6-transcoder-hp
+  - id: layer_7
+    path: layer_7.safetensors
+    neuronpedia: qwen3-14b/7-transcoder-hp
+  - id: layer_8
+    path: layer_8.safetensors
+    neuronpedia: qwen3-14b/8-transcoder-hp
+  - id: layer_9
+    path: layer_9.safetensors
+    neuronpedia: qwen3-14b/9-transcoder-hp
+  - id: layer_10
+    path: layer_10.safetensors
+    neuronpedia: qwen3-14b/10-transcoder-hp
+  - id: layer_11
+    path: layer_11.safetensors
+    neuronpedia: qwen3-14b/11-transcoder-hp
+  - id: layer_12
+    path: layer_12.safetensors
+    neuronpedia: qwen3-14b/12-transcoder-hp
+  - id: layer_13
+    path: layer_13.safetensors
+    neuronpedia: qwen3-14b/13-transcoder-hp
+  - id: layer_14
+    path: layer_14.safetensors
+    neuronpedia: qwen3-14b/14-transcoder-hp
+  - id: layer_15
+    path: layer_15.safetensors
+    neuronpedia: qwen3-14b/15-transcoder-hp
+  - id: layer_16
+    path: layer_16.safetensors
+    neuronpedia: qwen3-14b/16-transcoder-hp
+  - id: layer_17
+    path: layer_17.safetensors
+    neuronpedia: qwen3-14b/17-transcoder-hp
+  - id: layer_18
+    path: layer_18.safetensors
+    neuronpedia: qwen3-14b/18-transcoder-hp
+  - id: layer_19
+    path: layer_19.safetensors
+    neuronpedia: qwen3-14b/19-transcoder-hp
+  - id: layer_20
+    path: layer_20.safetensors
+    neuronpedia: qwen3-14b/20-transcoder-hp
+  - id: layer_21
+    path: layer_21.safetensors
+    neuronpedia: qwen3-14b/21-transcoder-hp
+  - id: layer_22
+    path: layer_22.safetensors
+    neuronpedia: qwen3-14b/22-transcoder-hp
+  - id: layer_23
+    path: layer_23.safetensors
+    neuronpedia: qwen3-14b/23-transcoder-hp
+  - id: layer_24
+    path: layer_24.safetensors
+    neuronpedia: qwen3-14b/24-transcoder-hp
+  - id: layer_25
+    path: layer_25.safetensors
+    neuronpedia: qwen3-14b/25-transcoder-hp
+  - id: layer_26
+    path: layer_26.safetensors
+    neuronpedia: qwen3-14b/26-transcoder-hp
+  - id: layer_27
+    path: layer_27.safetensors
+    neuronpedia: qwen3-14b/27-transcoder-hp
+  - id: layer_28
+    path: layer_28.safetensors
+    neuronpedia: qwen3-14b/28-transcoder-hp
+  - id: layer_29
+    path: layer_29.safetensors
+    neuronpedia: qwen3-14b/29-transcoder-hp
+  - id: layer_30
+    path: layer_30.safetensors
+    neuronpedia: qwen3-14b/30-transcoder-hp
+  - id: layer_31
+    path: layer_31.safetensors
+    neuronpedia: qwen3-14b/31-transcoder-hp
+  - id: layer_32
+    path: layer_32.safetensors
+    neuronpedia: qwen3-14b/32-transcoder-hp
+  - id: layer_33
+    path: layer_33.safetensors
+    neuronpedia: qwen3-14b/33-transcoder-hp
+  - id: layer_34
+    path: layer_34.safetensors
+    neuronpedia: qwen3-14b/34-transcoder-hp
+  - id: layer_35
+    path: layer_35.safetensors
+    neuronpedia: qwen3-14b/35-transcoder-hp
+  - id: layer_36
+    path: layer_36.safetensors
+    neuronpedia: qwen3-14b/36-transcoder-hp
+  - id: layer_37
+    path: layer_37.safetensors
+    neuronpedia: qwen3-14b/37-transcoder-hp
+  - id: layer_38
+    path: layer_38.safetensors
+    neuronpedia: qwen3-14b/38-transcoder-hp
+  - id: layer_39
+    path: layer_39.safetensors
+    neuronpedia: qwen3-14b/39-transcoder-hp
+
+mwhanna-qwen3-14b-transcoders-lowl0:
+  conversion_func: mwhanna_transcoder
+  model: qwen3-14b
+  repo_id: mwhanna/qwen3-14b-transcoders-lowl0
+  saes:
+  - id: layer_0
+    path: layer_0.safetensors
+    neuronpedia: qwen3-14b/0-transcoder-hp-lowl0
+  - id: layer_1
+    path: layer_1.safetensors
+    neuronpedia: qwen3-14b/1-transcoder-hp-lowl0
+  - id: layer_2
+    path: layer_2.safetensors
+    neuronpedia: qwen3-14b/2-transcoder-hp-lowl0
+  - id: layer_3
+    path: layer_3.safetensors
+    neuronpedia: qwen3-14b/3-transcoder-hp-lowl0
+  - id: layer_4
+    path: layer_4.safetensors
+    neuronpedia: qwen3-14b/4-transcoder-hp-lowl0
+  - id: layer_5
+    path: layer_5.safetensors
+    neuronpedia: qwen3-14b/5-transcoder-hp-lowl0
+  - id: layer_6
+    path: layer_6.safetensors
+    neuronpedia: qwen3-14b/6-transcoder-hp-lowl0
+  - id: layer_7
+    path: layer_7.safetensors
+    neuronpedia: qwen3-14b/7-transcoder-hp-lowl0
+  - id: layer_8
+    path: layer_8.safetensors
+    neuronpedia: qwen3-14b/8-transcoder-hp-lowl0
+  - id: layer_9
+    path: layer_9.safetensors
+    neuronpedia: qwen3-14b/9-transcoder-hp-lowl0
+  - id: layer_10
+    path: layer_10.safetensors
+    neuronpedia: qwen3-14b/10-transcoder-hp-lowl0
+  - id: layer_11
+    path: layer_11.safetensors
+    neuronpedia: qwen3-14b/11-transcoder-hp-lowl0
+  - id: layer_12
+    path: layer_12.safetensors
+    neuronpedia: qwen3-14b/12-transcoder-hp-lowl0
+  - id: layer_13
+    path: layer_13.safetensors
+    neuronpedia: qwen3-14b/13-transcoder-hp-lowl0
+  - id: layer_14
+    path: layer_14.safetensors
+    neuronpedia: qwen3-14b/14-transcoder-hp-lowl0
+  - id: layer_15
+    path: layer_15.safetensors
+    neuronpedia: qwen3-14b/15-transcoder-hp-lowl0
+  - id: layer_16
+    path: layer_16.safetensors
+    neuronpedia: qwen3-14b/16-transcoder-hp-lowl0
+  - id: layer_17
+    path: layer_17.safetensors
+    neuronpedia: qwen3-14b/17-transcoder-hp-lowl0
+  - id: layer_18
+    path: layer_18.safetensors
+    neuronpedia: qwen3-14b/18-transcoder-hp-lowl0
+  - id: layer_19
+    path: layer_19.safetensors
+    neuronpedia: qwen3-14b/19-transcoder-hp-lowl0
+  - id: layer_20
+    path: layer_20.safetensors
+    neuronpedia: qwen3-14b/20-transcoder-hp-lowl0
+  - id: layer_21
+    path: layer_21.safetensors
+    neuronpedia: qwen3-14b/21-transcoder-hp-lowl0
+  - id: layer_22
+    path: layer_22.safetensors
+    neuronpedia: qwen3-14b/22-transcoder-hp-lowl0
+  - id: layer_23
+    path: layer_23.safetensors
+    neuronpedia: qwen3-14b/23-transcoder-hp-lowl0
+  - id: layer_24
+    path: layer_24.safetensors
+    neuronpedia: qwen3-14b/24-transcoder-hp-lowl0
+  - id: layer_25
+    path: layer_25.safetensors
+    neuronpedia: qwen3-14b/25-transcoder-hp-lowl0
+  - id: layer_26
+    path: layer_26.safetensors
+    neuronpedia: qwen3-14b/26-transcoder-hp-lowl0
+  - id: layer_27
+    path: layer_27.safetensors
+    neuronpedia: qwen3-14b/27-transcoder-hp-lowl0
+  - id: layer_28
+    path: layer_28.safetensors
+    neuronpedia: qwen3-14b/28-transcoder-hp-lowl0
+  - id: layer_29
+    path: layer_29.safetensors
+    neuronpedia: qwen3-14b/29-transcoder-hp-lowl0
+  - id: layer_30
+    path: layer_30.safetensors
+    neuronpedia: qwen3-14b/30-transcoder-hp-lowl0
+  - id: layer_31
+    path: layer_31.safetensors
+    neuronpedia: qwen3-14b/31-transcoder-hp-lowl0
+  - id: layer_32
+    path: layer_32.safetensors
+    neuronpedia: qwen3-14b/32-transcoder-hp-lowl0
+  - id: layer_33
+    path: layer_33.safetensors
+    neuronpedia: qwen3-14b/33-transcoder-hp-lowl0
+  - id: layer_34
+    path: layer_34.safetensors
+    neuronpedia: qwen3-14b/34-transcoder-hp-lowl0
+  - id: layer_35
+    path: layer_35.safetensors
+    neuronpedia: qwen3-14b/35-transcoder-hp-lowl0
+  - id: layer_36
+    path: layer_36.safetensors
+    neuronpedia: qwen3-14b/36-transcoder-hp-lowl0
+  - id: layer_37
+    path: layer_37.safetensors
+    neuronpedia: qwen3-14b/37-transcoder-hp-lowl0
+  - id: layer_38
+    path: layer_38.safetensors
+    neuronpedia: qwen3-14b/38-transcoder-hp-lowl0
+  - id: layer_39
+    path: layer_39.safetensors
+    neuronpedia: qwen3-14b/39-transcoder-hp-lowl0
+
+mwhanna-qwen3-1.7b-transcoders-lowl0:
+  conversion_func: mwhanna_transcoder
+  model: qwen3-1.7b
+  repo_id: mwhanna/qwen3-1.7b-transcoders-lowl0
+  saes:
+  - id: layer_0
+    path: layer_0.safetensors
+    neuronpedia: qwen3-1.7b/0-transcoder-hp-lowl0
+  - id: layer_1
+    path: layer_1.safetensors
+    neuronpedia: qwen3-1.7b/1-transcoder-hp-lowl0
+  - id: layer_2
+    path: layer_2.safetensors
+    neuronpedia: qwen3-1.7b/2-transcoder-hp-lowl0
+  - id: layer_3
+    path: layer_3.safetensors
+    neuronpedia: qwen3-1.7b/3-transcoder-hp-lowl0
+  - id: layer_4
+    path: layer_4.safetensors
+    neuronpedia: qwen3-1.7b/4-transcoder-hp-lowl0
+  - id: layer_5
+    path: layer_5.safetensors
+    neuronpedia: qwen3-1.7b/5-transcoder-hp-lowl0
+  - id: layer_6
+    path: layer_6.safetensors
+    neuronpedia: qwen3-1.7b/6-transcoder-hp-lowl0
+  - id: layer_7
+    path: layer_7.safetensors
+    neuronpedia: qwen3-1.7b/7-transcoder-hp-lowl0
+  - id: layer_8
+    path: layer_8.safetensors
+    neuronpedia: qwen3-1.7b/8-transcoder-hp-lowl0
+  - id: layer_9
+    path: layer_9.safetensors
+    neuronpedia: qwen3-1.7b/9-transcoder-hp-lowl0
+  - id: layer_10
+    path: layer_10.safetensors
+    neuronpedia: qwen3-1.7b/10-transcoder-hp-lowl0
+  - id: layer_11
+    path: layer_11.safetensors
+    neuronpedia: qwen3-1.7b/11-transcoder-hp-lowl0
+  - id: layer_12
+    path: layer_12.safetensors
+    neuronpedia: qwen3-1.7b/12-transcoder-hp-lowl0
+  - id: layer_13
+    path: layer_13.safetensors
+    neuronpedia: qwen3-1.7b/13-transcoder-hp-lowl0
+  - id: layer_14
+    path: layer_14.safetensors
+    neuronpedia: qwen3-1.7b/14-transcoder-hp-lowl0
+  - id: layer_15
+    path: layer_15.safetensors
+    neuronpedia: qwen3-1.7b/15-transcoder-hp-lowl0
+  - id: layer_16
+    path: layer_16.safetensors
+    neuronpedia: qwen3-1.7b/16-transcoder-hp-lowl0
+  - id: layer_17
+    path: layer_17.safetensors
+    neuronpedia: qwen3-1.7b/17-transcoder-hp-lowl0
+  - id: layer_18
+    path: layer_18.safetensors
+    neuronpedia: qwen3-1.7b/18-transcoder-hp-lowl0
+  - id: layer_19
+    path: layer_19.safetensors
+    neuronpedia: qwen3-1.7b/19-transcoder-hp-lowl0
+  - id: layer_20
+    path: layer_20.safetensors
+    neuronpedia: qwen3-1.7b/20-transcoder-hp-lowl0
+  - id: layer_21
+    path: layer_21.safetensors
+    neuronpedia: qwen3-1.7b/21-transcoder-hp-lowl0
+  - id: layer_22
+    path: layer_22.safetensors
+    neuronpedia: qwen3-1.7b/22-transcoder-hp-lowl0
+  - id: layer_23
+    path: layer_23.safetensors
+    neuronpedia: qwen3-1.7b/23-transcoder-hp-lowl0
+  - id: layer_24
+    path: layer_24.safetensors
+    neuronpedia: qwen3-1.7b/24-transcoder-hp-lowl0
+  - id: layer_25
+    path: layer_25.safetensors
+    neuronpedia: qwen3-1.7b/25-transcoder-hp-lowl0
+  - id: layer_26
+    path: layer_26.safetensors
+    neuronpedia: qwen3-1.7b/26-transcoder-hp-lowl0
+  - id: layer_27
+    path: layer_27.safetensors
+    neuronpedia: qwen3-1.7b/27-transcoder-hp-lowl0
+
+mwhanna-qwen3-0.6b-transcoders-lowl0:
+  conversion_func: mwhanna_transcoder
+  model: qwen3-0.6b
+  repo_id: mwhanna/qwen3-0.6b-transcoders-lowl0
+  saes:
+  - id: layer_0
+    path: layer_0.safetensors
+    neuronpedia: qwen3-0.6b/0-transcoder-hp-lowl0
+  - id: layer_1
+    path: layer_1.safetensors
+    neuronpedia: qwen3-0.6b/1-transcoder-hp-lowl0
+  - id: layer_2
+    path: layer_2.safetensors
+    neuronpedia: qwen3-0.6b/2-transcoder-hp-lowl0
+  - id: layer_3
+    path: layer_3.safetensors
+    neuronpedia: qwen3-0.6b/3-transcoder-hp-lowl0
+  - id: layer_4
+    path: layer_4.safetensors
+    neuronpedia: qwen3-0.6b/4-transcoder-hp-lowl0
+  - id: layer_5
+    path: layer_5.safetensors
+    neuronpedia: qwen3-0.6b/5-transcoder-hp-lowl0
+  - id: layer_6
+    path: layer_6.safetensors
+    neuronpedia: qwen3-0.6b/6-transcoder-hp-lowl0
+  - id: layer_7
+    path: layer_7.safetensors
+    neuronpedia: qwen3-0.6b/7-transcoder-hp-lowl0
+  - id: layer_8
+    path: layer_8.safetensors
+    neuronpedia: qwen3-0.6b/8-transcoder-hp-lowl0
+  - id: layer_9
+    path: layer_9.safetensors
+    neuronpedia: qwen3-0.6b/9-transcoder-hp-lowl0
+  - id: layer_10
+    path: layer_10.safetensors
+    neuronpedia: qwen3-0.6b/10-transcoder-hp-lowl0
+  - id: layer_11
+    path: layer_11.safetensors
+    neuronpedia: qwen3-0.6b/11-transcoder-hp-lowl0
+  - id: layer_12
+    path: layer_12.safetensors
+    neuronpedia: qwen3-0.6b/12-transcoder-hp-lowl0
+  - id: layer_13
+    path: layer_13.safetensors
+    neuronpedia: qwen3-0.6b/13-transcoder-hp-lowl0
+  - id: layer_14
+    path: layer_14.safetensors
+    neuronpedia: qwen3-0.6b/14-transcoder-hp-lowl0
+  - id: layer_15
+    path: layer_15.safetensors
+    neuronpedia: qwen3-0.6b/15-transcoder-hp-lowl0
+  - id: layer_16
+    path: layer_16.safetensors
+    neuronpedia: qwen3-0.6b/16-transcoder-hp-lowl0
+  - id: layer_17
+    path: layer_17.safetensors
+    neuronpedia: qwen3-0.6b/17-transcoder-hp-lowl0
+  - id: layer_18
+    path: layer_18.safetensors
+    neuronpedia: qwen3-0.6b/18-transcoder-hp-lowl0
+  - id: layer_19
+    path: layer_19.safetensors
+    neuronpedia: qwen3-0.6b/19-transcoder-hp-lowl0
+  - id: layer_20
+    path: layer_20.safetensors
+    neuronpedia: qwen3-0.6b/20-transcoder-hp-lowl0
+  - id: layer_21
+    path: layer_21.safetensors
+    neuronpedia: qwen3-0.6b/21-transcoder-hp-lowl0
+  - id: layer_22
+    path: layer_22.safetensors
+    neuronpedia: qwen3-0.6b/22-transcoder-hp-lowl0
+  - id: layer_23
+    path: layer_23.safetensors
+    neuronpedia: qwen3-0.6b/23-transcoder-hp-lowl0
+  - id: layer_24
+    path: layer_24.safetensors
+    neuronpedia: qwen3-0.6b/24-transcoder-hp-lowl0
+  - id: layer_25
+    path: layer_25.safetensors
+    neuronpedia: qwen3-0.6b/25-transcoder-hp-lowl0
+  - id: layer_26
+    path: layer_26.safetensors
+    neuronpedia: qwen3-0.6b/26-transcoder-hp-lowl0
+  - id: layer_27
+    path: layer_27.safetensors
+    neuronpedia: qwen3-0.6b/27-transcoder-hp-lowl0

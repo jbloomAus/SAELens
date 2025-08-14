@@ -11,6 +11,7 @@ from sae_lens.loading.pretrained_sae_loaders import (
     get_gemma_2_transcoder_config_from_hf,
     get_llama_scope_config_from_hf,
     get_llama_scope_r1_distill_config_from_hf,
+    get_mwhanna_transcoder_config_from_hf,
     load_sae_config_from_huggingface,
     read_sae_components_from_disk,
     sparsify_disk_loader,
@@ -214,6 +215,34 @@ def test_get_gemma_2_transcoder_config_from_hf():
     assert cfg == expected_cfg
 
 
+def test_get_mwhanna_transcoder_config_from_hf():
+    cfg = get_mwhanna_transcoder_config_from_hf(
+        repo_id="mwhanna/qwen3-4b-transcoders",
+        folder_name="layer_10.safetensors",
+        device="cpu",
+    )
+
+    expected_cfg = {
+        "architecture": "transcoder",
+        "d_in": 2560,
+        "d_out": 2560,
+        "d_sae": 163840,
+        "dtype": "float32",
+        "device": "cpu",
+        "activation_fn": "relu",
+        "normalize_activations": "none",
+        "model_name": "Qwen/Qwen3-4B",
+        "hook_name": "blocks.10.mlp.hook_in",
+        "hook_name_out": "blocks.10.hook_mlp_out",
+        "dataset_path": "monology/pile-uncopyrighted",
+        "context_size": 8192,
+        "model_from_pretrained_kwargs": {"fold_ln": False},
+        "apply_b_dec_to_input": False,
+    }
+
+    assert cfg == expected_cfg
+
+
 def test_load_sae_config_from_huggingface_gemma_2_transcoder():
     cfg = load_sae_config_from_huggingface(
         release="gemma-scope-2b-pt-transcoders",
@@ -243,6 +272,39 @@ def test_load_sae_config_from_huggingface_gemma_2_transcoder():
             "sae_lens_training_version": None,
         },
         "architecture": "jumprelu_transcoder",
+    }
+
+    assert cfg == expected_cfg
+
+
+def test_load_sae_config_from_huggingface_mwhanna_transcoder():
+    cfg = load_sae_config_from_huggingface(
+        release="mwhanna-qwen3-4b-transcoders",
+        sae_id="layer_10",
+        device="cpu",
+    )
+
+    expected_cfg = {
+        "d_in": 2560,
+        "d_out": 2560,
+        "d_sae": 163840,
+        "dtype": "float32",
+        "device": "cpu",
+        "normalize_activations": "none",
+        "apply_b_dec_to_input": False,
+        "reshape_activations": "none",
+        "metadata": {
+            "model_name": "Qwen/Qwen3-4B",
+            "hook_name": "blocks.10.mlp.hook_in",
+            "hook_name_out": "blocks.10.hook_mlp_out",
+            "dataset_path": "monology/pile-uncopyrighted",
+            "context_size": 8192,
+            "model_from_pretrained_kwargs": {"fold_ln": False},
+            "neuronpedia_id": "qwen3-4b/10-transcoder-hp",
+            "prepend_bos": True,
+            "sae_lens_training_version": None,
+        },
+        "architecture": "transcoder",
     }
 
     assert cfg == expected_cfg

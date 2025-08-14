@@ -5,6 +5,7 @@ from typing import Any, Callable
 import torch
 from jaxtyping import Float
 from transformer_lens.ActivationCache import ActivationCache
+from transformer_lens.components.mlps.can_be_used_as_mlp import CanBeUsedAsMLP
 from transformer_lens.hook_points import HookPoint  # Hooking utilities
 from transformer_lens.HookedTransformer import HookedTransformer
 
@@ -50,6 +51,13 @@ def set_deep_attr(obj: Any, path: str, value: Any):
     setattr(obj, parts[-1], value)
 
 
+def add_hook_in_to_mlp(mlp: CanBeUsedAsMLP):
+    # Temporary hack to add a `mlp.hook_in` hook to mimic what's in circuit-tracer
+    mlp.hook_in = HookPoint()
+    original_forward = mlp.forward
+    mlp.forward = lambda x: original_forward(mlp.hook_in(x))  # type: ignore
+
+
 class HookedSAETransformer(HookedTransformer):
     def __init__(
         self,
@@ -66,6 +74,11 @@ class HookedSAETransformer(HookedTransformer):
             **model_kwargs: Keyword arguments for HookedTransformer initialization
         """
         super().__init__(*model_args, **model_kwargs)
+
+        for block in self.blocks:
+            add_hook_in_to_mlp(block.mlp)  # type: ignore
+        self.setup()
+
         self.acts_to_saes: dict[str, SAE] = {}  # type: ignore
 
     def add_sae(self, sae: SAE[Any], use_error_term: bool | None = None):
