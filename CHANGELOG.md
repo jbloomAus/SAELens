@@ -1,5 +1,27 @@
 # CHANGELOG
 
+## v6.6.0 (2025-08-14)
+
+### Feature
+
+* feat: adding mwhanna qwen transcoders to pretrained list (#515)
+
+* adding mwhanna qwen transcoders to pretrained list
+
+* bust cache to hopefully fix disk space issue in CI
+
+* fix: update transformerlens version, add -lowl0 to pretrained_saes repo_id, add neuronpedia IDs
+
+* fix: test for neuronpedia id on qwen
+
+* adding a mlp.hook_in hook for mwhanna transcoders
+
+* updating model_from_pretrained_kwargs for mwhanna saes
+
+---------
+
+Co-authored-by: Johnny Lin &lt;hijohnnylin@gmail.com&gt; ([`6e1a04f`](https://github.com/jbloomAus/SAELens/commit/6e1a04fbf4d2eca6f885a33f2fa1649f6619283f))
+
 ## v6.5.3 (2025-08-11)
 
 ### Fix
