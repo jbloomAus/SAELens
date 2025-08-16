@@ -33,6 +33,7 @@ python-dotenv = ">=1.0.1"
 pyyaml = "^6.0.1"
 typing-extensions = "^4.10.0"
 simple-parsing = "^0.1.6"
+tenacity = ">=9.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.2"
