@@ -546,9 +546,11 @@ def test_get_saes_from_regex_multiple_matches(mock_all_loadable_saes: MagicMock)
     assert result == expected
 
 
+@pytest.mark.parametrize("scaling_factor", [None, 3.0])
 def test_get_sparsity_and_variance_metrics_identity_sae_perfect_reconstruction(
     model: HookedTransformer,
     example_dataset: Dataset,
+    scaling_factor: float | None,
 ):
     """Test that an identity SAE (d_in = d_sae, W_enc = W_dec = Identity, zero biases) gets perfect variance explained."""
     # Create a special configuration for an identity SAE
@@ -582,7 +584,7 @@ def test_get_sparsity_and_variance_metrics_identity_sae_perfect_reconstruction(
         sae=identity_sae,
         model=model,
         activation_store=activation_store,
-        activation_scaler=ActivationScaler(),
+        activation_scaler=ActivationScaler(scaling_factor),
         n_batches=3,
         compute_l2_norms=True,
         compute_sparsity_metrics=True,
