@@ -175,7 +175,10 @@ def test_pretokenize_runner_save_dataset_locally(tmp_path: Path):
     assert save_path.exists()
     loaded_dataset = Dataset.load_from_disk(str(save_path))
     assert len(dataset) == len(loaded_dataset)
-    assert np.array(dataset["input_ids"]).tolist() == np.array(loaded_dataset["input_ids"]).tolist()
+    assert (
+        np.array(dataset["input_ids"]).tolist()
+        == np.array(loaded_dataset["input_ids"]).tolist()
+    )
     with open(save_path / "sae_lens.json") as f:
         metadata_dict = json.load(f)
     assert metadata_dict["original_dataset"] == "NeelNanda/c4-10k"
@@ -208,7 +211,10 @@ def test_pretokenize_runner_with_dataset_name(tmp_path: Path):
     assert save_path.exists()
     loaded_dataset = Dataset.load_from_disk(str(save_path))
     assert len(dataset) == len(loaded_dataset)
-    assert np.array(dataset["input_ids"]).tolist() == np.array(loaded_dataset["input_ids"]).tolist()
+    assert (
+        np.array(dataset["input_ids"]).tolist()
+        == np.array(loaded_dataset["input_ids"]).tolist()
+    )
     with open(save_path / "sae_lens.json") as f:
         metadata_dict = json.load(f)
     assert metadata_dict["original_dataset"] == "nyu-mll/glue"
