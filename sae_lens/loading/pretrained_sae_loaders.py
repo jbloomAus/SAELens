@@ -1254,11 +1254,22 @@ def get_mwhanna_transcoder_config_from_hf(
         wandb_config_path = hf_hub_download(
             repo_id, "wandb-config.yaml", force_download=force_download
         )
-    base_config_path = hf_hub_download(
-        repo_id, "config.yaml", force_download=force_download
-    )
-    with open(base_config_path) as f:
-        base_cfg_info: dict[str, Any] = yaml.safe_load(f)
+    try:
+        base_config_path = hf_hub_download(
+            repo_id, "config.yaml", force_download=force_download
+        )
+        with open(base_config_path) as f:
+            base_cfg_info: dict[str, Any] = yaml.safe_load(f)
+    except EntryNotFoundError:
+        # the 14b transcoders don't have a config file for some reason, so just pull the model name from the repo_id
+        qwen_3_size_match = re.search(r"qwen3-(\d+(?:\.\d+)?)b", repo_id)
+        if not qwen_3_size_match:
+            raise ValueError(f"Could not extract Qwen3 size from repo_id: {repo_id}")
+        qwen_3_size = qwen_3_size_match.group(1)
+        base_cfg_info = {
+            "model_name": f"Qwen/Qwen3-{qwen_3_size}B",
+        }
+
     with open(wandb_config_path) as f:
         wandb_cfg_info: dict[str, Any] = yaml.safe_load(f)
 
