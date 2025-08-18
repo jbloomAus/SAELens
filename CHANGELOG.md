@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v6.6.3 (2025-08-18)
+
+### Fix
+
+* fix: fixing mwhanna 14b transcoder loading (#523) ([`3a4b415`](https://github.com/jbloomAus/SAELens/commit/3a4b415bc7b9db0c1f205ac279094a63e8c8eb95))
+
 ## v6.6.2 (2025-08-18)
 
 ### Fix
