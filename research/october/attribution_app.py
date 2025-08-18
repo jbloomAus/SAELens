@@ -105,7 +105,7 @@ st.write("### Most Likely Next Tokens")
 
 k = st.slider("Top k", min_value=1, max_value=prediction_df.shape[0], value=10, step=1)
 fig = px.bar(
-    prediction_df.sort_values(by="probability", ascending=True).iloc[-k:],
+    prediction_df.sort_values(by="probability", ascending=False).iloc[:k],
     y="token",
     x="probability",
     text="probability",
