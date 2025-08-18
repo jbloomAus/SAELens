@@ -1,3 +1,4 @@
+import shutil
 from pathlib import Path
 
 import pytest
@@ -376,7 +377,7 @@ def test_get_llama_scope_r1_distill_config_with_overrides():
     assert cfg["d_sae"] == 8192
 
 
-def test_sparsify_huggingface_loader():
+def test_sparsify_huggingface_loader(tmp_path: Path):
     # Need to hackily load the SAE in float32 since sparsify doesn't handle dtypes correctly
     # we need to load and re-save the weights in float32 to get the weights to load correctly
     repo = "EleutherAI/sae-llama-3-8b-32x"
@@ -397,11 +398,13 @@ def test_sparsify_huggingface_loader():
     state_dict_float32 = {k: v.to(torch.float32) for k, v in state_dict.items()}
 
     # Save back as float32
-    save_file(state_dict_float32, safetensors_file)
+    save_file(state_dict_float32, tmp_path / "sae.safetensors")
 
-    sparsify_sae = SparseCoder.load_from_hub(
-        "EleutherAI/sae-llama-3-8b-32x", hookpoint="layers.10"
-    )
+    # Copy cfg.json to tmp_path
+    cfg_file = repo_path / hookpoint / "cfg.json"
+    shutil.copy2(cfg_file, tmp_path / "cfg.json")
+
+    sparsify_sae = SparseCoder.load_from_disk(tmp_path, device="cpu")
 
     cfg_dict, state_dict, _ = sparsify_huggingface_loader(
         "EleutherAI/sae-llama-3-8b-32x", folder_name="layers.10"
