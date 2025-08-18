@@ -1,5 +1,31 @@
 # CHANGELOG
 
+## v6.6.1 (2025-08-18)
+
+### Fix
+
+* fix: compare unscaled input with unscaled output in var explained (#521)
+
+* fix: compare unscaled input with unscaled output in var explained
+
+* move sparsify loading into a closure to avoid doubling memory usage ([`10d04ae`](https://github.com/jbloomAus/SAELens/commit/10d04ae41440d68001f76cfb6974294493fa762e))
+
+* fix: relaxing saelens deps (#519)
+
+* relaxing saelens deps
+
+* fixing types
+
+* fixing tests
+
+* fixing formatting
+
+* pin sparsify version in tests
+
+* hopefully fixing sparsify test
+
+* trying to fix sparsify test another way... ([`66f575a`](https://github.com/jbloomAus/SAELens/commit/66f575a063bd3202f1f89cd05122ff7759adaa8c))
+
 ## v6.6.0 (2025-08-14)
 
 ### Feature
