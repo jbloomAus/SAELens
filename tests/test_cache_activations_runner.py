@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import datasets
+import numpy as np
 import pytest
 import torch
 from datasets import Dataset, load_dataset
@@ -244,7 +245,8 @@ def test_compare_cached_activations_end_to_end_with_ground_truth(tmp_path: Path)
 
     ground_truth_acts = torch.cat(ground_truth_acts, dim=0).cpu()
 
-    assert_close(ground_truth_acts, dataset_acts, rtol=1e-3, atol=5e-2)
+    dataset_acts_tensor = torch.tensor(np.array(dataset_acts))
+    assert_close(ground_truth_acts, dataset_acts_tensor, rtol=1e-3, atol=5e-2)
 
 
 def test_load_activations_store_with_nonexistent_dataset(tmp_path: Path):
@@ -375,8 +377,10 @@ def test_cache_activations_runner_stores_token_ids(tmp_path: Path):
     dataset.set_format("torch")
 
     assert "token_ids" in dataset.features
-    assert dataset["token_ids"].shape[1] == cfg.context_size  # type: ignore
-    assert dataset["blocks.0.hook_mlp_out"].shape[:2] == dataset["token_ids"].shape  # type: ignore
+    token_ids_array = np.array(dataset["token_ids"])
+    mlp_out_array = np.array(dataset["blocks.0.hook_mlp_out"])
+    assert token_ids_array.shape[1] == cfg.context_size
+    assert mlp_out_array.shape[:2] == token_ids_array.shape
 
 
 def test_cache_activations_runner_shuffling(tmp_path: Path):
@@ -426,18 +430,25 @@ def test_cache_activations_runner_shuffling(tmp_path: Path):
     shuffled_tokens: torch.Tensor = shuffled_ds["token_ids"]  # type: ignore
 
     # Verify shapes are preserved
-    assert unshuffled_acts.shape == shuffled_acts.shape
-    assert unshuffled_tokens.shape == shuffled_tokens.shape
+    unshuffled_acts_array = np.array(unshuffled_acts)
+    shuffled_acts_array = np.array(shuffled_acts)
+    unshuffled_tokens_array = np.array(unshuffled_tokens)
+    shuffled_tokens_array = np.array(shuffled_tokens)
+    assert unshuffled_acts_array.shape == shuffled_acts_array.shape
+    assert unshuffled_tokens_array.shape == shuffled_tokens_array.shape
 
     # Verify data is actually shuffled
-    assert not (unshuffled_acts == shuffled_acts).all()
-    assert not (unshuffled_tokens == shuffled_tokens).all()
+    assert not np.array_equal(unshuffled_acts_array, shuffled_acts_array)
+    assert not np.array_equal(unshuffled_tokens_array, shuffled_tokens_array)
 
     # For each token in unshuffled, find its position in shuffled
     # and verify the activations were moved together
-    for i in range(len(unshuffled_tokens)):
-        token = unshuffled_tokens[i]
+    for i in range(len(unshuffled_tokens_array)):
+        token = unshuffled_tokens_array[i]
         # Find where this token went in shuffled version
-        shuffled_idx = torch.where(shuffled_tokens == token)[0][0]
+        shuffled_idx = np.where(shuffled_tokens_array == token)[0][0]
         # Verify activations moved with it
-        assert_close(unshuffled_acts[i], shuffled_acts[shuffled_idx])
+        assert_close(
+            torch.from_numpy(unshuffled_acts_array[i]),
+            torch.from_numpy(shuffled_acts_array[shuffled_idx]),
+        )

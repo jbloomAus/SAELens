@@ -1,8 +1,10 @@
+import shutil
 from pathlib import Path
 
 import pytest
 import torch
-from safetensors.torch import save_file
+from huggingface_hub import snapshot_download
+from safetensors.torch import load_file, save_file
 from sparsify import SparseCoder, SparseCoderConfig
 
 from sae_lens.loading.pretrained_sae_loaders import (
@@ -437,10 +439,34 @@ def test_get_llama_scope_r1_distill_config_with_overrides():
     assert cfg["d_sae"] == 8192
 
 
-def test_sparsify_huggingface_loader():
-    sparsify_sae = SparseCoder.load_from_hub(
-        "EleutherAI/sae-llama-3-8b-32x", hookpoint="layers.10"
+def test_sparsify_huggingface_loader(tmp_path: Path):
+    # Need to hackily load the SAE in float32 since sparsify doesn't handle dtypes correctly
+    # we need to load and re-save the weights in float32 to get the weights to load correctly
+    repo = "EleutherAI/sae-llama-3-8b-32x"
+    hookpoint = "layers.10"
+    repo_path = Path(
+        snapshot_download(
+            repo,
+            allow_patterns=f"{hookpoint}/*" if hookpoint is not None else None,
+        )
     )
+    safetensors_file = repo_path / hookpoint / "sae.safetensors"
+
+    # Load and convert to float32
+    # Load the safetensors file
+    state_dict = load_file(safetensors_file)
+
+    # Convert all tensors to float32
+    state_dict_float32 = {k: v.to(torch.float32) for k, v in state_dict.items()}
+
+    # Save back as float32
+    save_file(state_dict_float32, tmp_path / "sae.safetensors")
+
+    # Copy cfg.json to tmp_path
+    cfg_file = repo_path / hookpoint / "cfg.json"
+    shutil.copy2(cfg_file, tmp_path / "cfg.json")
+
+    sparsify_sae = SparseCoder.load_from_disk(tmp_path, device="cpu")
 
     cfg_dict, state_dict, _ = sparsify_huggingface_loader(
         "EleutherAI/sae-llama-3-8b-32x", folder_name="layers.10"

@@ -289,7 +289,7 @@ class ActivationsStore:
                 "Dataset must have a 'tokens', 'input_ids', 'text', or 'problem' column."
             )
         if self.is_dataset_tokenized:
-            ds_context_size = len(dataset_sample[self.tokens_column])
+            ds_context_size = len(dataset_sample[self.tokens_column])  # type: ignore
             if ds_context_size < self.context_size:
                 raise ValueError(
                     f"""pretokenized dataset has context_size {ds_context_size}, but the provided context_size is {self.context_size}.

@@ -85,7 +85,7 @@ class CacheActivationsRunner:
             )
             for hook_name in [self.cfg.hook_name]
         }
-        features_dict["token_ids"] = Sequence(
+        features_dict["token_ids"] = Sequence(  # type: ignore
             Value(dtype="int32"), length=self.context_size
         )
         self.features = Features(features_dict)

@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 from typing import Any, cast
 
+import numpy as np
 import pytest
 from datasets import Dataset, IterableDataset
 from transformers import AutoTokenizer, PreTrainedTokenizerBase
@@ -43,7 +44,7 @@ def test_pretokenize_dataset_concatenates_text_until_context_size(
     )
 
     tokenized_dataset = cast(Any, pretokenize_dataset(dataset, ts_tokenizer, cfg))
-    assert tokenized_dataset["input_ids"].shape[1] == cfg.context_size
+    assert np.array(tokenized_dataset["input_ids"]).shape[1] == cfg.context_size
     assert (
         ts_tokenizer.decode(tokenized_dataset["input_ids"][0])
         == "hello worldhello worldhello worldhello worldhello world"
@@ -64,7 +65,7 @@ def test_pretokenize_dataset_can_add_bos_tokens_to_the_start_of_each_batch(
     )
 
     tokenized_dataset = cast(Any, pretokenize_dataset(dataset, ts_tokenizer, cfg))
-    assert tokenized_dataset["input_ids"].shape[1] == cfg.context_size
+    assert np.array(tokenized_dataset["input_ids"]).shape[1] == cfg.context_size
     assert (
         ts_tokenizer.decode(tokenized_dataset["input_ids"][0])
         == "<|endoftext|>hello worldhello worldhello worldhello worldhello"
@@ -87,7 +88,7 @@ def test_pretokenize_dataset_can_separate_sequences_with_bos(
     )
 
     tokenized_dataset = cast(Any, pretokenize_dataset(dataset, ts_tokenizer, cfg))
-    assert tokenized_dataset["input_ids"].shape[1] == cfg.context_size
+    assert np.array(tokenized_dataset["input_ids"]).shape[1] == cfg.context_size
     assert (
         ts_tokenizer.decode(tokenized_dataset["input_ids"][0])
         == "hello world<|endoftext|>hello world<|endoftext|>hello world<|endoftext|>hello"
@@ -108,7 +109,7 @@ def test_pretokenize_dataset_can_begin_sequences_with_bos(
     )
 
     tokenized_dataset = cast(Any, pretokenize_dataset(dataset, ts_tokenizer, cfg))
-    assert tokenized_dataset["input_ids"].shape[1] == cfg.context_size
+    assert np.array(tokenized_dataset["input_ids"]).shape[1] == cfg.context_size
     assert (
         ts_tokenizer.decode(tokenized_dataset["input_ids"][0])
         == "<|endoftext|>hello world<|endoftext|>hello world<|endoftext|>hello world<|endoftext|>"
@@ -129,7 +130,7 @@ def test_pretokenize_dataset_dedupes_bos(
     )
 
     tokenized_dataset = cast(Any, pretokenize_dataset(dataset, ts_tokenizer, cfg))
-    assert tokenized_dataset["input_ids"].shape[1] == cfg.context_size
+    assert np.array(tokenized_dataset["input_ids"]).shape[1] == cfg.context_size
     assert (
         ts_tokenizer.decode(tokenized_dataset["input_ids"][0])
         == "<|endoftext|>hello world<|endoftext|>hello world<|endoftext|>hello world<|endoftext|>"
@@ -152,8 +153,8 @@ def test_pretokenize_dataset_can_shuffle(ts_tokenizer: PreTrainedTokenizerBase):
     tokenized_dataset2 = cast(Any, pretokenize_dataset(dataset, ts_tokenizer, cfg))
     assert len(tokenized_dataset1) == len(tokenized_dataset2)
     assert (
-        tokenized_dataset1["input_ids"].tolist()
-        != tokenized_dataset2["input_ids"].tolist()
+        np.array(tokenized_dataset1["input_ids"]).tolist()
+        != np.array(tokenized_dataset2["input_ids"]).tolist()
     )
 
 
@@ -174,7 +175,10 @@ def test_pretokenize_runner_save_dataset_locally(tmp_path: Path):
     assert save_path.exists()
     loaded_dataset = Dataset.load_from_disk(str(save_path))
     assert len(dataset) == len(loaded_dataset)
-    assert dataset["input_ids"].tolist() == loaded_dataset["input_ids"].tolist()  # type: ignore
+    assert (
+        np.array(dataset["input_ids"]).tolist()
+        == np.array(loaded_dataset["input_ids"]).tolist()
+    )
     with open(save_path / "sae_lens.json") as f:
         metadata_dict = json.load(f)
     assert metadata_dict["original_dataset"] == "NeelNanda/c4-10k"
@@ -207,7 +211,10 @@ def test_pretokenize_runner_with_dataset_name(tmp_path: Path):
     assert save_path.exists()
     loaded_dataset = Dataset.load_from_disk(str(save_path))
     assert len(dataset) == len(loaded_dataset)
-    assert dataset["input_ids"].tolist() == loaded_dataset["input_ids"].tolist()  # type: ignore
+    assert (
+        np.array(dataset["input_ids"]).tolist()
+        == np.array(loaded_dataset["input_ids"]).tolist()
+    )
     with open(save_path / "sae_lens.json") as f:
         metadata_dict = json.load(f)
     assert metadata_dict["original_dataset"] == "nyu-mll/glue"
