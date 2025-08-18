@@ -300,6 +300,34 @@ def test_get_mwhanna_transcoder_config_8b_from_hf():
     assert cfg == expected_cfg
 
 
+def test_get_mwhanna_transcoder_config_14b_from_hf():
+    cfg = get_mwhanna_transcoder_config_from_hf(
+        repo_id="mwhanna/qwen3-14b-transcoders",
+        folder_name="layer_10.safetensors",
+        device="cpu",
+    )
+
+    expected_cfg = {
+        "architecture": "transcoder",
+        "d_in": 5120,
+        "d_out": 5120,
+        "d_sae": 163840,
+        "dtype": "float32",
+        "device": "cpu",
+        "activation_fn": "relu",
+        "normalize_activations": "none",
+        "model_name": "Qwen/Qwen3-14B",
+        "hook_name": "blocks.10.mlp.hook_in",
+        "hook_name_out": "blocks.10.hook_mlp_out",
+        "dataset_path": "monology/pile-uncopyrighted",
+        "context_size": 8192,
+        "model_from_pretrained_kwargs": {"fold_ln": False},
+        "apply_b_dec_to_input": False,
+    }
+
+    assert cfg == expected_cfg
+
+
 def test_load_sae_config_from_huggingface_gemma_2_transcoder():
     cfg = load_sae_config_from_huggingface(
         release="gemma-scope-2b-pt-transcoders",
