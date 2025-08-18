@@ -1245,9 +1245,15 @@ def get_mwhanna_transcoder_config_from_hf(
     # Extract layer from folder name
     layer = int(folder_name.replace(".safetensors", "").split("_")[-1])
 
-    wandb_config_path = hf_hub_download(
-        repo_id, "wanb-config.yaml", force_download=force_download
-    )
+    try:
+        # mwhanna transcoders sometimes have a typo in the config file name, so check for both
+        wandb_config_path = hf_hub_download(
+            repo_id, "wanb-config.yaml", force_download=force_download
+        )
+    except EntryNotFoundError:
+        wandb_config_path = hf_hub_download(
+            repo_id, "wandb-config.yaml", force_download=force_download
+        )
     base_config_path = hf_hub_download(
         repo_id, "config.yaml", force_download=force_download
     )
