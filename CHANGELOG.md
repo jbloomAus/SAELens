@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## v6.6.2 (2025-08-18)
+
+### Fix
+
+* fix: fixing mwhanna 8b qwen transcoder paths (#522)
+
+* fixing mwhanna 8b qwen transcoder paths
+
+* catch just the not found error in huggingface hub ([`256617a`](https://github.com/jbloomAus/SAELens/commit/256617a75070aab81cd3a6048131901e87760908))
+
 ## v6.6.1 (2025-08-18)
 
 ### Fix
