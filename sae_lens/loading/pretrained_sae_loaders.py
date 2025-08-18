@@ -1250,7 +1250,7 @@ def get_mwhanna_transcoder_config_from_hf(
         wandb_config_path = hf_hub_download(
             repo_id, "wanb-config.yaml", force_download=force_download
         )
-    except Exception:
+    except EntryNotFoundError:
         wandb_config_path = hf_hub_download(
             repo_id, "wandb-config.yaml", force_download=force_download
         )
