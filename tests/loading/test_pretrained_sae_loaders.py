@@ -22,6 +22,33 @@ from sae_lens.loading.pretrained_sae_loaders import (
 from sae_lens.saes.sae import SAE
 
 
+def load_and_fix_sparsify_weights(repo: str, hookpoint: str, target_path: Path):
+    """
+    Sparsify doesn't handle dtypes correctly, so we need to load and re-save the weights in float32 to get the weights to load correctly
+    """
+    repo_path = Path(
+        snapshot_download(
+            repo,
+            allow_patterns=f"{hookpoint}/*" if hookpoint is not None else None,
+        )
+    )
+    safetensors_file = repo_path / hookpoint / "sae.safetensors"
+
+    # Load and convert to float32
+    # Load the safetensors file
+    state_dict = load_file(safetensors_file)
+
+    # Convert all tensors to float32
+    state_dict_float32 = {k: v.to(torch.float32) for k, v in state_dict.items()}
+
+    # Save back as float32
+    save_file(state_dict_float32, target_path / "sae.safetensors")
+
+    # Copy cfg.json to tmp_path
+    cfg_file = repo_path / hookpoint / "cfg.json"
+    shutil.copy2(cfg_file, target_path / "cfg.json")
+
+
 def test_load_sae_config_from_huggingface():
     cfg_dict = load_sae_config_from_huggingface(
         "gpt2-small-res-jb",
@@ -440,32 +467,10 @@ def test_get_llama_scope_r1_distill_config_with_overrides():
 
 
 def test_sparsify_huggingface_loader(tmp_path: Path):
-    # Need to hackily load the SAE in float32 since sparsify doesn't handle dtypes correctly
-    # we need to load and re-save the weights in float32 to get the weights to load correctly
     repo = "EleutherAI/sae-llama-3-8b-32x"
     hookpoint = "layers.10"
-    repo_path = Path(
-        snapshot_download(
-            repo,
-            allow_patterns=f"{hookpoint}/*" if hookpoint is not None else None,
-        )
-    )
-    safetensors_file = repo_path / hookpoint / "sae.safetensors"
-
-    # Load and convert to float32
-    # Load the safetensors file
-    state_dict = load_file(safetensors_file)
-
-    # Convert all tensors to float32
-    state_dict_float32 = {k: v.to(torch.float32) for k, v in state_dict.items()}
-
-    # Save back as float32
-    save_file(state_dict_float32, tmp_path / "sae.safetensors")
-
-    # Copy cfg.json to tmp_path
-    cfg_file = repo_path / hookpoint / "cfg.json"
-    shutil.copy2(cfg_file, tmp_path / "cfg.json")
-
+    # Need to hackily load the SAE in float32 since sparsify doesn't handle dtypes correctly
+    load_and_fix_sparsify_weights(repo, hookpoint, tmp_path)
     sparsify_sae = SparseCoder.load_from_disk(tmp_path, device="cpu")
 
     cfg_dict, state_dict, _ = sparsify_huggingface_loader(

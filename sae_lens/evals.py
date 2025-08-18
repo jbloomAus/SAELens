@@ -459,14 +459,16 @@ def get_sparsity_and_variance_metrics(
             original_act = cache[hook_name]
 
         # normalise if necessary (necessary in training only, otherwise we should fold the scaling in)
-        original_act = activation_scaler.scale(original_act)
+        original_act_scaled = activation_scaler.scale(original_act)
 
         # send the (maybe normalised) activations into the SAE
-        sae_feature_activations = sae.encode(original_act.to(sae.device))
-        sae_out = sae.decode(sae_feature_activations).to(original_act.device)
+        sae_feature_activations = sae.encode(original_act_scaled.to(sae.device))
+        sae_out_scaled = sae.decode(sae_feature_activations).to(
+            original_act_scaled.device
+        )
         del cache
 
-        sae_out = activation_scaler.unscale(sae_out)
+        sae_out = activation_scaler.unscale(sae_out_scaled)
 
         flattened_sae_input = einops.rearrange(original_act, "b ctx d -> (b ctx) d")
         flattened_sae_feature_acts = einops.rearrange(
