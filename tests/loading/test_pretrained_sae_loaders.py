@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 import torch
+import yaml
 from huggingface_hub import snapshot_download
 from safetensors.torch import load_file, save_file
 from sparsify import SparseCoder, SparseCoderConfig
@@ -13,6 +14,7 @@ from sae_lens.loading.pretrained_sae_loaders import (
     get_gemma_2_transcoder_config_from_hf,
     get_llama_scope_config_from_hf,
     get_llama_scope_r1_distill_config_from_hf,
+    get_mntss_clt_layer_huggingface_loader,
     get_mwhanna_transcoder_config_from_hf,
     load_sae_config_from_huggingface,
     read_sae_components_from_disk,
@@ -816,3 +818,133 @@ def test_read_sae_components_from_disk_with_ones_scaling_factor(tmp_path: Path):
     torch.testing.assert_close(loaded_state_dict["W_dec"], W_dec)
     torch.testing.assert_close(loaded_state_dict["b_enc"], b_enc)
     torch.testing.assert_close(loaded_state_dict["b_dec"], b_dec)
+
+
+def test_get_mntss_clt_layer_huggingface_loader(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Test the MNTSS CLT layer loader with mocked files."""
+    # Test parameters
+    repo_id = "test/mntss-clt-repo"
+    folder_name = "5"  # layer number
+    device = "cpu"
+
+    # Create test dimensions
+    d_in = 128
+    d_sae = 512
+
+    # Create fake config.yaml
+    config_data = {
+        "model_name": "test-model",
+        "feature_input_hook": "mlp.hook_in",
+        "feature_output_hook": "hook_mlp_out",
+    }
+    config_path = tmp_path / "config.yaml"
+    with open(config_path, "w") as f:
+        yaml.dump(config_data, f)
+
+    # Create the actual tensor data that will be inside the nested structure
+    W_enc_tensor = torch.randn(d_sae, d_in)  # This will be transposed
+    b_enc_tensor = torch.randn(d_sae)
+    b_dec_tensor = torch.randn(d_in)
+    W_dec_tensor = torch.randn(d_in, 10)  # Will be summed to (d_in,)
+
+    # Create fake encoder file with placeholder tensors (we'll mock load_file)
+    encoder_tensors = {
+        "placeholder": torch.tensor(0.0),
+    }
+    encoder_path = tmp_path / f"W_enc_{folder_name}.safetensors"
+    save_file(encoder_tensors, encoder_path)
+
+    # Create fake decoder file with placeholder tensors
+    decoder_tensors = {
+        "placeholder": torch.tensor(0.0),
+    }
+    decoder_path = tmp_path / f"W_dec_{folder_name}.safetensors"
+    save_file(decoder_tensors, decoder_path)
+
+    # Mock hf_hub_download to return our temporary files
+    def mock_hf_hub_download(
+        repo_id_arg: str, filename: str, force_download: bool = False
+    ) -> str:
+        if filename == "config.yaml":
+            return str(config_path)
+        if filename == f"W_enc_{folder_name}.safetensors":
+            return str(encoder_path)
+        if filename == f"W_dec_{folder_name}.safetensors":
+            return str(decoder_path)
+        raise ValueError(f"Unexpected filename: {filename}")
+
+    # Mock load_file to return the expected nested structure
+    def mock_load_file(
+        file_path: str, device: str = "cpu"
+    ) -> dict[str, dict[str, torch.Tensor]]:
+        if f"W_enc_{folder_name}.safetensors" in file_path:
+            return {
+                "W_enc": {
+                    f"W_enc_{folder_name}": W_enc_tensor,
+                    f"b_enc_{folder_name}": b_enc_tensor,
+                    f"b_dec_{folder_name}": b_dec_tensor,
+                }
+            }
+        if f"W_dec_{folder_name}.safetensors" in file_path:
+            return {
+                "W_dec": {
+                    f"W_dec_{folder_name}": W_dec_tensor,
+                }
+            }
+        raise ValueError(f"Unexpected file path: {file_path}")
+
+    # Apply the mocks
+    monkeypatch.setattr(
+        "sae_lens.loading.pretrained_sae_loaders.hf_hub_download", mock_hf_hub_download
+    )
+    monkeypatch.setattr(
+        "sae_lens.loading.pretrained_sae_loaders.load_file", mock_load_file
+    )
+
+    # Call the function
+    cfg_dict, state_dict, log_sparsity = get_mntss_clt_layer_huggingface_loader(
+        repo_id=repo_id,
+        folder_name=folder_name,
+        device=device,
+        force_download=False,
+        cfg_overrides=None,
+    )
+
+    # Verify the config
+    expected_cfg = {
+        "architecture": "transcoder",
+        "d_in": d_in,
+        "d_out": d_in,
+        "d_sae": d_sae,
+        "dtype": "float32",
+        "device": device,
+        "activation_fn": "relu",
+        "normalize_activations": "none",
+        "model_name": "test-model",
+        "hook_name": f"blocks.{folder_name}.mlp.hook_in",
+        "hook_name_out": f"blocks.{folder_name}.hook_mlp_out",
+        "apply_b_dec_to_input": False,
+        "model_from_pretrained_kwargs": {"fold_ln": False},
+    }
+
+    assert cfg_dict == expected_cfg
+
+    # Verify the state dict structure
+    assert set(state_dict.keys()) == {"W_enc", "b_enc", "b_dec", "W_dec"}
+
+    # Verify tensor shapes
+    assert state_dict["W_enc"].shape == (d_in, d_sae)  # Transposed from original
+    assert state_dict["b_enc"].shape == (d_sae,)
+    assert state_dict["b_dec"].shape == (d_in,)
+    assert state_dict["W_dec"].shape == (d_in,)  # Summed from (d_in, 10)
+
+    # Verify log_sparsity is None
+    assert log_sparsity is None
+
+    # Verify the tensors match expected transformations
+    torch.testing.assert_close(state_dict["W_enc"], W_enc_tensor.T)
+    torch.testing.assert_close(state_dict["b_enc"], b_enc_tensor)
+    torch.testing.assert_close(state_dict["b_dec"], b_dec_tensor)
+    torch.testing.assert_close(state_dict["W_dec"], W_dec_tensor.sum(dim=1))
