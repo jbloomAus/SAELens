@@ -141,10 +141,17 @@ async def simulate_and_score(  # type: ignore
     activation_records: list[Any],
 ) -> Any:
     """Score an explanation of a neuron by how well it predicts activations on the given text sequences."""
-    from neuron_explainer.explanations.scoring import (
-        _simulate_and_score_sequence,
-        aggregate_scored_sequence_simulations,
-    )
+    try:
+        from neuron_explainer.explanations.scoring import (
+            _simulate_and_score_sequence,
+            aggregate_scored_sequence_simulations,
+        )
+    except ImportError as e:
+        raise ImportError(
+            "The neuron_explainer package is required to use this function. "
+            "Please install SAELens with the neuronpedia optional dependencies: "
+            "pip install sae-lens[neuronpedia]"
+        ) from e
 
     scored_sequence_simulations = await asyncio.gather(
         *[
@@ -237,21 +244,30 @@ async def autointerp_neuronpedia_features(  # noqa: C901
     Returns:
         None
     """
-    from neuron_explainer.activations.activation_records import calculate_max_activation
-    from neuron_explainer.activations.activations import ActivationRecord
-    from neuron_explainer.explanations.calibrated_simulator import (
-        UncalibratedNeuronSimulator,
-    )
-    from neuron_explainer.explanations.explainer import (
-        HARMONY_V4_MODELS,
-        ContextSize,
-        TokenActivationPairExplainer,
-    )
-    from neuron_explainer.explanations.few_shot_examples import FewShotExampleSet
-    from neuron_explainer.explanations.prompt_builder import PromptFormat
-    from neuron_explainer.explanations.simulator import (
-        LogprobFreeExplanationTokenSimulator,
-    )
+    try:
+        from neuron_explainer.activations.activation_records import (
+            calculate_max_activation,
+        )
+        from neuron_explainer.activations.activations import ActivationRecord
+        from neuron_explainer.explanations.calibrated_simulator import (
+            UncalibratedNeuronSimulator,
+        )
+        from neuron_explainer.explanations.explainer import (
+            HARMONY_V4_MODELS,
+            ContextSize,
+            TokenActivationPairExplainer,
+        )
+        from neuron_explainer.explanations.few_shot_examples import FewShotExampleSet
+        from neuron_explainer.explanations.prompt_builder import PromptFormat
+        from neuron_explainer.explanations.simulator import (
+            LogprobFreeExplanationTokenSimulator,
+        )
+    except ImportError as e:
+        raise ImportError(
+            "The automated-interpretability package is required to use autointerp functionality. "
+            "Please install SAELens with the neuronpedia optional dependencies: "
+            "pip install sae-lens[neuronpedia]"
+        ) from e
 
     logger.info("\n\n")
 
