@@ -8,27 +8,6 @@ from typing import Any, TypeVar
 
 import requests
 from dotenv import load_dotenv
-from neuron_explainer.activations.activation_records import calculate_max_activation
-from neuron_explainer.activations.activations import ActivationRecord
-from neuron_explainer.explanations.calibrated_simulator import (
-    UncalibratedNeuronSimulator,
-)
-from neuron_explainer.explanations.explainer import (
-    HARMONY_V4_MODELS,
-    ContextSize,
-    TokenActivationPairExplainer,
-)
-from neuron_explainer.explanations.explanations import ScoredSimulation
-from neuron_explainer.explanations.few_shot_examples import FewShotExampleSet
-from neuron_explainer.explanations.prompt_builder import PromptFormat
-from neuron_explainer.explanations.scoring import (
-    _simulate_and_score_sequence,
-    aggregate_scored_sequence_simulations,
-)
-from neuron_explainer.explanations.simulator import (
-    LogprobFreeExplanationTokenSimulator,
-    NeuronSimulator,
-)
 from tenacity import retry, stop_after_attempt, wait_random_exponential
 
 from sae_lens import SAE, logger
@@ -158,10 +137,15 @@ def sleep_identity(x: T) -> T:
 
 @retry(wait=wait_random_exponential(min=1, max=500), stop=stop_after_attempt(10))
 async def simulate_and_score(  # type: ignore
-    simulator: NeuronSimulator,
-    activation_records: list[ActivationRecord],  # type: ignore
-) -> ScoredSimulation:  # type: ignore
+    simulator: Any,
+    activation_records: list[Any],
+) -> Any:
     """Score an explanation of a neuron by how well it predicts activations on the given text sequences."""
+    from neuron_explainer.explanations.scoring import (
+        _simulate_and_score_sequence,
+        aggregate_scored_sequence_simulations,
+    )
+
     scored_sequence_simulations = await asyncio.gather(
         *[
             sleep_identity(
@@ -253,6 +237,22 @@ async def autointerp_neuronpedia_features(  # noqa: C901
     Returns:
         None
     """
+    from neuron_explainer.activations.activation_records import calculate_max_activation
+    from neuron_explainer.activations.activations import ActivationRecord
+    from neuron_explainer.explanations.calibrated_simulator import (
+        UncalibratedNeuronSimulator,
+    )
+    from neuron_explainer.explanations.explainer import (
+        HARMONY_V4_MODELS,
+        ContextSize,
+        TokenActivationPairExplainer,
+    )
+    from neuron_explainer.explanations.few_shot_examples import FewShotExampleSet
+    from neuron_explainer.explanations.prompt_builder import PromptFormat
+    from neuron_explainer.explanations.simulator import (
+        LogprobFreeExplanationTokenSimulator,
+    )
+
     logger.info("\n\n")
 
     if os.getenv("OPENAI_API_KEY") is None:
