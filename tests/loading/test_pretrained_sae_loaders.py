@@ -876,23 +876,15 @@ def test_get_mntss_clt_layer_huggingface_loader(
         raise ValueError(f"Unexpected filename: {filename}")
 
     # Mock load_file to return the expected nested structure
-    def mock_load_file(
-        file_path: str, device: str = "cpu"
-    ) -> dict[str, dict[str, torch.Tensor]]:
+    def mock_load_file(file_path: str, device: str = "cpu") -> dict[str, torch.Tensor]:
         if f"W_enc_{folder_name}.safetensors" in file_path:
             return {
-                "W_enc": {
-                    f"W_enc_{folder_name}": W_enc_tensor,
-                    f"b_enc_{folder_name}": b_enc_tensor,
-                    f"b_dec_{folder_name}": b_dec_tensor,
-                }
+                f"W_enc_{folder_name}": W_enc_tensor,
+                f"b_enc_{folder_name}": b_enc_tensor,
+                f"b_dec_{folder_name}": b_dec_tensor,
             }
         if f"W_dec_{folder_name}.safetensors" in file_path:
-            return {
-                "W_dec": {
-                    f"W_dec_{folder_name}": W_dec_tensor,
-                }
-            }
+            return {f"W_dec_{folder_name}": W_dec_tensor}
         raise ValueError(f"Unexpected file path: {file_path}")
 
     # Apply the mocks

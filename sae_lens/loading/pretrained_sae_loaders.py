@@ -1355,8 +1355,8 @@ def mntss_clt_layer_huggingface_loader(
         force_download=force_download,
     )
 
-    encoder_state_dict = load_file(encoder_path, device=device)["W_enc"]
-    decoder_state_dict = load_file(decoder_path, device=device)["W_dec"]
+    encoder_state_dict = load_file(encoder_path, device=device)
+    decoder_state_dict = load_file(decoder_path, device=device)
 
     with torch.no_grad():
         state_dict = {
