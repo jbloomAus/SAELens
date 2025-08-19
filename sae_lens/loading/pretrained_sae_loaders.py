@@ -1326,7 +1326,7 @@ def mwhanna_transcoder_huggingface_loader(
     return cfg_dict, state_dict, None
 
 
-def get_mntss_clt_layer_huggingface_loader(
+def mntss_clt_layer_huggingface_loader(
     repo_id: str,
     folder_name: str,
     device: str = "cpu",
@@ -1397,7 +1397,7 @@ NAMED_PRETRAINED_SAE_LOADERS: dict[str, PretrainedSaeHuggingfaceLoader] = {
     "sparsify": sparsify_huggingface_loader,
     "gemma_2_transcoder": gemma_2_transcoder_huggingface_loader,
     "mwhanna_transcoder": mwhanna_transcoder_huggingface_loader,
-    "mntss_clt_layer_transcoder": get_mntss_clt_layer_huggingface_loader,
+    "mntss_clt_layer_transcoder": mntss_clt_layer_huggingface_loader,
 }
 
 

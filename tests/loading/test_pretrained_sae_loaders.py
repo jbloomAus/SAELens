@@ -14,9 +14,9 @@ from sae_lens.loading.pretrained_sae_loaders import (
     get_gemma_2_transcoder_config_from_hf,
     get_llama_scope_config_from_hf,
     get_llama_scope_r1_distill_config_from_hf,
-    get_mntss_clt_layer_huggingface_loader,
     get_mwhanna_transcoder_config_from_hf,
     load_sae_config_from_huggingface,
+    mntss_clt_layer_huggingface_loader,
     read_sae_components_from_disk,
     sparsify_disk_loader,
     sparsify_huggingface_loader,
@@ -904,7 +904,7 @@ def test_get_mntss_clt_layer_huggingface_loader(
     )
 
     # Call the function
-    cfg_dict, state_dict, log_sparsity = get_mntss_clt_layer_huggingface_loader(
+    cfg_dict, state_dict, log_sparsity = mntss_clt_layer_huggingface_loader(
         repo_id=repo_id,
         folder_name=folder_name,
         device=device,
