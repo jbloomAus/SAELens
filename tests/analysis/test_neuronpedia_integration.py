@@ -106,7 +106,7 @@ def test_open_neuronpedia_feature_dashboard_with_none_id(
 @pytest.mark.anyio
 @patch("sae_lens.analysis.neuronpedia_integration.requests.get")
 @patch("sae_lens.analysis.neuronpedia_integration.requests.post")
-@patch("sae_lens.analysis.neuronpedia_integration.TokenActivationPairExplainer")
+@patch("neuron_explainer.explanations.explainer.TokenActivationPairExplainer")
 @patch("sae_lens.analysis.neuronpedia_integration.simulate_and_score")
 @patch("sae_lens.analysis.neuronpedia_integration.os.makedirs")
 @patch("sae_lens.analysis.neuronpedia_integration.os.getenv")
@@ -199,7 +199,15 @@ async def test_autointerp_neuronpedia_features_success(
 
     # Verify file operations
     mock_makedirs.assert_called_once()
-    mock_file_open.assert_called_once()
+    # Check that our output file was opened (the second call is for our file)
+    assert mock_file_open.call_count >= 1
+    # Verify the output file was opened with the correct path pattern
+    output_calls = [
+        call
+        for call in mock_file_open.call_args_list
+        if "neuronpedia_outputs" in str(call)
+    ]
+    assert len(output_calls) == 1
 
     # Verify the feature was populated
     assert features[0].autointerp_explanation == "This feature detects greetings"
@@ -411,7 +419,7 @@ async def test_autointerp_neuronpedia_features_dead_feature(
 
 @pytest.mark.anyio
 @patch("sae_lens.analysis.neuronpedia_integration.requests.get")
-@patch("sae_lens.analysis.neuronpedia_integration.TokenActivationPairExplainer")
+@patch("neuron_explainer.explanations.explainer.TokenActivationPairExplainer")
 @patch("sae_lens.analysis.neuronpedia_integration.os.getenv")
 async def test_autointerp_neuronpedia_features_without_scoring(
     mock_getenv: MagicMock,
