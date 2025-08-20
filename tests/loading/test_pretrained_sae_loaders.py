@@ -865,7 +865,9 @@ def test_get_mntss_clt_layer_huggingface_loader(
 
     # Mock hf_hub_download to return our temporary files
     def mock_hf_hub_download(
-        repo_id_arg: str, filename: str, force_download: bool = False
+        repo_id_arg: str,  # noqa: ARG001
+        filename: str,
+        force_download: bool = False,  # noqa: ARG001
     ) -> str:
         if filename == "config.yaml":
             return str(config_path)
@@ -876,7 +878,7 @@ def test_get_mntss_clt_layer_huggingface_loader(
         raise ValueError(f"Unexpected filename: {filename}")
 
     # Mock load_file to return the expected nested structure
-    def mock_load_file(file_path: str, device: str = "cpu") -> dict[str, torch.Tensor]:
+    def mock_load_file(file_path: str, device: str = "cpu") -> dict[str, torch.Tensor]:  # noqa: ARG001
         if f"W_enc_{folder_name}.safetensors" in file_path:
             return {
                 f"W_enc_{folder_name}": W_enc_tensor,
