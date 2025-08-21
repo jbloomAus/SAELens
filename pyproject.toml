@@ -33,7 +33,6 @@ pyyaml = "^6.0.1"
 typing-extensions = "^4.10.0"
 simple-parsing = "^0.1.6"
 tenacity = ">=9.0.0"
-automated-interpretability = { version = ">=0.0.5,<1.0.0", optional = true }
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.2"
