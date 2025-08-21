@@ -92,3 +92,5 @@ The removed options include:
 `SAETrainingRunner` has been renamed to `LanguageModelSAETrainingRunner`, although the `SAETrainingRunner` name will still keep working for now. This change was made to allow other types of SAETrainingRunners to be added in the future (e.g. for vision models).
 
 Running SAE training from the CLI now requires running the script: `python -m sae_lens.llm_sae_training_runner` to reflect this change.
+
+`SAE.cfg` now only contains config keys that are essential for running the SAE. Everything else, such as `prepend_bos`, has been moved to `SAE.cfg.metadata`.
