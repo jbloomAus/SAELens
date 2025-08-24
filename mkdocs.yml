@@ -1,6 +1,7 @@
 site_name: SAE Lens 
 site_description: Docs for Sparse Autoencoder Training and Analysis Library
 site_author: Joseph Bloom
+site_url: https://jbloomAus.github.io/SAELens/
 repo_url: http://github.com/jbloomAus/SAELens
 repo_name: jbloomAus/SAELens
 edit_uri: ""
@@ -49,6 +50,7 @@ nav:
   - Training SAEs: training_saes.md
   - Citation: citation.md
   - Contributing: contributing.md
+  - Migrating to v6: migrating.md
   - API: api.md
   - Supported SAEs: sae_table.md
 
@@ -56,6 +58,7 @@ plugins:
   - search
   - autorefs
   - section-index
+  - mike
   - mkdocstrings:
       custom_templates: null
       watch:
@@ -65,6 +68,7 @@ hooks:
   - docs/generate_sae_table.py
 
 markdown_extensions:
+  - admonition
   - pymdownx.highlight:
       anchor_linenums: true
       line_spans: __span
@@ -72,3 +76,7 @@ markdown_extensions:
   - pymdownx.inlinehilite
   - pymdownx.snippets
   - pymdownx.superfences
+
+extra:
+  version:
+    provider: mike

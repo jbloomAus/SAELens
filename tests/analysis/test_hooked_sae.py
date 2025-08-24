@@ -6,7 +6,9 @@ from transformer_lens import HookedTransformer
 from transformer_lens.hook_points import HookPoint
 
 from sae_lens import HookedSAETransformer
-from sae_lens.sae import SAE, SAEConfig
+from sae_lens.saes.sae import SAE, SAEMetadata
+from sae_lens.saes.standard_sae import StandardSAE, StandardSAEConfig
+from tests.helpers import assert_close
 
 MODEL = "solu-1l"
 prompt = "Hello World!"
@@ -42,29 +44,22 @@ def get_hooked_sae(model: HookedTransformer, act_name: str) -> SAE:
     site = act_name.split(".")[-1]
     d_in = site_to_size[site]
 
-    sae_cfg = SAEConfig(
-        architecture="standard",
+    sae_cfg = StandardSAEConfig(
         d_in=d_in,
         d_sae=d_in * 2,
         dtype="float32",
         device="cpu",
-        model_name=MODEL,
-        hook_name=act_name,
-        hook_layer=0,
-        hook_head_index=None,
-        activation_fn_str="relu",
-        prepend_bos=True,
-        context_size=128,
-        dataset_path="test",
-        dataset_trust_remote_code=True,
         apply_b_dec_to_input=False,
-        finetuning_scaling_factor=False,
-        sae_lens_training_version=None,
-        normalize_activations="none",
-        model_from_pretrained_kwargs={},
+        reshape_activations="hook_z" if act_name.endswith("hook_z") else "none",
+        metadata=SAEMetadata(
+            hook_name=act_name,
+            model_name=MODEL,
+            hook_head_index=None,
+            prepend_bos=True,
+        ),
     )
 
-    return SAE(sae_cfg)
+    return StandardSAE(sae_cfg)
 
 
 @pytest.fixture(
@@ -92,7 +87,7 @@ def hooked_sae(
 def test_forward_reconstructs_input(model: HookedTransformer, hooked_sae: SAE):
     """Verfiy that the HookedSAE returns an output with the same shape as the input activations."""
 
-    act_name = hooked_sae.cfg.hook_name
+    act_name = hooked_sae.cfg.metadata.hook_name
     _, cache = model.run_with_cache(prompt, names_filter=act_name)
     x = cache[act_name]
 
@@ -103,7 +98,7 @@ def test_forward_reconstructs_input(model: HookedTransformer, hooked_sae: SAE):
 def test_run_with_cache(model: HookedTransformer, hooked_sae: SAE):
     """Verifies that run_with_cache caches SAE activations"""
 
-    act_name = hooked_sae.cfg.hook_name
+    act_name = hooked_sae.cfg.metadata.hook_name
     _, cache = model.run_with_cache(prompt, names_filter=act_name)
     x = cache[act_name]
 
@@ -121,7 +116,7 @@ def test_run_with_hooks(model: HookedTransformer, hooked_sae: SAE):
     """Verifies that run_with_hooks works with SAE activations"""
 
     c = Counter()
-    act_name = hooked_sae.cfg.hook_name
+    act_name = hooked_sae.cfg.metadata.hook_name
 
     _, cache = model.run_with_cache(prompt, names_filter=act_name)
     x = cache[act_name]
@@ -146,7 +141,7 @@ def test_error_term(model: HookedTransformer, hooked_sae: SAE):
     """Verifies that that if we use error_terms, HookedSAE returns an output that is equal tdef test_feature_grads_with_error_term(model: HookedTransformer, hooked_sae: SparseAutoencoderBase):
     o the input activations."""
 
-    act_name = hooked_sae.cfg.hook_name
+    act_name = hooked_sae.cfg.metadata.hook_name
     hooked_sae.use_error_term = True
 
     _, cache = model.run_with_cache(prompt, names_filter=act_name)
@@ -154,11 +149,11 @@ def test_error_term(model: HookedTransformer, hooked_sae: SAE):
 
     sae_output = hooked_sae(x)
     assert sae_output.shape == x.shape
-    assert torch.allclose(sae_output, x, atol=1e-6)
+    assert_close(sae_output, x, atol=1e-6)
 
     """Verifies that pytorch backward computes the correct feature gradients when using error_terms. Motivated by the need to compute feature gradients for attribution patching."""
 
-    act_name = hooked_sae.cfg.hook_name
+    act_name = hooked_sae.cfg.metadata.hook_name
     hooked_sae.use_error_term = True
 
     # Get input activations
@@ -176,7 +171,7 @@ def test_error_term(model: HookedTransformer, hooked_sae: SAE):
     hooked_sae.add_hook("hook_sae_output", backward_cache_hook, "bwd")  # type: ignore
 
     sae_output = hooked_sae(x)
-    assert torch.allclose(sae_output, x, atol=1e-6)
+    assert_close(sae_output, x, atol=1e-6)
     value = sae_output.sum()
     value.backward()
     hooked_sae.reset_hooks()
@@ -191,4 +186,4 @@ def test_error_term(model: HookedTransformer, hooked_sae: SAE):
         analytic_grad = grad_cache["hook_sae_output"] @ hooked_sae.W_dec.T
 
     # Compare analytic gradient with pytorch computed gradient
-    assert torch.allclose(grad_cache["hook_sae_acts_post"], analytic_grad, atol=1e-6)
+    assert_close(grad_cache["hook_sae_acts_post"], analytic_grad, atol=1e-6)

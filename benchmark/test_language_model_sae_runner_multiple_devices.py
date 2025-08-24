@@ -1,7 +1,7 @@
 import torch
 
 from sae_lens.config import LanguageModelSAERunnerConfig
-from sae_lens.sae_training_runner import SAETrainingRunner
+from sae_lens.llm_sae_training_runner import LanguageModelSAETrainingRunner
 
 # os.environ["WANDB_MODE"] = "offline"  # turn this off if you want to see the output
 
@@ -30,7 +30,6 @@ BASE_CFG = dict(
     model_name="gelu-1l",
     ## MLP Layer 0 ##
     hook_name="blocks.0.hook_mlp_out",
-    hook_layer=0,
     d_in=512,
     dataset_path="NeelNanda/c4-tokenized-2b",
     context_size=256,
@@ -46,7 +45,6 @@ BASE_CFG = dict(
     train_batch_size_tokens=4096,
     # Loss Function
     ## Reconstruction Coefficient.
-    mse_loss_normalization=None,  # MSE Loss Normalization is not mentioned (so we use stanrd MSE Loss). But not we take an average over the batch.
     ## Anthropic does not mention using an Lp norm other than L1.
     l1_coefficient=5,
     lp_norm=1.0,
@@ -63,8 +61,6 @@ BASE_CFG = dict(
     # Initialization / Architecture
     apply_b_dec_to_input=False,
     # encoder bias zero's. (I'm not sure what it is by default now)
-    # decoder bias zero's.
-    b_dec_init_method="zeros",
     normalize_sae_decoder=False,
     decoder_heuristic_init=True,
     init_encoder_as_decoder_transpose=True,
@@ -113,7 +109,7 @@ def test_sae_runner_multiple_devices():
     cfg = LanguageModelSAERunnerConfig(**cfg_dict)  # type: ignore
 
     # look at the next cell to see some instruction for what to do while this is running.
-    sae = SAETrainingRunner(cfg).run()
+    sae = LanguageModelSAETrainingRunner(cfg).run()
 
     assert sae is not None
     # know whether or not this works by looking at the dashboard!
@@ -133,8 +129,7 @@ def test_sae_runner_multiple_devices_sae_act_store_on_gpus():
     cfg_dict["eval_every_n_wandb_logs"] = 3
     cfg = LanguageModelSAERunnerConfig(**cfg_dict)  # type: ignore
 
-    # look at the next cell to see some instruction for what to do while this is running.
-    sae = SAETrainingRunner(cfg).run()
+    sae = LanguageModelSAETrainingRunner(cfg).run()
 
     assert sae is not None
     # know whether or not this works by looking at the dashboard!

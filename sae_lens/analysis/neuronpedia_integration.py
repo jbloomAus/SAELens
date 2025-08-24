@@ -8,27 +8,6 @@ from typing import Any, TypeVar
 
 import requests
 from dotenv import load_dotenv
-from neuron_explainer.activations.activation_records import calculate_max_activation
-from neuron_explainer.activations.activations import ActivationRecord
-from neuron_explainer.explanations.calibrated_simulator import (
-    UncalibratedNeuronSimulator,
-)
-from neuron_explainer.explanations.explainer import (
-    HARMONY_V4_MODELS,
-    ContextSize,
-    TokenActivationPairExplainer,
-)
-from neuron_explainer.explanations.explanations import ScoredSimulation
-from neuron_explainer.explanations.few_shot_examples import FewShotExampleSet
-from neuron_explainer.explanations.prompt_builder import PromptFormat
-from neuron_explainer.explanations.scoring import (
-    _simulate_and_score_sequence,
-    aggregate_scored_sequence_simulations,
-)
-from neuron_explainer.explanations.simulator import (
-    LogprobFreeExplanationTokenSimulator,
-    NeuronSimulator,
-)
 from tenacity import retry, stop_after_attempt, wait_random_exponential
 
 from sae_lens import SAE, logger
@@ -58,8 +37,8 @@ def NanAndInfReplacer(value: str):
     return NAN_REPLACEMENT
 
 
-def open_neuronpedia_feature_dashboard(sae: SAE, index: int):
-    sae_id = sae.cfg.neuronpedia_id
+def open_neuronpedia_feature_dashboard(sae: SAE[Any], index: int):
+    sae_id = sae.cfg.metadata.neuronpedia_id
     if sae_id is None:
         logger.warning(
             "SAE does not have a Neuronpedia ID. Either dashboards for this SAE do not exist (yet) on Neuronpedia, or the SAE was not loaded via the from_pretrained method"
@@ -70,11 +49,11 @@ def open_neuronpedia_feature_dashboard(sae: SAE, index: int):
 
 
 def get_neuronpedia_quick_list(
-    sae: SAE,
+    sae: SAE[Any],
     features: list[int],
     name: str = "temporary_list",
 ):
-    sae_id = sae.cfg.neuronpedia_id
+    sae_id = sae.cfg.metadata.neuronpedia_id
     if sae_id is None:
         logger.warning(
             "SAE does not have a Neuronpedia ID. Either dashboards for this SAE do not exist (yet) on Neuronpedia, or the SAE was not loaded via the from_pretrained method"
@@ -86,7 +65,7 @@ def get_neuronpedia_quick_list(
     url = url + "?name=" + name
     list_feature = [
         {
-            "modelId": sae.cfg.model_name,
+            "modelId": sae.cfg.metadata.model_name,
             "layer": sae_id.split("/")[1],
             "index": str(feature),
         }
@@ -157,10 +136,23 @@ def sleep_identity(x: T) -> T:
 
 
 @retry(wait=wait_random_exponential(min=1, max=500), stop=stop_after_attempt(10))
-async def simulate_and_score(
-    simulator: NeuronSimulator, activation_records: list[ActivationRecord]
-) -> ScoredSimulation:
+async def simulate_and_score(  # type: ignore
+    simulator: Any,
+    activation_records: list[Any],
+) -> Any:
     """Score an explanation of a neuron by how well it predicts activations on the given text sequences."""
+    try:
+        from neuron_explainer.explanations.scoring import (
+            _simulate_and_score_sequence,
+            aggregate_scored_sequence_simulations,
+        )
+    except ImportError as e:
+        raise ImportError(
+            "The neuron_explainer package is required to use this function. "
+            "Please install SAELens with the neuronpedia optional dependencies: "
+            "pip install sae-lens[neuronpedia]"
+        ) from e
+
     scored_sequence_simulations = await asyncio.gather(
         *[
             sleep_identity(
@@ -252,6 +244,31 @@ async def autointerp_neuronpedia_features(  # noqa: C901
     Returns:
         None
     """
+    try:
+        from neuron_explainer.activations.activation_records import (
+            calculate_max_activation,
+        )
+        from neuron_explainer.activations.activations import ActivationRecord
+        from neuron_explainer.explanations.calibrated_simulator import (
+            UncalibratedNeuronSimulator,
+        )
+        from neuron_explainer.explanations.explainer import (
+            HARMONY_V4_MODELS,
+            ContextSize,
+            TokenActivationPairExplainer,
+        )
+        from neuron_explainer.explanations.few_shot_examples import FewShotExampleSet
+        from neuron_explainer.explanations.prompt_builder import PromptFormat
+        from neuron_explainer.explanations.simulator import (
+            LogprobFreeExplanationTokenSimulator,
+        )
+    except ImportError as e:
+        raise ImportError(
+            "The automated-interpretability package is required to use autointerp functionality. "
+            "Please install SAELens with the neuronpedia optional dependencies: "
+            "pip install sae-lens[neuronpedia]"
+        ) from e
+
     logger.info("\n\n")
 
     if os.getenv("OPENAI_API_KEY") is None:
@@ -330,8 +347,9 @@ async def autointerp_neuronpedia_features(  # noqa: C901
             feature.activations = []
         activation_records = [
             ActivationRecord(
-                tokens=activation.tokens, activations=activation.act_values
-            )
+                tokens=activation.tokens,  # type: ignore
+                activations=activation.act_values,  # type: ignore
+            )  # type: ignore
             for activation in feature.activations
         ]
 
@@ -384,15 +402,15 @@ async def autointerp_neuronpedia_features(  # noqa: C901
 
             temp_activation_records = [
                 ActivationRecord(
-                    tokens=[
+                    tokens=[  # type: ignore
                         token.replace("<|endoftext|>", "<|not_endoftext|>")
                         .replace(" 55", "_55")
                         .encode("ascii", errors="backslashreplace")
                         .decode("ascii")
-                        for token in activation_record.tokens
+                        for token in activation_record.tokens  # type: ignore
                     ],
-                    activations=activation_record.activations,
-                )
+                    activations=activation_record.activations,  # type: ignore
+                )  # type: ignore
                 for activation_record in activation_records
             ]
 

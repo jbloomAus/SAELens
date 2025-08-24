@@ -4,7 +4,7 @@ from textwrap import dedent
 import pytest
 from huggingface_hub import HfApi
 
-from sae_lens.sae import SAE
+from sae_lens.saes.sae import SAE
 from sae_lens.training.upload_saes_to_huggingface import (
     _build_sae_path,
     _create_default_readme,
@@ -33,7 +33,7 @@ def test_create_default_readme():
         ```python
         from sae_lens import SAE
 
-        sae, cfg_dict, sparsity = SAE.from_pretrained("jimi/hendrix", "<sae_id>")
+        sae = SAE.from_pretrained("jimi/hendrix", "<sae_id>")
         ```
         """
     ).strip()
@@ -41,8 +41,8 @@ def test_create_default_readme():
 
 
 def test_build_sae_path_saves_live_saes_to_tmpdir(tmp_path: Path):
-    cfg = build_sae_cfg(device="cpu")
-    sae = SAE.from_dict(cfg.get_base_sae_cfg_dict())
+    cfg = build_sae_cfg()
+    sae = SAE.from_dict(cfg.to_dict())
     sae_path = _build_sae_path(sae, str(tmp_path))
     assert sae_path == tmp_path
     assert (tmp_path / "sae_weights.safetensors").exists()

@@ -5,10 +5,11 @@ from typing import Any, Callable
 import torch
 from jaxtyping import Float
 from transformer_lens.ActivationCache import ActivationCache
+from transformer_lens.components.mlps.can_be_used_as_mlp import CanBeUsedAsMLP
 from transformer_lens.hook_points import HookPoint  # Hooking utilities
 from transformer_lens.HookedTransformer import HookedTransformer
 
-from sae_lens.sae import SAE
+from sae_lens.saes.sae import SAE
 
 SingleLoss = Float[torch.Tensor, ""]  # Type alias for a single element tensor
 LossPerToken = Float[torch.Tensor, "batch pos-1"]
@@ -50,6 +51,13 @@ def set_deep_attr(obj: Any, path: str, value: Any):
     setattr(obj, parts[-1], value)
 
 
+def add_hook_in_to_mlp(mlp: CanBeUsedAsMLP):
+    # Temporary hack to add a `mlp.hook_in` hook to mimic what's in circuit-tracer
+    mlp.hook_in = HookPoint()
+    original_forward = mlp.forward
+    mlp.forward = lambda x: original_forward(mlp.hook_in(x))  # type: ignore
+
+
 class HookedSAETransformer(HookedTransformer):
     def __init__(
         self,
@@ -66,9 +74,14 @@ class HookedSAETransformer(HookedTransformer):
             **model_kwargs: Keyword arguments for HookedTransformer initialization
         """
         super().__init__(*model_args, **model_kwargs)
+
+        for block in self.blocks:
+            add_hook_in_to_mlp(block.mlp)  # type: ignore
+        self.setup()
+
         self.acts_to_saes: dict[str, SAE] = {}  # type: ignore
 
-    def add_sae(self, sae: SAE, use_error_term: bool | None = None):
+    def add_sae(self, sae: SAE[Any], use_error_term: bool | None = None):
         """Attaches an SAE to the model
 
         WARNING: This sae will be permanantly attached until you remove it with reset_saes. This function will also overwrite any existing SAE attached to the same hook point.
@@ -77,7 +90,7 @@ class HookedSAETransformer(HookedTransformer):
             sae: SparseAutoencoderBase. The SAE to attach to the model
             use_error_term: (bool | None) If provided, will set the use_error_term attribute of the SAE to this value. Determines whether the SAE returns input or reconstruction. Defaults to None.
         """
-        act_name = sae.cfg.hook_name
+        act_name = sae.cfg.metadata.hook_name
         if (act_name not in self.acts_to_saes) and (act_name not in self.hook_dict):
             logging.warning(
                 f"No hook found for {act_name}. Skipping. Check model.hook_dict for available hooks."
@@ -92,7 +105,7 @@ class HookedSAETransformer(HookedTransformer):
         set_deep_attr(self, act_name, sae)
         self.setup()
 
-    def _reset_sae(self, act_name: str, prev_sae: SAE | None = None):
+    def _reset_sae(self, act_name: str, prev_sae: SAE[Any] | None = None):
         """Resets an SAE that was attached to the model
 
         By default will remove the SAE from that hook_point.
@@ -124,7 +137,7 @@ class HookedSAETransformer(HookedTransformer):
     def reset_saes(
         self,
         act_names: str | list[str] | None = None,
-        prev_saes: list[SAE | None] | None = None,
+        prev_saes: list[SAE[Any] | None] | None = None,
     ):
         """Reset the SAEs attached to the model
 
@@ -154,7 +167,7 @@ class HookedSAETransformer(HookedTransformer):
     def run_with_saes(
         self,
         *model_args: Any,
-        saes: SAE | list[SAE] = [],
+        saes: SAE[Any] | list[SAE[Any]] = [],
         reset_saes_end: bool = True,
         use_error_term: bool | None = None,
         **model_kwargs: Any,
@@ -183,7 +196,7 @@ class HookedSAETransformer(HookedTransformer):
     def run_with_cache_with_saes(
         self,
         *model_args: Any,
-        saes: SAE | list[SAE] = [],
+        saes: SAE[Any] | list[SAE[Any]] = [],
         reset_saes_end: bool = True,
         use_error_term: bool | None = None,
         return_cache_object: bool = True,
@@ -225,7 +238,7 @@ class HookedSAETransformer(HookedTransformer):
     def run_with_hooks_with_saes(
         self,
         *model_args: Any,
-        saes: SAE | list[SAE] = [],
+        saes: SAE[Any] | list[SAE[Any]] = [],
         reset_saes_end: bool = True,
         fwd_hooks: list[tuple[str | Callable, Callable]] = [],  # type: ignore
         bwd_hooks: list[tuple[str | Callable, Callable]] = [],  # type: ignore
@@ -261,7 +274,7 @@ class HookedSAETransformer(HookedTransformer):
     @contextmanager
     def saes(
         self,
-        saes: SAE | list[SAE] = [],
+        saes: SAE[Any] | list[SAE[Any]] = [],
         reset_saes_end: bool = True,
         use_error_term: bool | None = None,
     ):
@@ -275,7 +288,7 @@ class HookedSAETransformer(HookedTransformer):
         .. code-block:: python
 
             from transformer_lens import HookedSAETransformer
-            from sae_lens.sae import SAE
+            from sae_lens.saes.sae import SAE
 
             model = HookedSAETransformer.from_pretrained('gpt2-small')
             sae_cfg = SAEConfig(...)
@@ -295,8 +308,8 @@ class HookedSAETransformer(HookedTransformer):
             saes = [saes]
         try:
             for sae in saes:
-                act_names_to_reset.append(sae.cfg.hook_name)
-                prev_sae = self.acts_to_saes.get(sae.cfg.hook_name, None)
+                act_names_to_reset.append(sae.cfg.metadata.hook_name)
+                prev_sae = self.acts_to_saes.get(sae.cfg.metadata.hook_name, None)
                 prev_saes.append(prev_sae)
                 self.add_sae(sae, use_error_term=use_error_term)
             yield self
