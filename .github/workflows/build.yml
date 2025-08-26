@@ -93,7 +93,7 @@ jobs:
           du -sh /tmp || echo "No /tmp"
       - name: Run Unit Tests
         #   Would use make, but want cov report in xml format
-        run: poetry run pytest -v --cov=sae_lens/ --cov-report=term-missing --cov-branch tests --cov-report=xml
+        run: poetry run pytest -v -s --cov=sae_lens/ --cov-report=term-missing --cov-branch tests --cov-report=xml
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           # Limit HF cache size and enable aggressive cleanup

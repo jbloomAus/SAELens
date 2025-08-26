@@ -75,13 +75,40 @@ def cleanup_tmp_path(tmp_path: Path):
 
 
 @pytest.fixture(autouse=True)
-def force_gc_after_test():
+def force_gc_after_test(request, capfd):
     """Force garbage collection after each test to free memory."""
     yield
     # Force garbage collection and clear PyTorch cache
     gc.collect()
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
+    
+    # Print disk space after each test (only in CI to avoid spam in local dev)
+    if os.getenv("CI"):
+        import subprocess
+        test_name = request.node.name
+        
+        # Capture disk usage info
+        try:
+            disk_info = subprocess.run(["df", "-h"], capture_output=True, text=True).stdout.split('\n')[:2]
+            hf_cache = subprocess.run(["du", "-sh", os.path.expanduser("~/.cache/huggingface")], 
+                                    capture_output=True, text=True).stdout.strip() or "No HF cache"
+            tmp_usage = subprocess.run(["du", "-sh", "/tmp"], 
+                                     capture_output=True, text=True).stdout.strip() or "No /tmp"
+        except Exception:
+            disk_info = ["Unable to get disk info"]
+            hf_cache = "Unable to get HF cache info"
+            tmp_usage = "Unable to get /tmp info"
+        
+        # Use capfd to ensure output is shown
+        with capfd.disabled():
+            print(f"\n=== Disk space after test: {test_name} ===", flush=True)
+            for line in disk_info:
+                if line.strip():
+                    print(line, flush=True)
+            print(f"HF Cache: {hf_cache}", flush=True)
+            print(f"Tmp: {tmp_usage}", flush=True)
+            print("=" * 50, flush=True)
 
 
 @pytest.fixture
