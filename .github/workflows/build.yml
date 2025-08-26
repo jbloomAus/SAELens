@@ -25,11 +25,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Check initial disk space
-        run: |
-          df -h
-          du -sh ~/.cache/huggingface || echo "No HF cache yet"
-          du -sh /tmp || echo "No /tmp yet"
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
@@ -37,20 +32,10 @@ jobs:
       - name: Cache Huggingface assets
         uses: actions/cache@v4
         with:
-          key: huggingface-3-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml') }}
+          key: huggingface-2-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml') }}
           path: ~/.cache/huggingface
           restore-keys: |
-            huggingface-3-${{ runner.os }}-${{ matrix.python-version }}-
-      - name: Limit HF cache size
-        run: |
-          # Set HF cache size limit to prevent runaway growth
-          mkdir -p ~/.cache/huggingface
-          # Clean cache if it gets too large (>2GB)
-          if [ -d ~/.cache/huggingface ] && [ $(du -s ~/.cache/huggingface | cut -f1) -gt 2097152 ]; then
-            echo "HF cache too large, cleaning..."
-            rm -rf ~/.cache/huggingface/hub/models--*
-            rm -rf ~/.cache/huggingface/datasets/*/cache-*
-          fi
+            huggingface-2-${{ runner.os }}-${{ matrix.python-version }}-
       - name: Load cached Poetry installation
         id: cached-poetry
         uses: actions/cache@v4
@@ -58,7 +43,7 @@ jobs:
           path: ~/.local # the path depends on the OS
           key: poetry-${{ runner.os }}-${{ matrix.python-version }}-3 # increment to reset cache
       - name: Install Poetry
-        # if: steps.cached-poetry.outputs.cache-hit != 'true'
+        if: steps.cached-poetry.outputs.cache-hit != 'true'
         uses: snok/install-poetry@v1
         with:
           virtualenvs-create: true
@@ -73,58 +58,19 @@ jobs:
           restore-keys: |
             venv-2-${{ runner.os }}-${{ matrix.python-version }}-
       - name: Install dependencies
-        # if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
         run: poetry install --no-interaction
-      - name: Check disk space after dependencies
-        run: |
-          df -h
-          du -sh ~/.cache/huggingface || echo "No HF cache"
-          du -sh .venv || echo "No venv"
       - name: Check linting
         run: poetry run ruff check .
       - name: Check formatting
         run: poetry run ruff format --check .
       - name: type checking
         run: poetry run pyright
-      - name: Check disk space before tests
-        run: |
-          df -h
-          du -sh ~/.cache/huggingface || echo "No HF cache"
-          du -sh /tmp || echo "No /tmp"
-      - name: Detailed disk analysis (one-time)
-        run: |
-          echo "=== Filesystem overview ==="
-          df -h
-          echo ""
-          echo "=== Largest directories in /home ==="
-          du -h --max-depth=2 /home 2>/dev/null | sort -hr | head -10
       - name: Run Unit Tests
         #   Would use make, but want cov report in xml format
-        run: poetry run pytest -v -s --cov=sae_lens/ --cov-report=term-missing --cov-branch tests --cov-report=xml
+        run: poetry run pytest -v --cov=sae_lens/ --cov-report=term-missing --cov-branch tests --cov-report=xml
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          # Limit HF cache size and enable aggressive cleanup
-          HF_HUB_CACHE: ~/.cache/huggingface/hub
-          HF_DATASETS_CACHE: ~/.cache/huggingface/datasets
-          PYTORCH_CUDA_ALLOC_CONF: max_split_size_mb:128
-          # Force garbage collection more frequently
-          PYTHONHASHSEED: 0
-      - name: Check disk space after tests
-        run: |
-          df -h
-          du -sh ~/.cache/huggingface || echo "No HF cache"
-          du -sh /tmp || echo "No /tmp"
-          du -sh /var/tmp || echo "No /var/tmp"
-      - name: Clean up test artifacts
-        if: always()
-        run: |
-          # Clean up any large temporary files
-          find /tmp -name "*test*" -type d -exec rm -rf {} + 2>/dev/null || true
-          find /tmp -name "*pytest*" -type d -exec rm -rf {} + 2>/dev/null || true
-          # Clean up any checkpoint files that might be left behind
-          find . -name "checkpoints" -type d -exec rm -rf {} + 2>/dev/null || true
-          find . -name "*.pt" -size +10M -delete 2>/dev/null || true
-          find . -name "*.pth" -size +10M -delete 2>/dev/null || true
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4.0.1
         with:
