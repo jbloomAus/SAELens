@@ -22,7 +22,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.17">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.18">
     
     
       
@@ -690,6 +690,7 @@
 <h2 id="other-breaking-changes">Other breaking changes</h2>
 <p><code>SAETrainingRunner</code> has been renamed to <code>LanguageModelSAETrainingRunner</code>, although the <code>SAETrainingRunner</code> name will still keep working for now. This change was made to allow other types of SAETrainingRunners to be added in the future (e.g. for vision models).</p>
 <p>Running SAE training from the CLI now requires running the script: <code>python -m sae_lens.llm_sae_training_runner</code> to reflect this change.</p>
+<p><code>SAE.cfg</code> now only contains config keys that are essential for running the SAE. Everything else, such as <code>prepend_bos</code>, has been moved to <code>SAE.cfg.metadata</code>.</p>
 
 
 
