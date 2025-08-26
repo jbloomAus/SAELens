@@ -29,13 +29,13 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Cache Huggingface assets
-        uses: actions/cache@v4
-        with:
-          key: huggingface-2-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml') }}
-          path: ~/.cache/huggingface
-          restore-keys: |
-            huggingface-2-${{ runner.os }}-${{ matrix.python-version }}-
+      # - name: Cache Huggingface assets
+      #   uses: actions/cache@v4
+      #   with:
+      #     key: huggingface-2-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml') }}
+      #     path: ~/.cache/huggingface
+      #     restore-keys: |
+      #       huggingface-2-${{ runner.os }}-${{ matrix.python-version }}-
       - name: Load cached Poetry installation
         id: cached-poetry
         uses: actions/cache@v4
@@ -49,7 +49,16 @@ jobs:
           virtualenvs-create: true
           virtualenvs-in-project: true
           installer-parallel: true
+      - name: Load cached venv
+        id: cached-poetry-dependencies
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-2-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            venv-2-${{ runner.os }}-${{ matrix.python-version }}-
       - name: Install dependencies
+        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
         run: poetry install --no-interaction
       - name: Check linting
         run: poetry run ruff check .
