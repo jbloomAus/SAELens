@@ -91,6 +91,28 @@ jobs:
           df -h
           du -sh ~/.cache/huggingface || echo "No HF cache"
           du -sh /tmp || echo "No /tmp"
+      - name: Detailed disk analysis (one-time)
+        run: |
+          echo "=== Filesystem overview ==="
+          df -h
+          echo ""
+          echo "=== Top-level directories on root ==="
+          du -h --max-depth=1 / --exclude=/proc --exclude=/sys --exclude=/dev 2>/dev/null | sort -hr | head -10
+          echo ""
+          echo "=== Largest directories in /home ==="
+          du -h --max-depth=2 /home 2>/dev/null | sort -hr | head -10
+          echo ""
+          echo "=== Largest directories in /usr ==="
+          du -h --max-depth=2 /usr 2>/dev/null | sort -hr | head -10
+          echo ""
+          echo "=== Largest directories in /var ==="
+          du -h --max-depth=2 /var 2>/dev/null | sort -hr | head -10
+          echo ""
+          echo "=== Docker usage (if any) ==="
+          docker system df 2>/dev/null || echo "Docker not available"
+          echo ""
+          echo "=== Snap packages ==="
+          du -sh /snap/* 2>/dev/null | sort -hr | head -5 || echo "No snap packages"
       - name: Run Unit Tests
         #   Would use make, but want cov report in xml format
         run: poetry run pytest -v -s --cov=sae_lens/ --cov-report=term-missing --cov-branch tests --cov-report=xml

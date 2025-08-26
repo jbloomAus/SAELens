@@ -2,11 +2,15 @@ import gc
 import os
 import random
 import shutil
+import subprocess
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pytest
 import torch
+from _pytest.capture import CaptureFixture
+from _pytest.fixtures import FixtureRequest
 
 from sae_lens.saes.sae import SAE
 from sae_lens.saes.standard_sae import StandardSAEConfig
@@ -75,40 +79,105 @@ def cleanup_tmp_path(tmp_path: Path):
 
 
 @pytest.fixture(autouse=True)
-def force_gc_after_test(request, capfd):
+def force_gc_after_test(request: FixtureRequest, capfd: CaptureFixture[Any]) -> Any:
     """Force garbage collection after each test to free memory."""
     yield
     # Force garbage collection and clear PyTorch cache
     gc.collect()
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
-    
+
     # Print disk space after each test (only in CI to avoid spam in local dev)
     if os.getenv("CI"):
-        import subprocess
         test_name = request.node.name
-        
+
         # Capture disk usage info
         try:
-            disk_info = subprocess.run(["df", "-h"], capture_output=True, text=True).stdout.split('\n')[:2]
-            hf_cache = subprocess.run(["du", "-sh", os.path.expanduser("~/.cache/huggingface")], 
-                                    capture_output=True, text=True).stdout.strip() or "No HF cache"
-            tmp_usage = subprocess.run(["du", "-sh", "/tmp"], 
-                                     capture_output=True, text=True).stdout.strip() or "No /tmp"
-        except Exception:
+            disk_info = subprocess.run(
+                ["df", "-h"], capture_output=True, text=True
+            ).stdout.split("\n")[:2]
+            hf_cache = (
+                subprocess.run(
+                    ["du", "-sh", os.path.expanduser("~/.cache/huggingface")],
+                    capture_output=True,
+                    text=True,
+                ).stdout.strip()
+                or "No HF cache"
+            )
+            tmp_usage = (
+                subprocess.run(
+                    ["du", "-sh", "/tmp"], capture_output=True, text=True
+                ).stdout.strip()
+                or "No /tmp"
+            )
+
+            # Get detailed breakdown of root filesystem usage
+            root_breakdown = (
+                subprocess.run(
+                    [
+                        "du",
+                        "-h",
+                        "--max-depth=1",
+                        "/",
+                        "--exclude=/proc",
+                        "--exclude=/sys",
+                        "--exclude=/dev",
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                )
+                .stdout.strip()
+                .split("\n")
+            )
+
+            # Get top largest directories
+            largest_dirs = (
+                subprocess.run(
+                    ["du", "-h", "--max-depth=2", "/home", "/usr", "/var", "/opt"],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                )
+                .stdout.strip()
+                .split("\n")
+            )
+
+        except Exception as e:
             disk_info = ["Unable to get disk info"]
             hf_cache = "Unable to get HF cache info"
             tmp_usage = "Unable to get /tmp info"
-        
+            root_breakdown = [f"Error getting root breakdown: {e}"]
+            largest_dirs = []
+
         # Use capfd to ensure output is shown
         with capfd.disabled():
-            print(f"\n=== Disk space after test: {test_name} ===", flush=True)
+            # ruff: noqa: T201 - Print statements needed for CI debugging
+            print(f"\n=== Disk space after test: {test_name} ===", flush=True)  # noqa: T201
             for line in disk_info:
                 if line.strip():
-                    print(line, flush=True)
-            print(f"HF Cache: {hf_cache}", flush=True)
-            print(f"Tmp: {tmp_usage}", flush=True)
-            print("=" * 50, flush=True)
+                    print(line, flush=True)  # noqa: T201
+            print(f"HF Cache: {hf_cache}", flush=True)  # noqa: T201
+            print(f"Tmp: {tmp_usage}", flush=True)  # noqa: T201
+
+            print("\n--- Root filesystem breakdown ---", flush=True)  # noqa: T201
+            for line in root_breakdown[:10]:  # Show top 10 directories
+                if line.strip() and not line.endswith("/"):
+                    print(line, flush=True)  # noqa: T201
+
+            print("\n--- Largest subdirectories ---", flush=True)  # noqa: T201
+            # Sort and show largest directories
+            size_lines = []
+            for line in largest_dirs:
+                if line.strip() and "\t" in line:
+                    size_lines.append(line)
+
+            # Sort by size (rough sort by first character/number)
+            size_lines.sort(key=lambda x: x.split()[0], reverse=True)
+            for line in size_lines[:15]:  # Show top 15
+                print(line, flush=True)  # noqa: T201
+
+            print("=" * 50, flush=True)  # noqa: T201
 
 
 @pytest.fixture
