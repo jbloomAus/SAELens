@@ -13,6 +13,7 @@ from transformer_lens import HookedTransformer
 from sae_lens.config import LanguageModelSAERunnerConfig
 from sae_lens.evals import (
     EvalConfig,
+    _kl,
     all_loadable_saes,
     get_downstream_reconstruction_metrics,
     get_eval_everything_config,
@@ -667,3 +668,20 @@ def test_run_evals_cli(tmp_path: Path):
         assert (
             eval_results[0]["metrics"]["model_performance_preservation"][metric] > 0.1
         )
+
+
+def _original_kl(original_logits: torch.Tensor, new_logits: torch.Tensor):
+    original_probs = torch.nn.functional.softmax(original_logits, dim=-1)
+    log_original_probs = torch.log(original_probs)
+    new_probs = torch.nn.functional.softmax(new_logits, dim=-1)
+    log_new_probs = torch.log(new_probs)
+    kl_div = original_probs * (log_original_probs - log_new_probs)
+    return kl_div.sum(dim=-1)
+
+
+def test_kl_matches_old_implementation():
+    test_original_logits = torch.randn(2, 10, 30)
+    test_new_logits = torch.randn(2, 10, 30)
+    assert _original_kl(test_original_logits, test_new_logits) == pytest.approx(
+        _kl(test_original_logits, test_new_logits)
+    )
