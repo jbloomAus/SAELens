@@ -1,5 +1,47 @@
 # CHANGELOG
 
+## v6.6.5 (2025-08-27)
+
+### Chore
+
+* chore: reduce disk usage in CI (#533)
+
+* chore: skip caching .venv to save disk space
+
+* try skipping hf cache
+
+* trying to just skip all caching
+
+* more debugging logging for disk space
+
+* more debugging logging for disk space
+
+* more debugging
+
+* less logging, more speed
+
+* reducing disk usage of some tests
+
+* breaking hf cache ([`a2b4cb1`](https://github.com/jbloomAus/SAELens/commit/a2b4cb1239c7086f4efe522678b4c866448b6dfc))
+
+### Documentation
+
+* docs: migration doc - note that non-essential config values are moved into cfg.metadata (#529) ([`52b5ac8`](https://github.com/jbloomAus/SAELens/commit/52b5ac8a6691a299447bd6eb371f0dfbe56c707d))
+
+### Fix
+
+* fix: Stable Kullback-Leibler in evals.py  (#532)
+
+* Update evals.py
+
+* chore: fmt
+
+* test that kl calculation matches original behavior
+
+---------
+
+Co-authored-by: David Chanin &lt;chanindav@gmail.com&gt; ([`72a40e8`](https://github.com/jbloomAus/SAELens/commit/72a40e8d0d914877c17a985037f5c7e934c897ce))
+
 ## v6.6.4 (2025-08-20)
 
 ### Fix
