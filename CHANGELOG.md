@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## v6.7.0 (2025-08-27)
+
+### Feature
+
+* feat: Load CLTs from mntss as single-layer transcoders (#526)
+
+* load each layer of mntss CLTs as its own transcoder
+
+* rename mntss clt loader
+
+* fixing mntss loading
+
+* fixing linting ([`60c3848`](https://github.com/jbloomAus/SAELens/commit/60c3848675b527c76cba1ffd72b4abdc197cb20b))
+
 ## v6.6.5 (2025-08-27)
 
 ### Chore
