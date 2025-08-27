@@ -1252,11 +1252,11 @@ def get_mwhanna_transcoder_config_from_hf(
     try:
         # mwhanna transcoders sometimes have a typo in the config file name, so check for both
         wandb_config_path = hf_hub_download(
-            repo_id, "wanb-config.yaml", force_download=force_download
+            repo_id, "wandb-config.yaml", force_download=force_download
         )
     except EntryNotFoundError:
         wandb_config_path = hf_hub_download(
-            repo_id, "wandb-config.yaml", force_download=force_download
+            repo_id, "wanb-config.yaml", force_download=force_download
         )
     try:
         base_config_path = hf_hub_download(
@@ -1330,6 +1330,66 @@ def mwhanna_transcoder_huggingface_loader(
     return cfg_dict, state_dict, None
 
 
+def mntss_clt_layer_huggingface_loader(
+    repo_id: str,
+    folder_name: str,
+    device: str = "cpu",
+    force_download: bool = False,  # noqa: ARG001
+    cfg_overrides: dict[str, Any] | None = None,
+) -> tuple[dict[str, Any], dict[str, torch.Tensor], torch.Tensor | None]:
+    """
+    Load a MNTSS CLT layer as a single layer transcoder.
+    The assumption is that the `folder_name` is the layer to load as an int
+    """
+    base_config_path = hf_hub_download(
+        repo_id, "config.yaml", force_download=force_download
+    )
+    with open(base_config_path) as f:
+        cfg_info: dict[str, Any] = yaml.safe_load(f)
+
+    # We need to actually load the weights, since the config is missing most information
+    encoder_path = hf_hub_download(
+        repo_id,
+        f"W_enc_{folder_name}.safetensors",
+        force_download=force_download,
+    )
+    decoder_path = hf_hub_download(
+        repo_id,
+        f"W_dec_{folder_name}.safetensors",
+        force_download=force_download,
+    )
+
+    encoder_state_dict = load_file(encoder_path, device=device)
+    decoder_state_dict = load_file(decoder_path, device=device)
+
+    with torch.no_grad():
+        state_dict = {
+            "W_enc": encoder_state_dict[f"W_enc_{folder_name}"].T,  # type: ignore
+            "b_enc": encoder_state_dict[f"b_enc_{folder_name}"],  # type: ignore
+            "b_dec": encoder_state_dict[f"b_dec_{folder_name}"],  # type: ignore
+            "W_dec": decoder_state_dict[f"W_dec_{folder_name}"].sum(dim=1),  # type: ignore
+        }
+
+    cfg_dict = {
+        "architecture": "transcoder",
+        "d_in": state_dict["b_dec"].shape[0],
+        "d_out": state_dict["b_dec"].shape[0],
+        "d_sae": state_dict["b_enc"].shape[0],
+        "dtype": "float32",
+        "device": device if device is not None else "cpu",
+        "activation_fn": "relu",
+        "normalize_activations": "none",
+        "model_name": cfg_info["model_name"],
+        "hook_name": f"blocks.{folder_name}.{cfg_info['feature_input_hook']}",
+        "hook_name_out": f"blocks.{folder_name}.{cfg_info['feature_output_hook']}",
+        "apply_b_dec_to_input": False,
+        "model_from_pretrained_kwargs": {"fold_ln": False},
+        **(cfg_overrides or {}),
+    }
+
+    return cfg_dict, state_dict, None
+
+
 NAMED_PRETRAINED_SAE_LOADERS: dict[str, PretrainedSaeHuggingfaceLoader] = {
     "sae_lens": sae_lens_huggingface_loader,
     "connor_rob_hook_z": connor_rob_hook_z_huggingface_loader,
@@ -1341,6 +1401,7 @@ NAMED_PRETRAINED_SAE_LOADERS: dict[str, PretrainedSaeHuggingfaceLoader] = {
     "sparsify": sparsify_huggingface_loader,
     "gemma_2_transcoder": gemma_2_transcoder_huggingface_loader,
     "mwhanna_transcoder": mwhanna_transcoder_huggingface_loader,
+    "mntss_clt_layer_transcoder": mntss_clt_layer_huggingface_loader,
 }
 
 
