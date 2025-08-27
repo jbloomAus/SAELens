@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## v6.8.0 (2025-08-27)
+
+### Feature
+
+* feat: Migrate Neuronpedia usages to either the library or remove it (#528)
+
+* Remove automated_interpretability and all usages
+
+* fix: missed removing other autointerp package in pyproject.toml ([`571c81f`](https://github.com/jbloomAus/SAELens/commit/571c81f7ea050e44e9f85b1991e09139cc0344d6))
+
 ## v6.7.0 (2025-08-27)
 
 ### Feature
