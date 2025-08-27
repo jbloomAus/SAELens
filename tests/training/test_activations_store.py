@@ -8,6 +8,7 @@ import torch
 from datasets import Dataset
 from safetensors.torch import load_file
 from transformer_lens import HookedTransformer
+from transformers import AutoTokenizer
 
 from sae_lens.config import LanguageModelSAERunnerConfig, PretokenizeRunnerConfig
 from sae_lens.load_model import load_model
@@ -488,7 +489,7 @@ def test_activation_store__errors_if_neither_dataset_nor_dataset_path(
 
 def test_validate_pretokenized_dataset_tokenizer_errors_if_the_tokenizer_doesnt_match_the_model():
     ds_path = "chanind/openwebtext-gpt2"
-    model_tokenizer = HookedTransformer.from_pretrained("opt-125m").tokenizer
+    model_tokenizer = AutoTokenizer.from_pretrained("facebook/opt-125m")
     assert model_tokenizer is not None
     with pytest.raises(ValueError):
         validate_pretokenized_dataset_tokenizer(ds_path, model_tokenizer)

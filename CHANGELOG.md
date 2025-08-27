@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## v6.6.4 (2025-08-20)
+
+### Fix
+
+* fix: move automated-interpretability to an optional dependency in sae-lens (#525)
+
+* move automated-interpretability to an optional dependency in sae-lens
+
+* moving automated-interpretability imports into functions that use them
+
+* adding automated-interpretability to dev deps for CI
+
+* adding helpful error message if user tries to run stuff that requires automated-interp
+
+* fixing tests ([`6b09859`](https://github.com/jbloomAus/SAELens/commit/6b0985974621e91517ad81eef3d2c63909f9c5c4))
+
 ## v6.6.3 (2025-08-18)
 
 ### Fix
