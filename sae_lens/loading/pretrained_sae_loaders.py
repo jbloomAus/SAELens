@@ -1390,6 +1390,30 @@ def mntss_clt_layer_huggingface_loader(
     return cfg_dict, state_dict, None
 
 
+def get_mntss_clt_layer_config_from_hf(
+    repo_id: str,
+    folder_name: str,
+    device: str | None = None,
+    force_download: bool = False,  # noqa: ARG001
+    cfg_overrides: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Get config for MNTSS CLT by layer
+    Load a MNTSS CLT layer as a single layer transcoder.
+    The assumption is that the `folder_name` is the layer to load as an int
+    """
+    logger.warning(
+        "Getting the MNTSS CLT config requires downloading weights, since that's where config is stored"
+    )
+    # call mntss_clt_layer_huggingface_loader to get the config
+    return mntss_clt_layer_huggingface_loader(
+        repo_id,
+        folder_name,
+        device,
+        force_download,
+        cfg_overrides,
+    )[0]
+
+
 NAMED_PRETRAINED_SAE_LOADERS: dict[str, PretrainedSaeHuggingfaceLoader] = {
     "sae_lens": sae_lens_huggingface_loader,
     "connor_rob_hook_z": connor_rob_hook_z_huggingface_loader,
@@ -1416,4 +1440,5 @@ NAMED_PRETRAINED_SAE_CONFIG_GETTERS: dict[str, PretrainedSaeConfigHuggingfaceLoa
     "sparsify": get_sparsify_config_from_hf,
     "gemma_2_transcoder": get_gemma_2_transcoder_config_from_hf,
     "mwhanna_transcoder": get_mwhanna_transcoder_config_from_hf,
+    "mntss_clt_layer_transcoder": get_mntss_clt_layer_config_from_hf,
 }
