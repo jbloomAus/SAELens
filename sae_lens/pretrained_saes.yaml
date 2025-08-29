@@ -14745,3 +14745,87 @@ mwhanna-qwen3-0.6b-transcoders-lowl0:
   - id: layer_27
     path: layer_27.safetensors
     neuronpedia: qwen3-0.6b/27-transcoder-hp-lowl0
+
+mntss-gemma-2-2b-2.5m-clt-as-per-layer:
+  conversion_func: mntss_clt_layer_transcoder
+  model: gemma-2-2b
+  repo_id: mntss/clt-gemma-2-2b-2.5M
+  saes:
+  - id: layer_0
+    path: 0
+    neuronpedia: gemma-2-2b/0-clt-hp
+  - id: layer_1
+    path: 1
+    neuronpedia: gemma-2-2b/1-clt-hp
+  - id: layer_2
+    path: 2
+    neuronpedia: gemma-2-2b/2-clt-hp
+  - id: layer_3
+    path: 3
+    neuronpedia: gemma-2-2b/3-clt-hp
+  - id: layer_4
+    path: 4
+    neuronpedia: gemma-2-2b/4-clt-hp
+  - id: layer_5
+    path: 5
+    neuronpedia: gemma-2-2b/5-clt-hp
+  - id: layer_6
+    path: 6
+    neuronpedia: gemma-2-2b/6-clt-hp
+  - id: layer_7
+    path: 7
+    neuronpedia: gemma-2-2b/7-clt-hp
+  - id: layer_8
+    path: 8
+    neuronpedia: gemma-2-2b/8-clt-hp
+  - id: layer_9
+    path: 9
+    neuronpedia: gemma-2-2b/9-clt-hp
+  - id: layer_10
+    path: 10
+    neuronpedia: gemma-2-2b/10-clt-hp
+  - id: layer_11
+    path: 11
+    neuronpedia: gemma-2-2b/11-clt-hp
+  - id: layer_12
+    path: 12
+    neuronpedia: gemma-2-2b/12-clt-hp
+  - id: layer_13
+    path: 13
+    neuronpedia: gemma-2-2b/13-clt-hp
+  - id: layer_14
+    path: 14
+    neuronpedia: gemma-2-2b/14-clt-hp
+  - id: layer_15
+    path: 15
+    neuronpedia: gemma-2-2b/15-clt-hp
+  - id: layer_16
+    path: 16
+    neuronpedia: gemma-2-2b/16-clt-hp
+  - id: layer_17
+    path: 17
+    neuronpedia: gemma-2-2b/17-clt-hp
+  - id: layer_18
+    path: 18
+    neuronpedia: gemma-2-2b/18-clt-hp
+  - id: layer_19
+    path: 19
+    neuronpedia: gemma-2-2b/19-clt-hp
+  - id: layer_20
+    path: 20
+    neuronpedia: gemma-2-2b/20-clt-hp
+  - id: layer_21
+    path: 21
+    neuronpedia: gemma-2-2b/21-clt-hp
+  - id: layer_22
+    path: 22
+    neuronpedia: gemma-2-2b/22-clt-hp
+  - id: layer_23
+    path: 23
+    neuronpedia: gemma-2-2b/23-clt-hp
+  - id: layer_24
+    path: 24
+    neuronpedia: gemma-2-2b/24-clt-hp
+  - id: layer_25
+    path: 25
+    neuronpedia: gemma-2-2b/25-clt-hp
