@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v6.9.0 (2025-08-29)
+
+### Feature
+
+* feat: add mntss clts to pretrained yaml (#534) ([`26f29f9`](https://github.com/jbloomAus/SAELens/commit/26f29f928fecabec10178e1926cd10df7e9fa95b))
+
 ## v6.8.0 (2025-08-27)
 
 ### Feature
