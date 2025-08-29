@@ -1393,7 +1393,7 @@ def mntss_clt_layer_huggingface_loader(
 def get_mntss_clt_layer_config_from_hf(
     repo_id: str,
     folder_name: str,
-    device: str | None = None,
+    device: str,
     force_download: bool = False,  # noqa: ARG001
     cfg_overrides: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
