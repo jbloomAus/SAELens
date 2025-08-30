@@ -1,5 +1,8 @@
 import re
+import tempfile
+from contextlib import contextmanager
 from dataclasses import asdict, fields, is_dataclass
+from pathlib import Path
 from typing import Sequence, TypeVar
 
 K = TypeVar("K")
@@ -45,3 +48,18 @@ def extract_layer_from_tlens_hook_name(hook_name: str) -> int | None:
     """
     hook_match = re.search(r"\.(\d+)\.", hook_name)
     return None if hook_match is None else int(hook_match.group(1))
+
+
+@contextmanager
+def path_or_tmp_dir(path: str | Path | None):
+    """Context manager that yields a concrete Path for path.
+
+    - If path is None, creates a TemporaryDirectory and yields its Path.
+      The directory is cleaned up on context exit.
+    - Otherwise, yields Path(path) without creating or cleaning.
+    """
+    if path is None:
+        with tempfile.TemporaryDirectory() as td:
+            yield Path(td)
+    else:
+        yield Path(path)
