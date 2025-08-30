@@ -1,12 +1,14 @@
 import json
 import re
+import warnings
 from pathlib import Path
 from typing import Any, Protocol
 
 import numpy as np
+import requests
 import torch
 import yaml
-from huggingface_hub import hf_hub_download
+from huggingface_hub import hf_hub_download, hf_hub_url
 from huggingface_hub.utils import EntryNotFoundError
 from packaging.version import Version
 from safetensors import safe_open
@@ -1330,6 +1332,50 @@ def mwhanna_transcoder_huggingface_loader(
     return cfg_dict, state_dict, None
 
 
+def get_safetensors_tensor_shapes(url: str) -> dict[str, list[int]]:
+    """
+    Get tensor shapes from a safetensors file using HTTP range requests
+    without downloading the entire file.
+
+    Args:
+        url: Direct URL to the safetensors file
+
+    Returns:
+        Dictionary mapping tensor names to their shapes
+    """
+    # Check if server supports range requests
+    response = requests.head(url, timeout=10)
+    response.raise_for_status()
+
+    accept_ranges = response.headers.get("Accept-Ranges", "")
+    if "bytes" not in accept_ranges:
+        raise ValueError("Server does not support range requests")
+
+    # Fetch first 8 bytes to get metadata size
+    headers = {"Range": "bytes=0-7"}
+    response = requests.get(url, headers=headers, timeout=10)
+    if response.status_code != 206:
+        raise ValueError("Failed to fetch initial bytes for metadata size")
+
+    meta_size = int.from_bytes(response.content, byteorder="little")
+
+    # Fetch the metadata header
+    headers = {"Range": f"bytes=8-{8 + meta_size - 1}"}
+    response = requests.get(url, headers=headers, timeout=10)
+    if response.status_code != 206:
+        raise ValueError("Failed to fetch metadata header")
+
+    metadata_json = response.content.decode("utf-8").strip()
+    metadata = json.loads(metadata_json)
+
+    # Extract tensor shapes, excluding the __metadata__ key
+    tensor_shapes = {
+        name: info["shape"] for name, info in metadata.items() if name != "__metadata__"
+    }
+
+    return tensor_shapes
+
+
 def mntss_clt_layer_huggingface_loader(
     repo_id: str,
     folder_name: str,
@@ -1341,11 +1387,20 @@ def mntss_clt_layer_huggingface_loader(
     Load a MNTSS CLT layer as a single layer transcoder.
     The assumption is that the `folder_name` is the layer to load as an int
     """
-    base_config_path = hf_hub_download(
-        repo_id, "config.yaml", force_download=force_download
+
+    # warn that this sums the decoders together, so should only be used to find feature activations, not for reconstruction
+    warnings.warn(
+        "This loads the CLT layer as a single layer transcoder by summing all decoders together. This should only be used to find feature activations, not for reconstruction",
+        UserWarning,
     )
-    with open(base_config_path) as f:
-        cfg_info: dict[str, Any] = yaml.safe_load(f)
+
+    cfg_dict = get_mntss_clt_layer_config_from_hf(
+        repo_id,
+        folder_name,
+        device,
+        force_download,
+        cfg_overrides,
+    )
 
     # We need to actually load the weights, since the config is missing most information
     encoder_path = hf_hub_download(
@@ -1370,11 +1425,39 @@ def mntss_clt_layer_huggingface_loader(
             "W_dec": decoder_state_dict[f"W_dec_{folder_name}"].sum(dim=1),  # type: ignore
         }
 
+    return cfg_dict, state_dict, None
+
+
+def get_mntss_clt_layer_config_from_hf(
+    repo_id: str,
+    folder_name: str,
+    device: str,
+    force_download: bool = False,  # noqa: ARG001
+    cfg_overrides: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """
+    Load a MNTSS CLT layer as a single layer transcoder.
+    The assumption is that the `folder_name` is the layer to load as an int
+    """
+    base_config_path = hf_hub_download(
+        repo_id, "config.yaml", force_download=force_download
+    )
+    with open(base_config_path) as f:
+        cfg_info: dict[str, Any] = yaml.safe_load(f)
+
+    # Get tensor shapes without downloading full files using HTTP range requests
+    encoder_url = hf_hub_url(repo_id, f"W_enc_{folder_name}.safetensors")
+    encoder_shapes = get_safetensors_tensor_shapes(encoder_url)
+
+    # Extract shapes for the required tensors
+    b_dec_shape = encoder_shapes[f"b_dec_{folder_name}"]
+    b_enc_shape = encoder_shapes[f"b_enc_{folder_name}"]
+
     cfg_dict = {
         "architecture": "transcoder",
-        "d_in": state_dict["b_dec"].shape[0],
-        "d_out": state_dict["b_dec"].shape[0],
-        "d_sae": state_dict["b_enc"].shape[0],
+        "d_in": b_dec_shape[0],
+        "d_out": b_dec_shape[0],
+        "d_sae": b_enc_shape[0],
         "dtype": "float32",
         "device": device if device is not None else "cpu",
         "activation_fn": "relu",
@@ -1387,31 +1470,7 @@ def mntss_clt_layer_huggingface_loader(
         **(cfg_overrides or {}),
     }
 
-    return cfg_dict, state_dict, None
-
-
-def get_mntss_clt_layer_config_from_hf(
-    repo_id: str,
-    folder_name: str,
-    device: str,
-    force_download: bool = False,  # noqa: ARG001
-    cfg_overrides: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    """Get config for MNTSS CLT by layer
-    Load a MNTSS CLT layer as a single layer transcoder.
-    The assumption is that the `folder_name` is the layer to load as an int
-    """
-    logger.warning(
-        "Getting the MNTSS CLT config requires downloading weights, since that's where config is stored"
-    )
-    # call mntss_clt_layer_huggingface_loader to get the config
-    return mntss_clt_layer_huggingface_loader(
-        repo_id,
-        folder_name,
-        device,
-        force_download,
-        cfg_overrides,
-    )[0]
+    return cfg_dict
 
 
 NAMED_PRETRAINED_SAE_LOADERS: dict[str, PretrainedSaeHuggingfaceLoader] = {

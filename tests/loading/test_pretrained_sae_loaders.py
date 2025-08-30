@@ -12,6 +12,7 @@ from sae_lens.loading.pretrained_sae_loaders import (
     get_gemma_2_transcoder_config_from_hf,
     get_llama_scope_config_from_hf,
     get_llama_scope_r1_distill_config_from_hf,
+    get_mntss_clt_layer_config_from_hf,
     get_mwhanna_transcoder_config_from_hf,
     load_sae_config_from_huggingface,
     mntss_clt_layer_huggingface_loader,
@@ -212,6 +213,31 @@ def test_get_gemma_2_transcoder_config_from_hf():
         "dataset_path": "monology/pile-uncopyrighted",
         "context_size": 1024,
         "apply_b_dec_to_input": False,
+    }
+
+    assert cfg == expected_cfg
+
+
+def test_get_mntss_clt_layer_config_from_hf():
+    cfg = get_mntss_clt_layer_config_from_hf(
+        repo_id="mntss/clt-gemma-2-2b-426k",
+        folder_name="0",
+        device="cpu",
+    )
+    expected_cfg = {
+        "architecture": "transcoder",
+        "d_in": 2304,
+        "d_out": 2304,
+        "d_sae": 16384,
+        "dtype": "float32",
+        "device": "cpu",
+        "activation_fn": "relu",
+        "normalize_activations": "none",
+        "model_name": "google/gemma-2-2b",
+        "hook_name": "blocks.0.hook_resid_mid",
+        "hook_name_out": "blocks.0.hook_mlp_out",
+        "apply_b_dec_to_input": False,
+        "model_from_pretrained_kwargs": {"fold_ln": False},
     }
 
     assert cfg == expected_cfg
@@ -859,12 +885,31 @@ def test_get_mntss_clt_layer_huggingface_loader(
             return {f"W_dec_{folder_name}": W_dec_tensor}
         raise ValueError(f"Unexpected file path: {file_path}")
 
+    # Mock hf_hub_url to return a fake URL
+    def mock_hf_hub_url(repo_id_arg: str, filename: str) -> str:  # noqa: ARG001
+        return f"https://huggingface.co/{repo_id_arg}/resolve/main/{filename}"
+
+    # Mock get_safetensors_tensor_shapes to return expected tensor shapes
+    def mock_get_safetensors_tensor_shapes(url: str) -> dict[str, list[int]]:  # noqa: ARG001
+        return {
+            f"b_dec_{folder_name}": [d_in],
+            f"b_enc_{folder_name}": [d_sae],
+            f"W_enc_{folder_name}": [d_sae, d_in],
+        }
+
     # Apply the mocks
     monkeypatch.setattr(
         "sae_lens.loading.pretrained_sae_loaders.hf_hub_download", mock_hf_hub_download
     )
     monkeypatch.setattr(
         "sae_lens.loading.pretrained_sae_loaders.load_file", mock_load_file
+    )
+    monkeypatch.setattr(
+        "sae_lens.loading.pretrained_sae_loaders.hf_hub_url", mock_hf_hub_url
+    )
+    monkeypatch.setattr(
+        "sae_lens.loading.pretrained_sae_loaders.get_safetensors_tensor_shapes",
+        mock_get_safetensors_tensor_shapes,
     )
 
     # Call the function
