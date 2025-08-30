@@ -1369,11 +1369,9 @@ def get_safetensors_tensor_shapes(url: str) -> dict[str, list[int]]:
     metadata = json.loads(metadata_json)
 
     # Extract tensor shapes, excluding the __metadata__ key
-    tensor_shapes = {
+    return {
         name: info["shape"] for name, info in metadata.items() if name != "__metadata__"
     }
-
-    return tensor_shapes
 
 
 def mntss_clt_layer_huggingface_loader(
@@ -1453,7 +1451,7 @@ def get_mntss_clt_layer_config_from_hf(
     b_dec_shape = encoder_shapes[f"b_dec_{folder_name}"]
     b_enc_shape = encoder_shapes[f"b_enc_{folder_name}"]
 
-    cfg_dict = {
+    return {
         "architecture": "transcoder",
         "d_in": b_dec_shape[0],
         "d_out": b_dec_shape[0],
@@ -1469,8 +1467,6 @@ def get_mntss_clt_layer_config_from_hf(
         "model_from_pretrained_kwargs": {"fold_ln": False},
         **(cfg_overrides or {}),
     }
-
-    return cfg_dict
 
 
 NAMED_PRETRAINED_SAE_LOADERS: dict[str, PretrainedSaeHuggingfaceLoader] = {
