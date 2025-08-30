@@ -8,13 +8,18 @@ from typing import Any, Generic
 
 import torch
 import wandb
+from safetensors.torch import save_file
 from simple_parsing import ArgumentParser
 from transformer_lens.hook_points import HookedRootModule
 from typing_extensions import deprecated
 
 from sae_lens import logger
 from sae_lens.config import HfDataset, LanguageModelSAERunnerConfig
-from sae_lens.constants import ACTIVATIONS_STORE_STATE_FILENAME, RUNNER_CFG_FILENAME
+from sae_lens.constants import (
+    ACTIVATIONS_STORE_STATE_FILENAME,
+    RUNNER_CFG_FILENAME,
+    SPARSITY_FILENAME,
+)
 from sae_lens.evals import EvalConfig, run_evals
 from sae_lens.load_model import load_model
 from sae_lens.saes.batchtopk_sae import BatchTopKTrainingSAEConfig
@@ -185,10 +190,42 @@ class LanguageModelSAETrainingRunner:
         self._compile_if_needed()
         sae = self.run_trainer_with_interruption_handling(trainer)
 
+        if self.cfg.output_path is not None:
+            self.save_final_sae(
+                sae=sae,
+                output_path=self.cfg.output_path,
+                log_feature_sparsity=trainer.log_feature_sparsity,
+            )
+
         if self.cfg.logger.log_to_wandb:
             wandb.finish()
 
         return sae
+
+    def save_final_sae(
+        self,
+        sae: TrainingSAE[Any],
+        output_path: str,
+        log_feature_sparsity: torch.Tensor | None = None,
+    ):
+        base_output_path = Path(output_path)
+        base_output_path.mkdir(exist_ok=True, parents=True)
+
+        weights_path, cfg_path = sae.save_inference_model(str(base_output_path))
+
+        sparsity_path = None
+        if log_feature_sparsity is not None:
+            sparsity_path = base_output_path / SPARSITY_FILENAME
+            save_file({"sparsity": log_feature_sparsity}, sparsity_path)
+
+        if self.cfg.logger.log_to_wandb:
+            self.cfg.logger.log(
+                self,
+                weights_path,
+                cfg_path,
+                sparsity_path=sparsity_path,
+                wandb_aliases=["final_model"],
+            )
 
     def _set_sae_metadata(self):
         self.sae.cfg.metadata.dataset_path = self.cfg.dataset_path

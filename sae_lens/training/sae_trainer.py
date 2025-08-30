@@ -187,12 +187,8 @@ class SAETrainer(Generic[T_TRAINING_SAE, T_TRAINING_SAE_CONFIG]):
             )
             self.activation_scaler.scaling_factor = None
 
-        # save final inference sae group to checkpoints folder
-        self.save_checkpoint(
-            checkpoint_name=f"final_{self.n_training_samples}",
-            wandb_aliases=["final_model"],
-            save_inference_model=True,
-        )
+        if self.cfg.save_final_checkpoint:
+            self.save_checkpoint(checkpoint_name=f"final_{self.n_training_samples}")
 
         pbar.close()
         return self.sae
@@ -201,17 +197,11 @@ class SAETrainer(Generic[T_TRAINING_SAE, T_TRAINING_SAE_CONFIG]):
         self,
         checkpoint_name: str,
         wandb_aliases: list[str] | None = None,
-        save_inference_model: bool = False,
     ) -> None:
         checkpoint_path = Path(self.cfg.checkpoint_path) / checkpoint_name
         checkpoint_path.mkdir(exist_ok=True, parents=True)
 
-        save_fn = (
-            self.sae.save_inference_model
-            if save_inference_model
-            else self.sae.save_model
-        )
-        weights_path, cfg_path = save_fn(str(checkpoint_path))
+        weights_path, cfg_path = self.sae.save_model(str(checkpoint_path))
 
         sparsity_path = checkpoint_path / SPARSITY_FILENAME
         save_file({"sparsity": self.log_feature_sparsity}, sparsity_path)
