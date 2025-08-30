@@ -101,6 +101,11 @@ def test_LanguageModelSAETrainingRunner_runs_and_saves_all_architectures(
     assert output_sae.cfg.apply_b_dec_to_input == sae.cfg.apply_b_dec_to_input
     assert output_sae.cfg.metadata.__dict__ == original_metadata_dict
 
+    with open(tmp_path / "test_output" / "runner_cfg.json") as f:
+        runner_cfg = json.load(f)
+    # json turns tuples into lists, so just dump and load the metadata to make things consistent
+    assert runner_cfg == json.loads(json.dumps(cfg.to_dict()))
+
 
 def test_parse_cfg_args_raises_system_exit_on_empty_args():
     with pytest.raises(SystemExit):

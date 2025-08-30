@@ -169,9 +169,9 @@ class LanguageModelSAERunnerConfig(Generic[T_TRAINING_SAE_CONFIG]):
         eval_batch_size_prompts (int, optional): The batch size for evaluation, in prompts. Useful if evals cause OOM.
         logger (LoggingConfig): Configuration for logging (e.g. W&B).
         n_checkpoints (int): The number of checkpoints to save during training. 0 means no checkpoints.
-        checkpoint_path (str): The path to save checkpoints. A unique ID will be appended to this path. (default is "checkpoints")
-        include_final_checkpoint (bool): Whether to include the final checkpoint in the W&B artifact (default is False).
-        output_path (str): The path to save outputs. (default is "output")
+        checkpoint_path (str | None): The path to save checkpoints. A unique ID will be appended to this path. Set to None to disable checkpoint saving. (default is "checkpoints")
+        include_final_checkpoint (bool): Whether to include an additional final checkpoint when training is finished. (default is False).
+        output_path (str | None): The path to save outputs. Set to None to disable output saving. (default is "output")
         verbose (bool): Whether to print verbose output. (default is True)
         model_kwargs (dict[str, Any]): Keyword arguments for `model.run_with_cache`
         model_from_pretrained_kwargs (dict[str, Any], optional): Additional keyword arguments to pass to the model's `from_pretrained` method.
@@ -258,7 +258,7 @@ class LanguageModelSAERunnerConfig(Generic[T_TRAINING_SAE_CONFIG]):
 
     # Outputs/Checkpoints
     n_checkpoints: int = 0
-    checkpoint_path: str = "checkpoints"
+    checkpoint_path: str | None = "checkpoints"
     include_final_checkpoint: bool = False
     output_path: str | None = "output"
 
@@ -625,7 +625,7 @@ class PretokenizeRunnerConfig:
 @dataclass
 class SAETrainerConfig:
     n_checkpoints: int
-    checkpoint_path: str
+    checkpoint_path: str | None
     save_final_checkpoint: bool
     total_training_samples: int
     device: str

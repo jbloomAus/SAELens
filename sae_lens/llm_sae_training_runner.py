@@ -218,6 +218,10 @@ class LanguageModelSAETrainingRunner:
             sparsity_path = base_output_path / SPARSITY_FILENAME
             save_file({"sparsity": log_feature_sparsity}, sparsity_path)
 
+        runner_config = self.cfg.to_dict()
+        with open(base_output_path / RUNNER_CFG_FILENAME, "w") as f:
+            json.dump(runner_config, f)
+
         if self.cfg.logger.log_to_wandb:
             self.cfg.logger.log(
                 self,
@@ -284,20 +288,24 @@ class LanguageModelSAETrainingRunner:
             sae = trainer.fit()
 
         except (KeyboardInterrupt, InterruptedException):
-            logger.warning("interrupted, saving progress")
-            checkpoint_path = Path(self.cfg.checkpoint_path) / str(
-                trainer.n_training_samples
-            )
-            self.save_checkpoint(checkpoint_path)
-            logger.info("done saving")
+            if self.cfg.checkpoint_path is not None:
+                logger.warning("interrupted, saving progress")
+                checkpoint_path = Path(self.cfg.checkpoint_path) / str(
+                    trainer.n_training_samples
+                )
+                self.save_checkpoint(checkpoint_path)
+                logger.info("done saving")
             raise
 
         return sae
 
     def save_checkpoint(
         self,
-        checkpoint_path: Path,
+        checkpoint_path: Path | None,
     ) -> None:
+        if checkpoint_path is None:
+            return
+
         self.activations_store.save(
             str(checkpoint_path / ACTIVATIONS_STORE_STATE_FILENAME)
         )

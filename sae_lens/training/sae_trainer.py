@@ -22,6 +22,7 @@ from sae_lens.saes.sae import (
 from sae_lens.training.activation_scaler import ActivationScaler
 from sae_lens.training.optim import CoefficientScheduler, get_lr_scheduler
 from sae_lens.training.types import DataProvider
+from sae_lens.util import path_or_tmp_dir
 
 
 def _log_feature_sparsity(
@@ -40,7 +41,7 @@ def _update_sae_lens_training_version(sae: TrainingSAE[Any]) -> None:
 class SaveCheckpointFn(Protocol):
     def __call__(
         self,
-        checkpoint_path: Path,
+        checkpoint_path: Path | None,
     ) -> None: ...
 
 
@@ -198,25 +199,30 @@ class SAETrainer(Generic[T_TRAINING_SAE, T_TRAINING_SAE_CONFIG]):
         checkpoint_name: str,
         wandb_aliases: list[str] | None = None,
     ) -> None:
-        checkpoint_path = Path(self.cfg.checkpoint_path) / checkpoint_name
-        checkpoint_path.mkdir(exist_ok=True, parents=True)
+        checkpoint_path = None
+        if self.cfg.checkpoint_path is not None or self.cfg.logger.log_to_wandb:
+            with path_or_tmp_dir(self.cfg.checkpoint_path) as base_checkpoint_path:
+                checkpoint_path = base_checkpoint_path / checkpoint_name
+                checkpoint_path.mkdir(exist_ok=True, parents=True)
 
-        weights_path, cfg_path = self.sae.save_model(str(checkpoint_path))
+                weights_path, cfg_path = self.sae.save_model(str(checkpoint_path))
 
-        sparsity_path = checkpoint_path / SPARSITY_FILENAME
-        save_file({"sparsity": self.log_feature_sparsity}, sparsity_path)
+                sparsity_path = checkpoint_path / SPARSITY_FILENAME
+                save_file({"sparsity": self.log_feature_sparsity}, sparsity_path)
 
-        activation_scaler_path = checkpoint_path / ACTIVATION_SCALER_CFG_FILENAME
-        self.activation_scaler.save(str(activation_scaler_path))
+                activation_scaler_path = (
+                    checkpoint_path / ACTIVATION_SCALER_CFG_FILENAME
+                )
+                self.activation_scaler.save(str(activation_scaler_path))
 
-        if self.cfg.logger.log_to_wandb:
-            self.cfg.logger.log(
-                self,
-                weights_path,
-                cfg_path,
-                sparsity_path=sparsity_path,
-                wandb_aliases=wandb_aliases,
-            )
+                if self.cfg.logger.log_to_wandb:
+                    self.cfg.logger.log(
+                        self,
+                        weights_path,
+                        cfg_path,
+                        sparsity_path=sparsity_path,
+                        wandb_aliases=wandb_aliases,
+                    )
 
         if self.save_checkpoint_fn is not None:
             self.save_checkpoint_fn(checkpoint_path=checkpoint_path)

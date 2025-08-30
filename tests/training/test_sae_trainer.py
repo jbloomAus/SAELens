@@ -254,12 +254,10 @@ def test_update_sae_lens_training_version_sets_the_current_version():
     assert sae.cfg.sae_lens_training_version == str(__version__)
 
 
-def test_final_checkpoint_saves_runner_cfg(
+def test_checkpoints_save_runner_cfg(
     ts_model: HookedTransformer,
     tmp_path: Path,
 ):
-    """Test that estimated_norm_scaling_factor is correctly persisted in intermediate checkpoints
-    but not in the final checkpoint."""
     checkpoint_dir = tmp_path / "checkpoints"
     checkpoint_dir.mkdir(exist_ok=True)
 
@@ -315,6 +313,42 @@ def test_final_checkpoint_saves_runner_cfg(
         del runner_cfg["seqpos_slice"]
         del expected_cfg["seqpos_slice"]
         assert runner_cfg == expected_cfg
+
+
+def test_skips_saving_checkpoint_when_checkpoint_path_is_none(
+    ts_model: HookedTransformer,
+):
+    cfg = build_runner_cfg(
+        checkpoint_path=None,
+        training_tokens=100,  # Increased to ensure we hit checkpoints
+        context_size=8,
+        n_checkpoints=2,  # Explicitly request 2 checkpoints during training
+        include_final_checkpoint=True,  # Enable final checkpoint
+    )
+    trainer_cfg = cfg.to_sae_trainer_config()
+
+    assert trainer_cfg.checkpoint_path is None
+
+    # Create a small dataset
+    dataset = Dataset.from_list([{"text": "hello world"}] * 100)
+    activation_store = ActivationsStore.from_config(
+        ts_model, cfg, override_dataset=dataset
+    )
+    sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+    runner = LanguageModelSAETrainingRunner(
+        cfg, override_model=ts_model, override_sae=sae
+    )
+    runner.activations_store = activation_store
+
+    trainer = SAETrainer(
+        cfg=trainer_cfg,
+        sae=sae,
+        data_provider=activation_store,
+        save_checkpoint_fn=runner.save_checkpoint,
+    )
+
+    # Train the model - this should create checkpoints
+    trainer.fit()
 
 
 def test_estimated_norm_scaling_factor_persistence(
