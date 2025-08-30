@@ -1,5 +1,27 @@
 # CHANGELOG
 
+## v6.9.1 (2025-08-30)
+
+### Fix
+
+* fix: add config loader for mntss clt by layer (#535)
+
+* feat: add mntss clts to pretrained yaml
+
+* fix: make config loader for mntss CLTs
+
+* fix: pyright
+
+* changes from CR
+
+* bust hf cache
+
+* fixing linting
+
+---------
+
+Co-authored-by: David Chanin &lt;chanindav@gmail.com&gt; ([`c2a678f`](https://github.com/jbloomAus/SAELens/commit/c2a678f42c9255ae70879b7ae8367ca7f8d8e00f))
+
 ## v6.9.0 (2025-08-29)
 
 ### Feature
