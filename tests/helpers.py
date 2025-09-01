@@ -71,7 +71,7 @@ class LanguageModelSAERunnerConfigDict(TypedDict, total=False):
     logger: LoggingConfig
     n_checkpoints: int
     checkpoint_path: str | None
-    include_final_checkpoint: bool
+    save_final_checkpoint: bool
     output_path: str | None
     verbose: bool
     model_kwargs: dict[str, Any]
@@ -167,7 +167,7 @@ def _get_default_runner_config() -> LanguageModelSAERunnerConfigDict:
         ),
         "n_checkpoints": 0,
         "checkpoint_path": None,
-        "include_final_checkpoint": False,
+        "save_final_checkpoint": False,
         "output_path": None,
         "verbose": True,
         "model_kwargs": {},

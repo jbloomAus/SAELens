@@ -48,7 +48,7 @@ def test_LanguageModelSAETrainingRunner_runs_and_saves_all_architectures(
         model_name=TINYSTORIES_MODEL,
         n_checkpoints=0,
         exclude_special_tokens=True,
-        include_final_checkpoint=True,  # Enable final checkpoint for this test
+        save_final_checkpoint=True,  # Enable final checkpoint for this test
         output_path=str(tmp_path / "test_output"),
     )
     runner = LanguageModelSAETrainingRunner(cfg, override_model=ts_model)
@@ -525,11 +525,12 @@ class TestLLMSaeEvaluator:
             # but we do check that the structure is consistent
 
 
-def test_LanguageModelSAETrainingRunner_save_final_sae_saves_model_files(
+def test_LanguageModelSAETrainingRunner_saves_final_output_and_checkpoints(
     tmp_path: Path, ts_model: HookedTransformer
 ):
-    """Test that save_final_sae saves the model weights and config."""
+    """Test that save_final_sae saves the model weights and config and final checkpoint."""
     output_path = tmp_path / "test_output"
+    checkpoint_path = tmp_path / "checkpoints"
     cfg = build_runner_cfg_for_arch(
         d_in=64,
         d_sae=128,
@@ -544,20 +545,26 @@ def test_LanguageModelSAETrainingRunner_save_final_sae_saves_model_files(
         hook_name="blocks.0.hook_resid_post",
         model_name=TINYSTORIES_MODEL,
         n_checkpoints=0,
+        save_final_checkpoint=True,
+        checkpoint_path=str(checkpoint_path),
         output_path=str(output_path),
     )
     runner = LanguageModelSAETrainingRunner(cfg, override_model=ts_model)
 
     sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
 
-    runner.save_final_sae(sae=sae, output_path=str(output_path))
+    runner.run()
 
     # Check that model files exist
     assert (output_path / "sae_weights.safetensors").exists()
     assert (output_path / "cfg.json").exists()
 
+    # Check that checkpoint files exist
+    assert (checkpoint_path / "final_100" / "sae_weights.safetensors").exists()
+    assert (checkpoint_path / "final_100" / "cfg.json").exists()
+
     output_sae = SAE.load_from_disk(output_path)
-    checkpoint_sae = SAE.load_from_disk(output_path)
+    checkpoint_sae = TrainingSAE.load_from_disk(checkpoint_path / "final_100")
 
     # we should save the inference model in the final output, not the training model
     assert sae.cfg.architecture() == "batchtopk"
@@ -568,20 +575,14 @@ def test_LanguageModelSAETrainingRunner_save_final_sae_saves_model_files(
     assert output_sae.cfg.d_sae == checkpoint_sae.cfg.d_sae
 
     # Weight tensors should be identical
-    assert torch.equal(
-        torch.Tensor(output_sae.W_enc), torch.Tensor(checkpoint_sae.W_enc)
-    )
-    assert torch.equal(
-        torch.Tensor(output_sae.W_dec), torch.Tensor(checkpoint_sae.W_dec)
-    )
+    assert torch.allclose(output_sae.W_enc, checkpoint_sae.W_enc)
+
+    assert torch.allclose(output_sae.W_dec, checkpoint_sae.W_dec)
     # Handle b_enc which might not exist in all architectures
     if hasattr(output_sae, "b_enc") and hasattr(checkpoint_sae, "b_enc"):
-        assert torch.equal(
-            torch.Tensor(output_sae.b_enc), torch.Tensor(checkpoint_sae.b_enc)
-        )
-    assert torch.equal(
-        torch.Tensor(output_sae.b_dec), torch.Tensor(checkpoint_sae.b_dec)
-    )
+        assert torch.allclose(output_sae.b_enc, checkpoint_sae.b_enc)  # type: ignore
+
+    assert torch.allclose(output_sae.b_dec, checkpoint_sae.b_dec)
 
 
 def test_LanguageModelSAETrainingRunner_save_final_sae_saves_sparsity_when_provided(

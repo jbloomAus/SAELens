@@ -170,7 +170,7 @@ class LanguageModelSAERunnerConfig(Generic[T_TRAINING_SAE_CONFIG]):
         logger (LoggingConfig): Configuration for logging (e.g. W&B).
         n_checkpoints (int): The number of checkpoints to save during training. 0 means no checkpoints.
         checkpoint_path (str | None): The path to save checkpoints. A unique ID will be appended to this path. Set to None to disable checkpoint saving. (default is "checkpoints")
-        include_final_checkpoint (bool): Whether to include an additional final checkpoint when training is finished. (default is False).
+        save_final_checkpoint (bool): Whether to include an additional final checkpoint when training is finished. (default is False).
         output_path (str | None): The path to save outputs. Set to None to disable output saving. (default is "output")
         verbose (bool): Whether to print verbose output. (default is True)
         model_kwargs (dict[str, Any]): Keyword arguments for `model.run_with_cache`
@@ -259,7 +259,7 @@ class LanguageModelSAERunnerConfig(Generic[T_TRAINING_SAE_CONFIG]):
     # Outputs/Checkpoints
     n_checkpoints: int = 0
     checkpoint_path: str | None = "checkpoints"
-    include_final_checkpoint: bool = False
+    save_final_checkpoint: bool = False
     output_path: str | None = "output"
 
     # Misc
@@ -400,7 +400,7 @@ class LanguageModelSAERunnerConfig(Generic[T_TRAINING_SAE_CONFIG]):
         return SAETrainerConfig(
             n_checkpoints=self.n_checkpoints,
             checkpoint_path=self.checkpoint_path,
-            save_final_checkpoint=self.include_final_checkpoint,
+            save_final_checkpoint=self.save_final_checkpoint,
             total_training_samples=self.total_training_tokens,
             device=self.device,
             autocast=self.autocast,

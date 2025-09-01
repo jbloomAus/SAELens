@@ -266,7 +266,7 @@ def test_checkpoints_save_runner_cfg(
         training_tokens=100,  # Increased to ensure we hit checkpoints
         context_size=8,
         n_checkpoints=2,  # Explicitly request 2 checkpoints during training
-        include_final_checkpoint=True,  # Enable final checkpoint
+        save_final_checkpoint=True,  # Enable final checkpoint
     )
 
     # Create a small dataset
@@ -323,7 +323,7 @@ def test_skips_saving_checkpoint_when_checkpoint_path_is_none(
         training_tokens=100,  # Increased to ensure we hit checkpoints
         context_size=8,
         n_checkpoints=2,  # Explicitly request 2 checkpoints during training
-        include_final_checkpoint=True,  # Enable final checkpoint
+        save_final_checkpoint=True,  # Enable final checkpoint
     )
     trainer_cfg = cfg.to_sae_trainer_config()
 
@@ -366,7 +366,7 @@ def test_estimated_norm_scaling_factor_persistence(
         context_size=8,
         normalize_activations="expected_average_only_in",
         n_checkpoints=2,  # Explicitly request 2 checkpoints during training
-        include_final_checkpoint=True,  # Enable final checkpoint
+        save_final_checkpoint=True,  # Enable final checkpoint
     )
 
     # Create a small dataset
@@ -433,7 +433,7 @@ def test_sae_trainer_saves_final_checkpoint_when_enabled(
         checkpoint_path=str(checkpoint_dir),
         training_tokens=20,
         context_size=8,
-        include_final_checkpoint=True,  # Enable final checkpoint
+        save_final_checkpoint=True,  # Enable final checkpoint
     )
 
     dataset = Dataset.from_list([{"text": "hello world"}] * 100)
@@ -470,7 +470,7 @@ def test_sae_trainer_skips_final_checkpoint_when_disabled(
         checkpoint_path=str(checkpoint_dir),
         training_tokens=20,
         context_size=8,
-        include_final_checkpoint=False,  # Disable final checkpoint
+        save_final_checkpoint=False,  # Disable final checkpoint
     )
 
     dataset = Dataset.from_list([{"text": "hello world"}] * 100)
