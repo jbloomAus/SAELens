@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## v6.10.0 (2025-09-01)
+
+### Feature
+
+* feat: add `output_path` option to LLM training runner (#536)
+
+* feat: adding an explit output_path param to llm runner
+
+* allow setting  for checkpoint paths
+
+* changes from CR ([`03cabd8`](https://github.com/jbloomAus/SAELens/commit/03cabd8ef1f7b21fe0cc1abc6783292e0ddf7b11))
+
 ## v6.9.1 (2025-08-30)
 
 ### Fix
