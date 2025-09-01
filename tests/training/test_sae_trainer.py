@@ -254,12 +254,10 @@ def test_update_sae_lens_training_version_sets_the_current_version():
     assert sae.cfg.sae_lens_training_version == str(__version__)
 
 
-def test_final_checkpoint_saves_runner_cfg(
+def test_checkpoints_save_runner_cfg(
     ts_model: HookedTransformer,
     tmp_path: Path,
 ):
-    """Test that estimated_norm_scaling_factor is correctly persisted in intermediate checkpoints
-    but not in the final checkpoint."""
     checkpoint_dir = tmp_path / "checkpoints"
     checkpoint_dir.mkdir(exist_ok=True)
 
@@ -268,6 +266,7 @@ def test_final_checkpoint_saves_runner_cfg(
         training_tokens=100,  # Increased to ensure we hit checkpoints
         context_size=8,
         n_checkpoints=2,  # Explicitly request 2 checkpoints during training
+        save_final_checkpoint=True,  # Enable final checkpoint
     )
 
     # Create a small dataset
@@ -303,10 +302,7 @@ def test_final_checkpoint_saves_runner_cfg(
     for checkpoint_cfg_path in checkpoint_cfg_paths:
         with open(checkpoint_cfg_path) as f:
             checkpoint_cfg = json.load(f)
-        if "final" in checkpoint_cfg_path.parent.name:
-            assert checkpoint_cfg == cfg.sae.get_inference_sae_cfg_dict()
-        else:
-            assert checkpoint_cfg == cfg.sae.to_dict()
+        assert checkpoint_cfg == cfg.sae.to_dict()
 
     for checkpoint_runner_cfg_path in checkpoint_runner_cfg_paths:
         with open(checkpoint_runner_cfg_path) as f:
@@ -317,6 +313,42 @@ def test_final_checkpoint_saves_runner_cfg(
         del runner_cfg["seqpos_slice"]
         del expected_cfg["seqpos_slice"]
         assert runner_cfg == expected_cfg
+
+
+def test_skips_saving_checkpoint_when_checkpoint_path_is_none(
+    ts_model: HookedTransformer,
+):
+    cfg = build_runner_cfg(
+        checkpoint_path=None,
+        training_tokens=100,  # Increased to ensure we hit checkpoints
+        context_size=8,
+        n_checkpoints=2,  # Explicitly request 2 checkpoints during training
+        save_final_checkpoint=True,  # Enable final checkpoint
+    )
+    trainer_cfg = cfg.to_sae_trainer_config()
+
+    assert trainer_cfg.checkpoint_path is None
+
+    # Create a small dataset
+    dataset = Dataset.from_list([{"text": "hello world"}] * 100)
+    activation_store = ActivationsStore.from_config(
+        ts_model, cfg, override_dataset=dataset
+    )
+    sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+    runner = LanguageModelSAETrainingRunner(
+        cfg, override_model=ts_model, override_sae=sae
+    )
+    runner.activations_store = activation_store
+
+    trainer = SAETrainer(
+        cfg=trainer_cfg,
+        sae=sae,
+        data_provider=activation_store,
+        save_checkpoint_fn=runner.save_checkpoint,
+    )
+
+    # Train the model - this should create checkpoints
+    trainer.fit()
 
 
 def test_estimated_norm_scaling_factor_persistence(
@@ -334,6 +366,7 @@ def test_estimated_norm_scaling_factor_persistence(
         context_size=8,
         normalize_activations="expected_average_only_in",
         n_checkpoints=2,  # Explicitly request 2 checkpoints during training
+        save_final_checkpoint=True,  # Enable final checkpoint
     )
 
     # Create a small dataset
@@ -386,3 +419,74 @@ def test_estimated_norm_scaling_factor_persistence(
 
     # Final checkpoint should NOT have the scaling factor as it's been folded into the weights
     assert final_checkpoint.get("scaling_factor") is None
+
+
+def test_sae_trainer_saves_final_checkpoint_when_enabled(
+    ts_model: HookedTransformer,
+    tmp_path: Path,
+):
+    """Test that SAETrainer saves final checkpoint when save_final_checkpoint is True."""
+    checkpoint_dir = tmp_path / "checkpoints"
+    checkpoint_dir.mkdir(exist_ok=True)
+
+    cfg = build_runner_cfg(
+        checkpoint_path=str(checkpoint_dir),
+        training_tokens=20,
+        context_size=8,
+        save_final_checkpoint=True,  # Enable final checkpoint
+    )
+
+    dataset = Dataset.from_list([{"text": "hello world"}] * 100)
+    activation_store = ActivationsStore.from_config(
+        ts_model, cfg, override_dataset=dataset
+    )
+    sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+
+    trainer = SAETrainer(
+        cfg=cfg.to_sae_trainer_config(),
+        sae=sae,
+        data_provider=activation_store,
+    )
+
+    trainer.fit()
+
+    # Check that final checkpoint was saved
+    final_checkpoint_dir = checkpoint_dir / "final_20"
+    assert final_checkpoint_dir.exists()
+    assert (final_checkpoint_dir / "sae_weights.safetensors").exists()
+    assert (final_checkpoint_dir / "cfg.json").exists()
+    assert (final_checkpoint_dir / "sparsity.safetensors").exists()
+
+
+def test_sae_trainer_skips_final_checkpoint_when_disabled(
+    ts_model: HookedTransformer,
+    tmp_path: Path,
+):
+    """Test that SAETrainer skips final checkpoint when save_final_checkpoint is False."""
+    checkpoint_dir = tmp_path / "checkpoints"
+    checkpoint_dir.mkdir(exist_ok=True)
+
+    cfg = build_runner_cfg(
+        checkpoint_path=str(checkpoint_dir),
+        training_tokens=20,
+        context_size=8,
+        save_final_checkpoint=False,  # Disable final checkpoint
+    )
+
+    dataset = Dataset.from_list([{"text": "hello world"}] * 100)
+    activation_store = ActivationsStore.from_config(
+        ts_model, cfg, override_dataset=dataset
+    )
+    sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+
+    trainer = SAETrainer(
+        cfg=cfg.to_sae_trainer_config(),
+        sae=sae,
+        data_provider=activation_store,
+    )
+
+    trainer.fit()
+
+    # Check that final checkpoint was NOT saved
+    final_checkpoint_dir = checkpoint_dir / "final_20"
+    assert not final_checkpoint_dir.exists()

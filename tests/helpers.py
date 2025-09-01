@@ -70,7 +70,9 @@ class LanguageModelSAERunnerConfigDict(TypedDict, total=False):
     eval_batch_size_prompts: int | None
     logger: LoggingConfig
     n_checkpoints: int
-    checkpoint_path: str
+    checkpoint_path: str | None
+    save_final_checkpoint: bool
+    output_path: str | None
     verbose: bool
     model_kwargs: dict[str, Any]
     model_from_pretrained_kwargs: dict[str, Any] | None
@@ -164,7 +166,9 @@ def _get_default_runner_config() -> LanguageModelSAERunnerConfigDict:
             eval_every_n_wandb_logs=100,
         ),
         "n_checkpoints": 0,
-        "checkpoint_path": "test/checkpoints",
+        "checkpoint_path": None,
+        "save_final_checkpoint": False,
+        "output_path": None,
         "verbose": True,
         "model_kwargs": {},
         "model_from_pretrained_kwargs": None,

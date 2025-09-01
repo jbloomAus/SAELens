@@ -48,6 +48,8 @@ def test_LanguageModelSAETrainingRunner_runs_and_saves_all_architectures(
         model_name=TINYSTORIES_MODEL,
         n_checkpoints=0,
         exclude_special_tokens=True,
+        save_final_checkpoint=True,  # Enable final checkpoint for this test
+        output_path=str(tmp_path / "test_output"),
     )
     runner = LanguageModelSAETrainingRunner(cfg, override_model=ts_model)
     sae = runner.run()
@@ -73,20 +75,36 @@ def test_LanguageModelSAETrainingRunner_runs_and_saves_all_architectures(
     assert sae.cfg.metadata.sae_lens_training_version == __version__
 
     assert (tmp_path / "final_100").exists()
-    loaded_sae = SAE.load_from_disk(tmp_path / "final_100")
+    loaded_sae = TrainingSAE.load_from_disk(tmp_path / "final_100")
 
     # json turns tuples into lists, so just dump and load the metadata to make things consistent
     original_metadata_dict = json.loads(json.dumps(sae.cfg.metadata.__dict__))
-    if architecture == "batchtopk":
-        assert loaded_sae.cfg.architecture() == "jumprelu"
-    else:
-        assert loaded_sae.cfg.architecture() == architecture
+    assert loaded_sae.cfg.architecture() == architecture
     assert loaded_sae.cfg.d_in == sae.cfg.d_in
     assert loaded_sae.cfg.d_sae == sae.cfg.d_sae
     assert loaded_sae.cfg.dtype == sae.cfg.dtype
     assert loaded_sae.cfg.device == sae.cfg.device
     assert loaded_sae.cfg.apply_b_dec_to_input == sae.cfg.apply_b_dec_to_input
     assert loaded_sae.cfg.metadata.__dict__ == original_metadata_dict
+
+    # compare the saved inference SAE as well
+    output_sae = SAE.load_from_disk(tmp_path / "test_output")
+
+    if architecture == "batchtopk":
+        assert output_sae.cfg.architecture() == "jumprelu"
+    else:
+        assert output_sae.cfg.architecture() == architecture
+    assert output_sae.cfg.d_in == sae.cfg.d_in
+    assert output_sae.cfg.d_sae == sae.cfg.d_sae
+    assert output_sae.cfg.dtype == sae.cfg.dtype
+    assert output_sae.cfg.device == sae.cfg.device
+    assert output_sae.cfg.apply_b_dec_to_input == sae.cfg.apply_b_dec_to_input
+    assert output_sae.cfg.metadata.__dict__ == original_metadata_dict
+
+    with open(tmp_path / "test_output" / "runner_cfg.json") as f:
+        runner_cfg = json.load(f)
+    # json turns tuples into lists, so just dump and load the metadata to make things consistent
+    assert runner_cfg == json.loads(json.dumps(cfg.to_dict()))
 
 
 def test_parse_cfg_args_raises_system_exit_on_empty_args():
@@ -505,3 +523,125 @@ class TestLLMSaeEvaluator:
                 assert metrics1[key].keys() == metrics2[key].keys()
             # Note: Due to potential randomness in evaluation, we don't assert exact equality
             # but we do check that the structure is consistent
+
+
+def test_LanguageModelSAETrainingRunner_saves_final_output_and_checkpoints(
+    tmp_path: Path, ts_model: HookedTransformer
+):
+    """Test that save_final_sae saves the model weights and config and final checkpoint."""
+    output_path = tmp_path / "test_output"
+    checkpoint_path = tmp_path / "checkpoints"
+    cfg = build_runner_cfg_for_arch(
+        d_in=64,
+        d_sae=128,
+        architecture="batchtopk",
+        training_tokens=100,
+        store_batch_size_prompts=2,
+        train_batch_size_tokens=4,
+        model_batch_size=1,
+        context_size=10,
+        n_batches_in_buffer=2,
+        dataset_path=NEEL_NANDA_C4_10K_DATASET,
+        hook_name="blocks.0.hook_resid_post",
+        model_name=TINYSTORIES_MODEL,
+        n_checkpoints=0,
+        save_final_checkpoint=True,
+        checkpoint_path=str(checkpoint_path),
+        output_path=str(output_path),
+    )
+    runner = LanguageModelSAETrainingRunner(cfg, override_model=ts_model)
+
+    sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+
+    runner.run()
+
+    # Check that model files exist
+    assert (output_path / "sae_weights.safetensors").exists()
+    assert (output_path / "cfg.json").exists()
+
+    # Check that checkpoint files exist
+    assert (checkpoint_path / "final_100" / "sae_weights.safetensors").exists()
+    assert (checkpoint_path / "final_100" / "cfg.json").exists()
+
+    output_sae = SAE.load_from_disk(output_path)
+    checkpoint_sae = TrainingSAE.load_from_disk(checkpoint_path / "final_100")
+
+    # we should save the inference model in the final output, not the training model
+    assert sae.cfg.architecture() == "batchtopk"
+    assert output_sae.cfg.architecture() == "jumprelu"
+
+    # Models should have the same architecture and dimensions
+    assert output_sae.cfg.d_in == checkpoint_sae.cfg.d_in
+    assert output_sae.cfg.d_sae == checkpoint_sae.cfg.d_sae
+
+    # Weight tensors should be identical
+    assert torch.allclose(output_sae.W_enc, checkpoint_sae.W_enc)
+
+    assert torch.allclose(output_sae.W_dec, checkpoint_sae.W_dec)
+    # Handle b_enc which might not exist in all architectures
+    if hasattr(output_sae, "b_enc") and hasattr(checkpoint_sae, "b_enc"):
+        assert torch.allclose(output_sae.b_enc, checkpoint_sae.b_enc)  # type: ignore
+
+    assert torch.allclose(output_sae.b_dec, checkpoint_sae.b_dec)
+
+
+def test_LanguageModelSAETrainingRunner_save_final_sae_saves_sparsity_when_provided(
+    tmp_path: Path, ts_model: HookedTransformer
+):
+    """Test that save_final_sae saves sparsity data when provided."""
+    cfg = build_runner_cfg_for_arch(
+        d_in=64,
+        d_sae=128,
+        architecture="standard",
+        training_tokens=100,
+        store_batch_size_prompts=2,
+        train_batch_size_tokens=4,
+        model_batch_size=1,
+        context_size=10,
+        n_batches_in_buffer=2,
+        dataset_path=NEEL_NANDA_C4_10K_DATASET,
+        hook_name="blocks.0.hook_resid_post",
+        model_name=TINYSTORIES_MODEL,
+        n_checkpoints=0,
+    )
+    runner = LanguageModelSAETrainingRunner(cfg, override_model=ts_model)
+
+    output_path = tmp_path / "test_output"
+    sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+    sparsity_tensor = torch.randn(128)  # d_sae features
+
+    runner.save_final_sae(
+        sae=sae, output_path=str(output_path), log_feature_sparsity=sparsity_tensor
+    )
+
+    # Check that sparsity file exists
+    assert (output_path / "sparsity.safetensors").exists()
+
+
+def test_LanguageModelSAETrainingRunner_skips_save_final_sae_when_output_path_none(
+    ts_model: HookedTransformer,
+):
+    """Test that runner skips save_final_sae when output_path is None."""
+    cfg = build_runner_cfg_for_arch(
+        d_in=64,
+        d_sae=128,
+        architecture="standard",
+        training_tokens=100,
+        store_batch_size_prompts=2,
+        train_batch_size_tokens=4,
+        model_batch_size=1,
+        context_size=10,
+        n_batches_in_buffer=2,
+        dataset_path=NEEL_NANDA_C4_10K_DATASET,
+        hook_name="blocks.0.hook_resid_post",
+        model_name=TINYSTORIES_MODEL,
+        n_checkpoints=0,
+        output_path=None,  # Explicitly set to None
+    )
+    runner = LanguageModelSAETrainingRunner(cfg, override_model=ts_model)
+
+    sae = runner.run()
+
+    # Check that the SAE was returned
+    assert sae is not None
+    assert not Path("output").exists()
