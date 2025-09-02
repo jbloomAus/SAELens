@@ -99,6 +99,7 @@ class TrainingSAEConfigDict(TypedDict, total=False):
     k: int  # For TopK
     l0_coefficient: float  # For JumpReLU
     l0_warm_up_steps: int
+    pre_act_loss_coefficient: float | None  # For JumpReLU
     topk_threshold_lr: float  # For BatchTopK
 
 
@@ -293,6 +294,7 @@ def build_jumprelu_runner_cfg(
         "jumprelu_bandwidth": 0.001,
         "l0_coefficient": 0.3,
         "l0_warm_up_steps": 0,
+        "pre_act_loss_coefficient": None,
     }
     return _build_runner_config(
         JumpReLUTrainingSAEConfig,
