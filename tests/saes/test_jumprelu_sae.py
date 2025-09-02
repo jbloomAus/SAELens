@@ -325,3 +325,86 @@ def test_JumpReLUTrainingSAE_forward_tanh_sparsity_with_pre_act_loss():
 
     # Verify pre_act_loss is positive (since we have dead neurons)
     assert train_step_output.losses["pre_act_loss"] >= 0.0
+
+
+def test_JumpReLUTrainingSAE_tanh_scale_increases_l0_loss():
+    """Test that increasing jumprelu_tanh_scale increases l0_loss for tanh sparsity mode."""
+    batch_size = 4
+
+    # Create SAE with smaller tanh scale
+    cfg_small = build_jumprelu_sae_training_cfg(
+        jumprelu_sparsity_loss_mode="tanh",
+        jumprelu_tanh_scale=2.0,
+        l0_coefficient=1.0,
+    )
+    sae_small = JumpReLUTrainingSAE(cfg_small)
+
+    # Create SAE with larger tanh scale (same architecture, different scale)
+    cfg_large = build_jumprelu_sae_training_cfg(
+        jumprelu_sparsity_loss_mode="tanh",
+        jumprelu_tanh_scale=8.0,  # 4x larger than small
+        l0_coefficient=1.0,
+    )
+    sae_large = JumpReLUTrainingSAE(cfg_large)
+
+    # Use same weights for both SAEs to ensure fair comparison
+    sae_large.W_enc.data = sae_small.W_enc.data.clone()
+    sae_large.W_dec.data = sae_small.W_dec.data.clone()
+    sae_large.b_enc.data = sae_small.b_enc.data.clone()
+    sae_large.b_dec.data = sae_small.b_dec.data.clone()
+    sae_large.log_threshold.data = sae_small.log_threshold.data.clone()
+
+    # Use same input for both
+    x = torch.randn(batch_size, cfg_small.d_in)
+
+    # Forward pass with small tanh scale
+    train_step_output_small = sae_small.training_forward_pass(
+        step_input=TrainStepInput(
+            sae_in=x,
+            coefficients={"l0": 1.0},
+            dead_neuron_mask=None,
+        ),
+    )
+
+    # Forward pass with large tanh scale
+    train_step_output_large = sae_large.training_forward_pass(
+        step_input=TrainStepInput(
+            sae_in=x,
+            coefficients={"l0": 1.0},
+            dead_neuron_mask=None,
+        ),
+    )
+
+    # L0 loss should be larger with higher tanh scale
+    l0_loss_small = train_step_output_small.losses["l0_loss"]
+    l0_loss_large = train_step_output_large.losses["l0_loss"]
+
+    assert (
+        l0_loss_large > l0_loss_small
+    ), f"Expected l0_loss_large ({l0_loss_large}) > l0_loss_small ({l0_loss_small})"
+
+    # Verify the feature activations are the same (since weights are identical)
+    assert_close(
+        train_step_output_small.feature_acts, train_step_output_large.feature_acts
+    )
+
+
+def test_JumpReLUTrainingSAE_errors_on_invalid_sparsity_loss_mode():
+    # Create SAE with smaller tanh scale
+    cfg = build_jumprelu_sae_training_cfg(
+        jumprelu_sparsity_loss_mode="nonsense",
+        jumprelu_tanh_scale=2.0,
+        l0_coefficient=1.0,
+    )
+    sae = JumpReLUTrainingSAE(cfg)
+
+    x = torch.randn(64, cfg.d_in)
+
+    with pytest.raises(ValueError):
+        sae.training_forward_pass(
+            step_input=TrainStepInput(
+                sae_in=x,
+                coefficients={"l0": 1.0},
+                dead_neuron_mask=None,
+            ),
+        )
