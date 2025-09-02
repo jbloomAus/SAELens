@@ -364,7 +364,7 @@ def calculate_pre_act_loss(
     """
     Calculate Anthropic's pre-activation loss, except we only calculate this for latents that are actually dead.
     """
-    if dead_neuron_mask is None or int(dead_neuron_mask.sum()) == 0:
+    if dead_neuron_mask is None or dead_neuron_mask.sum() == 0:
         return hidden_pre.new_tensor(0.0)
     per_item_loss = (
         (threshold - hidden_pre).relu() * dead_neuron_mask * W_dec_norm
