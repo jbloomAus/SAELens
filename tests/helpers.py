@@ -99,7 +99,10 @@ class TrainingSAEConfigDict(TypedDict, total=False):
     k: int  # For TopK
     l0_coefficient: float  # For JumpReLU
     l0_warm_up_steps: int
+    pre_act_loss_coefficient: float | None  # For JumpReLU
     topk_threshold_lr: float  # For BatchTopK
+    jumprelu_sparsity_loss_mode: Literal["step", "tanh"]  # For JumpReLU
+    jumprelu_tanh_scale: float  # For JumpReLU
 
 
 class SAEConfigDict(TypedDict, total=False):
@@ -289,10 +292,13 @@ def build_jumprelu_runner_cfg(
         "normalize_activations": "none",
         "apply_b_dec_to_input": False,
         "decoder_init_norm": 0.1,
+        "jumprelu_sparsity_loss_mode": "step",
+        "jumprelu_tanh_scale": 4.0,
         "jumprelu_init_threshold": 0.001,
         "jumprelu_bandwidth": 0.001,
         "l0_coefficient": 0.3,
         "l0_warm_up_steps": 0,
+        "pre_act_loss_coefficient": None,
     }
     return _build_runner_config(
         JumpReLUTrainingSAEConfig,

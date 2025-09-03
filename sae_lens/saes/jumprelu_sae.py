@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 import torch
@@ -187,12 +187,28 @@ class JumpReLUSAE(SAE[JumpReLUSAEConfig]):
 class JumpReLUTrainingSAEConfig(TrainingSAEConfig):
     """
     Configuration class for training a JumpReLUTrainingSAE.
+
+    - jumprelu_init_threshold: initial threshold for the JumpReLU activation
+    - jumprelu_bandwidth: bandwidth for the JumpReLU activation
+    - jumprelu_sparsity_loss_mode: mode for the sparsity loss, either "step" or "tanh". "step" is Google Deepmind's L0 loss, "tanh" is Anthropic's sparsity loss.
+    - l0_coefficient: coefficient for the l0 sparsity loss
+    - l0_warm_up_steps: number of warm-up steps for the l0 sparsity loss
+    - pre_act_loss_coefficient: coefficient for the pre-activation loss. Set to None to disable. Set to 3e-6 to match Anthropic's setup. Default is None.
+    - jumprelu_tanh_scale: scale for the tanh sparsity loss. Only relevant for "tanh" sparsity loss mode. Default is 4.0.
     """
 
     jumprelu_init_threshold: float = 0.01
     jumprelu_bandwidth: float = 0.05
+    # step is Google Deepmind, tanh is Anthropic
+    jumprelu_sparsity_loss_mode: Literal["step", "tanh"] = "step"
     l0_coefficient: float = 1.0
     l0_warm_up_steps: int = 0
+
+    # anthropic's auxiliary loss to avoid dead features
+    pre_act_loss_coefficient: float | None = None
+
+    # only relevant for tanh sparsity loss mode
+    jumprelu_tanh_scale: float = 4.0
 
     @override
     @classmethod
@@ -267,9 +283,35 @@ class JumpReLUTrainingSAE(TrainingSAE[JumpReLUTrainingSAEConfig]):
         sae_out: torch.Tensor,
     ) -> dict[str, torch.Tensor]:
         """Calculate architecture-specific auxiliary loss terms."""
-        l0 = torch.sum(Step.apply(hidden_pre, self.threshold, self.bandwidth), dim=-1)  # type: ignore
-        l0_loss = (step_input.coefficients["l0"] * l0).mean()
-        return {"l0_loss": l0_loss}
+
+        threshold = self.threshold
+        W_dec_norm = self.W_dec.norm(dim=1)
+        if self.cfg.jumprelu_sparsity_loss_mode == "step":
+            l0 = torch.sum(
+                Step.apply(hidden_pre, threshold, self.bandwidth),  # type: ignore
+                dim=-1,
+            )
+            l0_loss = (step_input.coefficients["l0"] * l0).mean()
+        elif self.cfg.jumprelu_sparsity_loss_mode == "tanh":
+            per_item_l0_loss = torch.tanh(
+                self.cfg.jumprelu_tanh_scale * feature_acts * W_dec_norm
+            ).sum(dim=-1)
+            l0_loss = (step_input.coefficients["l0"] * per_item_l0_loss).mean()
+        else:
+            raise ValueError(
+                f"Invalid sparsity loss mode: {self.cfg.jumprelu_sparsity_loss_mode}"
+            )
+        losses = {"l0_loss": l0_loss}
+
+        if self.cfg.pre_act_loss_coefficient is not None:
+            losses["pre_act_loss"] = calculate_pre_act_loss(
+                self.cfg.pre_act_loss_coefficient,
+                threshold,
+                hidden_pre,
+                step_input.dead_neuron_mask,
+                W_dec_norm,
+            )
+        return losses
 
     @override
     def get_coefficients(self) -> dict[str, float | TrainCoefficientConfig]:
@@ -310,3 +352,21 @@ class JumpReLUTrainingSAE(TrainingSAE[JumpReLUTrainingSAEConfig]):
             threshold = state_dict["threshold"]
             del state_dict["threshold"]
             state_dict["log_threshold"] = torch.log(threshold).detach().contiguous()
+
+
+def calculate_pre_act_loss(
+    pre_act_loss_coefficient: float,
+    threshold: torch.Tensor,
+    hidden_pre: torch.Tensor,
+    dead_neuron_mask: torch.Tensor | None,
+    W_dec_norm: torch.Tensor,
+) -> torch.Tensor:
+    """
+    Calculate Anthropic's pre-activation loss, except we only calculate this for latents that are actually dead.
+    """
+    if dead_neuron_mask is None or not dead_neuron_mask.any():
+        return hidden_pre.new_tensor(0.0)
+    per_item_loss = (
+        (threshold - hidden_pre).relu() * dead_neuron_mask * W_dec_norm
+    ).sum(dim=-1)
+    return pre_act_loss_coefficient * per_item_loss.mean()
