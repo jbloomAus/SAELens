@@ -48,6 +48,7 @@ nav:
   - Home: index.md
   - Roadmap: roadmap.md
   - Training SAEs: training_saes.md
+  - Custom SAEs: custom_saes.md
   - Citation: citation.md
   - Contributing: contributing.md
   - Migrating to v6: migrating.md
