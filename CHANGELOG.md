@@ -1,5 +1,30 @@
 # CHANGELOG
 
+## v6.11.0 (2025-09-03)
+
+### Feature
+
+* feat: support Anthropic&#39;s JumpReLU training setup (#541)
+
+* feat: support Anthropic&#39;s JumpReLU training setup
+
+* Update sae_lens/saes/jumprelu_sae.py
+
+Co-authored-by: Copilot &lt;175728472+Copilot@users.noreply.github.com&gt;
+
+* improving tests
+
+* Update docs/training_saes.md
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* feedback from CR
+
+---------
+
+Co-authored-by: Copilot &lt;175728472+Copilot@users.noreply.github.com&gt;
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt; ([`3d81e2d`](https://github.com/jbloomAus/SAELens/commit/3d81e2d9290eca485fd6b1f83039432673e21037))
+
 ## v6.10.0 (2025-09-01)
 
 ### Feature
