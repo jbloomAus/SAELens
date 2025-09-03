@@ -18,8 +18,6 @@ INCLUDED_CFG = [
     "neuronpedia",
     "hook_name",
     "d_sae",
-    "context_size",
-    "dataset_path",
     "normalize_activations",
 ]
 
