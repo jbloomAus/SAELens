@@ -154,7 +154,7 @@ sparse_autoencoder = LanguageModelSAETrainingRunner(cfg).run()
 
 [JumpReLU SAEs](https://arxiv.org/abs/2407.14435) are a state-of-the-art SAE architecture. To train one, provide a `JumpReLUTrainingSAEConfig` to the `sae` field. JumpReLU SAEs use a sparsity penalty controlled by the `l0_coefficient` parameter. The `JumpReLUTrainingSAEConfig` also has parameters `jumprelu_bandwidth` and `jumprelu_init_threshold` which affect the learning of the thresholds.
 
-We support both the original JumpReLU sparsity loss and the more modern [tanh sparsity loss](https://transformer-circuits.pub/2025/january-update/index.html) variant from Anthropic. To use the tanh sparsity loss, set `jumprelu_sparsity_loss_mode="tanh"`. The tanh sparsity loss variant is a bit easier to train, but has more hyper-parameters. We recommend using the tanh with `normalize_activations="expected_average_only_in"` to match what Anthropic's setup. We also recommend enabling the pre-act loss by setting `pre_act_loss_coefficient` to match Anthropic's setup. An example of this is below:
+We support both the original JumpReLU sparsity loss and the more modern [tanh sparsity loss](https://transformer-circuits.pub/2025/january-update/index.html) variant from Anthropic. To use the tanh sparsity loss, set `jumprelu_sparsity_loss_mode="tanh"`. The tanh sparsity loss variant is a bit easier to train, but has more hyper-parameters. We recommend using the tanh with `normalize_activations="expected_average_only_in"` to match Anthropic's setup. We also recommend enabling the pre-act loss by setting `pre_act_loss_coefficient` to match Anthropic's setup. An example of this is below:
 
 ```python
 from sae_lens import LanguageModelSAERunnerConfig, LanguageModelSAETrainingRunner, JumpReLUTrainingSAEConfig
