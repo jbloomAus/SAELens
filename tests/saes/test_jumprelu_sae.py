@@ -1,11 +1,13 @@
 import os
 from pathlib import Path
+from typing import Literal
 
 import pytest
 import torch
 from torch import nn
 
 from sae_lens.saes.jumprelu_sae import (
+    NAMED_KERNELS,
     JumpReLU,
     JumpReLUSAE,
     JumpReLUTrainingSAE,
@@ -20,8 +22,22 @@ from tests.helpers import (
 )
 
 
-def test_JumpReLUTrainingSAE_encoding():
-    sae = JumpReLUTrainingSAE(build_jumprelu_sae_training_cfg())
+@pytest.mark.parametrize("kernel_name", NAMED_KERNELS.keys())
+def test_jumprelu_kernel(kernel_name: Literal["rectangle", "triangle", "gaussian"]):
+    kernel = NAMED_KERNELS[kernel_name]
+    # should be 0 for values far outside the kernel
+    assert kernel(torch.tensor([-50])).item() == 0
+    assert kernel(torch.tensor([50])).item() == 0
+    # should have area that sums roughly to 1 (it should be a valid probability distribution)
+    kernel_vals = [kernel(val).item() for val in torch.linspace(-10, 10, 1000)]
+    assert pytest.approx(sum(kernel_vals) * 20 / 1000, abs=1e-2) == 1
+
+
+@pytest.mark.parametrize("kernel", NAMED_KERNELS.keys())
+def test_JumpReLUTrainingSAE_encoding(
+    kernel: Literal["rectangle", "triangle", "gaussian"],
+):
+    sae = JumpReLUTrainingSAE(build_jumprelu_sae_training_cfg(jumprelu_kernel=kernel))
 
     batch_size = 32
     d_in = sae.cfg.d_in
@@ -38,7 +54,7 @@ def test_JumpReLUTrainingSAE_encoding():
     expected_hidden_pre = sae_in @ sae.W_enc + sae.b_enc
     threshold = torch.exp(sae.log_threshold)
     expected_feature_acts = JumpReLU.apply(
-        expected_hidden_pre, threshold, sae.bandwidth
+        expected_hidden_pre, threshold, sae.bandwidth, NAMED_KERNELS[kernel]
     )
 
     assert_close(feature_acts, expected_feature_acts, atol=1e-6)  # type: ignore

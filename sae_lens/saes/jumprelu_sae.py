@@ -1,5 +1,6 @@
+import math
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, Callable, Literal
 
 import numpy as np
 import torch
@@ -19,6 +20,21 @@ from sae_lens.saes.sae import (
 
 def rectangle(x: torch.Tensor) -> torch.Tensor:
     return ((x > -0.5) & (x < 0.5)).to(x)
+
+
+def triangle(x: torch.Tensor) -> torch.Tensor:
+    return (1 - x.abs()).relu()
+
+
+def gaussian(x: torch.Tensor) -> torch.Tensor:
+    return 2 * torch.exp(-((2 * x) ** 2) / 2) / math.sqrt(2 * math.pi)
+
+
+NAMED_KERNELS = {
+    "rectangle": rectangle,
+    "triangle": triangle,
+    "gaussian": gaussian,
+}
 
 
 class Step(torch.autograd.Function):
@@ -58,32 +74,39 @@ class JumpReLU(torch.autograd.Function):
         x: torch.Tensor,
         threshold: torch.Tensor,
         bandwidth: float,  # noqa: ARG004
+        kernel: Callable[[torch.Tensor], torch.Tensor],  # noqa: ARG004
     ) -> torch.Tensor:
         return (x * (x > threshold)).to(x)
 
     @staticmethod
     def setup_context(
-        ctx: Any, inputs: tuple[torch.Tensor, torch.Tensor, float], output: torch.Tensor
+        ctx: Any,
+        inputs: tuple[
+            torch.Tensor, torch.Tensor, float, Callable[[torch.Tensor], torch.Tensor]
+        ],
+        output: torch.Tensor,
     ) -> None:
-        x, threshold, bandwidth = inputs
+        x, threshold, bandwidth, kernel = inputs
         del output
         ctx.save_for_backward(x, threshold)
         ctx.bandwidth = bandwidth
+        ctx.kernel = kernel
 
     @staticmethod
     def backward(  # type: ignore[override]
         ctx: Any, grad_output: torch.Tensor
-    ) -> tuple[torch.Tensor, torch.Tensor, None]:
+    ) -> tuple[torch.Tensor, torch.Tensor, None, None]:
         x, threshold = ctx.saved_tensors
         bandwidth = ctx.bandwidth
+        kernel = ctx.kernel
         x_grad = (x > threshold) * grad_output  # We don't apply STE to x input
         threshold_grad = torch.sum(
             -(threshold / bandwidth)
-            * rectangle((x - threshold) / bandwidth)
+            * kernel((x - threshold) / bandwidth)
             * grad_output,
             dim=0,
         )
-        return x_grad, threshold_grad, None
+        return x_grad, threshold_grad, None, None
 
 
 @dataclass
@@ -201,6 +224,7 @@ class JumpReLUTrainingSAEConfig(TrainingSAEConfig):
     jumprelu_bandwidth: float = 0.05
     # step is Google Deepmind, tanh is Anthropic
     jumprelu_sparsity_loss_mode: Literal["step", "tanh"] = "step"
+    jumprelu_kernel: Literal["rectangle", "triangle", "gaussian"] = "rectangle"
     l0_coefficient: float = 1.0
     l0_warm_up_steps: int = 0
 
@@ -232,6 +256,7 @@ class JumpReLUTrainingSAE(TrainingSAE[JumpReLUTrainingSAEConfig]):
 
     b_enc: nn.Parameter
     log_threshold: nn.Parameter
+    kernel: Callable[[torch.Tensor], torch.Tensor]
 
     def __init__(self, cfg: JumpReLUTrainingSAEConfig, use_error_term: bool = False):
         super().__init__(cfg, use_error_term)
@@ -244,6 +269,7 @@ class JumpReLUTrainingSAE(TrainingSAE[JumpReLUTrainingSAEConfig]):
             torch.ones(self.cfg.d_sae, dtype=self.dtype, device=self.device)
             * np.log(cfg.jumprelu_init_threshold)
         )
+        self.kernel = NAMED_KERNELS[cfg.jumprelu_kernel]
 
     @override
     def initialize_weights(self) -> None:
@@ -270,7 +296,9 @@ class JumpReLUTrainingSAE(TrainingSAE[JumpReLUTrainingSAEConfig]):
         sae_in = self.process_sae_in(x)
 
         hidden_pre = sae_in @ self.W_enc + self.b_enc
-        feature_acts = JumpReLU.apply(hidden_pre, self.threshold, self.bandwidth)
+        feature_acts = JumpReLU.apply(
+            hidden_pre, self.threshold, self.bandwidth, self.kernel
+        )
 
         return feature_acts, hidden_pre  # type: ignore
 

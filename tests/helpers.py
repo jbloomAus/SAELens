@@ -103,6 +103,7 @@ class TrainingSAEConfigDict(TypedDict, total=False):
     topk_threshold_lr: float  # For BatchTopK
     jumprelu_sparsity_loss_mode: Literal["step", "tanh"]  # For JumpReLU
     jumprelu_tanh_scale: float  # For JumpReLU
+    jumprelu_kernel: Literal["rectangle", "triangle", "gaussian"]  # For JumpReLU
 
 
 class SAEConfigDict(TypedDict, total=False):
@@ -299,6 +300,7 @@ def build_jumprelu_runner_cfg(
         "l0_coefficient": 0.3,
         "l0_warm_up_steps": 0,
         "pre_act_loss_coefficient": None,
+        "jumprelu_kernel": "rectangle",
     }
     return _build_runner_config(
         JumpReLUTrainingSAEConfig,
