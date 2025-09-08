@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## v6.11.1 (2025-09-08)
+
+### Documentation
+
+* docs: removing unnecessary fields from sae-table generation (#542) ([`3432f00`](https://github.com/jbloomAus/SAELens/commit/3432f0059bc1d90119fe48f88e17ac07aea3a620))
+
+### Fix
+
+* fix: allow float for batchtopk k param (#547) ([`c332b6c`](https://github.com/jbloomAus/SAELens/commit/c332b6ca3b78a7df59886385210ce915db66c6a6))
+
 ## v6.11.0 (2025-09-03)
 
 ### Feature
