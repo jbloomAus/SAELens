@@ -15,7 +15,7 @@ class BatchTopK(nn.Module):
 
     def __init__(
         self,
-        k: int,
+        k: float,
     ):
         super().__init__()
         self.k = k
@@ -23,7 +23,7 @@ class BatchTopK(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         acts = x.relu()
         flat_acts = acts.flatten()
-        acts_topk_flat = torch.topk(flat_acts, self.k * acts.shape[0], dim=-1)
+        acts_topk_flat = torch.topk(flat_acts, int(self.k * acts.shape[0]), dim=-1)
         return (
             torch.zeros_like(flat_acts)
             .scatter(-1, acts_topk_flat.indices, acts_topk_flat.values)
@@ -37,6 +37,7 @@ class BatchTopKTrainingSAEConfig(TopKTrainingSAEConfig):
     Configuration class for training a BatchTopKTrainingSAE.
     """
 
+    k: float = 100  # type: ignore[assignment]
     topk_threshold_lr: float = 0.01
 
     @override

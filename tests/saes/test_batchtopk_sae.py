@@ -4,7 +4,11 @@ from pathlib import Path
 import torch
 import torch.nn as nn
 
-from sae_lens.saes.batchtopk_sae import BatchTopK, BatchTopKTrainingSAE
+from sae_lens.saes.batchtopk_sae import (
+    BatchTopK,
+    BatchTopKTrainingSAE,
+    BatchTopKTrainingSAEConfig,
+)
 from sae_lens.saes.jumprelu_sae import JumpReLUSAE
 from sae_lens.saes.sae import SAE, TrainStepInput
 from tests.helpers import (
@@ -62,6 +66,27 @@ def test_BatchTopK_with_imbalanced_top_features_per_batch():
     assert (output != 0).sum() == batch_topk.k * x.shape[0]
 
 
+def test_BatchTopK_with_float_k():
+    batch_topk = BatchTopK(k=1.5)  # Float k value
+    x = torch.tensor([[1.0, -2.0, 3.0, -4.0], [-5.0, 6.0, -7.0, 8.0]])
+
+    # Expected output after:
+    # 1. ReLU: [[1, 0, 3, 0], [0, 6, 0, 8]]
+    # 2. Flatten: [1, 0, 3, 0, 0, 6, 0, 8]
+    # 3. Top 3 values (k=1.5 * batch_size=2 = 3): [8, 6, 3]
+    # 4. Reshape back to original shape
+    expected = torch.tensor([[0.0, 0.0, 3.0, 0.0], [0.0, 6.0, 0.0, 8.0]])
+
+    output = batch_topk(x)
+
+    assert output.shape == x.shape
+    assert_close(output, expected)
+
+    # Check that exactly int(k*batch_size) values are non-zero
+    expected_nonzero_count = int(batch_topk.k * x.shape[0])
+    assert (output != 0).sum() == expected_nonzero_count
+
+
 def test_BatchTopK_output_must_be_positive():
     batch_topk = BatchTopK(k=2)
     x = torch.tensor(
@@ -92,6 +117,12 @@ def test_BatchTopK_output_must_be_positive():
     # Check that number of non-zero values equals number of positive inputs
     # (which is less than k*batch_size)
     assert (output != 0).sum() == (x > 0).sum()
+
+
+def test_BatchTopKTrainingSAEConfig_accepts_a_float_k():
+    cfg = BatchTopKTrainingSAEConfig(k=1.5, d_in=10, d_sae=10)
+    assert cfg.k == 1.5
+    assert cfg.to_dict()["k"] == 1.5
 
 
 def test_BatchTopKTrainingSAE_initialization():
