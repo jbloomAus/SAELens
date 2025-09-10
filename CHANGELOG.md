@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## v6.12.0 (2025-09-10)
+
+### Feature
+
+* feat: add misaligned persona SAEs (#548)
+
+* feat: add andyrdt llama/qwen SAEs
+
+* update np names
+
+* skip redundant/long test ([`4ec6d52`](https://github.com/jbloomAus/SAELens/commit/4ec6d52da6fdc8b45f6be69a4b5b35ca62caaf19))
+
 ## v6.11.1 (2025-09-08)
 
 ### Documentation
