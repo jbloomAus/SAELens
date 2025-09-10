@@ -579,6 +579,42 @@ def test_sparsify_disk_loader(tmp_path: Path):
     torch.testing.assert_close(state_dict["b_dec"], sparsify_sae.b_dec.data)
 
 
+def test_dictionary_learning_sae_huggingface_loader_1_andy():
+    cfg_dict, state_dict, _ = dictionary_learning_sae_huggingface_loader_1(
+        "andyrdt/saes-llama-3.1-8b-instruct",
+        "resid_post_layer_3/trainer_1",
+        device="cpu",
+        force_download=False,
+        cfg_overrides=None,
+    )
+    assert state_dict.keys() == {"W_enc", "W_dec", "b_dec", "b_enc"}
+    assert cfg_dict == {
+        "architecture": "standard",
+        "d_in": 4096,
+        "d_sae": 131072,
+        "dtype": "float32",
+        "device": "cpu",
+        "model_name": "Llama-3.1-8B-Instruct",
+        "hook_name": "blocks.3.hook_resid_post",
+        "hook_head_index": None,
+        "activation_fn": "relu",
+        "activation_fn_kwargs": {},
+        "apply_b_dec_to_input": True,
+        "finetuning_scaling_factor": False,
+        "sae_lens_training_version": None,
+        "prepend_bos": True,
+        "dataset_path": "monology/pile-uncopyrighted",
+        "context_size": 1024,
+        "normalize_activations": "none",
+        "neuronpedia_id": None,
+        "dataset_trust_remote_code": True,
+    }
+    assert state_dict["W_enc"].shape == (4096, 131072)
+    assert state_dict["W_dec"].shape == (131072, 4096)
+    assert state_dict["b_dec"].shape == (4096,)
+    assert state_dict["b_enc"].shape == (131072,)
+
+
 def test_dictionary_learning_sae_huggingface_loader_1():
     cfg_dict, state_dict, sparsity = dictionary_learning_sae_huggingface_loader_1(
         "canrager/lm_sae",
