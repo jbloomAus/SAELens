@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v6.12.1 (2025-09-10)
+
+### Fix
+
+* fix: andy&#39;s last name starts with a not r 😓 ([`3376126`](https://github.com/jbloomAus/SAELens/commit/337612674e5f370864bf41eb6f13a4bb2b7fb111))
+
 ## v6.12.0 (2025-09-10)
 
 ### Feature
