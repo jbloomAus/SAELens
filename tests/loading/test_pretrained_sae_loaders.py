@@ -579,6 +579,9 @@ def test_sparsify_disk_loader(tmp_path: Path):
     torch.testing.assert_close(state_dict["b_dec"], sparsify_sae.b_dec.data)
 
 
+@pytest.mark.skip(
+    reason="This takes too long since the files are large. Also redundant-ish with the test below."
+)
 def test_dictionary_learning_sae_huggingface_loader_1_andy():
     cfg_dict, state_dict, _ = dictionary_learning_sae_huggingface_loader_1(
         "andyrdt/saes-llama-3.1-8b-instruct",
