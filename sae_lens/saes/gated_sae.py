@@ -91,7 +91,10 @@ class GatedSAE(SAE[GatedSAEConfig]):
             feature_acts = feature_acts * self.W_dec.norm(dim=-1)
         # 1) optional finetuning scaling
         # 2) linear transform
-        sae_out_pre = feature_acts @ self.W_dec + self.b_dec
+        W_dec_for_sae_out = self.W_dec
+        if self.cfg.normalize_decoder:
+            W_dec_for_sae_out = W_dec_for_sae_out / ( W_dec_for_sae_out.norm(dim=-1, keepdim=True) + 1e-8 )
+        sae_out_pre = feature_acts @ W_dec_for_sae_out + self.b_dec
         # 3) hooking and normalization
         sae_out_pre = self.hook_sae_recons(sae_out_pre)
         sae_out_pre = self.run_time_activation_norm_fn_out(sae_out_pre)
