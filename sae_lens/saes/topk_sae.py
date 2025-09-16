@@ -24,8 +24,6 @@ class TopK(nn.Module):
     and applies ReLU to the top K elements.
     """
 
-    b_enc: nn.Parameter
-
     def __init__(
         self,
         k: int,
@@ -39,10 +37,10 @@ class TopK(nn.Module):
         2) Apply ReLU.
         3) Zero out all other entries.
         """
-        topk = torch.topk(x, k=self.k, dim=-1)
-        values = topk.values.relu()
+        topk_values, topk_indices = torch.topk(x, k=self.k, dim=-1)
+        values = topk_values.relu()
         result = torch.zeros_like(x)
-        result.scatter_(-1, topk.indices, values)
+        result.scatter_(-1, topk_indices, values)
         return result
 
 
