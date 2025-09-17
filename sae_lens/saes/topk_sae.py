@@ -24,15 +24,20 @@ class TopK(nn.Module):
     and applies ReLU to the top K elements.
     """
 
+    sparse_intermediate: bool
+
     def __init__(
         self,
         k: int,
+        sparse_intermediate: bool = True,
     ):
         super().__init__()
         self.k = k
+        self.sparse_intermediate = sparse_intermediate
 
     def forward(
-        self, x: torch.Tensor, sparse_intermediate: bool = False
+        self,
+        x: torch.Tensor,
     ) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         """
         1) Select top K elements along the last dimension.
@@ -40,7 +45,7 @@ class TopK(nn.Module):
         3) Zero out all other entries.
         """
         topk_values, topk_indices = torch.topk(x, k=self.k, dim=-1)
-        if sparse_intermediate:
+        if self.sparse_intermediate:
             # Produce a COO sparse tensor (use sparse matrix multiply in decode)
             M, N = x.shape
             sparse_indices = torch.stack(
@@ -65,6 +70,7 @@ class TopKSAEConfig(SAEConfig):
     """
 
     k: int = 100
+    sparse_intermediate: bool = True
 
     @override
     @classmethod
@@ -123,7 +129,7 @@ class TopKSAE(SAE[TopKSAEConfig]):
 
     @override
     def get_activation_fn(self) -> Callable[[torch.Tensor], torch.Tensor]:
-        return TopK(self.cfg.k)
+        return TopK(self.cfg.k, sparse_intermediate=self.cfg.sparse_intermediate)
 
     @override
     @torch.no_grad()
@@ -140,6 +146,7 @@ class TopKTrainingSAEConfig(TrainingSAEConfig):
     """
 
     k: int = 100
+    sparse_intermediate: bool = True
     aux_loss_coefficient: float = 1.0
 
     @override
@@ -202,7 +209,7 @@ class TopKTrainingSAE(TrainingSAE[TopKTrainingSAEConfig]):
 
     @override
     def get_activation_fn(self) -> Callable[[torch.Tensor], torch.Tensor]:
-        return TopK(self.cfg.k)
+        return TopK(self.cfg.k, sparse_intermediate=self.cfg.sparse_intermediate)
 
     @override
     def get_coefficients(self) -> dict[str, TrainCoefficientConfig | float]:

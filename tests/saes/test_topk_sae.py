@@ -154,13 +154,14 @@ def test_topK_activation_sparse_intermediate():
     d_sae = 1024
     M = 128
     for k in [1, 10, 100, 1000]:
-        topk = TopK(k)
+        topk_sparse = TopK(k, sparse_intermediate=True)
+        topk_dense = TopK(k, sparse_intermediate=False)
         x = torch.randn(M, d_sae) + 50.0
-        sparse_x = topk(x, sparse_intermediate=True)
+        sparse_x = topk_sparse(x)
         assert sparse_x.is_sparse
         assert sparse_x.shape == (M, d_sae)
         assert sparse_x.coalesce().values().numel() == k * M
-        dense_x = topk(x, sparse_intermediate=False)
+        dense_x = topk_dense(x)
         assert_close(dense_x, sparse_x.to_dense())
 
 
@@ -187,10 +188,33 @@ def test_topK_activation_sparse_mm():
         sae.b_enc.data = sae.b_enc + 100.0
 
     for k in [1, 10, 100, 1000]:
-        topk = TopK(k)
+        topk_sparse = TopK(k, sparse_intermediate=True)
+        topk_dense = TopK(k, sparse_intermediate=False)
         x = torch.randn(M, d_sae) + 50.0
-        sparse_x = topk(x, sparse_intermediate=True)
+        sparse_x = topk_sparse(x)
         sae_out_sparse = sae.decode(sparse_x)
-        dense_x = topk(x, sparse_intermediate=False)
+        dense_x = topk_dense(x)
         sae_out_dense = sae.decode(dense_x)
         assert_close(sae_out_sparse, sae_out_dense, rtol=1e-4, atol=5e-4)
+
+
+def test_topK_activation_sparse_config():
+    cfg = build_topk_sae_cfg(k=100, sparse_intermediate=True)
+    sae = TopKSAE(cfg)
+    assert sae.activation_fn.sparse_intermediate
+    assert sae.cfg.sparse_intermediate
+
+    cfg = build_topk_sae_cfg(k=100, sparse_intermediate=False)
+    sae = TopKSAE(cfg)
+    assert not sae.activation_fn.sparse_intermediate
+    assert not sae.cfg.sparse_intermediate
+
+    cfg = build_topk_sae_training_cfg(k=100, sparse_intermediate=True)
+    sae = TopKTrainingSAE(cfg)
+    assert sae.activation_fn.sparse_intermediate
+    assert sae.cfg.sparse_intermediate
+
+    cfg = build_topk_sae_training_cfg(k=100, sparse_intermediate=False)
+    sae = TopKTrainingSAE(cfg)
+    assert not sae.activation_fn.sparse_intermediate
+    assert not sae.cfg.sparse_intermediate
