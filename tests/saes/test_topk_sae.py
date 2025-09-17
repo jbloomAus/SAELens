@@ -6,7 +6,7 @@ import torch
 from sparsify import SparseCoder, SparseCoderConfig
 
 from sae_lens.saes.sae import SAE, TrainStepInput
-from sae_lens.saes.topk_sae import TopKSAE, TopKTrainingSAE
+from sae_lens.saes.topk_sae import TopK, TopKSAE, TopKTrainingSAE
 from tests.helpers import (
     assert_close,
     build_topk_sae_cfg,
@@ -146,3 +146,51 @@ def test_TopKTrainingSAE_save_and_load_inference_sae(tmp_path: Path) -> None:
     training_full_out = training_sae(sae_in)
     inference_full_out = inference_sae(sae_in)
     assert_close(training_full_out, inference_full_out)
+
+
+def test_topK_activation_sparse_intermediate():
+    # Validate that the sparse top-K intermediate output (COO format)
+    # we use to accelerate the decoder matches the dense top-K output.
+    d_sae = 1024
+    M = 128
+    for k in [1, 10, 100, 1000]:
+        topk = TopK(k)
+        x = torch.randn(M, d_sae) + 50.0
+        sparse_x = topk(x, sparse_intermediate=True)
+        assert sparse_x.is_sparse
+        assert sparse_x.shape == (M, d_sae)
+        assert sparse_x.coalesce().values().numel() == k * M
+        dense_x = topk(x, sparse_intermediate=False)
+        assert_close(dense_x, sparse_x.to_dense())
+
+
+def test_topK_activation_sparse_mm():
+    # Validate that our decoder produces the same output when using the sparse intermediates
+    # as when using the dense intermediates.
+    d_in = 128
+    d_sae = 1024
+    M = 128
+
+    cfg = build_topk_sae_training_cfg(
+        d_in=d_in,
+        d_sae=d_sae,
+        k=26,
+        decoder_init_norm=1.0,  # TODO: why is this needed??
+    )
+
+    sae = TopKTrainingSAE(cfg)
+
+    with torch.no_grad():
+        # increase b_enc so all features are likely above 0
+        # sparsify includes a relu() in their pre_acts, but
+        # this is not something we need to try to replicate.
+        sae.b_enc.data = sae.b_enc + 100.0
+
+    for k in [1, 10, 100, 1000]:
+        topk = TopK(k)
+        x = torch.randn(M, d_sae) + 50.0
+        sparse_x = topk(x, sparse_intermediate=True)
+        sae_out_sparse = sae.decode(sparse_x)
+        dense_x = topk(x, sparse_intermediate=False)
+        sae_out_dense = sae.decode(dense_x)
+        assert_close(sae_out_sparse, sae_out_dense, rtol=1e-4, atol=5e-4)

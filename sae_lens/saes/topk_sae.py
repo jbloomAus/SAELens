@@ -31,13 +31,27 @@ class TopK(nn.Module):
         super().__init__()
         self.k = k
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self, x: torch.Tensor, sparse_intermediate: bool = False
+    ) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         """
         1) Select top K elements along the last dimension.
         2) Apply ReLU.
         3) Zero out all other entries.
         """
         topk_values, topk_indices = torch.topk(x, k=self.k, dim=-1)
+        if sparse_intermediate:
+            # Produce a COO sparse tensor (use sparse matrix multiply in decode)
+            M, N = x.shape
+            sparse_indices = torch.stack(
+                [
+                    torch.arange(M, device=x.device).repeat_interleave(self.k),
+                    topk_indices.flatten(),
+                ]
+            )
+            return torch.sparse_coo_tensor(
+                sparse_indices, topk_values.flatten(), (M, N)
+            )
         values = topk_values.relu()
         result = torch.zeros_like(x)
         result.scatter_(-1, topk_indices, values)
@@ -94,7 +108,8 @@ class TopKSAE(SAE[TopKSAEConfig]):
         return self.hook_sae_acts_post(self.activation_fn(hidden_pre))
 
     def decode(
-        self, feature_acts: Float[torch.Tensor, "... d_sae"]
+        self,
+        feature_acts: Float[torch.Tensor, "... d_sae"],
     ) -> Float[torch.Tensor, "... d_in"]:
         """
         Reconstructs the input from topk feature activations.
