@@ -38,16 +38,20 @@ class TopK(nn.Module):
     def forward(
         self,
         x: torch.Tensor,
-    ) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
+    ) -> torch.Tensor:
         """
         1) Select top K elements along the last dimension.
         2) Apply ReLU.
         3) Zero out all other entries.
         """
-        topk_values, topk_indices = torch.topk(x, k=self.k, dim=-1)
+        topk_values, topk_indices = torch.topk(x, k=self.k, dim=-1, sorted=False)
         if self.sparse_intermediate:
             # Produce a COO sparse tensor (use sparse matrix multiply in decode)
-            M, N = x.shape
+            assert x.ndim >= 2, (
+                f"Expected pre-topK tensor to have at least 2 dimensions, got tensor of shape {x.shape}"
+            )
+            x = x.view(-1, x.shape[-1])
+            M, _ = x.shape
             sparse_indices = torch.stack(
                 [
                     torch.arange(M, device=x.device).repeat_interleave(self.k),
@@ -55,7 +59,7 @@ class TopK(nn.Module):
                 ]
             )
             return torch.sparse_coo_tensor(
-                sparse_indices, topk_values.flatten(), (M, N)
+                sparse_indices, topk_values.flatten(), tuple(x.shape)
             )
         values = topk_values.relu()
         result = torch.zeros_like(x)
@@ -103,7 +107,10 @@ class TopKSAE(SAE[TopKSAEConfig]):
 
     def encode(
         self, x: Float[torch.Tensor, "... d_in"]
-    ) -> Float[torch.Tensor, "... d_sae"]:
+    ) -> (
+        Float[torch.Tensor, "... d_sae"]
+        | tuple[Float[torch.Tensor, "... d_sae"], torch.Size]
+    ):
         """
         Converts input x into feature activations.
         Uses topk activation under the hood.
@@ -111,18 +118,33 @@ class TopKSAE(SAE[TopKSAEConfig]):
         sae_in = self.process_sae_in(x)
         hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
         # The BaseSAE already sets self.activation_fn to TopK(...) if config requests topk.
+        if self.cfg.sparse_intermediate:
+            return self.hook_sae_acts_post(
+                self.activation_fn(hidden_pre)
+            ), hidden_pre.shape
         return self.hook_sae_acts_post(self.activation_fn(hidden_pre))
 
     def decode(
         self,
-        feature_acts: Float[torch.Tensor, "... d_sae"],
+        feature_acts: Float[torch.Tensor, "... d_sae"]
+        | tuple[torch.Tensor, torch.Size],
     ) -> Float[torch.Tensor, "... d_in"]:
         """
         Reconstructs the input from topk feature activations.
         Applies optional finetuning scaling, hooking to recons, out normalization,
         and optional head reshaping.
         """
-        sae_out_pre = feature_acts @ self.W_dec + self.b_dec
+        if self.cfg.sparse_intermediate:
+            # Since torch.sparse.mm doesn't support dotting a 3D tensor with a 2D matrix,
+            # we flatten all but the last dimension of the feature activations if they're in sparse format
+            # before reshaping the post-decode tensor back to the correct shape.
+            feature_acts, original_shape = feature_acts
+            sae_out_pre = feature_acts @ self.W_dec + self.b_dec
+            sae_out_pre = sae_out_pre.reshape(
+                tuple(original_shape[:-1]) + (self.cfg.d_in,)  # type: ignore
+            )
+        else:
+            sae_out_pre = feature_acts @ self.W_dec + self.b_dec
         sae_out_pre = self.hook_sae_recons(sae_out_pre)
         sae_out_pre = self.run_time_activation_norm_fn_out(sae_out_pre)
         return self.reshape_fn_out(sae_out_pre, self.d_head)
