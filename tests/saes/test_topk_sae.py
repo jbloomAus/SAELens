@@ -153,14 +153,15 @@ def test_topK_activation_sparse_intermediate():
     # we use to accelerate the decoder matches the dense top-K output.
     d_sae = 1024
     M = 128
+    B = 16
     for k in [1, 10, 100, 1000]:
         topk_sparse = TopK(k, sparse_intermediate=True)
         topk_dense = TopK(k, sparse_intermediate=False)
-        x = torch.randn(M, d_sae) + 50.0
+        x = torch.randn(B, M, d_sae) + 50.0
         sparse_x = topk_sparse(x)
         assert sparse_x.is_sparse
-        assert sparse_x.shape == (M, d_sae)
-        assert sparse_x.coalesce().values().numel() == k * M
+        assert sparse_x.shape == (B, M, d_sae)
+        assert sparse_x.coalesce().values().numel() == B * M * k
         dense_x = topk_dense(x)
         assert_close(dense_x, sparse_x.to_dense())
 
@@ -199,22 +200,23 @@ def test_topK_activation_sparse_mm():
 
 
 def test_topK_activation_sparse_config():
+    # Check that our config is respected in both training & inference SAEs
     cfg = build_topk_sae_cfg(k=100, sparse_intermediate=True)
     sae = TopKSAE(cfg)
-    assert sae.activation_fn.sparse_intermediate
+    assert sae.activation_fn.sparse_intermediate  # type: ignore
     assert sae.cfg.sparse_intermediate
 
     cfg = build_topk_sae_cfg(k=100, sparse_intermediate=False)
     sae = TopKSAE(cfg)
-    assert not sae.activation_fn.sparse_intermediate
+    assert not sae.activation_fn.sparse_intermediate  # type: ignore
     assert not sae.cfg.sparse_intermediate
 
     cfg = build_topk_sae_training_cfg(k=100, sparse_intermediate=True)
     sae = TopKTrainingSAE(cfg)
-    assert sae.activation_fn.sparse_intermediate
+    assert sae.activation_fn.sparse_intermediate  # type: ignore
     assert sae.cfg.sparse_intermediate
 
     cfg = build_topk_sae_training_cfg(k=100, sparse_intermediate=False)
     sae = TopKTrainingSAE(cfg)
-    assert not sae.activation_fn.sparse_intermediate
+    assert not sae.activation_fn.sparse_intermediate  # type: ignore
     assert not sae.cfg.sparse_intermediate
