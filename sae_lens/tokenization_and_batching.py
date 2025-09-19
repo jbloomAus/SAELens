@@ -1,4 +1,4 @@
-from typing import Generator, Iterator
+from collections.abc import Generator, Iterator
 
 import torch
 
