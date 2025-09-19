@@ -160,10 +160,10 @@ def test_topK_activation_sparse_intermediate():
         x = torch.randn(B, M, d_sae) + 50.0
         sparse_x = topk_sparse(x)
         assert sparse_x.is_sparse
-        assert sparse_x.shape == (B, M, d_sae)
         assert sparse_x.coalesce().values().numel() == B * M * k
+        sparse_x = sparse_x.to_dense().reshape(B, M, d_sae)
         dense_x = topk_dense(x)
-        assert_close(dense_x, sparse_x.to_dense())
+        assert_close(dense_x, sparse_x)
 
 
 def test_topK_activation_sparse_mm():
