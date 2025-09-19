@@ -77,9 +77,9 @@ class TopK(nn.Module):
         values = topk_values.relu()
         if self.sparse_intermediate:
             # Produce a COO sparse tensor (use sparse matrix multiply in decode)
-            assert x.ndim >= 2, (
-                f"Expected pre-topK tensor to have at least 2 dimensions, got tensor of shape {x.shape}"
-            )
+            assert (
+                x.ndim >= 2
+            ), f"Expected pre-topK tensor to have at least 2 dimensions, got tensor of shape {x.shape}"
             x = x.view(-1, x.shape[-1])
             M, _ = x.shape
             sparse_indices = torch.stack(
@@ -259,7 +259,15 @@ class TopKTrainingSAE(TrainingSAE[TopKTrainingSAEConfig]):
         hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
 
         # Apply the TopK activation function (already set in self.activation_fn if config is "topk")
-        feature_acts = self.hook_sae_acts_post(self.activation_fn(hidden_pre), x.shape)
+        if self.cfg.sparse_intermediate and isinstance(
+            self.hook_sae_acts_post,
+            SparseHookPoint,
+        ):
+            feature_acts = self.hook_sae_acts_post(
+                self.activation_fn(hidden_pre), x_shape=x.shape
+            )
+        else:
+            feature_acts = self.hook_sae_acts_post(self.activation_fn(hidden_pre))
         return feature_acts, hidden_pre
 
     @override
