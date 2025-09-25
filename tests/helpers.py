@@ -98,7 +98,7 @@ class TrainingSAEConfigDict(TypedDict, total=False):
     jumprelu_init_threshold: float
     jumprelu_bandwidth: float
     k: int  # For TopK
-    sparse_intermediate: bool  # For TopK
+    use_sparse_activations: bool  # For TopK
     l0_coefficient: float  # For JumpReLU
     l0_warm_up_steps: int
     pre_act_loss_coefficient: float | None  # For JumpReLU

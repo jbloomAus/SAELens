@@ -42,14 +42,14 @@ cfg_sparse = build_topk_sae_training_cfg(
     d_sae=d_sae,
     k=k,
     device=device,
-    sparse_intermediate=True,
+    use_sparse_activations=True,
 )
 cfg_dense = build_topk_sae_training_cfg(
     d_in=d_in,
     d_sae=d_sae,
     k=k,
     device=device,
-    sparse_intermediate=False,
+    use_sparse_activations=False,
 )
 
 sae_sparse = TopKTrainingSAE(cfg_sparse)

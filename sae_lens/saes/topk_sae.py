@@ -31,9 +31,7 @@ class SparseHookPoint(HookPoint):
         self.d_sae = d_sae
 
     @override
-    def forward(
-        self, x: torch.Tensor, x_shape: torch.Size | None = None
-    ) -> torch.Tensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         using_hooks = (
             self._forward_hooks is not None
             or self._backward_hooks is not None
@@ -41,9 +39,7 @@ class SparseHookPoint(HookPoint):
             and len(self._backward_hooks) > 0
         )
         if using_hooks and x.is_sparse:
-            if x_shape is None:
-                raise ValueError("x_shape must be provided")
-            return x.to_dense().reshape((x_shape[:-1]) + (self.d_sae,))
+            return x.to_dense()
         return x  # if no hooks are being used, use passthrough
 
 
@@ -53,16 +49,16 @@ class TopK(nn.Module):
     and applies ReLU to the top K elements.
     """
 
-    sparse_intermediate: bool
+    use_sparse_activations: bool
 
     def __init__(
         self,
         k: int,
-        sparse_intermediate: bool = True,
+        use_sparse_activations: bool = True,
     ):
         super().__init__()
         self.k = k
-        self.sparse_intermediate = sparse_intermediate
+        self.use_sparse_activations = use_sparse_activations
 
     def forward(
         self,
@@ -75,7 +71,7 @@ class TopK(nn.Module):
         """
         topk_values, topk_indices = torch.topk(x, k=self.k, dim=-1, sorted=False)
         values = topk_values.relu()
-        if self.sparse_intermediate:
+        if self.use_sparse_activations:
             # Produce a COO sparse tensor (use sparse matrix multiply in decode)
             assert (
                 x.ndim >= 2
@@ -103,7 +99,7 @@ class TopKSAEConfig(SAEConfig):
     """
 
     k: int = 100
-    sparse_intermediate: bool = True
+    use_sparse_activations: bool = True
 
     @override
     @classmethod
@@ -127,7 +123,7 @@ class TopKSAE(SAE[TopKSAEConfig]):
             use_error_term: Whether to apply the error-term approach in the forward pass.
         """
         super().__init__(cfg, use_error_term)
-        if self.cfg.sparse_intermediate:
+        if self.cfg.use_sparse_activations:
             self.hook_sae_acts_post = SparseHookPoint(self.cfg.d_sae)
         self.setup()
 
@@ -147,57 +143,48 @@ class TopKSAE(SAE[TopKSAEConfig]):
         sae_in = self.process_sae_in(x)
         hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
         # The BaseSAE already sets self.activation_fn to TopK(...) if config requests topk.
-        if self.cfg.sparse_intermediate and isinstance(
-            self.hook_sae_acts_post,
-            SparseHookPoint,  # Necessary so we don't pass illegal arg to blank hook
-        ):
-            return self.hook_sae_acts_post(
-                self.activation_fn(hidden_pre), x_shape=x.shape
-            )
         return self.hook_sae_acts_post(self.activation_fn(hidden_pre))
 
     def decode(
         self,
         feature_acts: Float[torch.Tensor, "... d_sae"],
-        x_shape: torch.Size | None = None,
     ) -> Float[torch.Tensor, "... d_in"]:
         """
         Reconstructs the input from topk feature activations.
         Applies optional finetuning scaling, hooking to recons, out normalization,
         and optional head reshaping.
-
-        x_shape: The shape of the pre-encode input x. Used when sparse_intermediate is True.
         """
-        sae_out_pre = feature_acts @ self.W_dec + self.b_dec
-        if (
-            self.cfg.sparse_intermediate
-            and feature_acts.is_sparse
-            and x_shape is not None
-        ):
-            # Since torch.sparse.mm doesn't support dotting a 3D tensor with a 2D matrix,
-            # we flatten all but the last dimension of the feature activations if they're in sparse format
-            # before reshaping the post-decode tensor back to the correct shape.
-            sae_out_pre = sae_out_pre.reshape(
-                tuple(x_shape[:-1]) + (self.cfg.d_in,)  # type: ignore
+        if self.cfg.use_sparse_activations and feature_acts.ndim >= 3:
+            raise ValueError(
+                "Sparse activations are only supported for 2D activations. Use .disable_sparse_activations() to support arbitrary activation dims."
             )
+        sae_out_pre = feature_acts @ self.W_dec + self.b_dec
         sae_out_pre = self.hook_sae_recons(sae_out_pre)
         sae_out_pre = self.run_time_activation_norm_fn_out(sae_out_pre)
         return self.reshape_fn_out(sae_out_pre, self.d_head)
+
+    def disable_sparse_activations(self) -> None:
+        self.cfg.use_sparse_activations = False
+        if isinstance(self.activation_fn, TopK):
+            self.activation_fn.use_sparse_activations = False
+
+    def enable_sparse_activations(self) -> None:
+        self.cfg.use_sparse_activations = True
+        if isinstance(self.activation_fn, TopK):
+            self.activation_fn.use_sparse_activations = True
 
     @override
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass through the SAE."""
         feature_acts = self.encode(x)
-        sae_out = self.decode(feature_acts, x_shape=x.shape)
+        sae_out = self.decode(feature_acts)
 
         if self.use_error_term:
             with torch.no_grad():
                 # Recompute without hooks for true error term
                 with _disable_hooks(self):
                     feature_acts_clean = self.encode(x)
-                    x_reconstruct_clean = self.decode(
-                        feature_acts_clean, x_shape=x.shape
-                    )
+                    x_reconstruct_clean = self.decode(feature_acts_clean)
                 sae_error = self.hook_sae_error(x - x_reconstruct_clean)
             sae_out = sae_out + sae_error
 
@@ -205,7 +192,7 @@ class TopKSAE(SAE[TopKSAEConfig]):
 
     @override
     def get_activation_fn(self) -> Callable[[torch.Tensor], torch.Tensor]:
-        return TopK(self.cfg.k, sparse_intermediate=self.cfg.sparse_intermediate)
+        return TopK(self.cfg.k, use_sparse_activations=self.cfg.use_sparse_activations)
 
     @override
     @torch.no_grad()
@@ -222,7 +209,7 @@ class TopKTrainingSAEConfig(TrainingSAEConfig):
     """
 
     k: int = 100
-    sparse_intermediate: bool = True
+    use_sparse_activations: bool = True
     aux_loss_coefficient: float = 1.0
 
     @override
@@ -240,7 +227,7 @@ class TopKTrainingSAE(TrainingSAE[TopKTrainingSAEConfig]):
 
     def __init__(self, cfg: TopKTrainingSAEConfig, use_error_term: bool = False):
         super().__init__(cfg, use_error_term)
-        if self.cfg.sparse_intermediate:
+        if self.cfg.use_sparse_activations:
             self.hook_sae_acts_post = SparseHookPoint(self.cfg.d_sae)
         self.setup()
 
@@ -259,13 +246,11 @@ class TopKTrainingSAE(TrainingSAE[TopKTrainingSAEConfig]):
         hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
 
         # Apply the TopK activation function (already set in self.activation_fn if config is "topk")
-        if self.cfg.sparse_intermediate and isinstance(
+        if self.cfg.use_sparse_activations and isinstance(
             self.hook_sae_acts_post,
             SparseHookPoint,
         ):
-            feature_acts = self.hook_sae_acts_post(
-                self.activation_fn(hidden_pre), x_shape=x.shape
-            )
+            feature_acts = self.hook_sae_acts_post(self.activation_fn(hidden_pre))
         else:
             feature_acts = self.hook_sae_acts_post(self.activation_fn(hidden_pre))
         return feature_acts, hidden_pre
@@ -274,41 +259,42 @@ class TopKTrainingSAE(TrainingSAE[TopKTrainingSAEConfig]):
     def decode(
         self,
         feature_acts: Float[torch.Tensor, "... d_sae"],
-        x_shape: torch.Size | None = None,
     ) -> Float[torch.Tensor, "... d_in"]:
         """
         Decodes feature activations back into input space,
         applying optional finetuning scale, hooking, out normalization, etc.
-
-        x_shape: The shape of the pre-encode input x. Used when sparse_intermediate is True.
         """
-        sae_out_pre = feature_acts @ self.W_dec + self.b_dec
-        if (
-            self.cfg.sparse_intermediate
-            and feature_acts.is_sparse
-            and x_shape is not None
-        ):
-            sae_out_pre = sae_out_pre.reshape(
-                tuple(x_shape[:-1]) + (self.cfg.d_in,)  # type: ignore
+        if self.cfg.use_sparse_activations and feature_acts.ndim >= 3:
+            raise ValueError(
+                "Sparse activations are only supported for 2D activations. Use .disable_sparse_activations() to support arbitrary activation dims."
             )
+        sae_out_pre = feature_acts @ self.W_dec + self.b_dec
         sae_out_pre = self.hook_sae_recons(sae_out_pre)
         sae_out_pre = self.run_time_activation_norm_fn_out(sae_out_pre)
         return self.reshape_fn_out(sae_out_pre, self.d_head)
+
+    def disable_sparse_activations(self) -> None:
+        self.cfg.use_sparse_activations = False
+        if isinstance(self.activation_fn, TopK):
+            self.activation_fn.use_sparse_activations = False
+
+    def enable_sparse_activations(self) -> None:
+        self.cfg.use_sparse_activations = True
+        if isinstance(self.activation_fn, TopK):
+            self.activation_fn.use_sparse_activations = True
 
     @override
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass through the SAE."""
         feature_acts = self.encode(x)
-        sae_out = self.decode(feature_acts, x_shape=x.shape)
+        sae_out = self.decode(feature_acts)
 
         if self.use_error_term:
             with torch.no_grad():
                 # Recompute without hooks for true error term
                 with _disable_hooks(self):
                     feature_acts_clean = self.encode(x)
-                    x_reconstruct_clean = self.decode(
-                        feature_acts_clean, x_shape=x.shape
-                    )
+                    x_reconstruct_clean = self.decode(feature_acts_clean)
                 sae_error = self.hook_sae_error(x - x_reconstruct_clean)
             sae_out = sae_out + sae_error
 
@@ -340,7 +326,7 @@ class TopKTrainingSAE(TrainingSAE[TopKTrainingSAEConfig]):
 
     @override
     def get_activation_fn(self) -> Callable[[torch.Tensor], torch.Tensor]:
-        return TopK(self.cfg.k, sparse_intermediate=self.cfg.sparse_intermediate)
+        return TopK(self.cfg.k, use_sparse_activations=self.cfg.use_sparse_activations)
 
     @override
     def get_coefficients(self) -> dict[str, TrainCoefficientConfig | float]:
@@ -381,7 +367,7 @@ class TopKTrainingSAE(TrainingSAE[TopKTrainingSAEConfig]):
 
         # Encourage the top ~50% of dead latents to predict the residual of the
         # top k living latents
-        recons = self.decode(auxk_acts, x_shape=sae_in.shape)
+        recons = self.decode(auxk_acts)
         auxk_loss = (recons - residual).pow(2).sum(dim=-1).mean()
         return self.cfg.aux_loss_coefficient * scale * auxk_loss
 
