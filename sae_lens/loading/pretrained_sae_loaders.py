@@ -233,6 +233,12 @@ def handle_pre_6_0_config(cfg_dict: dict[str, Any]) -> dict[str, Any]:
         "reshape_activations",
         "hook_z" if "hook_z" in new_cfg.get("hook_name", "") else "none",
     )
+    if (
+        new_cfg.get("activation_fn") == "topk"
+        and new_cfg.get("activation_fn_kwargs", {}).get("k") is not None
+    ):
+        new_cfg["architecture"] = "topk"
+        new_cfg["k"] = new_cfg["activation_fn_kwargs"]["k"]
 
     if "normalize_activations" in new_cfg and isinstance(
         new_cfg["normalize_activations"], bool
