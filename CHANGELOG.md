@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v6.12.2 (2025-09-26)
+
+### Fix
+
+* fix: typo in sae.py leading to misleading warning (#552) ([`52afbda`](https://github.com/jbloomAus/SAELens/commit/52afbdab2b7dbfad2c2e71d7546f0d67e18ae954))
+
 ## v6.12.1 (2025-09-10)
 
 ### Fix
