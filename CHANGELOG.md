@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## v6.12.3 (2025-09-26)
+
+### Fix
+
+* fix: properly convert old SAELens TopK SAEs on load (#554)
+
+* fix: properly convert old SAELens TopK SAEs on load
+
+* fixing other loading test ([`9e71055`](https://github.com/jbloomAus/SAELens/commit/9e71055b1e93405e657abd32792fd4a8ce5d84bc))
+
 ## v6.12.2 (2025-09-26)
 
 ### Fix
