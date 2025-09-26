@@ -2,13 +2,22 @@ import copy
 import pickle
 
 import pytest
+import torch
 
 from sae_lens import __version__
 from sae_lens.registry import get_sae_class, get_sae_training_class
-from sae_lens.saes.sae import SAE, SAEConfig, SAEMetadata, TrainingSAEConfig
+from sae_lens.saes.sae import (
+    SAE,
+    SAEConfig,
+    SAEMetadata,
+    TrainingSAE,
+    TrainingSAEConfig,
+)
 from tests.helpers import (
     ALL_TRAINING_ARCHITECTURES,
+    assert_close,
     build_sae_training_cfg_for_arch,
+    random_params,
 )
 
 
@@ -211,3 +220,25 @@ def test_SAE_from_pretrained_deprecated_usage_as_tuple():
         DeprecationWarning, match="Getting length of SAE objects is deprecated"
     ):
         assert len(sae) == 3
+
+
+@pytest.mark.parametrize("architecture", ALL_TRAINING_ARCHITECTURES)
+def test_TrainingSAE_fold_activation_norm_scaling_factor_all_architectures(
+    architecture: str,
+):
+    cfg = build_sae_training_cfg_for_arch(architecture)
+    sae = TrainingSAE.from_dict(cfg.to_dict())
+    random_params(sae)
+
+    inputs = torch.randn(100, cfg.d_in)
+
+    original_outputs = sae(inputs)
+    original_features = sae.encode(inputs)
+
+    sae.fold_activation_norm_scaling_factor(2.0)
+
+    folded_outputs = 2.0 * sae(inputs / 2.0)
+    folded_features = sae.encode(inputs / 2.0)
+
+    assert_close(folded_outputs, original_outputs)
+    assert_close(folded_features, original_features)
