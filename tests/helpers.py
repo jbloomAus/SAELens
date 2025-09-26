@@ -568,3 +568,13 @@ def assert_not_close(
             check_stride=check_stride,
             msg=msg,
         )
+
+
+def random_params(model: torch.nn.Module) -> None:
+    """
+    Fill the parameters of a model with random values.
+    """
+    for param in model.parameters():
+        param.data = torch.rand_like(param)
+    for buffer in model.buffers():
+        buffer.data = torch.rand_like(buffer)
