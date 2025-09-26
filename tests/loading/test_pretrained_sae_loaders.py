@@ -199,7 +199,8 @@ def test_load_sae_config_from_huggingface_dictionary_learning_1():
             "neuronpedia_id": "gemma-2-2b/12-sae_bench-topk-res-65k__trainer_0_step_final",
             "sae_lens_training_version": None,
         },
-        "architecture": "standard",
+        "architecture": "topk",
+        "k": 20,
     }
 
     assert cfg_dict == expected_cfg_dict
