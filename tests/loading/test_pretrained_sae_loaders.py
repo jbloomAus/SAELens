@@ -84,6 +84,37 @@ def test_load_sae_config_from_huggingface_connor_rob_hook_z():
     assert cfg_dict == expected_cfg_dict
 
 
+def test_load_old_topk_saes_from_huggingface():
+    cfg_dict = load_sae_config_from_huggingface(
+        "gpt2-small-resid-post-v5-32k",
+        sae_id="blocks.11.hook_resid_post",
+    )
+
+    expected_cfg_dict = {
+        "d_in": 768,
+        "d_sae": 32768,
+        "dtype": "torch.float32",
+        "device": "cpu",
+        "apply_b_dec_to_input": True,
+        "normalize_activations": "layer_norm",
+        "reshape_activations": "none",
+        "metadata": {
+            "model_name": "gpt2-small",
+            "hook_name": "blocks.11.hook_resid_post",
+            "hook_head_index": None,
+            "sae_lens_training_version": None,
+            "prepend_bos": False,
+            "dataset_path": "Skylion007/openwebtext",
+            "context_size": 64,
+            "neuronpedia_id": "gpt2-small/11-res_post_32k-oai",
+        },
+        "architecture": "topk",
+        "k": 32,
+    }
+
+    assert cfg_dict == expected_cfg_dict
+
+
 def test_load_sae_config_from_huggingface_gemma_2():
     cfg_dict = load_sae_config_from_huggingface(
         "gemma-scope-2b-pt-res",
@@ -168,7 +199,8 @@ def test_load_sae_config_from_huggingface_dictionary_learning_1():
             "neuronpedia_id": "gemma-2-2b/12-sae_bench-topk-res-65k__trainer_0_step_final",
             "sae_lens_training_version": None,
         },
-        "architecture": "standard",
+        "architecture": "topk",
+        "k": 20,
     }
 
     assert cfg_dict == expected_cfg_dict
