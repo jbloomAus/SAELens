@@ -1,9 +1,10 @@
 import io
 import json
 import sys
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator, Literal, cast
+from typing import Literal, cast
 
 import torch
 from datasets import Dataset, DatasetDict, load_dataset
