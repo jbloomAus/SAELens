@@ -5,7 +5,6 @@ from typing import Any, Callable
 import torch
 import torch._inductor.config
 import triton
-from sparsify import SparseCoder, SparseCoderConfig
 from tabulate import tabulate
 
 from sae_lens.saes.sae import TrainStepInput
@@ -54,9 +53,6 @@ cfg_dense = build_topk_sae_training_cfg(
 
 sae_sparse = TopKTrainingSAE(cfg_sparse)
 sae_dense = TopKTrainingSAE(cfg_dense)
-sparse_coder_sae = SparseCoder(
-    d_in=d_in, cfg=SparseCoderConfig(num_latents=d_sae, k=26)
-)
 
 dead_neuron_mask = None  # torch.randn(d_sae, device = device) > 0.1
 input_acts = torch.randn(seq_len, d_in, device=device)

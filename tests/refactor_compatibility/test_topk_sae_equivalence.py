@@ -119,7 +119,6 @@ def test_topk_sae_inference_equivalence():
     """
     old_sae = make_old_topk_sae(d_in=16, d_sae=8, use_error_term=False)
     new_sae = make_new_topk_sae(d_in=16, d_sae=8, use_error_term=False)
-    new_sae.disable_sparse_activations()
 
     compare_params(old_sae, new_sae)
 
@@ -151,7 +150,6 @@ def test_topk_sae_inference_equivalence():
     # Now test with error_term
     old_sae_err = make_old_topk_sae(d_in=16, d_sae=8, use_error_term=True)
     new_sae_err = make_new_topk_sae(d_in=16, d_sae=8, use_error_term=True)
-    new_sae_err.disable_sparse_activations()
 
     # Align error term model parameters
     with torch.no_grad():
@@ -184,7 +182,6 @@ def test_topk_sae_run_with_cache_equivalence():  # type: ignore
 
     old_sae = make_old_topk_sae()
     new_sae = make_new_topk_sae()
-    new_sae.disable_sparse_activations()
 
     # Ensure parameters are identical before comparing outputs
     with torch.no_grad():
@@ -272,7 +269,6 @@ def test_topk_sae_training_equivalence():
         d_sae=8,
     )
     new_training_sae = TopKTrainingSAE(new_training_cfg)
-    new_training_sae.disable_sparse_activations()
 
     # Compare param shapes using updated compare_params
     compare_params(old_training_sae, new_training_sae)
@@ -317,7 +313,7 @@ def test_topk_sae_training_equivalence():
     )
     assert_close(
         old_out.feature_acts,
-        new_out.feature_acts,
+        new_out.feature_acts.to_dense(),
         atol=1e-5,
         msg="Training feature_acts differ between old and new implementations.",
     )
