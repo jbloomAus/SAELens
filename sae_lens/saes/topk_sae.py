@@ -51,7 +51,7 @@ class TopK(nn.Module):
     def __init__(
         self,
         k: int,
-        use_sparse_activations: bool = True,
+        use_sparse_activations: bool = False,
     ):
         super().__init__()
         self.k = k
