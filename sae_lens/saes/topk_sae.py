@@ -236,23 +236,6 @@ class TopKSAE(SAE[TopKSAEConfig]):
         return self.reshape_fn_out(sae_out_pre, self.d_head)
 
     @override
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward pass through the SAE."""
-        feature_acts = self.encode(x)
-        sae_out = self.decode(feature_acts)
-
-        if self.use_error_term:
-            with torch.no_grad():
-                # Recompute without hooks for true error term
-                with _disable_hooks(self):
-                    feature_acts_clean = self.encode(x)
-                    x_reconstruct_clean = self.decode(feature_acts_clean)
-                sae_error = self.hook_sae_error(x - x_reconstruct_clean)
-            sae_out = sae_out + sae_error
-
-        return self.hook_sae_output(sae_out)
-
-    @override
     def get_activation_fn(self) -> Callable[[torch.Tensor], torch.Tensor]:
         return TopK(self.cfg.k, use_sparse_activations=False)
 

@@ -179,8 +179,10 @@ def test_log_feature_sparsity__handles_zeroes_by_default_fp16() -> None:
     assert _log_feature_sparsity(fp16_zeroes).item() != float("-inf")
 
 
+@pytest.mark.parametrize("sparse_feature_acts", [True, False])
 def test_build_train_step_log_dict(
     trainer: SAETrainer[StandardTrainingSAE, StandardTrainingSAEConfig],
+    sparse_feature_acts: bool,
 ) -> None:
     train_output = TrainStepOutput(
         sae_in=torch.tensor([[-1, 0], [0, 2], [1, 1]]).float(),
@@ -196,6 +198,8 @@ def test_build_train_step_log_dict(
             "topk_threshold": torch.tensor(0.5),
         },
     )
+    if sparse_feature_acts:
+        train_output.feature_acts = train_output.feature_acts.to_sparse_coo()
 
     # we're relying on the trainer only for some of the metrics here
     # we should more / less try to break this and push

@@ -312,7 +312,7 @@ class SAETrainer(Generic[T_TRAINING_SAE, T_TRAINING_SAE_CONFIG]):
         loss = output.loss.item()
 
         # metrics for currents acts
-        l0 = (feature_acts > 0).float().sum(-1).mean()
+        l0 = feature_acts.bool().float().sum(-1).to_dense().mean()
         current_learning_rate = self.optimizer.param_groups[0]["lr"]
 
         per_token_l2_loss = (sae_out - sae_in).pow(2).sum(dim=-1).squeeze()
