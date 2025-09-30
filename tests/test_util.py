@@ -2,7 +2,10 @@ from pathlib import Path
 
 import pytest
 
-from sae_lens.util import extract_stop_at_layer_from_tlens_hook_name, path_or_tmp_dir
+from sae_lens.util import (
+    extract_stop_at_layer_from_tlens_hook_name,
+    path_or_tmp_dir,
+)
 
 
 @pytest.mark.parametrize(
