@@ -146,7 +146,9 @@ def _sparse_matmul_nd(
 
     if sparse_tensor.ndim == 2:
         # Simple 2D case - use torch.sparse.mm directly
-        return torch.sparse.mm(sparse_tensor, dense_matrix)
+        # sparse.mm errors with bfloat16 :(
+        with torch.autocast(device_type=sparse_tensor.device.type, enabled=False):
+            return torch.sparse.mm(sparse_tensor, dense_matrix)
 
     # For 3D+ case, reshape to 2D, multiply, then reshape back
     batch_size = int(torch.prod(torch.tensor(batch_dims)).item())
@@ -174,8 +176,10 @@ def _sparse_matmul_nd(
         sparse_2d_indices, values, (batch_size, d_sae)
     ).coalesce()
 
-    # Do the matrix multiplication
-    result_2d = torch.sparse.mm(sparse_2d, dense_matrix)  # [batch_size, d_out]
+    # sparse.mm errors with bfloat16 :(
+    with torch.autocast(device_type=sparse_tensor.device.type, enabled=False):
+        # Do the matrix multiplication
+        result_2d = torch.sparse.mm(sparse_2d, dense_matrix)  # [batch_size, d_out]
 
     # Reshape back to original batch dimensions
     result_shape = tuple(batch_dims) + (d_out,)
