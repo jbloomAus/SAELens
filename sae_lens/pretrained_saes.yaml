@@ -14829,3 +14829,57 @@ mntss-gemma-2-2b-2.5m-clt-as-per-layer:
   - id: layer_25
     path: 25
     neuronpedia: gemma-2-2b/25-clt-hp
+
+llama-3.1-8b-instruct-andyrdt:
+  conversion_func: dictionary_learning_1
+  model: meta-llama/Llama-3.1-8B-Instruct
+  repo_id: andyrdt/saes-llama-3.1-8b-instruct
+  saes:
+  - id: resid_post_layer_3_trainer_1
+    path: resid_post_layer_3/trainer_1
+    neuronpedia: llama3.1-8b-it/3-resid-post-aa
+  - id: resid_post_layer_7_trainer_1
+    path: resid_post_layer_7/trainer_1
+    neuronpedia: llama3.1-8b-it/7-resid-post-aa
+  - id: resid_post_layer_11_trainer_1
+    path: resid_post_layer_11/trainer_1
+    neuronpedia: llama3.1-8b-it/11-resid-post-aa
+  - id: resid_post_layer_15_trainer_1
+    path: resid_post_layer_15/trainer_1
+    neuronpedia: llama3.1-8b-it/15-resid-post-aa
+  - id: resid_post_layer_19_trainer_1
+    path: resid_post_layer_19/trainer_1
+    neuronpedia: llama3.1-8b-it/19-resid-post-aa
+  - id: resid_post_layer_23_trainer_1
+    path: resid_post_layer_23/trainer_1
+    neuronpedia: llama3.1-8b-it/23-resid-post-aa
+  - id: resid_post_layer_27_trainer_1
+    path: resid_post_layer_27/trainer_1
+    neuronpedia: llama3.1-8b-it/27-resid-post-aa
+
+qwen2.5-7b-instruct-andyrdt:
+  conversion_func: dictionary_learning_1
+  model: Qwen/Qwen2.5-7B-Instruct
+  repo_id: andyrdt/saes-qwen2.5-7b-instruct
+  saes:
+  - id: resid_post_layer_3_trainer_1
+    path: resid_post_layer_3/trainer_1
+    neuronpedia: qwen2.5-7b-it/3-resid-post-aa
+  - id: resid_post_layer_7_trainer_1
+    path: resid_post_layer_7/trainer_1
+    neuronpedia: qwen2.5-7b-it/7-resid-post-aa
+  - id: resid_post_layer_11_trainer_1
+    path: resid_post_layer_11/trainer_1
+    neuronpedia: qwen2.5-7b-it/11-resid-post-aa
+  - id: resid_post_layer_15_trainer_1
+    path: resid_post_layer_15/trainer_1
+    neuronpedia: qwen2.5-7b-it/15-resid-post-aa
+  - id: resid_post_layer_19_trainer_1
+    path: resid_post_layer_19/trainer_1
+    neuronpedia: qwen2.5-7b-it/19-resid-post-aa
+  - id: resid_post_layer_23_trainer_1
+    path: resid_post_layer_23/trainer_1
+    neuronpedia: qwen2.5-7b-it/23-resid-post-aa
+  - id: resid_post_layer_27_trainer_1
+    path: resid_post_layer_27/trainer_1
+    neuronpedia: qwen2.5-7b-it/27-resid-post-aa

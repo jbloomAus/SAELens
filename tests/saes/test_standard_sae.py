@@ -436,9 +436,13 @@ def test_sae_fold_norm_scaling_factor_all_architectures(architecture: str):
     unscaled_activations = activations / norm_scaling_factor
 
     feature_activations_1 = sae.encode(activations)
+    if feature_activations_1.is_sparse:
+        feature_activations_1 = feature_activations_1.to_dense()
     # with the scaling folded in, the unscaled activations should produce the same
     # result.
     feature_activations_2 = sae2.encode(unscaled_activations)
+    if feature_activations_2.is_sparse:
+        feature_activations_2 = feature_activations_2.to_dense()
 
     assert_close(
         feature_activations_1.nonzero(),

@@ -14,7 +14,6 @@ from typing import (
     Generic,
     Literal,
     NamedTuple,
-    Type,
     TypeVar,
 )
 
@@ -245,7 +244,7 @@ class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
 
         self.cfg = cfg
 
-        if cfg.metadata and cfg.metadata:
+        if cfg.metadata and cfg.metadata.model_from_pretrained_kwargs:
             warnings.warn(
                 "\nThis SAE has non-empty model_from_pretrained_kwargs. "
                 "\nFor optimal performance, load the model like so:\n"
@@ -534,7 +533,7 @@ class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
     @classmethod
     @deprecated("Use load_from_disk instead")
     def load_from_pretrained(
-        cls: Type[T_SAE],
+        cls: type[T_SAE],
         path: str | Path,
         device: str = "cpu",
         dtype: str | None = None,
@@ -543,7 +542,7 @@ class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
 
     @classmethod
     def load_from_disk(
-        cls: Type[T_SAE],
+        cls: type[T_SAE],
         path: str | Path,
         device: str = "cpu",
         dtype: str | None = None,
@@ -564,7 +563,7 @@ class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
 
     @classmethod
     def from_pretrained(
-        cls: Type[T_SAE],
+        cls: type[T_SAE],
         release: str,
         sae_id: str,
         device: str = "cpu",
@@ -585,7 +584,7 @@ class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
 
     @classmethod
     def from_pretrained_with_cfg_and_sparsity(
-        cls: Type[T_SAE],
+        cls: type[T_SAE],
         release: str,
         sae_id: str,
         device: str = "cpu",
@@ -684,7 +683,7 @@ class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
         return sae, cfg_dict, log_sparsities
 
     @classmethod
-    def from_dict(cls: Type[T_SAE], config_dict: dict[str, Any]) -> T_SAE:
+    def from_dict(cls: type[T_SAE], config_dict: dict[str, Any]) -> T_SAE:
         """Create an SAE from a config dictionary."""
         sae_cls = cls.get_sae_class_for_architecture(config_dict["architecture"])
         sae_config_cls = cls.get_sae_config_class_for_architecture(
@@ -694,8 +693,8 @@ class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
 
     @classmethod
     def get_sae_class_for_architecture(
-        cls: Type[T_SAE], architecture: str
-    ) -> Type[T_SAE]:
+        cls: type[T_SAE], architecture: str
+    ) -> type[T_SAE]:
         """Get the SAE class for a given architecture."""
         sae_cls, _ = get_sae_class(architecture)
         if not issubclass(sae_cls, cls):
@@ -1000,8 +999,8 @@ class TrainingSAE(SAE[T_TRAINING_SAE_CONFIG], ABC):
 
     @classmethod
     def get_sae_class_for_architecture(
-        cls: Type[T_TRAINING_SAE], architecture: str
-    ) -> Type[T_TRAINING_SAE]:
+        cls: type[T_TRAINING_SAE], architecture: str
+    ) -> type[T_TRAINING_SAE]:
         """Get the SAE class for a given architecture."""
         sae_cls, _ = get_sae_training_class(architecture)
         if not issubclass(sae_cls, cls):

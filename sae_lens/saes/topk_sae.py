@@ -6,6 +6,7 @@ from typing import Callable
 import torch
 from jaxtyping import Float
 from torch import nn
+from transformer_lens.hook_points import HookPoint
 from typing_extensions import override
 
 from sae_lens.saes.sae import (
@@ -15,7 +16,28 @@ from sae_lens.saes.sae import (
     TrainingSAE,
     TrainingSAEConfig,
     TrainStepInput,
+    _disable_hooks,
 )
+
+
+class SparseHookPoint(HookPoint):
+    """
+    A HookPoint that takes in a sparse tensor.
+    Overrides TransformerLens's HookPoint.
+    """
+
+    def __init__(self, d_sae: int):
+        super().__init__()
+        self.d_sae = d_sae
+
+    @override
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        using_hooks = (
+            self._forward_hooks is not None and len(self._forward_hooks) > 0
+        ) or (self._backward_hooks is not None and len(self._backward_hooks) > 0)
+        if using_hooks and x.is_sparse:
+            return x.to_dense()
+        return x  # if no hooks are being used, use passthrough
 
 
 class TopK(nn.Module):
@@ -24,25 +46,72 @@ class TopK(nn.Module):
     and applies ReLU to the top K elements.
     """
 
-    b_enc: nn.Parameter
+    use_sparse_activations: bool
 
     def __init__(
         self,
         k: int,
+        use_sparse_activations: bool = False,
     ):
         super().__init__()
         self.k = k
+        self.use_sparse_activations = use_sparse_activations
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        x: torch.Tensor,
+    ) -> torch.Tensor:
         """
         1) Select top K elements along the last dimension.
         2) Apply ReLU.
         3) Zero out all other entries.
         """
-        topk = torch.topk(x, k=self.k, dim=-1)
-        values = topk.values.relu()
+        topk_values, topk_indices = torch.topk(x, k=self.k, dim=-1, sorted=False)
+        values = topk_values.relu()
+        if self.use_sparse_activations:
+            # Produce a COO sparse tensor (use sparse matrix multiply in decode)
+            original_shape = x.shape
+
+            # Create indices for all dimensions
+            # For each element in topk_indices, we need to map it back to the original tensor coordinates
+            batch_dims = original_shape[:-1]  # All dimensions except the last one
+            num_batch_elements = torch.prod(torch.tensor(batch_dims)).item()
+
+            # Create batch indices - each batch element repeated k times
+            batch_indices_flat = torch.arange(
+                num_batch_elements, device=x.device
+            ).repeat_interleave(self.k)
+
+            # Convert flat batch indices back to multi-dimensional indices
+            if len(batch_dims) == 1:
+                # 2D case: [batch, features]
+                sparse_indices = torch.stack(
+                    [
+                        batch_indices_flat,
+                        topk_indices.flatten(),
+                    ]
+                )
+            else:
+                # 3D+ case: need to unravel the batch indices
+                batch_indices_multi = []
+                remaining = batch_indices_flat
+                for dim_size in reversed(batch_dims):
+                    batch_indices_multi.append(remaining % dim_size)
+                    remaining = remaining // dim_size
+                batch_indices_multi.reverse()
+
+                sparse_indices = torch.stack(
+                    [
+                        *batch_indices_multi,
+                        topk_indices.flatten(),
+                    ]
+                )
+
+            return torch.sparse_coo_tensor(
+                sparse_indices, values.flatten(), original_shape
+            )
         result = torch.zeros_like(x)
-        result.scatter_(-1, topk.indices, values)
+        result.scatter_(-1, topk_indices, values)
         return result
 
 
@@ -58,6 +127,63 @@ class TopKSAEConfig(SAEConfig):
     @classmethod
     def architecture(cls) -> str:
         return "topk"
+
+
+def _sparse_matmul_nd(
+    sparse_tensor: torch.Tensor, dense_matrix: torch.Tensor
+) -> torch.Tensor:
+    """
+    Multiply a sparse tensor of shape [..., d_sae] with a dense matrix of shape [d_sae, d_out]
+    to get a result of shape [..., d_out].
+
+    This function handles sparse tensors with arbitrary batch dimensions by flattening
+    the batch dimensions, performing 2D sparse matrix multiplication, and reshaping back.
+    """
+    original_shape = sparse_tensor.shape
+    batch_dims = original_shape[:-1]
+    d_sae = original_shape[-1]
+    d_out = dense_matrix.shape[-1]
+
+    if sparse_tensor.ndim == 2:
+        # Simple 2D case - use torch.sparse.mm directly
+        # sparse.mm errors with bfloat16 :(
+        with torch.autocast(device_type=sparse_tensor.device.type, enabled=False):
+            return torch.sparse.mm(sparse_tensor, dense_matrix)
+
+    # For 3D+ case, reshape to 2D, multiply, then reshape back
+    batch_size = int(torch.prod(torch.tensor(batch_dims)).item())
+
+    # Ensure tensor is coalesced for efficient access to indices/values
+    if not sparse_tensor.is_coalesced():
+        sparse_tensor = sparse_tensor.coalesce()
+
+    # Get indices and values
+    indices = sparse_tensor.indices()  # [ndim, nnz]
+    values = sparse_tensor.values()  # [nnz]
+
+    # Convert multi-dimensional batch indices to flat indices
+    flat_batch_indices = torch.zeros_like(indices[0])
+    multiplier = 1
+    for i in reversed(range(len(batch_dims))):
+        flat_batch_indices += indices[i] * multiplier
+        multiplier *= batch_dims[i]
+
+    # Create 2D sparse tensor indices [batch_flat, feature]
+    sparse_2d_indices = torch.stack([flat_batch_indices, indices[-1]])
+
+    # Create 2D sparse tensor
+    sparse_2d = torch.sparse_coo_tensor(
+        sparse_2d_indices, values, (batch_size, d_sae)
+    ).coalesce()
+
+    # sparse.mm errors with bfloat16 :(
+    with torch.autocast(device_type=sparse_tensor.device.type, enabled=False):
+        # Do the matrix multiplication
+        result_2d = torch.sparse.mm(sparse_2d, dense_matrix)  # [batch_size, d_out]
+
+    # Reshape back to original batch dimensions
+    result_shape = tuple(batch_dims) + (d_out,)
+    return result_2d.view(result_shape)
 
 
 class TopKSAE(SAE[TopKSAEConfig]):
@@ -96,21 +222,26 @@ class TopKSAE(SAE[TopKSAEConfig]):
         return self.hook_sae_acts_post(self.activation_fn(hidden_pre))
 
     def decode(
-        self, feature_acts: Float[torch.Tensor, "... d_sae"]
+        self,
+        feature_acts: Float[torch.Tensor, "... d_sae"],
     ) -> Float[torch.Tensor, "... d_in"]:
         """
         Reconstructs the input from topk feature activations.
         Applies optional finetuning scaling, hooking to recons, out normalization,
         and optional head reshaping.
         """
-        sae_out_pre = feature_acts @ self.W_dec + self.b_dec
+        # Handle sparse tensors using efficient sparse matrix multiplication
+        if feature_acts.is_sparse:
+            sae_out_pre = _sparse_matmul_nd(feature_acts, self.W_dec) + self.b_dec
+        else:
+            sae_out_pre = feature_acts @ self.W_dec + self.b_dec
         sae_out_pre = self.hook_sae_recons(sae_out_pre)
         sae_out_pre = self.run_time_activation_norm_fn_out(sae_out_pre)
         return self.reshape_fn_out(sae_out_pre, self.d_head)
 
     @override
     def get_activation_fn(self) -> Callable[[torch.Tensor], torch.Tensor]:
-        return TopK(self.cfg.k)
+        return TopK(self.cfg.k, use_sparse_activations=False)
 
     @override
     @torch.no_grad()
@@ -124,9 +255,43 @@ class TopKSAE(SAE[TopKSAEConfig]):
 class TopKTrainingSAEConfig(TrainingSAEConfig):
     """
     Configuration class for training a TopKTrainingSAE.
+
+    Args:
+        k (int): Number of top features to keep active. Only the top k features
+            with the highest pre-activations will be non-zero. Defaults to 100.
+        use_sparse_activations (bool): Whether to use sparse tensor representations
+            for activations during training. This can reduce memory usage and improve
+            performance when k is small relative to d_sae, but is only worthwhile if
+            using float32 and not using autocast. Defaults to False.
+        aux_loss_coefficient (float): Coefficient for the auxiliary loss that encourages
+            dead neurons to learn useful features. This loss helps prevent neuron death
+            in TopK SAEs by having dead neurons reconstruct the residual error from
+            live neurons. Defaults to 1.0.
+        decoder_init_norm (float | None): Norm to initialize decoder weights to.
+            0.1 corresponds to the "heuristic" initialization from Anthropic's April update.
+            Use None to disable. Inherited from TrainingSAEConfig. Defaults to 0.1.
+        d_in (int): Input dimension (dimensionality of the activations being encoded).
+            Inherited from SAEConfig.
+        d_sae (int): SAE latent dimension (number of features in the SAE).
+            Inherited from SAEConfig.
+        dtype (str): Data type for the SAE parameters. Inherited from SAEConfig.
+            Defaults to "float32".
+        device (str): Device to place the SAE on. Inherited from SAEConfig.
+            Defaults to "cpu".
+        apply_b_dec_to_input (bool): Whether to apply decoder bias to the input
+            before encoding. Inherited from SAEConfig. Defaults to True.
+        normalize_activations (Literal["none", "expected_average_only_in", "constant_norm_rescale", "layer_norm"]):
+            Normalization strategy for input activations. Inherited from SAEConfig.
+            Defaults to "none".
+        reshape_activations (Literal["none", "hook_z"]): How to reshape activations
+            (useful for attention head outputs). Inherited from SAEConfig.
+            Defaults to "none".
+        metadata (SAEMetadata): Metadata about the SAE training (model name, hook name, etc.).
+            Inherited from SAEConfig.
     """
 
     k: int = 100
+    use_sparse_activations: bool = False
     aux_loss_coefficient: float = 1.0
 
     @override
@@ -144,6 +309,8 @@ class TopKTrainingSAE(TrainingSAE[TopKTrainingSAEConfig]):
 
     def __init__(self, cfg: TopKTrainingSAEConfig, use_error_term: bool = False):
         super().__init__(cfg, use_error_term)
+        self.hook_sae_acts_post = SparseHookPoint(self.cfg.d_sae)
+        self.setup()
 
     @override
     def initialize_weights(self) -> None:
@@ -162,6 +329,41 @@ class TopKTrainingSAE(TrainingSAE[TopKTrainingSAEConfig]):
         # Apply the TopK activation function (already set in self.activation_fn if config is "topk")
         feature_acts = self.hook_sae_acts_post(self.activation_fn(hidden_pre))
         return feature_acts, hidden_pre
+
+    @override
+    def decode(
+        self,
+        feature_acts: Float[torch.Tensor, "... d_sae"],
+    ) -> Float[torch.Tensor, "... d_in"]:
+        """
+        Decodes feature activations back into input space,
+        applying optional finetuning scale, hooking, out normalization, etc.
+        """
+        # Handle sparse tensors using efficient sparse matrix multiplication
+        if feature_acts.is_sparse:
+            sae_out_pre = _sparse_matmul_nd(feature_acts, self.W_dec) + self.b_dec
+        else:
+            sae_out_pre = feature_acts @ self.W_dec + self.b_dec
+        sae_out_pre = self.hook_sae_recons(sae_out_pre)
+        sae_out_pre = self.run_time_activation_norm_fn_out(sae_out_pre)
+        return self.reshape_fn_out(sae_out_pre, self.d_head)
+
+    @override
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass through the SAE."""
+        feature_acts = self.encode(x)
+        sae_out = self.decode(feature_acts)
+
+        if self.use_error_term:
+            with torch.no_grad():
+                # Recompute without hooks for true error term
+                with _disable_hooks(self):
+                    feature_acts_clean = self.encode(x)
+                    x_reconstruct_clean = self.decode(feature_acts_clean)
+                sae_error = self.hook_sae_error(x - x_reconstruct_clean)
+            sae_out = sae_out + sae_error
+
+        return self.hook_sae_output(sae_out)
 
     @override
     def calculate_aux_loss(
@@ -189,7 +391,7 @@ class TopKTrainingSAE(TrainingSAE[TopKTrainingSAEConfig]):
 
     @override
     def get_activation_fn(self) -> Callable[[torch.Tensor], torch.Tensor]:
-        return TopK(self.cfg.k)
+        return TopK(self.cfg.k, use_sparse_activations=self.cfg.use_sparse_activations)
 
     @override
     def get_coefficients(self) -> dict[str, TrainCoefficientConfig | float]:

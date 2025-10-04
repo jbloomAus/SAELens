@@ -1,5 +1,130 @@
 # CHANGELOG
 
+## v6.13.0 (2025-10-04)
+
+### Chore
+
+* chore: adding a test for folding scaling factor all architectures (#555) ([`795363b`](https://github.com/jbloomAus/SAELens/commit/795363b64dce401db6adc9f05fffd6dd83f47920))
+
+### Feature
+
+* feat: optional sparse-decoding for topK SAEs (#550)
+
+* Add kernel skeleton and remove redundant b_enc param from TopK class
+
+* Add option in topK to save SAE activations as a sparse tensor
+
+* Add sparse activation config flag &amp; update tests
+
+* Linting changes
+
+* Making sparse COO tensors compatible with HookedTransformer (WIP)
+
+* Changes to make sparse SAE intermediate implementation transparent to TransformerLens Hooks
+
+* Add formatting script (for future optimization)
+
+* Address PR review comments
+
+* allow multidim sparsity in topk saes
+
+* fix logging with sparse feature acts
+
+* switch TopK to use dense tensors by default in case users are extending / using this module
+
+* bust CI cache to hopefully get CI to not run out of disk...
+
+* disable autocase for sparse.mm
+
+* default TopK SAEs to disable sparse training until we can improve performance
+
+* updating docs for topk config
+
+---------
+
+Co-authored-by: David Chanin &lt;chanindav@gmail.com&gt; ([`3d61660`](https://github.com/jbloomAus/SAELens/commit/3d616600bf2a2956f5af246f970267af577bb8d2))
+
+## v6.12.3 (2025-09-26)
+
+### Fix
+
+* fix: properly convert old SAELens TopK SAEs on load (#554)
+
+* fix: properly convert old SAELens TopK SAEs on load
+
+* fixing other loading test ([`9e71055`](https://github.com/jbloomAus/SAELens/commit/9e71055b1e93405e657abd32792fd4a8ce5d84bc))
+
+## v6.12.2 (2025-09-26)
+
+### Fix
+
+* fix: typo in sae.py leading to misleading warning (#552) ([`52afbda`](https://github.com/jbloomAus/SAELens/commit/52afbdab2b7dbfad2c2e71d7546f0d67e18ae954))
+
+## v6.12.1 (2025-09-10)
+
+### Fix
+
+* fix: andy&#39;s last name starts with a not r 😓 ([`3376126`](https://github.com/jbloomAus/SAELens/commit/337612674e5f370864bf41eb6f13a4bb2b7fb111))
+
+## v6.12.0 (2025-09-10)
+
+### Feature
+
+* feat: add misaligned persona SAEs (#548)
+
+* feat: add andyrdt llama/qwen SAEs
+
+* update np names
+
+* skip redundant/long test ([`4ec6d52`](https://github.com/jbloomAus/SAELens/commit/4ec6d52da6fdc8b45f6be69a4b5b35ca62caaf19))
+
+## v6.11.1 (2025-09-08)
+
+### Documentation
+
+* docs: removing unnecessary fields from sae-table generation (#542) ([`3432f00`](https://github.com/jbloomAus/SAELens/commit/3432f0059bc1d90119fe48f88e17ac07aea3a620))
+
+### Fix
+
+* fix: allow float for batchtopk k param (#547) ([`c332b6c`](https://github.com/jbloomAus/SAELens/commit/c332b6ca3b78a7df59886385210ce915db66c6a6))
+
+## v6.11.0 (2025-09-03)
+
+### Feature
+
+* feat: support Anthropic&#39;s JumpReLU training setup (#541)
+
+* feat: support Anthropic&#39;s JumpReLU training setup
+
+* Update sae_lens/saes/jumprelu_sae.py
+
+Co-authored-by: Copilot &lt;175728472+Copilot@users.noreply.github.com&gt;
+
+* improving tests
+
+* Update docs/training_saes.md
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* feedback from CR
+
+---------
+
+Co-authored-by: Copilot &lt;175728472+Copilot@users.noreply.github.com&gt;
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt; ([`3d81e2d`](https://github.com/jbloomAus/SAELens/commit/3d81e2d9290eca485fd6b1f83039432673e21037))
+
+## v6.10.0 (2025-09-01)
+
+### Feature
+
+* feat: add `output_path` option to LLM training runner (#536)
+
+* feat: adding an explit output_path param to llm runner
+
+* allow setting  for checkpoint paths
+
+* changes from CR ([`03cabd8`](https://github.com/jbloomAus/SAELens/commit/03cabd8ef1f7b21fe0cc1abc6783292e0ddf7b11))
+
 ## v6.9.1 (2025-08-30)
 
 ### Fix
