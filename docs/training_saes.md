@@ -108,29 +108,14 @@ sparse_autoencoder = LanguageModelSAETrainingRunner(cfg).run()
 
 As you can see, the training setup provides a large number of options to explore. The full list of options can be found by inspecting the `LanguageModelSAERunnerConfig` class and the specific SAE configuration class you intend to use (e.g., `StandardTrainingSAEConfig`, `TopKTrainingSAEConfig`, etc.).
 
-### Training Topk SAEs
-
-By default, SAELens will train SAEs using a L1 loss term with ReLU activation. A popular alternative architecture is the [TopK](https://arxiv.org/abs/2406.04093) architecture, which fixes the L0 of the SAE using a TopK activation function. To train a TopK SAE programmatically, you provide a `TopKTrainingSAEConfig` instance to the `sae` field. The primary parameter for TopK SAEs is `k`, the number of features to keep active. If not set, `k` defaults to 100 in `TopKTrainingSAEConfig`. The TopK architecture does not use an `l1_coefficient` or `lp_norm` for sparsity, as sparsity is structurally enforced.
-
-```python
-from sae_lens import LanguageModelSAERunnerConfig, LanguageModelSAETrainingRunner, TopKTrainingSAEConfig
-
-cfg = LanguageModelSAERunnerConfig( # Full config would be defined here
-    # ... other LanguageModelSAERunnerConfig parameters ...
-    sae=TopKTrainingSAEConfig(
-        k=100, # Set the number of active features
-        d_in=1024, # Must match your hook point
-        d_sae=16 * 1024,
-        # ... other common SAE parameters from SAEConfig if needed ...
-    ),
-    # ...
-)
-sparse_autoencoder = LanguageModelSAETrainingRunner(cfg).run()
-```
-
 ### Training BatchTopk SAEs
 
-A more modern version of the TopK SAE is the [BatchTopK](https://arxiv.org/abs/2412.06410) architecture, which fixes the mean L0 across a training batch rather than fixing the L0 for every sample in the batch. To train a BatchTopK SAE, provide a `BatchTopKTrainingSAEConfig` instance to the `sae` field. The primary parameter for TopK SAEs is `k`, the number of features to keep active. If not set, `k` defaults to 100 in `BatchTopKTrainingSAEConfig`. Like the TopK architecture, the BatchTopK architecture does not use an `l1_coefficient` or `lp_norm` for sparsity, as sparsity is structurally enforced.
+<!-- prettier-ignore-start -->
+!!! tip "SOTA architecture"
+    BatchTopK is a state-of-the-art SAE architecture and is easy to train.
+<!-- prettier-ignore-end -->
+
+The [BatchTopK](https://arxiv.org/abs/2412.06410) architecture is a more modern version of the TopK architecture, which fixes the mean L0 across a training batch rather than fixing the L0 for every sample in the batch. To train a BatchTopK SAE, provide a `BatchTopKTrainingSAEConfig` instance to the `sae` field. The primary parameter for TopK SAEs is `k`, the number of features to keep active. If not set, `k` defaults to 100 in `BatchTopKTrainingSAEConfig`. Like the TopK architecture, the BatchTopK architecture does not use an `l1_coefficient` or `lp_norm` for sparsity, as sparsity is structurally enforced.
 
 Also worth noting is that `BatchTopK` SAEs will save as `JumpReLU` SAEs for use at inference. This is to avoid needing to provide a batch of inputs at inference time, allowing the SAE to work consistently on any batch size after training is complete.
 
@@ -151,6 +136,11 @@ sparse_autoencoder = LanguageModelSAETrainingRunner(cfg).run()
 ```
 
 ### Training JumpReLU SAEs
+
+<!-- prettier-ignore-start -->
+!!! tip "SOTA architecture"
+    JumpReLU is a state-of-the-art SAE architecture, potentially even superior to BatchTopK. However, JumpReLU may be trickier to train. JumpReLU is used for the [Gemma Scope SAEs](https://deepmind.google/discover/blog/gemma-scope-helping-the-safety-community-shed-light-on-the-inner-workings-of-language-models/) and by [Anthropic](https://transformer-circuits.pub/2025/january-update/index.html).
+<!-- prettier-ignore-end -->
 
 [JumpReLU SAEs](https://arxiv.org/abs/2407.14435) are a state-of-the-art SAE architecture. To train one, provide a `JumpReLUTrainingSAEConfig` to the `sae` field. JumpReLU SAEs use a sparsity penalty controlled by the `l0_coefficient` parameter. The `JumpReLUTrainingSAEConfig` also has parameters `jumprelu_bandwidth` and `jumprelu_init_threshold` which affect the learning of the thresholds.
 
@@ -203,7 +193,61 @@ cfg = LanguageModelSAERunnerConfig( # Full config would be defined here
 sparse_autoencoder = LanguageModelSAETrainingRunner(cfg).run()
 ```
 
+### Training Standard L1 SAEs
+
+<!-- prettier-ignore-start -->
+!!! warning "Warning: legacy architecture"
+    Standard L1 SAEs are not considered state-of-the-art, but they are the classic SAE architecture. They are a good starting point for understanding SAEs and are easy to train. For better performance, try BatchTopK or JumpReLU.
+<!-- prettier-ignore-end -->
+
+The classic SAE architecture is the Standard L1 SAE, which uses a L1 loss term with ReLU activation. To train a Standard L1 SAE, provide a `StandardTrainingSAEConfig` instance to the `sae` field. The Standard L1 SAE uses the `l1_coefficient` parameter to control the sparsity of the SAE.
+
+```python
+
+cfg = LanguageModelSAERunnerConfig( # Full config would be defined here
+    # ... other LanguageModelSAERunnerConfig parameters ...
+    sae=StandardTrainingSAEConfig(
+        l1_coefficient=5.0, # Sparsity penalty coefficient
+        d_in=1024, # Must match your hook point
+        d_sae=16 * 1024,
+        # ... other common SAE parameters from SAEConfig if needed ...
+    ),
+    # ...
+)
+sparse_autoencoder = LanguageModelSAETrainingRunner(cfg).run()
+```
+
+### Training Topk SAEs
+
+<!-- prettier-ignore-start -->
+!!! warning "Warning: legacy architecture"
+    TopK SAEs are no longer considered state-of-the-art, and are not recommended for most use cases. We recommend using BatchTopK or JumpReLU SAEs for best performance.
+<!-- prettier-ignore-end -->
+
+A popular alternative architecture is the [TopK](https://arxiv.org/abs/2406.04093) architecture, which fixes the L0 of the SAE using a TopK activation function. To train a TopK SAE programmatically, you provide a `TopKTrainingSAEConfig` instance to the `sae` field. The primary parameter for TopK SAEs is `k`, the number of features to keep active. If not set, `k` defaults to 100 in `TopKTrainingSAEConfig`. The TopK architecture does not use an `l1_coefficient` or `lp_norm` for sparsity, as sparsity is structurally enforced.
+
+```python
+from sae_lens import LanguageModelSAERunnerConfig, LanguageModelSAETrainingRunner, TopKTrainingSAEConfig
+
+cfg = LanguageModelSAERunnerConfig( # Full config would be defined here
+    # ... other LanguageModelSAERunnerConfig parameters ...
+    sae=TopKTrainingSAEConfig(
+        k=100, # Set the number of active features
+        d_in=1024, # Must match your hook point
+        d_sae=16 * 1024,
+        # ... other common SAE parameters from SAEConfig if needed ...
+    ),
+    # ...
+)
+sparse_autoencoder = LanguageModelSAETrainingRunner(cfg).run()
+```
+
 ### Training Gated SAEs
+
+<!-- prettier-ignore-start -->
+!!! warning "Warning: legacy architecture"
+    Gated SAEs are no longer considered state-of-the-art, and are not recommended for most use cases. We recommend using BatchTopK or JumpReLU SAEs for best performance.
+<!-- prettier-ignore-end -->
 
 [Gated SAEs](https://arxiv.org/abs/2404.16014) are another architecture option. To train a Gated SAE, provide a `GatedTrainingSAEConfig` to the `sae` field. Gated SAEs use the `l1_coefficient` parameter to control the sparsity of the SAE, similar to standard SAEs.
 
