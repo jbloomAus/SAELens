@@ -253,12 +253,14 @@ class SAETrainer(Generic[T_TRAINING_SAE, T_TRAINING_SAE_CONFIG]):
             )
 
             with torch.no_grad():
-                did_fire = (train_step_output.feature_acts > 0).float().sum(-2) > 0
+                # calling .bool() should be equivalent to .abs() > 0, and work with coo tensors
+                firing_feats = train_step_output.feature_acts.bool().float()
+                did_fire = firing_feats.sum(-2).bool()
+                if did_fire.is_sparse:
+                    did_fire = did_fire.to_dense()
                 self.n_forward_passes_since_fired += 1
                 self.n_forward_passes_since_fired[did_fire] = 0
-                self.act_freq_scores += (
-                    (train_step_output.feature_acts.abs() > 0).float().sum(0)
-                )
+                self.act_freq_scores += firing_feats.sum(0)
                 self.n_frac_active_samples += self.cfg.train_batch_size_samples
 
         # Grad scaler will rescale gradients if autocast is enabled
@@ -310,7 +312,7 @@ class SAETrainer(Generic[T_TRAINING_SAE, T_TRAINING_SAE_CONFIG]):
         loss = output.loss.item()
 
         # metrics for currents acts
-        l0 = (feature_acts > 0).float().sum(-1).mean()
+        l0 = feature_acts.bool().float().sum(-1).to_dense().mean()
         current_learning_rate = self.optimizer.param_groups[0]["lr"]
 
         per_token_l2_loss = (sae_out - sae_in).pow(2).sum(dim=-1).squeeze()

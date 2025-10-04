@@ -29,12 +29,14 @@ from sae_lens.load_model import load_model
 from sae_lens.loading.pretrained_saes_directory import PretrainedSAELookup
 from sae_lens.saes.sae import SAE, TrainingSAE
 from sae_lens.saes.standard_sae import StandardSAE, StandardTrainingSAE
+from sae_lens.saes.topk_sae import TopKTrainingSAE
 from sae_lens.training.activation_scaler import ActivationScaler
 from sae_lens.training.activations_store import ActivationsStore
 from tests.helpers import (
     NEEL_NANDA_C4_10K_DATASET,
     TINYSTORIES_MODEL,
     build_runner_cfg,
+    build_topk_runner_cfg,
     load_model_cached,
 )
 
@@ -160,6 +162,34 @@ def test_run_evals_base_sae(
 ):
     eval_metrics, _ = run_evals(
         sae=base_sae,
+        activation_store=activation_store,
+        activation_scaler=ActivationScaler(),
+        model=model,
+        eval_config=get_eval_everything_config(),
+    )
+
+    assert set(eval_metrics.keys()).issubset(set(all_possible_keys))
+    assert len(eval_metrics) > 0
+
+
+@pytest.mark.parametrize("use_sparse_activations", [True, False])
+def test_run_evals_sparse_topk_sae(
+    model: HookedTransformer,
+    use_sparse_activations: bool,
+):
+    cfg = build_topk_runner_cfg(
+        use_sparse_activations=use_sparse_activations,
+        model_name="tiny-stories-1M",
+        dataset_path="roneneldan/TinyStories",
+        hook_name="blocks.1.hook_resid_pre",
+        d_in=64,
+    )
+    sae = TopKTrainingSAE(cfg.sae)
+    activation_store = ActivationsStore.from_config(
+        model, cfg, override_dataset=Dataset.from_list([{"text": "hello world"}] * 2000)
+    )
+    eval_metrics, _ = run_evals(
+        sae=sae,
         activation_store=activation_store,
         activation_scaler=ActivationScaler(),
         model=model,

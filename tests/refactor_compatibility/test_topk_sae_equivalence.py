@@ -313,7 +313,7 @@ def test_topk_sae_training_equivalence():
     )
     assert_close(
         old_out.feature_acts,
-        new_out.feature_acts,
+        new_out.feature_acts.to_dense(),
         atol=1e-5,
         msg="Training feature_acts differ between old and new implementations.",
     )

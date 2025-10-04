@@ -466,6 +466,8 @@ def get_sparsity_and_variance_metrics(
         sae_out_scaled = sae.decode(sae_feature_activations).to(
             original_act_scaled.device
         )
+        if sae_feature_activations.is_sparse:
+            sae_feature_activations = sae_feature_activations.to_dense()
         del cache
 
         sae_out = activation_scaler.unscale(sae_out_scaled)

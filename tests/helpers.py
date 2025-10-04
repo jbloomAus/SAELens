@@ -1,5 +1,6 @@
 import copy
-from typing import Any, Literal, Sequence, TypedDict, cast
+from collections.abc import Sequence
+from typing import Any, Literal, TypedDict, cast
 
 import pytest
 import torch
@@ -97,6 +98,7 @@ class TrainingSAEConfigDict(TypedDict, total=False):
     jumprelu_init_threshold: float
     jumprelu_bandwidth: float
     k: int  # For TopK
+    use_sparse_activations: bool  # For TopK
     l0_coefficient: float  # For JumpReLU
     l0_warm_up_steps: int
     pre_act_loss_coefficient: float | None  # For JumpReLU
@@ -233,6 +235,15 @@ def _build_runner_config(
     return final_config
 
 
+def _update_sae_metadata(runner_cfg: LanguageModelSAERunnerConfig[Any]):
+    runner_cfg.sae.metadata.hook_name = runner_cfg.hook_name
+    runner_cfg.sae.metadata.hook_head_index = runner_cfg.hook_head_index
+    runner_cfg.sae.metadata.model_name = runner_cfg.model_name
+    runner_cfg.sae.metadata.model_class_name = runner_cfg.model_class_name
+    runner_cfg.sae.metadata.dataset_path = runner_cfg.dataset_path
+    runner_cfg.sae.metadata.prepend_bos = runner_cfg.prepend_bos
+
+
 # --- Standard SAE Builder ---
 def build_runner_cfg(
     **kwargs: Any,
@@ -255,12 +266,7 @@ def build_runner_cfg(
         cast(dict[str, Any], default_sae_config),
         **kwargs,
     )
-    runner_cfg.sae.metadata.hook_name = runner_cfg.hook_name
-    runner_cfg.sae.metadata.hook_head_index = runner_cfg.hook_head_index
-    runner_cfg.sae.metadata.model_name = runner_cfg.model_name
-    runner_cfg.sae.metadata.model_class_name = runner_cfg.model_class_name
-    runner_cfg.sae.metadata.dataset_path = runner_cfg.dataset_path
-    runner_cfg.sae.metadata.prepend_bos = runner_cfg.prepend_bos
+    _update_sae_metadata(runner_cfg)
     return runner_cfg
 
 
@@ -300,11 +306,13 @@ def build_jumprelu_runner_cfg(
         "l0_warm_up_steps": 0,
         "pre_act_loss_coefficient": None,
     }
-    return _build_runner_config(
+    runner_cfg = _build_runner_config(
         JumpReLUTrainingSAEConfig,
         cast(dict[str, Any], default_sae_config),
         **kwargs,
     )
+    _update_sae_metadata(runner_cfg)
+    return runner_cfg
 
 
 def build_jumprelu_sae_cfg(**kwargs: Any) -> JumpReLUSAEConfig:
@@ -338,11 +346,13 @@ def build_gated_runner_cfg(
         "apply_b_dec_to_input": False,
         "l1_warm_up_steps": 0,
     }
-    return _build_runner_config(
+    runner_cfg = _build_runner_config(
         GatedTrainingSAEConfig,
         cast(dict[str, Any], default_sae_config),
         **kwargs,
     )
+    _update_sae_metadata(runner_cfg)
+    return runner_cfg
 
 
 def build_gated_sae_cfg(**kwargs: Any) -> GatedSAEConfig:
@@ -383,11 +393,13 @@ def build_topk_runner_cfg(
     # Update the default config *before* passing it to _build_runner_config
     final_default_sae_config = cast(dict[str, Any], temp_sae_config)
 
-    return _build_runner_config(
+    runner_cfg = _build_runner_config(
         TopKTrainingSAEConfig,
         final_default_sae_config,
         **kwargs,
     )
+    _update_sae_metadata(runner_cfg)
+    return runner_cfg
 
 
 def build_topk_sae_cfg(**kwargs: Any) -> TopKSAEConfig:
@@ -430,11 +442,13 @@ def build_batchtopk_runner_cfg(
     # Update the default config *before* passing it to _build_runner_config
     final_default_sae_config = cast(dict[str, Any], temp_sae_config)
 
-    return _build_runner_config(
+    runner_cfg = _build_runner_config(
         BatchTopKTrainingSAEConfig,
         final_default_sae_config,
         **kwargs,
     )
+    _update_sae_metadata(runner_cfg)
+    return runner_cfg
 
 
 def build_batchtopk_sae_training_cfg(**kwargs: Any) -> BatchTopKTrainingSAEConfig:
