@@ -258,7 +258,7 @@ class TopKTrainingSAEConfig(TrainingSAEConfig):
     """
 
     k: int = 100
-    use_sparse_activations: bool = True
+    use_sparse_activations: bool = False
     aux_loss_coefficient: float = 1.0
 
     @override
