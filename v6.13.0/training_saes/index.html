@@ -372,15 +372,6 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#training-topk-saes" class="md-nav__link">
-    <span class="md-ellipsis">
-      Training Topk SAEs
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#training-batchtopk-saes" class="md-nav__link">
     <span class="md-ellipsis">
       Training BatchTopk SAEs
@@ -393,6 +384,24 @@
   <a href="#training-jumprelu-saes" class="md-nav__link">
     <span class="md-ellipsis">
       Training JumpReLU SAEs
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#training-standard-l1-saes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Training Standard L1 SAEs
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#training-topk-saes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Training Topk SAEs
     </span>
   </a>
   
@@ -703,15 +712,6 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#training-topk-saes" class="md-nav__link">
-    <span class="md-ellipsis">
-      Training Topk SAEs
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#training-batchtopk-saes" class="md-nav__link">
     <span class="md-ellipsis">
       Training BatchTopk SAEs
@@ -724,6 +724,24 @@
   <a href="#training-jumprelu-saes" class="md-nav__link">
     <span class="md-ellipsis">
       Training JumpReLU SAEs
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#training-standard-l1-saes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Training Standard L1 SAEs
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#training-topk-saes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Training Topk SAEs
     </span>
   </a>
   
@@ -972,13 +990,21 @@
 </span><span id="__span-0-66"><a id="__codelineno-0-66" name="__codelineno-0-66" href="#__codelineno-0-66"></a><span class="n">sparse_autoencoder</span> <span class="o">=</span> <span class="n">LanguageModelSAETrainingRunner</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
 </span></code></pre></div>
 <p>As you can see, the training setup provides a large number of options to explore. The full list of options can be found by inspecting the <code>LanguageModelSAERunnerConfig</code> class and the specific SAE configuration class you intend to use (e.g., <code>StandardTrainingSAEConfig</code>, <code>TopKTrainingSAEConfig</code>, etc.).</p>
-<h3 id="training-topk-saes">Training Topk SAEs</h3>
-<p>By default, SAELens will train SAEs using a L1 loss term with ReLU activation. A popular alternative architecture is the <a href="https://arxiv.org/abs/2406.04093">TopK</a> architecture, which fixes the L0 of the SAE using a TopK activation function. To train a TopK SAE programmatically, you provide a <code>TopKTrainingSAEConfig</code> instance to the <code>sae</code> field. The primary parameter for TopK SAEs is <code>k</code>, the number of features to keep active. If not set, <code>k</code> defaults to 100 in <code>TopKTrainingSAEConfig</code>. The TopK architecture does not use an <code>l1_coefficient</code> or <code>lp_norm</code> for sparsity, as sparsity is structurally enforced.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">sae_lens</span><span class="w"> </span><span class="kn">import</span> <span class="n">LanguageModelSAERunnerConfig</span><span class="p">,</span> <span class="n">LanguageModelSAETrainingRunner</span><span class="p">,</span> <span class="n">TopKTrainingSAEConfig</span>
+<h3 id="training-batchtopk-saes">Training BatchTopk SAEs</h3>
+<!-- prettier-ignore-start -->
+<div class="admonition tip">
+<p class="admonition-title">SOTA architecture</p>
+<p>BatchTopK is a state-of-the-art SAE architecture and is easy to train.</p>
+</div>
+<!-- prettier-ignore-end -->
+
+<p>The <a href="https://arxiv.org/abs/2412.06410">BatchTopK</a> architecture is a more modern version of the TopK architecture, which fixes the mean L0 across a training batch rather than fixing the L0 for every sample in the batch. To train a BatchTopK SAE, provide a <code>BatchTopKTrainingSAEConfig</code> instance to the <code>sae</code> field. The primary parameter for TopK SAEs is <code>k</code>, the number of features to keep active. If not set, <code>k</code> defaults to 100 in <code>BatchTopKTrainingSAEConfig</code>. Like the TopK architecture, the BatchTopK architecture does not use an <code>l1_coefficient</code> or <code>lp_norm</code> for sparsity, as sparsity is structurally enforced.</p>
+<p>Also worth noting is that <code>BatchTopK</code> SAEs will save as <code>JumpReLU</code> SAEs for use at inference. This is to avoid needing to provide a batch of inputs at inference time, allowing the SAE to work consistently on any batch size after training is complete.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">sae_lens</span><span class="w"> </span><span class="kn">import</span> <span class="n">LanguageModelSAERunnerConfig</span><span class="p">,</span> <span class="n">LanguageModelSAETrainingRunner</span><span class="p">,</span> <span class="n">BatchTopKTrainingSAEConfig</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">cfg</span> <span class="o">=</span> <span class="n">LanguageModelSAERunnerConfig</span><span class="p">(</span> <span class="c1"># Full config would be defined here</span>
 </span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="c1"># ... other LanguageModelSAERunnerConfig parameters ...</span>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="n">sae</span><span class="o">=</span><span class="n">TopKTrainingSAEConfig</span><span class="p">(</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="n">sae</span><span class="o">=</span><span class="n">BatchTopKTrainingSAEConfig</span><span class="p">(</span>
 </span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>        <span class="n">k</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="c1"># Set the number of active features</span>
 </span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>        <span class="n">d_in</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="c1"># Must match your hook point</span>
 </span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>        <span class="n">d_sae</span><span class="o">=</span><span class="mi">16</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">,</span>
@@ -988,87 +1014,128 @@
 </span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="p">)</span>
 </span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="n">sparse_autoencoder</span> <span class="o">=</span> <span class="n">LanguageModelSAETrainingRunner</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
 </span></code></pre></div>
-<h3 id="training-batchtopk-saes">Training BatchTopk SAEs</h3>
-<p>A more modern version of the TopK SAE is the <a href="https://arxiv.org/abs/2412.06410">BatchTopK</a> architecture, which fixes the mean L0 across a training batch rather than fixing the L0 for every sample in the batch. To train a BatchTopK SAE, provide a <code>BatchTopKTrainingSAEConfig</code> instance to the <code>sae</code> field. The primary parameter for TopK SAEs is <code>k</code>, the number of features to keep active. If not set, <code>k</code> defaults to 100 in <code>BatchTopKTrainingSAEConfig</code>. Like the TopK architecture, the BatchTopK architecture does not use an <code>l1_coefficient</code> or <code>lp_norm</code> for sparsity, as sparsity is structurally enforced.</p>
-<p>Also worth noting is that <code>BatchTopK</code> SAEs will save as <code>JumpReLU</code> SAEs for use at inference. This is to avoid needing to provide a batch of inputs at inference time, allowing the SAE to work consistently on any batch size after training is complete.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">sae_lens</span><span class="w"> </span><span class="kn">import</span> <span class="n">LanguageModelSAERunnerConfig</span><span class="p">,</span> <span class="n">LanguageModelSAETrainingRunner</span><span class="p">,</span> <span class="n">BatchTopKTrainingSAEConfig</span>
+<h3 id="training-jumprelu-saes">Training JumpReLU SAEs</h3>
+<!-- prettier-ignore-start -->
+<div class="admonition tip">
+<p class="admonition-title">SOTA architecture</p>
+<p>JumpReLU is a state-of-the-art SAE architecture, potentially even superior to BatchTopK. However, JumpReLU may be trickier to train. JumpReLU is used for the <a href="https://deepmind.google/discover/blog/gemma-scope-helping-the-safety-community-shed-light-on-the-inner-workings-of-language-models/">Gemma Scope SAEs</a> and by <a href="https://transformer-circuits.pub/2025/january-update/index.html">Anthropic</a>.</p>
+</div>
+<!-- prettier-ignore-end -->
+
+<p><a href="https://arxiv.org/abs/2407.14435">JumpReLU SAEs</a> are a state-of-the-art SAE architecture. To train one, provide a <code>JumpReLUTrainingSAEConfig</code> to the <code>sae</code> field. JumpReLU SAEs use a sparsity penalty controlled by the <code>l0_coefficient</code> parameter. The <code>JumpReLUTrainingSAEConfig</code> also has parameters <code>jumprelu_bandwidth</code> and <code>jumprelu_init_threshold</code> which affect the learning of the thresholds.</p>
+<p>We support both the original JumpReLU sparsity loss and the more modern <a href="https://transformer-circuits.pub/2025/january-update/index.html">tanh sparsity loss</a> variant from Anthropic. To use the tanh sparsity loss, set <code>jumprelu_sparsity_loss_mode="tanh"</code>. The tanh sparsity loss variant is a bit easier to train, but has more hyper-parameters. We recommend using the tanh with <code>normalize_activations="expected_average_only_in"</code> to match Anthropic's setup. We also recommend enabling the pre-act loss by setting <code>pre_act_loss_coefficient</code> to match Anthropic's setup. An example of this is below:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">sae_lens</span><span class="w"> </span><span class="kn">import</span> <span class="n">LanguageModelSAERunnerConfig</span><span class="p">,</span> <span class="n">LanguageModelSAETrainingRunner</span><span class="p">,</span> <span class="n">JumpReLUTrainingSAEConfig</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">cfg</span> <span class="o">=</span> <span class="n">LanguageModelSAERunnerConfig</span><span class="p">(</span> <span class="c1"># Full config would be defined here</span>
 </span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="c1"># ... other LanguageModelSAERunnerConfig parameters ...</span>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="n">sae</span><span class="o">=</span><span class="n">BatchTopKTrainingSAEConfig</span><span class="p">(</span>
-</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>        <span class="n">k</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="c1"># Set the number of active features</span>
-</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>        <span class="n">d_in</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="c1"># Must match your hook point</span>
-</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>        <span class="n">d_sae</span><span class="o">=</span><span class="mi">16</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">,</span>
-</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>        <span class="c1"># ... other common SAE parameters from SAEConfig if needed ...</span>
-</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    <span class="p">),</span>
-</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>    <span class="c1"># ...</span>
-</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="p">)</span>
-</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="n">sparse_autoencoder</span> <span class="o">=</span> <span class="n">LanguageModelSAETrainingRunner</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="n">sae</span><span class="o">=</span><span class="n">JumpReLUTrainingSAEConfig</span><span class="p">(</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>        <span class="n">l0_coefficient</span><span class="o">=</span><span class="mf">5.0</span><span class="p">,</span> <span class="c1"># Sparsity penalty coefficient</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>        <span class="n">jumprelu_sparsity_loss_mode</span><span class="o">=</span><span class="s2">&quot;tanh&quot;</span><span class="p">,</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>        <span class="n">jumprelu_tanh_scale</span><span class="o">=</span><span class="mf">4.0</span><span class="p">,</span> <span class="c1"># default value</span>
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>        <span class="n">jumprelu_bandwidth</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span>
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>        <span class="n">jumprelu_init_threshold</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>        <span class="n">pre_act_loss_coefficient</span><span class="o">=</span><span class="mf">3e-6</span><span class="p">,</span>
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>        <span class="c1"># Anthropic&#39;s settings assume normalized activations</span>
+</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>        <span class="n">normalize_activations</span><span class="o">=</span><span class="s2">&quot;expected_average_only_in&quot;</span><span class="p">,</span>
+</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>        <span class="c1"># Anthropic recommends using the full training steps for the warm-up</span>
+</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>        <span class="n">l0_warm_up_steps</span><span class="o">=</span><span class="n">total_training_steps</span><span class="p">,</span>
+</span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>        <span class="n">d_in</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="c1"># must match your hook point</span>
+</span><span id="__span-2-17"><a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>        <span class="n">d_sae</span><span class="o">=</span><span class="mi">16</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">,</span>
+</span><span id="__span-2-18"><a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>        <span class="c1"># ... other common SAE parameters from SAEConfig ...</span>
+</span><span id="__span-2-19"><a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>    <span class="p">),</span>
+</span><span id="__span-2-20"><a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>    <span class="c1"># Anthropic recommends decaying the LR for the final 20% of training</span>
+</span><span id="__span-2-21"><a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>    <span class="n">lr_decay_steps</span><span class="o">=</span><span class="n">total_training_steps</span> <span class="o">//</span> <span class="mi">5</span><span class="p">,</span>
+</span><span id="__span-2-22"><a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>    <span class="c1"># ...</span>
+</span><span id="__span-2-23"><a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a><span class="p">)</span>
+</span><span id="__span-2-24"><a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a><span class="n">sparse_autoencoder</span> <span class="o">=</span> <span class="n">LanguageModelSAETrainingRunner</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
 </span></code></pre></div>
-<h3 id="training-jumprelu-saes">Training JumpReLU SAEs</h3>
-<p><a href="https://arxiv.org/abs/2407.14435">JumpReLU SAEs</a> are a state-of-the-art SAE architecture. To train one, provide a <code>JumpReLUTrainingSAEConfig</code> to the <code>sae</code> field. JumpReLU SAEs use a sparsity penalty controlled by the <code>l0_coefficient</code> parameter. The <code>JumpReLUTrainingSAEConfig</code> also has parameters <code>jumprelu_bandwidth</code> and <code>jumprelu_init_threshold</code> which affect the learning of the thresholds.</p>
-<p>We support both the original JumpReLU sparsity loss and the more modern <a href="https://transformer-circuits.pub/2025/january-update/index.html">tanh sparsity loss</a> variant from Anthropic. To use the tanh sparsity loss, set <code>jumprelu_sparsity_loss_mode="tanh"</code>. The tanh sparsity loss variant is a bit easier to train, but has more hyper-parameters. We recommend using the tanh with <code>normalize_activations="expected_average_only_in"</code> to match Anthropic's setup. We also recommend enabling the pre-act loss by setting <code>pre_act_loss_coefficient</code> to match Anthropic's setup. An example of this is below:</p>
+<p>If you'd like to use the original JumpReLU sparsity loss from DeepMind, set <code>jumprelu_sparsity_loss_mode="step"</code>. This requires a bit more tuning to work compared with the Anthropic tanh variant. If you don't see L0 decreasing with this setup, try increasing the <code>jumprelu_bandwidth</code> and possibly also the <code>jumprelu_init_threshold</code>.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">sae_lens</span><span class="w"> </span><span class="kn">import</span> <span class="n">LanguageModelSAERunnerConfig</span><span class="p">,</span> <span class="n">LanguageModelSAETrainingRunner</span><span class="p">,</span> <span class="n">JumpReLUTrainingSAEConfig</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">cfg</span> <span class="o">=</span> <span class="n">LanguageModelSAERunnerConfig</span><span class="p">(</span> <span class="c1"># Full config would be defined here</span>
 </span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="c1"># ... other LanguageModelSAERunnerConfig parameters ...</span>
 </span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    <span class="n">sae</span><span class="o">=</span><span class="n">JumpReLUTrainingSAEConfig</span><span class="p">(</span>
 </span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>        <span class="n">l0_coefficient</span><span class="o">=</span><span class="mf">5.0</span><span class="p">,</span> <span class="c1"># Sparsity penalty coefficient</span>
-</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>        <span class="n">jumprelu_sparsity_loss_mode</span><span class="o">=</span><span class="s2">&quot;tanh&quot;</span><span class="p">,</span>
-</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>        <span class="n">jumprelu_tanh_scale</span><span class="o">=</span><span class="mf">4.0</span><span class="p">,</span> <span class="c1"># default value</span>
-</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>        <span class="n">jumprelu_bandwidth</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span>
-</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>        <span class="n">jumprelu_init_threshold</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
-</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>        <span class="n">pre_act_loss_coefficient</span><span class="o">=</span><span class="mf">3e-6</span><span class="p">,</span>
-</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>        <span class="c1"># Anthropic&#39;s settings assume normalized activations</span>
-</span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>        <span class="n">normalize_activations</span><span class="o">=</span><span class="s2">&quot;expected_average_only_in&quot;</span><span class="p">,</span>
-</span><span id="__span-3-14"><a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>        <span class="c1"># Anthropic recommends using the full training steps for the warm-up</span>
-</span><span id="__span-3-15"><a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>        <span class="n">l0_warm_up_steps</span><span class="o">=</span><span class="n">total_training_steps</span><span class="p">,</span>
-</span><span id="__span-3-16"><a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>        <span class="n">d_in</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="c1"># must match your hook point</span>
-</span><span id="__span-3-17"><a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>        <span class="n">d_sae</span><span class="o">=</span><span class="mi">16</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">,</span>
-</span><span id="__span-3-18"><a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>        <span class="c1"># ... other common SAE parameters from SAEConfig ...</span>
-</span><span id="__span-3-19"><a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>    <span class="p">),</span>
-</span><span id="__span-3-20"><a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>    <span class="c1"># Anthropic recommends decaying the LR for the final 20% of training</span>
-</span><span id="__span-3-21"><a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>    <span class="n">lr_decay_steps</span><span class="o">=</span><span class="n">total_training_steps</span> <span class="o">//</span> <span class="mi">5</span><span class="p">,</span>
-</span><span id="__span-3-22"><a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>    <span class="c1"># ...</span>
-</span><span id="__span-3-23"><a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a><span class="p">)</span>
-</span><span id="__span-3-24"><a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a><span class="n">sparse_autoencoder</span> <span class="o">=</span> <span class="n">LanguageModelSAETrainingRunner</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>        <span class="n">jumprelu_bandwidth</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>        <span class="n">jumprelu_init_threshold</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span>
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>        <span class="n">d_in</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="c1"># must match your hook point</span>
+</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>        <span class="n">d_sae</span><span class="o">=</span><span class="mi">16</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">,</span>
+</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>        <span class="c1"># ... other common SAE parameters from SAEConfig ...</span>
+</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>    <span class="p">),</span>
+</span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>    <span class="c1"># ...</span>
+</span><span id="__span-3-14"><a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="p">)</span>
+</span><span id="__span-3-15"><a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a><span class="n">sparse_autoencoder</span> <span class="o">=</span> <span class="n">LanguageModelSAETrainingRunner</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
 </span></code></pre></div>
-<p>If you'd like to use the original JumpReLU sparsity loss from DeepMind, set <code>jumprelu_sparsity_loss_mode="step"</code>. This requires a bit more tuning to work compared with the Anthropic tanh variant. If you don't see L0 decreasing with this setup, try increasing the <code>jumprelu_bandwidth</code> and possibly also the <code>jumprelu_init_threshold</code>.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">sae_lens</span><span class="w"> </span><span class="kn">import</span> <span class="n">LanguageModelSAERunnerConfig</span><span class="p">,</span> <span class="n">LanguageModelSAETrainingRunner</span><span class="p">,</span> <span class="n">JumpReLUTrainingSAEConfig</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="n">cfg</span> <span class="o">=</span> <span class="n">LanguageModelSAERunnerConfig</span><span class="p">(</span> <span class="c1"># Full config would be defined here</span>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    <span class="c1"># ... other LanguageModelSAERunnerConfig parameters ...</span>
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    <span class="n">sae</span><span class="o">=</span><span class="n">JumpReLUTrainingSAEConfig</span><span class="p">(</span>
-</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>        <span class="n">l0_coefficient</span><span class="o">=</span><span class="mf">5.0</span><span class="p">,</span> <span class="c1"># Sparsity penalty coefficient</span>
-</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>        <span class="n">jumprelu_bandwidth</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
-</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>        <span class="n">jumprelu_init_threshold</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span>
-</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>        <span class="n">d_in</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="c1"># must match your hook point</span>
-</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>        <span class="n">d_sae</span><span class="o">=</span><span class="mi">16</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">,</span>
-</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>        <span class="c1"># ... other common SAE parameters from SAEConfig ...</span>
-</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>    <span class="p">),</span>
-</span><span id="__span-4-13"><a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>    <span class="c1"># ...</span>
-</span><span id="__span-4-14"><a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="p">)</span>
-</span><span id="__span-4-15"><a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a><span class="n">sparse_autoencoder</span> <span class="o">=</span> <span class="n">LanguageModelSAETrainingRunner</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+<h3 id="training-standard-l1-saes">Training Standard L1 SAEs</h3>
+<!-- prettier-ignore-start -->
+<div class="admonition warning">
+<p class="admonition-title">Warning: legacy architecture</p>
+<p>Standard L1 SAEs are not considered state-of-the-art, but they are the classic SAE architecture. They are a good starting point for understanding SAEs and are easy to train. For better performance, try BatchTopK or JumpReLU.</p>
+</div>
+<!-- prettier-ignore-end -->
+
+<p>The classic SAE architecture is the Standard L1 SAE, which uses a L1 loss term with ReLU activation. To train a Standard L1 SAE, provide a <code>StandardTrainingSAEConfig</code> instance to the <code>sae</code> field. The Standard L1 SAE uses the <code>l1_coefficient</code> parameter to control the sparsity of the SAE.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">cfg</span> <span class="o">=</span> <span class="n">LanguageModelSAERunnerConfig</span><span class="p">(</span> <span class="c1"># Full config would be defined here</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    <span class="c1"># ... other LanguageModelSAERunnerConfig parameters ...</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    <span class="n">sae</span><span class="o">=</span><span class="n">StandardTrainingSAEConfig</span><span class="p">(</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>        <span class="n">l1_coefficient</span><span class="o">=</span><span class="mf">5.0</span><span class="p">,</span> <span class="c1"># Sparsity penalty coefficient</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>        <span class="n">d_in</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="c1"># Must match your hook point</span>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>        <span class="n">d_sae</span><span class="o">=</span><span class="mi">16</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">,</span>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>        <span class="c1"># ... other common SAE parameters from SAEConfig if needed ...</span>
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>    <span class="p">),</span>
+</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>    <span class="c1"># ...</span>
+</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="p">)</span>
+</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="n">sparse_autoencoder</span> <span class="o">=</span> <span class="n">LanguageModelSAETrainingRunner</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
 </span></code></pre></div>
-<h3 id="training-gated-saes">Training Gated SAEs</h3>
-<p><a href="https://arxiv.org/abs/2404.16014">Gated SAEs</a> are another architecture option. To train a Gated SAE, provide a <code>GatedTrainingSAEConfig</code> to the <code>sae</code> field. Gated SAEs use the <code>l1_coefficient</code> parameter to control the sparsity of the SAE, similar to standard SAEs.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">sae_lens</span><span class="w"> </span><span class="kn">import</span> <span class="n">LanguageModelSAERunnerConfig</span><span class="p">,</span> <span class="n">LanguageModelSAETrainingRunner</span><span class="p">,</span> <span class="n">GatedTrainingSAEConfig</span>
+<h3 id="training-topk-saes">Training Topk SAEs</h3>
+<!-- prettier-ignore-start -->
+<div class="admonition warning">
+<p class="admonition-title">Warning: legacy architecture</p>
+<p>TopK SAEs are no longer considered state-of-the-art, and are not recommended for most use cases. We recommend using BatchTopK or JumpReLU SAEs for best performance.</p>
+</div>
+<!-- prettier-ignore-end -->
+
+<p>A popular alternative architecture is the <a href="https://arxiv.org/abs/2406.04093">TopK</a> architecture, which fixes the L0 of the SAE using a TopK activation function. To train a TopK SAE programmatically, you provide a <code>TopKTrainingSAEConfig</code> instance to the <code>sae</code> field. The primary parameter for TopK SAEs is <code>k</code>, the number of features to keep active. If not set, <code>k</code> defaults to 100 in <code>TopKTrainingSAEConfig</code>. The TopK architecture does not use an <code>l1_coefficient</code> or <code>lp_norm</code> for sparsity, as sparsity is structurally enforced.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">sae_lens</span><span class="w"> </span><span class="kn">import</span> <span class="n">LanguageModelSAERunnerConfig</span><span class="p">,</span> <span class="n">LanguageModelSAETrainingRunner</span><span class="p">,</span> <span class="n">TopKTrainingSAEConfig</span>
 </span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
 </span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="n">cfg</span> <span class="o">=</span> <span class="n">LanguageModelSAERunnerConfig</span><span class="p">(</span> <span class="c1"># Full config would be defined here</span>
 </span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    <span class="c1"># ... other LanguageModelSAERunnerConfig parameters ...</span>
-</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    <span class="n">sae</span><span class="o">=</span><span class="n">GatedTrainingSAEConfig</span><span class="p">(</span>
-</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>        <span class="n">l1_coefficient</span><span class="o">=</span><span class="mf">5.0</span><span class="p">,</span> <span class="c1"># Sparsity penalty coefficient</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    <span class="n">sae</span><span class="o">=</span><span class="n">TopKTrainingSAEConfig</span><span class="p">(</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>        <span class="n">k</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="c1"># Set the number of active features</span>
 </span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>        <span class="n">d_in</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="c1"># Must match your hook point</span>
 </span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>        <span class="n">d_sae</span><span class="o">=</span><span class="mi">16</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">,</span>
-</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>        <span class="c1"># ... other common SAE parameters from SAEConfig ...</span>
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>        <span class="c1"># ... other common SAE parameters from SAEConfig if needed ...</span>
 </span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>    <span class="p">),</span>
 </span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>    <span class="c1"># ...</span>
 </span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="p">)</span>
 </span><span id="__span-5-13"><a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="n">sparse_autoencoder</span> <span class="o">=</span> <span class="n">LanguageModelSAETrainingRunner</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
 </span></code></pre></div>
+<h3 id="training-gated-saes">Training Gated SAEs</h3>
+<!-- prettier-ignore-start -->
+<div class="admonition warning">
+<p class="admonition-title">Warning: legacy architecture</p>
+<p>Gated SAEs are no longer considered state-of-the-art, and are not recommended for most use cases. We recommend using BatchTopK or JumpReLU SAEs for best performance.</p>
+</div>
+<!-- prettier-ignore-end -->
+
+<p><a href="https://arxiv.org/abs/2404.16014">Gated SAEs</a> are another architecture option. To train a Gated SAE, provide a <code>GatedTrainingSAEConfig</code> to the <code>sae</code> field. Gated SAEs use the <code>l1_coefficient</code> parameter to control the sparsity of the SAE, similar to standard SAEs.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">sae_lens</span><span class="w"> </span><span class="kn">import</span> <span class="n">LanguageModelSAERunnerConfig</span><span class="p">,</span> <span class="n">LanguageModelSAETrainingRunner</span><span class="p">,</span> <span class="n">GatedTrainingSAEConfig</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="n">cfg</span> <span class="o">=</span> <span class="n">LanguageModelSAERunnerConfig</span><span class="p">(</span> <span class="c1"># Full config would be defined here</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    <span class="c1"># ... other LanguageModelSAERunnerConfig parameters ...</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    <span class="n">sae</span><span class="o">=</span><span class="n">GatedTrainingSAEConfig</span><span class="p">(</span>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>        <span class="n">l1_coefficient</span><span class="o">=</span><span class="mf">5.0</span><span class="p">,</span> <span class="c1"># Sparsity penalty coefficient</span>
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>        <span class="n">d_in</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="c1"># Must match your hook point</span>
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>        <span class="n">d_sae</span><span class="o">=</span><span class="mi">16</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">,</span>
+</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>        <span class="c1"># ... other common SAE parameters from SAEConfig ...</span>
+</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>    <span class="p">),</span>
+</span><span id="__span-6-11"><a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>    <span class="c1"># ...</span>
+</span><span id="__span-6-12"><a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="p">)</span>
+</span><span id="__span-6-13"><a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a><span class="n">sparse_autoencoder</span> <span class="o">=</span> <span class="n">LanguageModelSAETrainingRunner</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</span></code></pre></div>
 <h2 id="cli-runner">CLI Runner</h2>
 <p>The SAE training runner can also be run from the command line via the <code>sae_lens.sae_training_runner</code> module. This can be useful for quickly testing different hyperparameters or running training on a remote server. The command line interface is shown below. All options to the CLI are the same as the <a class="autorefs autorefs-internal" href="../api/#sae_lens.LanguageModelSAERunnerConfig">LanguageModelSAERunnerConfig</a> with a <code>--</code> prefix. E.g., <code>--model_name</code> is the same as <code>model_name</code> in the config.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>python<span class="w"> </span>-m<span class="w"> </span>sae_lens.sae_training_runner<span class="w"> </span>--help
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>python<span class="w"> </span>-m<span class="w"> </span>sae_lens.sae_training_runner<span class="w"> </span>--help
 </span></code></pre></div>
 <h2 id="logging-to-weights-and-biases">Logging to Weights and Biases</h2>
 <p>For any real training run, you should be logging to Weights and Biases (WandB). This will allow you to track your training progress and compare different runs. To enable WandB, set <code>log_to_wandb=True</code>. The <code>wandb_project</code> parameter in the config controls the project name in WandB. You can also control the logging frequency with <code>wandb_log_frequency</code> and <code>eval_every_n_wandb_logs</code>.</p>
@@ -1105,28 +1172,28 @@
 <h2 id="pretokenizing-datasets">Pretokenizing datasets</h2>
 <p>We also provider a runner, <a class="autorefs autorefs-internal" href="../api/#sae_lens.PretokenizeRunner">PretokenizeRunner</a>, which can be used to pre-tokenize a dataset and upload it to Huggingface. See <a class="autorefs autorefs-internal" href="../api/#sae_lens.PretokenizeRunnerConfig">PretokenizeRunnerConfig</a> for all available options. We also provide a <a href="https://github.com/jbloomAus/SAELens/blob/main/tutorials/pretokenizing_datasets.ipynb">pretokenizing datasets tutorial</a> with more details.</p>
 <p>A sample run from the tutorial for GPT2 and the NeelNanda/c4-10k dataset is shown below.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">sae_lens</span><span class="w"> </span><span class="kn">import</span> <span class="n">PretokenizeRunner</span><span class="p">,</span> <span class="n">PretokenizeRunnerConfig</span>
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
-</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="n">cfg</span> <span class="o">=</span> <span class="n">PretokenizeRunnerConfig</span><span class="p">(</span>
-</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    <span class="n">tokenizer_name</span><span class="o">=</span><span class="s2">&quot;gpt2&quot;</span><span class="p">,</span>
-</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    <span class="n">dataset_path</span><span class="o">=</span><span class="s2">&quot;NeelNanda/c4-10k&quot;</span><span class="p">,</span> <span class="c1"># this is just a tiny test dataset</span>
-</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    <span class="n">shuffle</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>    <span class="n">num_proc</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="c1"># increase this number depending on how many CPUs you have</span>
-</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>
-</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>    <span class="c1"># tweak these settings depending on the model</span>
-</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>    <span class="n">context_size</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span>
-</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>    <span class="n">begin_batch_token</span><span class="o">=</span><span class="s2">&quot;bos&quot;</span><span class="p">,</span>
-</span><span id="__span-7-12"><a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>    <span class="n">begin_sequence_token</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-7-13"><a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>    <span class="n">sequence_separator_token</span><span class="o">=</span><span class="s2">&quot;eos&quot;</span><span class="p">,</span>
-</span><span id="__span-7-14"><a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>
-</span><span id="__span-7-15"><a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>    <span class="c1"># uncomment to upload to huggingface</span>
-</span><span id="__span-7-16"><a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>    <span class="c1"># hf_repo_id=&quot;your-username/c4-10k-tokenized-gpt2&quot;</span>
-</span><span id="__span-7-17"><a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>
-</span><span id="__span-7-18"><a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>    <span class="c1"># uncomment to save the dataset locally</span>
-</span><span id="__span-7-19"><a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>    <span class="c1"># save_path=&quot;./c4-10k-tokenized-gpt2&quot;</span>
-</span><span id="__span-7-20"><a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a><span class="p">)</span>
-</span><span id="__span-7-21"><a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a>
-</span><span id="__span-7-22"><a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a><span class="n">dataset</span> <span class="o">=</span> <span class="n">PretokenizeRunner</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">sae_lens</span><span class="w"> </span><span class="kn">import</span> <span class="n">PretokenizeRunner</span><span class="p">,</span> <span class="n">PretokenizeRunnerConfig</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="n">cfg</span> <span class="o">=</span> <span class="n">PretokenizeRunnerConfig</span><span class="p">(</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    <span class="n">tokenizer_name</span><span class="o">=</span><span class="s2">&quot;gpt2&quot;</span><span class="p">,</span>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    <span class="n">dataset_path</span><span class="o">=</span><span class="s2">&quot;NeelNanda/c4-10k&quot;</span><span class="p">,</span> <span class="c1"># this is just a tiny test dataset</span>
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    <span class="n">shuffle</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>    <span class="n">num_proc</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="c1"># increase this number depending on how many CPUs you have</span>
+</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>
+</span><span id="__span-8-9"><a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>    <span class="c1"># tweak these settings depending on the model</span>
+</span><span id="__span-8-10"><a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>    <span class="n">context_size</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span>
+</span><span id="__span-8-11"><a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>    <span class="n">begin_batch_token</span><span class="o">=</span><span class="s2">&quot;bos&quot;</span><span class="p">,</span>
+</span><span id="__span-8-12"><a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>    <span class="n">begin_sequence_token</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-8-13"><a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>    <span class="n">sequence_separator_token</span><span class="o">=</span><span class="s2">&quot;eos&quot;</span><span class="p">,</span>
+</span><span id="__span-8-14"><a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>
+</span><span id="__span-8-15"><a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>    <span class="c1"># uncomment to upload to huggingface</span>
+</span><span id="__span-8-16"><a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>    <span class="c1"># hf_repo_id=&quot;your-username/c4-10k-tokenized-gpt2&quot;</span>
+</span><span id="__span-8-17"><a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>
+</span><span id="__span-8-18"><a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>    <span class="c1"># uncomment to save the dataset locally</span>
+</span><span id="__span-8-19"><a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>    <span class="c1"># save_path=&quot;./c4-10k-tokenized-gpt2&quot;</span>
+</span><span id="__span-8-20"><a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a><span class="p">)</span>
+</span><span id="__span-8-21"><a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a>
+</span><span id="__span-8-22"><a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a><span class="n">dataset</span> <span class="o">=</span> <span class="n">PretokenizeRunner</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
 </span></code></pre></div>
 <h2 id="list-of-pretokenized-datasets">List of Pretokenized datasets</h2>
 <p>Below is a list of pre-tokenized datasets that can be used with SAELens. If you have a dataset you would like to add to this list, please open a PR!</p>
@@ -1195,36 +1262,36 @@
 <h2 id="caching-activations">Caching activations</h2>
 <p>The next step in improving performance beyond pre-tokenizing datasets is to cache model activations. This allows you to pre-calculate all the training activations for your SAE in advance so the model does not need to be run during training to generate activations. This allows rapid training of SAEs and is especially helpful for experimenting with training hyperparameters. However, pre-calculating activations can take a very large amount of disk space, so it may not always be possible.</p>
 <p>SAELens provides a <a class="autorefs autorefs-internal" href="../api/#sae_lens.CacheActivationsRunner">CacheActivationsRunner</a> class to help with pre-calculating activations. See <a class="autorefs autorefs-internal" href="../api/#sae_lens.CacheActivationsRunnerConfig">CacheActivationsRunnerConfig</a> for all available options. This runner intentionally shares a lot of options with <a class="autorefs autorefs-internal" href="../api/#sae_lens.LanguageModelSAERunnerConfig">LanguageModelSAERunnerConfig</a>. These options should be set identically when using the cached activations in training. The CacheActivationsRunner can be used as below:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">sae_lens</span><span class="w"> </span><span class="kn">import</span> <span class="n">CacheActivationsRunner</span><span class="p">,</span> <span class="n">CacheActivationsRunnerConfig</span>
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
-</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="n">cfg</span> <span class="o">=</span> <span class="n">CacheActivationsRunnerConfig</span><span class="p">(</span>
-</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    <span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;tiny-stories-1L-21M&quot;</span><span class="p">,</span>
-</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    <span class="n">hook_name</span><span class="o">=</span><span class="s2">&quot;blocks.0.hook_mlp_out&quot;</span><span class="p">,</span>
-</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    <span class="n">dataset_path</span><span class="o">=</span><span class="s2">&quot;apollo-research/roneneldan-TinyStories-tokenizer-gpt2&quot;</span><span class="p">,</span>
-</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>    <span class="c1"># ...</span>
-</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>    <span class="n">new_cached_activations_path</span><span class="o">=</span><span class="s2">&quot;./tiny-stories-1L-21M-cache&quot;</span><span class="p">,</span>
-</span><span id="__span-8-9"><a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>    <span class="n">hf_repo_id</span><span class="o">=</span><span class="s2">&quot;your-username/tiny-stories-1L-21M-cache&quot;</span><span class="p">,</span> <span class="c1"># To push to hub</span>
-</span><span id="__span-8-10"><a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="p">)</span>
-</span><span id="__span-8-11"><a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>
-</span><span id="__span-8-12"><a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a><span class="n">CacheActivationsRunner</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">sae_lens</span><span class="w"> </span><span class="kn">import</span> <span class="n">CacheActivationsRunner</span><span class="p">,</span> <span class="n">CacheActivationsRunnerConfig</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="n">cfg</span> <span class="o">=</span> <span class="n">CacheActivationsRunnerConfig</span><span class="p">(</span>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    <span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;tiny-stories-1L-21M&quot;</span><span class="p">,</span>
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>    <span class="n">hook_name</span><span class="o">=</span><span class="s2">&quot;blocks.0.hook_mlp_out&quot;</span><span class="p">,</span>
+</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>    <span class="n">dataset_path</span><span class="o">=</span><span class="s2">&quot;apollo-research/roneneldan-TinyStories-tokenizer-gpt2&quot;</span><span class="p">,</span>
+</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>    <span class="c1"># ...</span>
+</span><span id="__span-9-8"><a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>    <span class="n">new_cached_activations_path</span><span class="o">=</span><span class="s2">&quot;./tiny-stories-1L-21M-cache&quot;</span><span class="p">,</span>
+</span><span id="__span-9-9"><a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>    <span class="n">hf_repo_id</span><span class="o">=</span><span class="s2">&quot;your-username/tiny-stories-1L-21M-cache&quot;</span><span class="p">,</span> <span class="c1"># To push to hub</span>
+</span><span id="__span-9-10"><a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="p">)</span>
+</span><span id="__span-9-11"><a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>
+</span><span id="__span-9-12"><a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a><span class="n">CacheActivationsRunner</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
 </span></code></pre></div>
 <p>To use the cached activations during training, set <code>use_cached_activations=True</code> and <code>cached_activations_path</code> to match the <code>new_cached_activations_path</code> above option in training configuration.</p>
 <h2 id="uploading-saes-to-huggingface">Uploading SAEs to Huggingface</h2>
 <p>Once you have a set of SAEs that you're happy with, your next step is to share them with the world! SAELens has a <code>upload_saes_to_huggingface()</code> function which makes this easy to do. We also provide a <a href="https://github.com/jbloomAus/SAELens/blob/main/tutorials/uploading_saes_to_huggingface.ipynb">uploading saes to huggingface tutorial</a> with more details.</p>
 <p>You'll just need to pass a dictionary of SAEs to upload along with the huggingface repo id to upload to. The dictionary keys will become the folders in the repo where each SAE will be located. It's best practice to use the hook point that the SAE was trained on as the key to make it clear to users where in the model to apply the SAE. The values of this dictionary can be either an SAE object, or a path to a saved SAE object on disk from the <code>sae.save_model()</code> method.</p>
 <p>A sample is shown below:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">sae_lens</span><span class="w"> </span><span class="kn">import</span> <span class="n">upload_saes_to_huggingface</span>
-</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
-</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="n">saes_dict</span> <span class="o">=</span> <span class="p">{</span>
-</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    <span class="s2">&quot;blocks.0.hook_resid_pre&quot;</span><span class="p">:</span> <span class="n">layer_0_sae</span><span class="p">,</span>
-</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>    <span class="s2">&quot;blocks.1.hook_resid_pre&quot;</span><span class="p">:</span> <span class="n">layer_1_sae</span><span class="p">,</span>
-</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>    <span class="c1"># ...</span>
-</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="p">}</span>
-</span><span id="__span-9-8"><a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>
-</span><span id="__span-9-9"><a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="n">upload_saes_to_huggingface</span><span class="p">(</span>
-</span><span id="__span-9-10"><a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>    <span class="n">saes_dict</span><span class="p">,</span>
-</span><span id="__span-9-11"><a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>    <span class="n">hf_repo_id</span><span class="o">=</span><span class="s2">&quot;your-username/your-sae-repo&quot;</span><span class="p">,</span>
-</span><span id="__span-9-12"><a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">sae_lens</span><span class="w"> </span><span class="kn">import</span> <span class="n">upload_saes_to_huggingface</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="n">saes_dict</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    <span class="s2">&quot;blocks.0.hook_resid_pre&quot;</span><span class="p">:</span> <span class="n">layer_0_sae</span><span class="p">,</span>
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    <span class="s2">&quot;blocks.1.hook_resid_pre&quot;</span><span class="p">:</span> <span class="n">layer_1_sae</span><span class="p">,</span>
+</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>    <span class="c1"># ...</span>
+</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="p">}</span>
+</span><span id="__span-10-8"><a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>
+</span><span id="__span-10-9"><a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="n">upload_saes_to_huggingface</span><span class="p">(</span>
+</span><span id="__span-10-10"><a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>    <span class="n">saes_dict</span><span class="p">,</span>
+</span><span id="__span-10-11"><a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>    <span class="n">hf_repo_id</span><span class="o">=</span><span class="s2">&quot;your-username/your-sae-repo&quot;</span><span class="p">,</span>
+</span><span id="__span-10-12"><a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a><span class="p">)</span>
 </span></code></pre></div>
 
 
