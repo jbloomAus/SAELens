@@ -1,5 +1,49 @@
 # CHANGELOG
 
+## v6.13.0 (2025-10-04)
+
+### Chore
+
+* chore: adding a test for folding scaling factor all architectures (#555) ([`795363b`](https://github.com/jbloomAus/SAELens/commit/795363b64dce401db6adc9f05fffd6dd83f47920))
+
+### Feature
+
+* feat: optional sparse-decoding for topK SAEs (#550)
+
+* Add kernel skeleton and remove redundant b_enc param from TopK class
+
+* Add option in topK to save SAE activations as a sparse tensor
+
+* Add sparse activation config flag &amp; update tests
+
+* Linting changes
+
+* Making sparse COO tensors compatible with HookedTransformer (WIP)
+
+* Changes to make sparse SAE intermediate implementation transparent to TransformerLens Hooks
+
+* Add formatting script (for future optimization)
+
+* Address PR review comments
+
+* allow multidim sparsity in topk saes
+
+* fix logging with sparse feature acts
+
+* switch TopK to use dense tensors by default in case users are extending / using this module
+
+* bust CI cache to hopefully get CI to not run out of disk...
+
+* disable autocase for sparse.mm
+
+* default TopK SAEs to disable sparse training until we can improve performance
+
+* updating docs for topk config
+
+---------
+
+Co-authored-by: David Chanin &lt;chanindav@gmail.com&gt; ([`3d61660`](https://github.com/jbloomAus/SAELens/commit/3d616600bf2a2956f5af246f970267af577bb8d2))
+
 ## v6.12.3 (2025-09-26)
 
 ### Fix
