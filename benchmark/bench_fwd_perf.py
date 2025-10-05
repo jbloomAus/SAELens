@@ -25,6 +25,18 @@ parser.add_argument(
     help="Shape of the input tensor (seq_len, d_in, d_sae)",
 )
 parser.add_argument("--k", type=int, default=100, help="Number of topk elements")
+parser.add_argument(
+    "--dtype",
+    type=str,
+    default="float64",
+    help="Datatype (bfloat16, float16, float32, float64)",
+)
+parser.add_argument(
+    "-bd",
+    "--show-breakdown",
+    action="store_true",
+    help="Time individual components of the forward pass.",
+)
 args = parser.parse_args()
 
 device = args.device
@@ -42,6 +54,7 @@ cfg_sparse = build_topk_sae_training_cfg(
     k=k,
     device=device,
     use_sparse_activations=True,
+    dtype="float64",
 )
 cfg_dense = build_topk_sae_training_cfg(
     d_in=d_in,
@@ -49,6 +62,7 @@ cfg_dense = build_topk_sae_training_cfg(
     k=k,
     device=device,
     use_sparse_activations=False,
+    dtype="float64",
 )
 
 sae_sparse = TopKTrainingSAE(cfg_sparse)
@@ -93,37 +107,47 @@ def triton_bench(fn: Callable[[], Any]) -> float:
 
 def benchmark_sae(sae: TopKTrainingSAE) -> dict[str, float]:
     results = {}
-    results["encode_proj"] = triton_bench(lambda: encode_proj(sae, input_acts))
-    hidden_pre = encode_proj(sae, input_acts)
-    results["topk_activation"] = triton_bench(lambda: topk_activation(sae, hidden_pre))
-    feature_acts = topk_activation(sae, hidden_pre)
-    results["decode_step"] = triton_bench(lambda: decode_step(sae, feature_acts))
-    sae_out = decode_step(sae, feature_acts)
-    results["loss_computation"] = triton_bench(
-        lambda: loss_computation(sae, sae_out, input_acts)
-    )
     results["full_forward_pass"] = triton_bench(
         lambda: sae.training_forward_pass(step_input)
     )
-    results["other"] = 2 * results["full_forward_pass"] - sum(results.values())  # type: ignore
+    if args.show_breakdown:
+        results["encode_proj"] = triton_bench(lambda: encode_proj(sae, input_acts))
+        hidden_pre = encode_proj(sae, input_acts)
+        results["topk_activation"] = triton_bench(
+            lambda: topk_activation(sae, hidden_pre)
+        )
+        feature_acts = topk_activation(sae, hidden_pre)
+        results["decode_step"] = triton_bench(lambda: decode_step(sae, feature_acts))
+        sae_out = decode_step(sae, feature_acts)
+        results["loss_computation"] = triton_bench(
+            lambda: loss_computation(sae, sae_out, input_acts)
+        )
+        results["other"] = 2 * results["full_forward_pass"] - sum(results.values())
     return results
 
 
 if __name__ == "__main__":
-    print("This may take a while (5 mins). Go grab a coffee!")
+    if args.show_breakdown:
+        print("This may take a while (5 mins). Go grab a coffee!")
     results_sparse = benchmark_sae(sae_sparse)
     results_dense = benchmark_sae(sae_dense)
 
     # Pretty print results table with metrics as columns
-    headers = [
-        "Implementation",
-        "Encode",
-        "TopK",
-        "Decode",
-        "Loss Calc",
-        "Full Fwd",
-        "Other",
-    ]
+    if args.show_breakdown:
+        headers = [
+            "Implementation",
+            "Encode",
+            "TopK",
+            "Decode",
+            "Loss Calc",
+            "Full Fwd",
+            "Other",
+        ]
+    else:
+        headers = [
+            "Implementation",
+            "Full Fwd",
+        ]
 
     metric_keys = results_sparse.keys()
 
