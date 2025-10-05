@@ -446,21 +446,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Best practices for real SAEs">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#jumprelu-saes" class="md-nav__link">
-    <span class="md-ellipsis">
-      JumpReLU SAEs
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -786,21 +771,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Best practices for real SAEs">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#jumprelu-saes" class="md-nav__link">
-    <span class="md-ellipsis">
-      JumpReLU SAEs
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -898,7 +868,7 @@
 <p>We encourage readers to join the <a href="https://join.slack.com/t/opensourcemechanistic/shared_invite/zt-375zalm04-GFd5tdBU1yLKlu_T_JSqZQ">Open Source Mechanistic Interpretability Slack</a> for support!</p>
 <h2 id="basic-training-setup">Basic training setup</h2>
 <p>Training a SAE is done using the <a class="autorefs autorefs-internal" href="../api/#sae_lens.LanguageModelSAETrainingRunner">LanguageModelSAETrainingRunner</a> class. This class is configured using a <a class="autorefs autorefs-internal" href="../api/#sae_lens.LanguageModelSAERunnerConfig">LanguageModelSAERunnerConfig</a>. The <code>LanguageModelSAERunnerConfig</code> holds parameters for the overall training run (like model, dataset, and learning rate), and it contains an <code>sae</code> field. This <code>sae</code> field should be an instance of an architecture-specific SAE configuration dataclass (e.g., <code>StandardTrainingSAEConfig</code> for standard SAEs, <code>TopKTrainingSAEConfig</code> for TopK SAEs, etc.), which holds parameters specific to the SAE's structure and sparsity mechanisms.</p>
-<p>When using the command-line interface (CLI), you typically specify an <code>--architecture</code> argument (e.g., <code>"standard"</code>, <code>"gated"</code>, <code>"jumprelu"</code>, <code>"topk"</code>), and the runner constructs the appropriate nested SAE configuration. When instantiating <code>LanguageModelSAERunnerConfig</code> programmatically, you should directly provide the configured SAE object to the <code>sae</code> field. The CLI can be run using <code>python -m sae_lens.llm_sae_training_runner</code>.</p>
+<p>When using the command-line interface (CLI), you typically specify an <code>--architecture</code> argument (e.g., <code>"batchtopk"</code>, <code>"jumprelu"</code>, <code>"standard"</code>, <code>"topk"</code>), and the runner constructs the appropriate nested SAE configuration. When instantiating <code>LanguageModelSAERunnerConfig</code> programmatically, you should directly provide the configured SAE object to the <code>sae</code> field. The CLI can be run using <code>python -m sae_lens.llm_sae_training_runner</code>.</p>
 <p>Some of the core config options available in <code>LanguageModelSAERunnerConfig</code> are:</p>
 <ul>
 <li><code>model_name</code>: The base model name to train a SAE on (e.g., <code>"gpt2-small"</code>, <code>"tiny-stories-1L-21M"</code>). This must correspond to a <a href="https://neelnanda-io.github.io/TransformerLens/generated/model_properties_table.html">model from TransformerLens</a> or a Hugging Face <code>AutoModelForCausalLM</code> if <code>model_class_name</code> is set accordingly.</li>
@@ -1023,7 +993,7 @@
 <!-- prettier-ignore-end -->
 
 <p><a href="https://arxiv.org/abs/2407.14435">JumpReLU SAEs</a> are a state-of-the-art SAE architecture. To train one, provide a <code>JumpReLUTrainingSAEConfig</code> to the <code>sae</code> field. JumpReLU SAEs use a sparsity penalty controlled by the <code>l0_coefficient</code> parameter. The <code>JumpReLUTrainingSAEConfig</code> also has parameters <code>jumprelu_bandwidth</code> and <code>jumprelu_init_threshold</code> which affect the learning of the thresholds.</p>
-<p>We support both the original JumpReLU sparsity loss and the more modern <a href="https://transformer-circuits.pub/2025/january-update/index.html">tanh sparsity loss</a> variant from Anthropic. To use the tanh sparsity loss, set <code>jumprelu_sparsity_loss_mode="tanh"</code>. The tanh sparsity loss variant is a bit easier to train, but has more hyper-parameters. We recommend using the tanh with <code>normalize_activations="expected_average_only_in"</code> to match Anthropic's setup. We also recommend enabling the pre-act loss by setting <code>pre_act_loss_coefficient</code> to match Anthropic's setup. An example of this is below:</p>
+<p>We support both the original JumpReLU sparsity loss and the more modern <a href="https://transformer-circuits.pub/2025/january-update/index.html">tanh sparsity loss</a> variant from Anthropic. To use the tanh sparsity loss, set <code>jumprelu_sparsity_loss_mode="tanh"</code>. The tanh sparsity loss variant is a bit easier to train, but has more hyperparameters. We recommend using the tanh with <code>normalize_activations="expected_average_only_in"</code> to match Anthropic's setup. We also recommend enabling the pre-act loss by setting <code>pre_act_loss_coefficient</code> to match Anthropic's setup. An example of this is below:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">sae_lens</span><span class="w"> </span><span class="kn">import</span> <span class="n">LanguageModelSAERunnerConfig</span><span class="p">,</span> <span class="n">LanguageModelSAETrainingRunner</span><span class="p">,</span> <span class="n">JumpReLUTrainingSAEConfig</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">cfg</span> <span class="o">=</span> <span class="n">LanguageModelSAERunnerConfig</span><span class="p">(</span> <span class="c1"># Full config would be defined here</span>
@@ -1049,22 +1019,23 @@
 </span><span id="__span-2-23"><a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a><span class="p">)</span>
 </span><span id="__span-2-24"><a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a><span class="n">sparse_autoencoder</span> <span class="o">=</span> <span class="n">LanguageModelSAETrainingRunner</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
 </span></code></pre></div>
-<p>If you'd like to use the original JumpReLU sparsity loss from DeepMind, set <code>jumprelu_sparsity_loss_mode="step"</code>. This requires a bit more tuning to work compared with the Anthropic tanh variant. If you don't see L0 decreasing with this setup, try increasing the <code>jumprelu_bandwidth</code> and possibly also the <code>jumprelu_init_threshold</code>.</p>
+<p>If you'd like to use the original JumpReLU sparsity loss from DeepMind, set <code>jumprelu_sparsity_loss_mode="step"</code>. This requires a bit more tuning to work compared with the Anthropic tanh variant. We find this setup requires training on a large number of tokens to work well, ideally 2 billion or more. If you don't see L0 decreasing with this setup by the end of training, try increasing the <code>jumprelu_bandwidth</code> and possibly also the <code>jumprelu_init_threshold</code>.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">sae_lens</span><span class="w"> </span><span class="kn">import</span> <span class="n">LanguageModelSAERunnerConfig</span><span class="p">,</span> <span class="n">LanguageModelSAETrainingRunner</span><span class="p">,</span> <span class="n">JumpReLUTrainingSAEConfig</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">cfg</span> <span class="o">=</span> <span class="n">LanguageModelSAERunnerConfig</span><span class="p">(</span> <span class="c1"># Full config would be defined here</span>
 </span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="c1"># ... other LanguageModelSAERunnerConfig parameters ...</span>
 </span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    <span class="n">sae</span><span class="o">=</span><span class="n">JumpReLUTrainingSAEConfig</span><span class="p">(</span>
 </span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>        <span class="n">l0_coefficient</span><span class="o">=</span><span class="mf">5.0</span><span class="p">,</span> <span class="c1"># Sparsity penalty coefficient</span>
-</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>        <span class="n">jumprelu_bandwidth</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>        <span class="n">jumprelu_bandwidth</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span>
 </span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>        <span class="n">jumprelu_init_threshold</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span>
 </span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>        <span class="n">d_in</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="c1"># must match your hook point</span>
 </span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>        <span class="n">d_sae</span><span class="o">=</span><span class="mi">16</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">,</span>
-</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>        <span class="c1"># ... other common SAE parameters from SAEConfig ...</span>
-</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>    <span class="p">),</span>
-</span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>    <span class="c1"># ...</span>
-</span><span id="__span-3-14"><a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="p">)</span>
-</span><span id="__span-3-15"><a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a><span class="n">sparse_autoencoder</span> <span class="o">=</span> <span class="n">LanguageModelSAETrainingRunner</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>        <span class="n">normalize_activations</span><span class="o">=</span><span class="s2">&quot;expected_average_only_in&quot;</span><span class="p">,</span>
+</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>        <span class="c1"># ... other common SAE parameters from SAEConfig ...</span>
+</span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>    <span class="p">),</span>
+</span><span id="__span-3-14"><a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>    <span class="c1"># ...</span>
+</span><span id="__span-3-15"><a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a><span class="p">)</span>
+</span><span id="__span-3-16"><a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a><span class="n">sparse_autoencoder</span> <span class="o">=</span> <span class="n">LanguageModelSAETrainingRunner</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
 </span></code></pre></div>
 <h3 id="training-standard-l1-saes">Training Standard L1 SAEs</h3>
 <!-- prettier-ignore-start -->
@@ -1150,13 +1121,6 @@
 <li>We find that often SAEs struggle to train well with <code>dtype="bfloat16"</code>. We aren't sure why this is, but make sure to compare the SAE quality if you change the dtype.</li>
 <li>You can try turning on <code>compile_sae=True</code> and <code>compile_llm=True</code>in the config to see if it makes training faster. Your mileage may vary though, compilation can be finicky.</li>
 </ul>
-<h3 id="jumprelu-saes">JumpReLU SAEs</h3>
-<p>JumpReLU SAEs are a state-of-the-art SAE architecture from <a href="https://arxiv.org/abs/2407.14435">DeepMind</a> which at present gives the best known sparsity vs reconstruction error trade-off, and is the architecture used for <a href="https://deepmind.google/discover/blog/gemma-scope-helping-the-safety-community-shed-light-on-the-inner-workings-of-language-models/">Gemma Scope SAEs</a>. However, JumpReLU SAEs are slightly trickier to train than standard SAEs due to how the threshold is learned. We recommend the following tips for training JumpReLU SAEs:</p>
-<ul>
-<li>Make sure to train on enough tokens. We've found that at least 2B tokens and ideally 4B tokens is needed for good performance with the default <code>jumprelu_bandwidth</code> setting. This may vary depending on the model and SAE size though, so make sure to monitor the training logs to ensure convergence.</li>
-<li>Set <code>normalize_activations="expected_average_only_in"</code> in the config. This helps with convergence and is generally a good idea for all SAEs.</li>
-</ul>
-<p>You can find a sample config for a Gemma-2-2B JumpReLU SAE trained via SAELens here: <a href="https://huggingface.co/chanind/sae-gemma-2-2b-layer-1-res-jumprelu/blob/main/blocks.1.hook_resid_post/cfg.json">cfg.json</a></p>
 <h2 id="checkpoints">Checkpoints</h2>
 <p>Checkpoints allow you to save a snapshot of the SAE and sparsitity statistics during training. To enable checkpointing, set <code>n_checkpoints</code> to a value larger than 0. If WandB logging is enabled, checkpoints will be uploaded as WandB artifacts. To save checkpoints locally, the <code>checkpoint_path</code> parameter can be set to a local directory.</p>
 <h2 id="optimizers-and-schedulers">Optimizers and Schedulers</h2>
