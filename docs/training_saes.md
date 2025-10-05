@@ -11,7 +11,7 @@ We encourage readers to join the [Open Source Mechanistic Interpretability Slack
 
 Training a SAE is done using the [LanguageModelSAETrainingRunner][sae_lens.LanguageModelSAETrainingRunner] class. This class is configured using a [LanguageModelSAERunnerConfig][sae_lens.LanguageModelSAERunnerConfig]. The `LanguageModelSAERunnerConfig` holds parameters for the overall training run (like model, dataset, and learning rate), and it contains an `sae` field. This `sae` field should be an instance of an architecture-specific SAE configuration dataclass (e.g., `StandardTrainingSAEConfig` for standard SAEs, `TopKTrainingSAEConfig` for TopK SAEs, etc.), which holds parameters specific to the SAE's structure and sparsity mechanisms.
 
-When using the command-line interface (CLI), you typically specify an `--architecture` argument (e.g., `"standard"`, `"gated"`, `"jumprelu"`, `"topk"`), and the runner constructs the appropriate nested SAE configuration. When instantiating `LanguageModelSAERunnerConfig` programmatically, you should directly provide the configured SAE object to the `sae` field. The CLI can be run using `python -m sae_lens.llm_sae_training_runner`.
+When using the command-line interface (CLI), you typically specify an `--architecture` argument (e.g., `"batchtopk"`, `"jumprelu"`, `"standard"`, `"topk"`), and the runner constructs the appropriate nested SAE configuration. When instantiating `LanguageModelSAERunnerConfig` programmatically, you should directly provide the configured SAE object to the `sae` field. The CLI can be run using `python -m sae_lens.llm_sae_training_runner`.
 
 Some of the core config options available in `LanguageModelSAERunnerConfig` are:
 
@@ -144,7 +144,7 @@ sparse_autoencoder = LanguageModelSAETrainingRunner(cfg).run()
 
 [JumpReLU SAEs](https://arxiv.org/abs/2407.14435) are a state-of-the-art SAE architecture. To train one, provide a `JumpReLUTrainingSAEConfig` to the `sae` field. JumpReLU SAEs use a sparsity penalty controlled by the `l0_coefficient` parameter. The `JumpReLUTrainingSAEConfig` also has parameters `jumprelu_bandwidth` and `jumprelu_init_threshold` which affect the learning of the thresholds.
 
-We support both the original JumpReLU sparsity loss and the more modern [tanh sparsity loss](https://transformer-circuits.pub/2025/january-update/index.html) variant from Anthropic. To use the tanh sparsity loss, set `jumprelu_sparsity_loss_mode="tanh"`. The tanh sparsity loss variant is a bit easier to train, but has more hyper-parameters. We recommend using the tanh with `normalize_activations="expected_average_only_in"` to match Anthropic's setup. We also recommend enabling the pre-act loss by setting `pre_act_loss_coefficient` to match Anthropic's setup. An example of this is below:
+We support both the original JumpReLU sparsity loss and the more modern [tanh sparsity loss](https://transformer-circuits.pub/2025/january-update/index.html) variant from Anthropic. To use the tanh sparsity loss, set `jumprelu_sparsity_loss_mode="tanh"`. The tanh sparsity loss variant is a bit easier to train, but has more hyperparameters. We recommend using the tanh with `normalize_activations="expected_average_only_in"` to match Anthropic's setup. We also recommend enabling the pre-act loss by setting `pre_act_loss_coefficient` to match Anthropic's setup. An example of this is below:
 
 ```python
 from sae_lens import LanguageModelSAERunnerConfig, LanguageModelSAETrainingRunner, JumpReLUTrainingSAEConfig
@@ -173,7 +173,7 @@ cfg = LanguageModelSAERunnerConfig( # Full config would be defined here
 sparse_autoencoder = LanguageModelSAETrainingRunner(cfg).run()
 ```
 
-If you'd like to use the original JumpReLU sparsity loss from DeepMind, set `jumprelu_sparsity_loss_mode="step"`. This requires a bit more tuning to work compared with the Anthropic tanh variant. If you don't see L0 decreasing with this setup, try increasing the `jumprelu_bandwidth` and possibly also the `jumprelu_init_threshold`.
+If you'd like to use the original JumpReLU sparsity loss from DeepMind, set `jumprelu_sparsity_loss_mode="step"`. This requires a bit more tuning to work compared with the Anthropic tanh variant. We find this setup requires training on a large number of tokens to work well, ideally 2 billion or more. If you don't see L0 decreasing with this setup by the end of training, try increasing the `jumprelu_bandwidth` and possibly also the `jumprelu_init_threshold`.
 
 ```python
 from sae_lens import LanguageModelSAERunnerConfig, LanguageModelSAETrainingRunner, JumpReLUTrainingSAEConfig
@@ -182,10 +182,11 @@ cfg = LanguageModelSAERunnerConfig( # Full config would be defined here
     # ... other LanguageModelSAERunnerConfig parameters ...
     sae=JumpReLUTrainingSAEConfig(
         l0_coefficient=5.0, # Sparsity penalty coefficient
-        jumprelu_bandwidth=0.05,
+        jumprelu_bandwidth=0.01,
         jumprelu_init_threshold=0.01,
         d_in=1024, # must match your hook point
         d_sae=16 * 1024,
+        normalize_activations="expected_average_only_in",
         # ... other common SAE parameters from SAEConfig ...
     ),
     # ...
@@ -294,15 +295,6 @@ Some general performance tips:
 - If your GPU supports it (most modern nvidia-GPUs do), setting `autocast=True` and `autocast_lm=True` in the config will dramatically speed up training.
 - We find that often SAEs struggle to train well with `dtype="bfloat16"`. We aren't sure why this is, but make sure to compare the SAE quality if you change the dtype.
 - You can try turning on `compile_sae=True` and `compile_llm=True`in the config to see if it makes training faster. Your mileage may vary though, compilation can be finicky.
-
-### JumpReLU SAEs
-
-JumpReLU SAEs are a state-of-the-art SAE architecture from [DeepMind](https://arxiv.org/abs/2407.14435) which at present gives the best known sparsity vs reconstruction error trade-off, and is the architecture used for [Gemma Scope SAEs](https://deepmind.google/discover/blog/gemma-scope-helping-the-safety-community-shed-light-on-the-inner-workings-of-language-models/). However, JumpReLU SAEs are slightly trickier to train than standard SAEs due to how the threshold is learned. We recommend the following tips for training JumpReLU SAEs:
-
-- Make sure to train on enough tokens. We've found that at least 2B tokens and ideally 4B tokens is needed for good performance with the default `jumprelu_bandwidth` setting. This may vary depending on the model and SAE size though, so make sure to monitor the training logs to ensure convergence.
-- Set `normalize_activations="expected_average_only_in"` in the config. This helps with convergence and is generally a good idea for all SAEs.
-
-You can find a sample config for a Gemma-2-2B JumpReLU SAE trained via SAELens here: [cfg.json](https://huggingface.co/chanind/sae-gemma-2-2b-layer-1-res-jumprelu/blob/main/blocks.1.hook_resid_post/cfg.json)
 
 ## Checkpoints
 
