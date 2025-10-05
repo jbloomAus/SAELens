@@ -160,8 +160,9 @@ def test_topK_sparse_activations(num_dims: bool):
         topk_dense = TopK(k, use_sparse_activations=False)
         x = torch.randn(*dims) + 50.0
         sparse_x = topk_sparse(x)
-        assert sparse_x.is_sparse
+        assert sparse_x.is_sparse or sparse_x.is_sparse_csr
         sparse_x = sparse_x.to_dense()
+        sparse_x = sparse_x.reshape(x.shape)
         dense_x = topk_dense(x)
         assert_close(dense_x, sparse_x)
 
