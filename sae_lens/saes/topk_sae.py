@@ -35,8 +35,9 @@ class SparseHookPoint(HookPoint):
         using_hooks = (
             self._forward_hooks is not None and len(self._forward_hooks) > 0
         ) or (self._backward_hooks is not None and len(self._backward_hooks) > 0)
-        if using_hooks and x.is_sparse:
-            return x.to_dense()
+        if using_hooks and (x.is_sparse or x.is_sparse_csr):
+            dense_x = x.to_dense()
+            return dense_x.reshape(x.batch_dims + (x.shape[-1],))  # type: ignore
         return x  # if no hooks are being used, use passthrough
 
 
