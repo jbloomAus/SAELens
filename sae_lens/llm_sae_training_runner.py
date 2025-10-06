@@ -107,6 +107,7 @@ class LanguageModelSAETrainingRunner:
     model: HookedRootModule
     sae: TrainingSAE[Any]
     activations_store: ActivationsStore
+    resume_from_checkpoint: Path | str | None
 
     def __init__(
         self,
@@ -114,6 +115,7 @@ class LanguageModelSAETrainingRunner:
         override_dataset: HfDataset | None = None,
         override_model: HookedRootModule | None = None,
         override_sae: TrainingSAE[Any] | None = None,
+        resume_from_checkpoint: Path | str | None = None,
     ):
         if override_dataset is not None:
             logger.warning(
@@ -155,6 +157,7 @@ class LanguageModelSAETrainingRunner:
                 )
         else:
             self.sae = override_sae
+
         self.sae.to(self.cfg.device)
 
     def run(self):
@@ -186,6 +189,12 @@ class LanguageModelSAETrainingRunner:
             save_checkpoint_fn=self.save_checkpoint,
             cfg=self.cfg.to_sae_trainer_config(),
         )
+
+        if self.resume_from_checkpoint is not None:
+            logger.info(f"Resuming from checkpoint: {self.resume_from_checkpoint}")
+            trainer.load_trainer_state(self.resume_from_checkpoint)
+            self.sae.load_weights_from_checkpoint(self.resume_from_checkpoint)
+            self.activations_store.load_from_checkpoint(self.resume_from_checkpoint)
 
         self._compile_if_needed()
         sae = self.run_trainer_with_interruption_handling(trainer)

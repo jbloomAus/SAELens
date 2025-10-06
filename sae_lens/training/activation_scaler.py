@@ -1,5 +1,6 @@
 import json
 from dataclasses import dataclass
+from pathlib import Path
 from statistics import mean
 
 import torch
@@ -51,3 +52,9 @@ class ActivationScaler:
 
         with open(file_path, "w") as f:
             json.dump({"scaling_factor": self.scaling_factor}, f)
+
+    def load(self, file_path: str | Path):
+        """load the state dict from a file in json format"""
+        with open(file_path) as f:
+            data = json.load(f)
+            self.scaling_factor = data["scaling_factor"]

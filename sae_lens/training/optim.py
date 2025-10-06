@@ -2,6 +2,8 @@
 Took the LR scheduler from my previous work: https://github.com/jbloomAus/DecisionTransformerInterpretability/blob/ee55df35cdb92e81d689c72fb9dd5a7252893363/src/decision_transformer/utils.py#L425
 """
 
+from typing import Any
+
 import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
 
@@ -150,3 +152,12 @@ class CoefficientScheduler:
     def value(self) -> float:
         """Returns the current scalar value."""
         return self.current_value
+
+    def state_dict(self) -> dict[str, Any]:
+        return {
+            "current_step": self.current_step,
+        }
+
+    def load_state_dict(self, state_dict: dict[str, Any]):
+        for k in state_dict:
+            setattr(self, k, state_dict[k])

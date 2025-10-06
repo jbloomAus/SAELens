@@ -10,7 +10,11 @@ from tqdm.auto import tqdm
 
 from sae_lens import __version__
 from sae_lens.config import SAETrainerConfig
-from sae_lens.constants import ACTIVATION_SCALER_CFG_FILENAME, SPARSITY_FILENAME
+from sae_lens.constants import (
+    ACTIVATION_SCALER_CFG_FILENAME,
+    SPARSITY_FILENAME,
+    TRAINER_STATE_FILENAME,
+)
 from sae_lens.saes.sae import (
     T_TRAINING_SAE,
     T_TRAINING_SAE_CONFIG,
@@ -56,6 +60,7 @@ class SAETrainer(Generic[T_TRAINING_SAE, T_TRAINING_SAE_CONFIG]):
     data_provider: DataProvider
     activation_scaler: ActivationScaler
     evaluator: Evaluator[T_TRAINING_SAE] | None
+    coefficient_schedulers: dict[str, CoefficientScheduler]
 
     def __init__(
         self,
@@ -93,11 +98,6 @@ class SAETrainer(Generic[T_TRAINING_SAE, T_TRAINING_SAE_CONFIG]):
             sae.cfg.d_sae, device=cfg.device
         )
         self.n_frac_active_samples = 0
-        # we don't train the scaling factor (initially)
-        # set requires grad to false for the scaling factor
-        for name, param in self.sae.named_parameters():
-            if "scaling_factor" in name:
-                param.requires_grad = False
 
         self.optimizer = Adam(
             sae.parameters(),
@@ -210,10 +210,7 @@ class SAETrainer(Generic[T_TRAINING_SAE, T_TRAINING_SAE_CONFIG]):
                 sparsity_path = checkpoint_path / SPARSITY_FILENAME
                 save_file({"sparsity": self.log_feature_sparsity}, sparsity_path)
 
-                activation_scaler_path = (
-                    checkpoint_path / ACTIVATION_SCALER_CFG_FILENAME
-                )
-                self.activation_scaler.save(str(activation_scaler_path))
+                self.save_trainer_state(checkpoint_path)
 
                 if self.cfg.logger.log_to_wandb:
                     self.cfg.logger.log(
@@ -226,6 +223,44 @@ class SAETrainer(Generic[T_TRAINING_SAE, T_TRAINING_SAE_CONFIG]):
 
         if self.save_checkpoint_fn is not None:
             self.save_checkpoint_fn(checkpoint_path=checkpoint_path)
+
+    def save_trainer_state(self, checkpoint_path: Path) -> None:
+        checkpoint_path.mkdir(exist_ok=True, parents=True)
+        scheduler_state_dicts = {
+            name: scheduler.state_dict()
+            for name, scheduler in self.coefficient_schedulers.items()
+        }
+        torch.save(
+            {
+                "optimizer": self.optimizer.state_dict(),
+                "lr_scheduler": self.lr_scheduler.state_dict(),
+                "n_training_samples": self.n_training_samples,
+                "n_training_steps": self.n_training_steps,
+                "act_freq_scores": self.act_freq_scores,
+                "n_forward_passes_since_fired": self.n_forward_passes_since_fired,
+                "n_frac_active_samples": self.n_frac_active_samples,
+                "started_fine_tuning": self.started_fine_tuning,
+                "coefficient_schedulers": scheduler_state_dicts,
+            },
+            str(checkpoint_path / TRAINER_STATE_FILENAME),
+        )
+        activation_scaler_path = checkpoint_path / ACTIVATION_SCALER_CFG_FILENAME
+        self.activation_scaler.save(str(activation_scaler_path))
+
+    def load_trainer_state(self, checkpoint_path: Path | str) -> None:
+        checkpoint_path = Path(checkpoint_path)
+        self.activation_scaler.load(checkpoint_path / ACTIVATION_SCALER_CFG_FILENAME)
+        state_dict = torch.load(checkpoint_path / TRAINER_STATE_FILENAME)
+        self.optimizer.load_state_dict(state_dict["optimizer"])
+        self.lr_scheduler.load_state_dict(state_dict["lr_scheduler"])
+        self.n_training_samples = state_dict["n_training_samples"]
+        self.n_training_steps = state_dict["n_training_steps"]
+        self.act_freq_scores = state_dict["act_freq_scores"]
+        self.n_forward_passes_since_fired = state_dict["n_forward_passes_since_fired"]
+        self.n_frac_active_samples = state_dict["n_frac_active_samples"]
+        self.started_fine_tuning = state_dict["started_fine_tuning"]
+        for name, scheduler_state_dict in state_dict["coefficient_schedulers"].items():
+            self.coefficient_schedulers[name].load_state_dict(scheduler_state_dict)
 
     def _train_step(
         self,

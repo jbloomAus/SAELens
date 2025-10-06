@@ -21,7 +21,7 @@ import einops
 import torch
 from jaxtyping import Float
 from numpy.typing import NDArray
-from safetensors.torch import save_file
+from safetensors.torch import load_file, save_file
 from torch import nn
 from transformer_lens.hook_points import HookedRootModule, HookPoint
 from typing_extensions import deprecated, overload, override
@@ -1016,6 +1016,11 @@ class TrainingSAE(SAE[T_TRAINING_SAE_CONFIG], ABC):
         architecture: str,  # noqa: ARG003
     ) -> type[TrainingSAEConfig]:
         return get_sae_training_class(architecture)[1]
+
+    def load_weights_from_checkpoint(self, checkpoint_path: Path | str) -> None:
+        checkpoint_path = Path(checkpoint_path)
+        state_dict = load_file(checkpoint_path / SAE_WEIGHTS_FILENAME)
+        self.load_state_dict(state_dict)
 
 
 _blank_hook = nn.Identity()
