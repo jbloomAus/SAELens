@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from functools import partial
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
+from types import EllipsisType
 from typing import Any
 
 import einops
@@ -109,9 +110,18 @@ def run_evals(
     activation_scaler: ActivationScaler,
     eval_config: EvalConfig = EvalConfig(),
     model_kwargs: Mapping[str, Any] = {},
-    ignore_tokens: set[int | None] = set(),
+    ignore_tokens: set[int | None] | EllipsisType = ...,
     verbose: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
+    if ignore_tokens is ...:
+        ignore_tokens = (
+            {
+                model.tokenizer.pad_token_id,  # type: ignore
+                model.tokenizer.eos_token_id,  # type: ignore
+                model.tokenizer.bos_token_id,  # type: ignore
+            },
+        )
+
     hook_name = sae.cfg.metadata.hook_name
     actual_batch_size = (
         eval_config.batch_size_prompts or activation_store.store_batch_size_prompts
@@ -854,11 +864,6 @@ def multiple_evals(
                     activation_scaler=ActivationScaler(),
                     model=current_model,
                     eval_config=eval_config,
-                    ignore_tokens={
-                        current_model.tokenizer.pad_token_id,  # type: ignore
-                        current_model.tokenizer.eos_token_id,  # type: ignore
-                        current_model.tokenizer.bos_token_id,  # type: ignore
-                    },
                     verbose=verbose,
                 )
                 eval_metrics["metrics"] = scalar_metrics
