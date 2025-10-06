@@ -28,7 +28,7 @@ parser.add_argument("--k", type=int, default=100, help="Number of topk elements"
 parser.add_argument(
     "--dtype",
     type=str,
-    default="float64",
+    default="float32",
     help="Datatype (bfloat16, float16, float32, float64)",
 )
 parser.add_argument(
@@ -54,7 +54,7 @@ cfg_sparse = build_topk_sae_training_cfg(
     k=k,
     device=device,
     use_sparse_activations=True,
-    dtype="float64",
+    dtype=args.dtype,
 )
 cfg_dense = build_topk_sae_training_cfg(
     d_in=d_in,
@@ -62,7 +62,7 @@ cfg_dense = build_topk_sae_training_cfg(
     k=k,
     device=device,
     use_sparse_activations=False,
-    dtype="float64",
+    dtype=args.dtype,
 )
 
 sae_sparse = TopKTrainingSAE(cfg_sparse)
@@ -131,6 +131,7 @@ if __name__ == "__main__":
         print("This may take a while (5 mins). Go grab a coffee!")
     results_sparse = benchmark_sae(sae_sparse)
     results_dense = benchmark_sae(sae_dense)
+    speedup = results_dense["full_forward_pass"] / results_sparse["full_forward_pass"]
 
     # Pretty print results table with metrics as columns
     if args.show_breakdown:
@@ -156,4 +157,5 @@ if __name__ == "__main__":
         ["Dense"] + [f"{results_dense[key]:.3f}" for key in metric_keys],
     ]
     print("Metric: Latency (ms)")
+    print(f"Speedup: {speedup:.3f}")
     print("\n" + tabulate(table_data, headers=headers, tablefmt="grid"))
