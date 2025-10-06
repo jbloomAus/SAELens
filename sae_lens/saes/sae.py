@@ -1020,6 +1020,7 @@ class TrainingSAE(SAE[T_TRAINING_SAE_CONFIG], ABC):
     def load_weights_from_checkpoint(self, checkpoint_path: Path | str) -> None:
         checkpoint_path = Path(checkpoint_path)
         state_dict = load_file(checkpoint_path / SAE_WEIGHTS_FILENAME)
+        self.process_state_dict_for_loading(state_dict)
         self.load_state_dict(state_dict)
 
 

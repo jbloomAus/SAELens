@@ -1,5 +1,6 @@
 import copy
 import pickle
+from pathlib import Path
 
 import pytest
 import torch
@@ -242,3 +243,20 @@ def test_TrainingSAE_fold_activation_norm_scaling_factor_all_architectures(
 
     assert_close(folded_outputs, original_outputs)
     assert_close(folded_features, original_features)
+
+
+@pytest.mark.parametrize("architecture", ALL_TRAINING_ARCHITECTURES)
+def test_TrainingSAE_save_and_load_from_checkpoint_all_architectures(
+    architecture: str,
+    tmp_path: Path,
+):
+    cfg = build_sae_training_cfg_for_arch(architecture)
+    sae = TrainingSAE.from_dict(cfg.to_dict())
+    random_params(sae)
+
+    sae.save_model(tmp_path)
+    loaded_sae = TrainingSAE.from_dict(cfg.to_dict())
+    loaded_sae.load_weights_from_checkpoint(tmp_path)
+
+    for param1, param2 in zip(sae.parameters(), loaded_sae.parameters()):
+        assert_close(param1, param2, atol=1e-6, rtol=1e-4)

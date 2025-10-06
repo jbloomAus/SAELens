@@ -494,3 +494,97 @@ def test_sae_trainer_skips_final_checkpoint_when_disabled(
     # Check that final checkpoint was NOT saved
     final_checkpoint_dir = checkpoint_dir / "final_20"
     assert not final_checkpoint_dir.exists()
+
+
+def test_SAETrainer_save_and_load_from_checkpoint(
+    ts_model: HookedTransformer,
+    tmp_path: Path,
+):
+    checkpoint_dir = tmp_path / "checkpoints"
+    cfg = build_runner_cfg(
+        checkpoint_path=str(checkpoint_dir),
+        training_tokens=20,
+        context_size=8,
+        save_final_checkpoint=False,  # Disable final checkpoint
+    )
+
+    dataset = Dataset.from_list([{"text": "hello world"}] * 1000)
+    activation_store = ActivationsStore.from_config(
+        ts_model, cfg, override_dataset=dataset
+    )
+    sae1 = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+    sae2 = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+
+    trainer = SAETrainer(
+        cfg=cfg.to_sae_trainer_config(),
+        sae=sae1,
+        data_provider=activation_store,
+    )
+
+    for param in sae1.parameters():
+        param.grad = torch.randn_like(param)
+    trainer.optimizer.step()
+
+    trainer.n_training_steps = 17
+    trainer.n_training_samples = 170
+    trainer.activation_scaler.scaling_factor = 1.0
+    trainer.act_freq_scores = torch.tensor([1.0, 2.0, 3.0])
+    trainer.n_forward_passes_since_fired = torch.tensor([1.0, 2.0, 3.0])
+    trainer.n_frac_active_samples = 170
+
+    for _ in range(17):
+        trainer.coefficient_schedulers["l1"].step()
+
+    trainer.save_trainer_state(checkpoint_dir)
+
+    new_trainer = SAETrainer(
+        cfg=cfg.to_sae_trainer_config(),
+        sae=sae2,
+        data_provider=activation_store,
+    )
+    new_trainer.load_trainer_state(checkpoint_dir)
+
+    assert new_trainer.n_training_steps == trainer.n_training_steps
+    assert new_trainer.n_training_samples == trainer.n_training_samples
+    assert (
+        new_trainer.activation_scaler.scaling_factor
+        == trainer.activation_scaler.scaling_factor
+    )
+    assert torch.allclose(new_trainer.act_freq_scores, trainer.act_freq_scores)
+    assert torch.allclose(
+        new_trainer.n_forward_passes_since_fired, trainer.n_forward_passes_since_fired
+    )
+    assert new_trainer.n_frac_active_samples == trainer.n_frac_active_samples
+    assert new_trainer.started_fine_tuning == trainer.started_fine_tuning
+    assert (
+        new_trainer.coefficient_schedulers["l1"].current_step
+        == trainer.coefficient_schedulers["l1"].current_step
+    )
+
+    # compare optimizer state dicts
+    old_state = trainer.optimizer.state_dict()
+    new_state = new_trainer.optimizer.state_dict()
+    assert old_state.keys() == new_state.keys()
+    for key in old_state:
+        if isinstance(old_state[key], dict):
+            assert old_state[key].keys() == new_state[key].keys()
+            for param_key in old_state[key]:
+                old_val = old_state[key][param_key]
+                new_val = new_state[key][param_key]
+                if isinstance(old_val, dict):
+                    assert old_val.keys() == new_val.keys()
+                    for nested_key in old_val:
+                        if torch.is_tensor(old_val[nested_key]):
+                            assert torch.allclose(
+                                old_val[nested_key], new_val[nested_key]
+                            )
+                        else:
+                            assert old_val[nested_key] == new_val[nested_key]
+                elif torch.is_tensor(old_val):
+                    assert torch.allclose(old_val, new_val)
+                else:
+                    assert old_val == new_val
+        elif torch.is_tensor(old_state[key]):
+            assert torch.allclose(old_state[key], new_state[key])
+        else:
+            assert old_state[key] == new_state[key]

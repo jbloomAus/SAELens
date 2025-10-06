@@ -2,6 +2,7 @@ import os
 import tempfile
 from collections.abc import Iterable
 from math import ceil
+from pathlib import Path
 
 import pytest
 import torch
@@ -554,6 +555,28 @@ def test_activations_store_save(ts_model: HookedTransformer):
         state_dict = load_file(temp_file.name)
         assert isinstance(state_dict, dict)
         assert "n_dataset_processed" in state_dict
+
+
+def test_activations_store_save_and_restore_from_checkpoint(
+    ts_model: HookedTransformer,
+    tmp_path: Path,
+):
+    cfg = build_runner_cfg(disable_concat_sequences=True)
+    activation_store = ActivationsStore.from_config(ts_model, cfg)
+
+    for _ in range(300):
+        activation_store.next_batch()
+    assert activation_store.n_dataset_processed > 0
+    activation_store.save_to_checkpoint(tmp_path)
+
+    new_activation_store = ActivationsStore.from_config(ts_model, cfg)
+    new_activation_store.load_from_checkpoint(tmp_path)
+    assert (
+        new_activation_store.n_dataset_processed == activation_store.n_dataset_processed
+    )
+    next_tokens = next(activation_store.iterable_sequences)
+    next_tokens_new = next(new_activation_store.iterable_sequences)
+    assert torch.allclose(next_tokens, next_tokens_new)
 
 
 def test_get_special_token_ids():

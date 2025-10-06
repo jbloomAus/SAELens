@@ -15,7 +15,7 @@ from huggingface_hub.utils import HfHubHTTPError
 from jaxtyping import Float, Int
 from requests import HTTPError
 from safetensors.torch import load_file, save_file
-from tqdm import tqdm
+from tqdm.auto import tqdm
 from transformer_lens.hook_points import HookedRootModule
 from transformers import AutoTokenizer, PreTrainedTokenizerBase
 
