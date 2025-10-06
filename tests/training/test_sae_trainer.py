@@ -295,13 +295,13 @@ def test_checkpoints_save_runner_cfg(
     trainer.fit()
     checkpoint_cfg_paths = list(checkpoint_dir.glob("**/cfg.json"))
     checkpoint_runner_cfg_paths = list(checkpoint_dir.glob("**/runner_cfg.json"))
-    # We should have exactly 2 checkpoints:
+    # We should have exactly 3 checkpoints, including the final checkpoint:
     assert (
-        len(checkpoint_cfg_paths) == 2
-    ), f"Expected 2 sae cfg but got {len(checkpoint_cfg_paths)}"
+        len(checkpoint_cfg_paths) == 3
+    ), f"Expected 3 sae cfg but got {len(checkpoint_cfg_paths)}"
     assert (
-        len(checkpoint_runner_cfg_paths) == 2
-    ), f"Expected 2 runner cfg but got {len(checkpoint_runner_cfg_paths)}"
+        len(checkpoint_runner_cfg_paths) == 3
+    ), f"Expected 3 runner cfg but got {len(checkpoint_runner_cfg_paths)}"
 
     for checkpoint_cfg_path in checkpoint_cfg_paths:
         with open(checkpoint_cfg_path) as f:

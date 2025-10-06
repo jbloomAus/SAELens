@@ -1,4 +1,5 @@
 import contextlib
+import math
 from pathlib import Path
 from typing import Any, Callable, Generic, Protocol
 
@@ -89,7 +90,9 @@ class SAETrainer(Generic[T_TRAINING_SAE, T_TRAINING_SAE_CONFIG]):
                 range(
                     0,
                     cfg.total_training_samples,
-                    cfg.total_training_samples // self.cfg.n_checkpoints,
+                    math.ceil(
+                        cfg.total_training_samples / (self.cfg.n_checkpoints + 1)
+                    ),
                 )
             )[1:]
 

@@ -16,7 +16,6 @@ from typing_extensions import deprecated
 from sae_lens import logger
 from sae_lens.config import HfDataset, LanguageModelSAERunnerConfig
 from sae_lens.constants import (
-    ACTIVATIONS_STORE_STATE_FILENAME,
     RUNNER_CFG_FILENAME,
     SPARSITY_FILENAME,
 )
@@ -117,6 +116,7 @@ class LanguageModelSAETrainingRunner:
         override_sae: TrainingSAE[Any] | None = None,
         resume_from_checkpoint: Path | str | None = None,
     ):
+        self.resume_from_checkpoint = resume_from_checkpoint
         if override_dataset is not None:
             logger.warning(
                 f"You just passed in a dataset which will override the one specified in your configuration: {cfg.dataset_path}. As a consequence this run will not be reproducible via configuration alone."
@@ -315,9 +315,7 @@ class LanguageModelSAETrainingRunner:
         if checkpoint_path is None:
             return
 
-        self.activations_store.save(
-            str(checkpoint_path / ACTIVATIONS_STORE_STATE_FILENAME)
-        )
+        self.activations_store.save_to_checkpoint(checkpoint_path)
 
         runner_config = self.cfg.to_dict()
         with open(checkpoint_path / RUNNER_CFG_FILENAME, "w") as f:
@@ -326,7 +324,7 @@ class LanguageModelSAETrainingRunner:
 
 def _parse_cfg_args(
     args: Sequence[str],
-) -> LanguageModelSAERunnerConfig[TrainingSAEConfig]:
+) -> tuple[LanguageModelSAERunnerConfig[TrainingSAEConfig], str | None]:
     """
     Parse command line arguments into a LanguageModelSAERunnerConfig.
 
@@ -417,17 +415,25 @@ def _parse_cfg_args(
     parser = ArgumentParser(exit_on_error=False)
     parser.add_arguments(concrete_config_class, dest="cfg")
 
+    parser.add_argument(
+        "--resume_from_checkpoint",
+        type=str,
+        help="Path to the checkpoint to resume from",
+    )
+
     # Parse the filtered arguments (without --architecture)
     parsed_args = parser.parse_args(filtered_args)
 
     # Return the parsed configuration
-    return parsed_args.cfg
+    return parsed_args.cfg, parsed_args.resume_from_checkpoint
 
 
 # moved into its own function to make it easier to test
 def _run_cli(args: Sequence[str]):
-    cfg = _parse_cfg_args(args)
-    LanguageModelSAETrainingRunner(cfg=cfg).run()
+    cfg, resume_from_checkpoint = _parse_cfg_args(args)
+    LanguageModelSAETrainingRunner(
+        cfg=cfg, resume_from_checkpoint=resume_from_checkpoint
+    ).run()
 
 
 if __name__ == "__main__":

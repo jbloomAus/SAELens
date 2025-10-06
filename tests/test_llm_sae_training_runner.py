@@ -8,10 +8,16 @@ from transformer_lens import HookedTransformer
 
 from sae_lens import __version__
 from sae_lens.config import LanguageModelSAERunnerConfig
+from sae_lens.constants import (
+    ACTIVATIONS_STORE_STATE_FILENAME,
+    SAE_WEIGHTS_FILENAME,
+    TRAINER_STATE_FILENAME,
+)
 from sae_lens.llm_sae_training_runner import (
     LanguageModelSAETrainingRunner,
     LLMSaeEvaluator,
     _parse_cfg_args,
+    _run_cli,
 )
 from sae_lens.saes.gated_sae import GatedTrainingSAEConfig
 from sae_lens.saes.jumprelu_sae import JumpReLUTrainingSAEConfig
@@ -23,6 +29,7 @@ from sae_lens.training.activations_store import ActivationsStore
 from tests.helpers import (
     ALL_TRAINING_ARCHITECTURES,
     NEEL_NANDA_C4_10K_DATASET,
+    TINYSTORIES_DATASET,
     TINYSTORIES_MODEL,
     build_runner_cfg_for_arch,
 )
@@ -134,7 +141,7 @@ def test_parse_cfg_args_works_with_basic_arguments():
         "--training_tokens",
         "1000000",
     ]
-    cfg = _parse_cfg_args(args)
+    cfg, resume_from_checkpoint = _parse_cfg_args(args)
     assert isinstance(cfg, LanguageModelSAERunnerConfig)
     assert cfg.model_name == "gpt2"
     assert cfg.dataset_path == "test_dataset"
@@ -148,6 +155,7 @@ def test_parse_cfg_args_works_with_basic_arguments():
     assert cfg.sae.l1_coefficient == 1.0  # default value
     assert cfg.sae.lp_norm == 1.0  # default value
     assert cfg.sae.l1_warm_up_steps == 0  # default value
+    assert resume_from_checkpoint is None
 
 
 def test_parse_cfg_args_selects_gated_architecture():
@@ -169,7 +177,7 @@ def test_parse_cfg_args_selects_gated_architecture():
         "--l1_warm_up_steps",
         "1000",
     ]
-    cfg = _parse_cfg_args(args)
+    cfg, resume_from_checkpoint = _parse_cfg_args(args)
     assert isinstance(cfg, LanguageModelSAERunnerConfig)
     assert cfg.model_name == "gpt2"
     assert cfg.dataset_path == "test_dataset"
@@ -180,6 +188,7 @@ def test_parse_cfg_args_selects_gated_architecture():
     assert isinstance(cfg.sae, GatedTrainingSAEConfig)
     assert cfg.sae.l1_coefficient == 0.5
     assert cfg.sae.l1_warm_up_steps == 1000
+    assert resume_from_checkpoint is None
 
 
 def test_parse_cfg_args_selects_topk_architecture():
@@ -199,7 +208,7 @@ def test_parse_cfg_args_selects_topk_architecture():
         "--k",
         "50",
     ]
-    cfg = _parse_cfg_args(args)
+    cfg, resume_from_checkpoint = _parse_cfg_args(args)
     assert isinstance(cfg, LanguageModelSAERunnerConfig)
     assert cfg.model_name == "gpt2"
     assert cfg.dataset_path == "test_dataset"
@@ -209,6 +218,7 @@ def test_parse_cfg_args_selects_topk_architecture():
     assert cfg.sae.architecture() == "topk"
     assert isinstance(cfg.sae, TopKTrainingSAEConfig)
     assert cfg.sae.k == 50
+    assert resume_from_checkpoint is None
 
 
 def test_parse_cfg_args_selects_standard_architecture_with_specific_options():
@@ -231,8 +241,10 @@ def test_parse_cfg_args_selects_standard_architecture_with_specific_options():
         "1.5",
         "--l1_warm_up_steps",
         "2000",
+        "--resume_from_checkpoint",
+        "test_checkpoint",
     ]
-    cfg = _parse_cfg_args(args)
+    cfg, resume_from_checkpoint = _parse_cfg_args(args)
     assert isinstance(cfg, LanguageModelSAERunnerConfig)
     assert cfg.model_name == "gpt2"
     assert cfg.dataset_path == "test_dataset"
@@ -244,6 +256,7 @@ def test_parse_cfg_args_selects_standard_architecture_with_specific_options():
     assert cfg.sae.l1_coefficient == 0.8
     assert cfg.sae.lp_norm == 1.5
     assert cfg.sae.l1_warm_up_steps == 2000
+    assert resume_from_checkpoint == "test_checkpoint"
 
 
 def test_parse_cfg_args_selects_jumprelu_architecture():
@@ -268,8 +281,10 @@ def test_parse_cfg_args_selects_jumprelu_architecture():
         "0.3",
         "--l0_warm_up_steps",
         "500",
+        "--resume_from_checkpoint",
+        "test_checkpoint",
     ]
-    cfg = _parse_cfg_args(args)
+    cfg, resume_from_checkpoint = _parse_cfg_args(args)
     assert isinstance(cfg, LanguageModelSAERunnerConfig)
     assert cfg.model_name == "gpt2"
     assert cfg.dataset_path == "test_dataset"
@@ -282,6 +297,7 @@ def test_parse_cfg_args_selects_jumprelu_architecture():
     assert cfg.sae.jumprelu_bandwidth == 0.0005
     assert cfg.sae.l0_coefficient == 0.3
     assert cfg.sae.l0_warm_up_steps == 500
+    assert resume_from_checkpoint == "test_checkpoint"
 
 
 class TestLLMSaeEvaluator:
@@ -645,3 +661,304 @@ def test_LanguageModelSAETrainingRunner_skips_save_final_sae_when_output_path_no
     # Check that the SAE was returned
     assert sae is not None
     assert not Path("output").exists()
+
+
+class TestResumeFromCheckpoint:
+    """Tests for the resume_from_checkpoint functionality."""
+
+    @pytest.fixture
+    def small_training_cfg(self, tmp_path: Path):
+        """Creates a config for a small training run."""
+        return build_runner_cfg_for_arch(
+            architecture="standard",
+            d_in=64,
+            d_sae=128,
+            hook_layer=0,
+            checkpoint_path=str(tmp_path),
+            model_name=TINYSTORIES_MODEL,
+            dataset_path=TINYSTORIES_DATASET,
+            training_tokens=128,
+            train_batch_size_tokens=4,
+            store_batch_size_prompts=4,
+            n_checkpoints=1,
+            log_to_wandb=False,
+            l1_coefficient=0.01,
+            lr=0.001,
+        )
+
+    def test_save_checkpoint_includes_training_state(
+        self,
+        small_training_cfg: LanguageModelSAERunnerConfig[StandardTrainingSAEConfig],
+    ):
+        """Test that save_checkpoint saves training state."""
+        # Run a small training session
+        runner = LanguageModelSAETrainingRunner(small_training_cfg)
+        runner.run()
+
+        # Verify training state was saved
+        assert small_training_cfg.checkpoint_path is not None
+        checkpoint_dirs = list(Path(small_training_cfg.checkpoint_path).glob("*"))
+        assert len(checkpoint_dirs) == 1
+
+        training_state_path = checkpoint_dirs[0] / TRAINER_STATE_FILENAME
+        assert training_state_path.exists(), "Training state wasn't saved"
+
+        # Load the training state
+        training_state = torch.load(training_state_path)
+
+        # Check the contents of the training state
+        assert "optimizer" in training_state
+        assert "lr_scheduler" in training_state
+        assert "coefficient_schedulers" in training_state
+        assert "n_training_samples" in training_state
+        assert "n_training_steps" in training_state
+        assert "act_freq_scores" in training_state
+        assert "n_forward_passes_since_fired" in training_state
+        assert "n_frac_active_samples" in training_state
+        assert "started_fine_tuning" in training_state
+
+        assert len(training_state["coefficient_schedulers"]) == 1
+
+        # Verify activations store state was saved
+        activations_store_path = checkpoint_dirs[0] / ACTIVATIONS_STORE_STATE_FILENAME
+        assert activations_store_path.exists(), "Activations store state wasn't saved"
+
+    def test_cli_args_parsing_with_resume(self):
+        """Test that CLI args parsing works with --resume_from_checkpoint."""
+        args = [
+            "--model_name",
+            "test-model",
+            "--dataset_path",
+            "test-dataset",
+            "--resume_from_checkpoint",
+            "/path/to/checkpoint",
+        ]
+        cfg, resume_path = _parse_cfg_args(args)
+
+        assert cfg.model_name == "test-model"
+        assert cfg.dataset_path == "test-dataset"
+        assert resume_path == "/path/to/checkpoint"
+
+    def test_resume_from_checkpoint(
+        self,
+        small_training_cfg: LanguageModelSAERunnerConfig[StandardTrainingSAEConfig],
+    ):
+        """Test that training can be resumed from a checkpoint."""
+        # First part: train for a small number of tokens
+        first_cfg = small_training_cfg
+        first_cfg.training_tokens = 64  # Half of total
+
+        runner1 = LanguageModelSAETrainingRunner(first_cfg)
+        runner1.run()
+
+        # Get the checkpoint directory
+        assert first_cfg.checkpoint_path is not None
+        checkpoint_dirs = list(Path(first_cfg.checkpoint_path).glob("*"))
+        assert len(checkpoint_dirs) == 1
+        checkpoint_path = checkpoint_dirs[0]
+
+        # Second part: resume training from the checkpoint
+        second_cfg = small_training_cfg
+        second_cfg.training_tokens = 128  # Full amount
+        second_cfg.save_final_checkpoint = True
+
+        # Resume training from checkpoint
+        runner2 = LanguageModelSAETrainingRunner(
+            second_cfg, resume_from_checkpoint=str(checkpoint_path)
+        )
+        runner2.run()
+
+        # The resumed SAE should have trained on all tokens
+        # Check if various metrics are reasonable
+
+        # Get the final checkpoint and check its metrics
+        assert second_cfg.checkpoint_path is not None
+        final_checkpoint_dirs = list(Path(second_cfg.checkpoint_path).glob("*"))
+        assert (
+            len(final_checkpoint_dirs) >= 1
+        )  # Should have at least the original checkpoint
+
+        # Find the latest checkpoint (could be different from the first if new one was created)
+        latest_checkpoint = max(final_checkpoint_dirs, key=lambda p: p.stat().st_mtime)
+
+        # Load the final state
+        final_training_state_path = latest_checkpoint / TRAINER_STATE_FILENAME
+        final_training_state = torch.load(final_training_state_path)
+
+        # Ensure the resumed training completed the full training
+        assert final_training_state["n_training_samples"] >= 128
+
+    def test_activations_store_state_preserved(
+        self,
+        tmp_path: Path,
+        small_training_cfg: LanguageModelSAERunnerConfig[StandardTrainingSAEConfig],
+    ):
+        """Test that activations store state is preserved exactly when saving and loading."""
+        # Create a runner and get some activations
+        runner = LanguageModelSAETrainingRunner(small_training_cfg)
+
+        # Get a few batches to ensure the store has some state
+        for _ in range(300):
+            runner.activations_store.next_batch()
+        assert runner.activations_store.n_dataset_processed > 0
+
+        # Save original activations store state
+        orig_state = runner.activations_store.state_dict()
+
+        # Save to disk
+        store_path = tmp_path / ACTIVATIONS_STORE_STATE_FILENAME
+        runner.activations_store.save(str(store_path))
+
+        # Create a new activations store
+        new_store = ActivationsStore.from_config(
+            runner.model,
+            runner.cfg,
+        )
+
+        # Load the saved state
+        new_store.load(str(store_path))
+
+        # Compare states
+        new_state = new_store.state_dict()
+
+        # Check n_dataset_processed
+        assert (
+            orig_state["n_dataset_processed"].item()
+            == new_state["n_dataset_processed"].item()
+        )
+
+    def test_activations_store_load_method(
+        self,
+        tmp_path: Path,
+        small_training_cfg: LanguageModelSAERunnerConfig[StandardTrainingSAEConfig],
+    ):
+        """Test that the ActivationsStore load method works correctly."""
+        # Run a small training session
+        runner = LanguageModelSAETrainingRunner(small_training_cfg)
+        runner.run()
+
+        # Get the checkpoint directory
+        assert small_training_cfg.checkpoint_path is not None
+        checkpoint_dirs = list(Path(small_training_cfg.checkpoint_path).glob("*"))
+        assert len(checkpoint_dirs) == 1
+
+        # Get the activations store state
+        activations_store_path = checkpoint_dirs[0] / ACTIVATIONS_STORE_STATE_FILENAME
+        assert activations_store_path.exists()
+
+        # Create a new runner
+        new_runner = LanguageModelSAETrainingRunner(small_training_cfg)
+
+        # Test that we can load the activations store state
+        new_runner.activations_store.load_from_checkpoint(checkpoint_dirs[0])
+
+    def test_resume_from_cli(self, tmp_path: Path):
+        """Test resume from checkpoint using the CLI interface."""
+        # First run: short training
+        run_id = "test-run-id"  # Fixed run ID for reproducibility
+        checkpoint_dir = tmp_path / run_id
+
+        # Create a checkpoint directory structure that matches what the real system expects
+        first_args = [
+            "--model_name",
+            TINYSTORIES_MODEL,
+            "--dataset_path",
+            TINYSTORIES_DATASET,
+            "--checkpoint_path",
+            str(checkpoint_dir),  # Use the fixed path
+            "--output_path",
+            str(tmp_path / "output"),
+            "--wandb_id",
+            run_id,  # Use fixed run ID
+            "--training_tokens",
+            "64",  # Short training
+            "--train_batch_size_tokens",
+            "4",
+            "--store_batch_size_prompts",
+            "4",
+            "--log_to_wandb",
+            "False",
+            "--d_in",
+            "64",
+            "--d_sae",
+            "128",
+            "--n_checkpoints",
+            "1",  # Just one checkpoint at the end
+            "--save_final_checkpoint",
+            "True",
+        ]
+
+        _run_cli(first_args)
+
+        # Find the checkpoint files by exploring the directory structure
+
+        # Find the checkpoint subdirectory - based on the output, we have a nested structure
+        # The actual checkpoint is in test-run-id/test-run-id/final_64
+        nested_run_dir = checkpoint_dir / run_id
+        assert (
+            nested_run_dir.exists()
+        ), f"Expected nested run directory at {nested_run_dir}"
+
+        # Look for the final_* directory that contains the checkpoint files
+        checkpoint_subdirs = list(nested_run_dir.glob("final_*"))
+        assert (
+            len(checkpoint_subdirs) >= 1
+        ), f"Expected at least one final_* directory in {nested_run_dir}"
+
+        # Verify the checkpoint files exist
+        final_checkpoint_dir = checkpoint_subdirs[0]
+        assert (
+            final_checkpoint_dir / "cfg.json"
+        ).exists(), f"No cfg.json found in {final_checkpoint_dir}"
+        assert (
+            final_checkpoint_dir / SAE_WEIGHTS_FILENAME
+        ).exists(), f"No sae_weights.safetensors found in {final_checkpoint_dir}"
+
+        # Second run: resume with more tokens
+        second_args = [
+            "--model_name",
+            TINYSTORIES_MODEL,
+            "--dataset_path",
+            TINYSTORIES_DATASET,
+            "--checkpoint_path",
+            str(tmp_path / "continued"),  # Different path
+            "--output_path",
+            str(tmp_path / "output"),
+            "--wandb_id",
+            run_id,  # Same run ID
+            "--training_tokens",
+            "128",  # Twice the tokens
+            "--train_batch_size_tokens",
+            "4",
+            "--store_batch_size_prompts",
+            "4",
+            "--log_to_wandb",
+            "False",
+            "--d_in",
+            "64",
+            "--d_sae",
+            "128",
+            "--save_final_checkpoint",
+            "True",
+            "--resume_from_checkpoint",
+            str(final_checkpoint_dir),
+        ]
+
+        _run_cli(second_args)
+
+        # Find all trainer_state.pt files in the continued directory
+        training_state_files = list(
+            (tmp_path / "continued").glob(f"**/{TRAINER_STATE_FILENAME}")
+        )
+        assert (
+            len(training_state_files) >= 1
+        ), f"Expected at least one trainer_state.pt file in {tmp_path / 'continued'}"
+
+        # The parent directory of the trainer_state.pt file is our checkpoint directory
+        final_continued_checkpoint = training_state_files[0].parent
+
+        # Load the training state
+        training_state = torch.load(final_continued_checkpoint / TRAINER_STATE_FILENAME)
+
+        # Verify it ran the full training
+        assert training_state["n_training_samples"] >= 128

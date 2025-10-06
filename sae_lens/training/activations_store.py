@@ -727,6 +727,10 @@ class ActivationsStore:
         """save the state dict to a file in safetensors format"""
         save_file(self.state_dict(), file_path)
 
+    def save_to_checkpoint(self, checkpoint_path: str | Path):
+        """Save the state dict to a checkpoint path"""
+        self.save(str(Path(checkpoint_path) / ACTIVATIONS_STORE_STATE_FILENAME))
+
     def load_from_checkpoint(self, checkpoint_path: str | Path):
         """Load the state dict from a checkpoint path"""
         self.load(str(Path(checkpoint_path) / ACTIVATIONS_STORE_STATE_FILENAME))
