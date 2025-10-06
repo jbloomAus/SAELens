@@ -1,7 +1,6 @@
 import os
 from pathlib import Path
 
-import numpy as np
 import pytest
 import torch
 from sparsify import SparseCoder, SparseCoderConfig
@@ -12,6 +11,7 @@ from tests.helpers import (
     assert_close,
     build_topk_sae_cfg,
     build_topk_sae_training_cfg,
+    match_params,
 )
 
 
@@ -61,6 +61,50 @@ def test_TopKTrainingSAE_topk_aux_loss_matches_unnormalized_sparsify_implementat
     raw_aux_loss = sae_out.losses["auxiliary_reconstruction_loss"].item()  # type: ignore
     norm_aux_loss = raw_aux_loss / normalization
     assert norm_aux_loss == pytest.approx(comparison_aux_loss, abs=3e-2)
+
+
+def test_TopKTrainingSAE_training_forward_pass_matches_with_and_without_sparse_activations():
+    d_in = 128
+    d_sae = 192
+    k = 26
+    sparse_cfg = build_topk_sae_training_cfg(
+        d_in=d_in,
+        d_sae=d_sae,
+        k=k,
+        use_sparse_activations=True,
+    )
+    dense_cfg = build_topk_sae_training_cfg(
+        d_in=d_in,
+        d_sae=d_sae,
+        k=k,
+        use_sparse_activations=False,
+    )
+
+    sparse_sae = TopKTrainingSAE(sparse_cfg)
+    dense_sae = TopKTrainingSAE(dense_cfg)
+
+    match_params(sparse_sae, dense_sae)
+
+    dead_neuron_mask = torch.randn(d_sae) > 0.1
+    input_acts = torch.randn(200, d_in)
+
+    step_input = TrainStepInput(
+        sae_in=input_acts,
+        dead_neuron_mask=dead_neuron_mask,
+        coefficients={},
+    )
+
+    sparse_sae_out = sparse_sae.training_forward_pass(step_input=step_input)
+    dense_sae_out = dense_sae.training_forward_pass(step_input=step_input)
+
+    assert sparse_sae_out.feature_acts.is_sparse_csr
+    assert not dense_sae_out.feature_acts.is_sparse
+    assert not dense_sae_out.feature_acts.is_sparse_csr
+
+    assert_close(sparse_sae_out.sae_out, dense_sae_out.sae_out)
+    assert_close(sparse_sae_out.loss, dense_sae_out.loss)
+    assert_close(sparse_sae_out.feature_acts.to_dense(), dense_sae_out.feature_acts)
+    assert_close(sparse_sae_out.hidden_pre, dense_sae_out.hidden_pre)
 
 
 def test_TopKSAE_save_and_load_from_pretrained(tmp_path: Path) -> None:
@@ -149,32 +193,28 @@ def test_TopKTrainingSAE_save_and_load_inference_sae(tmp_path: Path) -> None:
     assert_close(training_full_out, inference_full_out, rtol=1e-4, atol=1e-4)
 
 
-@pytest.mark.parametrize("num_dims", [1, 2, 3, 4, 5])
-def test_topK_sparse_activations(num_dims: bool):
+def test_topK_sparse_activations_only_works_with_2d_tensors():
     # Validate that the sparse top-K intermediate output (COO format)
     # we use to accelerate the decoder matches the dense top-K output.
-    dims = (np.arange(1, num_dims + 1) + 3).tolist()
-    dims[-1] = 1024
-    for k in [1, 10, 100, 1000]:
-        topk_sparse = TopK(k, use_sparse_activations=True)
-        topk_dense = TopK(k, use_sparse_activations=False)
-        x = torch.randn(*dims) + 50.0
-        sparse_x = topk_sparse(x)
-        assert sparse_x.is_sparse or sparse_x.is_sparse_csr
-        sparse_x = sparse_x.to_dense()
-        sparse_x = sparse_x.reshape(x.shape)
-        dense_x = topk_dense(x)
-        assert_close(dense_x, sparse_x)
+    topk_sparse = TopK(100, use_sparse_activations=True)
+    x_1d = torch.randn(1024)
+    x_2d = torch.randn(3, 1024)
+    x_3d = torch.randn(3, 3, 1024)
+    with pytest.raises(ValueError):
+        topk_sparse(x_1d)
+    with pytest.raises(ValueError):
+        topk_sparse(x_3d)
+    sparse_x_2d = topk_sparse(x_2d)
+    assert sparse_x_2d.is_sparse or sparse_x_2d.is_sparse_csr
+    assert sparse_x_2d.ndim == 2
 
 
-@pytest.mark.parametrize("num_dims", [1, 2, 3, 4, 5])
-def test_topK_activation_sparse_mm(num_dims: int):
+def test_topK_activation_sparse_mm():
     # Validate that our decoder produces the same output when using the sparse intermediates
     # as when using the dense intermediates.
     d_in = 128
     d_sae = 1024
-    dims = (np.arange(1, num_dims + 1) + 3).tolist()
-    dims[-1] = d_sae
+    dims = (3, d_sae)
 
     cfg = build_topk_sae_training_cfg(
         d_in=d_in,
@@ -205,10 +245,20 @@ def test_TopKTrainingSAE_sparse_activations_config():
     # Check that our config is respected in both training & inference SAEs
     cfg = build_topk_sae_training_cfg(k=100, use_sparse_activations=True)
     sae = TopKTrainingSAE(cfg)
-    assert sae.activation_fn.use_sparse_activations  # type: ignore
+    assert not sae.activation_fn.use_sparse_activations  # type: ignore
     assert sae.cfg.use_sparse_activations
 
     cfg = build_topk_sae_training_cfg(k=100, use_sparse_activations=False)
     sae = TopKTrainingSAE(cfg)
     assert not sae.activation_fn.use_sparse_activations  # type: ignore
     assert not sae.cfg.use_sparse_activations
+
+
+@pytest.mark.parametrize("use_sparse_activations", [True, False])
+def test_TopKTrainingSAE_use_sparse_topk(use_sparse_activations: bool):
+    cfg = build_topk_sae_training_cfg(k=100)
+    sae = TopKTrainingSAE(cfg)
+    assert not sae.activation_fn.use_sparse_activations  # type: ignore
+    with sae.use_sparse_topk(use_sparse_activations):
+        assert sae.activation_fn.use_sparse_activations is use_sparse_activations  # type: ignore
+    assert not sae.activation_fn.use_sparse_activations  # type: ignore

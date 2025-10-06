@@ -591,3 +591,14 @@ def random_params(model: torch.nn.Module) -> None:
         param.data = torch.rand_like(param)
     for buffer in model.buffers():
         buffer.data = torch.rand_like(buffer)
+
+
+@torch.no_grad()
+def match_params(model1: torch.nn.Module, model2: torch.nn.Module) -> None:
+    """
+    Match the parameters of two models.
+    """
+    for param1, param2 in zip(model1.parameters(), model2.parameters()):
+        param1.data = param2.data
+    for buffer1, buffer2 in zip(model1.buffers(), model2.buffers()):
+        buffer1.data = buffer2.data
