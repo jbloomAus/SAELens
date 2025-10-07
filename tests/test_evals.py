@@ -69,7 +69,7 @@ def _replace_nan(list: list[float]) -> list[float]:
     params=[
         {
             "model_name": "tiny-stories-1M",
-            "dataset_path": "roneneldan/TinyStories",
+            "dataset_path": "NeelNanda/c4-10k",
             "hook_name": "blocks.1.hook_resid_pre",
             "d_in": 64,
         },
@@ -81,19 +81,19 @@ def _replace_nan(list: list[float]) -> list[float]:
         },
         {
             "model_name": "tiny-stories-1M",
-            "dataset_path": "roneneldan/TinyStories",
+            "dataset_path": "NeelNanda/c4-10k",
             "hook_name": "blocks.1.attn.hook_z",
             "d_in": 16 * 4,
         },
         {
             "model_name": "tiny-stories-1M",
-            "dataset_path": "roneneldan/TinyStories",
+            "dataset_path": "NeelNanda/c4-10k",
             "hook_name": "blocks.1.attn.hook_q",
             "d_in": 16 * 4,
         },
         {
             "model_name": "tiny-stories-1M",
-            "dataset_path": "roneneldan/TinyStories",
+            "dataset_path": "NeelNanda/c4-10k",
             "hook_name": "blocks.1.attn.hook_q",
             "d_in": 4,
             "hook_head_index": 2,
