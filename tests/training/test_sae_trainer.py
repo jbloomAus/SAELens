@@ -394,10 +394,10 @@ def test_estimated_norm_scaling_factor_persistence(
     # Train the model - this should create checkpoints
     trainer.fit()
     checkpoint_paths = list(checkpoint_dir.glob("**/activation_scaler.json"))
-    # We should have exactly 2 checkpoints:
+    # We should have exactly 3 checkpoints including the final checkpoint:
     assert (
-        len(checkpoint_paths) == 2
-    ), f"Expected 2 checkpoints but got {len(checkpoint_paths)}"
+        len(checkpoint_paths) == 3
+    ), f"Expected 3 checkpoints but got {len(checkpoint_paths)}"
     during_checkpoints = []
     final_checkpoints = []
     for path in checkpoint_paths:
@@ -409,8 +409,8 @@ def test_estimated_norm_scaling_factor_persistence(
             during_checkpoints.append(data)
 
     assert (
-        len(during_checkpoints) == 1
-    ), f"Expected 1 other checkpoint but got {len(during_checkpoints)}"
+        len(during_checkpoints) == 2
+    ), f"Expected 2 other checkpoints but got {len(during_checkpoints)}"
     assert (
         len(final_checkpoints) == 1
     ), f"Expected 1 final checkpoint but got {len(final_checkpoints)}"
