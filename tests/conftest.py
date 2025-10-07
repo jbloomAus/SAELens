@@ -101,8 +101,8 @@ def print_disk_space_after_test_in_CI(
             avail_before - avail_after
         )  # Positive means less available (used more)
 
-        # Only print if there's a notable change (>= 50 MB)
-        if abs(used_diff) >= 50 or abs(avail_diff) >= 50:
+        # Only print if there's a notable change (>= 5 MB)
+        if abs(used_diff) >= 5 or abs(avail_diff) >= 5:
             with capfd.disabled():
                 print(f"\n=== Disk change after {test_name} ===", flush=True)  # noqa: T201
                 print(  # noqa: T201
