@@ -18,15 +18,14 @@ torch.set_grad_enabled(True)
 os.environ["SPARSIFY_DISABLE_TRITON"] = "1"
 
 
-def get_hf_cache_size() -> int:
-    """Get the size of the huggingface cache directory in bytes."""
-    cache_dir = Path.home() / ".cache"
-    if not cache_dir.exists():
+def get_dir_size(path: Path) -> int:
+    """Get the size of a directory in bytes."""
+    if not path.exists():
         return 0
 
     try:
         result = subprocess.run(
-            ["du", "-s", str(cache_dir)],
+            ["du", "-s", str(path)],
             capture_output=True,
             text=True,
             timeout=10,
@@ -41,8 +40,18 @@ def get_hf_cache_size() -> int:
         return 0
 
 
+def get_tracked_disk_usage() -> dict[str, int]:
+    """Get disk usage for all tracked directories."""
+    workspace = Path.cwd()
+    return {
+        "cache": get_dir_size(Path.home() / ".cache"),
+        "tmp": get_dir_size(Path("/tmp")),
+        "workspace": get_dir_size(workspace),
+    }
+
+
 DISK_USAGE_TRACKING = os.environ.get("TRACK_DISK_USAGE", "0") == "1"
-DISK_USAGE_REPORT: list[tuple[str, int]] = []
+DISK_USAGE_REPORT: list[tuple[str, dict[str, int]]] = []
 
 
 @pytest.fixture(autouse=True)
@@ -52,14 +61,20 @@ def track_disk_usage(request: pytest.FixtureRequest):
         yield
         return
 
-    initial_size = get_hf_cache_size()
+    initial_sizes = get_tracked_disk_usage()
     yield
-    final_size = get_hf_cache_size()
+    final_sizes = get_tracked_disk_usage()
 
-    increase = final_size - initial_size
-    if increase > 0:
+    # Calculate increases for each tracked directory
+    increases = {
+        name: final_sizes[name] - initial_sizes[name]
+        for name in initial_sizes
+        if final_sizes[name] - initial_sizes[name] > 0
+    }
+
+    if increases:
         test_name = request.node.nodeid
-        DISK_USAGE_REPORT.append((test_name, increase))
+        DISK_USAGE_REPORT.append((test_name, increases))
 
 
 def pytest_sessionfinish(session: pytest.Session, exitstatus: int):  # noqa
@@ -72,25 +87,44 @@ def pytest_sessionfinish(session: pytest.Session, exitstatus: int):  # noqa
     if terminal_reporter is None:
         return
 
-    terminal_reporter.write_sep("=", "DISK USAGE REPORT (HuggingFace Cache Increases)")
+    terminal_reporter.write_sep(
+        "=", "DISK USAGE REPORT (Tracked: cache, tmp, workspace)"
+    )
 
     if not DISK_USAGE_REPORT:
         terminal_reporter.write_line("No disk usage increases detected.")
         terminal_reporter.write_line(
-            "(This may mean the HuggingFace cache was already populated or disk tracking failed)"
+            "(Directories may already be populated or tracking failed)"
         )
     else:
-        sorted_report = sorted(DISK_USAGE_REPORT, key=lambda x: x[1], reverse=True)
-
-        for test_name, increase in sorted_report[:20]:
-            mb = increase / (1024 * 1024)
-            terminal_reporter.write_line(f"{mb:>8.2f} MB - {test_name}")
-
-        total_increase = sum(increase for _, increase in DISK_USAGE_REPORT)
-        terminal_reporter.write_line("")
-        terminal_reporter.write_line(
-            f"Total cache increase: {total_increase / (1024 * 1024):.2f} MB"
+        # Sort by total increase across all directories
+        sorted_report = sorted(
+            DISK_USAGE_REPORT,
+            key=lambda x: sum(x[1].values()),
+            reverse=True,
         )
+
+        for test_name, increases in sorted_report[:20]:
+            total_mb = sum(increases.values()) / (1024 * 1024)
+            details = ", ".join(
+                f"{name}: {size / (1024 * 1024):.1f}MB"
+                for name, size in increases.items()
+            )
+            terminal_reporter.write_line(f"{total_mb:>8.2f} MB - {test_name}")
+            terminal_reporter.write_line(f"            [{details}]")
+
+        # Show totals by directory
+        terminal_reporter.write_line("")
+        total_by_dir: dict[str, int] = {}
+        for _, increases in DISK_USAGE_REPORT:
+            for name, size in increases.items():
+                total_by_dir[name] = total_by_dir.get(name, 0) + size
+
+        terminal_reporter.write_line("Total increases by directory:")
+        for name, total in sorted(
+            total_by_dir.items(), key=lambda x: x[1], reverse=True
+        ):
+            terminal_reporter.write_line(f"  {name}: {total / (1024 * 1024):.2f} MB")
 
     terminal_reporter.write_sep("=", "End of Disk Usage Report")
 
