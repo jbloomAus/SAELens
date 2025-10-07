@@ -60,31 +60,59 @@ def cleanup_tmp_path(tmp_path: Path):
             shutil.rmtree(item)
 
 
+def get_disk_usage_gb() -> tuple[float, float]:
+    """Get used and available disk space in GB for root filesystem."""
+    try:
+        result = subprocess.run(
+            ["df", "--block-size=1G", "/"], capture_output=True, text=True, timeout=5
+        )
+        lines = result.stdout.strip().split("\n")
+        if len(lines) >= 2:
+            parts = lines[1].split()
+            if len(parts) >= 4:
+                used_gb = float(parts[2].replace("G", ""))
+                avail_gb = float(parts[3].replace("G", ""))
+                return used_gb, avail_gb
+    except Exception:
+        pass
+    return 0.0, 0.0
+
+
 @pytest.fixture(autouse=True)
 def print_disk_space_after_test_in_CI(
     request: pytest.FixtureRequest, capfd: pytest.CaptureFixture[Any]
 ) -> Any:
+    # Track disk space before test (only in CI)
+    is_ci = bool(os.getenv("CI"))
+    if is_ci:
+        used_before, avail_before = get_disk_usage_gb()
+    else:
+        used_before, avail_before = 0.0, 0.0
+
     yield
 
-    # Print basic disk space after each test (only in CI to avoid spam in local dev)
-    if os.getenv("CI"):
+    # Print disk space change after test (only in CI to avoid spam in local dev)
+    if is_ci:
         test_name = request.node.name
+        used_after, avail_after = get_disk_usage_gb()
 
-        # Just get basic disk usage - fast and simple
-        try:
-            result = subprocess.run(
-                ["df", "-h"], capture_output=True, text=True, timeout=5
-            )
-            disk_lines = result.stdout.split("\n")[:2]  # Header + root filesystem
-        except Exception:
-            disk_lines = ["Unable to get disk info"]
+        used_diff = used_after - used_before
+        avail_diff = (
+            avail_before - avail_after
+        )  # Positive means less available (used more)
 
-        # Use capfd to ensure output is shown
-        with capfd.disabled():
-            print(f"\n=== Disk after {test_name} ===", flush=True)  # noqa: T201
-            for line in disk_lines:
-                if line.strip():
-                    print(line, flush=True)  # noqa: T201
+        # Only print if there's a notable change (>= 0.1 GB)
+        if abs(used_diff) >= 0.1 or abs(avail_diff) >= 0.1:
+            with capfd.disabled():
+                print(f"\n=== Disk change after {test_name} ===", flush=True)  # noqa: T201
+                print(
+                    f"Used: {used_before:.1f}G -> {used_after:.1f}G ({used_diff:+.1f}G)",
+                    flush=True,
+                )  # noqa: T201
+                print(
+                    f"Available: {avail_before:.1f}G -> {avail_after:.1f}G ({-avail_diff:+.1f}G)",
+                    flush=True,
+                )  # noqa: T201
 
 
 @pytest.fixture
