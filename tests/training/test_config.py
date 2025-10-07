@@ -9,10 +9,6 @@ from sae_lens.config import (
 )
 from sae_lens.saes.standard_sae import StandardTrainingSAEConfig
 
-TINYSTORIES_MODEL = "tiny-stories-1M"
-TINYSTORIES_DATASET = "roneneldan/TinyStories"
-
-
 test_cases_for_seqpos = [
     ((None, 10, -1), ValueError),
     ((None, 10, 0), ValueError),

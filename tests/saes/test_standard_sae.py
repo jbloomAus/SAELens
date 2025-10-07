@@ -35,13 +35,13 @@ from tests.helpers import (
     params=[
         {
             "model_name": "tiny-stories-1M",
-            "dataset_path": "roneneldan/TinyStories",
+            "dataset_path": "NeelNanda/c4-10k",
             "hook_name": "blocks.1.hook_resid_pre",
             "d_in": 64,
         },
         {
             "model_name": "tiny-stories-1M",
-            "dataset_path": "roneneldan/TinyStories",
+            "dataset_path": "NeelNanda/c4-10k",
             "hook_name": "blocks.1.hook_resid_pre",
             "d_in": 64,
             "normalize_sae_decoder": False,
@@ -55,7 +55,7 @@ from tests.helpers import (
         },
         {
             "model_name": "tiny-stories-1M",
-            "dataset_path": "roneneldan/TinyStories",
+            "dataset_path": "NeelNanda/c4-10k",
             "hook_name": "blocks.1.attn.hook_z",
             "d_in": 64,
         },

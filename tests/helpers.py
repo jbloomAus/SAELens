@@ -15,7 +15,6 @@ from sae_lens.saes.standard_sae import StandardSAEConfig, StandardTrainingSAECon
 from sae_lens.saes.topk_sae import TopKSAEConfig, TopKTrainingSAEConfig
 
 TINYSTORIES_MODEL = "tiny-stories-1M"
-TINYSTORIES_DATASET = "roneneldan/TinyStories"
 NEEL_NANDA_C4_10K_DATASET = "NeelNanda/c4-10k"
 
 ALL_ARCHITECTURES = ["standard", "gated", "jumprelu", "topk"]
