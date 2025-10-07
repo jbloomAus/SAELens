@@ -56,14 +56,6 @@ def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
             "streaming": False,
         },
         {
-            "model_name": "gelu-2l",
-            "dataset_path": "NeelNanda/c4-tokenized-2b",
-            "hook_name": "blocks.1.hook_resid_pre",
-            "d_in": 512,
-            "context_size": 1024,
-            "streaming": True,
-        },
-        {
             "model_name": "gpt2",
             "dataset_path": "apollo-research/Skylion007-openwebtext-tokenizer-gpt2",
             "hook_name": "blocks.1.hook_resid_pre",
@@ -83,7 +75,6 @@ def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
     ids=[
         "c4-10k-resid-pre",
         "c4-10k-attn-out",
-        "gelu-2l-tokenized",
         "gpt2-tokenized",
         "gpt2",
     ],
