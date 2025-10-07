@@ -29,7 +29,6 @@ from sae_lens.training.activations_store import ActivationsStore
 from tests.helpers import (
     ALL_TRAINING_ARCHITECTURES,
     NEEL_NANDA_C4_10K_DATASET,
-    TINYSTORIES_DATASET,
     TINYSTORIES_MODEL,
     build_runner_cfg_for_arch,
 )
@@ -676,7 +675,7 @@ class TestResumeFromCheckpoint:
             hook_layer=0,
             checkpoint_path=str(tmp_path),
             model_name=TINYSTORIES_MODEL,
-            dataset_path=TINYSTORIES_DATASET,
+            dataset_path=NEEL_NANDA_C4_10K_DATASET,
             training_tokens=128,
             train_batch_size_tokens=4,
             store_batch_size_prompts=4,
@@ -863,7 +862,7 @@ class TestResumeFromCheckpoint:
             "--model_name",
             TINYSTORIES_MODEL,
             "--dataset_path",
-            TINYSTORIES_DATASET,
+            NEEL_NANDA_C4_10K_DATASET,
             "--checkpoint_path",
             str(checkpoint_dir),  # Use the fixed path
             "--output_path",
@@ -919,7 +918,7 @@ class TestResumeFromCheckpoint:
             "--model_name",
             TINYSTORIES_MODEL,
             "--dataset_path",
-            TINYSTORIES_DATASET,
+            NEEL_NANDA_C4_10K_DATASET,
             "--checkpoint_path",
             str(tmp_path / "continued"),  # Different path
             "--output_path",
