@@ -105,14 +105,14 @@ def print_disk_space_after_test_in_CI(
         if abs(used_diff) >= 0.1 or abs(avail_diff) >= 0.1:
             with capfd.disabled():
                 print(f"\n=== Disk change after {test_name} ===", flush=True)  # noqa: T201
-                print(
+                print(  # noqa: T201
                     f"Used: {used_before:.1f}G -> {used_after:.1f}G ({used_diff:+.1f}G)",
                     flush=True,
-                )  # noqa: T201
-                print(
+                )
+                print(  # noqa: T201
                     f"Available: {avail_before:.1f}G -> {avail_after:.1f}G ({-avail_diff:+.1f}G)",
                     flush=True,
-                )  # noqa: T201
+                )
 
 
 @pytest.fixture
