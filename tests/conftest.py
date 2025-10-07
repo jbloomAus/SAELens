@@ -20,7 +20,7 @@ os.environ["SPARSIFY_DISABLE_TRITON"] = "1"
 
 def get_hf_cache_size() -> int:
     """Get the size of the huggingface cache directory in bytes."""
-    cache_dir = Path.home() / ".cache" / "huggingface"
+    cache_dir = Path.home() / ".cache"
     if not cache_dir.exists():
         return 0
 
@@ -64,7 +64,7 @@ def track_disk_usage(request: pytest.FixtureRequest):
 
 def pytest_sessionfinish(session: pytest.Session, exitstatus: int):  # noqa
     """Print disk usage report at the end of the test session."""
-    if not DISK_USAGE_TRACKING or not DISK_USAGE_REPORT:
+    if not DISK_USAGE_TRACKING:
         return
 
     # Use pytest's terminal writer to bypass output capture
@@ -74,16 +74,25 @@ def pytest_sessionfinish(session: pytest.Session, exitstatus: int):  # noqa
 
     terminal_reporter.write_sep("=", "DISK USAGE REPORT (HuggingFace Cache Increases)")
 
-    sorted_report = sorted(DISK_USAGE_REPORT, key=lambda x: x[1], reverse=True)
+    if not DISK_USAGE_REPORT:
+        terminal_reporter.write_line("No disk usage increases detected.")
+        terminal_reporter.write_line(
+            "(This may mean the HuggingFace cache was already populated or disk tracking failed)"
+        )
+    else:
+        sorted_report = sorted(DISK_USAGE_REPORT, key=lambda x: x[1], reverse=True)
 
-    for test_name, increase in sorted_report[:20]:
-        mb = increase / (1024 * 1024)
-        terminal_reporter.write_line(f"{mb:>8.2f} MB - {test_name}")
+        for test_name, increase in sorted_report[:20]:
+            mb = increase / (1024 * 1024)
+            terminal_reporter.write_line(f"{mb:>8.2f} MB - {test_name}")
 
-    total_increase = sum(increase for _, increase in DISK_USAGE_REPORT)
-    terminal_reporter.write_sep(
-        "=", f"Total cache increase: {total_increase / (1024 * 1024):.2f} MB"
-    )
+        total_increase = sum(increase for _, increase in DISK_USAGE_REPORT)
+        terminal_reporter.write_line("")
+        terminal_reporter.write_line(
+            f"Total cache increase: {total_increase / (1024 * 1024):.2f} MB"
+        )
+
+    terminal_reporter.write_sep("=", "End of Disk Usage Report")
 
 
 @pytest.fixture(autouse=True)
