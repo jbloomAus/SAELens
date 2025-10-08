@@ -5,6 +5,8 @@ from dataclasses import asdict, fields, is_dataclass
 from pathlib import Path
 from typing import Sequence, TypeVar
 
+from transformers import PreTrainedTokenizerBase
+
 K = TypeVar("K")
 V = TypeVar("V")
 
@@ -63,3 +65,28 @@ def path_or_tmp_dir(path: str | Path | None):
             yield Path(td)
     else:
         yield Path(path)
+
+
+def get_special_token_ids(tokenizer: PreTrainedTokenizerBase) -> list[int]:
+    """Get all special token IDs from a tokenizer."""
+    special_tokens = set()
+
+    # Get special tokens from tokenizer attributes
+    for attr in dir(tokenizer):
+        if attr.endswith("_token_id"):
+            token_id = getattr(tokenizer, attr)
+            if token_id is not None:
+                special_tokens.add(token_id)
+
+    # Get any additional special tokens from the tokenizer's special tokens map
+    if hasattr(tokenizer, "special_tokens_map"):
+        for token in tokenizer.special_tokens_map.values():
+            if isinstance(token, str):
+                token_id = tokenizer.convert_tokens_to_ids(token)  # type: ignore
+                special_tokens.add(token_id)
+            elif isinstance(token, list):
+                for t in token:
+                    token_id = tokenizer.convert_tokens_to_ids(t)  # type: ignore
+                    special_tokens.add(token_id)
+
+    return list(special_tokens)

@@ -61,9 +61,11 @@ class LLMSaeEvaluator(Generic[T_TRAINING_SAE]):
         data_provider: DataProvider,
         activation_scaler: ActivationScaler,
     ) -> dict[str, Any]:
-        ignore_tokens = set()
+        exclude_special_tokens = set()
         if self.activations_store.exclude_special_tokens is not None:
-            ignore_tokens = set(self.activations_store.exclude_special_tokens.tolist())
+            exclude_special_tokens: set[int] = set(
+                self.activations_store.exclude_special_tokens.tolist()
+            )
 
         eval_config = EvalConfig(
             batch_size_prompts=self.eval_batch_size_prompts,
@@ -81,7 +83,7 @@ class LLMSaeEvaluator(Generic[T_TRAINING_SAE]):
             model=self.model,
             activation_scaler=activation_scaler,
             eval_config=eval_config,
-            ignore_tokens=ignore_tokens,
+            exclude_special_tokens=exclude_special_tokens,
             model_kwargs=self.model_kwargs,
         )  # not calculating featurwise metrics here.
 

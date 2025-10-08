@@ -199,7 +199,7 @@ def test_run_evals_training_sae_ignore_bos(
         activation_scaler=ActivationScaler(),
         model=model,
         eval_config=get_eval_everything_config(),
-        ignore_tokens={
+        exclude_special_tokens={
             model.tokenizer.bos_token_id,  # type: ignore
             model.tokenizer.eos_token_id,  # type: ignore
             model.tokenizer.pad_token_id,  # type: ignore
@@ -248,7 +248,7 @@ def test_training_eval_config_ignore_control_tokens(
         activation_scaler=ActivationScaler(),
         model=model,
         eval_config=eval_config,
-        ignore_tokens={
+        exclude_special_tokens={
             model.tokenizer.pad_token_id,  # type: ignore
             model.tokenizer.eos_token_id,  # type: ignore
             model.tokenizer.bos_token_id,  # type: ignore

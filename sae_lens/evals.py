@@ -11,8 +11,7 @@ from dataclasses import dataclass, field
 from functools import partial
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
-from types import EllipsisType
-from typing import Any
+from typing import Any, Iterable
 
 import einops
 import pandas as pd
@@ -25,7 +24,10 @@ from sae_lens.loading.pretrained_saes_directory import get_pretrained_saes_direc
 from sae_lens.saes.sae import SAE, SAEConfig
 from sae_lens.training.activation_scaler import ActivationScaler
 from sae_lens.training.activations_store import ActivationsStore
-from sae_lens.util import extract_stop_at_layer_from_tlens_hook_name
+from sae_lens.util import (
+    extract_stop_at_layer_from_tlens_hook_name,
+    get_special_token_ids,
+)
 
 
 def get_library_version() -> str:
@@ -110,17 +112,15 @@ def run_evals(
     activation_scaler: ActivationScaler,
     eval_config: EvalConfig = EvalConfig(),
     model_kwargs: Mapping[str, Any] = {},
-    ignore_tokens: set[int | None] | EllipsisType = ...,
+    exclude_special_tokens: Iterable[int] | bool = True,
     verbose: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    if ignore_tokens is ...:
-        ignore_tokens = (
-            {
-                model.tokenizer.pad_token_id,  # type: ignore
-                model.tokenizer.eos_token_id,  # type: ignore
-                model.tokenizer.bos_token_id,  # type: ignore
-            },
-        )
+    if exclude_special_tokens is True:
+        ignore_tokens = set(get_special_token_ids(model.tokenizer))  # type: ignore
+    elif not exclude_special_tokens:
+        ignore_tokens = set()
+    else:
+        ignore_tokens = set(exclude_special_tokens)
 
     hook_name = sae.cfg.metadata.hook_name
     actual_batch_size = (
@@ -322,7 +322,7 @@ def get_downstream_reconstruction_metrics(
     compute_ce_loss: bool,
     n_batches: int,
     eval_batch_size_prompts: int,
-    ignore_tokens: set[int | None] = set(),
+    ignore_tokens: set[int] = set(),
     verbose: bool = False,
 ):
     metrics_dict = {}
@@ -394,7 +394,7 @@ def get_sparsity_and_variance_metrics(
     compute_featurewise_density_statistics: bool,
     eval_batch_size_prompts: int,
     model_kwargs: Mapping[str, Any],
-    ignore_tokens: set[int | None] = set(),
+    ignore_tokens: set[int] = set(),
     verbose: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     hook_name = sae.cfg.metadata.hook_name
@@ -604,7 +604,7 @@ def get_recons_loss(
     batch_tokens: torch.Tensor,
     compute_kl: bool,
     compute_ce_loss: bool,
-    ignore_tokens: set[int | None] = set(),
+    ignore_tokens: set[int] = set(),
     model_kwargs: Mapping[str, Any] = {},
     hook_name: str | None = None,
 ) -> dict[str, Any]:
