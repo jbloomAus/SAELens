@@ -1,7 +1,8 @@
 """Inference-only TopKSAE variant, similar in spirit to StandardSAE but using a TopK-based activation."""
 
+from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, Generator
 
 import torch
 from jaxtyping import Float
@@ -16,6 +17,7 @@ from sae_lens.saes.sae import (
     TrainingSAE,
     TrainingSAEConfig,
     TrainStepInput,
+    TrainStepOutput,
     _disable_hooks,
 )
 
@@ -35,7 +37,7 @@ class SparseHookPoint(HookPoint):
         using_hooks = (
             self._forward_hooks is not None and len(self._forward_hooks) > 0
         ) or (self._backward_hooks is not None and len(self._backward_hooks) > 0)
-        if using_hooks and x.is_sparse:
+        if using_hooks and (x.is_sparse or x.is_sparse_csr):
             return x.to_dense()
         return x  # if no hooks are being used, use passthrough
 
@@ -69,47 +71,24 @@ class TopK(nn.Module):
         topk_values, topk_indices = torch.topk(x, k=self.k, dim=-1, sorted=False)
         values = topk_values.relu()
         if self.use_sparse_activations:
-            # Produce a COO sparse tensor (use sparse matrix multiply in decode)
-            original_shape = x.shape
-
-            # Create indices for all dimensions
-            # For each element in topk_indices, we need to map it back to the original tensor coordinates
-            batch_dims = original_shape[:-1]  # All dimensions except the last one
-            num_batch_elements = torch.prod(torch.tensor(batch_dims)).item()
-
-            # Create batch indices - each batch element repeated k times
-            batch_indices_flat = torch.arange(
-                num_batch_elements, device=x.device
-            ).repeat_interleave(self.k)
-
+            # Produce a CSR sparse tensor (use sparse matrix multiply in decode)
             # Convert flat batch indices back to multi-dimensional indices
-            if len(batch_dims) == 1:
-                # 2D case: [batch, features]
-                sparse_indices = torch.stack(
-                    [
-                        batch_indices_flat,
-                        topk_indices.flatten(),
-                    ]
-                )
-            else:
-                # 3D+ case: need to unravel the batch indices
-                batch_indices_multi = []
-                remaining = batch_indices_flat
-                for dim_size in reversed(batch_dims):
-                    batch_indices_multi.append(remaining % dim_size)
-                    remaining = remaining // dim_size
-                batch_indices_multi.reverse()
-
-                sparse_indices = torch.stack(
-                    [
-                        *batch_indices_multi,
-                        topk_indices.flatten(),
-                    ]
-                )
-
-            return torch.sparse_coo_tensor(
-                sparse_indices, values.flatten(), original_shape
+            if x.ndim != 2:
+                raise ValueError("Sparse activations are only supported for 2D tensors")
+            return torch.sparse_csr_tensor(
+                torch.arange(
+                    start=0,
+                    end=len(topk_indices.flatten()) + self.k,
+                    step=self.k,
+                    device=x.device,
+                ),
+                topk_indices.flatten(),
+                topk_values.flatten(),
+                dtype=x.dtype,
+                device=x.device,
+                size=x.shape,
             )
+
         result = torch.zeros_like(x)
         result.scatter_(-1, topk_indices, values)
         return result
@@ -127,63 +106,6 @@ class TopKSAEConfig(SAEConfig):
     @classmethod
     def architecture(cls) -> str:
         return "topk"
-
-
-def _sparse_matmul_nd(
-    sparse_tensor: torch.Tensor, dense_matrix: torch.Tensor
-) -> torch.Tensor:
-    """
-    Multiply a sparse tensor of shape [..., d_sae] with a dense matrix of shape [d_sae, d_out]
-    to get a result of shape [..., d_out].
-
-    This function handles sparse tensors with arbitrary batch dimensions by flattening
-    the batch dimensions, performing 2D sparse matrix multiplication, and reshaping back.
-    """
-    original_shape = sparse_tensor.shape
-    batch_dims = original_shape[:-1]
-    d_sae = original_shape[-1]
-    d_out = dense_matrix.shape[-1]
-
-    if sparse_tensor.ndim == 2:
-        # Simple 2D case - use torch.sparse.mm directly
-        # sparse.mm errors with bfloat16 :(
-        with torch.autocast(device_type=sparse_tensor.device.type, enabled=False):
-            return torch.sparse.mm(sparse_tensor, dense_matrix)
-
-    # For 3D+ case, reshape to 2D, multiply, then reshape back
-    batch_size = int(torch.prod(torch.tensor(batch_dims)).item())
-
-    # Ensure tensor is coalesced for efficient access to indices/values
-    if not sparse_tensor.is_coalesced():
-        sparse_tensor = sparse_tensor.coalesce()
-
-    # Get indices and values
-    indices = sparse_tensor.indices()  # [ndim, nnz]
-    values = sparse_tensor.values()  # [nnz]
-
-    # Convert multi-dimensional batch indices to flat indices
-    flat_batch_indices = torch.zeros_like(indices[0])
-    multiplier = 1
-    for i in reversed(range(len(batch_dims))):
-        flat_batch_indices += indices[i] * multiplier
-        multiplier *= batch_dims[i]
-
-    # Create 2D sparse tensor indices [batch_flat, feature]
-    sparse_2d_indices = torch.stack([flat_batch_indices, indices[-1]])
-
-    # Create 2D sparse tensor
-    sparse_2d = torch.sparse_coo_tensor(
-        sparse_2d_indices, values, (batch_size, d_sae)
-    ).coalesce()
-
-    # sparse.mm errors with bfloat16 :(
-    with torch.autocast(device_type=sparse_tensor.device.type, enabled=False):
-        # Do the matrix multiplication
-        result_2d = torch.sparse.mm(sparse_2d, dense_matrix)  # [batch_size, d_out]
-
-    # Reshape back to original batch dimensions
-    result_shape = tuple(batch_dims) + (d_out,)
-    return result_2d.view(result_shape)
 
 
 class TopKSAE(SAE[TopKSAEConfig]):
@@ -231,8 +153,8 @@ class TopKSAE(SAE[TopKSAEConfig]):
         and optional head reshaping.
         """
         # Handle sparse tensors using efficient sparse matrix multiplication
-        if feature_acts.is_sparse:
-            sae_out_pre = _sparse_matmul_nd(feature_acts, self.W_dec) + self.b_dec
+        if feature_acts.is_sparse or feature_acts.is_sparse_csr:
+            sae_out_pre = torch.sparse.mm(feature_acts, self.W_dec) + self.b_dec
         else:
             sae_out_pre = feature_acts @ self.W_dec + self.b_dec
         sae_out_pre = self.hook_sae_recons(sae_out_pre)
@@ -340,8 +262,8 @@ class TopKTrainingSAE(TrainingSAE[TopKTrainingSAEConfig]):
         applying optional finetuning scale, hooking, out normalization, etc.
         """
         # Handle sparse tensors using efficient sparse matrix multiplication
-        if feature_acts.is_sparse:
-            sae_out_pre = _sparse_matmul_nd(feature_acts, self.W_dec) + self.b_dec
+        if feature_acts.is_sparse or feature_acts.is_sparse_csr:
+            sae_out_pre = torch.sparse.mm(feature_acts, self.W_dec) + self.b_dec
         else:
             sae_out_pre = feature_acts @ self.W_dec + self.b_dec
         sae_out_pre = self.hook_sae_recons(sae_out_pre)
@@ -391,11 +313,33 @@ class TopKTrainingSAE(TrainingSAE[TopKTrainingSAEConfig]):
 
     @override
     def get_activation_fn(self) -> Callable[[torch.Tensor], torch.Tensor]:
-        return TopK(self.cfg.k, use_sparse_activations=self.cfg.use_sparse_activations)
+        return TopK(self.cfg.k)
 
     @override
     def get_coefficients(self) -> dict[str, TrainCoefficientConfig | float]:
         return {}
+
+    @override
+    def training_forward_pass(
+        self,
+        step_input: TrainStepInput,
+    ) -> TrainStepOutput:
+        with self.use_sparse_topk(self.cfg.use_sparse_activations):
+            return super().training_forward_pass(step_input)
+
+    @contextmanager
+    def use_sparse_topk(
+        self, use_sparse_activations: bool = True
+    ) -> Generator[None, None, None]:
+        """
+        Temporarily set use_sparse_activations attribute on the activation function to the given value.
+        """
+        original_use_sparse_activations = getattr(
+            self.activation_fn, "use_sparse_activations", False
+        )
+        self.activation_fn.use_sparse_activations = use_sparse_activations  # type: ignore
+        yield
+        self.activation_fn.use_sparse_activations = original_use_sparse_activations  # type: ignore
 
     def calculate_topk_aux_loss(
         self,

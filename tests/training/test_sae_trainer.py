@@ -26,6 +26,7 @@ from tests.helpers import (
     TINYSTORIES_MODEL,
     assert_close,
     build_runner_cfg,
+    build_topk_runner_cfg,
     load_model_cached,
 )
 
@@ -232,6 +233,33 @@ def test_train_sae_group_on_language_model__runs(
 ) -> None:
     checkpoint_dir = tmp_path / "checkpoint"
     cfg = build_runner_cfg(
+        checkpoint_path=str(checkpoint_dir),
+        training_tokens=20,
+        context_size=8,
+    )
+    # just a tiny datast which will run quickly
+    dataset = Dataset.from_list([{"text": "hello world"}] * 100)
+    activation_store = ActivationsStore.from_config(
+        ts_model, cfg, override_dataset=dataset
+    )
+    sae = TrainingSAE.from_dict(cfg.get_training_sae_cfg_dict())
+    sae = SAETrainer(
+        cfg=cfg.to_sae_trainer_config(),
+        sae=sae,
+        data_provider=activation_store,
+    ).fit()
+
+    assert isinstance(sae, TrainingSAE)
+
+
+def test_SAETrainer_run_with_sparse_topk_sae(
+    ts_model: HookedTransformer,
+    tmp_path: Path,
+) -> None:
+    checkpoint_dir = tmp_path / "checkpoint"
+    cfg = build_topk_runner_cfg(
+        use_sparse_activations=True,
+        k=10,
         checkpoint_path=str(checkpoint_dir),
         training_tokens=20,
         context_size=8,
