@@ -10,7 +10,7 @@ from datasets import Array2D, Dataset, Features, Sequence, Value
 from datasets.fingerprint import generate_fingerprint
 from huggingface_hub import HfApi
 from jaxtyping import Float, Int
-from tqdm import tqdm
+from tqdm.auto import tqdm
 from transformer_lens.HookedTransformer import HookedRootModule
 
 from sae_lens import logger

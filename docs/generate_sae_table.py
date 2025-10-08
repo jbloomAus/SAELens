@@ -5,7 +5,7 @@ from textwrap import dedent
 
 import pandas as pd
 import yaml
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from sae_lens import SAEConfig
 from sae_lens.loading.pretrained_sae_loaders import (
