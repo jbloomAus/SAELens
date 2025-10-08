@@ -253,14 +253,21 @@ class SAETrainer(Generic[T_TRAINING_SAE, T_TRAINING_SAE_CONFIG]):
             )
 
             with torch.no_grad():
-                # calling .bool() should be equivalent to .abs() > 0, and work with coo tensors
+                # calling .bool() should be equivalent to .abs() > 0, and work with sparse tensors
                 firing_feats = train_step_output.feature_acts.bool().float()
-                did_fire = firing_feats.sum(-2).bool()
-                if did_fire.is_sparse:
+                # need to keepdim to avoid issues with sparse tensors
+                did_fire = firing_feats.sum(-2, keepdim=True).bool()
+                if did_fire.is_sparse or did_fire.is_sparse_csr:
                     did_fire = did_fire.to_dense()
+                did_fire = did_fire.squeeze(-2)
                 self.n_forward_passes_since_fired += 1
                 self.n_forward_passes_since_fired[did_fire] = 0
-                self.act_freq_scores += firing_feats.sum(0)
+                # again, need to keepdim to avoid issues with sparse tensors
+                freq_deltas = firing_feats.sum(0, keepdim=True)
+                if freq_deltas.is_sparse or freq_deltas.is_sparse_csr:
+                    freq_deltas = freq_deltas.to_dense()
+                freq_deltas = freq_deltas.squeeze(0)
+                self.act_freq_scores += freq_deltas
                 self.n_frac_active_samples += self.cfg.train_batch_size_samples
 
         # Grad scaler will rescale gradients if autocast is enabled
