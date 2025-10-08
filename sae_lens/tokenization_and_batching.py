@@ -86,16 +86,16 @@ def concat_and_batch_sequences(
             if (
                 begin_sequence_token_id is not None
                 and sequence[0] != begin_sequence_token_id
+                and len(sequence) >= context_size - 1
             ):
-                if len(sequence) >= context_size - 1:
-                    begin_sequence_token_id_tensor = torch.tensor(
-                        [begin_sequence_token_id],
-                        dtype=torch.long,
-                        device=sequence.device,
-                    )
-                    sequence = torch.cat(
-                        [begin_sequence_token_id_tensor, sequence[: context_size - 1]]
-                    )
+                begin_sequence_token_id_tensor = torch.tensor(
+                    [begin_sequence_token_id],
+                    dtype=torch.long,
+                    device=sequence.device,
+                )
+                sequence = torch.cat(
+                    [begin_sequence_token_id_tensor, sequence[: context_size - 1]]
+                )
             if len(sequence) >= context_size:
                 yield sequence[:context_size]
         return
