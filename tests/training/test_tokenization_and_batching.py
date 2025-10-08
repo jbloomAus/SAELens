@@ -247,6 +247,43 @@ def test_concat_and_batch_sequences_can_ensure_everything_starts_with_bos():
     assert batches.tolist() == expected
 
 
+def test_concat_and_batch_sequences_can_ensure_everything_starts_with_bos_with_concat_sequences_disabled():
+    all_toks = torch.arange(19)
+    seqs = [all_toks[:3], all_toks[3:10], all_toks[10:17], all_toks[17:]]
+    batches_list = list(
+        concat_and_batch_sequences(
+            tokens_iterator=iter(seqs),
+            context_size=5,
+            begin_batch_token_id=999,
+            disable_concat_sequences=True,
+        )
+    )
+    batches = torch.stack(batches_list)
+    expected = [
+        [999, 3, 4, 5, 6],
+        [999, 10, 11, 12, 13],
+    ]
+    assert batches.tolist() == expected
+
+
+def test_concat_and_batch_sequences_with_concat_sequences_disabled():
+    all_toks = torch.arange(19)
+    seqs = [all_toks[:3], all_toks[3:10], all_toks[10:17], all_toks[17:]]
+    batches_list = list(
+        concat_and_batch_sequences(
+            tokens_iterator=iter(seqs),
+            context_size=5,
+            disable_concat_sequences=True,
+        )
+    )
+    batches = torch.stack(batches_list)
+    expected = [
+        [3, 4, 5, 6, 7],
+        [10, 11, 12, 13, 14],
+    ]
+    assert batches.tolist() == expected
+
+
 def test_concat_and_batch_sequences_can_ensure_each_seq_starts_with_a_token():
     all_toks = torch.arange(19)
     seqs = [all_toks[:3], all_toks[3:10], all_toks[10:17], all_toks[17:]]
@@ -263,6 +300,65 @@ def test_concat_and_batch_sequences_can_ensure_each_seq_starts_with_a_token():
         [3, 4, 5, 6, 7],
         [8, 9, 998, 10, 11],
         [12, 13, 14, 15, 16],
+    ]
+    assert batches.tolist() == expected
+
+
+def test_concat_and_batch_sequences_can_ensure_everything_starts_with_seq_start_token_with_concat_sequences_disabled():
+    all_toks = torch.arange(19)
+    seqs = [all_toks[:3], all_toks[3:10], all_toks[10:17], all_toks[17:]]
+    batches_list = list(
+        concat_and_batch_sequences(
+            tokens_iterator=iter(seqs),
+            context_size=5,
+            begin_sequence_token_id=999,
+            disable_concat_sequences=True,
+        )
+    )
+    batches = torch.stack(batches_list)
+    expected = [
+        [999, 3, 4, 5, 6],
+        [999, 10, 11, 12, 13],
+    ]
+    assert batches.tolist() == expected
+
+
+def test_concat_and_batch_sequences_can_ensure_everything_starts_with_matching_begin_batch_token_and_seq_start_tokens_with_concat_sequences_disabled():
+    all_toks = torch.arange(19)
+    seqs = [all_toks[:3], all_toks[3:10], all_toks[10:17], all_toks[17:]]
+    batches_list = list(
+        concat_and_batch_sequences(
+            tokens_iterator=iter(seqs),
+            context_size=5,
+            begin_batch_token_id=999,
+            begin_sequence_token_id=999,
+            disable_concat_sequences=True,
+        )
+    )
+    batches = torch.stack(batches_list)
+    expected = [
+        [999, 3, 4, 5, 6],
+        [999, 10, 11, 12, 13],
+    ]
+    assert batches.tolist() == expected
+
+
+def test_concat_and_batch_sequences_prioritizes_seq_start_token_over_begin_batch_token_with_concat_sequences_disabled():
+    all_toks = torch.arange(19)
+    seqs = [all_toks[:3], all_toks[3:10], all_toks[10:17], all_toks[17:]]
+    batches_list = list(
+        concat_and_batch_sequences(
+            tokens_iterator=iter(seqs),
+            context_size=5,
+            begin_batch_token_id=999,
+            begin_sequence_token_id=888,
+            disable_concat_sequences=True,
+        )
+    )
+    batches = torch.stack(batches_list)
+    expected = [
+        [888, 3, 4, 5, 6],
+        [888, 10, 11, 12, 13],
     ]
     assert batches.tolist() == expected
 
