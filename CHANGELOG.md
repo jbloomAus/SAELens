@@ -1,5 +1,55 @@
 # CHANGELOG
 
+## v6.13.1 (2025-10-08)
+
+### Chore
+
+* chore: report 5mb disk usage swings in tests (#563)
+
+* report 50mb disk usage swings in tests
+
+* switching to smaller datasets and having smaller threshold for printing disk usage ([`7ef8946`](https://github.com/jbloomAus/SAELens/commit/7ef89464501008fabdd1346c826fd0638215dbfa))
+
+* chore: track disk usage in tests and clean up some space (#562)
+
+* track disk usage in tests to figure out where disk is going
+
+* more logging
+
+* more reporting
+
+* using older method of outputting disk space in CI
+
+* output diff in disk space from tests
+
+* reducing disk usage
+
+* adding tmate debugging
+
+* tweaking caches ([`f3d587f`](https://github.com/jbloomAus/SAELens/commit/f3d587f21eceedf2d3987ccdb055e1bddc15d354))
+
+### Documentation
+
+* docs: simplifying jumprelu docs ([`1e556b1`](https://github.com/jbloomAus/SAELens/commit/1e556b102e502bd94dae29c50f3c5c6834772f09))
+
+* docs: adding tips in the docs for which SAE architectures to use (#556) ([`382010c`](https://github.com/jbloomAus/SAELens/commit/382010c53f95feefc9f5d239f1814d5fd4d5b8cc))
+
+* docs: adding docs for making custom SAE classes (#537) ([`be87864`](https://github.com/jbloomAus/SAELens/commit/be878649968892a5bd52aa2f05f433beb9e8ec61))
+
+### Fix
+
+* fix: Make prepend_bos=True work for disable_concat_sequences case (#559)
+
+* Make prepend_bos=True work for disable_concat_sequences case
+
+* fixing formatting
+
+* more tests and fixed linting
+
+---------
+
+Co-authored-by: David Chanin &lt;chanindav@gmail.com&gt; ([`28da94e`](https://github.com/jbloomAus/SAELens/commit/28da94efdb3d99fde05df575c677e62389899ac7))
+
 ## v6.13.0 (2025-10-04)
 
 ### Chore
