@@ -104,6 +104,7 @@ class TrainingSAEConfigDict(TypedDict, total=False):
     topk_threshold_lr: float  # For BatchTopK
     jumprelu_sparsity_loss_mode: Literal["step", "tanh"]  # For JumpReLU
     jumprelu_tanh_scale: float  # For JumpReLU
+    rescale_acts_by_decoder_norm: bool  # For TopK
 
 
 class SAEConfigDict(TypedDict, total=False):
@@ -383,6 +384,7 @@ def build_topk_runner_cfg(
         "decoder_init_norm": 0.1,
         "apply_b_dec_to_input": False,
         "k": 10,
+        "rescale_acts_by_decoder_norm": True,
     }
     # Ensure activation_fn_kwargs has k if k is overridden
     temp_sae_overrides = {
@@ -591,3 +593,20 @@ def random_params(model: torch.nn.Module) -> None:
         param.data = torch.rand_like(param)
     for buffer in model.buffers():
         buffer.data = torch.rand_like(buffer)
+
+
+@torch.no_grad()
+def match_model_params(
+    source_model: torch.nn.Module, model_to_modify: torch.nn.Module
+) -> None:
+    """
+    Match the parameters of two models.
+    """
+    for param_to_modify, source_param in zip(
+        model_to_modify.parameters(), source_model.parameters()
+    ):
+        param_to_modify.data = source_param.data.detach().clone()
+    for buffer_to_modify, source_buffer in zip(
+        model_to_modify.buffers(), source_model.buffers()
+    ):
+        buffer_to_modify.data = source_buffer.data.detach().clone()

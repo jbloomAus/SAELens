@@ -241,4 +241,10 @@ def test_TrainingSAE_fold_activation_norm_scaling_factor_all_architectures(
     folded_features = sae.encode(inputs / 2.0)
 
     assert_close(folded_outputs, original_outputs)
-    assert_close(folded_features, original_features)
+    if architecture == "topk" or architecture == "batchtopk":
+        # Due to how rescale_acts_by_decoder_norm works in TopKSAEs, it's equivalent to
+        # folding the W_dec norm after folding the activation norm scaling factor.
+        # this is fine, since we just care about the ouputs being the same.
+        assert_close(folded_features, original_features / 2.0)
+    else:
+        assert_close(folded_features, original_features)

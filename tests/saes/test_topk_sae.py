@@ -6,12 +6,16 @@ import pytest
 import torch
 from sparsify import SparseCoder, SparseCoderConfig
 
+from sae_lens.registry import get_sae_class, get_sae_training_class
 from sae_lens.saes.sae import SAE, TrainStepInput
 from sae_lens.saes.topk_sae import TopK, TopKSAE, TopKTrainingSAE
 from tests.helpers import (
     assert_close,
+    assert_not_close,
     build_topk_sae_cfg,
     build_topk_sae_training_cfg,
+    match_model_params,
+    random_params,
 )
 
 
@@ -67,6 +71,8 @@ def test_TopKSAE_save_and_load_from_pretrained(tmp_path: Path) -> None:
     cfg = build_topk_sae_cfg(k=30)
     model_path = str(tmp_path)
     sae = TopKSAE(cfg)
+    random_params(sae)
+
     sae_state_dict = sae.state_dict()
     sae.save_model(model_path)
 
@@ -90,16 +96,17 @@ def test_TopKSAE_save_and_load_from_pretrained(tmp_path: Path) -> None:
     assert_close(sae_out_1, sae_out_2)
 
 
-def test_TopKTrainingSAE_save_and_load_inference_sae(tmp_path: Path) -> None:
+@pytest.mark.parametrize("rescale_acts_by_decoder_norm", [True, False])
+def test_TopKTrainingSAE_save_and_load_inference_sae(
+    rescale_acts_by_decoder_norm: bool,
+    tmp_path: Path,
+) -> None:
     # Create a training SAE with specific parameter values
-    cfg = build_topk_sae_training_cfg(device="cpu", k=30)
+    cfg = build_topk_sae_training_cfg(
+        device="cpu", k=30, rescale_acts_by_decoder_norm=rescale_acts_by_decoder_norm
+    )
     training_sae = TopKTrainingSAE(cfg)
-
-    # Set some known values for testing
-    training_sae.W_enc.data = torch.randn_like(training_sae.W_enc.data)
-    training_sae.W_dec.data = torch.randn_like(training_sae.W_dec.data)
-    training_sae.b_enc.data = torch.randn_like(training_sae.b_enc.data)
-    training_sae.b_dec.data = torch.randn_like(training_sae.b_dec.data)
+    random_params(training_sae)
 
     # Save original state for comparison
     original_W_enc = training_sae.W_enc.data.clone()
@@ -120,9 +127,18 @@ def test_TopKTrainingSAE_save_and_load_inference_sae(tmp_path: Path) -> None:
     assert isinstance(inference_sae, TopKSAE)
 
     # Check that all parameters match
-    assert_close(inference_sae.W_enc, original_W_enc)
-    assert_close(inference_sae.W_dec, original_W_dec)
-    assert_close(inference_sae.b_enc, original_b_enc)
+    if rescale_acts_by_decoder_norm:
+        assert_not_close(inference_sae.W_dec, original_W_dec)
+        assert_close(
+            inference_sae.W_dec.norm(dim=-1),
+            torch.ones_like(inference_sae.b_enc),
+        )
+        assert_not_close(inference_sae.W_enc, original_W_enc)
+        assert_not_close(inference_sae.b_enc, original_b_enc)
+    else:
+        assert_close(inference_sae.W_dec, original_W_dec)
+        assert_close(inference_sae.W_enc, original_W_enc)
+        assert_close(inference_sae.b_enc, original_b_enc)
     assert_close(inference_sae.b_dec, original_b_dec)
 
     # Check that the k parameter is correctly preserved in the config
@@ -140,7 +156,9 @@ def test_TopKTrainingSAE_save_and_load_inference_sae(tmp_path: Path) -> None:
     inference_sae_out = inference_sae.decode(inference_feature_acts)
 
     # Should produce identical outputs
-    assert_close(training_feature_acts.to_dense(), inference_feature_acts)
+    assert_close(
+        training_feature_acts.to_dense(), inference_feature_acts, rtol=1e-4, atol=1e-4
+    )
     assert_close(training_sae_out, inference_sae_out, rtol=1e-4, atol=1e-4)
 
     # Test the full forward pass
@@ -211,3 +229,179 @@ def test_TopKTrainingSAE_sparse_activations_config():
     sae = TopKTrainingSAE(cfg)
     assert not sae.activation_fn.use_sparse_activations  # type: ignore
     assert not sae.cfg.use_sparse_activations
+
+
+@pytest.mark.parametrize("training_sae", [True, False])
+def test_TopKSAE_gives_same_results_after_folding_W_dec_norm_if_rescale_acts_by_decoder_norm(
+    training_sae: bool,
+):
+    sae_class, cfg_class = (
+        get_sae_training_class("topk") if training_sae else get_sae_class("topk")
+    )
+    cfg = cfg_class(
+        k=2,  # type: ignore
+        d_in=5,
+        d_sae=10,
+        rescale_acts_by_decoder_norm=True,  # type: ignore
+    )
+    sae = sae_class(cfg)
+    random_params(sae)
+
+    test_input = torch.randn(300, 5)
+
+    pre_fold_feats = sae.encode(test_input)
+    pre_fold_output = sae.decode(pre_fold_feats)
+
+    sae.fold_W_dec_norm()
+
+    post_fold_feats = sae.encode(test_input)
+    post_fold_output = sae.decode(post_fold_feats)
+
+    assert torch.allclose(pre_fold_feats, post_fold_feats, rtol=1e-2)
+    assert torch.allclose(pre_fold_output, post_fold_output, rtol=1e-2)
+
+
+@pytest.mark.parametrize("training_sae", [True, False])
+def test_TopKSAE_gives_same_results_as_if_decoder_is_already_normalized(
+    training_sae: bool,
+):
+    sae_class, cfg_class = (
+        get_sae_training_class("topk") if training_sae else get_sae_class("topk")
+    )
+    cfg = cfg_class(
+        k=2,  # type: ignore
+        d_in=5,
+        d_sae=10,
+        rescale_acts_by_decoder_norm=True,  # type: ignore
+    )
+    cfg2 = cfg_class(
+        k=2,  # type: ignore
+        d_in=5,
+        d_sae=10,
+        rescale_acts_by_decoder_norm=False,  # type: ignore
+    )
+    sae = sae_class(cfg)
+    random_params(sae)
+
+    sae.fold_W_dec_norm()
+
+    sae2 = sae_class(cfg2)
+    match_model_params(sae, sae2)
+
+    test_input = torch.randn(300, 5)
+
+    enhanced_acts = sae.encode(test_input)
+    enhanced_output = sae.decode(enhanced_acts)
+
+    topk_acts = sae2.encode(test_input)
+    topk_output = sae2.decode(topk_acts)
+
+    assert torch.allclose(enhanced_acts, topk_acts, rtol=1e-2)
+    assert torch.allclose(enhanced_output, topk_output, rtol=1e-2)
+
+
+@pytest.mark.parametrize("training_sae", [True, False])
+def test_TopKSAE_gives_same_output_despite_rescale_acts_by_decoder_norm_when_k_is_full(
+    training_sae: bool,
+):
+    sae_class, cfg_class = (
+        get_sae_training_class("topk") if training_sae else get_sae_class("topk")
+    )
+    cfg = cfg_class(
+        k=10,  # type: ignore
+        d_in=5,
+        d_sae=10,
+        rescale_acts_by_decoder_norm=True,  # type: ignore
+    )
+    cfg2 = cfg_class(
+        k=10,  # type: ignore
+        d_in=5,
+        d_sae=10,
+        rescale_acts_by_decoder_norm=False,  # type: ignore
+    )
+    sae = sae_class(cfg)
+    random_params(sae)
+
+    sae2 = sae_class(cfg2)
+    match_model_params(sae, sae2)
+
+    test_input = torch.randn(300, 5)
+
+    enhanced_acts = sae.encode(test_input)
+    enhanced_output = sae.decode(enhanced_acts)
+
+    topk_acts = sae2.encode(test_input)
+    topk_output = sae2.decode(topk_acts)
+
+    assert not torch.allclose(enhanced_acts, topk_acts, rtol=1e-2)
+    assert torch.allclose(enhanced_output, topk_output, rtol=1e-2)
+
+
+@pytest.mark.parametrize("training_sae", [True, False])
+def test_TopKSAE_gives_same_output_despite_rescale_acts_by_decoder_norm_when_dec_is_scaled_uniformly(
+    training_sae: bool,
+):
+    sae_class, cfg_class = (
+        get_sae_training_class("topk") if training_sae else get_sae_class("topk")
+    )
+    cfg = cfg_class(
+        k=2,  # type: ignore
+        d_in=5,
+        d_sae=10,
+        rescale_acts_by_decoder_norm=True,  # type: ignore
+    )
+    sae = sae_class(cfg)
+    random_params(sae)
+
+    sae.fold_W_dec_norm()
+    sae.W_dec.data = sae.W_dec.data * 0.5
+
+    cfg2 = cfg_class(
+        k=2,  # type: ignore
+        d_in=5,
+        d_sae=10,
+        rescale_acts_by_decoder_norm=False,  # type: ignore
+    )
+    sae2 = sae_class(cfg2)
+    match_model_params(sae, sae2)
+
+    test_input = torch.randn(300, 5)
+
+    enhanced_acts = sae.encode(test_input)
+    enhanced_output = sae.decode(enhanced_acts)
+
+    topk_acts = sae2.encode(test_input)
+    topk_output = sae2.decode(topk_acts)
+
+    assert not torch.allclose(enhanced_acts, topk_acts, rtol=1e-2)
+    assert torch.allclose(enhanced_output, topk_output, rtol=1e-2)
+
+
+@pytest.mark.parametrize("training_sae", [True, False])
+def test_TopKSAE_fold_W_dec_norm_works_when_rescale_acts_by_decoder_norm_is_True(
+    training_sae: bool,
+):
+    sae_class, cfg_class = (
+        get_sae_training_class("topk") if training_sae else get_sae_class("topk")
+    )
+    cfg = cfg_class(d_in=5, d_sae=10, rescale_acts_by_decoder_norm=True)  # type: ignore
+    sae = sae_class(cfg)
+    random_params(sae)
+
+    sae.fold_W_dec_norm()
+
+    assert_close(sae.W_dec.norm(dim=-1), torch.ones_like(sae.W_dec.norm(dim=-1)))
+
+
+@pytest.mark.parametrize("training_sae", [True, False])
+def test_TopKSAE_fold_W_dec_norm_errors_when_rescale_acts_by_decoder_norm_is_False(
+    training_sae: bool,
+):
+    sae_class, cfg_class = (
+        get_sae_training_class("topk") if training_sae else get_sae_class("topk")
+    )
+    cfg = cfg_class(d_in=5, d_sae=10, rescale_acts_by_decoder_norm=False)  # type: ignore
+    sae = sae_class(cfg)
+
+    with pytest.raises(NotImplementedError):
+        sae.fold_W_dec_norm()
