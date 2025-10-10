@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v6.14.1 (2025-10-10)
+
+### Fix
+
+* fix: notebooks should use cfg.metadata.prepend_bos, not cfg.prepend_bos (#566) ([`64bcaa8`](https://github.com/jbloomAus/SAELens/commit/64bcaa8edb15a2fa7ea58571098780db9343d4f1))
+
 ## v6.14.0 (2025-10-10)
 
 ### Feature
