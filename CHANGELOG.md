@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## v6.14.2 (2025-10-10)
+
+### Fix
+
+* fix: Make run_evals() default behavior match the CLI behavior (#560)
+
+* Make run_evals() default behavior match the CLI behavior
+
+* minor tweaks to PR and linting and formatting
+
+---------
+
+Co-authored-by: David Chanin &lt;chanindav@gmail.com&gt; ([`c2b0c94`](https://github.com/jbloomAus/SAELens/commit/c2b0c94eb3599d9a3936d418dae26ccd5537d6f5))
+
 ## v6.14.1 (2025-10-10)
 
 ### Fix
