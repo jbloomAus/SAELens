@@ -257,8 +257,8 @@ def test_TopKSAE_gives_same_results_after_folding_W_dec_norm_if_rescale_acts_by_
     post_fold_feats = sae.encode(test_input)
     post_fold_output = sae.decode(post_fold_feats)
 
-    assert torch.allclose(pre_fold_feats, post_fold_feats, rtol=1e-2)
-    assert torch.allclose(pre_fold_output, post_fold_output, rtol=1e-2)
+    assert_close(pre_fold_feats, post_fold_feats, rtol=1e-2)
+    assert_close(pre_fold_output, post_fold_output, rtol=1e-2)
 
 
 @pytest.mark.parametrize("training_sae", [True, False])
