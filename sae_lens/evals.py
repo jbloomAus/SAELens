@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from functools import partial
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Iterable
 
 import einops
 import pandas as pd
@@ -19,13 +19,15 @@ import torch
 from tqdm.auto import tqdm
 from transformer_lens import HookedTransformer
 from transformer_lens.hook_points import HookedRootModule
-from transformers import PreTrainedTokenizerBase
 
 from sae_lens.loading.pretrained_saes_directory import get_pretrained_saes_directory
 from sae_lens.saes.sae import SAE, SAEConfig
 from sae_lens.training.activation_scaler import ActivationScaler
-from sae_lens.training.activations_store import ActivationsStore, _get_special_token_ids
-from sae_lens.util import extract_stop_at_layer_from_tlens_hook_name
+from sae_lens.training.activations_store import ActivationsStore
+from sae_lens.util import (
+    extract_stop_at_layer_from_tlens_hook_name,
+    get_special_token_ids,
+)
 
 
 def get_library_version() -> str:
@@ -110,13 +112,14 @@ def run_evals(
     activation_scaler: ActivationScaler,
     eval_config: EvalConfig = EvalConfig(),
     model_kwargs: Mapping[str, Any] = {},
-    ignore_tokens: list[int] | None = None,  # pass None for default behavior, pass an empty list explicitly to ignore no tokens
+    exclude_special_tokens: Iterable[int] | bool = True,
     verbose: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    if ignore_tokens is None:
-        ignore_tokens = _get_special_token_ids(
-            cast(PreTrainedTokenizerBase, model.tokenizer)
-        )
+    ignore_tokens = None
+    if exclude_special_tokens is True:
+        ignore_tokens = list(get_special_token_ids(model.tokenizer))  # type: ignore
+    elif exclude_special_tokens:
+        ignore_tokens = list(exclude_special_tokens)
 
     hook_name = sae.cfg.metadata.hook_name
     actual_batch_size = (

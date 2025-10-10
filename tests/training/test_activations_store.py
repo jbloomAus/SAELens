@@ -17,7 +17,6 @@ from sae_lens.saes.standard_sae import StandardTrainingSAEConfig
 from sae_lens.training.activations_store import (
     ActivationsStore,
     _filter_buffer_acts,
-    _get_special_token_ids,
     permute_together,
     validate_pretokenized_dataset_tokenizer,
 )
@@ -554,38 +553,6 @@ def test_activations_store_save(ts_model: HookedTransformer):
         state_dict = load_file(temp_file.name)
         assert isinstance(state_dict, dict)
         assert "n_dataset_processed" in state_dict
-
-
-def test_get_special_token_ids():
-    # Create a mock tokenizer with some special tokens
-    class MockTokenizer:
-        def __init__(self):
-            self.bos_token_id = 1
-            self.eos_token_id = 2
-            self.pad_token_id = 3
-            self.unk_token_id = None  # Test handling of None values
-            self.special_tokens_map = {
-                "additional_special_tokens": ["<extra_0>", "<extra_1>"],
-                "mask_token": "<mask>",
-            }
-
-        def convert_tokens_to_ids(self, token: str) -> int:
-            token_map = {"<extra_0>": 4, "<extra_1>": 5, "<mask>": 6}
-            return token_map[token]
-
-    tokenizer = MockTokenizer()
-    special_tokens = _get_special_token_ids(tokenizer)  # type: ignore
-
-    # Check that all expected token IDs are present
-    assert set(special_tokens) == {1, 2, 3, 4, 5, 6}
-
-    # Check that None values are properly handled
-    assert None not in special_tokens
-
-
-def test_get_special_token_ids_works_with_real_models(ts_model: HookedTransformer):
-    special_tokens = _get_special_token_ids(ts_model.tokenizer)  # type: ignore
-    assert special_tokens == [50256]
 
 
 def test_activations_store_buffer_contains_token_ids(ts_model: HookedTransformer):
