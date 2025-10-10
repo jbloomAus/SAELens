@@ -267,6 +267,7 @@ def test_topk_sae_training_equivalence():
         k=4,
         d_in=16,
         d_sae=8,
+        rescale_acts_by_decoder_norm=False,
     )
     new_training_sae = TopKTrainingSAE(new_training_cfg)
 
@@ -313,7 +314,7 @@ def test_topk_sae_training_equivalence():
     )
     assert_close(
         old_out.feature_acts,
-        new_out.feature_acts,
+        new_out.feature_acts.to_dense(),
         atol=1e-5,
         msg="Training feature_acts differ between old and new implementations.",
     )

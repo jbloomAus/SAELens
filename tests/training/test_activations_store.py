@@ -54,14 +54,6 @@ def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
             "streaming": False,
         },
         {
-            "model_name": "gelu-2l",
-            "dataset_path": "NeelNanda/c4-tokenized-2b",
-            "hook_name": "blocks.1.hook_resid_pre",
-            "d_in": 512,
-            "context_size": 1024,
-            "streaming": True,
-        },
-        {
             "model_name": "gpt2",
             "dataset_path": "apollo-research/Skylion007-openwebtext-tokenizer-gpt2",
             "hook_name": "blocks.1.hook_resid_pre",
@@ -81,7 +73,6 @@ def tokenize_with_bos(model: HookedTransformer, text: str) -> list[int]:
     ids=[
         "c4-10k-resid-pre",
         "c4-10k-attn-out",
-        "gelu-2l-tokenized",
         "gpt2-tokenized",
         "gpt2",
     ],
@@ -808,6 +799,52 @@ def test_activations_store_get_batch_tokens_disable_concat_sequences(
     # get pyright checks to pass
     assert tokenizer is not None
 
+    # Since prepend_bos=True (the default), we expect BOS token at the start
+    bos_token_id = tokenizer.bos_token_id
+    assert bos_token_id is not None
+
+    expected_tokens_1 = [bos_token_id] + tokenizer.encode(
+        "hello world this is long enough"
+    )[: cfg.context_size - 1]
+    expected_tokens_2 = [bos_token_id] + tokenizer.encode(
+        "another longer sequence for testing"
+    )[: cfg.context_size - 1]
+
+    assert batch_tokens[0].tolist() == expected_tokens_1
+    assert batch_tokens[1].tolist() == expected_tokens_2
+
+
+def test_activations_store_get_batch_tokens_disable_concat_sequences_no_bos(
+    ts_model: HookedTransformer,
+):
+    """Test disable_concat_sequences with prepend_bos=False"""
+    cfg = build_runner_cfg(
+        context_size=5,
+        disable_concat_sequences=True,
+        prepend_bos=False,  # Explicitly disable BOS
+        store_batch_size_prompts=2,
+        n_batches_in_buffer=2,
+    )
+
+    dataset = Dataset.from_list(
+        [
+            {"text": "short"},  # this gets ignored
+            {"text": "hello world this is long enough"},
+            {"text": "another longer sequence for testing"},
+        ]
+    )
+
+    activation_store = ActivationsStore.from_config(
+        ts_model, cfg=cfg, override_dataset=dataset
+    )
+
+    batch_tokens = activation_store.get_batch_tokens()
+    assert batch_tokens.shape == (2, cfg.context_size)
+
+    tokenizer = ts_model.tokenizer
+    assert tokenizer is not None
+
+    # With prepend_bos=False, should NOT have BOS token
     expected_tokens_1 = tokenizer.encode("hello world this is long enough")[
         : cfg.context_size
     ]

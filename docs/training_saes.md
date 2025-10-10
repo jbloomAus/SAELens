@@ -11,7 +11,7 @@ We encourage readers to join the [Open Source Mechanistic Interpretability Slack
 
 Training a SAE is done using the [LanguageModelSAETrainingRunner][sae_lens.LanguageModelSAETrainingRunner] class. This class is configured using a [LanguageModelSAERunnerConfig][sae_lens.LanguageModelSAERunnerConfig]. The `LanguageModelSAERunnerConfig` holds parameters for the overall training run (like model, dataset, and learning rate), and it contains an `sae` field. This `sae` field should be an instance of an architecture-specific SAE configuration dataclass (e.g., `StandardTrainingSAEConfig` for standard SAEs, `TopKTrainingSAEConfig` for TopK SAEs, etc.), which holds parameters specific to the SAE's structure and sparsity mechanisms.
 
-When using the command-line interface (CLI), you typically specify an `--architecture` argument (e.g., `"standard"`, `"gated"`, `"jumprelu"`, `"topk"`), and the runner constructs the appropriate nested SAE configuration. When instantiating `LanguageModelSAERunnerConfig` programmatically, you should directly provide the configured SAE object to the `sae` field. The CLI can be run using `python -m sae_lens.llm_sae_training_runner`.
+When using the command-line interface (CLI), you typically specify an `--architecture` argument (e.g., `"batchtopk"`, `"jumprelu"`, `"standard"`, `"topk"`), and the runner constructs the appropriate nested SAE configuration. When instantiating `LanguageModelSAERunnerConfig` programmatically, you should directly provide the configured SAE object to the `sae` field. The CLI can be run using `python -m sae_lens.llm_sae_training_runner`.
 
 Some of the core config options available in `LanguageModelSAERunnerConfig` are:
 
@@ -108,29 +108,14 @@ sparse_autoencoder = LanguageModelSAETrainingRunner(cfg).run()
 
 As you can see, the training setup provides a large number of options to explore. The full list of options can be found by inspecting the `LanguageModelSAERunnerConfig` class and the specific SAE configuration class you intend to use (e.g., `StandardTrainingSAEConfig`, `TopKTrainingSAEConfig`, etc.).
 
-### Training Topk SAEs
-
-By default, SAELens will train SAEs using a L1 loss term with ReLU activation. A popular alternative architecture is the [TopK](https://arxiv.org/abs/2406.04093) architecture, which fixes the L0 of the SAE using a TopK activation function. To train a TopK SAE programmatically, you provide a `TopKTrainingSAEConfig` instance to the `sae` field. The primary parameter for TopK SAEs is `k`, the number of features to keep active. If not set, `k` defaults to 100 in `TopKTrainingSAEConfig`. The TopK architecture does not use an `l1_coefficient` or `lp_norm` for sparsity, as sparsity is structurally enforced.
-
-```python
-from sae_lens import LanguageModelSAERunnerConfig, LanguageModelSAETrainingRunner, TopKTrainingSAEConfig
-
-cfg = LanguageModelSAERunnerConfig( # Full config would be defined here
-    # ... other LanguageModelSAERunnerConfig parameters ...
-    sae=TopKTrainingSAEConfig(
-        k=100, # Set the number of active features
-        d_in=1024, # Must match your hook point
-        d_sae=16 * 1024,
-        # ... other common SAE parameters from SAEConfig if needed ...
-    ),
-    # ...
-)
-sparse_autoencoder = LanguageModelSAETrainingRunner(cfg).run()
-```
-
 ### Training BatchTopk SAEs
 
-A more modern version of the TopK SAE is the [BatchTopK](https://arxiv.org/abs/2412.06410) architecture, which fixes the mean L0 across a training batch rather than fixing the L0 for every sample in the batch. To train a BatchTopK SAE, provide a `BatchTopKTrainingSAEConfig` instance to the `sae` field. The primary parameter for TopK SAEs is `k`, the number of features to keep active. If not set, `k` defaults to 100 in `BatchTopKTrainingSAEConfig`. Like the TopK architecture, the BatchTopK architecture does not use an `l1_coefficient` or `lp_norm` for sparsity, as sparsity is structurally enforced.
+<!-- prettier-ignore-start -->
+!!! tip "SOTA architecture"
+    BatchTopK is a state-of-the-art SAE architecture and is easy to train.
+<!-- prettier-ignore-end -->
+
+The [BatchTopK](https://arxiv.org/abs/2412.06410) architecture is a more modern version of the TopK architecture, which fixes the mean L0 across a training batch rather than fixing the L0 for every sample in the batch. To train a BatchTopK SAE, provide a `BatchTopKTrainingSAEConfig` instance to the `sae` field. The primary parameter for TopK SAEs is `k`, the number of features to keep active. If not set, `k` defaults to 100 in `BatchTopKTrainingSAEConfig`. Like the TopK architecture, the BatchTopK architecture does not use an `l1_coefficient` or `lp_norm` for sparsity, as sparsity is structurally enforced.
 
 Also worth noting is that `BatchTopK` SAEs will save as `JumpReLU` SAEs for use at inference. This is to avoid needing to provide a batch of inputs at inference time, allowing the SAE to work consistently on any batch size after training is complete.
 
@@ -152,9 +137,14 @@ sparse_autoencoder = LanguageModelSAETrainingRunner(cfg).run()
 
 ### Training JumpReLU SAEs
 
+<!-- prettier-ignore-start -->
+!!! tip "SOTA architecture"
+    JumpReLU is a state-of-the-art SAE architecture, potentially even superior to BatchTopK. However, JumpReLU may be trickier to train. JumpReLU is used for the [Gemma Scope SAEs](https://deepmind.google/discover/blog/gemma-scope-helping-the-safety-community-shed-light-on-the-inner-workings-of-language-models/) and by [Anthropic](https://transformer-circuits.pub/2025/january-update/index.html).
+<!-- prettier-ignore-end -->
+
 [JumpReLU SAEs](https://arxiv.org/abs/2407.14435) are a state-of-the-art SAE architecture. To train one, provide a `JumpReLUTrainingSAEConfig` to the `sae` field. JumpReLU SAEs use a sparsity penalty controlled by the `l0_coefficient` parameter. The `JumpReLUTrainingSAEConfig` also has parameters `jumprelu_bandwidth` and `jumprelu_init_threshold` which affect the learning of the thresholds.
 
-We support both the original JumpReLU sparsity loss and the more modern [tanh sparsity loss](https://transformer-circuits.pub/2025/january-update/index.html) variant from Anthropic. To use the tanh sparsity loss, set `jumprelu_sparsity_loss_mode="tanh"`. The tanh sparsity loss variant is a bit easier to train, but has more hyper-parameters. We recommend using the tanh with `normalize_activations="expected_average_only_in"` to match Anthropic's setup. We also recommend enabling the pre-act loss by setting `pre_act_loss_coefficient` to match Anthropic's setup. An example of this is below:
+We support both the original JumpReLU sparsity loss and the more modern [tanh sparsity loss](https://transformer-circuits.pub/2025/january-update/index.html) variant from Anthropic. To use the tanh sparsity loss, set `jumprelu_sparsity_loss_mode="tanh"`. The tanh sparsity loss variant is a bit easier to train, but has more hyperparameters. We recommend using the tanh with `normalize_activations="expected_average_only_in"` to match Anthropic's setup. We also recommend enabling the pre-act loss by setting `pre_act_loss_coefficient` to match Anthropic's setup. An example of this is below:
 
 ```python
 from sae_lens import LanguageModelSAERunnerConfig, LanguageModelSAETrainingRunner, JumpReLUTrainingSAEConfig
@@ -183,7 +173,7 @@ cfg = LanguageModelSAERunnerConfig( # Full config would be defined here
 sparse_autoencoder = LanguageModelSAETrainingRunner(cfg).run()
 ```
 
-If you'd like to use the original JumpReLU sparsity loss from DeepMind, set `jumprelu_sparsity_loss_mode="step"`. This requires a bit more tuning to work compared with the Anthropic tanh variant. If you don't see L0 decreasing with this setup, try increasing the `jumprelu_bandwidth` and possibly also the `jumprelu_init_threshold`.
+If you'd like to use the original JumpReLU sparsity loss from DeepMind, set `jumprelu_sparsity_loss_mode="step"`. This requires a bit more tuning to work compared with the Anthropic tanh variant. We find this setup requires training on a large number of tokens to work well, ideally 2 billion or more. If you don't see L0 decreasing with this setup by the end of training, try increasing the `jumprelu_bandwidth` and possibly also the `jumprelu_init_threshold`.
 
 ```python
 from sae_lens import LanguageModelSAERunnerConfig, LanguageModelSAETrainingRunner, JumpReLUTrainingSAEConfig
@@ -192,10 +182,11 @@ cfg = LanguageModelSAERunnerConfig( # Full config would be defined here
     # ... other LanguageModelSAERunnerConfig parameters ...
     sae=JumpReLUTrainingSAEConfig(
         l0_coefficient=5.0, # Sparsity penalty coefficient
-        jumprelu_bandwidth=0.05,
+        jumprelu_bandwidth=0.01,
         jumprelu_init_threshold=0.01,
         d_in=1024, # must match your hook point
         d_sae=16 * 1024,
+        normalize_activations="expected_average_only_in",
         # ... other common SAE parameters from SAEConfig ...
     ),
     # ...
@@ -203,7 +194,61 @@ cfg = LanguageModelSAERunnerConfig( # Full config would be defined here
 sparse_autoencoder = LanguageModelSAETrainingRunner(cfg).run()
 ```
 
+### Training Standard L1 SAEs
+
+<!-- prettier-ignore-start -->
+!!! warning "Warning: legacy architecture"
+    Standard L1 SAEs are not considered state-of-the-art, but they are the classic SAE architecture. They are a good starting point for understanding SAEs and are easy to train. For better performance, try BatchTopK or JumpReLU.
+<!-- prettier-ignore-end -->
+
+The classic SAE architecture is the Standard L1 SAE, which uses a L1 loss term with ReLU activation. To train a Standard L1 SAE, provide a `StandardTrainingSAEConfig` instance to the `sae` field. The Standard L1 SAE uses the `l1_coefficient` parameter to control the sparsity of the SAE.
+
+```python
+
+cfg = LanguageModelSAERunnerConfig( # Full config would be defined here
+    # ... other LanguageModelSAERunnerConfig parameters ...
+    sae=StandardTrainingSAEConfig(
+        l1_coefficient=5.0, # Sparsity penalty coefficient
+        d_in=1024, # Must match your hook point
+        d_sae=16 * 1024,
+        # ... other common SAE parameters from SAEConfig if needed ...
+    ),
+    # ...
+)
+sparse_autoencoder = LanguageModelSAETrainingRunner(cfg).run()
+```
+
+### Training Topk SAEs
+
+<!-- prettier-ignore-start -->
+!!! warning "Warning: legacy architecture"
+    TopK SAEs are no longer considered state-of-the-art, and are not recommended for most use cases. We recommend using BatchTopK or JumpReLU SAEs for best performance.
+<!-- prettier-ignore-end -->
+
+A popular alternative architecture is the [TopK](https://arxiv.org/abs/2406.04093) architecture, which fixes the L0 of the SAE using a TopK activation function. To train a TopK SAE programmatically, you provide a `TopKTrainingSAEConfig` instance to the `sae` field. The primary parameter for TopK SAEs is `k`, the number of features to keep active. If not set, `k` defaults to 100 in `TopKTrainingSAEConfig`. The TopK architecture does not use an `l1_coefficient` or `lp_norm` for sparsity, as sparsity is structurally enforced.
+
+```python
+from sae_lens import LanguageModelSAERunnerConfig, LanguageModelSAETrainingRunner, TopKTrainingSAEConfig
+
+cfg = LanguageModelSAERunnerConfig( # Full config would be defined here
+    # ... other LanguageModelSAERunnerConfig parameters ...
+    sae=TopKTrainingSAEConfig(
+        k=100, # Set the number of active features
+        d_in=1024, # Must match your hook point
+        d_sae=16 * 1024,
+        # ... other common SAE parameters from SAEConfig if needed ...
+    ),
+    # ...
+)
+sparse_autoencoder = LanguageModelSAETrainingRunner(cfg).run()
+```
+
 ### Training Gated SAEs
+
+<!-- prettier-ignore-start -->
+!!! warning "Warning: legacy architecture"
+    Gated SAEs are no longer considered state-of-the-art, and are not recommended for most use cases. We recommend using BatchTopK or JumpReLU SAEs for best performance.
+<!-- prettier-ignore-end -->
 
 [Gated SAEs](https://arxiv.org/abs/2404.16014) are another architecture option. To train a Gated SAE, provide a `GatedTrainingSAEConfig` to the `sae` field. Gated SAEs use the `l1_coefficient` parameter to control the sparsity of the SAE, similar to standard SAEs.
 
@@ -250,15 +295,6 @@ Some general performance tips:
 - If your GPU supports it (most modern nvidia-GPUs do), setting `autocast=True` and `autocast_lm=True` in the config will dramatically speed up training.
 - We find that often SAEs struggle to train well with `dtype="bfloat16"`. We aren't sure why this is, but make sure to compare the SAE quality if you change the dtype.
 - You can try turning on `compile_sae=True` and `compile_llm=True`in the config to see if it makes training faster. Your mileage may vary though, compilation can be finicky.
-
-### JumpReLU SAEs
-
-JumpReLU SAEs are a state-of-the-art SAE architecture from [DeepMind](https://arxiv.org/abs/2407.14435) which at present gives the best known sparsity vs reconstruction error trade-off, and is the architecture used for [Gemma Scope SAEs](https://deepmind.google/discover/blog/gemma-scope-helping-the-safety-community-shed-light-on-the-inner-workings-of-language-models/). However, JumpReLU SAEs are slightly trickier to train than standard SAEs due to how the threshold is learned. We recommend the following tips for training JumpReLU SAEs:
-
-- Make sure to train on enough tokens. We've found that at least 2B tokens and ideally 4B tokens is needed for good performance with the default `jumprelu_bandwidth` setting. This may vary depending on the model and SAE size though, so make sure to monitor the training logs to ensure convergence.
-- Set `normalize_activations="expected_average_only_in"` in the config. This helps with convergence and is generally a good idea for all SAEs.
-
-You can find a sample config for a Gemma-2-2B JumpReLU SAE trained via SAELens here: [cfg.json](https://huggingface.co/chanind/sae-gemma-2-2b-layer-1-res-jumprelu/blob/main/blocks.1.hook_resid_post/cfg.json)
 
 ## Checkpoints
 

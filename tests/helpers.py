@@ -1,5 +1,6 @@
 import copy
-from typing import Any, Literal, Sequence, TypedDict, cast
+from collections.abc import Sequence
+from typing import Any, Literal, TypedDict, cast
 
 import pytest
 import torch
@@ -14,7 +15,6 @@ from sae_lens.saes.standard_sae import StandardSAEConfig, StandardTrainingSAECon
 from sae_lens.saes.topk_sae import TopKSAEConfig, TopKTrainingSAEConfig
 
 TINYSTORIES_MODEL = "tiny-stories-1M"
-TINYSTORIES_DATASET = "roneneldan/TinyStories"
 NEEL_NANDA_C4_10K_DATASET = "NeelNanda/c4-10k"
 
 ALL_ARCHITECTURES = ["standard", "gated", "jumprelu", "topk"]
@@ -97,12 +97,14 @@ class TrainingSAEConfigDict(TypedDict, total=False):
     jumprelu_init_threshold: float
     jumprelu_bandwidth: float
     k: int  # For TopK
+    use_sparse_activations: bool  # For TopK
     l0_coefficient: float  # For JumpReLU
     l0_warm_up_steps: int
     pre_act_loss_coefficient: float | None  # For JumpReLU
     topk_threshold_lr: float  # For BatchTopK
     jumprelu_sparsity_loss_mode: Literal["step", "tanh"]  # For JumpReLU
     jumprelu_tanh_scale: float  # For JumpReLU
+    rescale_acts_by_decoder_norm: bool  # For TopK
 
 
 class SAEConfigDict(TypedDict, total=False):
@@ -233,6 +235,15 @@ def _build_runner_config(
     return final_config
 
 
+def _update_sae_metadata(runner_cfg: LanguageModelSAERunnerConfig[Any]):
+    runner_cfg.sae.metadata.hook_name = runner_cfg.hook_name
+    runner_cfg.sae.metadata.hook_head_index = runner_cfg.hook_head_index
+    runner_cfg.sae.metadata.model_name = runner_cfg.model_name
+    runner_cfg.sae.metadata.model_class_name = runner_cfg.model_class_name
+    runner_cfg.sae.metadata.dataset_path = runner_cfg.dataset_path
+    runner_cfg.sae.metadata.prepend_bos = runner_cfg.prepend_bos
+
+
 # --- Standard SAE Builder ---
 def build_runner_cfg(
     **kwargs: Any,
@@ -255,12 +266,7 @@ def build_runner_cfg(
         cast(dict[str, Any], default_sae_config),
         **kwargs,
     )
-    runner_cfg.sae.metadata.hook_name = runner_cfg.hook_name
-    runner_cfg.sae.metadata.hook_head_index = runner_cfg.hook_head_index
-    runner_cfg.sae.metadata.model_name = runner_cfg.model_name
-    runner_cfg.sae.metadata.model_class_name = runner_cfg.model_class_name
-    runner_cfg.sae.metadata.dataset_path = runner_cfg.dataset_path
-    runner_cfg.sae.metadata.prepend_bos = runner_cfg.prepend_bos
+    _update_sae_metadata(runner_cfg)
     return runner_cfg
 
 
@@ -300,11 +306,13 @@ def build_jumprelu_runner_cfg(
         "l0_warm_up_steps": 0,
         "pre_act_loss_coefficient": None,
     }
-    return _build_runner_config(
+    runner_cfg = _build_runner_config(
         JumpReLUTrainingSAEConfig,
         cast(dict[str, Any], default_sae_config),
         **kwargs,
     )
+    _update_sae_metadata(runner_cfg)
+    return runner_cfg
 
 
 def build_jumprelu_sae_cfg(**kwargs: Any) -> JumpReLUSAEConfig:
@@ -338,11 +346,13 @@ def build_gated_runner_cfg(
         "apply_b_dec_to_input": False,
         "l1_warm_up_steps": 0,
     }
-    return _build_runner_config(
+    runner_cfg = _build_runner_config(
         GatedTrainingSAEConfig,
         cast(dict[str, Any], default_sae_config),
         **kwargs,
     )
+    _update_sae_metadata(runner_cfg)
+    return runner_cfg
 
 
 def build_gated_sae_cfg(**kwargs: Any) -> GatedSAEConfig:
@@ -374,6 +384,7 @@ def build_topk_runner_cfg(
         "decoder_init_norm": 0.1,
         "apply_b_dec_to_input": False,
         "k": 10,
+        "rescale_acts_by_decoder_norm": True,
     }
     # Ensure activation_fn_kwargs has k if k is overridden
     temp_sae_overrides = {
@@ -383,11 +394,13 @@ def build_topk_runner_cfg(
     # Update the default config *before* passing it to _build_runner_config
     final_default_sae_config = cast(dict[str, Any], temp_sae_config)
 
-    return _build_runner_config(
+    runner_cfg = _build_runner_config(
         TopKTrainingSAEConfig,
         final_default_sae_config,
         **kwargs,
     )
+    _update_sae_metadata(runner_cfg)
+    return runner_cfg
 
 
 def build_topk_sae_cfg(**kwargs: Any) -> TopKSAEConfig:
@@ -430,11 +443,13 @@ def build_batchtopk_runner_cfg(
     # Update the default config *before* passing it to _build_runner_config
     final_default_sae_config = cast(dict[str, Any], temp_sae_config)
 
-    return _build_runner_config(
+    runner_cfg = _build_runner_config(
         BatchTopKTrainingSAEConfig,
         final_default_sae_config,
         **kwargs,
     )
+    _update_sae_metadata(runner_cfg)
+    return runner_cfg
 
 
 def build_batchtopk_sae_training_cfg(**kwargs: Any) -> BatchTopKTrainingSAEConfig:

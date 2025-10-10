@@ -23,6 +23,10 @@ jobs:
         # Huggingface gets mad about us spamming them in CI, so try to run fewer versions of tests
         python-version: ["3.10"] # , "3.11", "3.12"]
 
+    env:
+      # Increment this number to bust all caches (HuggingFace, Poetry, venv)
+      CACHE_VERSION: 7
+
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
@@ -32,16 +36,16 @@ jobs:
       - name: Cache Huggingface assets
         uses: actions/cache@v4
         with:
-          key: huggingface-4-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml') }}
-          path: ~/.cache/huggingface
+          key: huggingface-${{ env.CACHE_VERSION }}-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml') }}
+          path: ~/.cache/huggingface/hub
           restore-keys: |
-            huggingface-4-${{ runner.os }}-${{ matrix.python-version }}-
+            huggingface-${{ env.CACHE_VERSION }}-${{ runner.os }}-${{ matrix.python-version }}-
       - name: Load cached Poetry installation
         id: cached-poetry
         uses: actions/cache@v4
         with:
           path: ~/.local # the path depends on the OS
-          key: poetry-${{ runner.os }}-${{ matrix.python-version }}-3 # increment to reset cache
+          key: poetry-${{ runner.os }}-${{ matrix.python-version }}-${{ env.CACHE_VERSION }}
       - name: Install Poetry
         if: steps.cached-poetry.outputs.cache-hit != 'true'
         uses: snok/install-poetry@v1
@@ -54,12 +58,22 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .venv
-          key: venv-2-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml') }}
+          key: venv-${{ env.CACHE_VERSION }}-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml') }}
           restore-keys: |
-            venv-2-${{ runner.os }}-${{ matrix.python-version }}-
+            venv-${{ env.CACHE_VERSION }}-${{ runner.os }}-${{ matrix.python-version }}-
       - name: Install dependencies
         if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
         run: poetry install --no-interaction
+      - name: Check disk space before tests
+        run: |
+          echo "=== Disk Space Summary ==="
+          df -h
+          echo ""
+          echo "=== Home Directory Size ==="
+          du -sh ~/* 2>/dev/null | sort -hr | head -20
+          echo ""
+          echo "=== Huggingface Cache Size ==="
+          du -sh ~/.cache/huggingface 2>/dev/null || echo "No HF cache yet"
       - name: Check linting
         run: poetry run ruff check .
       - name: Check formatting
@@ -68,9 +82,28 @@ jobs:
         run: poetry run pyright
       - name: Run Unit Tests
         #   Would use make, but want cov report in xml format
+        #   TRACK_DISK_USAGE=1 enables per-test disk usage tracking (see tests/conftest.py)
         run: poetry run pytest -v --cov=sae_lens/ --cov-report=term-missing --cov-branch tests --cov-report=xml
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          TRACK_DISK_USAGE: "1"
+      - name: Check disk space after tests
+        if: always()
+        run: |
+          echo "=== Disk Space Summary After Tests ==="
+          df -h
+          echo ""
+          echo "=== Huggingface Cache Size ==="
+          du -sh ~/.cache/huggingface 2>/dev/null || echo "No HF cache"
+          echo ""
+          echo "=== Huggingface Cache Contents (Top 20) ==="
+          du -sh ~/.cache/huggingface/* 2>/dev/null | sort -hr | head -20 || echo "No HF cache"
+          echo ""
+          echo "=== Largest directories in home ==="
+          du -sh ~/* 2>/dev/null | sort -hr | head -20
+          echo ""
+          echo "=== Workspace size ==="
+          du -sh ${{ github.workspace }}
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4.0.1
         with:

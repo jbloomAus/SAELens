@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 
+import pytest
 import torch
 import torch.nn as nn
 
@@ -15,6 +16,7 @@ from tests.helpers import (
     assert_close,
     assert_not_close,
     build_batchtopk_sae_training_cfg,
+    random_params,
 )
 
 
@@ -148,16 +150,16 @@ def test_BatchTopKTrainingSAE_initialization():
     assert sae.topk_threshold.item() == 0.0
 
 
-def test_BatchTopKTrainingSAE_save_and_load_inference_sae(tmp_path: Path) -> None:
+@pytest.mark.parametrize("rescale_acts_by_decoder_norm", [True, False])
+def test_BatchTopKTrainingSAE_save_and_load_inference_sae(
+    tmp_path: Path, rescale_acts_by_decoder_norm: bool
+) -> None:
     # Create a training SAE with specific parameter values
-    cfg = build_batchtopk_sae_training_cfg(device="cpu")
+    cfg = build_batchtopk_sae_training_cfg(
+        device="cpu", rescale_acts_by_decoder_norm=rescale_acts_by_decoder_norm
+    )
     training_sae = BatchTopKTrainingSAE(cfg)
-
-    # Set some known values for testing
-    training_sae.W_enc.data = torch.randn_like(training_sae.W_enc.data)
-    training_sae.W_dec.data = torch.randn_like(training_sae.W_dec.data)
-    training_sae.b_enc.data = torch.randn_like(training_sae.b_enc.data)
-    training_sae.b_dec.data = torch.randn_like(training_sae.b_dec.data)
+    random_params(training_sae)
 
     sae_in = torch.randn(30, training_sae.cfg.d_in)
     train_step_input = TrainStepInput(
@@ -190,9 +192,18 @@ def test_BatchTopKTrainingSAE_save_and_load_inference_sae(tmp_path: Path) -> Non
     assert isinstance(inference_sae, JumpReLUSAE)
 
     # Check that all parameters match
-    assert_close(inference_sae.W_enc, original_W_enc)
-    assert_close(inference_sae.W_dec, original_W_dec)
-    assert_close(inference_sae.b_enc, original_b_enc)
+    if rescale_acts_by_decoder_norm:
+        assert_not_close(inference_sae.W_dec, original_W_dec)
+        assert_close(
+            inference_sae.W_dec.norm(dim=-1),
+            torch.ones_like(inference_sae.b_enc),
+        )
+        assert_not_close(inference_sae.W_enc, original_W_enc)
+        assert_not_close(inference_sae.b_enc, original_b_enc)
+    else:
+        assert_close(inference_sae.W_dec, original_W_dec)
+        assert_close(inference_sae.W_enc, original_W_enc)
+        assert_close(inference_sae.b_enc, original_b_enc)
     assert_close(inference_sae.b_dec, original_b_dec)
 
     # Check that topk_threshold was converted to threshold
@@ -287,3 +298,125 @@ def test_BatchTopKTrainingSAE_process_state_dict_for_saving_inference() -> None:
     assert "threshold" in state_dict
     expected_threshold = torch.ones_like(sae.b_enc) * threshold_value
     assert_close(state_dict["threshold"], expected_threshold)
+
+
+def test_BatchTopKTrainingSAE_gives_same_results_after_folding_W_dec_norm_if_rescale_acts_by_decoder_norm():
+    cfg = build_batchtopk_sae_training_cfg(
+        k=2,
+        d_in=5,
+        d_sae=10,
+        rescale_acts_by_decoder_norm=True,
+    )
+    sae = BatchTopKTrainingSAE(cfg)
+    random_params(sae)
+
+    test_input = torch.randn(300, 5)
+
+    pre_fold_feats = sae.encode(test_input)
+    pre_fold_output = sae.decode(pre_fold_feats)
+
+    sae.fold_W_dec_norm()
+
+    post_fold_feats = sae.encode(test_input)
+    post_fold_output = sae.decode(post_fold_feats)
+
+    assert_close(pre_fold_feats, post_fold_feats, rtol=1e-2)
+    assert_close(pre_fold_output, post_fold_output, rtol=1e-2)
+
+
+def test_BatchTopKTrainingSAE_gives_same_results_as_if_decoder_is_already_normalized():
+    cfg = build_batchtopk_sae_training_cfg(
+        k=2,
+        d_in=5,
+        d_sae=10,
+        rescale_acts_by_decoder_norm=True,
+    )
+    cfg2 = build_batchtopk_sae_training_cfg(
+        k=2,
+        d_in=5,
+        d_sae=10,
+        rescale_acts_by_decoder_norm=False,
+    )
+    sae = BatchTopKTrainingSAE(cfg)
+    random_params(sae)
+
+    sae.fold_W_dec_norm()
+
+    sae2 = BatchTopKTrainingSAE(cfg2)
+    sae2.load_state_dict(sae.state_dict())
+
+    test_input = torch.randn(300, 5)
+
+    enhanced_acts = sae.encode(test_input)
+    enhanced_output = sae.decode(enhanced_acts)
+
+    topk_acts = sae2.encode(test_input)
+    topk_output = sae2.decode(topk_acts)
+
+    assert_close(enhanced_acts, topk_acts, rtol=1e-2)
+    assert_close(enhanced_output, topk_output, rtol=1e-2)
+
+
+def test_BatchTopKTrainingSAE_gives_same_output_despite_rescale_acts_by_decoder_norm_when_k_is_full():
+    cfg = build_batchtopk_sae_training_cfg(
+        k=10,
+        d_in=5,
+        d_sae=10,
+        rescale_acts_by_decoder_norm=True,
+    )
+    cfg2 = build_batchtopk_sae_training_cfg(
+        k=10,
+        d_in=5,
+        d_sae=10,
+        rescale_acts_by_decoder_norm=False,
+    )
+    sae = BatchTopKTrainingSAE(cfg)
+    random_params(sae)
+
+    sae2 = BatchTopKTrainingSAE(cfg2)
+    sae2.load_state_dict(sae.state_dict())
+
+    test_input = torch.randn(300, 5)
+
+    enhanced_acts = sae.encode(test_input)
+    enhanced_output = sae.decode(enhanced_acts)
+
+    topk_acts = sae2.encode(test_input)
+    topk_output = sae2.decode(topk_acts)
+
+    assert_not_close(enhanced_acts, topk_acts, rtol=1e-2)
+    assert_close(enhanced_output, topk_output, rtol=1e-2)
+
+
+def test_BatchTopKTrainingSAE_gives_same_output_despite_rescale_acts_by_decoder_norm_when_dec_is_scaled_uniformly():
+    cfg = build_batchtopk_sae_training_cfg(
+        k=2,
+        d_in=5,
+        d_sae=10,
+        rescale_acts_by_decoder_norm=True,
+    )
+    sae = BatchTopKTrainingSAE(cfg)
+    random_params(sae)
+
+    sae.fold_W_dec_norm()
+    sae.W_dec.data = sae.W_dec.data * 0.5
+
+    cfg2 = build_batchtopk_sae_training_cfg(
+        k=2,
+        d_in=5,
+        d_sae=10,
+        rescale_acts_by_decoder_norm=False,
+    )
+    sae2 = BatchTopKTrainingSAE(cfg2)
+    sae2.load_state_dict(sae.state_dict())
+
+    test_input = torch.randn(300, 5)
+
+    enhanced_acts = sae.encode(test_input)
+    enhanced_output = sae.decode(enhanced_acts)
+
+    topk_acts = sae2.encode(test_input)
+    topk_output = sae2.decode(topk_acts)
+
+    assert_not_close(enhanced_acts, topk_acts, rtol=1e-2)
+    assert_close(enhanced_output, topk_output, rtol=1e-2)
