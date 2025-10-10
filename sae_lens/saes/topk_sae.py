@@ -1,7 +1,7 @@
 """Inference-only TopKSAE variant, similar in spirit to StandardSAE but using a TopK-based activation."""
 
 from dataclasses import dataclass
-from typing import Callable
+from typing import Any, Callable
 
 import torch
 from jaxtyping import Float
@@ -118,10 +118,36 @@ class TopK(nn.Module):
 @dataclass
 class TopKSAEConfig(SAEConfig):
     """
-    Configuration class for a TopKSAE.
+    Configuration class for TopKSAE inference.
+
+    Args:
+        k (int): Number of top features to keep active during inference. Only the top k
+            features with the highest pre-activations will be non-zero. Defaults to 100.
+        rescale_acts_by_decoder_norm (bool): Whether to treat the decoder as if it was
+            already normalized. This affects the topk selection by rescaling pre-activations
+            by decoder norms. Requires that the SAE was trained this way. Defaults to False.
+        d_in (int): Input dimension (dimensionality of the activations being encoded).
+            Inherited from SAEConfig.
+        d_sae (int): SAE latent dimension (number of features in the SAE).
+            Inherited from SAEConfig.
+        dtype (str): Data type for the SAE parameters. Inherited from SAEConfig.
+            Defaults to "float32".
+        device (str): Device to place the SAE on. Inherited from SAEConfig.
+            Defaults to "cpu".
+        apply_b_dec_to_input (bool): Whether to apply decoder bias to the input
+            before encoding. Inherited from SAEConfig. Defaults to True.
+        normalize_activations (Literal["none", "expected_average_only_in", "constant_norm_rescale", "layer_norm"]):
+            Normalization strategy for input activations. Inherited from SAEConfig.
+            Defaults to "none".
+        reshape_activations (Literal["none", "hook_z"]): How to reshape activations
+            (useful for attention head outputs). Inherited from SAEConfig.
+            Defaults to "none".
+        metadata (SAEMetadata): Metadata about the SAE (model name, hook name, etc.).
+            Inherited from SAEConfig.
     """
 
     k: int = 100
+    rescale_acts_by_decoder_norm: bool = False
 
     @override
     @classmethod
@@ -218,6 +244,8 @@ class TopKSAE(SAE[TopKSAEConfig]):
         """
         sae_in = self.process_sae_in(x)
         hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
+        if self.cfg.rescale_acts_by_decoder_norm:
+            hidden_pre = hidden_pre * self.W_dec.norm(dim=-1)
         # The BaseSAE already sets self.activation_fn to TopK(...) if config requests topk.
         return self.hook_sae_acts_post(self.activation_fn(hidden_pre))
 
@@ -231,6 +259,8 @@ class TopKSAE(SAE[TopKSAEConfig]):
         and optional head reshaping.
         """
         # Handle sparse tensors using efficient sparse matrix multiplication
+        if self.cfg.rescale_acts_by_decoder_norm:
+            feature_acts = feature_acts / self.W_dec.norm(dim=-1)
         if feature_acts.is_sparse:
             sae_out_pre = _sparse_matmul_nd(feature_acts, self.W_dec) + self.b_dec
         else:
@@ -246,9 +276,11 @@ class TopKSAE(SAE[TopKSAEConfig]):
     @override
     @torch.no_grad()
     def fold_W_dec_norm(self) -> None:
-        raise NotImplementedError(
-            "Folding W_dec_norm is not safe for TopKSAEs, as this may change the topk activations"
-        )
+        if not self.cfg.rescale_acts_by_decoder_norm:
+            raise NotImplementedError(
+                "Folding W_dec_norm is not safe for TopKSAEs when rescale_acts_by_decoder_norm is False, as this may change the topk activations"
+            )
+        _fold_norm_topk(W_dec=self.W_dec, b_enc=self.b_enc, W_enc=self.W_enc)
 
 
 @dataclass
@@ -267,6 +299,9 @@ class TopKTrainingSAEConfig(TrainingSAEConfig):
             dead neurons to learn useful features. This loss helps prevent neuron death
             in TopK SAEs by having dead neurons reconstruct the residual error from
             live neurons. Defaults to 1.0.
+        rescale_acts_by_decoder_norm (bool): Treat the decoder as if it was already normalized.
+            This is a good idea since decoder norm can randomly drift during training, and this
+            affects what the topk activations will be. Defaults to True.
         decoder_init_norm (float | None): Norm to initialize decoder weights to.
             0.1 corresponds to the "heuristic" initialization from Anthropic's April update.
             Use None to disable. Inherited from TrainingSAEConfig. Defaults to 0.1.
@@ -293,6 +328,7 @@ class TopKTrainingSAEConfig(TrainingSAEConfig):
     k: int = 100
     use_sparse_activations: bool = False
     aux_loss_coefficient: float = 1.0
+    rescale_acts_by_decoder_norm: bool = True
 
     @override
     @classmethod
@@ -326,6 +362,9 @@ class TopKTrainingSAE(TrainingSAE[TopKTrainingSAEConfig]):
         sae_in = self.process_sae_in(x)
         hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc + self.b_enc)
 
+        if self.cfg.rescale_acts_by_decoder_norm:
+            hidden_pre = hidden_pre * self.W_dec.norm(dim=-1)
+
         # Apply the TopK activation function (already set in self.activation_fn if config is "topk")
         feature_acts = self.hook_sae_acts_post(self.activation_fn(hidden_pre))
         return feature_acts, hidden_pre
@@ -340,6 +379,9 @@ class TopKTrainingSAE(TrainingSAE[TopKTrainingSAEConfig]):
         applying optional finetuning scale, hooking, out normalization, etc.
         """
         # Handle sparse tensors using efficient sparse matrix multiplication
+        if self.cfg.rescale_acts_by_decoder_norm:
+            # need to multiply by the inverse of the norm because division is illegal with sparse tensors
+            feature_acts = feature_acts * (1 / self.W_dec.norm(dim=-1))
         if feature_acts.is_sparse:
             sae_out_pre = _sparse_matmul_nd(feature_acts, self.W_dec) + self.b_dec
         else:
@@ -385,9 +427,11 @@ class TopKTrainingSAE(TrainingSAE[TopKTrainingSAEConfig]):
     @override
     @torch.no_grad()
     def fold_W_dec_norm(self) -> None:
-        raise NotImplementedError(
-            "Folding W_dec_norm is not safe for TopKSAEs, as this may change the topk activations"
-        )
+        if not self.cfg.rescale_acts_by_decoder_norm:
+            raise NotImplementedError(
+                "Folding W_dec_norm is not safe for TopKSAEs when rescale_acts_by_decoder_norm is False, as this may change the topk activations"
+            )
+        _fold_norm_topk(W_dec=self.W_dec, b_enc=self.b_enc, W_enc=self.W_enc)
 
     @override
     def get_activation_fn(self) -> Callable[[torch.Tensor], torch.Tensor]:
@@ -436,6 +480,18 @@ class TopKTrainingSAE(TrainingSAE[TopKTrainingSAEConfig]):
         auxk_loss = (recons - residual).pow(2).sum(dim=-1).mean()
         return self.cfg.aux_loss_coefficient * scale * auxk_loss
 
+    @override
+    def process_state_dict_for_saving_inference(
+        self, state_dict: dict[str, Any]
+    ) -> None:
+        super().process_state_dict_for_saving_inference(state_dict)
+        if self.cfg.rescale_acts_by_decoder_norm:
+            _fold_norm_topk(
+                W_enc=state_dict["W_enc"],
+                b_enc=state_dict["b_enc"],
+                W_dec=state_dict["W_dec"],
+            )
+
 
 def _calculate_topk_aux_acts(
     k_aux: int,
@@ -471,3 +527,15 @@ def _init_weights_topk(
     sae.b_enc = nn.Parameter(
         torch.zeros(sae.cfg.d_sae, dtype=sae.dtype, device=sae.device)
     )
+
+
+def _fold_norm_topk(
+    W_enc: torch.Tensor,
+    b_enc: torch.Tensor,
+    W_dec: torch.Tensor,
+) -> None:
+    W_dec_norm = W_dec.norm(dim=-1)
+    b_enc.data = b_enc.data * W_dec_norm
+    W_dec_norms = W_dec_norm.unsqueeze(1)
+    W_dec.data = W_dec.data / W_dec_norms
+    W_enc.data = W_enc.data * W_dec_norms.T

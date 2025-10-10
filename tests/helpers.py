@@ -104,6 +104,7 @@ class TrainingSAEConfigDict(TypedDict, total=False):
     topk_threshold_lr: float  # For BatchTopK
     jumprelu_sparsity_loss_mode: Literal["step", "tanh"]  # For JumpReLU
     jumprelu_tanh_scale: float  # For JumpReLU
+    rescale_acts_by_decoder_norm: bool  # For TopK
 
 
 class SAEConfigDict(TypedDict, total=False):
@@ -383,6 +384,7 @@ def build_topk_runner_cfg(
         "decoder_init_norm": 0.1,
         "apply_b_dec_to_input": False,
         "k": 10,
+        "rescale_acts_by_decoder_norm": True,
     }
     # Ensure activation_fn_kwargs has k if k is overridden
     temp_sae_overrides = {

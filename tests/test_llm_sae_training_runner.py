@@ -548,6 +548,7 @@ def test_LanguageModelSAETrainingRunner_saves_final_output_and_checkpoints(
         save_final_checkpoint=True,
         checkpoint_path=str(checkpoint_path),
         output_path=str(output_path),
+        rescale_acts_by_decoder_norm=False,
     )
     runner = LanguageModelSAETrainingRunner(cfg, override_model=ts_model)
 
