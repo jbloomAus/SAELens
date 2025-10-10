@@ -385,8 +385,8 @@ def test_BatchTopKTrainingSAE_gives_same_output_despite_rescale_acts_by_decoder_
     topk_acts = sae2.encode(test_input)
     topk_output = sae2.decode(topk_acts)
 
-    assert not torch.allclose(enhanced_acts, topk_acts, rtol=1e-2)
-    assert torch.allclose(enhanced_output, topk_output, rtol=1e-2)
+    assert_not_close(enhanced_acts, topk_acts, rtol=1e-2)
+    assert_close(enhanced_output, topk_output, rtol=1e-2)
 
 
 def test_BatchTopKTrainingSAE_gives_same_output_despite_rescale_acts_by_decoder_norm_when_dec_is_scaled_uniformly():
