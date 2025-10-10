@@ -276,12 +276,11 @@ class TopKSAE(SAE[TopKSAEConfig]):
     @override
     @torch.no_grad()
     def fold_W_dec_norm(self) -> None:
-        if self.cfg.rescale_acts_by_decoder_norm:
-            _fold_norm_topk(W_dec=self.W_dec, b_enc=self.b_enc, W_enc=self.W_enc)
-        else:
+        if not self.cfg.rescale_acts_by_decoder_norm:
             raise NotImplementedError(
                 "Folding W_dec_norm is not safe for TopKSAEs when rescale_acts_by_decoder_norm is False, as this may change the topk activations"
             )
+        _fold_norm_topk(W_dec=self.W_dec, b_enc=self.b_enc, W_enc=self.W_enc)
 
 
 @dataclass
