@@ -296,8 +296,8 @@ def test_TopKSAE_gives_same_results_as_if_decoder_is_already_normalized(
     topk_acts = sae2.encode(test_input)
     topk_output = sae2.decode(topk_acts)
 
-    assert torch.allclose(enhanced_acts, topk_acts, rtol=1e-2)
-    assert torch.allclose(enhanced_output, topk_output, rtol=1e-2)
+    assert_close(enhanced_acts, topk_acts, rtol=1e-2)
+    assert_close(enhanced_output, topk_output, rtol=1e-2)
 
 
 @pytest.mark.parametrize("training_sae", [True, False])
