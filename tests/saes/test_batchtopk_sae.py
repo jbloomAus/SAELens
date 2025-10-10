@@ -16,7 +16,6 @@ from tests.helpers import (
     assert_close,
     assert_not_close,
     build_batchtopk_sae_training_cfg,
-    match_model_params,
     random_params,
 )
 
@@ -344,7 +343,7 @@ def test_BatchTopKTrainingSAE_gives_same_results_as_if_decoder_is_already_normal
     sae.fold_W_dec_norm()
 
     sae2 = BatchTopKTrainingSAE(cfg2)
-    match_model_params(sae, sae2)
+    sae2.load_state_dict(sae.state_dict())
 
     test_input = torch.randn(300, 5)
 
@@ -375,7 +374,7 @@ def test_BatchTopKTrainingSAE_gives_same_output_despite_rescale_acts_by_decoder_
     random_params(sae)
 
     sae2 = BatchTopKTrainingSAE(cfg2)
-    match_model_params(sae, sae2)
+    sae2.load_state_dict(sae.state_dict())
 
     test_input = torch.randn(300, 5)
 
@@ -409,7 +408,7 @@ def test_BatchTopKTrainingSAE_gives_same_output_despite_rescale_acts_by_decoder_
         rescale_acts_by_decoder_norm=False,
     )
     sae2 = BatchTopKTrainingSAE(cfg2)
-    match_model_params(sae, sae2)
+    sae2.load_state_dict(sae.state_dict())
 
     test_input = torch.randn(300, 5)
 

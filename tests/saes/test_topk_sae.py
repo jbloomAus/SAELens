@@ -14,7 +14,6 @@ from tests.helpers import (
     assert_not_close,
     build_topk_sae_cfg,
     build_topk_sae_training_cfg,
-    match_model_params,
     random_params,
 )
 
@@ -286,7 +285,7 @@ def test_TopKSAE_gives_same_results_as_if_decoder_is_already_normalized(
     sae.fold_W_dec_norm()
 
     sae2 = sae_class(cfg2)
-    match_model_params(sae, sae2)
+    sae2.load_state_dict(sae.state_dict())
 
     test_input = torch.randn(300, 5)
 
@@ -323,7 +322,7 @@ def test_TopKSAE_gives_same_output_despite_rescale_acts_by_decoder_norm_when_k_i
     random_params(sae)
 
     sae2 = sae_class(cfg2)
-    match_model_params(sae, sae2)
+    sae2.load_state_dict(sae.state_dict())
 
     test_input = torch.randn(300, 5)
 
@@ -363,7 +362,7 @@ def test_TopKSAE_gives_same_output_despite_rescale_acts_by_decoder_norm_when_dec
         rescale_acts_by_decoder_norm=False,  # type: ignore
     )
     sae2 = sae_class(cfg2)
-    match_model_params(sae, sae2)
+    sae2.load_state_dict(sae.state_dict())
 
     test_input = torch.randn(300, 5)
 
