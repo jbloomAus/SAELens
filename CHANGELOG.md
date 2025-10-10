@@ -1,5 +1,71 @@
 # CHANGELOG
 
+## v6.14.0 (2025-10-10)
+
+### Feature
+
+* feat: rescale topk SAE decoder during training (#565)
+
+* feat: rescale topk SAE decoder during training
+
+* updating docstring for BatchTopKSAEConfig
+
+* fixing test
+
+* Update tests/saes/test_topk_sae.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update sae_lens/saes/topk_sae.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update sae_lens/saes/topk_sae.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update tests/saes/test_standard_sae.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update tests/saes/test_topk_sae.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update tests/saes/test_topk_sae.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update tests/saes/test_topk_sae.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update tests/saes/test_batchtopk_sae.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update tests/saes/test_batchtopk_sae.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update tests/saes/test_batchtopk_sae.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update tests/saes/test_batchtopk_sae.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update tests/saes/test_sae.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* changes from CR
+
+---------
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt; ([`e6d8738`](https://github.com/jbloomAus/SAELens/commit/e6d8738280cd97531ed48105d450d6b62ecec0cf))
+
 ## v6.13.1 (2025-10-08)
 
 ### Chore
