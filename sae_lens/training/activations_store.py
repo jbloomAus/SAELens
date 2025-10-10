@@ -29,7 +29,10 @@ from sae_lens.pretokenize_runner import get_special_token_from_cfg
 from sae_lens.saes.sae import SAE, T_SAE_CONFIG, T_TRAINING_SAE_CONFIG
 from sae_lens.tokenization_and_batching import concat_and_batch_sequences
 from sae_lens.training.mixing_buffer import mixing_buffer
-from sae_lens.util import extract_stop_at_layer_from_tlens_hook_name
+from sae_lens.util import (
+    extract_stop_at_layer_from_tlens_hook_name,
+    get_special_token_ids,
+)
 
 
 # TODO: Make an activation store config class to be consistent with the rest of the code.
@@ -113,7 +116,7 @@ class ActivationsStore:
         if exclude_special_tokens is False:
             exclude_special_tokens = None
         if exclude_special_tokens is True:
-            exclude_special_tokens = _get_special_token_ids(model.tokenizer)  # type: ignore
+            exclude_special_tokens = get_special_token_ids(model.tokenizer)  # type: ignore
         if exclude_special_tokens is not None:
             exclude_special_tokens = torch.tensor(
                 exclude_special_tokens, dtype=torch.long, device=device
@@ -761,31 +764,6 @@ def _get_model_device(model: HookedRootModule) -> torch.device:
     if hasattr(model, "cfg") and hasattr(model.cfg, "device"):
         return model.cfg.device  # type: ignore
     return next(model.parameters()).device  # type: ignore
-
-
-def _get_special_token_ids(tokenizer: PreTrainedTokenizerBase) -> list[int]:
-    """Get all special token IDs from a tokenizer."""
-    special_tokens = set()
-
-    # Get special tokens from tokenizer attributes
-    for attr in dir(tokenizer):
-        if attr.endswith("_token_id"):
-            token_id = getattr(tokenizer, attr)
-            if token_id is not None:
-                special_tokens.add(token_id)
-
-    # Get any additional special tokens from the tokenizer's special tokens map
-    if hasattr(tokenizer, "special_tokens_map"):
-        for token in tokenizer.special_tokens_map.values():
-            if isinstance(token, str):
-                token_id = tokenizer.convert_tokens_to_ids(token)  # type: ignore
-                special_tokens.add(token_id)
-            elif isinstance(token, list):
-                for t in token:
-                    token_id = tokenizer.convert_tokens_to_ids(t)  # type: ignore
-                    special_tokens.add(token_id)
-
-    return list(special_tokens)
 
 
 def _filter_buffer_acts(

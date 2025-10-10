@@ -173,7 +173,7 @@ def test_eval_all_loadable_saes(
         activation_store=activation_store,
         model=model,
         eval_config=eval_config,
-        ignore_tokens={
+        exclude_special_tokens={
             model.tokenizer.pad_token_id,  # type: ignore
             model.tokenizer.eos_token_id,  # type: ignore
             model.tokenizer.bos_token_id,  # type: ignore
