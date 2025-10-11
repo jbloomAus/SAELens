@@ -80,7 +80,7 @@ class TopKMatryoshkaTrainingSAE(TopKTrainingSAE):
             inner_hidden_pre = hidden_pre[:, :width]
             inner_feat_acts = self.activation_fn(inner_hidden_pre)
             inner_reconsruction =  inner_feat_acts @ self.W_dec[:width] + self.b_dec
-            inner_mse_loss = self.mse_loss_fn(sae_out, step_input.sae_in).sum(dim=-1).mean()
+            inner_mse_loss = self.mse_loss_fn(inner_reconsruction, step_input.sae_in).sum(dim=-1).mean()
             base_output.losses[f"inner_mse_loss_{width}"] = inner_mse_loss
             base_output.loss = base_output.loss + inner_mse_loss
         return base_output

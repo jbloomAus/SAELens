@@ -36,7 +36,7 @@ def test_SAEConfig_to_and_from_dict_all_architectures(architecture: str):
         architecture
     ).get_inference_sae_cfg_dict()
     reloaded_cfg = SAEConfig.from_dict(cfg_dict)
-    if architecture == "batchtopk":
+    if architecture in {"batchtopk", "matryoshka_batchtopk"}:
         assert reloaded_cfg.architecture() == "jumprelu"
     else:
         assert reloaded_cfg.architecture() == architecture
@@ -241,7 +241,7 @@ def test_TrainingSAE_fold_activation_norm_scaling_factor_all_architectures(
     folded_features = sae.encode(inputs / 2.0)
 
     assert_close(folded_outputs, original_outputs)
-    if architecture in {"topk", "batchtopk"}:
+    if architecture in {"topk", "batchtopk", "matryoshka_batchtopk"}:
         # Due to how rescale_acts_by_decoder_norm works in TopKSAEs, it's equivalent to
         # folding the W_dec norm after folding the activation norm scaling factor.
         # this is fine, since we just care about the ouputs being the same.

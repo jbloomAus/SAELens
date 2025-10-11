@@ -10,6 +10,7 @@ from sae_lens.config import LanguageModelSAERunnerConfig, LoggingConfig
 from sae_lens.saes.batchtopk_sae import BatchTopKTrainingSAEConfig
 from sae_lens.saes.gated_sae import GatedSAEConfig, GatedTrainingSAEConfig
 from sae_lens.saes.jumprelu_sae import JumpReLUSAEConfig, JumpReLUTrainingSAEConfig
+from sae_lens.saes.matryoshka_batchtopk_sae import MatryoshkaBatchTopKTrainingSAEConfig
 from sae_lens.saes.sae import T_TRAINING_SAE_CONFIG, SAEConfig, TrainingSAEConfig
 from sae_lens.saes.standard_sae import StandardSAEConfig, StandardTrainingSAEConfig
 from sae_lens.saes.topk_sae import TopKSAEConfig, TopKTrainingSAEConfig
@@ -18,7 +19,14 @@ TINYSTORIES_MODEL = "tiny-stories-1M"
 NEEL_NANDA_C4_10K_DATASET = "NeelNanda/c4-10k"
 
 ALL_ARCHITECTURES = ["standard", "gated", "jumprelu", "topk"]
-ALL_TRAINING_ARCHITECTURES = ["standard", "gated", "jumprelu", "topk", "batchtopk"]
+ALL_TRAINING_ARCHITECTURES = [
+    "standard",
+    "gated",
+    "jumprelu",
+    "topk",
+    "batchtopk",
+    "matryoshka_batchtopk",
+]
 
 
 # This TypedDict should match the fields directly in LanguageModelSAERunnerConfig
@@ -105,6 +113,7 @@ class TrainingSAEConfigDict(TypedDict, total=False):
     jumprelu_sparsity_loss_mode: Literal["step", "tanh"]  # For JumpReLU
     jumprelu_tanh_scale: float  # For JumpReLU
     rescale_acts_by_decoder_norm: bool  # For TopK
+    matryoshka_widths: list[int]  # For MatryoshkaBatchTopK
 
 
 class SAEConfigDict(TypedDict, total=False):
@@ -456,6 +465,46 @@ def build_batchtopk_sae_training_cfg(**kwargs: Any) -> BatchTopKTrainingSAEConfi
     return build_batchtopk_runner_cfg(**kwargs).sae  # type: ignore
 
 
+# --- Matryoshka BatchTopK SAE Builder ---
+def build_matryoshka_batchtopk_runner_cfg(
+    **kwargs: Any,
+) -> LanguageModelSAERunnerConfig[MatryoshkaBatchTopKTrainingSAEConfig]:
+    """Helper to create a mock instance for Matryoshka BatchTopK SAE."""
+    default_sae_config: TrainingSAEConfigDict = {
+        "matryoshka_widths": [10, kwargs.get("d_sae", 20)],
+        "d_in": 64,
+        "d_sae": 256,
+        "dtype": "float32",
+        "device": "cpu",
+        "normalize_activations": "none",
+        "decoder_init_norm": 0.1,
+        "apply_b_dec_to_input": False,
+        "k": 10,
+        "topk_threshold_lr": 0.02,
+    }
+    # Ensure activation_fn_kwargs has k if k is overridden
+    temp_sae_overrides = {
+        k: v for k, v in kwargs.items() if k in TrainingSAEConfigDict.__annotations__
+    }
+    temp_sae_config = {**default_sae_config, **temp_sae_overrides}
+    # Update the default config *before* passing it to _build_runner_config
+    final_default_sae_config = cast(dict[str, Any], temp_sae_config)
+
+    runner_cfg = _build_runner_config(
+        MatryoshkaBatchTopKTrainingSAEConfig,
+        final_default_sae_config,
+        **kwargs,
+    )
+    _update_sae_metadata(runner_cfg)
+    return runner_cfg
+
+
+def build_matryoshka_batchtopk_sae_training_cfg(
+    **kwargs: Any,
+) -> MatryoshkaBatchTopKTrainingSAEConfig:
+    return build_matryoshka_batchtopk_runner_cfg(**kwargs).sae  # type: ignore
+
+
 MODEL_CACHE: dict[str, HookedTransformer] = {}
 
 
@@ -497,6 +546,8 @@ def build_sae_training_cfg_for_arch(
         return build_topk_sae_training_cfg(**kwargs)
     if architecture == "batchtopk":
         return build_batchtopk_sae_training_cfg(**kwargs)
+    if architecture == "matryoshka_batchtopk":
+        return build_matryoshka_batchtopk_sae_training_cfg(**kwargs)
     raise ValueError(f"Unknown architecture: {architecture}")
 
 
@@ -513,6 +564,8 @@ def build_runner_cfg_for_arch(
         return build_topk_runner_cfg(**kwargs)
     if architecture == "batchtopk":
         return build_batchtopk_runner_cfg(**kwargs)
+    if architecture == "matryoshka_batchtopk":
+        return build_matryoshka_batchtopk_runner_cfg(**kwargs)
     raise ValueError(f"Unknown architecture: {architecture}")
 
 
