@@ -392,7 +392,7 @@ def _parse_cfg_args(
 
     # Map architecture to concrete config class
     sae_config_map: dict[str, type[TrainingSAEConfig]] = {
-        name: cfg for name, (_cls, cfg) in SAE_TRAINING_CLASS_REGISTRY.items()
+        name: cfg for name, (_, cfg) in SAE_TRAINING_CLASS_REGISTRY.items()
     }
 
     sae_config_type = sae_config_map[architecture]
