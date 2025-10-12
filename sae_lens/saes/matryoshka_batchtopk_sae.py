@@ -84,11 +84,11 @@ class MatryoshkaBatchTopKTrainingSAE(BatchTopKTrainingSAE):
         for width in self.cfg.matryoshka_widths[:-1]:
             inner_hidden_pre = hidden_pre[:, :width]
             inner_feat_acts = self.activation_fn(inner_hidden_pre)
-            inner_reconsruction = self._decode_matryoshka_level(
+            inner_reconstruction = self._decode_matryoshka_level(
                 inner_feat_acts, width, inv_W_dec_norm
             )
             inner_mse_loss = (
-                self.mse_loss_fn(inner_reconsruction, step_input.sae_in)
+                self.mse_loss_fn(inner_reconstruction, step_input.sae_in)
                 .sum(dim=-1)
                 .mean()
             )
