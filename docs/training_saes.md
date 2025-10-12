@@ -218,6 +218,32 @@ cfg = LanguageModelSAERunnerConfig( # Full config would be defined here
 sparse_autoencoder = LanguageModelSAETrainingRunner(cfg).run()
 ```
 
+### Training MatryoshkaBatchTopk SAEs
+
+<!-- prettier-ignore-start -->
+!!! tip "SOTA architecture"
+    MatryoshkaBatchTopK is a state-of-the-art SAE architecture, but requires some understanding to train well.
+<!-- prettier-ignore-end -->
+
+The [MatryoshkaBatchTopK](https://arxiv.org/abs/2503.17547) architecture is an advanced version of BatchTopK that uses a series of nested reconstruction losses at different widths (called "matryoshka levels") during training. This approach helps avoid [feature absorption](https://arxiv.org/abs/2409.14507) and encourages higher-frequency features to be learned at smaller latent indices (e.g. latent 20 will be a higher frequency, more general latent, than latent 20,000). While Matryoshka SAEs can achieve better performance than standard SAE architectures, they require tuning additional hyperparameters and take longer to train due to requiring multiple forward passes per training step. The key parameter is `matryoshka_widths`, which specifies the widths of each nested level (e.g., `[4096, 8192, 16384]`). These widths should be strictly increasing, and the final width should match `d_sae`. While Matryoshka SAEs can achieve the best performance of any known architecture on many metrics, they are more susceptible to [feature hedging](https://arxiv.org/abs/2505.11756) than standard SAEs, and this gets worse the narrower the inner level of the Matryoshka SAEs. We thus recommend being cautious about using very narrow inner levels. Like BatchTopK SAEs, MatryoshkaBatchTopK SAEs save as JumpReLU SAEs for use at inference.
+
+```python
+from sae_lens import LanguageModelSAERunnerConfig, LanguageModelSAETrainingRunner, MatryoshkaBatchTopKTrainingSAEConfig
+
+cfg = LanguageModelSAERunnerConfig( # Full config would be defined here
+    # ... other LanguageModelSAERunnerConfig parameters ...
+    sae=MatryoshkaBatchTopKTrainingSAEConfig(
+        k=100, # Set the number of active features
+        d_in=1024, # Must match your hook point
+        d_sae=16 * 1024,
+        matryoshka_widths=[4 * 1024, 8 * 1024, 16 * 1024], # matryoshka widths
+        # ... other common SAE parameters from SAEConfig if needed ...
+    ),
+    # ...
+)
+sparse_autoencoder = LanguageModelSAETrainingRunner(cfg).run()
+```
+
 ### Training Topk SAEs
 
 <!-- prettier-ignore-start -->

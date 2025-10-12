@@ -90,7 +90,7 @@ def test_LanguageModelSAETrainingRunner_runs_and_saves_all_architectures(
     # compare the saved inference SAE as well
     output_sae = SAE.load_from_disk(tmp_path / "test_output")
 
-    if architecture == "batchtopk":
+    if architecture in {"batchtopk", "matryoshka_batchtopk"}:
         assert output_sae.cfg.architecture() == "jumprelu"
     else:
         assert output_sae.cfg.architecture() == architecture
