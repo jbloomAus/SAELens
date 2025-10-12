@@ -522,51 +522,22 @@ def load_model_cached(model_name: str) -> HookedTransformer:
 
 
 def build_sae_cfg_for_arch(architecture: str, **kwargs: Any) -> SAEConfig:
-    if architecture == "standard":
-        return build_sae_cfg(**kwargs)
-    if architecture == "gated":
-        return build_gated_sae_cfg(**kwargs)
-    if architecture == "jumprelu":
-        return build_jumprelu_sae_cfg(**kwargs)
-    if architecture == "topk":
-        return build_topk_sae_cfg(**kwargs)
-    raise ValueError(f"Unknown architecture: {architecture}")
+    builder = SAE_CONFIG_BUILDERS[architecture]
+    return builder(**kwargs)
 
 
 def build_sae_training_cfg_for_arch(
     architecture: str, **kwargs: Any
 ) -> TrainingSAEConfig:
-    if architecture == "standard":
-        return build_sae_training_cfg(**kwargs)
-    if architecture == "gated":
-        return build_gated_sae_training_cfg(**kwargs)
-    if architecture == "jumprelu":
-        return build_jumprelu_sae_training_cfg(**kwargs)
-    if architecture == "topk":
-        return build_topk_sae_training_cfg(**kwargs)
-    if architecture == "batchtopk":
-        return build_batchtopk_sae_training_cfg(**kwargs)
-    if architecture == "matryoshka_batchtopk":
-        return build_matryoshka_batchtopk_sae_training_cfg(**kwargs)
-    raise ValueError(f"Unknown architecture: {architecture}")
+    builder = SAE_TRAINING_CONFIG_BUILDERS[architecture]
+    return builder(**kwargs)
 
 
 def build_runner_cfg_for_arch(
     architecture: str, **kwargs: Any
 ) -> LanguageModelSAERunnerConfig[Any]:
-    if architecture == "standard":
-        return build_runner_cfg(**kwargs)
-    if architecture == "gated":
-        return build_gated_runner_cfg(**kwargs)
-    if architecture == "jumprelu":
-        return build_jumprelu_runner_cfg(**kwargs)
-    if architecture == "topk":
-        return build_topk_runner_cfg(**kwargs)
-    if architecture == "batchtopk":
-        return build_batchtopk_runner_cfg(**kwargs)
-    if architecture == "matryoshka_batchtopk":
-        return build_matryoshka_batchtopk_runner_cfg(**kwargs)
-    raise ValueError(f"Unknown architecture: {architecture}")
+    builder = SAE_RUNNER_CONFIG_BUILDERS[architecture]
+    return builder(**kwargs)
 
 
 def assert_close(
@@ -646,3 +617,29 @@ def random_params(model: torch.nn.Module) -> None:
         param.data = torch.rand_like(param)
     for buffer in model.buffers():
         buffer.data = torch.rand_like(buffer)
+
+
+SAE_TRAINING_CONFIG_BUILDERS = {
+    "standard": build_sae_training_cfg,
+    "gated": build_gated_sae_training_cfg,
+    "jumprelu": build_jumprelu_sae_training_cfg,
+    "topk": build_topk_sae_training_cfg,
+    "batchtopk": build_batchtopk_sae_training_cfg,
+    "matryoshka_batchtopk": build_matryoshka_batchtopk_sae_training_cfg,
+}
+
+SAE_CONFIG_BUILDERS = {
+    "standard": build_sae_cfg,
+    "gated": build_gated_sae_cfg,
+    "jumprelu": build_jumprelu_sae_cfg,
+    "topk": build_topk_sae_cfg,
+}
+
+SAE_RUNNER_CONFIG_BUILDERS = {
+    "standard": build_runner_cfg,
+    "gated": build_gated_runner_cfg,
+    "jumprelu": build_jumprelu_runner_cfg,
+    "topk": build_topk_runner_cfg,
+    "batchtopk": build_batchtopk_runner_cfg,
+    "matryoshka_batchtopk": build_matryoshka_batchtopk_runner_cfg,
+}
