@@ -267,6 +267,7 @@ def test_topk_sae_training_equivalence():
         k=4,
         d_in=16,
         d_sae=8,
+        rescale_acts_by_decoder_norm=False,
     )
     new_training_sae = TopKTrainingSAE(new_training_cfg)
 

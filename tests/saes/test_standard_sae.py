@@ -334,12 +334,6 @@ def test_training_sae_fold_w_dec_norm_all_architectures(architecture: str):
     assert sae.W_dec.norm(dim=-1).mean().item() != pytest.approx(1.0, abs=1e-6)
     sae2 = deepcopy(sae)
 
-    # If this is a topk SAE, assert this throws a NotImplementedError
-    if architecture == "topk" or architecture == "batchtopk":
-        with pytest.raises(NotImplementedError):
-            sae2.fold_W_dec_norm()
-        return
-
     sae2.fold_W_dec_norm()
 
     # fold_W_dec_norm should normalize W_dec to have unit norm.
@@ -355,10 +349,15 @@ def test_training_sae_fold_w_dec_norm_all_architectures(architecture: str):
         feature_activations_2.nonzero(),
     )
 
-    expected_feature_activations_2 = feature_activations_1 * sae.W_dec.norm(dim=-1)
-    assert_close(
-        feature_activations_2, expected_feature_activations_2, atol=1e-4, rtol=1e-4
-    )
+    if architecture in {"topk", "batchtopk", "matryoshka_batchtopk"}:
+        # Due to how rescale_acts_by_decoder_norm works in TopKSAEs, it's like the
+        # SAE has the norm folded in throughout the entire training process.
+        assert_close(feature_activations_2, feature_activations_1, atol=1e-4, rtol=1e-4)
+    else:
+        expected_feature_activations_2 = feature_activations_1 * sae.W_dec.norm(dim=-1)
+        assert_close(
+            feature_activations_2, expected_feature_activations_2, atol=1e-4, rtol=1e-4
+        )
 
     sae_out_1 = sae.decode(feature_activations_1)
     sae_out_2 = sae2.decode(feature_activations_2)

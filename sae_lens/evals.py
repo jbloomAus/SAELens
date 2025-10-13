@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from functools import partial
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 import einops
 import pandas as pd
@@ -24,7 +24,10 @@ from sae_lens.loading.pretrained_saes_directory import get_pretrained_saes_direc
 from sae_lens.saes.sae import SAE, SAEConfig
 from sae_lens.training.activation_scaler import ActivationScaler
 from sae_lens.training.activations_store import ActivationsStore
-from sae_lens.util import extract_stop_at_layer_from_tlens_hook_name
+from sae_lens.util import (
+    extract_stop_at_layer_from_tlens_hook_name,
+    get_special_token_ids,
+)
 
 
 def get_library_version() -> str:
@@ -109,9 +112,15 @@ def run_evals(
     activation_scaler: ActivationScaler,
     eval_config: EvalConfig = EvalConfig(),
     model_kwargs: Mapping[str, Any] = {},
-    ignore_tokens: set[int | None] = set(),
+    exclude_special_tokens: Iterable[int] | bool = True,
     verbose: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
+    ignore_tokens = None
+    if exclude_special_tokens is True:
+        ignore_tokens = list(get_special_token_ids(model.tokenizer))  # type: ignore
+    elif exclude_special_tokens:
+        ignore_tokens = list(exclude_special_tokens)
+
     hook_name = sae.cfg.metadata.hook_name
     actual_batch_size = (
         eval_config.batch_size_prompts or activation_store.store_batch_size_prompts
@@ -312,7 +321,7 @@ def get_downstream_reconstruction_metrics(
     compute_ce_loss: bool,
     n_batches: int,
     eval_batch_size_prompts: int,
-    ignore_tokens: set[int | None] = set(),
+    ignore_tokens: list[int] | None = None,
     verbose: bool = False,
 ):
     metrics_dict = {}
@@ -339,7 +348,7 @@ def get_downstream_reconstruction_metrics(
             compute_ce_loss=compute_ce_loss,
             ignore_tokens=ignore_tokens,
         ).items():
-            if len(ignore_tokens) > 0:
+            if ignore_tokens:
                 mask = torch.logical_not(
                     torch.any(
                         torch.stack(
@@ -384,7 +393,7 @@ def get_sparsity_and_variance_metrics(
     compute_featurewise_density_statistics: bool,
     eval_batch_size_prompts: int,
     model_kwargs: Mapping[str, Any],
-    ignore_tokens: set[int | None] = set(),
+    ignore_tokens: list[int] | None = None,
     verbose: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     hook_name = sae.cfg.metadata.hook_name
@@ -426,7 +435,7 @@ def get_sparsity_and_variance_metrics(
     for _ in batch_iter:
         batch_tokens = activation_store.get_batch_tokens(eval_batch_size_prompts)
 
-        if len(ignore_tokens) > 0:
+        if ignore_tokens:
             mask = torch.logical_not(
                 torch.any(
                     torch.stack(
@@ -596,7 +605,7 @@ def get_recons_loss(
     batch_tokens: torch.Tensor,
     compute_kl: bool,
     compute_ce_loss: bool,
-    ignore_tokens: set[int | None] = set(),
+    ignore_tokens: list[int] | None = None,
     model_kwargs: Mapping[str, Any] = {},
     hook_name: str | None = None,
 ) -> dict[str, Any]:
@@ -610,7 +619,7 @@ def get_recons_loss(
         batch_tokens, return_type="both", loss_per_token=True, **model_kwargs
     )
 
-    if len(ignore_tokens) > 0:
+    if ignore_tokens:
         mask = torch.logical_not(
             torch.any(
                 torch.stack([batch_tokens == token for token in ignore_tokens], dim=0),
@@ -856,11 +865,6 @@ def multiple_evals(
                     activation_scaler=ActivationScaler(),
                     model=current_model,
                     eval_config=eval_config,
-                    ignore_tokens={
-                        current_model.tokenizer.pad_token_id,  # type: ignore
-                        current_model.tokenizer.eos_token_id,  # type: ignore
-                        current_model.tokenizer.bos_token_id,  # type: ignore
-                    },
                     verbose=verbose,
                 )
                 eval_metrics["metrics"] = scalar_metrics

@@ -21,17 +21,13 @@ from sae_lens.constants import (
 )
 from sae_lens.evals import EvalConfig, run_evals
 from sae_lens.load_model import load_model
-from sae_lens.saes.batchtopk_sae import BatchTopKTrainingSAEConfig
-from sae_lens.saes.gated_sae import GatedTrainingSAEConfig
-from sae_lens.saes.jumprelu_sae import JumpReLUTrainingSAEConfig
+from sae_lens.registry import SAE_TRAINING_CLASS_REGISTRY
 from sae_lens.saes.sae import (
     T_TRAINING_SAE,
     T_TRAINING_SAE_CONFIG,
     TrainingSAE,
     TrainingSAEConfig,
 )
-from sae_lens.saes.standard_sae import StandardTrainingSAEConfig
-from sae_lens.saes.topk_sae import TopKTrainingSAEConfig
 from sae_lens.training.activation_scaler import ActivationScaler
 from sae_lens.training.activations_store import ActivationsStore
 from sae_lens.training.sae_trainer import SAETrainer
@@ -60,9 +56,11 @@ class LLMSaeEvaluator(Generic[T_TRAINING_SAE]):
         data_provider: DataProvider,
         activation_scaler: ActivationScaler,
     ) -> dict[str, Any]:
-        ignore_tokens = set()
+        exclude_special_tokens = False
         if self.activations_store.exclude_special_tokens is not None:
-            ignore_tokens = set(self.activations_store.exclude_special_tokens.tolist())
+            exclude_special_tokens = (
+                self.activations_store.exclude_special_tokens.tolist()
+            )
 
         eval_config = EvalConfig(
             batch_size_prompts=self.eval_batch_size_prompts,
@@ -80,7 +78,7 @@ class LLMSaeEvaluator(Generic[T_TRAINING_SAE]):
             model=self.model,
             activation_scaler=activation_scaler,
             eval_config=eval_config,
-            ignore_tokens=ignore_tokens,
+            exclude_special_tokens=exclude_special_tokens,
             model_kwargs=self.model_kwargs,
         )  # not calculating featurwise metrics here.
 
@@ -400,12 +398,8 @@ def _parse_cfg_args(
         )
 
     # Map architecture to concrete config class
-    sae_config_map = {
-        "standard": StandardTrainingSAEConfig,
-        "gated": GatedTrainingSAEConfig,
-        "jumprelu": JumpReLUTrainingSAEConfig,
-        "topk": TopKTrainingSAEConfig,
-        "batchtopk": BatchTopKTrainingSAEConfig,
+    sae_config_map: dict[str, type[TrainingSAEConfig]] = {
+        name: cfg for name, (_, cfg) in SAE_TRAINING_CLASS_REGISTRY.items()
     }
 
     sae_config_type = sae_config_map[architecture]

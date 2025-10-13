@@ -1,5 +1,163 @@
 # CHANGELOG
 
+## v6.15.0 (2025-10-13)
+
+### Feature
+
+* feat: adding support for training Matryoshka BatchTopK SAEs (#567)
+
+* feat: adding MatryoshkaBatchTopKSAE
+
+* Apply suggestion from @anthonyduong9
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* changes from CR
+
+* Update sae_lens/llm_sae_training_runner.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+---------
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt; ([`43977ad`](https://github.com/jbloomAus/SAELens/commit/43977ad2c1054d4868ec124f7a5c398c4a8e0f2b))
+
+## v6.14.2 (2025-10-10)
+
+### Fix
+
+* fix: Make run_evals() default behavior match the CLI behavior (#560)
+
+* Make run_evals() default behavior match the CLI behavior
+
+* minor tweaks to PR and linting and formatting
+
+---------
+
+Co-authored-by: David Chanin &lt;chanindav@gmail.com&gt; ([`c2b0c94`](https://github.com/jbloomAus/SAELens/commit/c2b0c94eb3599d9a3936d418dae26ccd5537d6f5))
+
+## v6.14.1 (2025-10-10)
+
+### Fix
+
+* fix: notebooks should use cfg.metadata.prepend_bos, not cfg.prepend_bos (#566) ([`64bcaa8`](https://github.com/jbloomAus/SAELens/commit/64bcaa8edb15a2fa7ea58571098780db9343d4f1))
+
+## v6.14.0 (2025-10-10)
+
+### Feature
+
+* feat: rescale topk SAE decoder during training (#565)
+
+* feat: rescale topk SAE decoder during training
+
+* updating docstring for BatchTopKSAEConfig
+
+* fixing test
+
+* Update tests/saes/test_topk_sae.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update sae_lens/saes/topk_sae.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update sae_lens/saes/topk_sae.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update tests/saes/test_standard_sae.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update tests/saes/test_topk_sae.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update tests/saes/test_topk_sae.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update tests/saes/test_topk_sae.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update tests/saes/test_batchtopk_sae.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update tests/saes/test_batchtopk_sae.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update tests/saes/test_batchtopk_sae.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update tests/saes/test_batchtopk_sae.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* Update tests/saes/test_sae.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* changes from CR
+
+---------
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt; ([`e6d8738`](https://github.com/jbloomAus/SAELens/commit/e6d8738280cd97531ed48105d450d6b62ecec0cf))
+
+## v6.13.1 (2025-10-08)
+
+### Chore
+
+* chore: report 5mb disk usage swings in tests (#563)
+
+* report 50mb disk usage swings in tests
+
+* switching to smaller datasets and having smaller threshold for printing disk usage ([`7ef8946`](https://github.com/jbloomAus/SAELens/commit/7ef89464501008fabdd1346c826fd0638215dbfa))
+
+* chore: track disk usage in tests and clean up some space (#562)
+
+* track disk usage in tests to figure out where disk is going
+
+* more logging
+
+* more reporting
+
+* using older method of outputting disk space in CI
+
+* output diff in disk space from tests
+
+* reducing disk usage
+
+* adding tmate debugging
+
+* tweaking caches ([`f3d587f`](https://github.com/jbloomAus/SAELens/commit/f3d587f21eceedf2d3987ccdb055e1bddc15d354))
+
+### Documentation
+
+* docs: simplifying jumprelu docs ([`1e556b1`](https://github.com/jbloomAus/SAELens/commit/1e556b102e502bd94dae29c50f3c5c6834772f09))
+
+* docs: adding tips in the docs for which SAE architectures to use (#556) ([`382010c`](https://github.com/jbloomAus/SAELens/commit/382010c53f95feefc9f5d239f1814d5fd4d5b8cc))
+
+* docs: adding docs for making custom SAE classes (#537) ([`be87864`](https://github.com/jbloomAus/SAELens/commit/be878649968892a5bd52aa2f05f433beb9e8ec61))
+
+### Fix
+
+* fix: Make prepend_bos=True work for disable_concat_sequences case (#559)
+
+* Make prepend_bos=True work for disable_concat_sequences case
+
+* fixing formatting
+
+* more tests and fixed linting
+
+---------
+
+Co-authored-by: David Chanin &lt;chanindav@gmail.com&gt; ([`28da94e`](https://github.com/jbloomAus/SAELens/commit/28da94efdb3d99fde05df575c677e62389899ac7))
+
 ## v6.13.0 (2025-10-04)
 
 ### Chore

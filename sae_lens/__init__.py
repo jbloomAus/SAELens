@@ -1,5 +1,5 @@
 # ruff: noqa: E402
-__version__ = "6.13.0"
+__version__ = "6.15.0"
 
 import logging
 
@@ -19,6 +19,8 @@ from sae_lens.saes import (
     JumpReLUTrainingSAEConfig,
     JumpReLUTranscoder,
     JumpReLUTranscoderConfig,
+    MatryoshkaBatchTopKTrainingSAE,
+    MatryoshkaBatchTopKTrainingSAEConfig,
     SAEConfig,
     SkipTranscoder,
     SkipTranscoderConfig,
@@ -101,6 +103,8 @@ __all__ = [
     "SkipTranscoderConfig",
     "JumpReLUTranscoder",
     "JumpReLUTranscoderConfig",
+    "MatryoshkaBatchTopKTrainingSAE",
+    "MatryoshkaBatchTopKTrainingSAEConfig",
 ]
 
 
@@ -114,6 +118,11 @@ register_sae_class("jumprelu", JumpReLUSAE, JumpReLUSAEConfig)
 register_sae_training_class("jumprelu", JumpReLUTrainingSAE, JumpReLUTrainingSAEConfig)
 register_sae_training_class(
     "batchtopk", BatchTopKTrainingSAE, BatchTopKTrainingSAEConfig
+)
+register_sae_training_class(
+    "matryoshka_batchtopk",
+    MatryoshkaBatchTopKTrainingSAE,
+    MatryoshkaBatchTopKTrainingSAEConfig,
 )
 register_sae_class("transcoder", Transcoder, TranscoderConfig)
 register_sae_class("skip_transcoder", SkipTranscoder, SkipTranscoderConfig)
