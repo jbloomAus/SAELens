@@ -1,5 +1,27 @@
 # CHANGELOG
 
+## v6.15.0 (2025-10-13)
+
+### Feature
+
+* feat: adding support for training Matryoshka BatchTopK SAEs (#567)
+
+* feat: adding MatryoshkaBatchTopKSAE
+
+* Apply suggestion from @anthonyduong9
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+* changes from CR
+
+* Update sae_lens/llm_sae_training_runner.py
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt;
+
+---------
+
+Co-authored-by: Anthony Duong &lt;42191920+anthonyduong9@users.noreply.github.com&gt; ([`43977ad`](https://github.com/jbloomAus/SAELens/commit/43977ad2c1054d4868ec124f7a5c398c4a8e0f2b))
+
 ## v6.14.2 (2025-10-10)
 
 ### Fix
