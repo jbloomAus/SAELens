@@ -111,6 +111,7 @@ def test_MatryoshkaBatchTopKTrainingSAE_training_forward_pass_computes_inner_los
         sae_in=sae_in,
         coefficients={},
         dead_neuron_mask=None,
+        n_training_steps=0,
     )
 
     output = sae.training_forward_pass(train_step_input)
@@ -139,6 +140,7 @@ def test_MatryoshkaBatchTopKTrainingSAE_training_forward_pass_adds_inner_losses_
         sae_in=sae_in,
         coefficients={},
         dead_neuron_mask=None,
+        n_training_steps=0,
     )
 
     output = sae.training_forward_pass(train_step_input)
@@ -170,6 +172,7 @@ def test_MatryoshkaBatchTopKTrainingSAE_with_single_matryoshka_level_matches_bat
         sae_in=sae_in,
         coefficients={},
         dead_neuron_mask=None,
+        n_training_steps=0,
     )
 
     output = sae.training_forward_pass(train_step_input)
@@ -205,6 +208,7 @@ def test_MatryoshkaBatchTopKTrainingSAE_inner_levels_matches_batchtopk_with_smal
         sae_in=sae_in,
         coefficients={},
         dead_neuron_mask=None,
+        n_training_steps=0,
     )
 
     output = sae.training_forward_pass(train_step_input)
@@ -243,6 +247,7 @@ def test_MatryoshkaBatchTopKTrainingSAE_with_two_matryoshka_levels():
         sae_in=sae_in,
         coefficients={},
         dead_neuron_mask=None,
+        n_training_steps=0,
     )
 
     output = sae.training_forward_pass(train_step_input)
@@ -294,6 +299,7 @@ def test_MatryoshkaBatchTopKTrainingSAE_save_and_load_inference_sae(
         sae_in=sae_in,
         coefficients={},
         dead_neuron_mask=None,
+        n_training_steps=0,
     )
 
     # run some test data through to learn the correct threshold
