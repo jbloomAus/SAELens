@@ -287,6 +287,7 @@ class SAETrainer(Generic[T_TRAINING_SAE, T_TRAINING_SAE_CONFIG]):
                     sae_in=sae_in,
                     dead_neuron_mask=self.dead_neurons,
                     coefficients=self.get_coefficients(),
+                    n_training_steps=self.n_training_steps,
                 ),
             )
 

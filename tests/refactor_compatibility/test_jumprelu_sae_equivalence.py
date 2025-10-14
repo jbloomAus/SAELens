@@ -372,6 +372,7 @@ def test_jumprelu_training_equivalence():  # type: ignore # Kept ignore as retur
             sae_in=x,
             coefficients={"l0": new_sae.cfg.l0_coefficient},
             dead_neuron_mask=None,
+            n_training_steps=0,
         )
     )
 

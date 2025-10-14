@@ -56,6 +56,7 @@ def test_JumpReLUTrainingSAE_training_forward_pass():
             sae_in=x,
             coefficients={"l0": sae.cfg.l0_coefficient},
             dead_neuron_mask=None,
+            n_training_steps=0,
         ),
     )
 
@@ -303,6 +304,7 @@ def test_JumpReLUTrainingSAE_forward_tanh_sparsity_with_pre_act_loss():
             sae_in=x,
             coefficients={"l0": sae.cfg.l0_coefficient},
             dead_neuron_mask=dead_neuron_mask,
+            n_training_steps=0,
         ),
     )
 
@@ -363,6 +365,7 @@ def test_JumpReLUTrainingSAE_tanh_scale_increases_l0_loss():
             sae_in=x,
             coefficients={"l0": 1.0},
             dead_neuron_mask=None,
+            n_training_steps=0,
         ),
     )
 
@@ -372,6 +375,7 @@ def test_JumpReLUTrainingSAE_tanh_scale_increases_l0_loss():
             sae_in=x,
             coefficients={"l0": 1.0},
             dead_neuron_mask=None,
+            n_training_steps=0,
         ),
     )
 
@@ -406,5 +410,6 @@ def test_JumpReLUTrainingSAE_errors_on_invalid_sparsity_loss_mode():
                 sae_in=x,
                 coefficients={"l0": 1.0},
                 dead_neuron_mask=None,
+                n_training_steps=0,
             ),
         )
