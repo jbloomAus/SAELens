@@ -356,6 +356,7 @@ def test_gated_training_equivalence():  # type: ignore
             sae_in=x,
             coefficients={"l1": new_sae.cfg.l1_coefficient},
             dead_neuron_mask=None,
+            n_training_steps=0,
         )
     )
 

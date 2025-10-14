@@ -217,6 +217,7 @@ class TrainStepInput:
     sae_in: torch.Tensor
     coefficients: dict[str, float]
     dead_neuron_mask: torch.Tensor | None
+    n_training_steps: int
 
 
 class TrainCoefficientConfig(NamedTuple):

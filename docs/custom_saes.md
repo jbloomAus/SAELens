@@ -182,6 +182,7 @@ class TrainStepInput:
     sae_in: torch.Tensor
     coefficients: dict[str, float]
     dead_neuron_mask: torch.Tensor | None
+    n_training_steps: int
 ```
 
 This method should return a `TrainStepOutput` object, which contains the output of the training step. It's signature is below:
