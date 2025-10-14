@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v6.16.0 (2025-10-14)
+
+### Feature
+
+* feat: include step num in train step input (#568) ([`d7cecc4`](https://github.com/jbloomAus/SAELens/commit/d7cecc456cf61a4b9a7b5cce8c9a55b1623bdbc5))
+
 ## v6.15.0 (2025-10-13)
 
 ### Feature
