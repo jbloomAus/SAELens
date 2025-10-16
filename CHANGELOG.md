@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v6.16.1 (2025-10-16)
+
+### Fix
+
+* fix: pretrained_sae_loader doc file link (#569) ([`61638d2`](https://github.com/jbloomAus/SAELens/commit/61638d269670f9e686bea373d4e3f0f432ed54e3))
+
 ## v6.16.0 (2025-10-14)
 
 ### Feature
