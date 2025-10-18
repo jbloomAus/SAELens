@@ -160,6 +160,7 @@ class SAEConfig(ABC):
     ] = "none"  # none, expected_average_only_in (Anthropic April Update), constant_norm_rescale (Anthropic Feb Update)
     reshape_activations: Literal["none", "hook_z"] = "none"
     metadata: SAEMetadata = field(default_factory=SAEMetadata)
+    normalize_decoder: bool = False
 
     @classmethod
     @abstractmethod
