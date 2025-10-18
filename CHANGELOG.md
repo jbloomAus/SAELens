@@ -1,5 +1,29 @@
 # CHANGELOG
 
+## v6.17.0 (2025-10-18)
+
+### Feature
+
+* feat: Resume training from checkpoints (#561)
+
+* setting up saving / resuming from checkpoints in training
+
+* adding some tests for checkpointing
+
+* more tests
+
+* adding docs
+
+* reverting notebooks, not sure why they changed
+
+* try busting CI cache
+
+* fixing tests
+
+* fixing tests
+
+* changes from CR ([`dee399c`](https://github.com/jbloomAus/SAELens/commit/dee399c4ccdc9e29ed1f539c4af03c17aba48c4a))
+
 ## v6.16.3 (2025-10-18)
 
 ### Fix
