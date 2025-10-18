@@ -331,9 +331,10 @@ To resume training from a saved checkpoint, set `resume_from_checkpoint` to the 
 ```python
 
 cfg = LanguageModelSAERunnerConfig(
-    # ...
+    # ... other LanguageModelSAERunnerConfig parameters ...
+    resume_from_checkpoint="path/to/checkpoint"
 )
-runner = LanguageModelSAETrainingRunner(cfg, resume_from_checkpoint="path/to/checkpoint")
+runner = LanguageModelSAETrainingRunner(cfg)
 runner.run()
 
 ```

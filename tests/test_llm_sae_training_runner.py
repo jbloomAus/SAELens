@@ -140,7 +140,7 @@ def test_parse_cfg_args_works_with_basic_arguments():
         "--training_tokens",
         "1000000",
     ]
-    cfg, resume_from_checkpoint = _parse_cfg_args(args)
+    cfg = _parse_cfg_args(args)
     assert isinstance(cfg, LanguageModelSAERunnerConfig)
     assert cfg.model_name == "gpt2"
     assert cfg.dataset_path == "test_dataset"
@@ -154,7 +154,7 @@ def test_parse_cfg_args_works_with_basic_arguments():
     assert cfg.sae.l1_coefficient == 1.0  # default value
     assert cfg.sae.lp_norm == 1.0  # default value
     assert cfg.sae.l1_warm_up_steps == 0  # default value
-    assert resume_from_checkpoint is None
+    assert cfg.resume_from_checkpoint is None
 
 
 def test_parse_cfg_args_selects_gated_architecture():
@@ -176,7 +176,7 @@ def test_parse_cfg_args_selects_gated_architecture():
         "--l1_warm_up_steps",
         "1000",
     ]
-    cfg, resume_from_checkpoint = _parse_cfg_args(args)
+    cfg = _parse_cfg_args(args)
     assert isinstance(cfg, LanguageModelSAERunnerConfig)
     assert cfg.model_name == "gpt2"
     assert cfg.dataset_path == "test_dataset"
@@ -187,7 +187,7 @@ def test_parse_cfg_args_selects_gated_architecture():
     assert isinstance(cfg.sae, GatedTrainingSAEConfig)
     assert cfg.sae.l1_coefficient == 0.5
     assert cfg.sae.l1_warm_up_steps == 1000
-    assert resume_from_checkpoint is None
+    assert cfg.resume_from_checkpoint is None
 
 
 def test_parse_cfg_args_selects_topk_architecture():
@@ -207,7 +207,7 @@ def test_parse_cfg_args_selects_topk_architecture():
         "--k",
         "50",
     ]
-    cfg, resume_from_checkpoint = _parse_cfg_args(args)
+    cfg = _parse_cfg_args(args)
     assert isinstance(cfg, LanguageModelSAERunnerConfig)
     assert cfg.model_name == "gpt2"
     assert cfg.dataset_path == "test_dataset"
@@ -217,7 +217,7 @@ def test_parse_cfg_args_selects_topk_architecture():
     assert cfg.sae.architecture() == "topk"
     assert isinstance(cfg.sae, TopKTrainingSAEConfig)
     assert cfg.sae.k == 50
-    assert resume_from_checkpoint is None
+    assert cfg.resume_from_checkpoint is None
 
 
 def test_parse_cfg_args_selects_standard_architecture_with_specific_options():
@@ -243,7 +243,7 @@ def test_parse_cfg_args_selects_standard_architecture_with_specific_options():
         "--resume_from_checkpoint",
         "test_checkpoint",
     ]
-    cfg, resume_from_checkpoint = _parse_cfg_args(args)
+    cfg = _parse_cfg_args(args)
     assert isinstance(cfg, LanguageModelSAERunnerConfig)
     assert cfg.model_name == "gpt2"
     assert cfg.dataset_path == "test_dataset"
@@ -255,7 +255,7 @@ def test_parse_cfg_args_selects_standard_architecture_with_specific_options():
     assert cfg.sae.l1_coefficient == 0.8
     assert cfg.sae.lp_norm == 1.5
     assert cfg.sae.l1_warm_up_steps == 2000
-    assert resume_from_checkpoint == "test_checkpoint"
+    assert cfg.resume_from_checkpoint == "test_checkpoint"
 
 
 def test_parse_cfg_args_selects_jumprelu_architecture():
@@ -283,7 +283,7 @@ def test_parse_cfg_args_selects_jumprelu_architecture():
         "--resume_from_checkpoint",
         "test_checkpoint",
     ]
-    cfg, resume_from_checkpoint = _parse_cfg_args(args)
+    cfg = _parse_cfg_args(args)
     assert isinstance(cfg, LanguageModelSAERunnerConfig)
     assert cfg.model_name == "gpt2"
     assert cfg.dataset_path == "test_dataset"
@@ -296,7 +296,7 @@ def test_parse_cfg_args_selects_jumprelu_architecture():
     assert cfg.sae.jumprelu_bandwidth == 0.0005
     assert cfg.sae.l0_coefficient == 0.3
     assert cfg.sae.l0_warm_up_steps == 500
-    assert resume_from_checkpoint == "test_checkpoint"
+    assert cfg.resume_from_checkpoint == "test_checkpoint"
 
 
 class TestLLMSaeEvaluator:
@@ -733,11 +733,11 @@ class TestResumeFromCheckpoint:
             "--resume_from_checkpoint",
             "/path/to/checkpoint",
         ]
-        cfg, resume_path = _parse_cfg_args(args)
+        cfg = _parse_cfg_args(args)
 
         assert cfg.model_name == "test-model"
         assert cfg.dataset_path == "test-dataset"
-        assert resume_path == "/path/to/checkpoint"
+        assert cfg.resume_from_checkpoint == "/path/to/checkpoint"
 
     def test_resume_from_checkpoint(
         self,

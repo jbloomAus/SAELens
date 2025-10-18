@@ -104,7 +104,6 @@ class LanguageModelSAETrainingRunner:
     model: HookedRootModule
     sae: TrainingSAE[Any]
     activations_store: ActivationsStore
-    resume_from_checkpoint: Path | str | None
 
     def __init__(
         self,
@@ -114,7 +113,6 @@ class LanguageModelSAETrainingRunner:
         override_sae: TrainingSAE[Any] | None = None,
         resume_from_checkpoint: Path | str | None = None,
     ):
-        self.resume_from_checkpoint = resume_from_checkpoint
         if override_dataset is not None:
             logger.warning(
                 f"You just passed in a dataset which will override the one specified in your configuration: {cfg.dataset_path}. As a consequence this run will not be reproducible via configuration alone."
@@ -188,11 +186,11 @@ class LanguageModelSAETrainingRunner:
             cfg=self.cfg.to_sae_trainer_config(),
         )
 
-        if self.resume_from_checkpoint is not None:
-            logger.info(f"Resuming from checkpoint: {self.resume_from_checkpoint}")
-            trainer.load_trainer_state(self.resume_from_checkpoint)
-            self.sae.load_weights_from_checkpoint(self.resume_from_checkpoint)
-            self.activations_store.load_from_checkpoint(self.resume_from_checkpoint)
+        if self.cfg.resume_from_checkpoint is not None:
+            logger.info(f"Resuming from checkpoint: {self.cfg.resume_from_checkpoint}")
+            trainer.load_trainer_state(self.cfg.resume_from_checkpoint)
+            self.sae.load_weights_from_checkpoint(self.cfg.resume_from_checkpoint)
+            self.activations_store.load_from_checkpoint(self.cfg.resume_from_checkpoint)
 
         self._compile_if_needed()
         sae = self.run_trainer_with_interruption_handling(trainer)
@@ -322,7 +320,7 @@ class LanguageModelSAETrainingRunner:
 
 def _parse_cfg_args(
     args: Sequence[str],
-) -> tuple[LanguageModelSAERunnerConfig[TrainingSAEConfig], str | None]:
+) -> LanguageModelSAERunnerConfig[TrainingSAEConfig]:
     """
     Parse command line arguments into a LanguageModelSAERunnerConfig.
 
@@ -409,25 +407,17 @@ def _parse_cfg_args(
     parser = ArgumentParser(exit_on_error=False)
     parser.add_arguments(concrete_config_class, dest="cfg")
 
-    parser.add_argument(
-        "--resume_from_checkpoint",
-        type=str,
-        help="Path to the checkpoint to resume from",
-    )
-
     # Parse the filtered arguments (without --architecture)
     parsed_args = parser.parse_args(filtered_args)
 
     # Return the parsed configuration
-    return parsed_args.cfg, parsed_args.resume_from_checkpoint
+    return parsed_args.cfg
 
 
 # moved into its own function to make it easier to test
 def _run_cli(args: Sequence[str]):
-    cfg, resume_from_checkpoint = _parse_cfg_args(args)
-    LanguageModelSAETrainingRunner(
-        cfg=cfg, resume_from_checkpoint=resume_from_checkpoint
-    ).run()
+    cfg = _parse_cfg_args(args)
+    LanguageModelSAETrainingRunner(cfg=cfg).run()
 
 
 if __name__ == "__main__":
