@@ -4,6 +4,7 @@ import json
 import os
 import warnings
 from collections.abc import Generator, Iterator, Sequence
+from pathlib import Path
 from typing import Any, Literal, cast
 
 import datasets
@@ -13,8 +14,8 @@ from huggingface_hub import hf_hub_download
 from huggingface_hub.utils import HfHubHTTPError
 from jaxtyping import Float, Int
 from requests import HTTPError
-from safetensors.torch import save_file
-from tqdm import tqdm
+from safetensors.torch import load_file, save_file
+from tqdm.auto import tqdm
 from transformer_lens.hook_points import HookedRootModule
 from transformers import AutoTokenizer, PreTrainedTokenizerBase
 
@@ -24,7 +25,7 @@ from sae_lens.config import (
     HfDataset,
     LanguageModelSAERunnerConfig,
 )
-from sae_lens.constants import DTYPE_MAP
+from sae_lens.constants import ACTIVATIONS_STORE_STATE_FILENAME, DTYPE_MAP
 from sae_lens.pretokenize_runner import get_special_token_from_cfg
 from sae_lens.saes.sae import SAE, T_SAE_CONFIG, T_TRAINING_SAE_CONFIG
 from sae_lens.tokenization_and_batching import concat_and_batch_sequences
@@ -728,6 +729,48 @@ class ActivationsStore:
     def save(self, file_path: str):
         """save the state dict to a file in safetensors format"""
         save_file(self.state_dict(), file_path)
+
+    def save_to_checkpoint(self, checkpoint_path: str | Path):
+        """Save the state dict to a checkpoint path"""
+        self.save(str(Path(checkpoint_path) / ACTIVATIONS_STORE_STATE_FILENAME))
+
+    def load_from_checkpoint(self, checkpoint_path: str | Path):
+        """Load the state dict from a checkpoint path"""
+        self.load(str(Path(checkpoint_path) / ACTIVATIONS_STORE_STATE_FILENAME))
+
+    def load(self, file_path: str):
+        """Load the state dict from a file in safetensors format"""
+
+        state_dict = load_file(file_path)
+
+        if "n_dataset_processed" in state_dict:
+            target_n_dataset_processed = state_dict["n_dataset_processed"].item()
+
+            # Only fast-forward if needed
+
+            if target_n_dataset_processed > self.n_dataset_processed:
+                logger.info(
+                    "Fast-forwarding through dataset samples to match checkpoint position"
+                )
+                samples_to_skip = target_n_dataset_processed - self.n_dataset_processed
+
+                pbar = tqdm(
+                    total=samples_to_skip,
+                    desc="Fast-forwarding through dataset",
+                    leave=False,
+                )
+                while target_n_dataset_processed > self.n_dataset_processed:
+                    start = self.n_dataset_processed
+                    try:
+                        # Just consume and ignore the values to fast-forward
+                        next(self.iterable_sequences)
+                    except StopIteration:
+                        logger.warning(
+                            "Dataset exhausted during fast-forward. Resetting dataset."
+                        )
+                        self.iterable_sequences = self._iterate_tokenized_sequences()
+                    pbar.update(self.n_dataset_processed - start)
+                pbar.close()
 
 
 def validate_pretokenized_dataset_tokenizer(

@@ -324,7 +324,20 @@ Some general performance tips:
 
 ## Checkpoints
 
-Checkpoints allow you to save a snapshot of the SAE and sparsitity statistics during training. To enable checkpointing, set `n_checkpoints` to a value larger than 0. If WandB logging is enabled, checkpoints will be uploaded as WandB artifacts. To save checkpoints locally, the `checkpoint_path` parameter can be set to a local directory.
+Checkpoints allow you to save a snapshot of the SAE and sparsitity statistics during training. To enable checkpointing, set `n_checkpoints` to a value larger than 0. If WandB logging is enabled, checkpoints will be uploaded as WandB artifacts. To save checkpoints locally, the `checkpoint_path` parameter can be set to a local directory. You can also set `save_final_checkpoint=True` to save a final checkpoint after training is finished.
+
+To resume training from a saved checkpoint, set `resume_from_checkpoint` to the path of the checkpoint when creating a `LanguageModelSAETrainingRunner`, or set `--resume_from_checkpoint` when running the CLI.
+
+```python
+
+cfg = LanguageModelSAERunnerConfig(
+    # ... other LanguageModelSAERunnerConfig parameters ...
+    resume_from_checkpoint="path/to/checkpoint"
+)
+runner = LanguageModelSAETrainingRunner(cfg)
+runner.run()
+
+```
 
 ## Optimizers and Schedulers
 

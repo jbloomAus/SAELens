@@ -171,6 +171,7 @@ class LanguageModelSAERunnerConfig(Generic[T_TRAINING_SAE_CONFIG]):
         n_checkpoints (int): The number of checkpoints to save during training. 0 means no checkpoints.
         checkpoint_path (str | None): The path to save checkpoints. A unique ID will be appended to this path. Set to None to disable checkpoint saving. (default is "checkpoints")
         save_final_checkpoint (bool): Whether to include an additional final checkpoint when training is finished. (default is False).
+        resume_from_checkpoint (str | None): The path to the checkpoint to resume training from. (default is None).
         output_path (str | None): The path to save outputs. Set to None to disable output saving. (default is "output")
         verbose (bool): Whether to print verbose output. (default is True)
         model_kwargs (dict[str, Any]): Keyword arguments for `model.run_with_cache`
@@ -261,6 +262,7 @@ class LanguageModelSAERunnerConfig(Generic[T_TRAINING_SAE_CONFIG]):
     checkpoint_path: str | None = "checkpoints"
     save_final_checkpoint: bool = False
     output_path: str | None = "output"
+    resume_from_checkpoint: str | None = None
 
     # Misc
     verbose: bool = True

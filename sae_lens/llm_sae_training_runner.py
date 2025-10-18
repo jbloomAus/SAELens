@@ -16,7 +16,6 @@ from typing_extensions import deprecated
 from sae_lens import logger
 from sae_lens.config import HfDataset, LanguageModelSAERunnerConfig
 from sae_lens.constants import (
-    ACTIVATIONS_STORE_STATE_FILENAME,
     RUNNER_CFG_FILENAME,
     SPARSITY_FILENAME,
 )
@@ -112,6 +111,7 @@ class LanguageModelSAETrainingRunner:
         override_dataset: HfDataset | None = None,
         override_model: HookedRootModule | None = None,
         override_sae: TrainingSAE[Any] | None = None,
+        resume_from_checkpoint: Path | str | None = None,
     ):
         if override_dataset is not None:
             logger.warning(
@@ -153,6 +153,7 @@ class LanguageModelSAETrainingRunner:
                 )
         else:
             self.sae = override_sae
+
         self.sae.to(self.cfg.device)
 
     def run(self):
@@ -184,6 +185,12 @@ class LanguageModelSAETrainingRunner:
             save_checkpoint_fn=self.save_checkpoint,
             cfg=self.cfg.to_sae_trainer_config(),
         )
+
+        if self.cfg.resume_from_checkpoint is not None:
+            logger.info(f"Resuming from checkpoint: {self.cfg.resume_from_checkpoint}")
+            trainer.load_trainer_state(self.cfg.resume_from_checkpoint)
+            self.sae.load_weights_from_checkpoint(self.cfg.resume_from_checkpoint)
+            self.activations_store.load_from_checkpoint(self.cfg.resume_from_checkpoint)
 
         self._compile_if_needed()
         sae = self.run_trainer_with_interruption_handling(trainer)
@@ -304,9 +311,7 @@ class LanguageModelSAETrainingRunner:
         if checkpoint_path is None:
             return
 
-        self.activations_store.save(
-            str(checkpoint_path / ACTIVATIONS_STORE_STATE_FILENAME)
-        )
+        self.activations_store.save_to_checkpoint(checkpoint_path)
 
         runner_config = self.cfg.to_dict()
         with open(checkpoint_path / RUNNER_CFG_FILENAME, "w") as f:
