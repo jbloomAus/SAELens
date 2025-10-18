@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v6.16.2 (2025-10-18)
+
+### Fix
+
+* fix: improve batchtopk handling of 3d+ inputs (#570) ([`92ef848`](https://github.com/jbloomAus/SAELens/commit/92ef8484428d2e52a88983abedef283347c2e00f))
+
 ## v6.16.1 (2025-10-16)
 
 ### Fix
