@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v6.16.3 (2025-10-18)
+
+### Fix
+
+* fix: sync matryoshka implementation with dictionary_learning (#571) ([`9809d8a`](https://github.com/jbloomAus/SAELens/commit/9809d8a9a2ea3de4e45f27a336bb9242126f6a14))
+
 ## v6.16.2 (2025-10-18)
 
 ### Fix
