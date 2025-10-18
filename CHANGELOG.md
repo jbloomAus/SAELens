@@ -1,5 +1,29 @@
 # CHANGELOG
 
+## v6.16.3 (2025-10-18)
+
+### Fix
+
+* fix: sync matryoshka implementation with dictionary_learning (#571) ([`9809d8a`](https://github.com/jbloomAus/SAELens/commit/9809d8a9a2ea3de4e45f27a336bb9242126f6a14))
+
+## v6.16.2 (2025-10-18)
+
+### Fix
+
+* fix: improve batchtopk handling of 3d+ inputs (#570) ([`92ef848`](https://github.com/jbloomAus/SAELens/commit/92ef8484428d2e52a88983abedef283347c2e00f))
+
+## v6.16.1 (2025-10-16)
+
+### Fix
+
+* fix: pretrained_sae_loader doc file link (#569) ([`61638d2`](https://github.com/jbloomAus/SAELens/commit/61638d269670f9e686bea373d4e3f0f432ed54e3))
+
+## v6.16.0 (2025-10-14)
+
+### Feature
+
+* feat: include step num in train step input (#568) ([`d7cecc4`](https://github.com/jbloomAus/SAELens/commit/d7cecc456cf61a4b9a7b5cce8c9a55b1623bdbc5))
+
 ## v6.15.0 (2025-10-13)
 
 ### Feature

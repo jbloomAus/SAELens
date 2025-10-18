@@ -23,7 +23,9 @@ class BatchTopK(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         acts = x.relu()
         flat_acts = acts.flatten()
-        acts_topk_flat = torch.topk(flat_acts, int(self.k * acts.shape[0]), dim=-1)
+        # Calculate total number of samples across all non-feature dimensions
+        num_samples = acts.shape[:-1].numel()
+        acts_topk_flat = torch.topk(flat_acts, int(self.k * num_samples), dim=-1)
         return (
             torch.zeros_like(flat_acts)
             .scatter(-1, acts_topk_flat.indices, acts_topk_flat.values)

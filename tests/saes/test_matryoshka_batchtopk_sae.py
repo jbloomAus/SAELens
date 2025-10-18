@@ -3,6 +3,10 @@ from pathlib import Path
 
 import pytest
 import torch
+from dictionary_learning.trainers.matryoshka_batch_top_k import (
+    MatryoshkaBatchTopKSAE,
+    MatryoshkaBatchTopKTrainer,
+)
 
 from sae_lens.saes.batchtopk_sae import BatchTopKTrainingSAE
 from sae_lens.saes.jumprelu_sae import JumpReLUSAE
@@ -65,16 +69,6 @@ def test_validate_matryoshka_config_raises_if_decreasing():
         matryoshka_widths=[10, 5, 20],
     )
     with pytest.raises(ValueError, match="strictly increasing"):
-        _validate_matryoshka_config(cfg)
-
-
-def test_validate_matryoshka_config_raises_if_smallest_width_is_less_than_k():
-    cfg = build_matryoshka_batchtopk_sae_training_cfg(
-        d_sae=20,
-        matryoshka_widths=[5, 10],
-        k=15,
-    )
-    with pytest.raises(ValueError, match="smaller than cfg.k"):
         _validate_matryoshka_config(cfg)
 
 
@@ -183,52 +177,6 @@ def test_MatryoshkaBatchTopKTrainingSAE_with_single_matryoshka_level_matches_bat
     assert_close(output.hidden_pre, btk_output.hidden_pre)
     assert_close(output.sae_out, btk_output.sae_out)
     assert_close(output.feature_acts, btk_output.feature_acts)
-
-
-@pytest.mark.parametrize("rescale_acts_by_decoder_norm", [True, False])
-def test_MatryoshkaBatchTopKTrainingSAE_inner_levels_matches_batchtopk_with_smaller_width(
-    rescale_acts_by_decoder_norm: bool,
-):
-    cfg = build_matryoshka_batchtopk_sae_training_cfg(
-        d_in=8,
-        d_sae=16,
-        k=4,
-        matryoshka_widths=[4, 16],
-        rescale_acts_by_decoder_norm=rescale_acts_by_decoder_norm,
-        device="cpu",
-    )
-    sae = MatryoshkaBatchTopKTrainingSAE(cfg)
-    random_params(sae)
-
-    btk_sae = BatchTopKTrainingSAE(cfg)
-    btk_sae.load_state_dict(sae.state_dict())
-
-    sae_in = torch.randn(10, 8)
-    train_step_input = TrainStepInput(
-        sae_in=sae_in,
-        coefficients={},
-        dead_neuron_mask=None,
-        n_training_steps=0,
-    )
-
-    output = sae.training_forward_pass(train_step_input)
-    btk_full_output = btk_sae.training_forward_pass(train_step_input)
-
-    # now set btk to have width 4, matching the inner level width
-    btk_sae.W_dec.data = btk_sae.W_dec[:4]
-    btk_sae.W_enc.data = btk_sae.W_enc[:, :4]
-    btk_sae.b_enc.data = btk_sae.b_enc[:4]
-    btk_sae.cfg.d_sae = 4
-    btk_inner_output = btk_sae.training_forward_pass(train_step_input)
-
-    # the full loss should be the sum of the outer and inner losses
-    assert_close(output.loss, btk_full_output.loss + btk_inner_output.loss)
-    assert_close(output.losses["inner_mse_loss_4"], btk_inner_output.loss)
-    # outer loss is just 'mse_loss'
-    assert_close(output.losses["mse_loss"], btk_full_output.loss)
-    assert_close(output.hidden_pre, btk_full_output.hidden_pre)
-    assert_close(output.sae_out, btk_full_output.sae_out)
-    assert_close(output.feature_acts, btk_full_output.feature_acts)
 
 
 def test_MatryoshkaBatchTopKTrainingSAE_with_two_matryoshka_levels():
@@ -362,3 +310,106 @@ def test_MatryoshkaBatchTopKTrainingSAE_save_and_load_inference_sae(
     training_full_out = training_sae(sae_in)
     inference_full_out = inference_sae(sae_in)
     assert_close(training_full_out, inference_full_out)
+
+
+def test_MatryoshkaBatchTopKTrainingSAE_matches_dictionary_learning() -> None:
+    """
+    Test that our MatryoshkaBatchTopKTrainingSAE implementation produces the same
+    outputs as the dictionary_learning MatryoshkaBatchTopKSAE implementation.
+    """
+    cfg = build_matryoshka_batchtopk_sae_training_cfg(
+        d_in=5,
+        d_sae=10,
+        k=2,
+        matryoshka_widths=[2, 3, 4, 10],
+        device="cpu",
+        apply_b_dec_to_input=True,  # dictionary_learning subtracts b_dec from input
+    )
+    sae = MatryoshkaBatchTopKTrainingSAE(cfg)
+    random_params(sae)
+    sae.fold_W_dec_norm()
+
+    # Create comparison SAE from dictionary_learning
+    # group_sizes=[2, 1, 1, 6] corresponds to widths [2, 3, 4, 10]
+    comparison_sae = MatryoshkaBatchTopKSAE(
+        activation_dim=5,
+        dict_size=10,
+        k=2,
+        group_sizes=[2, 1, 1, 6],
+    )
+
+    # Copy parameters from our SAE to the comparison SAE
+    comparison_sae.W_enc.data = sae.W_enc.data
+    comparison_sae.W_dec.data = sae.W_dec.data
+    comparison_sae.b_dec.data = sae.b_dec.data
+    comparison_sae.b_enc.data = sae.b_enc.data
+    comparison_sae.threshold.data = sae.topk_threshold.data  # type: ignore
+
+    x = torch.randn(4, 5)
+
+    with torch.no_grad():
+        output = sae.training_forward_pass(TrainStepInput(x, {}, None, 0))
+
+        comp_feats = comparison_sae.encode(x, use_threshold=False)
+        comp_sae_out = comparison_sae.decode(comp_feats)  # type: ignore
+
+    assert_close(output.feature_acts, comp_feats)  # type: ignore
+    assert_close(output.sae_out, comp_sae_out)
+
+
+def test_MatryoshkaBatchTopKTrainingSAE_matches_dictionary_learning_losses() -> None:
+    """
+    Test that our MatryoshkaBatchTopKTrainingSAE losses match the dictionary_learning
+    MatryoshkaBatchTopKTrainer losses.
+    """
+    cfg = build_matryoshka_batchtopk_sae_training_cfg(
+        d_in=5,
+        d_sae=10,
+        k=2,
+        matryoshka_widths=[2, 3, 4, 10],
+        device="cpu",
+        apply_b_dec_to_input=True,  # dictionary_learning subtracts b_dec from input
+    )
+    sae = MatryoshkaBatchTopKTrainingSAE(cfg)
+    random_params(sae)
+    sae.fold_W_dec_norm()
+
+    # Create comparison trainer from dictionary_learning
+    # group_fractions=[0.2, 0.1, 0.1, 0.6] corresponds to widths [2, 3, 4, 10]
+    comparison_trainer = MatryoshkaBatchTopKTrainer(
+        steps=100,
+        activation_dim=5,
+        dict_size=10,
+        k=2,
+        layer=0,
+        warmup_steps=0,
+        lm_name="gpt2",
+        group_fractions=[0.2, 0.1, 0.1, 0.6],
+        group_weights=[1.0, 1.0, 1.0, 1.0],
+    )
+
+    # Copy parameters from our SAE to the comparison trainer
+    comparison_trainer.ae.W_enc.data = sae.W_enc.data
+    comparison_trainer.ae.W_dec.data = sae.W_dec.data
+    comparison_trainer.ae.b_dec.data = sae.b_dec.data
+    comparison_trainer.ae.b_enc.data = sae.b_enc.data
+    comparison_trainer.ae.threshold = sae.topk_threshold
+
+    x = torch.randn(4, 5)
+
+    with torch.no_grad():
+        output = sae.training_forward_pass(TrainStepInput(x, {}, None, 0))
+        comp_losses = comparison_trainer.loss(x, logging=True, step=0).losses  # type: ignore
+
+    # Compare losses
+    combined_loss = (
+        output.losses["mse_loss"]
+        + output.losses["inner_mse_loss_2"]
+        + output.losses["inner_mse_loss_3"]
+        + output.losses["inner_mse_loss_4"]
+    )
+    num_levels = len(cfg.matryoshka_widths)
+
+    # dictionary_learning loss is divided by the number of levels
+    assert combined_loss.item() / num_levels == pytest.approx(comp_losses["loss"])
+    assert output.loss.item() / num_levels == pytest.approx(comp_losses["loss"])

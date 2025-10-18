@@ -27,6 +27,9 @@ from sae_lens.evals import (
 )
 from sae_lens.load_model import load_model
 from sae_lens.loading.pretrained_saes_directory import PretrainedSAELookup
+from sae_lens.saes.batchtopk_sae import (
+    BatchTopKTrainingSAE,
+)
 from sae_lens.saes.sae import SAE, TrainingSAE
 from sae_lens.saes.standard_sae import StandardSAE, StandardTrainingSAE
 from sae_lens.saes.topk_sae import TopKTrainingSAE
@@ -35,9 +38,11 @@ from sae_lens.training.activations_store import ActivationsStore
 from tests.helpers import (
     NEEL_NANDA_C4_10K_DATASET,
     TINYSTORIES_MODEL,
+    build_batchtopk_runner_cfg,
     build_runner_cfg,
     build_topk_runner_cfg,
     load_model_cached,
+    random_params,
 )
 
 TRAINER_EVAL_CONFIG = EvalConfig(
@@ -715,3 +720,47 @@ def test_kl_matches_old_implementation():
     assert _original_kl(test_original_logits, test_new_logits) == pytest.approx(
         _kl(test_original_logits, test_new_logits)
     )
+
+
+def test_get_sparsity_and_variance_metrics_works_with_batchtopk_saes(
+    ts_model: HookedTransformer,
+):
+    example_dataset = Dataset.from_list(
+        [
+            {"text": "hello world1"},
+            {"text": "hello world2"},
+            {"text": "hello world3"},
+        ]
+        * 20
+    )
+    runner_cfg = build_batchtopk_runner_cfg(
+        k=2,
+        d_in=64,
+        d_sae=10,
+        rescale_acts_by_decoder_norm=True,
+    )
+    sae = BatchTopKTrainingSAE(runner_cfg.sae)
+    random_params(sae)
+    sae.b_enc.data = torch.randn(10) + 10.0
+
+    store = ActivationsStore.from_config(
+        ts_model, runner_cfg, override_dataset=example_dataset
+    )
+
+    # Get metrics
+    sparsity, _ = get_sparsity_and_variance_metrics(
+        sae=sae,
+        model=ts_model,
+        activation_store=store,
+        activation_scaler=ActivationScaler(),
+        n_batches=2,
+        compute_l2_norms=False,
+        compute_sparsity_metrics=True,
+        compute_variance_metrics=False,
+        compute_featurewise_density_statistics=False,
+        eval_batch_size_prompts=2,
+        model_kwargs={"device": "cpu"},
+    )
+
+    # Check that l0 is close to k
+    assert sparsity["l0"] == pytest.approx(2.0)

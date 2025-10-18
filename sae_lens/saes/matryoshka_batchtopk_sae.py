@@ -78,14 +78,11 @@ class MatryoshkaBatchTopKTrainingSAE(BatchTopKTrainingSAE):
     @override
     def training_forward_pass(self, step_input: TrainStepInput) -> TrainStepOutput:
         base_output = super().training_forward_pass(step_input)
-        hidden_pre = base_output.hidden_pre
         inv_W_dec_norm = 1 / self.W_dec.norm(dim=-1)
         # the outer matryoshka level is the base SAE, so we don't need to add an extra loss for it
         for width in self.cfg.matryoshka_widths[:-1]:
-            inner_hidden_pre = hidden_pre[:, :width]
-            inner_feat_acts = self.activation_fn(inner_hidden_pre)
             inner_reconstruction = self._decode_matryoshka_level(
-                inner_feat_acts, width, inv_W_dec_norm
+                base_output.feature_acts, width, inv_W_dec_norm
             )
             inner_mse_loss = (
                 self.mse_loss_fn(inner_reconstruction, step_input.sae_in)
@@ -105,16 +102,17 @@ class MatryoshkaBatchTopKTrainingSAE(BatchTopKTrainingSAE):
         """
         Decodes feature activations back into input space for a matryoshka level
         """
+        inner_feature_acts = feature_acts[:, :width]
         # Handle sparse tensors using efficient sparse matrix multiplication
         if self.cfg.rescale_acts_by_decoder_norm:
             # need to multiply by the inverse of the norm because division is illegal with sparse tensors
-            feature_acts = feature_acts * inv_W_dec_norm[:width]
-        if feature_acts.is_sparse:
+            inner_feature_acts = inner_feature_acts * inv_W_dec_norm[:width]
+        if inner_feature_acts.is_sparse:
             sae_out_pre = (
-                _sparse_matmul_nd(feature_acts, self.W_dec[:width]) + self.b_dec
+                _sparse_matmul_nd(inner_feature_acts, self.W_dec[:width]) + self.b_dec
             )
         else:
-            sae_out_pre = feature_acts @ self.W_dec[:width] + self.b_dec
+            sae_out_pre = inner_feature_acts @ self.W_dec[:width] + self.b_dec
         sae_out_pre = self.run_time_activation_norm_fn_out(sae_out_pre)
         return self.reshape_fn_out(sae_out_pre, self.d_head)
 
@@ -136,8 +134,4 @@ def _validate_matryoshka_config(cfg: MatryoshkaBatchTopKTrainingSAEConfig) -> No
     if len(cfg.matryoshka_widths) == 1:
         warnings.warn(
             "WARNING: You have only set one matryoshka level. This is equivalent to using a standard BatchTopK SAE and is likely not what you want."
-        )
-    if cfg.matryoshka_widths[0] < cfg.k:
-        raise ValueError(
-            "The smallest matryoshka level width cannot be smaller than cfg.k."
         )
