@@ -309,7 +309,7 @@ class TemporalSAE(SAE[TemporalSAEConfig]):
         sae_out = self.hook_sae_recons(sae_out)
 
         # Add bias (already removed in process_sae_in)
-        # Actually, b_dec should be added back
+        print("NOTE this only decodes x_novel. The x_pred is missing, so we're not reconstructing the full x."
         return sae_out + self.b_dec
 
     @override
