@@ -1028,3 +1028,37 @@ def test_get_mntss_clt_layer_huggingface_loader(
     torch.testing.assert_close(state_dict["b_enc"], b_enc_tensor)
     torch.testing.assert_close(state_dict["b_dec"], b_dec_tensor)
     torch.testing.assert_close(state_dict["W_dec"], W_dec_tensor.sum(dim=1))
+
+
+def test_TemporalSAE_config_from_pretrained():
+    cfg_dict = load_sae_config_from_huggingface(
+        "temporal-sae-gemma-2-2b",
+        sae_id="blocks.12.hook_resid_post",
+    )
+
+    expected_cfg = {
+        "d_in": 2304,
+        "d_sae": 9216,
+        "n_heads": 4,
+        "n_attn_layers": 1,
+        "bottleneck_factor": 1,
+        "sae_diff_type": "topk",
+        "kval_topk": 192,
+        "tied_weights": True,
+        "dtype": "float32",
+        "device": "cpu",
+        "normalize_activations": "none",
+        "apply_b_dec_to_input": True,
+        "reshape_activations": "none",
+        "metadata": {
+            "model_name": "gemma-2-2b",
+            "hook_name": "blocks.12.hook_resid_post",
+            "dataset_path": "monology/pile-uncopyrighted",
+            "neuronpedia_id": None,
+            "prepend_bos": True,
+            "sae_lens_training_version": None,
+        },
+        "architecture": "temporal",
+    }
+
+    assert cfg_dict == expected_cfg
