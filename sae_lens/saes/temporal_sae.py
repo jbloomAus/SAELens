@@ -196,7 +196,7 @@ class TemporalSAE(SAE[TemporalSAEConfig]):
     def initialize_weights(self) -> None:
         """Initialize TemporalSAE weights."""
         # Initialize D (decoder) and b (bias)
-        self.W_Dec = nn.Parameter(
+        self.W_dec = nn.Parameter(
             torch.randn(
                 (self.cfg.d_sae, self.cfg.d_in), dtype=self.dtype, device=self.device
             )
@@ -206,37 +206,28 @@ class TemporalSAE(SAE[TemporalSAEConfig]):
         )
 
         # Initialize E (encoder) if not tied
-        if not self.cfg.tied_weights:
-            self.W_Enc = nn.Parameter(
-                torch.randn(
-                    (self.cfg.d_in, self.cfg.d_sae),
-                    dtype=self.dtype,
-                    device=self.device,
-                )
+        self.W_enc = nn.Parameter(
+            torch.randn(
+                (self.cfg.d_in, self.cfg.d_sae),
+                dtype=self.dtype,
+                device=self.device,
             )
-        else:
-            self.W_Enc = None
+        )
 
         # Map to SAELens standard naming (for compatibility)
         # W_dec points to D, W_enc points to E or D.T
-        self.W_dec = self.W_Dec
+        self.W_dec = self.W_dec
         if self.cfg.tied_weights:
             # For tied weights, W_enc is just a view of D.T
             # We'll handle this in encode()
-            self.W_enc = self.W_Dec  # Store reference, will use .T in encode
+            self.W_enc.data = self.W_dec.T
         else:
-            self.W_enc = self.W_Enc  # type: ignore
+            self.W_enc = self.W_enc  # type: ignore
         self.b_dec = self.b_dec
 
-    def get_encoder_weights(self) -> torch.Tensor:
-        """Get encoder weights (handles tied/untied case)."""
-        if self.cfg.tied_weights:
-            return self.W_Dec.T
-        return self.W_Enc  # type: ignore
-
-    def encode(
+    def encode_with_predictions(
         self, x: Float[torch.Tensor, "... d_in"]
-    ) -> Float[torch.Tensor, "... d_sae"]:
+    ) -> tuple[Float[torch.Tensor, "... d_sae"], Float[torch.Tensor, "... d_sae"]]:
         """Encode input to novel codes only.
 
         Returns only the sparse novel codes (not predicted codes).
@@ -246,7 +237,7 @@ class TemporalSAE(SAE[TemporalSAEConfig]):
         sae_in = self.process_sae_in(x)
 
         # Get encoder matrix
-        W_Enc = self.get_encoder_weights()
+        W_enc = self.W_enc
 
         B, L, _ = sae_in.shape
 
@@ -259,7 +250,7 @@ class TemporalSAE(SAE[TemporalSAEConfig]):
 
         for attn_layer in self.attn_layers:
             # Encode input to latent space
-            z_input = F.relu(torch.matmul(x_residual * self.lam, W_Enc))
+            z_input = F.relu(torch.matmul(x_residual * self.lam, W_enc))
 
             # Shift context (causal masking)
             z_ctx = torch.cat(
@@ -271,7 +262,7 @@ class TemporalSAE(SAE[TemporalSAEConfig]):
             z_pred_ = F.relu(z_pred_)
 
             # Project predicted codes back to input space
-            Dz_pred_ = torch.matmul(z_pred_, self.W_Dec)
+            Dz_pred_ = torch.matmul(z_pred_, self.W_dec)
             Dz_norm_ = Dz_pred_.norm(dim=-1, keepdim=True) + self.eps
 
             # Compute projection scale
@@ -286,7 +277,7 @@ class TemporalSAE(SAE[TemporalSAEConfig]):
             x_residual = x_residual - proj_scale * Dz_pred_
 
         # Encode residual (novel part) with sparse SAE
-        z_novel = F.relu(torch.matmul(x_residual * self.lam, W_Enc))
+        z_novel = F.relu(torch.matmul(x_residual * self.lam, W_enc))
         if self.cfg.sae_diff_type == "topk":
             kval = self.cfg.kval_topk
             if kval is not None:
@@ -296,7 +287,12 @@ class TemporalSAE(SAE[TemporalSAEConfig]):
                 z_novel = z_novel * mask
 
         # Return only novel codes (these are the interpretable features)
-        return z_novel
+        return z_novel, z_pred
+
+    def encode(
+        self, x: Float[torch.Tensor, "... d_in"]
+    ) -> Float[torch.Tensor, "... d_sae"]:
+        return self.encode_with_predictions(x)[0]
 
     def decode(
         self, feature_acts: Float[torch.Tensor, "... d_sae"]
@@ -307,7 +303,7 @@ class TemporalSAE(SAE[TemporalSAEConfig]):
         use forward() which includes predicted codes.
         """
         # Decode novel codes
-        sae_out = torch.matmul(feature_acts, self.W_Dec)
+        sae_out = torch.matmul(feature_acts, self.W_dec)
 
         # Apply hook
         sae_out = self.hook_sae_recons(sae_out)
@@ -328,7 +324,7 @@ class TemporalSAE(SAE[TemporalSAEConfig]):
         # only returns novel codes, but we need both pred and novel for reconstruction
 
         sae_in = self.process_sae_in(x)
-        W_Enc = self.get_encoder_weights()
+        W_enc = self.W_enc
 
         B, L, _ = sae_in.shape
 
@@ -339,7 +335,7 @@ class TemporalSAE(SAE[TemporalSAEConfig]):
         x_residual = sae_in.clone()
 
         for attn_layer in self.attn_layers:
-            z_input = F.relu(torch.matmul(x_residual * self.lam, W_Enc))
+            z_input = F.relu(torch.matmul(x_residual * self.lam, W_enc))
             z_ctx = torch.cat(
                 (torch.zeros_like(z_input[:, :1, :]), z_input[:, :-1, :].clone()), dim=1
             )
@@ -347,7 +343,7 @@ class TemporalSAE(SAE[TemporalSAEConfig]):
             z_pred_, _ = attn_layer(z_ctx, z_input, get_attn_map=False)
             z_pred_ = F.relu(z_pred_)
 
-            Dz_pred_ = torch.matmul(z_pred_, self.W_Dec)
+            Dz_pred_ = torch.matmul(z_pred_, self.W_dec)
             Dz_norm_ = Dz_pred_.norm(dim=-1, keepdim=True) + self.eps
 
             proj_scale = (Dz_pred_ * x_residual).sum(
@@ -357,7 +353,7 @@ class TemporalSAE(SAE[TemporalSAEConfig]):
             x_residual = x_residual - proj_scale * Dz_pred_
 
         # Encode novel part
-        z_novel = F.relu(torch.matmul(x_residual * self.lam, W_Enc))
+        z_novel = F.relu(torch.matmul(x_residual * self.lam, W_enc))
         if self.cfg.sae_diff_type == "topk":
             kval = self.cfg.kval_topk
             if kval is not None:
@@ -367,7 +363,7 @@ class TemporalSAE(SAE[TemporalSAEConfig]):
                 z_novel = z_novel * mask
 
         # Reconstruct (pred + novel)
-        x_recons = torch.matmul(z_novel + z_pred, self.W_Dec) + self.b_dec
+        x_recons = torch.matmul(z_novel + z_pred, self.W_dec) + self.b_dec
 
         return self.hook_sae_output(x_recons)
 

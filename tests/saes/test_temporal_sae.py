@@ -9,16 +9,13 @@ def test_TemporalSAE_initialization():
     cfg = build_temporal_sae_cfg()
     sae = TemporalSAE.from_dict(cfg.to_dict())
 
-    assert isinstance(sae.W_Dec, torch.nn.Parameter)
+    assert isinstance(sae.W_dec, torch.nn.Parameter)
     assert isinstance(sae.b_dec, torch.nn.Parameter)
-    assert sae.W_Dec.shape == (cfg.d_sae, cfg.d_in)
+    assert sae.W_dec.shape == (cfg.d_sae, cfg.d_in)
     assert sae.b_dec.shape == (cfg.d_in,)
 
-    if cfg.tied_weights:
-        assert sae.W_Enc is None
-    else:
-        assert isinstance(sae.W_Enc, torch.nn.Parameter)
-        assert sae.W_Enc.shape == (cfg.d_in, cfg.d_sae)
+    assert isinstance(sae.W_enc, torch.nn.Parameter)
+    assert sae.W_enc.shape == (cfg.d_in, cfg.d_sae)
 
     assert len(sae.attn_layers) == cfg.n_attn_layers
     for attn_layer in sae.attn_layers:

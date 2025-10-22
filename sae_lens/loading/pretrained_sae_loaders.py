@@ -1547,12 +1547,12 @@ def temporal_sae_huggingface_loader(
             state_dict[key] = value.to(device)
 
     # Main parameters
-    state_dict["W_Dec"] = state_dict_raw["D"].to(device)
+    state_dict["W_dec"] = state_dict_raw["D"].to(device)
     state_dict["b_dec"] = state_dict_raw["b"].to(device)
 
     # Handle tied/untied weights
     if "E" in state_dict_raw:
-        state_dict["W_Enc"] = state_dict_raw["E"].to(device)
+        state_dict["W_enc"] = state_dict_raw["E"].to(device)
 
     return cfg_dict, state_dict, None
 
