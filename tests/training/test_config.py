@@ -7,6 +7,7 @@ from sae_lens.config import (
     LanguageModelSAERunnerConfig,
     _default_cached_activations_path,
 )
+from sae_lens.saes.jumprelu_sae import JumpReLUTrainingSAEConfig
 from sae_lens.saes.standard_sae import StandardTrainingSAEConfig
 
 test_cases_for_seqpos = [
@@ -69,3 +70,46 @@ def test_default_cached_activations_path():
         )
         == "activations/ds_path/model_name/hook_name"
     )
+
+
+def test_LanguageModelSAERunnerConfig_to_dict_and_from_dict():
+    cfg = LanguageModelSAERunnerConfig(
+        sae=JumpReLUTrainingSAEConfig(
+            d_in=5,
+            d_sae=10,
+            jumprelu_init_threshold=0.1,
+            jumprelu_bandwidth=0.1,
+            jumprelu_sparsity_loss_mode="tanh",
+        ),
+        seqpos_slice=(0, 10),
+        context_size=10,
+    )
+    cfg_dict = cfg.to_dict()
+    assert cfg_dict == cfg.to_dict()
+    assert cfg == LanguageModelSAERunnerConfig.from_dict(cfg_dict)
+
+
+def test_LanguageModelSAERunnerConfig_errors_when_loading_from_dict_with_missing_fields():
+    cfg = LanguageModelSAERunnerConfig(
+        sae=StandardTrainingSAEConfig(d_in=5, d_sae=10),
+        seqpos_slice=(0, 10),
+        context_size=10,
+    )
+    with pytest.raises(
+        ValueError, match="sae field is required in the config dictionary"
+    ):
+        test_dict = cfg.to_dict()
+        del test_dict["sae"]
+        LanguageModelSAERunnerConfig.from_dict(test_dict)
+    with pytest.raises(
+        ValueError, match="architecture field is required in the sae dictionary"
+    ):
+        test_dict = cfg.to_dict()
+        del test_dict["sae"]["architecture"]
+        LanguageModelSAERunnerConfig.from_dict(test_dict)
+    with pytest.raises(
+        ValueError, match="logger field is required in the config dictionary"
+    ):
+        test_dict = cfg.to_dict()
+        del test_dict["logger"]
+        LanguageModelSAERunnerConfig.from_dict(test_dict)

@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v6.18.0 (2025-10-22)
+
+### Feature
+
+* feat: add LLMRunnerConfig.from_dict() method (#574) ([`8f16fa5`](https://github.com/jbloomAus/SAELens/commit/8f16fa54c95c2eacc7f3d3e7e77a7d9348f131d3))
+
 ## v6.17.0 (2025-10-18)
 
 ### Feature
