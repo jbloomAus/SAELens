@@ -384,3 +384,7 @@ class TemporalSAE(SAE[TemporalSAEConfig]):
     def get_activation_fn(self) -> Any:
         """TemporalSAE uses ReLU in its encoding."""
         return F.relu
+
+    @override
+    def fold_W_dec_norm(self) -> None:
+        raise NotImplementedError("Folding W_dec_norm is not supported for TemporalSAE")
