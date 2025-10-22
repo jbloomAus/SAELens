@@ -1483,11 +1483,11 @@ def temporal_sae_huggingface_loader(
     cfg_overrides: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], dict[str, torch.Tensor], torch.Tensor | None]:
     """
-    Load TemporalSAE from ekdeepslubana/temporalSAEs format.
+    Load TemporalSAE from canrager/temporalSAEs format (safetensors version).
 
     Expects folder_name to contain:
     - conf.yaml (configuration)
-    - latest_ckpt.pt (model weights)
+    - latest_ckpt.safetensors (model weights)
     """
     # Download config file
     conf_path = hf_hub_download(
@@ -1496,10 +1496,10 @@ def temporal_sae_huggingface_loader(
         force_download=force_download,
     )
 
-    # Download checkpoint
+    # Download checkpoint (safetensors format)
     ckpt_path = hf_hub_download(
         repo_id=repo_id,
-        filename=f"{folder_name}/latest_ckpt.pt",
+        filename=f"{folder_name}/latest_ckpt.safetensors",
         force_download=force_download,
     )
 
@@ -1533,9 +1533,8 @@ def temporal_sae_huggingface_loader(
     if cfg_overrides:
         cfg_dict.update(cfg_overrides)
 
-    # Load checkpoint
-    checkpoint = torch.load(ckpt_path, map_location=device, weights_only=False)
-    state_dict_raw = checkpoint.get("sae", checkpoint)
+    # Load checkpoint from safetensors
+    state_dict_raw = load_file(ckpt_path, device=device)
 
     # Convert to SAELens naming convention
     # TemporalSAE uses: D (decoder), E (encoder), b (bias), attn_layers.*

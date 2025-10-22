@@ -3,8 +3,6 @@
 TemporalSAE decomposes activations into:
 1. Predicted codes (from attention over context)
 2. Novel codes (sparse features of the residual)
-
-See: https://arxiv.org/abs/2410.04185
 """
 
 import math
@@ -383,7 +381,10 @@ class TemporalSAE(SAE[TemporalSAEConfig]):
     @override
     def get_activation_fn(self) -> Any:
         """TemporalSAE uses ReLU in its encoding."""
-        return F.relu
+        if self.cfg.sae_diff_type == "topk":
+            return torch.topk
+        else:
+            return F.relu
 
     @override
     def fold_W_dec_norm(self) -> None:
