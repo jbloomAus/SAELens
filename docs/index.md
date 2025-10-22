@@ -75,6 +75,10 @@ I wrote a tutorial to show users how to do some basic exploration of their SAE:
 - Understanding SAE Features with the Logit Lens [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://githubtocolab.com/jbloomAus/SAELens/blob/main/tutorials/logits_lens_with_features.ipynb)
 - Training a Sparse Autoencoder [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://githubtocolab.com/jbloomAus/SAELens/blob/main/tutorials/training_a_sparse_autoencoder.ipynb)
 
+### Community Tutorials
+
+- Cross-SAE Feature Alignment with FeatureMatch [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://githubtocolab.com/jbloomAus/SAELens/blob/main/tutorials/featurematch_cross_sae.ipynb) - Quantify how similar two SAEs' learned dictionaries are using cosine-based alignment ([external package](https://github.com/Course-Correct-Labs/featurematch))
+
 ## Example WandB Dashboard
 
 WandB Dashboards provide lots of useful insights while training SAEs. Here's a screenshot from one training run.
