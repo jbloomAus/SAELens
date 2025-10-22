@@ -28,6 +28,8 @@ from sae_lens.saes import (
     StandardSAEConfig,
     StandardTrainingSAE,
     StandardTrainingSAEConfig,
+    TemporalSAE,
+    TemporalSAEConfig,
     TopKSAE,
     TopKSAEConfig,
     TopKTrainingSAE,
@@ -105,6 +107,8 @@ __all__ = [
     "JumpReLUTranscoderConfig",
     "MatryoshkaBatchTopKTrainingSAE",
     "MatryoshkaBatchTopKTrainingSAEConfig",
+    "TemporalSAE",
+    "TemporalSAEConfig",
 ]
 
 
@@ -127,3 +131,4 @@ register_sae_training_class(
 register_sae_class("transcoder", Transcoder, TranscoderConfig)
 register_sae_class("skip_transcoder", SkipTranscoder, SkipTranscoderConfig)
 register_sae_class("jumprelu_transcoder", JumpReLUTranscoder, JumpReLUTranscoderConfig)
+register_sae_class("temporal", TemporalSAE, TemporalSAEConfig)

@@ -1475,6 +1475,145 @@ def get_mntss_clt_layer_config_from_hf(
     }
 
 
+def temporal_sae_huggingface_loader(
+    repo_id: str,
+    folder_name: str,
+    device: str = "cpu",
+    force_download: bool = False,
+    cfg_overrides: dict[str, Any] | None = None,
+) -> tuple[dict[str, Any], dict[str, torch.Tensor], torch.Tensor | None]:
+    """
+    Load TemporalSAE from ekdeepslubana/temporalSAEs format.
+
+    Expects folder_name to contain:
+    - conf.yaml (configuration)
+    - latest_ckpt.pt (model weights)
+    """
+    # Download config file
+    conf_path = hf_hub_download(
+        repo_id=repo_id,
+        filename=f"{folder_name}/conf.yaml",
+        force_download=force_download,
+    )
+
+    # Download checkpoint
+    ckpt_path = hf_hub_download(
+        repo_id=repo_id,
+        filename=f"{folder_name}/latest_ckpt.pt",
+        force_download=force_download,
+    )
+
+    # Load and parse config
+    with open(conf_path, "r") as f:
+        yaml_config = yaml.safe_load(f)
+
+    # Extract parameters
+    d_in = yaml_config["llm"]["dimin"]
+    exp_factor = yaml_config["sae"]["exp_factor"]
+    d_sae = int(d_in * exp_factor)
+
+    # Build SAELens config dict
+    cfg_dict = {
+        "architecture": "temporal",
+        "d_in": d_in,
+        "d_sae": d_sae,
+        "n_heads": yaml_config["sae"]["n_heads"],
+        "n_attn_layers": yaml_config["sae"]["n_attn_layers"],
+        "bottleneck_factor": yaml_config["sae"]["bottleneck_factor"],
+        "sae_diff_type": yaml_config["sae"]["sae_diff_type"],
+        "kval_topk": yaml_config["sae"]["kval_topk"],
+        "tied_weights": yaml_config["sae"]["tied_weights"],
+        "dtype": "float32",
+        "device": device,
+        "normalize_activations": "none",
+        "apply_b_dec_to_input": True,  # TemporalSAE subtracts bias at start
+    }
+
+    # Apply any config overrides
+    if cfg_overrides:
+        cfg_dict.update(cfg_overrides)
+
+    # Load checkpoint
+    checkpoint = torch.load(ckpt_path, map_location=device, weights_only=False)
+    state_dict_raw = checkpoint["sae"] if "sae" in checkpoint else checkpoint
+
+    # Convert to SAELens naming convention
+    # TemporalSAE uses: D (decoder), E (encoder), b (bias), attn_layers.*
+    state_dict = {}
+
+    # Copy attention layers as-is
+    for key, value in state_dict_raw.items():
+        if key.startswith("attn_layers."):
+            state_dict[key] = value.to(device)
+
+    # Main parameters
+    state_dict["D"] = state_dict_raw["D"].to(device)
+    state_dict["b"] = state_dict_raw["b"].to(device)
+
+    # Handle tied/untied weights
+    if "E" in state_dict_raw:
+        state_dict["E"] = state_dict_raw["E"].to(device)
+
+    # Also add SAELens standard naming for compatibility
+    state_dict["W_dec"] = state_dict["D"]
+    state_dict["b_dec"] = state_dict["b"]
+
+    if "E" in state_dict:
+        state_dict["W_enc"] = state_dict["E"]
+    else:
+        # For tied weights, W_enc will be computed as D.T in the model
+        state_dict["W_enc"] = state_dict["D"]
+
+    return cfg_dict, state_dict, None
+
+
+def get_temporal_sae_config_from_hf(
+    repo_id: str,
+    folder_name: str,
+    device: str,
+    force_download: bool = False,
+    cfg_overrides: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Get TemporalSAE config without loading weights."""
+    # Download config file
+    conf_path = hf_hub_download(
+        repo_id=repo_id,
+        filename=f"{folder_name}/conf.yaml",
+        force_download=force_download,
+    )
+
+    # Load and parse config
+    with open(conf_path, "r") as f:
+        yaml_config = yaml.safe_load(f)
+
+    # Extract parameters
+    d_in = yaml_config["llm"]["dimin"]
+    exp_factor = yaml_config["sae"]["exp_factor"]
+    d_sae = int(d_in * exp_factor)
+
+    # Build config dict
+    cfg_dict = {
+        "architecture": "temporal",
+        "d_in": d_in,
+        "d_sae": d_sae,
+        "n_heads": yaml_config["sae"]["n_heads"],
+        "n_attn_layers": yaml_config["sae"]["n_attn_layers"],
+        "bottleneck_factor": yaml_config["sae"]["bottleneck_factor"],
+        "sae_diff_type": yaml_config["sae"]["sae_diff_type"],
+        "kval_topk": yaml_config["sae"]["kval_topk"],
+        "tied_weights": yaml_config["sae"]["tied_weights"],
+        "dtype": "float32",
+        "device": device,
+        "normalize_activations": "none",
+        "apply_b_dec_to_input": True,
+    }
+
+    if cfg_overrides:
+        cfg_dict.update(cfg_overrides)
+
+    return cfg_dict
+
+
 NAMED_PRETRAINED_SAE_LOADERS: dict[str, PretrainedSaeHuggingfaceLoader] = {
     "sae_lens": sae_lens_huggingface_loader,
     "connor_rob_hook_z": connor_rob_hook_z_huggingface_loader,
@@ -1487,6 +1626,7 @@ NAMED_PRETRAINED_SAE_LOADERS: dict[str, PretrainedSaeHuggingfaceLoader] = {
     "gemma_2_transcoder": gemma_2_transcoder_huggingface_loader,
     "mwhanna_transcoder": mwhanna_transcoder_huggingface_loader,
     "mntss_clt_layer_transcoder": mntss_clt_layer_huggingface_loader,
+    "temporal": temporal_sae_huggingface_loader,
 }
 
 
@@ -1502,4 +1642,5 @@ NAMED_PRETRAINED_SAE_CONFIG_GETTERS: dict[str, PretrainedSaeConfigHuggingfaceLoa
     "gemma_2_transcoder": get_gemma_2_transcoder_config_from_hf,
     "mwhanna_transcoder": get_mwhanna_transcoder_config_from_hf,
     "mntss_clt_layer_transcoder": get_mntss_clt_layer_config_from_hf,
+    "temporal": get_temporal_sae_config_from_hf,
 }

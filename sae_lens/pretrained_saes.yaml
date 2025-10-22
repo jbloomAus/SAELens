@@ -1,3 +1,29 @@
+temporal-sae-gemma-2-2b:
+  conversion_func: temporal
+  model: google/gemma-2-2b
+  repo_id: ekdeepslubana/temporalSAEs
+  config_overrides:
+    model_name: gemma-2-2b
+    hook_name: blocks.12.hook_resid_post
+    dataset_path: monology/pile-uncopyrighted
+  saes:
+  - id: blocks.12.hook_resid_post
+    l0: 192
+    path: temporal
+temporal-sae-llama-3.1-8b:
+  conversion_func: temporal
+  model: meta-llama/Llama-3.1-8B
+  repo_id: ekdeepslubana/temporalSAEs_llama
+  config_overrides:
+    model_name: meta-llama/Llama-3.1-8B
+    dataset_path: monology/pile-uncopyrighted
+  saes:
+  - id: blocks.16.hook_resid_post
+    l0: 256
+    path: layer_16/temporal
+  - id: blocks.26.hook_resid_post
+    l0: 256
+    path: layer_26/temporal
 deepseek-r1-distill-llama-8b-qresearch:
   conversion_func: deepseek_r1
   model: deepseek-ai/DeepSeek-R1-Distill-Llama-8B
