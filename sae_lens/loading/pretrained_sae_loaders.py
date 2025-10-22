@@ -1504,7 +1504,7 @@ def temporal_sae_huggingface_loader(
     )
 
     # Load and parse config
-    with open(conf_path, "r") as f:
+    with open(conf_path) as f:
         yaml_config = yaml.safe_load(f)
 
     # Extract parameters
@@ -1535,7 +1535,7 @@ def temporal_sae_huggingface_loader(
 
     # Load checkpoint
     checkpoint = torch.load(ckpt_path, map_location=device, weights_only=False)
-    state_dict_raw = checkpoint["sae"] if "sae" in checkpoint else checkpoint
+    state_dict_raw = checkpoint.get("sae", checkpoint)
 
     # Convert to SAELens naming convention
     # TemporalSAE uses: D (decoder), E (encoder), b (bias), attn_layers.*
@@ -1547,22 +1547,12 @@ def temporal_sae_huggingface_loader(
             state_dict[key] = value.to(device)
 
     # Main parameters
-    state_dict["D"] = state_dict_raw["D"].to(device)
-    state_dict["b"] = state_dict_raw["b"].to(device)
+    state_dict["W_Dec"] = state_dict_raw["D"].to(device)
+    state_dict["b_dec"] = state_dict_raw["b"].to(device)
 
     # Handle tied/untied weights
     if "E" in state_dict_raw:
-        state_dict["E"] = state_dict_raw["E"].to(device)
-
-    # Also add SAELens standard naming for compatibility
-    state_dict["W_dec"] = state_dict["D"]
-    state_dict["b_dec"] = state_dict["b"]
-
-    if "E" in state_dict:
-        state_dict["W_enc"] = state_dict["E"]
-    else:
-        # For tied weights, W_enc will be computed as D.T in the model
-        state_dict["W_enc"] = state_dict["D"]
+        state_dict["W_Enc"] = state_dict_raw["E"].to(device)
 
     return cfg_dict, state_dict, None
 
@@ -1583,7 +1573,7 @@ def get_temporal_sae_config_from_hf(
     )
 
     # Load and parse config
-    with open(conf_path, "r") as f:
+    with open(conf_path) as f:
         yaml_config = yaml.safe_load(f)
 
     # Extract parameters
