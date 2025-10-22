@@ -18,6 +18,7 @@ from datasets import (
 
 from sae_lens import __version__, logger
 from sae_lens.constants import DTYPE_MAP
+from sae_lens.registry import get_sae_training_class
 from sae_lens.saes.sae import TrainingSAEConfig
 
 if TYPE_CHECKING:
@@ -387,8 +388,11 @@ class LanguageModelSAERunnerConfig(Generic[T_TRAINING_SAE_CONFIG]):
         return self.sae.to_dict()
 
     def to_dict(self) -> dict[str, Any]:
-        # Make a shallow copy of config's dictionary
-        d = dict(self.__dict__)
+        """
+        Convert the config to a dictionary.
+        """
+
+        d = asdict(self)
 
         d["logger"] = asdict(self.logger)
         d["sae"] = self.sae.to_dict()
@@ -397,6 +401,37 @@ class LanguageModelSAERunnerConfig(Generic[T_TRAINING_SAE_CONFIG]):
         d["device"] = str(self.device)
         d["act_store_device"] = str(self.act_store_device)
         return d
+
+    @classmethod
+    def from_dict(cls, cfg_dict: dict[str, Any]) -> "LanguageModelSAERunnerConfig[Any]":
+        """
+        Load a LanguageModelSAERunnerConfig from a dictionary given by `to_dict`.
+
+        Args:
+            cfg_dict (dict[str, Any]): The dictionary to load the config from.
+
+        Returns:
+            LanguageModelSAERunnerConfig: The loaded config.
+        """
+        if "sae" not in cfg_dict:
+            raise ValueError("sae field is required in the config dictionary")
+        if "architecture" not in cfg_dict["sae"]:
+            raise ValueError("architecture field is required in the sae dictionary")
+        if "logger" not in cfg_dict:
+            raise ValueError("logger field is required in the config dictionary")
+        sae_config_class = get_sae_training_class(cfg_dict["sae"]["architecture"])[1]
+        sae_cfg = sae_config_class.from_dict(cfg_dict["sae"])
+        logger_cfg = LoggingConfig(**cfg_dict["logger"])
+        updated_cfg_dict: dict[str, Any] = {
+            **cfg_dict,
+            "sae": sae_cfg,
+            "logger": logger_cfg,
+        }
+        output = cls(**updated_cfg_dict)
+        # the post_init always appends to checkpoint path, so we need to set it explicitly here.
+        if "checkpoint_path" in cfg_dict:
+            output.checkpoint_path = cfg_dict["checkpoint_path"]
+        return output
 
     def to_sae_trainer_config(self) -> "SAETrainerConfig":
         return SAETrainerConfig(
