@@ -9,7 +9,7 @@ See: https://arxiv.org/abs/2410.04185
 
 import math
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Literal
 
 import torch
 import torch.nn.functional as F
@@ -17,6 +17,7 @@ from jaxtyping import Float
 from torch import nn
 from typing_extensions import override
 
+from sae_lens import logger
 from sae_lens.saes.sae import SAE, SAEConfig
 
 
@@ -162,9 +163,6 @@ class TemporalSAE(SAE[TemporalSAEConfig]):
     """
 
     # Custom parameters (in addition to W_enc, W_dec, b_dec from base)
-    D: nn.Parameter  # Decoder weights (can be tied to W_enc)
-    b: nn.Parameter  # Bias term
-    E: nn.Parameter | None  # Encoder weights (if not tied)
     attn_layers: nn.ModuleList  # Attention layers
     eps: float
     lam: float
@@ -309,7 +307,9 @@ class TemporalSAE(SAE[TemporalSAEConfig]):
         sae_out = self.hook_sae_recons(sae_out)
 
         # Add bias (already removed in process_sae_in)
-        print("NOTE this only decodes x_novel. The x_pred is missing, so we're not reconstructing the full x."
+        logger.warning(
+            "NOTE this only decodes x_novel. The x_pred is missing, so we're not reconstructing the full x."
+        )
         return sae_out + self.b_dec
 
     @override
@@ -366,24 +366,6 @@ class TemporalSAE(SAE[TemporalSAEConfig]):
         x_recons = torch.matmul(z_novel + z_pred, self.W_dec) + self.b_dec
 
         return self.hook_sae_output(x_recons)
-
-    @override
-    def process_state_dict_for_saving(self, state_dict: dict[str, Any]) -> None:
-        """Process state dict before saving (keep original temporal naming)."""
-        # Keep both temporal naming and SAELens naming for compatibility
-        pass
-
-    @override
-    def process_state_dict_for_loading(self, state_dict: dict[str, Any]) -> None:
-        """Process state dict after loading (handle legacy format)."""
-        # Handle loading from original temporal SAE format
-        # The loader will handle the conversion
-        pass
-
-    @override
-    def get_activation_fn(self) -> Any:
-        """TemporalSAE uses ReLU in its encoding."""
-        return F.relu
 
     @override
     def fold_W_dec_norm(self) -> None:
