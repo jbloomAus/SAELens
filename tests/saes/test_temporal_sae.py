@@ -1,6 +1,7 @@
 import pytest
 import torch
 
+from sae_lens.saes.sae import SAE
 from sae_lens.saes.temporal_sae import TemporalSAE
 from tests.helpers import build_temporal_sae_cfg
 
@@ -106,3 +107,32 @@ def test_TemporalSAE_n_attn_layers(n_attn_layers: int):
 
     reconstruction = sae.forward(x)
     assert reconstruction.shape == x.shape
+
+
+
+def test_TemporalSAE_load_from_pretrained_and_forward():
+    """Test loading a TemporalSAE from HuggingFace and performing a forward pass."""
+    # Load the TemporalSAE from HuggingFace
+    sae = SAE.from_pretrained(
+        release="temporal-sae-gemma-2-2b",
+        sae_id="blocks.12.hook_resid_post",
+        device="cpu",
+    )
+
+    # Create random input data with the correct shape
+    # TemporalSAE expects input of shape (batch, sequence, d_in)
+    batch_size = 2
+    seq_len = 8
+    d_in = 2304
+
+    x = torch.randn(batch_size, seq_len, d_in)
+
+    # Perform forward pass
+    x_recons = sae(x)
+
+    # Check output shape matches input shape
+    assert x_recons.shape == x.shape
+
+    # Test encode method
+    z_novel = sae.encode(x)
+    assert z_novel.shape == (batch_size, seq_len, sae.cfg.d_sae)
