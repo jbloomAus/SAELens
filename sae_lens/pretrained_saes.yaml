@@ -9,6 +9,7 @@ temporal-sae-gemma-2-2b:
   saes:
   - id: blocks.12.hook_resid_post
     l0: 192
+    norm_scaling_factor: 0.00666666667
     path: gemma-2-2B/layer_12/temporal
 temporal-sae-llama-3.1-8b:
   conversion_func: temporal
@@ -20,9 +21,11 @@ temporal-sae-llama-3.1-8b:
   saes:
   - id: blocks.16.hook_resid_post
     l0: 256
+    norm_scaling_factor: 0.029
     path: llama-3.1-8B/layer_16/temporal
   - id: blocks.26.hook_resid_post
     l0: 256
+    norm_scaling_factor: 0.029
     path: llama-3.1-8B/layer_26/temporal
 deepseek-r1-distill-llama-8b-qresearch:
   conversion_func: deepseek_r1

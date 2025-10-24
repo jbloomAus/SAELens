@@ -158,6 +158,7 @@ class SAEConfig(ABC):
     normalize_activations: Literal[
         "none", "expected_average_only_in", "constant_norm_rescale", "layer_norm"
     ] = "none"  # none, expected_average_only_in (Anthropic April Update), constant_norm_rescale (Anthropic Feb Update)
+    activation_normalization_factor: float = 1
     reshape_activations: Literal["none", "hook_z"] = "none"
     metadata: SAEMetadata = field(default_factory=SAEMetadata)
 
@@ -189,6 +190,7 @@ class SAEConfig(ABC):
             "none",
             "expected_average_only_in",
             "constant_norm_rescale",
+            "constant_scalar_rescale",
             "layer_norm",
         ]:
             raise ValueError(
@@ -299,16 +301,27 @@ class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
         if self.cfg.normalize_activations == "constant_norm_rescale":
 
             def run_time_activation_norm_fn_in(x: torch.Tensor) -> torch.Tensor:
-                self.x_norm_coeff = (self.cfg.d_in**0.5) / x.norm(dim=-1, keepdim=True)
-                return x * self.x_norm_coeff
+                self.cfg.activation_normalization_factor = (self.cfg.d_in**0.5) / x.norm(dim=-1, keepdim=True)
+                return x * self.cfg.activation_normalization_factor
 
             def run_time_activation_norm_fn_out(x: torch.Tensor) -> torch.Tensor:
-                x = x / self.x_norm_coeff  # type: ignore
-                del self.x_norm_coeff
+                x = x / self.cfg.activation_normalization_factor  # type: ignore
+                del self.cfg.activation_normalization_factor
                 return x
 
             self.run_time_activation_norm_fn_in = run_time_activation_norm_fn_in
             self.run_time_activation_norm_fn_out = run_time_activation_norm_fn_out
+
+        elif self.cfg.normalize_activations == "constant_scalar_rescale":
+            def run_time_activation_norm_fn_in(x: torch.Tensor) -> torch.Tensor:
+                return x * self.cfg.activation_normalization_factor
+
+            def run_time_activation_norm_fn_out(x: torch.Tensor) -> torch.Tensor:
+                return x / self.cfg.activation_normalization_factor
+            
+            self.run_time_activation_norm_fn_in = run_time_activation_norm_fn_in
+            self.run_time_activation_norm_fn_out = run_time_activation_norm_fn_out
+    
         elif self.cfg.normalize_activations == "layer_norm":
             #  we need to scale the norm of the input and store the scaling factor
             def run_time_activation_ln_in(
@@ -452,23 +465,15 @@ class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
     def process_sae_in(
         self, sae_in: Float[torch.Tensor, "... d_in"]
     ) -> Float[torch.Tensor, "... d_in"]:
-        # print(f"Input shape to process_sae_in: {sae_in.shape}")
-        # print(f"self.cfg.hook_name: {self.cfg.hook_name}")
-        # print(f"self.b_dec shape: {self.b_dec.shape}")
-        # print(f"Hook z reshaping mode: {getattr(self, 'hook_z_reshaping_mode', False)}")
 
         sae_in = sae_in.to(self.dtype)
-
-        # print(f"Shape before reshape_fn_in: {sae_in.shape}")
         sae_in = self.reshape_fn_in(sae_in)
-        # print(f"Shape after reshape_fn_in: {sae_in.shape}")
 
         sae_in = self.hook_sae_input(sae_in)
         sae_in = self.run_time_activation_norm_fn_in(sae_in)
 
         # Here's where the error happens
         bias_term = self.b_dec * self.cfg.apply_b_dec_to_input
-        # print(f"Bias term shape: {bias_term.shape}")
 
         return sae_in - bias_term
 
