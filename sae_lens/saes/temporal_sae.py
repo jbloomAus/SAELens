@@ -223,8 +223,6 @@ class TemporalSAE(SAE[TemporalSAEConfig]):
         """
         # Process input through SAELens preprocessing
         x = self.process_sae_in(x)
-        # Apply custom TemporalSAE preprocessing
-        x = x * self.lam
 
         B, L, _ = x.shape
 
@@ -234,11 +232,11 @@ class TemporalSAE(SAE[TemporalSAEConfig]):
             W_enc = self.W_enc
 
         # Compute predicted codes using attention
-        x_residual = x.clone()
+        x_residual = x
         z_pred = torch.zeros(
             (B, L, self.cfg.d_sae), device=x.device, dtype=x.dtype
         )
-        
+
         for attn_layer in self.attn_layers:
             # Encode input to latent space
             z_input = F.relu(torch.matmul(x_residual * self.lam, W_enc))
@@ -257,7 +255,7 @@ class TemporalSAE(SAE[TemporalSAEConfig]):
             Dz_norm_ = Dz_pred_.norm(dim=-1, keepdim=True) + self.eps
 
             # Compute projection scale
-            proj_scale = (Dz_pred_ * x).sum(
+            proj_scale = (Dz_pred_ * x_residual).sum(
                 dim=-1, keepdim=True
             ) / Dz_norm_.pow(2)
 
@@ -268,7 +266,7 @@ class TemporalSAE(SAE[TemporalSAEConfig]):
             x_residual = x_residual - proj_scale * Dz_pred_
 
         # Encode residual (novel part) with sparse SAE
-        z_novel = F.relu(torch.matmul(x_residual, W_enc))
+        z_novel = F.relu(torch.matmul(x_residual * self.lam, W_enc))
         if self.cfg.sae_diff_type == "topk":
             kval = self.cfg.kval_topk
             if kval is not None:
@@ -300,6 +298,9 @@ class TemporalSAE(SAE[TemporalSAEConfig]):
         # Apply hook
         sae_out = self.hook_sae_recons(sae_out)
 
+        # Apply output activation normalization (reverses input normalization)
+        sae_out = self.run_time_activation_norm_fn_out(sae_out)
+
         # Add bias (already removed in process_sae_in)
         logger.warning(
             "NOTE this only decodes x_novel. The x_pred is missing, so we're not reconstructing the full x."
@@ -319,6 +320,9 @@ class TemporalSAE(SAE[TemporalSAEConfig]):
 
         # Decode the sum of predicted and novel codes.
         x_recons = torch.matmul(z_novel + z_pred, self.W_dec) + self.b_dec
+
+        # Apply output activation normalization (reverses input normalization)
+        x_recons = self.run_time_activation_norm_fn_out(x_recons)
 
         return self.hook_sae_output(x_recons)
 

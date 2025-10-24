@@ -4,7 +4,7 @@ import torch
 from sae_lens.saes.sae import SAE
 from sae_lens.saes.temporal_sae import TemporalSAE
 from tests.helpers import build_temporal_sae_cfg
-
+from sae_lens.constants import DTYPE_MAP
 
 def test_TemporalSAE_initialization():
     cfg = build_temporal_sae_cfg()
@@ -136,3 +136,118 @@ def test_TemporalSAE_load_from_pretrained_and_forward():
     # Test encode method
     z_novel = sae.encode(x)
     assert z_novel.shape == (batch_size, seq_len, sae.cfg.d_sae)
+
+
+def test_TemporalSAE_matches_original_implementation():
+    """Test that SAELens TemporalSAE produces identical outputs to the original implementation."""
+    from tests._comparison.temporal_sae_original import (
+        TemporalSAE as OriginalTemporalSAE,
+    )
+
+    # Set random seed for reproducibility
+    torch.manual_seed(42)
+
+    # Create configuration
+    d_in = 64
+    d_sae = 256
+    n_heads = 8
+    bottleneck_factor = 2
+    kval_topk = 32
+    tied_weights = True
+    sae_diff_type = "topk"
+    n_attn_layers = 1
+    activation_scaling_factor = 0.3
+
+    # Create SAELens implementation
+    cfg = build_temporal_sae_cfg(
+        d_in=d_in,
+        d_sae=d_sae,
+        n_heads=n_heads,
+        n_attn_layers=n_attn_layers,
+        bottleneck_factor=bottleneck_factor,
+        sae_diff_type=sae_diff_type,
+        kval_topk=kval_topk,
+        tied_weights=tied_weights,
+        activation_normalization_factor=activation_scaling_factor
+    )
+    sae_sl = TemporalSAE.from_dict(cfg.to_dict())
+
+    # Create original implementation with matching parameters
+    sae_original = OriginalTemporalSAE(
+        dimin=d_in,
+        width=d_sae,
+        n_heads=n_heads,
+        sae_diff_type=sae_diff_type,
+        kval_topk=kval_topk,
+        tied_weights=tied_weights,
+        n_attn_layers=n_attn_layers,
+        bottleneck_factor=bottleneck_factor,
+        activation_scaling_factor=activation_scaling_factor
+    )
+
+    # Copy weights from SAELens to original implementation to ensure exact match
+    # Note: Original uses D (decoder) and E (encoder), SAELens uses W_dec and W_enc
+    # Copy decoder weights (D in original = W_dec in SAELens)
+    sae_original.D.data = sae_sl.W_dec.data
+
+    # Copy bias (b in original = b_dec in SAELens, but original has shape (1, d_in))
+    sae_original.b.data = sae_sl.b_dec.unsqueeze(0).data
+
+    # Copy attention layer weights
+    for i in range(n_attn_layers):
+        # Copy attention weights for each layer
+        sae_original.attn_layers[i].k_ctx.weight.data = (
+            sae_sl.attn_layers[i].k_ctx.weight.data
+        )
+        sae_original.attn_layers[i].k_ctx.bias.data = (
+            sae_sl.attn_layers[i].k_ctx.bias.data
+        )
+        sae_original.attn_layers[i].q_target.weight.data = (
+            sae_sl.attn_layers[i].q_target.weight.data
+        )
+        sae_original.attn_layers[i].q_target.bias.data = (
+            sae_sl.attn_layers[i].q_target.bias.data
+        )
+        sae_original.attn_layers[i].v_ctx.weight.data = (
+            sae_sl.attn_layers[i].v_ctx.weight.data
+        )
+        sae_original.attn_layers[i].v_ctx.bias.data = (
+            sae_sl.attn_layers[i].v_ctx.bias.data
+        )
+        sae_original.attn_layers[i].c_proj.weight.data = (
+            sae_sl.attn_layers[i].c_proj.weight.data
+        )
+        sae_original.attn_layers[i].c_proj.bias.data = (
+            sae_sl.attn_layers[i].c_proj.bias.data
+        )
+
+    # Set both to eval mode
+    sae_sl.eval()
+    sae_original.eval()
+
+    # Create random input
+    batch_size = 4
+    seq_len = 16
+    torch.manual_seed(123)
+    x = torch.randn(batch_size, seq_len, d_in).to(DTYPE_MAP[sae_sl.cfg.dtype])
+
+    # Run both implementations
+    with torch.no_grad():
+        # SAELens implementation
+        x_recons_lens = sae_sl(x)
+        z_novel_lens = sae_sl.encode(x)
+
+        # Original implementation
+        x_recons_orig, results_dict_orig = sae_original(x, return_graph=False)
+        z_novel_orig = results_dict_orig["novel_codes"]
+
+    # Compare outputs
+    # Check reconstruction
+    assert torch.allclose(
+        x_recons_lens, x_recons_orig, rtol=1e-5, atol=1e-6
+    ), f"Reconstructions differ: max diff = {(x_recons_lens - x_recons_orig).abs().max()}"
+
+    # Check novel codes
+    assert torch.allclose(
+        z_novel_lens, z_novel_orig, rtol=1e-5, atol=1e-6
+    ), f"Novel codes differ: max diff = {(z_novel_lens - z_novel_orig).abs().max()}"
