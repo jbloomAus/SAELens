@@ -11,7 +11,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-def get_attention(query, key) -> th.Tensor:
+def get_attention(query: th.Tensor, key: th.Tensor) -> th.Tensor:
     L, S = query.size(-2), key.size(-2)
     scale_factor = 1 / math.sqrt(query.size(-1))
     attn_bias = th.zeros(L, S, dtype=query.dtype, device=query.device)
@@ -21,8 +21,7 @@ def get_attention(query, key) -> th.Tensor:
 
     attn_weight = query @ key.transpose(-2, -1) * scale_factor
     attn_weight += attn_bias
-    attn_weight = th.softmax(attn_weight, dim=-1)
-    return attn_weight
+    return th.softmax(attn_weight, dim=-1)
 
 
 ### Manual Attention Implementation
@@ -33,14 +32,14 @@ class ManualAttention(nn.Module):
 
     def __init__(
         self,
-        dimin,
-        n_heads=4,
-        bottleneck_factor=64,
-        bias_k=True,
-        bias_q=True,
-        bias_v=True,
-        bias_o=True,
-    ):
+        dimin: int,
+        n_heads: int = 4,
+        bottleneck_factor: int = 64,
+        bias_k: bool = True,
+        bias_q: bool = True,
+        bias_v: bool = True,
+        bias_o: bool = True,
+    ) -> None:
         super().__init__()
         assert dimin % (bottleneck_factor * n_heads) == 0
 
@@ -85,7 +84,9 @@ class ManualAttention(nn.Module):
                 / (1e-6 + th.linalg.norm(self.c_proj.weight, dim=1, keepdim=True))
             )
 
-    def forward(self, x_ctx, x_target, get_attn_map=False):
+    def forward(
+        self, x_ctx: th.Tensor, x_target: th.Tensor, get_attn_map: bool = False
+    ) -> tuple[th.Tensor, th.Tensor | None]:
         """
         Compute projective attention output
         """
@@ -103,6 +104,7 @@ class ManualAttention(nn.Module):
         v = v.view(B, T, self.n_heads, self.dimin // self.n_heads).transpose(1, 2)
 
         # Attn map
+        attn_map: th.Tensor | None = None
         if get_attn_map:
             attn_map = get_attention(query=q, key=k)
             th.cuda.empty_cache()
@@ -119,23 +121,22 @@ class ManualAttention(nn.Module):
 
         if get_attn_map:
             return d_target, attn_map
-        else:
-            return d_target, None
+        return d_target, None
 
 
 class TemporalSAE(th.nn.Module):
     def __init__(
         self,
-        dimin=2,
-        width=5,
-        n_heads=8,
-        sae_diff_type="relu",
-        kval_topk=None,
-        tied_weights=True,
-        n_attn_layers=1,
-        bottleneck_factor=64,
-        activation_scaling_factor=1.0
-    ):
+        dimin: int = 2,
+        width: int = 5,
+        n_heads: int = 8,
+        sae_diff_type: str = "relu",
+        kval_topk: int | None = None,
+        tied_weights: bool = True,
+        n_attn_layers: int = 1,
+        bottleneck_factor: int = 64,
+        activation_scaling_factor: float = 1.0,
+    ) -> None:
         """
         dimin: (int)
             input dimension
@@ -150,7 +151,7 @@ class TemporalSAE(th.nn.Module):
         n_attn_layers: (int)
             number of attention layers
         """
-        super(TemporalSAE, self).__init__()
+        super().__init__()
         self.sae_type = "temporal"
         self.width = width
         self.dimin = dimin
@@ -186,7 +187,12 @@ class TemporalSAE(th.nn.Module):
         self.sae_diff_type = sae_diff_type
         self.kval_topk = kval_topk if sae_diff_type == "topk" else None
 
-    def forward(self, x_input, return_graph=False, inf_k=None):
+    def forward(
+        self,
+        x_input: th.Tensor,
+        return_graph: bool = False,
+        inf_k: int | None = None,
+    ) -> tuple[th.Tensor, dict[str, th.Tensor | None]]:
         B, L, _ = x_input.size()
         E = self.D.T if self.tied_weights else self.E
 
@@ -232,18 +238,20 @@ class TemporalSAE(th.nn.Module):
                 attn_graphs.append(attn_graphs_)
 
         ### Novel part (identified using the residual target signal) ###
+        z_novel: th.Tensor
         if self.sae_diff_type == "relu":
             z_novel = F.relu(th.matmul(x_input * self.lam, E))
 
         elif self.sae_diff_type == "topk":
             kval = self.kval_topk if inf_k is None else inf_k
+            assert kval is not None, "kval_topk must be set when using topk sae_diff_type"
             z_novel = F.relu(th.matmul(x_input * self.lam, E))
             _, topk_indices = th.topk(z_novel, kval, dim=-1)
             mask = th.zeros_like(z_novel)
             mask.scatter_(-1, topk_indices, 1)
             z_novel = z_novel * mask
 
-        elif self.sae_diff_type == "nullify":
+        else:  # self.sae_diff_type == "nullify"
             z_novel = th.zeros_like(z_pred)
 
         ### Reconstruction ###

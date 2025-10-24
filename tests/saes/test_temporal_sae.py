@@ -2,7 +2,7 @@ import pytest
 import torch
 
 from sae_lens.saes.sae import SAE
-from sae_lens.saes.temporal_sae import TemporalSAE
+from sae_lens.saes.temporal_sae import ManualAttention, TemporalSAE
 from tests.helpers import build_temporal_sae_cfg
 from sae_lens.constants import DTYPE_MAP
 
@@ -196,30 +196,17 @@ def test_TemporalSAE_matches_original_implementation():
     # Copy attention layer weights
     for i in range(n_attn_layers):
         # Copy attention weights for each layer
-        sae_original.attn_layers[i].k_ctx.weight.data = (
-            sae_sl.attn_layers[i].k_ctx.weight.data
-        )
-        sae_original.attn_layers[i].k_ctx.bias.data = (
-            sae_sl.attn_layers[i].k_ctx.bias.data
-        )
-        sae_original.attn_layers[i].q_target.weight.data = (
-            sae_sl.attn_layers[i].q_target.weight.data
-        )
-        sae_original.attn_layers[i].q_target.bias.data = (
-            sae_sl.attn_layers[i].q_target.bias.data
-        )
-        sae_original.attn_layers[i].v_ctx.weight.data = (
-            sae_sl.attn_layers[i].v_ctx.weight.data
-        )
-        sae_original.attn_layers[i].v_ctx.bias.data = (
-            sae_sl.attn_layers[i].v_ctx.bias.data
-        )
-        sae_original.attn_layers[i].c_proj.weight.data = (
-            sae_sl.attn_layers[i].c_proj.weight.data
-        )
-        sae_original.attn_layers[i].c_proj.bias.data = (
-            sae_sl.attn_layers[i].c_proj.bias.data
-        )
+        attn_orig: ManualAttention = sae_original.attn_layers[i]  # type: ignore[assignment]
+        attn_sl: ManualAttention = sae_sl.attn_layers[i]  # type: ignore[assignment]
+
+        attn_orig.k_ctx.weight.data = attn_sl.k_ctx.weight.data
+        attn_orig.k_ctx.bias.data = attn_sl.k_ctx.bias.data
+        attn_orig.q_target.weight.data = attn_sl.q_target.weight.data
+        attn_orig.q_target.bias.data = attn_sl.q_target.bias.data
+        attn_orig.v_ctx.weight.data = attn_sl.v_ctx.weight.data
+        attn_orig.v_ctx.bias.data = attn_sl.v_ctx.bias.data
+        attn_orig.c_proj.weight.data = attn_sl.c_proj.weight.data
+        attn_orig.c_proj.bias.data = attn_sl.c_proj.bias.data
 
     # Set both to eval mode
     sae_sl.eval()
