@@ -13,12 +13,13 @@ from sae_lens.saes.jumprelu_sae import JumpReLUSAEConfig, JumpReLUTrainingSAECon
 from sae_lens.saes.matryoshka_batchtopk_sae import MatryoshkaBatchTopKTrainingSAEConfig
 from sae_lens.saes.sae import T_TRAINING_SAE_CONFIG, SAEConfig, TrainingSAEConfig
 from sae_lens.saes.standard_sae import StandardSAEConfig, StandardTrainingSAEConfig
+from sae_lens.saes.temporal_sae import TemporalSAEConfig
 from sae_lens.saes.topk_sae import TopKSAEConfig, TopKTrainingSAEConfig
 
 TINYSTORIES_MODEL = "tiny-stories-1M"
 NEEL_NANDA_C4_10K_DATASET = "NeelNanda/c4-10k"
 
-ALL_ARCHITECTURES = ["standard", "gated", "jumprelu", "topk"]
+ALL_ARCHITECTURES = ["standard", "gated", "jumprelu", "topk", "temporal"]
 ALL_TRAINING_ARCHITECTURES = [
     "standard",
     "gated",
@@ -428,6 +429,25 @@ def build_topk_sae_training_cfg(**kwargs: Any) -> TopKTrainingSAEConfig:
     return build_topk_runner_cfg(**kwargs).sae  # type: ignore
 
 
+# --- Temporal SAE Builder ---
+def build_temporal_sae_cfg(**kwargs: Any) -> TemporalSAEConfig:
+    default_sae_config: dict[str, Any] = {
+        "d_in": 64,
+        "d_sae": 512,
+        "dtype": "bfloat16",
+        "device": "cpu",
+        "normalize_activations": "constant_scalar_rescale",
+        "activation_normalization_factor": 0.2,
+        "n_heads": 8,
+        "n_attn_layers": 1,
+        "bottleneck_factor": 2,
+        "sae_diff_type": "topk",
+        "kval_topk": 32,
+        "tied_weights": True,
+    }
+    return TemporalSAEConfig(**{**default_sae_config, **kwargs})  # type: ignore
+
+
 # --- BatchTopK SAE Builder ---
 def build_batchtopk_runner_cfg(
     **kwargs: Any,
@@ -633,6 +653,7 @@ SAE_CONFIG_BUILDERS = {
     "gated": build_gated_sae_cfg,
     "jumprelu": build_jumprelu_sae_cfg,
     "topk": build_topk_sae_cfg,
+    "temporal": build_temporal_sae_cfg,
 }
 
 SAE_RUNNER_CONFIG_BUILDERS = {

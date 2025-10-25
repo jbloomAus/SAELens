@@ -25,6 +25,7 @@ from .standard_sae import (
     StandardTrainingSAE,
     StandardTrainingSAEConfig,
 )
+from .temporal_sae import TemporalSAE, TemporalSAEConfig
 from .topk_sae import (
     TopKSAE,
     TopKSAEConfig,
@@ -71,4 +72,6 @@ __all__ = [
     "JumpReLUTranscoderConfig",
     "MatryoshkaBatchTopKTrainingSAE",
     "MatryoshkaBatchTopKTrainingSAEConfig",
+    "TemporalSAE",
+    "TemporalSAEConfig",
 ]
