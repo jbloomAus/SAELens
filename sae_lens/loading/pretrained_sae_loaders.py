@@ -1474,6 +1474,7 @@ def get_mntss_clt_layer_config_from_hf(
         **(cfg_overrides or {}),
     }
 
+
 def get_temporal_sae_config_from_hf(
     repo_id: str,
     folder_name: str,
@@ -1498,9 +1499,16 @@ def get_temporal_sae_config_from_hf(
     exp_factor = yaml_config["sae"]["exp_factor"]
     d_sae = int(d_in * exp_factor)
 
+    # extract layer from folder_name eg : "layer_12/temporal"
+    layer = re.search(r"layer_(\d+)", folder_name)
+    if layer is None:
+        raise ValueError(f"Could not find layer in folder_name: {folder_name}")
+    layer = int(layer.group(1))
+
     # Build config dict
     cfg_dict = {
         "architecture": "temporal",
+        "hook_name": f"blocks.{layer}.hook_resid_post",
         "d_in": d_in,
         "d_sae": d_sae,
         "n_heads": yaml_config["sae"]["n_heads"],
@@ -1520,6 +1528,7 @@ def get_temporal_sae_config_from_hf(
         cfg_dict.update(cfg_overrides)
 
     return cfg_dict
+
 
 def temporal_sae_huggingface_loader(
     repo_id: str,
@@ -1541,7 +1550,7 @@ def temporal_sae_huggingface_loader(
         folder_name=folder_name,
         device=device,
         force_download=force_download,
-        cfg_overrides=cfg_overrides
+        cfg_overrides=cfg_overrides,
     )
 
     # Download checkpoint (safetensors format)

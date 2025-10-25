@@ -1,10 +1,11 @@
 import pytest
 import torch
 
+from sae_lens.constants import DTYPE_MAP
 from sae_lens.saes.sae import SAE
 from sae_lens.saes.temporal_sae import ManualAttention, TemporalSAE
 from tests.helpers import build_temporal_sae_cfg
-from sae_lens.constants import DTYPE_MAP
+
 
 def test_TemporalSAE_initialization():
     cfg = build_temporal_sae_cfg()
@@ -109,7 +110,6 @@ def test_TemporalSAE_n_attn_layers(n_attn_layers: int):
     assert reconstruction.shape == x.shape
 
 
-
 def test_TemporalSAE_load_from_pretrained_and_forward():
     """Test loading a TemporalSAE from HuggingFace and performing a forward pass."""
     # Load the TemporalSAE from HuggingFace
@@ -168,7 +168,7 @@ def test_TemporalSAE_matches_original_implementation():
         sae_diff_type=sae_diff_type,
         kval_topk=kval_topk,
         tied_weights=tied_weights,
-        activation_normalization_factor=activation_scaling_factor
+        activation_normalization_factor=activation_scaling_factor,
     )
     sae_sl = TemporalSAE.from_dict(cfg.to_dict())
 
@@ -182,7 +182,7 @@ def test_TemporalSAE_matches_original_implementation():
         tied_weights=tied_weights,
         n_attn_layers=n_attn_layers,
         bottleneck_factor=bottleneck_factor,
-        activation_scaling_factor=activation_scaling_factor
+        activation_scaling_factor=activation_scaling_factor,
     )
 
     # Copy weights from SAELens to original implementation to ensure exact match

@@ -204,18 +204,19 @@ class TemporalSAE(th.nn.Module):
         attn_graphs = []
 
         ### Predictable part ###
-        z_pred = th.zeros((B, L, self.width), device=x_input.device, dtype=x_input.dtype)
+        z_pred = th.zeros(
+            (B, L, self.width), device=x_input.device, dtype=x_input.dtype
+        )
         for attn_layer in self.attn_layers:
-
-            z_input = F.relu(
-                th.matmul(x_input * self.lam, E)
-            )  # [batch, length, width]
+            z_input = F.relu(th.matmul(x_input * self.lam, E))  # [batch, length, width]
             z_ctx = th.cat(
                 (th.zeros_like(z_input[:, :1, :]), z_input[:, :-1, :].clone()), dim=1
             )  # [batch, length, width]
 
             # Compute codes using attention
-            z_pred_, attn_graphs_ = attn_layer(z_ctx, z_input, get_attn_map=return_graph)
+            z_pred_, attn_graphs_ = attn_layer(
+                z_ctx, z_input, get_attn_map=return_graph
+            )
 
             # Take back to input space
             z_pred_ = F.relu(z_pred_)
@@ -244,7 +245,9 @@ class TemporalSAE(th.nn.Module):
 
         elif self.sae_diff_type == "topk":
             kval = self.kval_topk if inf_k is None else inf_k
-            assert kval is not None, "kval_topk must be set when using topk sae_diff_type"
+            assert (
+                kval is not None
+            ), "kval_topk must be set when using topk sae_diff_type"
             z_novel = F.relu(th.matmul(x_input * self.lam, E))
             _, topk_indices = th.topk(z_novel, kval, dim=-1)
             mask = th.zeros_like(z_novel)
@@ -255,7 +258,9 @@ class TemporalSAE(th.nn.Module):
             z_novel = th.zeros_like(z_pred)
 
         ### Reconstruction ###
-        x_recons = th.matmul(z_novel + z_pred, self.D) + self.b  # [batch, length, dimin]
+        x_recons = (
+            th.matmul(z_novel + z_pred, self.D) + self.b
+        )  # [batch, length, dimin]
         x_recons = x_recons / self.activation_scaling_factor
 
         ### Compute the predicted vs. novel reconstructions, sans the bias (allows to check context / dictionary's value) ###

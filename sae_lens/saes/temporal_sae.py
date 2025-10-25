@@ -226,16 +226,14 @@ class TemporalSAE(SAE[TemporalSAEConfig]):
 
         B, L, _ = x.shape
 
-        if self.cfg.tied_weights:
+        if self.cfg.tied_weights:  # noqa: SIM108
             W_enc = self.W_dec.T
         else:
             W_enc = self.W_enc
 
         # Compute predicted codes using attention
         x_residual = x
-        z_pred = torch.zeros(
-            (B, L, self.cfg.d_sae), device=x.device, dtype=x.dtype
-        )
+        z_pred = torch.zeros((B, L, self.cfg.d_sae), device=x.device, dtype=x.dtype)
 
         for attn_layer in self.attn_layers:
             # Encode input to latent space
@@ -305,7 +303,7 @@ class TemporalSAE(SAE[TemporalSAEConfig]):
         logger.warning(
             "NOTE this only decodes x_novel. The x_pred is missing, so we're not reconstructing the full x."
         )
-        return sae_out 
+        return sae_out
 
     @override
     def forward(

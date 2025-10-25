@@ -301,7 +301,9 @@ class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
         if self.cfg.normalize_activations == "constant_norm_rescale":
 
             def run_time_activation_norm_fn_in(x: torch.Tensor) -> torch.Tensor:
-                self.cfg.activation_normalization_factor = (self.cfg.d_in**0.5) / x.norm(dim=-1, keepdim=True)
+                self.cfg.activation_normalization_factor = (
+                    self.cfg.d_in**0.5
+                ) / x.norm(dim=-1, keepdim=True)
                 return x * self.cfg.activation_normalization_factor
 
             def run_time_activation_norm_fn_out(x: torch.Tensor) -> torch.Tensor:
@@ -313,15 +315,16 @@ class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
             self.run_time_activation_norm_fn_out = run_time_activation_norm_fn_out
 
         elif self.cfg.normalize_activations == "constant_scalar_rescale":
+
             def run_time_activation_norm_fn_in(x: torch.Tensor) -> torch.Tensor:
                 return x * self.cfg.activation_normalization_factor
 
             def run_time_activation_norm_fn_out(x: torch.Tensor) -> torch.Tensor:
                 return x / self.cfg.activation_normalization_factor
-            
+
             self.run_time_activation_norm_fn_in = run_time_activation_norm_fn_in
             self.run_time_activation_norm_fn_out = run_time_activation_norm_fn_out
-    
+
         elif self.cfg.normalize_activations == "layer_norm":
             #  we need to scale the norm of the input and store the scaling factor
             def run_time_activation_ln_in(
@@ -465,7 +468,6 @@ class SAE(HookedRootModule, Generic[T_SAE_CONFIG], ABC):
     def process_sae_in(
         self, sae_in: Float[torch.Tensor, "... d_in"]
     ) -> Float[torch.Tensor, "... d_in"]:
-
         sae_in = sae_in.to(self.dtype)
         sae_in = self.reshape_fn_in(sae_in)
 
