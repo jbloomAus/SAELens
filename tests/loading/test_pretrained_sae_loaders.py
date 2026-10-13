@@ -449,6 +449,75 @@ def test_gemma_3_sae_huggingface_loader_with_mocked_download(
     torch.testing.assert_close(state_dict["threshold"], threshold)
 
 
+def test_gemma_3_sae_huggingface_loader_affine_transcoder_matches_gemma_scope_2_forward(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    d_in = 16
+    d_sae = 32
+
+    # float64 throughout so the final comparison isn't limited by float32 rounding
+    dtype = torch.float64
+
+    # Gemma Scope 2 stores every matrix as (inputs, outputs) and right-multiplies by it
+    raw_state_dict = {
+        "w_enc": torch.randn(d_in, d_sae, dtype=dtype),
+        "w_dec": torch.randn(d_sae, d_in, dtype=dtype),
+        "b_enc": torch.randn(d_sae, dtype=dtype),
+        "b_dec": torch.randn(d_in, dtype=dtype),
+        "threshold": torch.rand(d_sae, dtype=dtype),
+        "affine_skip_connection": torch.randn(d_in, d_in, dtype=dtype),
+    }
+    safetensors_path = tmp_path / "params.safetensors"
+    save_file(raw_state_dict, safetensors_path)
+
+    def mock_hf_hub_download(
+        repo_id: str,  # noqa: ARG001
+        filename: str,
+        subfolder: str | None = None,  # noqa: ARG001
+        force_download: bool = False,  # noqa: ARG001
+        revision: str | None = None,  # noqa: ARG001
+    ) -> str:
+        # config.json doesn't exist, so the config is inferred from the folder name
+        if filename.endswith("config.json"):
+            raise EntryNotFoundError("config.json not found")
+        return str(safetensors_path)
+
+    def mock_get_safetensors_tensor_shapes(
+        repo_id: str,  # noqa: ARG001
+        filename: str,  # noqa: ARG001
+    ) -> dict[str, list[int]]:
+        return {k: list(v.shape) for k, v in raw_state_dict.items()}
+
+    monkeypatch.setattr(
+        "sae_lens.loading.pretrained_sae_loaders.hf_hub_download", mock_hf_hub_download
+    )
+    monkeypatch.setattr(
+        "sae_lens.loading.pretrained_sae_loaders.get_safetensors_tensor_shapes",
+        mock_get_safetensors_tensor_shapes,
+    )
+
+    cfg_dict, state_dict, _ = gemma_3_sae_huggingface_loader(
+        repo_id="google/gemma-scope-2-270m-pt",
+        folder_name="transcoder_all/layer_5_width_16k_l0_small_affine",
+        device="cpu",
+        cfg_overrides={"dtype": "float64"},
+    )
+    cfg_dict = handle_pre_6_0_config(cfg_dict)
+    sae = SAE.from_dict(cfg_dict)
+    sae.load_state_dict(state_dict)
+
+    x = torch.randn(10, d_in, dtype=dtype)
+    pre_acts = x @ raw_state_dict["w_enc"] + raw_state_dict["b_enc"]
+    feature_acts = pre_acts.relu() * (pre_acts > raw_state_dict["threshold"])
+    expected_out = (
+        feature_acts @ raw_state_dict["w_dec"]
+        + raw_state_dict["b_dec"]
+        + x @ raw_state_dict["affine_skip_connection"]
+    )
+
+    assert_close(sae(x), expected_out)
+
+
 def test_load_sae_config_from_huggingface_gemma_2_hook_z_saes():
     cfg_dict = load_sae_config_from_huggingface(
         "gemma-scope-2b-pt-att",
