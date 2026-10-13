@@ -734,7 +734,8 @@ def gemma_3_sae_huggingface_loader(
     }
 
     if "affine_skip_connection" in raw_state_dict:
-        state_dict["W_skip"] = raw_state_dict["affine_skip_connection"]
+        # stored as (d_in, d_out), but W_skip is (d_out, d_in)
+        state_dict["W_skip"] = raw_state_dict["affine_skip_connection"].T.contiguous()
 
     return cfg_dict, state_dict, None
 
