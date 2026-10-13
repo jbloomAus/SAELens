@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v6.54.1 (2026-10-13)
+
+### Fix
+
+* fix: reject non-positive token batching context sizes (#759) ([`36d8663`](https://github.com/decoderesearch/SAELens/commit/36d86638a2bab9396705096d50fed943a9ce9120))
+
 ## v6.54.0 (2026-10-04)
 
 ### Feature
