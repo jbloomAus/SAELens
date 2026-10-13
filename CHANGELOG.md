@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v6.54.2 (2026-10-13)
+
+### Fix
+
+* fix: load Gemma Scope 2 affine skip connections in the correct orientation (#761) ([`324939e`](https://github.com/decoderesearch/SAELens/commit/324939e149c888095deb1511d04901910b431eaa))
+
 ## v6.54.1 (2026-10-13)
 
 ### Fix
