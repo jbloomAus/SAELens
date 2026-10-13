@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v6.54.4 (2026-10-13)
+
+### Fix
+
+* fix: Preserve disabled whitening when saving activation scalers (#758) ([`15d83eb`](https://github.com/decoderesearch/SAELens/commit/15d83eb1302f34f1b2e432210da090f0f0b7fc03))
+
 ## v6.54.3 (2026-10-13)
 
 ### Fix
