@@ -201,6 +201,11 @@ class SAETrainer(Generic[T_TRAINING_SAE, T_TRAINING_SAE_CONFIG]):
             self.n_training_steps += 1
             self._update_pbar(step_output, pbar)
 
+        # the last sparsity window is not reset, so it has not been logged yet
+        sparsity_log = self.full_sparsity_window_log()
+        if sparsity_log and self.cfg.logger.log_to_wandb:
+            wandb.log(sparsity_log, step=self.n_training_steps)
+
         # fold the estimated activation normalization into the sae weights
         if self.activation_scaler.scaling_factor is not None:
             self.sae.fold_activation_norm_scaling_factor(
@@ -307,16 +312,28 @@ class SAETrainer(Generic[T_TRAINING_SAE, T_TRAINING_SAE_CONFIG]):
         `MultiSAETrainer`). Caller is responsible for emitting the returned
         dict to wandb if logging is enabled.
         """
-        # This runs before the step at `n_training_steps`, i.e. after
-        # `n_training_steps` completed steps, so each window spans exactly
-        # `feature_sampling_window` steps.
+        log_dict = self.full_sparsity_window_log()
+        if log_dict:
+            self._reset_running_sparsity_stats()
+        return log_dict
+
+    def full_sparsity_window_log(self) -> dict[str, Any]:
+        """
+        Return the sparsity log dict if the running sparsity stats cover a full
+        `feature_sampling_window` of steps; otherwise return {}. Unlike
+        `maybe_reset_sparsity`, this leaves the stats alone.
+
+        Public seam used by `fit()` and external coordinators (e.g.
+        `MultiSAETrainer`) to log the last window once training is done. That
+        window is never reset, since its stats are saved with the final SAE.
+        """
+        # `n_training_steps` is the number of completed steps, so each window
+        # spans exactly `feature_sampling_window` steps.
         if (
             self.n_training_steps > 0
             and self.n_training_steps % self.cfg.feature_sampling_window == 0
         ):
-            log_dict = self._build_sparsity_log_dict()
-            self._reset_running_sparsity_stats()
-            return log_dict
+            return self._build_sparsity_log_dict()
         return {}
 
     def save_trainer_state(self, checkpoint_path: Path) -> None:
