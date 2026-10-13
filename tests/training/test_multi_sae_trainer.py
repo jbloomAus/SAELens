@@ -549,6 +549,39 @@ def test_multi_sae_trainer_skips_checkpoints_when_path_none_and_no_wandb(
     assert len(received_paths) >= 1  # at least the final-checkpoint call
 
 
+def test_multi_sae_trainer_logs_every_full_sparsity_window_to_wandb_once(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    d_in = 4
+    batch_size = 4
+    window = 5
+    n_windows = 3
+    cfg = _trainer_cfg(total_samples=batch_size * window * n_windows)
+    cfg.feature_sampling_window = window
+    cfg.logger = LoggingConfig(log_to_wandb=True)
+    trainer = MultiSAETrainer(
+        cfg=cfg,
+        saes={"a": _make_sae(d_in), "b": _make_sae(d_in)},
+        hook_names={"a": "hook", "b": "hook"},
+        data_provider=iter(lambda: {"hook": torch.randn(batch_size, d_in)}, None),
+    )
+    sparsity_log_steps: list[int] = []
+
+    def record_sparsity_log(log_dict: dict[str, Any], step: int) -> None:
+        if "a/plots/feature_density_line_chart" in log_dict:
+            assert "b/plots/feature_density_line_chart" in log_dict
+            sparsity_log_steps.append(step)
+
+    monkeypatch.setattr("wandb.log", record_sparsity_log)
+    trainer.fit()
+
+    # training ends on a full window, which must still be logged
+    assert sparsity_log_steps == [window, 2 * window, 3 * window]
+    # logging the last window must not reset the stats saved with the final SAEs
+    for sae_trainer in trainer.trainers.values():
+        assert sae_trainer.n_frac_active_samples == batch_size * window
+
+
 def test_multi_sae_trainer_advances_counters_in_lockstep(
     ts_model: HookedTransformer, dataset: Dataset
 ):

@@ -142,6 +142,8 @@ class MultiSAETrainer:
 
             self._update_pbar(step_outputs, pbar)
 
+        self._maybe_log_sparsity(final=True)
+
         for name, trainer in self.trainers.items():
             if trainer.activation_scaler.scaling_factor is not None:
                 self.saes[name].fold_activation_norm_scaling_factor(
@@ -210,10 +212,16 @@ class MultiSAETrainer:
             and (self.n_training_steps + 1) % self.cfg.logger.wandb_log_frequency == 0
         )
 
-    def _maybe_log_sparsity(self) -> None:
+    def _maybe_log_sparsity(self, final: bool = False) -> None:
         sparsity_logs: dict[str, dict[str, Any]] = {}
         for name, trainer in self.trainers.items():
-            d = trainer.maybe_reset_sparsity()
+            # the last sparsity window is logged without being reset, since its
+            # stats are saved with the final SAE
+            d = (
+                trainer.full_sparsity_window_log()
+                if final
+                else trainer.maybe_reset_sparsity()
+            )
             if d:
                 sparsity_logs[name] = d
         if sparsity_logs and self.cfg.logger.log_to_wandb:
