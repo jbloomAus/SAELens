@@ -84,15 +84,12 @@ def concat_and_batch_sequences(
 
     Args:
         tokens_iterator: An iterator which returns a 1D tensors of tokens
-        context_size: Each batch will have this many tokens; must be positive
+        context_size: Each batch will have this many tokens
         begin_batch_token_id: If provided, this token will be at position 0 of each batch
         begin_sequence_token_id: If provided, this token will be the first token of each sequence
         sequence_separator_token_id: If provided, this token will be inserted between concatenated sequences
         disable_concat_sequences: If True, disable concatenating sequences and ignore sequences shorter than context_size (including BOS token if present)
         max_batches: If not provided, the iterator will be run to completion.
-
-    Raises:
-        ValueError: If context_size is not positive.
     """
     if context_size <= 0:
         raise ValueError("context_size must be positive")
