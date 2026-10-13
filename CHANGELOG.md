@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v6.54.3 (2026-10-13)
+
+### Fix
+
+* fix: reset sparsity stats after a full feature_sampling_window of steps (#757) ([`3ef8504`](https://github.com/decoderesearch/SAELens/commit/3ef8504a3390c4b4188877d226c8686d71f6786d))
+
 ## v6.54.2 (2026-10-13)
 
 ### Fix
