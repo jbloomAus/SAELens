@@ -32,8 +32,12 @@ from sae_lens.loading.pretrained_saes_directory import PretrainedSAELookup
 from sae_lens.saes.batchtopk_sae import (
     BatchTopKTrainingSAE,
 )
-from sae_lens.saes.sae import SAE, TrainingSAE
-from sae_lens.saes.standard_sae import StandardSAE, StandardTrainingSAE
+from sae_lens.saes.sae import SAE, SAEMetadata, TrainingSAE
+from sae_lens.saes.standard_sae import (
+    StandardSAE,
+    StandardSAEConfig,
+    StandardTrainingSAE,
+)
 from sae_lens.saes.topk_sae import TopKTrainingSAE
 from sae_lens.training.activation_scaler import ActivationScaler, ActivationWhitening
 from sae_lens.training.activations_store import ActivationsStore
@@ -160,6 +164,109 @@ all_featurewise_keys_expected = [
     "encoder_decoder_cosine_sim",
     "encoder_norm",
 ]
+
+
+@pytest.fixture(
+    params=[
+        ("blocks.0.hook_resid_pre", "none"),
+        ("blocks.0.attn.hook_z", "hook_z"),
+    ],
+    ids=["resid_pre", "hook_z"],
+)
+def feature_density_eval_inputs(request: pytest.FixtureRequest):
+    hook_name, reshape_activations = request.param
+    model = HookedTransformer(
+        HookedTransformerConfig(
+            n_layers=1,
+            d_model=8,
+            n_ctx=4,
+            d_head=4,
+            n_heads=2,
+            d_mlp=16,
+            d_vocab=20,
+            act_fn="relu",
+            device="cpu",
+        )
+    )
+    sae = StandardSAE(
+        StandardSAEConfig(
+            d_in=8,
+            d_sae=4,
+            reshape_activations=reshape_activations,
+            metadata=SAEMetadata(
+                hook_name=hook_name,
+                context_size=4,
+                prepend_bos=False,
+            ),
+        )
+    )
+    with torch.no_grad():
+        sae.W_enc.zero_()
+        sae.b_enc.copy_(torch.tensor([1.0, -1.0, 1.0, -1.0]))
+    store = ActivationsStore.from_sae(
+        model,
+        sae,
+        Dataset.from_dict({"tokens": [[0, 2, 3, 4], [0, 5, 6, 7]]}),
+        store_batch_size_prompts=2,
+        total_tokens=2,
+        disable_concat_sequences=True,
+        sequence_separator_token=None,
+    )
+    return model, sae, store
+
+
+@pytest.mark.parametrize("exclude_special_tokens", [False, [0]])
+def test_run_evals_feature_density_only(
+    feature_density_eval_inputs: tuple[
+        HookedTransformer, StandardSAE, ActivationsStore
+    ],
+    exclude_special_tokens: bool | list[int],
+):
+    model, sae, store = feature_density_eval_inputs
+    original_hook_z_reshaping_mode = sae.hook_z_reshaping_mode
+    metrics, feature_metrics = run_evals(
+        sae,
+        store,
+        model,
+        ActivationScaler(),
+        eval_config=EvalConfig(compute_featurewise_density_statistics=True),
+        exclude_special_tokens=exclude_special_tokens,
+    )
+
+    assert sae.hook_z_reshaping_mode is original_hook_z_reshaping_mode
+    assert set(metrics) == {"token_stats"}
+    assert feature_metrics["feature_density"] == [1.0, 0.0, 1.0, 0.0]
+    expected_per_prompt = 3.0 if exclude_special_tokens else 4.0
+    assert feature_metrics["consistent_activation_heuristic"][::2] == [
+        expected_per_prompt,
+        expected_per_prompt,
+    ]
+
+
+@pytest.mark.parametrize("n_batches", [0, -1])
+def test_run_evals_feature_density_requires_positive_batches(
+    feature_density_eval_inputs: tuple[
+        HookedTransformer, StandardSAE, ActivationsStore
+    ],
+    n_batches: int,
+):
+    model, sae, store = feature_density_eval_inputs
+    original_hook_z_reshaping_mode = sae.hook_z_reshaping_mode
+    with pytest.raises(
+        ValueError, match="n_eval_sparsity_variance_batches must be > 0"
+    ):
+        run_evals(
+            sae,
+            store,
+            model,
+            ActivationScaler(),
+            eval_config=EvalConfig(
+                compute_featurewise_density_statistics=True,
+                n_eval_sparsity_variance_batches=n_batches,
+            ),
+            exclude_special_tokens=False,
+        )
+    assert sae.hook_z_reshaping_mode is original_hook_z_reshaping_mode
 
 
 def test_run_evals_base_sae(

@@ -126,6 +126,29 @@ def run_evals(
         eval_config.batch_size_prompts or activation_store.store_batch_size_prompts
     )
 
+    if (
+        eval_config.compute_kl or eval_config.compute_ce_loss
+    ) and eval_config.n_eval_reconstruction_batches <= 0:
+        raise ValueError(
+            "eval_config.n_eval_reconstruction_batches must be > 0 when "
+            "compute_kl or compute_ce_loss is True."
+        )
+    compute_sparsity_variance_metrics = (
+        eval_config.compute_l2_norms
+        or eval_config.compute_sparsity_metrics
+        or eval_config.compute_variance_metrics
+        or eval_config.compute_featurewise_density_statistics
+    )
+    if (
+        compute_sparsity_variance_metrics
+        and eval_config.n_eval_sparsity_variance_batches <= 0
+    ):
+        raise ValueError(
+            "eval_config.n_eval_sparsity_variance_batches must be > 0 when "
+            "compute_l2_norms, compute_sparsity_metrics, compute_variance_metrics, "
+            "or compute_featurewise_density_statistics is True."
+        )
+
     # TODO: Come up with a cleaner long term strategy here for SAEs that do reshaping.
     # turn off hook_z reshaping mode if it's on, and restore it after evals
     if "hook_z" in hook_name:
@@ -144,11 +167,6 @@ def run_evals(
     }
 
     if eval_config.compute_kl or eval_config.compute_ce_loss:
-        if eval_config.n_eval_reconstruction_batches <= 0:
-            raise ValueError(
-                "eval_config.n_eval_reconstruction_batches must be > 0 when "
-                "compute_kl or compute_ce_loss is True."
-            )
         reconstruction_metrics = get_downstream_reconstruction_metrics(
             sae,
             model,
@@ -189,16 +207,7 @@ def run_evals(
 
         activation_store.reset_input_dataset()
 
-    if (
-        eval_config.compute_l2_norms
-        or eval_config.compute_sparsity_metrics
-        or eval_config.compute_variance_metrics
-    ):
-        if eval_config.n_eval_sparsity_variance_batches <= 0:
-            raise ValueError(
-                "eval_config.n_eval_sparsity_variance_batches must be > 0 when "
-                "compute_l2_norms, compute_sparsity_metrics, or compute_variance_metrics is True."
-            )
+    if compute_sparsity_variance_metrics:
         sparsity_variance_metrics, feature_metrics = get_sparsity_and_variance_metrics(
             sae,
             model,
