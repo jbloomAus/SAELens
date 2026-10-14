@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## v6.54.5 (2026-10-14)
+
+### Fix
+
+* fix: honor standalone feature-density evaluation (#762) ([`d0f8fc1`](https://github.com/decoderesearch/SAELens/commit/d0f8fc1e7dbc254092769d6bef5cbb8adc7959dd))
+
+### Performance
+
+* perf(evals): skip unused feature-density masking (#755) ([`82fe983`](https://github.com/decoderesearch/SAELens/commit/82fe9832819839ab446d3b35990d10813c3e4db5))
+
 ## v6.54.4 (2026-10-13)
 
 ### Fix
