@@ -833,7 +833,7 @@ def multiple_evals(
     n_eval_reconstruction_batches: int,
     n_eval_sparsity_variance_batches: int,
     eval_batch_size_prompts: int = 8,
-    datasets: list[str] = ["Skylion007/openwebtext", "lighteval/MATH"],
+    datasets: list[str] = ["Skylion007/openwebtext"],
     dataset_trust_remote_code: bool = False,
     ctx_lens: list[int] = [128],
     output_dir: str = "eval_results",
@@ -1061,7 +1061,7 @@ def process_args(args: list[str]) -> argparse.Namespace:
         "--datasets",
         nargs="+",
         default=["Skylion007/openwebtext"],
-        help="Datasets to evaluate on, such as 'Skylion007/openwebtext' or 'lighteval/MATH'.",
+        help="Datasets to evaluate on, such as 'Skylion007/openwebtext' or 'NeelNanda/c4-10k'.",
     )
     arg_parser.add_argument(
         "--dataset_trust_remote_code",

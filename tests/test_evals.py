@@ -21,6 +21,7 @@ from sae_lens.evals import (
     get_recons_loss,
     get_saes_from_regex,
     get_sparsity_and_variance_metrics,
+    multiple_evals,
     process_args,
     process_results,
     run_evals,
@@ -690,6 +691,37 @@ def test_run_evaluations(
         dataset_trust_remote_code=mock_args.dataset_trust_remote_code,
     )
     assert result == [{"test": "result"}]
+
+
+@patch("sae_lens.evals.run_evals")
+@patch("sae_lens.evals.ActivationsStore")
+@patch("sae_lens.evals.HookedTransformer", MagicMock())
+@patch("sae_lens.evals.SAE")
+@patch("sae_lens.evals.get_saes_from_regex")
+def test_multiple_evals_default_datasets_match_cli_default(
+    mock_get_saes_from_regex: MagicMock,
+    mock_sae: MagicMock,
+    mock_activations_store: MagicMock,
+    mock_run_evals: MagicMock,
+    tmp_path: Path,
+):
+    mock_get_saes_from_regex.return_value = [("release1", "sae1", 0.8, 10)]
+    mock_sae.from_pretrained.return_value.cfg.metadata.model_from_pretrained_kwargs = {}
+    mock_run_evals.return_value = ({}, {})
+
+    multiple_evals(
+        sae_regex_pattern="release1",
+        sae_block_pattern="sae1",
+        n_eval_reconstruction_batches=1,
+        n_eval_sparsity_variance_batches=1,
+        output_dir=str(tmp_path),
+    )
+
+    evaluated_datasets = [
+        call.kwargs["dataset"]
+        for call in mock_activations_store.from_sae.call_args_list
+    ]
+    assert evaluated_datasets == process_args(["release1", "sae1"]).datasets
 
 
 def test_process_results(tmp_path: Path):
