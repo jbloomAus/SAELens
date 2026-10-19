@@ -2,7 +2,10 @@ from collections import defaultdict
 
 from huggingface_hub import HfApi
 
-from sae_lens.loading.pretrained_saes_directory import get_pretrained_saes_directory
+from sae_lens.loading.pretrained_saes_directory import (
+    PretrainedSAELookup,
+    get_pretrained_saes_directory,
+)
 
 
 def is_model_file(filepath: str) -> bool:
@@ -77,6 +80,15 @@ def check_path_existence(sae_path: str, huggingface_files: list[str]) -> bool:
     return False
 
 
+def get_hf_paths_for_sae(lookup: PretrainedSAELookup, sae_path: str) -> list[str]:
+    """Return the HuggingFace weight files (or folder) an SAE needs to load."""
+    # mntss CLTs keep every layer at the repo root as W_enc_{layer}.safetensors
+    # and W_dec_{layer}.safetensors, and the yaml path is just the layer number
+    if lookup.conversion_func == "mntss_clt_layer_transcoder":
+        return [f"W_enc_{sae_path}.safetensors", f"W_dec_{sae_path}.safetensors"]
+    return [sae_path]
+
+
 api = HfApi()
 saes_directory = get_pretrained_saes_directory()
 
@@ -102,19 +114,16 @@ for repo_id, lookups in repo_id_to_lookups.items():
         directory = "/".join(file.split("/")[:-1])
         huggingface_dir_to_files[directory].append(file)
 
-    # Combine sae_maps from all lookups for this repo_id
-    combined_sae_lens_files = {}
-    for lookup in lookups:
-        combined_sae_lens_files.update(lookup.saes_map)
-
     # Check if each sae_lens path exists in HuggingFace
     missing_in_huggingface = []
-    for hook_id, sae_path in combined_sae_lens_files.items():
-        if not check_path_existence(sae_path, huggingface_files):
-            missing_in_huggingface.append((hook_id, sae_path))
+    for lookup in lookups:
+        for hook_id, sae_path in lookup.saes_map.items():
+            hf_paths = get_hf_paths_for_sae(lookup, sae_path)
+            if not all(check_path_existence(p, huggingface_files) for p in hf_paths):
+                missing_in_huggingface.append((hook_id, sae_path))
 
     # Find model directories/files in HuggingFace not referenced in sae_lens
-    sae_lens_paths = set(combined_sae_lens_files.values())
+    sae_lens_paths = {p for lookup in lookups for p in lookup.saes_map.values()}
     missing_in_sae_lens = []
 
     # Check directories with model files
