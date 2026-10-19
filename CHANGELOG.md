@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v6.54.6 (2026-10-19)
+
+### Fix
+
+* fix: forward model kwargs to reconstruction evaluation (#765) ([`83c7b9b`](https://github.com/decoderesearch/SAELens/commit/83c7b9bd065e90acda5d29b32bd020192a23319c))
+
 ## v6.54.5 (2026-10-14)
 
 ### Fix
