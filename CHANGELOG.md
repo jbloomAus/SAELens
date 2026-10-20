@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## v6.54.12 (2026-10-20)
+
+### Ci
+
+* ci: pin pymdown-extensions to fix docs build and build docs on PRs (#772) ([`3c1f18d`](https://github.com/decoderesearch/SAELens/commit/3c1f18d5859c285dfec02689d18652b5b67bbba5))
+
+### Fix
+
+* fix: drop removed lighteval/MATH from multiple_evals default datasets (#770) ([`30b944e`](https://github.com/decoderesearch/SAELens/commit/30b944e430558cc51428d18dc004768d7e9dc1d4))
+
 ## v6.54.11 (2026-10-20)
 
 ### Fix
