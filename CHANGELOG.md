@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v6.54.9 (2026-10-20)
+
+### Fix
+
+* fix: fold activation norm scaling factor into BatchTopK threshold (#764) ([`41dbc66`](https://github.com/decoderesearch/SAELens/commit/41dbc669f159538d332b5cc505f2a03191c1f0a2))
+
 ## v6.54.8 (2026-10-20)
 
 ### Fix
