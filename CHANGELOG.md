@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v6.54.11 (2026-10-20)
+
+### Fix
+
+* fix: store pretrained SAE paths as str so the HF sync check runs again (#769) ([`b7166f1`](https://github.com/decoderesearch/SAELens/commit/b7166f1c52f17e5fcf19f718bc208a5fd6f2215c))
+
 ## v6.54.10 (2026-10-20)
 
 ### Fix
