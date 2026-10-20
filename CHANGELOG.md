@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v6.54.10 (2026-10-20)
+
+### Fix
+
+* fix: fold activation norm scaling factor into matching pursuit residual threshold (#771) ([`ed57c7c`](https://github.com/decoderesearch/SAELens/commit/ed57c7c8a4fc2c750aabd376edd9d2e00eac7006))
+
 ## v6.54.9 (2026-10-20)
 
 ### Fix
