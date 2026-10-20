@@ -1061,7 +1061,7 @@ def process_args(args: list[str]) -> argparse.Namespace:
         "--datasets",
         nargs="+",
         default=["Skylion007/openwebtext"],
-        help="Datasets to evaluate on, such as 'Skylion007/openwebtext' or 'NeelNanda/c4-10k'.",
+        help="Datasets to evaluate on, such as 'Skylion007/openwebtext' or 'monology/pile-uncopyrighted'.",
     )
     arg_parser.add_argument(
         "--dataset_trust_remote_code",
