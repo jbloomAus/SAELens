@@ -409,6 +409,48 @@ def test_TrainingSAE_fold_activation_whitening_then_save_inference_model_matches
     assert_close(folded(inputs), whitened_outputs)
 
 
+@pytest.mark.parametrize("architecture", ALL_TRAINING_ARCHITECTURES)
+def test_TrainingSAE_fold_activation_norm_scaling_factor_then_save_inference_model_matches_scaled_inference(
+    architecture: str, tmp_path: Path
+):
+    # big enough that matching pursuit's residual stopping rule actually triggers
+    extra_cfg = (
+        {"residual_threshold": 3.0} if architecture == "matching_pursuit" else {}
+    )
+    cfg = build_sae_training_cfg_for_arch(
+        architecture,
+        normalize_activations="expected_average_only_in",
+        dtype="float64",
+        **extra_cfg,
+    )
+    sae = get_sae_training_class(architecture)[0](cfg)
+    random_params(sae)
+    # random_params leaves everything in [0, 1), which leaves matching pursuit with
+    # nothing to select. Center the weights and use unit-norm decoder rows.
+    sae.W_dec.data -= 0.5
+    sae.W_dec.data /= sae.W_dec.data.norm(dim=-1, keepdim=True)
+    sae.b_dec.data -= 0.5
+    scaling_factor = 0.02
+    inputs = torch.randn(256, cfg.d_in, dtype=torch.float64) / scaling_factor
+
+    sae.save_inference_model(tmp_path / "unfolded")
+    unfolded = SAE.load_from_disk(str(tmp_path / "unfolded"), dtype="float64")
+    scaled_features = unfolded.encode(inputs * scaling_factor)
+    scaled_outputs = unfolded(inputs * scaling_factor) / scaling_factor
+    # a few percent of features must be active, otherwise the encoder check is vacuous
+    assert (scaled_features != 0).double().mean() > 0.01
+
+    sae.fold_activation_norm_scaling_factor(scaling_factor)
+    sae.save_inference_model(tmp_path / "folded")
+    folded = SAE.load_from_disk(str(tmp_path / "folded"), dtype="float64")
+
+    assert folded.cfg.normalize_activations == "none"
+    assert_close(folded(inputs), scaled_outputs)
+    # feature magnitudes may change by the scaling factor (e.g. TopK SAEs with
+    # rescale_acts_by_decoder_norm), but the same features must fire
+    assert torch.equal(folded.encode(inputs) != 0, scaled_features != 0)
+
+
 def test_TrainingSAE_fold_activation_whitening_float32_matches_within_1e_5():
     cfg = build_sae_training_cfg(normalize_activations="covariance_whitening")
     sae = StandardTrainingSAE(cfg)
