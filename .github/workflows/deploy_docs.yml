@@ -69,6 +69,11 @@ jobs:
         run: uv pip install -e . --group dev
       - name: Set Python Path
         run: echo "PYTHONPATH=$PYTHONPATH:$PWD" >> $GITHUB_ENV
+      # PRs don't deploy, so without this a broken docs build only shows up on
+      # main. mike builds with properdocs when it's installed, so match that.
+      - name: Build docs
+        if: github.event_name == 'pull_request'
+        run: properdocs build --clean --config-file mkdocs.yml
       - name: Configure Git
         if: github.event_name != 'pull_request'
         run: |

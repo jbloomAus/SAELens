@@ -69,6 +69,9 @@ dev = [
     "mkdocstrings>=0.25.2,<0.26.0",
     "mkdocstrings-python>=1.10.9,<2.0.0",
     "griffe<2.0",
+    # pymdown-extensions 12.2 made `md` a required argument of Highlight, which
+    # mkdocstrings < 1.0 doesn't pass. Remove once mkdocstrings is upgraded.
+    "pymdown-extensions<12.2",
     "beautifulsoup4>=4.12.0,<5.0.0",
     "tabulate>=0.9.0,<0.10.0",
     "ruff>=0.7.4,<0.8.0",
