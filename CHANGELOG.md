@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v6.54.7 (2026-10-20)
+
+### Fix
+
+* fix: weight activation norm estimates by observation count (#766) ([`1815acb`](https://github.com/decoderesearch/SAELens/commit/1815acbc55b865b707a6dbbcc5a520274457219d))
+
 ## v6.54.6 (2026-10-19)
 
 ### Fix
