@@ -196,7 +196,6 @@ class LanguageModelSAETrainingRunner:
             )
 
         data_provider: DataProvider = self.activations_store
-        prefetcher: PrefetchingIterator[Any] | None = None
         if self.cfg.prefetch_llm_batches:
             # Order matters: bool is a subclass of int, so check bool first.
             prefetch_size = (
@@ -204,10 +203,9 @@ class LanguageModelSAETrainingRunner:
                 if isinstance(self.cfg.prefetch_llm_batches, bool)
                 else self.cfg.prefetch_llm_batches
             )
-            prefetcher = PrefetchingIterator(
+            data_provider = PrefetchingIterator(
                 iter(self.activations_store), prefetch=prefetch_size
             )
-            data_provider = prefetcher
 
         try:
             trainer = SAETrainer(
@@ -243,11 +241,8 @@ class LanguageModelSAETrainingRunner:
 
             return sae
         finally:
-            if prefetcher is not None and not prefetcher.close():
-                logger.warning(
-                    "Prefetch producer did not exit before the close timeout; "
-                    "an in-progress source next() call cannot be interrupted."
-                )
+            if isinstance(data_provider, PrefetchingIterator):
+                data_provider.close()
 
     def save_final_sae(
         self,

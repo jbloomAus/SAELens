@@ -545,15 +545,13 @@ class MultiSAETrainingRunner:
         data_provider: MultiHookDataProvider = (
             self.activations_store.get_multi_hook_data_loader()
         )
-        prefetcher: PrefetchingIterator[Any] | None = None
         if self.cfg.prefetch_llm_batches:
             prefetch_size = (
                 1
                 if isinstance(self.cfg.prefetch_llm_batches, bool)
                 else self.cfg.prefetch_llm_batches
             )
-            prefetcher = PrefetchingIterator(data_provider, prefetch=prefetch_size)
-            data_provider = prefetcher
+            data_provider = PrefetchingIterator(data_provider, prefetch=prefetch_size)
 
         try:
             trainer = MultiSAETrainer(
@@ -584,11 +582,8 @@ class MultiSAETrainingRunner:
 
             return saes
         finally:
-            if prefetcher is not None and not prefetcher.close():
-                logger.warning(
-                    "Prefetch producer did not exit before the close timeout; "
-                    "an in-progress source next() call cannot be interrupted."
-                )
+            if isinstance(data_provider, PrefetchingIterator):
+                data_provider.close()
 
     def _run_with_interruption_handling(
         self, trainer: MultiSAETrainer

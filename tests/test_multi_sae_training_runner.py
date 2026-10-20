@@ -369,6 +369,29 @@ def _std_sae_cfg(d_in: int) -> StandardTrainingSAEConfig:
     )
 
 
+def test_multi_sae_runner_stops_prefetch_thread_after_run(
+    monkeypatch: pytest.MonkeyPatch, ts_model: HookedTransformer, dataset: Dataset
+):
+    prefetchers: list[PrefetchingIterator[Any]] = []
+    original_init = PrefetchingIterator.__init__
+
+    def init_and_record(self: PrefetchingIterator[Any], *args: Any, **kwargs: Any):
+        original_init(self, *args, **kwargs)
+        prefetchers.append(self)
+
+    monkeypatch.setattr(PrefetchingIterator, "__init__", init_and_record)
+
+    cfg = _build_cfg(
+        saes={"a": _std_sae_cfg(ts_model.cfg.d_model)},
+        hook_names="blocks.0.hook_mlp_out",
+        prefetch_llm_batches=2,
+    )
+    MultiSAETrainingRunner(cfg, override_model=ts_model, override_dataset=dataset).run()
+
+    assert len(prefetchers) == 1
+    assert not prefetchers[0]._thread.is_alive()
+
+
 def test_multi_sae_runner_logs_per_sae_metrics_to_wandb(
     ts_model: HookedTransformer,
     dataset: Dataset,

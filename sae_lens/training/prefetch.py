@@ -1,6 +1,5 @@
-import math
+import queue
 import threading
-from collections import deque
 from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Generic, TypeVar
@@ -31,19 +30,17 @@ class PrefetchingIterator(Iterator[T], Generic[T]):
     Also note the queue may already contain up to ``prefetch`` items that the
     producer enqueued before ``paused()`` acquired the lock.
 
-    Call ``close()`` when the consumer stops before exhausting the iterator.
-    It discards queued items and asks the producer to stop. A source already
-    inside ``next()`` cannot be interrupted, so ``close()`` bounds its join
-    and reports whether the producer exited. It never closes the source from
-    another thread.
+    Call ``close()`` when the consumer stops before exhausting the iterator
+    (e.g. training ends after a fixed number of steps). Otherwise the producer
+    blocks on the full queue until the process exits, keeping the source and
+    the buffered tensors alive, which leaks GPU memory across runs in the same
+    process.
     """
 
     def __init__(self, source: Iterator[T], prefetch: int = 4):
         if prefetch < 1:
             raise ValueError("prefetch must be >= 1")
-        self._queue: deque[object] = deque()
-        self._queue_maxsize = prefetch
-        self._queue_condition = threading.Condition()
+        self._queue: queue.Queue[object] = queue.Queue(maxsize=prefetch)
         self._lock = threading.Lock()
         self._closed = threading.Event()
         self._exception: BaseException | None = None
@@ -55,34 +52,26 @@ class PrefetchingIterator(Iterator[T], Generic[T]):
         try:
             while not self._closed.is_set():
                 with self._lock:
-                    if self._closed.is_set():
-                        break
                     try:
                         item = next(source)
                     except StopIteration:
                         break
-                if not self._put_if_open(item):
-                    return
-                del item
+                self._put(item)
         # BaseException (not Exception) so KeyboardInterrupt etc. don't silently
         # kill the producer without surfacing to the consumer.
         except BaseException as e:  # noqa: BLE001
-            with self._queue_condition:
-                if not self._closed.is_set():
-                    self._exception = e
-                    self._queue_condition.notify_all()
+            self._exception = e
         finally:
-            self._put_if_open(_SENTINEL)
+            self._put(_SENTINEL)
 
-    def _put_if_open(self, item: object) -> bool:
-        with self._queue_condition:
-            while not self._closed.is_set():
-                if len(self._queue) < self._queue_maxsize:
-                    self._queue.append(item)
-                    self._queue_condition.notify_all()
-                    return True
-                self._queue_condition.wait()
-        return False
+    def _put(self, item: object) -> None:
+        # Time out periodically so a producer blocked on a full queue notices close().
+        while not self._closed.is_set():
+            try:
+                self._queue.put(item, timeout=0.1)
+                return
+            except queue.Full:
+                pass
 
     def __iter__(self) -> "PrefetchingIterator[T]":
         return self
@@ -93,46 +82,28 @@ class PrefetchingIterator(Iterator[T], Generic[T]):
         # an empty queue with no producer alive. Source-side exceptions are
         # raised once on the first SENTINEL, matching Python generator
         # semantics (subsequent calls then raise StopIteration).
-        if self._done or self._closed.is_set():
-            self._done = True
+        if self._done:
             raise StopIteration
-        with self._queue_condition:
-            while not self._queue and not self._closed.is_set():
-                self._queue_condition.wait()
-            if self._closed.is_set():
-                self._done = True
-                raise StopIteration
-            item = self._queue.popleft()
-            self._queue_condition.notify()
-            if item is _SENTINEL:
-                self._done = True
-                exception = self._exception
-                self._exception = None
-                if exception is not None:
-                    raise exception
-                raise StopIteration
-            return item  # type: ignore[return-value]
+        item = self._queue.get()
+        if item is _SENTINEL:
+            self._done = True
+            if self._exception is not None:
+                raise self._exception
+            raise StopIteration
+        return item  # type: ignore[return-value]
 
-    def close(self, timeout: float = 1.0) -> bool:
-        """Stop prefetching and discard buffered items.
+    def close(self) -> None:
+        """Stop the producer thread and drop any buffered items.
 
-        Returns whether the producer exited before ``timeout``. The source's
-        current ``next()`` call cannot be interrupted; if it is still running,
-        the producer exits after that call returns. The source itself is never
-        closed from this thread.
+        Blocks until the producer exits, which can take up to one
+        ``next(source)`` step if the producer is mid-call. After ``close()``,
+        ``next()`` raises ``StopIteration``.
         """
-        if timeout < 0 or not math.isfinite(timeout):
-            raise ValueError("timeout must be finite and >= 0")
-
-        with self._queue_condition:
-            self._closed.set()
-            self._queue.clear()
-            self._exception = None
-            self._queue_condition.notify_all()
-
-        if self._thread is not threading.current_thread():
-            self._thread.join(timeout)
-        return not self._thread.is_alive()
+        self._closed.set()
+        self._thread.join()
+        self._done = True
+        while not self._queue.empty():
+            self._queue.get_nowait()
 
     @contextmanager
     def paused(self) -> Iterator[None]:
