@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v6.54.8 (2026-10-20)
+
+### Fix
+
+* fix: prefetch worker cleanup after training stops (#767) ([`ba587af`](https://github.com/decoderesearch/SAELens/commit/ba587afa59b1e6394dffffa177ca38ed0cb9f67c))
+
 ## v6.54.7 (2026-10-20)
 
 ### Fix
