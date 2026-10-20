@@ -106,6 +106,14 @@ class MatchingPursuitSAE(SAE[MatchingPursuitSAEConfig]):
         )
 
     @override
+    @torch.no_grad()
+    def fold_activation_norm_scaling_factor(self, scaling_factor: float) -> None:
+        super().fold_activation_norm_scaling_factor(scaling_factor)
+        # residual_threshold is compared against the residual norm, which is in
+        # input units, so it has to move to the unscaled input units too.
+        self.cfg.residual_threshold /= scaling_factor
+
+    @override
     def decode(self, feature_acts: torch.Tensor) -> torch.Tensor:
         """
         Decode the feature activations back to the input space.
@@ -226,6 +234,14 @@ class MatchingPursuitTrainingSAE(TrainingSAE[MatchingPursuitTrainingSAEConfig]):
         raise NotImplementedError(
             "Folding activation whitening is not supported for MatchingPursuit SAEs, as the encoder is tied to the decoder"
         )
+
+    @override
+    @torch.no_grad()
+    def fold_activation_norm_scaling_factor(self, scaling_factor: float) -> None:
+        super().fold_activation_norm_scaling_factor(scaling_factor)
+        # residual_threshold is compared against the residual norm, which is in
+        # input units, so it has to move to the unscaled input units too.
+        self.cfg.residual_threshold /= scaling_factor
 
     @override
     def get_coefficients(self) -> dict[str, float | TrainCoefficientConfig]:

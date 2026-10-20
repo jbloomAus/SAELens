@@ -288,6 +288,25 @@ def test_MatchingPursuitTrainingSAEConfig_rejects_covariance_whitening():
         )
 
 
+def test_MatchingPursuitSAE_fold_activation_norm_scaling_factor_matches_scaled_inputs():
+    scaling_factor = 0.02
+    # big enough that the residual stopping rule triggers on these inputs
+    sae = MatchingPursuitSAE(
+        build_matching_pursuit_sae_cfg(residual_threshold=3.0, dtype="float64")
+    )
+    sae.W_dec.data = torch.randn_like(sae.W_dec)
+    sae.W_dec.data /= sae.W_dec.data.norm(dim=-1, keepdim=True)
+    sae.b_dec.data = torch.randn_like(sae.b_dec)
+    inputs = torch.randn(256, sae.cfg.d_in, dtype=torch.float64) / scaling_factor
+    expected_feats = sae.encode(inputs * scaling_factor) / scaling_factor
+    expected_out = sae(inputs * scaling_factor) / scaling_factor
+
+    sae.fold_activation_norm_scaling_factor(scaling_factor)
+
+    assert_close(sae.encode(inputs), expected_feats)
+    assert_close(sae(inputs), expected_out)
+
+
 def test_MatchingPursuitTrainingSAE_fold_activation_whitening_raises():
     sae = MatchingPursuitTrainingSAE(build_matching_pursuit_sae_training_cfg())
     d_in = sae.cfg.d_in
