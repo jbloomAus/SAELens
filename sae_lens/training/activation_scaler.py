@@ -1,7 +1,6 @@
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from statistics import mean
 
 import torch
 from safetensors.torch import load_file, save_file
@@ -66,23 +65,18 @@ class ActivationScaler:
     def _calculate_mean_norm(
         self, data_provider: DataProvider, n_batches_for_norm_estimate: int = int(1e3)
     ) -> float:
-        norms_per_batch: list[tuple[float, int]] = []
+        total_norm = 0.0
+        total_count = 0
         for _ in tqdm(
             range(n_batches_for_norm_estimate),
             desc="Estimating norm scaling factor",
             leave=False,
         ):
             norms = next(data_provider).norm(dim=-1)
-            norms_per_batch.append((norms.mean().item(), norms.numel()))
-
-        if not norms_per_batch or any(count == 0 for _, count in norms_per_batch):
-            return mean(batch_mean for batch_mean, _ in norms_per_batch)
-
-        total_count = sum(count for _, count in norms_per_batch)
-        weighted_norm_sum = sum(
-            batch_mean * count for batch_mean, count in norms_per_batch
-        )
-        return weighted_norm_sum / total_count
+            # sum in float32 so float16 activations don't overflow
+            total_norm += norms.float().sum().item()
+            total_count += norms.numel()
+        return total_norm / total_count
 
     def estimate_scaling_factor(
         self,
