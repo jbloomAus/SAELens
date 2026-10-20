@@ -79,6 +79,38 @@ def test_ActivationScaler_calculate_mean_norm():
     assert mean_norm == pytest.approx(expected_mean, abs=1e-6)
 
 
+def test_ActivationScaler_calculate_mean_norm_is_batch_partition_invariant():
+    scaler = ActivationScaler()
+    observations = torch.tensor(
+        [
+            [1.0, 0.0, 0.0, 0.0],
+            [2.0, 0.0, 0.0, 0.0],
+            [2.0, 0.0, 0.0, 0.0],
+            [2.0, 0.0, 0.0, 0.0],
+        ]
+    )
+    batches = [
+        [observations[:1], observations[1:]],
+        [observations[[1, 0]], observations[[2, 3]]],
+    ]
+
+    mean_norms = [
+        scaler._calculate_mean_norm(iter(provider_batches), 2)
+        for provider_batches in batches
+    ]
+
+    assert mean_norms == pytest.approx([1.75, 1.75], abs=1e-6)
+
+
+def test_ActivationScaler_calculate_mean_norm_does_not_overflow_float16_batch_sum():
+    scaler = ActivationScaler()
+    batch = torch.full((4, 1), 20_000.0, dtype=torch.float16)
+
+    mean_norm = scaler._calculate_mean_norm(iter([batch]), 1)
+
+    assert mean_norm == pytest.approx(20_000.0, abs=1.0)
+
+
 def test_ActivationScaler_estimate_scaling_factor():
     scaler = ActivationScaler()
     d_in = 64
