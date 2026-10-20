@@ -41,7 +41,8 @@ def get_pretrained_saes_directory() -> dict[str, PretrainedSAELookup]:
                 raise KeyError(f"Missing 'saes' key in {release}")
             for hook_info in value["saes"]:
                 sae_id = hook_info["id"]
-                saes_map[sae_id] = hook_info["path"]
+                path = hook_info["path"]
+                saes_map[sae_id] = str(path) if isinstance(path, int) else path
                 var_explained_map[sae_id] = hook_info.get("variance_explained", 1.00)
                 l0_map[sae_id] = hook_info.get("l0", 0.00)
                 neuronpedia_id_map[sae_id] = hook_info.get("neuronpedia")
